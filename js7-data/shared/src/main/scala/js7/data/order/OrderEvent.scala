@@ -232,7 +232,7 @@ object OrderEvent {
     historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
 
-  final case class OrderLockAcquired(lockId: LockId, exclusively: Boolean = false)
+  final case class OrderLockAcquired(lockId: LockId, count: Option[Int] = None)
   extends OrderLockEvent {
     def lockIds = lockId :: Nil
   }

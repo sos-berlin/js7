@@ -109,8 +109,8 @@ object BasicParsers
         case Right(name) => Pass(name)
       }))
 
-  def lockId(implicit ctx: P[_]) = P[LockId](
-    pathString.flatMap(string =>
+  def quotedLockId(implicit ctx: P[_]) = P[LockId](
+    quotedString.flatMap(string =>
       LockId.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)

@@ -3,7 +3,7 @@ package js7.data.lock
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.data.event.KeyedEvent
-import js7.data.lock.Acquired.{Available, Exclusive, NonExclusiv}
+import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}
 import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson
@@ -35,8 +35,8 @@ final class LockStateTest extends AnyFreeSpec
   def applyEvent(acquired: Acquired, event: KeyedEvent[OrderLockEvent])(implicit lock: Lock) =
     LockState(lock, acquired).applyEvent(event)
 
-  def orderLockAcquired(orderId: OrderId, isExclusive: Boolean)(implicit lock: Lock) =
-    orderId <-: OrderLockAcquired(lock.id, exclusively = isExclusive)
+  def orderLockAcquired(orderId: OrderId, count: Option[Int])(implicit lock: Lock) =
+    orderId <-: OrderLockAcquired(lock.id, count)
 
   for ((lock, testName) <- Seq(
     Lock(LockId("LOCK")) -> "Exclusive lock",
@@ -47,21 +47,21 @@ final class LockStateTest extends AnyFreeSpec
 
     testName - {
       "OrderLockAcquired" in {
-        assert(applyEvent(Available, orderLockAcquired(a, isExclusive = true)) == Right(LockState(lock, Exclusive(a))))
-        assert(applyEvent(Available, orderLockAcquired(a, isExclusive = false)) == Right(LockState(lock, NonExclusiv(Set(a)))))
+        assert(applyEvent(Available, orderLockAcquired(a, None)) == Right(LockState(lock, Exclusive(a))))
+        assert(applyEvent(Available, orderLockAcquired(a, Some(1))) == Right(LockState(lock, NonExclusive(Map(a -> 1)))))
 
-        assert(applyEvent(Exclusive(a), orderLockAcquired(a, isExclusive = true)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(Exclusive(a), orderLockAcquired(b, isExclusive = true)) == Left(Problem("Lock:LOCK is in use")))
+        assert(applyEvent(Exclusive(a), orderLockAcquired(a, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(Exclusive(a), orderLockAcquired(b, None)) == Left(Problem("Lock:LOCK is in use")))
 
-        assert(applyEvent(Exclusive(a), orderLockAcquired(a, isExclusive = false)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(Exclusive(a), orderLockAcquired(b, isExclusive = false)) == Left(Problem("Lock:LOCK is in use")))
+        assert(applyEvent(Exclusive(a), orderLockAcquired(a, Some(1))) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(Exclusive(a), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK is in use")))
 
-        assert(applyEvent(NonExclusiv(Set(a)), orderLockAcquired(a, isExclusive = true)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusiv(Set(a, b)), orderLockAcquired(a, isExclusive = true)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusiv(Set(b)), orderLockAcquired(a, isExclusive = true)) == Left(Problem("Lock:LOCK is in use")))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(a, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), orderLockAcquired(a, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(b -> 1)), orderLockAcquired(a, None)) == Left(Problem("Lock:LOCK is in use")))
 
-        assert(applyEvent(NonExclusiv(Set(a, b)), orderLockAcquired(b, isExclusive = false)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusiv(Set(b)), orderLockAcquired(b, isExclusive = false)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(b -> 1)), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK has already been acquired by this order")))
       }
 
       "OrderLockQueued" in {
@@ -70,9 +70,9 @@ final class LockStateTest extends AnyFreeSpec
         assert(applyEvent(Exclusive(a), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
         assert(applyEvent(Exclusive(a), b <-: OrderLockQueued(lock.id)) == Right(LockState(lock, Exclusive(a), Queue(b))))
 
-        assert(applyEvent(NonExclusiv(Set(a)), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusiv(Set(a, b)), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusiv(Set(a)), b <-: OrderLockQueued(lock.id)) == Right(LockState(lock, NonExclusiv(Set(a)), Queue(b))))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockQueued(lock.id)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockQueued(lock.id)) == Right(LockState(lock, NonExclusive(Map(a -> 1)), Queue(b))))
 
         assert(LockState(lock, Exclusive(a)).applyEvent(b <-: OrderLockQueued(lock.id)) == Right(LockState(lock, Exclusive(a), Queue(b))))
         assert(LockState(lock, Exclusive(a), Queue(b)).applyEvent(c <-: OrderLockQueued(lock.id)) == Right(LockState(lock, Exclusive(a), Queue(b, c))))
@@ -95,12 +95,12 @@ final class LockStateTest extends AnyFreeSpec
         assert(applyEvent(Exclusive(a), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, Available)))
         assert(applyEvent(Exclusive(a), b <-: OrderLockReleased(lock.id)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
 
-        assert(applyEvent(NonExclusiv(Set(a)), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, Available)))
-        assert(applyEvent(NonExclusiv(Set(a, b)), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusiv(Set(b)))))
-        assert(applyEvent(NonExclusiv(Set(a)), b <-: OrderLockReleased(lock.id)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, Available)))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusive(Map(b -> 1)))))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockReleased(lock.id)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
 
-        assert(applyEvent(NonExclusiv(Set(a, b)), b <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusiv(Set(a)))))
-        assert(applyEvent(NonExclusiv(Set(a, b, c)), b <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusiv(Set(a, c)))))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), b <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusive(Map(a -> 1)))))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1, c -> 1)), b <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusive(Map(a -> 1, c -> 1)))))
       }
     }
   }
@@ -109,11 +109,22 @@ final class LockStateTest extends AnyFreeSpec
     implicit val lock = Lock(LockId("LOCK"), nonExclusiveLimit = Some(3))
 
     "acquireFor" in {
-      assert(applyEvent(NonExclusiv(Set(a)), orderLockAcquired(b, isExclusive = false)) == Right(LockState(lock, NonExclusiv(Set(a, b)))))
-      assert(applyEvent(NonExclusiv(Set(a, b)), orderLockAcquired(c, isExclusive = false)) == Right(LockState(lock, NonExclusiv(Set(a, b, c)))))
-      assert(applyEvent(NonExclusiv(Set(a, b)), orderLockAcquired(c, isExclusive = true)) == Left(Problem("Lock:LOCK is in use")))
-      assert(applyEvent(NonExclusiv(Set(a, b, c)), orderLockAcquired(d, isExclusive = false)) == Left(Problem("Lock:LOCK limit=3 reached")))
-      assert(applyEvent(NonExclusiv(Set(a, b, c)), orderLockAcquired(d, isExclusive = true)) == Left(Problem("Lock:LOCK is in use")))
+      assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(1))) == Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 1)))))
+      assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), orderLockAcquired(c, Some(1))) == Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 1, c -> 1)))))
+      assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), orderLockAcquired(c, None)) == Left(Problem("Lock:LOCK is in use")))
+      assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1, c -> 1)), orderLockAcquired(d, Some(1))) == Left(Problem("Lock:LOCK: 3+1 would exceed limit=3")))
+      assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1, c -> 1)), orderLockAcquired(d, None)) == Left(Problem("Lock:LOCK is in use")))
+
+      assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(2))) == Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 2)))))
+      assert(applyEvent(NonExclusive(Map(a -> 1, b -> 2)), orderLockAcquired(c, Some(1))) == Left(Problem("Lock:LOCK: 3+1 would exceed limit=3")))
+      assert(applyEvent(NonExclusive(Map(a -> 99)), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK: 99+1 would exceed limit=3")))
+    }
+
+    "acquireFor with invalid count" in {
+      assert(applyEvent(Available, orderLockAcquired(c, Some(0))) == Left(Problem("Lock:LOCK: Invalid count=0 requested")))
+      assert(applyEvent(Available, orderLockAcquired(c, Some(-1))) == Left(Problem("Lock:LOCK: Invalid count=-1 requested")))
+      assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(c, Some(0))) == Left(Problem("Lock:LOCK: Invalid count=0 requested")))
+      assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(c, Some(-1))) == Left(Problem("Lock:LOCK: Invalid count=-1 requested")))
     }
   }
 }

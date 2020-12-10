@@ -3,13 +3,13 @@ package js7.data.lock
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
-import js7.data.lock.LockRefusal.{AlreadyAcquiredByThisOrder, IsInUse, UnknownReleasingOrderError}
+import js7.data.lock.LockRefusal.{AlreadyAcquiredByThisOrder, InvalidCount, IsInUse, UnknownReleasingOrderError}
 import js7.data.order.OrderId
 
 sealed trait Acquired {
   def lockCount: Int
   def isAcquiredBy(orderId: OrderId): Boolean
-  def acquireFor(orderId: OrderId, isExclusive: Boolean): Either[LockRefusal, Acquired]
+  def acquireFor(orderId: OrderId, count: Option[Int]): Either[LockRefusal, Acquired]
   def release(orderId: OrderId): Either[LockRefusal, Acquired]
 }
 
@@ -21,12 +21,13 @@ object Acquired {
 
     def isAcquiredBy(orderId: OrderId) = false
 
-    def acquireFor(orderId: OrderId, isExclusive: Boolean) =
-      Right(
-        if (isExclusive)
-          Exclusive(orderId)
-        else
-          NonExclusiv(Set(orderId)))
+    def acquireFor(orderId: OrderId, count: Option[Int]) =
+      count match {
+        case None => Right(Exclusive(orderId))
+        case Some(n) =>
+          if (n >= 1) Right(NonExclusive(Map(orderId -> n)))
+          else Left(InvalidCount(n))
+      }
 
     def release(orderId: OrderId) =
       Left(UnknownReleasingOrderError)
@@ -39,11 +40,16 @@ object Acquired {
     def isAcquiredBy(orderId: OrderId) =
       this.orderId == orderId
 
-    def acquireFor(orderId: OrderId, isExclusive: Boolean) =
-      if (this.orderId == orderId)
-        Left(AlreadyAcquiredByThisOrder)
-      else
-        Left(IsInUse)
+    def acquireFor(orderId: OrderId, count: Option[Int]) =
+      count match {
+        case None | Some(1) =>
+          if (this.orderId == orderId)
+            Left(AlreadyAcquiredByThisOrder)
+          else
+            Left(IsInUse)
+        case Some(n) =>
+          Left(InvalidCount(n))
+      }
 
     def release(orderId: OrderId) =
       if (this.orderId != orderId)
@@ -52,40 +58,43 @@ object Acquired {
         Right(Available)
   }
 
-  final case class NonExclusiv(orderIds: Set[OrderId]) extends Acquired
+  final case class NonExclusive(orderIdToCount: Map[OrderId, Int]) extends Acquired
   {
-    assertThat(orderIds.nonEmpty)
+    assertThat(orderIdToCount.nonEmpty)
+    assertThat(orderIdToCount.values.forall(_ >= 1))
 
-    def lockCount = orderIds.size
+    def lockCount = orderIdToCount.values.sum
 
     def isAcquiredBy(orderId: OrderId) =
-      orderIds contains orderId
+      orderIdToCount contains orderId
 
-    def acquireFor(orderId: OrderId, isExclusive: Boolean) =
-      if (orderIds contains orderId)
+    def acquireFor(orderId: OrderId, count: Option[Int]) =
+      if (orderIdToCount contains orderId)
         Left(AlreadyAcquiredByThisOrder)
-      else if (isExclusive)
-        Left(IsInUse)
       else
-        Right(NonExclusiv(orderIds + orderId))
+        count match {
+          case None => Left(IsInUse)
+          case Some(n) =>
+            if (n >= 1) Right(NonExclusive(orderIdToCount + (orderId -> n)))
+            else Left(InvalidCount(n))
+        }
 
     def release(orderId: OrderId) =
-      if (!orderIds.contains(orderId))
+      if (!orderIdToCount.contains(orderId))
         Left(UnknownReleasingOrderError)
       else
         Right(
-          if (orderIds == Set(orderId))
+          if (orderIdToCount.size == 1)
             Available
           else
-            copy(orderIds = orderIds - orderId))
+            copy(orderIdToCount = orderIdToCount - orderId))
   }
 
   sealed trait ReleaseError
 
-
   implicit val jsonCodec = TypedJsonCodec[Acquired](
     Subtype(deriveCodec[Exclusive]),
-    Subtype(deriveCodec[NonExclusiv]),
+    Subtype(deriveCodec[NonExclusive]),
     Subtype(Available))
 }
 

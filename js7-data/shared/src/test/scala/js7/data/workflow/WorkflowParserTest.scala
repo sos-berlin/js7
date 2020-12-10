@@ -6,13 +6,14 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentName
 import js7.data.job.{CommandLineExecutable, ExecutablePath, ExecutableScript}
+import js7.data.lock.LockId
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.tester.DiffxAssertions.assertEqual
 import org.scalatest.freespec.AnyFreeSpec
@@ -454,6 +455,18 @@ final class WorkflowParserTest extends AnyFreeSpec
         Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumericValue(7)), sourcePos = sourcePos(129, 186)),
         Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumericValue(7)), uncatchable = true, sourcePos(196, 271)),
         ImplicitEnd(sourcePos = sourcePos(279, 280)))))
+  }
+
+  "lock" in {
+    checkWithSourcePos("""
+      define workflow {
+        lock (lock="LOCK") fail;
+        lock (lock="LOCK", count=3) {}
+      }""",
+      Workflow(WorkflowPath.NoId, Vector(
+        LockInstruction(LockId("LOCK"), None, Workflow.of(Fail(sourcePos = sourcePos(52, 56))), sourcePos = sourcePos(33, 51)),
+        LockInstruction(LockId("LOCK"), Some(3), Workflow.of(ImplicitEnd(sourcePos = sourcePos(95, 96))), sourcePos = sourcePos(66, 93)),
+        ImplicitEnd(sourcePos = sourcePos(103, 104)))))
   }
 
   "finish" in {

@@ -59,7 +59,7 @@ trait JumpInstruction extends Instruction {
 
 object Instruction
 {
-  private val showSourcePos = false
+  private val showSourcePos = sys.props contains "js7.show-source-pos"  // For Debugging
 
   object @: {
     def unapply(labeled: Labeled) = Some((labeled.maybeLabel, labeled.instruction))

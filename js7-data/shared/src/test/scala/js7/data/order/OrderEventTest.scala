@@ -430,11 +430,11 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderLockAcquired" in {
-    check(OrderLockAcquired(LockId("LOCK"), exclusively = false), json"""
+    check(OrderLockAcquired(LockId("LOCK"), Some(3)), json"""
       {
         "TYPE": "OrderLockAcquired",
         "lockId": "LOCK",
-        "exclusively": false
+        "count": 3
       }""")
   }
 

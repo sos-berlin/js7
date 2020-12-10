@@ -54,9 +54,9 @@ object LockExecutorTest {
   private val execute = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("JOB")))
 
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "VERSION",
-    LockInstruction(freeLockId, exclusive = false, Workflow.of(execute)),
-    LockInstruction(occupiedLockId, exclusive = false, Workflow.of(execute)),
-    LockInstruction(exclusiveLockId, exclusive = false, Workflow.of(execute)))
+    LockInstruction(freeLockId, None, Workflow.of(execute)),
+    LockInstruction(occupiedLockId, None, Workflow.of(execute)),
+    LockInstruction(exclusiveLockId, None, Workflow.of(execute)))
 
   private val freeLockOrder = Order(OrderId("ORDER-A"), workflow.id /: Position(0), Order.Ready)
   private val freeLockedOrder = Order(OrderId("ORDER-A"), workflow.id /: (Position(0) / BranchId.Lock % 1), Order.Ready)

@@ -18,9 +18,14 @@ object LockRefusal {
       Problem(s"$lockId is in use")
   }
 
-  final case class LimitReached(limit: Int) extends LockRefusal {
+  final case class LimitReached(limit: Int, count: Int, requestedCount: Int) extends LockRefusal {
     def toProblem(lockId: LockId) =
-      Problem(s"$lockId limit=$limit reached")
+      Problem(s"$lockId: $count+$requestedCount would exceed limit=$limit")
+  }
+
+  final case class InvalidCount(count: Int) extends LockRefusal {
+    def toProblem(lockId: LockId) =
+      Problem(s"$lockId: Invalid count=$count requested")
   }
 
   case object UnknownReleasingOrderError extends LockRefusal {

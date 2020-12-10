@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.data.event.KeyedEvent
 import js7.data.lock.Acquired.Available
-import js7.data.lock.LockRefusal.LimitReached
+import js7.data.lock.LockRefusal.{InvalidCount, IsInUse, LimitReached}
 import js7.data.order.OrderEvent.{OrderFailedEvent, OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}
 import js7.data.order.OrderId
 import scala.collection.immutable.Queue
@@ -15,8 +15,8 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
   def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
     assertThat(keyedEvent.event.lockIds contains lock.id)
     keyedEvent match {
-      case KeyedEvent(orderId, OrderLockAcquired(lock.id, isExclusive)) =>
-        for (lockState <- toLockState(tryAcquire(orderId, isExclusive))) yield
+      case KeyedEvent(orderId, OrderLockAcquired(lock.id, count)) =>
+        for (lockState <- toLockState(tryAcquire(orderId, count))) yield
           queue.dequeueOption  match {
             case Some((`orderId`, tail)) => lockState.copy(queue = tail)
             case _ => lockState
@@ -55,21 +55,37 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
   def firstQueuedOrderId: Option[OrderId] =
     queue.headOption
 
-  def checkAcquire(orderId: OrderId, exclusive: Boolean): Either[LockRefusal, Unit] =
-    tryAcquire(orderId, exclusive)
+  def checkAcquire(orderId: OrderId, count: Option[Int] = None): Either[LockRefusal, Unit] =
+    tryAcquire(orderId, count)
       .map(_ => ())
 
-  private def tryAcquire(orderId: OrderId, exclusive: Boolean): Either[LockRefusal, Acquired] =
+  private def tryAcquire(orderId: OrderId, count: Option[Int]): Either[LockRefusal, Acquired] =
     for {
-      a <- acquired.acquireFor(orderId, exclusive)
-      _ <- checkLimit(exclusive)
+      a <- acquired.acquireFor(orderId, count)
+      _ <- checkLimit(count)
     } yield a
 
-  private def checkLimit(exclusive: Boolean): Either[LockRefusal, Unit] =
-    if (acquired.lockCount < (if (exclusive) 1 else lock.limit))
-      Right(())
-    else
-      Left(LimitReached(lock.limit))
+  private def checkLimit(count: Option[Int] = None): Either[LockRefusal, Unit] =
+    count match {
+      case None =>
+        if (acquired == Available)
+          Right(())
+        else
+          Left(IsInUse)
+
+      case Some(n) =>
+        if (n < 1)
+          Left(InvalidCount(n))
+        else {
+          val ok =
+            try math.addExact(acquired.lockCount, n) <= lock.limit
+            catch { case _: ArithmeticException => false }
+          if (ok)
+            Right(())
+          else
+            Left(LimitReached(limit = lock.limit, count = acquired.lockCount, n))
+        }
+    }
 
   private def toLockState(result: Either[LockRefusal, Acquired]): Checked[LockState] =
     result

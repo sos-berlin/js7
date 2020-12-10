@@ -231,18 +231,18 @@ object WorkflowParser
     private def lockInstruction[_: P] = P[LockInstruction](
       (Index ~ keyword("lock") ~ w ~/
         inParentheses(keyValues(
-          keyValue("lock", lockId))
-        ) ~/
+          keyValue("lock", quotedLockId) |
+          keyValue("count", int)
+        )) ~/
         Index ~/
         w ~/ curlyWorkflowOrInstruction
       ).flatMap { case (start, keyToValue, end, subworkflow) =>
-        for (lockId <- keyToValue[LockId]("lock")) yield
-          LockInstruction(
-            lockId,
-            exclusive = true,
-            subworkflow,
-            sourcePos(start, end))
-      })
+        for {
+          lockId <- keyToValue[LockId]("lock")
+          count <- keyToValue.get[Int]("count")
+          lock <- checkedToP(LockInstruction.checked(lockId, count, subworkflow, sourcePos(start, end)))
+        } yield lock
+      }  ~~/ instructionTerminator.?)
 
     private def instruction[_: P]: P[Instruction] =
       P(awaitInstruction |

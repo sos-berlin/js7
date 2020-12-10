@@ -14,7 +14,7 @@ object LockExecutor extends EventInstructionExecutor
   type Instr = LockInstruction
 
   def toEvents(instruction: LockInstruction, order: Order[Order.State], context: OrderContext) = {
-    import instruction.{exclusive, lockId}
+    import instruction.{count, lockId}
 
     if (order.isAttached)
       Right((order.id <-: OrderDetachable) :: Nil)
@@ -23,9 +23,9 @@ object LockExecutor extends EventInstructionExecutor
     else if (order.isState[Order.Ready] || order.isState[Order.WaitingForLock])
       for {
         lockState <- context.nameToLockState(lockId)
-        event <- lockState.checkAcquire(order.id, exclusive = exclusive) match {
+        event <- lockState.checkAcquire(order.id, count) match {
           case Right(()) =>
-            Right(Some(OrderLockAcquired(lockId, exclusively = exclusive)))
+            Right(Some(OrderLockAcquired(lockId, count)))
 
           case Left(refusal @ (LockRefusal.IsInUse | _: LockRefusal.LimitReached)) =>
             scribe.debug(s"Order '${order.id.string}': ${refusal.toProblem(lockId).toString}, $lockState")

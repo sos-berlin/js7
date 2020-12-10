@@ -4,12 +4,13 @@ import cats.Show
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, ExecutablePath, ExecutableScript}
+import js7.data.lock.LockId
 import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
 import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, ReturnCodeMeaning, TryInstruction}
 import scala.annotation.tailrec
 
 /**
@@ -152,6 +153,19 @@ final class WorkflowPrinter(sb: StringBuilder) {
             ).mkString(" (", ", ", ")")
         }
         sb ++= ";\n"
+
+      case LockInstruction(LockId(lockId), maybeCount, lockedWorkflow, _) =>
+        sb ++= "lock (lock="
+        appendQuoted(lockId)
+        for (n <- maybeCount) {
+          sb ++= ", count="
+          sb.append(n)
+        }
+        sb ++= ") {\n"
+        indent(nesting + 1)
+        appendWorkflowContent(nesting + 1, lockedWorkflow)
+        indent(nesting)
+        sb ++= "};\n"
 
       case Finish(_) =>
         sb ++= "finish;\n"

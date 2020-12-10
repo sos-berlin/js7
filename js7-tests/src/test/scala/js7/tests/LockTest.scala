@@ -72,7 +72,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controller.eventWatch.keyedEvents[OrderEvent](a) == Seq(
         OrderAdded(workflow.id),
         OrderStarted,
-        OrderLockAcquired(lockId, exclusively = true),
+        OrderLockAcquired(lockId, None),
         OrderAttachable(agentName),
         OrderAttached(agentName),
         OrderProcessingStarted,
@@ -89,7 +89,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           OrderAdded(workflow.id),
           OrderStarted,
           OrderLockQueued(lockId),
-          OrderLockAcquired(lockId, exclusively = true),
+          OrderLockAcquired(lockId, None),
           OrderAttachable(agentName),
           OrderAttached(agentName),
           OrderProcessingStarted,
@@ -126,8 +126,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
-      OrderLockAcquired(lockId, exclusively = true),
-      OrderLockAcquired(lock2Name, exclusively = true),
+      OrderLockAcquired(lockId, None),
+      OrderLockAcquired(lock2Name, None),
       OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Name, lockId))))
     assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
       LockState(Lock(lockId), Available, Queue.empty))
@@ -138,9 +138,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       define workflow {
         lock (lock = "LOCK") {
           try {
-            lock (lock = "LOCK-2") {
-              fail;
-            }
+            lock (lock = "LOCK-2") fail;
           } catch {
             execute agent="AGENT", script=":";
           }
@@ -153,9 +151,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
-      OrderLockAcquired(lockId, exclusively = true),
+      OrderLockAcquired(lockId, None),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
-      OrderLockAcquired(lock2Name, exclusively = true),
+      OrderLockAcquired(lock2Name, None),
       OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockIds = Seq(lock2Name)),
       OrderAttachable(agentName),
       OrderAttached(agentName),
@@ -194,7 +192,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderFailed(Position(0))))
 
       assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
-        OrderLockAcquired(lockId, exclusively = true),
+        OrderLockAcquired(lockId, None),
         OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockIds = Seq(lockId))))
 
       assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
@@ -221,7 +219,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
         OrderAdded(workflow.id),
         OrderStarted,
-        OrderLockAcquired(lockId, exclusively = true),
+        OrderLockAcquired(lockId, None),
         OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
         OrderJoined(Outcome.failed),
         OrderFailed(Position(0), lockIds = Seq(lockId))))
