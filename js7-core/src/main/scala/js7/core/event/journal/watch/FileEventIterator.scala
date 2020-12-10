@@ -75,13 +75,14 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
       nextEvent != null
     }
 
-  final def next(): Stamped[KeyedEvent[Event]] =
-    if (nextEvent != null) {
-      val r = nextEvent
-      nextEvent = null
-      r
-    } else
-      journalReader.nextEvent() getOrElse (throw new NoSuchElementException)
+  final def next(): Stamped[KeyedEvent[Event]] = {
+    hasNext
+    val r = nextEvent
+    if (r == null) throw new NoSuchElementException(
+      s"End of committed part of journal file '${journalFile.getFileName}' reached")
+    nextEvent = null
+    r
+  }
 
   final def eventId = journalReader.eventId
   final def position = journalReader.position
