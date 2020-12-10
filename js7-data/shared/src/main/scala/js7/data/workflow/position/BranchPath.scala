@@ -3,6 +3,7 @@ package js7.data.workflow.position
 import io.circe.{Decoder, DecodingFailure, HCursor, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 /** Denotes globally a branch in a instruction, for example fork or if-then-else, globally unique.
@@ -58,15 +59,14 @@ object BranchPath
     left getOrElse Right(buffer.toList)
   }
 
-  private def decodeJsonSegment(pair: Seq[Json], cursor: HCursor): Decoder.Result[Segment] = {
+  private def decodeJsonSegment(pair: Seq[Json], cursor: HCursor): Decoder.Result[Segment] =
     if (pair.sizeIs != 2)
       Left(DecodingFailure("Not a valid BranchPath", cursor.history))
     else
-    for {
-      nr <- pair.head.as[InstructionNr]
-      branchId <- pair(1).as[BranchId]
-    } yield Segment(nr, branchId)
-  }
+      for {
+        nr <- pair.head.as[InstructionNr]
+        branchId <- pair(1).as[BranchId]
+      } yield Segment(nr, branchId)
 
   private def anySeqToSegment(pair: Seq[Any]): Checked[Segment] =
     if (pair.sizeIs != 2)
@@ -89,6 +89,38 @@ object BranchPath
       branchPath.nonEmpty ? {
         val last = branchPath.last
         (branchPath.dropChild % last.nr, last.branchId)
+      }
+  }
+
+  object syntax {
+    implicit final class BranchPathOps(private val branchPath: BranchPath) extends AnyVal {
+      def dropLastBranchId: Position =
+        branchPath.init % branchPath.last.nr
+
+      /** Returns 0 if not in a try/catch-block. */
+      def tryCount: Int =
+        calculateTryCount(branchPath.reverse)
+
+      /** Returns 0 if not in a try/catch-block. */
+      def catchCount: Int =
+        calculateCatchCount(branchPath.reverse)
+    }
+
+    @tailrec
+    private def calculateTryCount(reverseBranchPath: List[Segment]): Int =
+      reverseBranchPath match {
+        case Segment(_, TryCatchBranchId(retry)) :: _ => retry + 1
+        case Segment(_, BranchId.Then | BranchId.Else) :: prefix => calculateTryCount(prefix)
+        case _ => 0  // Not in a try/catch
+      }
+
+    @tailrec
+    private def calculateCatchCount(reverseBranchPath: List[Segment]): Int =
+      reverseBranchPath match {
+        case Segment(_, TryBranchId(retry)) :: _ => retry
+        case Segment(_, CatchBranchId(retry)) :: _ =>  retry + 1
+        case Segment(_, BranchId.Then | BranchId.Else) :: prefix => calculateCatchCount(prefix)
+        case _ => 0  // Not in a try/catch
       }
   }
 }

@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.BranchId.nextTryBranchId
 import js7.data.workflow.position.BranchPath.Segment
+import js7.data.workflow.position.BranchPath.syntax._
 import js7.data.workflow.position.Position._
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
@@ -22,7 +23,11 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
 
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
+  // TODO Rename as parentPosition
   def dropChild: Option[Position] =
+    parent
+
+  def parent: Option[Position] =
     splitBranchAndNr.map(_._1)
 
   def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] =
@@ -36,27 +41,11 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
     reuseIfEqual(this, BranchPath.normalize(branchPath) % nr)
 
   /** Returns 0 if not in a try/catch-block. */
-  lazy val tryCount: Int = calculateTryCount
+  def tryCount: Int =
+    branchPath.tryCount
 
-  @tailrec
-  private def calculateTryCount: Int =
-    splitBranchAndNr match {
-      case Some((_, TryCatchBranchId(retry), _)) => retry + 1
-      case Some((parentPos, BranchId.Then | BranchId.Else, _)) => parentPos.calculateTryCount
-      case _ => 0  // Not in a try/catch
-    }
-
-  /** Returns 0 if not in a try/catch-block. */
-  lazy val catchCount: Int = calculateCatchCount
-
-  @tailrec
-  private def calculateCatchCount: Int =
-    splitBranchAndNr match {
-      case Some((_, TryBranchId(retry), _)) => retry
-      case Some((_, CatchBranchId(retry), _)) => retry + 1
-      case Some((parentPos, BranchId.Then | BranchId.Else, _)) => parentPos.calculateCatchCount
-      case _ => 0  // Not in a try/catch
-    }
+  def catchCount: Int =
+    branchPath.catchCount
 
   @tailrec
   def nextRetryBranchPath: Checked[BranchPath] =
