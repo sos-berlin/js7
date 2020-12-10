@@ -3,6 +3,7 @@ package js7.data.order
 import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
+import scala.util.matching.Regex
 
 final case class OrderId private(string: String) extends GenericString
 {
@@ -20,6 +21,16 @@ final case class OrderId private(string: String) extends GenericString
   def |(childId: ChildId): OrderId =
     OrderId(string + ChildSeparator + childId.string)
 
+  def allParents: Seq[OrderId] =
+    string.split(ChildSeparatorQuoted)
+      .view
+      .dropRight(1)
+      .scanLeft(Vector.empty[String])(_ :+ _)
+      .drop(1) /*neutral element, the empty string*/
+      .map(_.mkString(ChildSeparator))
+      .map(OrderId.apply)
+      .toVector
+
   def checkedNameSyntax: Checked[this.type] =
     if (string.isEmpty)
       Left(Problem("OrderId must not be empty"))
@@ -36,6 +47,7 @@ final case class OrderId private(string: String) extends GenericString
 object OrderId extends GenericString.NonEmpty[OrderId]
 {
   val ChildSeparator = "|"
+  val ChildSeparatorQuoted = Regex.quote(ChildSeparator)
   private val ReservedCharacters = Set('|')
 
   protected def unchecked(string: String) = new OrderId(string)

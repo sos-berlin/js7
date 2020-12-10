@@ -14,7 +14,7 @@ import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
-import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, catch_, fork, try_}
+import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.TestSetting._
 import js7.tester.CirceJsonTester.{normalizeJson, removeJNull, testJson}
@@ -719,74 +719,6 @@ final class WorkflowTest extends AnyFreeSpec
     assert(!TestWorkflow.isDefinedAt(Position(0) / "fork+🥕" % 0))
     assert(!TestWorkflow.isDefinedAt(Position(0) / "fork+🥕" % 3))
     assert(!TestWorkflow.isDefinedAt(Position(999)))
-  }
-
-  "findCatchPosition" in {
-    assert(TestWorkflow.findCatchPosition(Position(1) / catch_(0) % 0).isEmpty)
-
-    val tryWorkflow = Workflow(
-      WorkflowPath("/TEST") ~ "VERSION",
-      Vector(
-        TryInstruction(                               // :0
-          tryWorkflow = Workflow.of(AExecute),        // :0/0:0
-          catchWorkflow = Workflow.of(BExecute)),     // :0/1:0       catch0
-        TryInstruction(
-          tryWorkflow = Workflow.of(
-            TryInstruction(                           // :1/0:0
-              tryWorkflow = Workflow.of(AExecute),    // :1/0:0/0:0
-              catchWorkflow = Workflow.of(BExecute))),// :1/0:0/1:0   catch10
-          catchWorkflow = Workflow.of(                //              catch1
-            TryInstruction(
-              tryWorkflow = Workflow.of(AExecute),    // :1/1:0/0:0
-              catchWorkflow = Workflow.of(BExecute))  // :1/1:0/1:0   catch11
-          ))))
-    val catch0  = Position(0) / catch_(0) % 0
-    val catch1  = Position(1) / catch_(0) % 0
-    val catch10 = Position(1) / try_(0)   % 0 / catch_(0) % 0
-    val catch11 = Position(1) / catch_(0) % 0 / catch_(0) % 0
-
-    assert(tryWorkflow.findCatchPosition(Position(0)           ) == None)
-    assert(tryWorkflow.findCatchPosition(Position(0) / try_(0) % 0) == Some(catch0))
-    assert(tryWorkflow.findCatchPosition(Position(0) / try_(0) % 1) == Some(catch0))
-    assert(tryWorkflow.findCatchPosition(catch0                ) == None)
-    assert(tryWorkflow.findCatchPosition(catch0.increment      ) == None)
-
-    assert(tryWorkflow.findCatchPosition(Position(1)                      ) == None)
-    assert(tryWorkflow.findCatchPosition(Position(1) / try_(0) % 0           ) == Some(catch1))
-    assert(tryWorkflow.findCatchPosition(Position(1) / try_(0) % 0 / try_(0) % 0) == Some(catch10))
-    assert(tryWorkflow.findCatchPosition(Position(1) / try_(0) % 0 / try_(0) % 1) == Some(catch10))
-    assert(tryWorkflow.findCatchPosition(catch10                          ) == Some(catch1))
-    assert(tryWorkflow.findCatchPosition(catch10.increment                ) == Some(catch1))
-    assert(tryWorkflow.findCatchPosition(Position(1) / try_(0) % 1           ) == Some(catch1))
-
-    assert(tryWorkflow.findCatchPosition(Position(1) / catch_(0) % 0 / try_(0) % 0) == Some(catch11))
-    assert(tryWorkflow.findCatchPosition(Position(1) / catch_(0) % 0 / try_(0) % 1) == Some(catch11))
-    assert(tryWorkflow.findCatchPosition(catch11          ) == None)
-    assert(tryWorkflow.findCatchPosition(catch11.increment) == None)
-    assert(tryWorkflow.findCatchPosition(catch1           ) == None)
-    assert(tryWorkflow.findCatchPosition(catch1.increment ) == None)
-
-    assert(tryWorkflow.findCatchPosition(Position(2)) == None)
-  }
-
-  "findCatchPosition in fork, an exception barrier" in {
-    assert(TestWorkflow.findCatchPosition(Position(1) / catch_(0) % 0).isEmpty)
-
-    val tryWorkflow = Workflow(
-      WorkflowPath("/TEST") ~ "VERSION",
-      Vector(
-        TryInstruction(                              // :0
-          tryWorkflow = Workflow.of(
-            Fork.of(                                 // :0/0:0
-              "🍋" -> Workflow.of(AExecute))),       // :0/0:0/0:0
-          catchWorkflow = Workflow.of(BExecute))))   // :0/0:0/1:0      catch0
-    val forkPosition = Position(0) / try_(0) % 0
-    assert(tryWorkflow.instruction(forkPosition).isInstanceOf[Fork])
-    assert(tryWorkflow.findCatchPosition(forkPosition) == Some(Position(0) / catch_(0) % 0))
-
-    val executePosition = forkPosition / "fork+🍋" % 0
-    assert(tryWorkflow.instruction(executePosition).isInstanceOf[Execute])
-    assert(tryWorkflow.findCatchPosition(executePosition) == None)  // Do not escape Fork!
   }
 
   "isMoveable" - {

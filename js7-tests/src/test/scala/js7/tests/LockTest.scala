@@ -4,6 +4,7 @@ import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.delete
 import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.withTemporaryFile
@@ -57,7 +58,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       delete(file)
       val a = OrderId("🔵")
       controller.addOrder(FreshOrder(a, workflow.path)).await(99.s).orThrow
-      assert(controller.eventWatch.await[OrderLockAcquired]().map(_.value).nonEmpty)
+      assert(controller.eventWatch.await[OrderLockAcquired](_.key == a).map(_.value).nonEmpty)
 
       val queuedOrderIds = for (i <- 1 to 10) yield OrderId(s"🟠-${i}")
       for (orderId <- queuedOrderIds) {
@@ -121,23 +122,18 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val orderId = OrderId("🟦")
     controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    controller.eventWatch.await[OrderTerminated]()
-    sleep(10.ms)  // eventWatch.keyedEvents is not synchronized with await ???
+    controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
       OrderLockAcquired(lockName, exclusively = true),
       OrderLockAcquired(lock2Name, exclusively = true),
-      OrderFailed(),
-      OrderLockReleased(lock2Name),
-      OrderLockReleased(lockName),
-      OrderFailed()))
+      OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Name, lockName))))
     assert(controller.controllerState.await(99.s).nameToLockState(lockName) ==
       LockState(Lock(lockName), Available, Queue.empty))
   }
 
   "Failed order in try/catch" in {
-    pending
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
         lock (lock = "LOCK") {
@@ -153,27 +149,28 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val orderId = OrderId("🟨")
     controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    controller.eventWatch.await[OrderTerminated]()
-    sleep(10.ms)  // eventWatch.keyedEvents is not synchronized with await ???
+    controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
       OrderLockAcquired(lockName, exclusively = true),
+      OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLockAcquired(lock2Name, exclusively = true),
-      OrderFailed(),
-      OrderCatched(None, Position(0) / "lock" % 0 / "catch+0" % 0),
+      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockIds = Seq(lock2Name)),
+      OrderAttachable(agentName),
+      OrderAttached(agentName),
       OrderProcessingStarted,
-      OrderProcessed,
+      OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(0) / "lock" % 1),
-      OrderLockReleased(lock2Name),
+      OrderDetachable,
+      OrderDetached,
       OrderLockReleased(lockName),
-      OrderFailed()))
+      OrderFinished))
     assert(controller.controllerState.await(99.s).nameToLockState(lockName) ==
       LockState(Lock(lockName), Available, Queue.empty))
   }
 
   "Failed forked order" in {
-    pending
     withTemporaryFile("LockTest-", ".tmp") { file =>
       val workflow = defineWorkflow(workflowNotation = """
         define workflow {
@@ -185,11 +182,27 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
             }
           }
         }""")
+      val orderId = OrderId("🟩")
+      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+
+      controller.eventWatch.await[OrderTerminated](_.key == orderId)
+      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id),
+        OrderStarted,
+        OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
+        OrderJoined(Outcome.failed),
+        OrderFailed(Position(0))))
+
+      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
+        OrderLockAcquired(lockName, exclusively = true),
+        OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockIds = Seq(lockName))))
+
+      assert(controller.controllerState.await(99.s).nameToLockState(lockName) ==
+        LockState(Lock(lockName), Available, Queue.empty))
     }
   }
 
   "Forked order with same lock" in {
-    pending
     withTemporaryFile("LockTest-", ".tmp") { file =>
       val workflow = defineWorkflow(workflowNotation = """
         define workflow {
@@ -201,6 +214,24 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
             }
           }
         }""")
+      val orderId = OrderId("🟪")
+      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+
+      controller.eventWatch.await[OrderTerminated](_.key == orderId)
+      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id),
+        OrderStarted,
+        OrderLockAcquired(lockName, exclusively = true),
+        OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
+        OrderJoined(Outcome.failed),
+        OrderFailed(Position(0), lockIds = Seq(lockName))))
+
+      assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
+        OrderFailedInFork(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
+          "Lock:LOCK has already been acquired by parent Order:🟪"))))))
+
+      assert(controller.controllerState.await(99.s).nameToLockState(lockName) ==
+        LockState(Lock(lockName), Available, Queue.empty))
     }
   }
 

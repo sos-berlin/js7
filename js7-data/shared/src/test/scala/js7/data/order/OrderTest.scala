@@ -259,7 +259,7 @@ final class OrderTest extends AnyFreeSpec
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
       OrderProcessingKilled,
-      OrderFailed(Some(Outcome.Failed(NamedValues.rc(1)))),
+      OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))),
       OrderCatched(Position(1)),
       OrderRetrying(Position(1)),
       OrderAwoke,
@@ -268,8 +268,8 @@ final class OrderTest extends AnyFreeSpec
       OrderJoined(Outcome.Succeeded(NamedValues.rc(0))),
       OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
       OrderAwaiting(OrderId("OFFERED")),
-      OrderFailed(Some(Outcome.Failed(NamedValues.rc(1)))),
-      OrderFailedInFork(None),
+      OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))),
+      OrderFailedInFork(Position(1), None),
       OrderFinished,
 
       OrderCancelMarked(CancelMode.FreshOnly),

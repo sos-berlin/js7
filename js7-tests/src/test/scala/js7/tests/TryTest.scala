@@ -11,7 +11,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchId.{Then, try_}
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.TryTest._
 import js7.tests.testenv.DirectoryProvider
@@ -82,7 +82,7 @@ final class TryTest extends AnyFreeSpec
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(0) / try_(0) % 1 / Then % 0),
-          OrderCatched(Some(Outcome.failed), Position(0) / "catch+0" % 0),
+          OrderCatched(Position(0) / "catch+0" % 0, Some(Outcome.failed)),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1)),
@@ -144,7 +144,7 @@ final class TryTest extends AnyFreeSpec
           OrderAttached(TestAgentName),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
-          OrderFailedInFork(),
+          OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0),
           OrderDetachable,
           OrderDetached))
       }
@@ -193,7 +193,8 @@ object TryTest
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
-    OrderCatched(Position(1)),  // Empty catch-block, so Order is moved to outer block
+    OrderCatched(Position(0) / "catch+0" % 0),
+    OrderMoved(Position(1)),
 
     OrderProcessingStarted,
     OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
@@ -228,5 +229,5 @@ object TryTest
     OrderProcessed(Outcome.Failed(ReturnCode(2))),
     OrderDetachable,
     OrderDetached,
-    OrderFailed())
+    OrderFailed(Position(0) / "catch+0" % 0))
 }

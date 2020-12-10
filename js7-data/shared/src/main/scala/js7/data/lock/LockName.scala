@@ -10,7 +10,7 @@ final case class LockName private(string: String) extends GenericString
 {
   def companion = LockName
 
-  override def toString = s"Lock '$string'"   // Used in LockState error message
+  override def toString = s"Lock:$string"   // Used in LockState error message
 }
 
 object LockName extends GenericString.NameValidating[LockName]

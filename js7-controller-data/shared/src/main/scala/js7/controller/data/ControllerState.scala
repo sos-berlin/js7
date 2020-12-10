@@ -1,5 +1,7 @@
 package js7.controller.data
 
+import cats.instances.list._
+import cats.syntax.traverse._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
@@ -146,10 +148,13 @@ extends JournaledState[ControllerState]
                     idToOrder = updatedIdToOrder + (offered.id -> offered))
 
               case event: OrderLockEvent =>
-                for (lockState <- nameToLockState(event.lockName).applyEvent(orderId <-: event)) yield
-                  copy(
-                    idToOrder = updatedIdToOrder,
-                    nameToLockState = nameToLockState + (event.lockName -> lockState))
+                event.lockIds
+                  .toList
+                  .traverse(lockId => nameToLockState(lockId).applyEvent(orderId <-: event))
+                  .map(lockStates =>
+                    copy(
+                      idToOrder = updatedIdToOrder,
+                      nameToLockState = nameToLockState ++ (lockStates.map(o => o.lock.name -> o))))
 
               case _ => Right(copy(idToOrder = updatedIdToOrder))
             }

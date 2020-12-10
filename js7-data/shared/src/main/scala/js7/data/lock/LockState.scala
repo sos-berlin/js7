@@ -2,16 +2,18 @@ package js7.data.lock
 
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.data.event.KeyedEvent
 import js7.data.lock.Acquired.Available
 import js7.data.lock.LockRefusal.LimitReached
-import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}
+import js7.data.order.OrderEvent.{OrderFailedEvent, OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}
 import js7.data.order.OrderId
 import scala.collection.immutable.Queue
 
 final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Queue[OrderId] = Queue.empty)
 {
-  def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] =
+  def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
+    assertThat(keyedEvent.event.lockIds contains lock.name)
     keyedEvent match {
       case KeyedEvent(orderId, OrderLockAcquired(lock.name, isExclusive)) =>
         for (lockState <- toLockState(tryAcquire(orderId, isExclusive))) yield
@@ -21,23 +23,34 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
           }
 
       case KeyedEvent(orderId, OrderLockReleased(lock.name)) =>
-        toLockState(acquired.release(orderId))
+        release(orderId)
 
       case KeyedEvent(orderId, OrderLockQueued(lock.name)) =>
         if (acquired == Available)
-          Left(Problem(s"${lock.name} is available an does not accept queuing"))
+          Left(Problem(s"$lockName is available an does not accept queuing"))
         else if (acquired.isAcquiredBy(orderId))
           Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.name))
         else if (queue contains orderId)
-          Left(Problem(s"Order '${orderId.string}' already queues for ${lock.name}"))
-        else
-          Right(enqueue(orderId))
+          Left(Problem(s"Order '${orderId.string}' already queues for $lockName"))
+        else orderId.allParents find acquired.isAcquiredBy match {
+          case Some(parentOrderId) =>
+            Left(Problem(s"$lockName has already been acquired by parent $parentOrderId"))
+          case None =>
+            Right(enqueue(orderId))
+        }
 
-      case _ => Left(Problem.pure(s"Invalid event for '${lock.name}': $keyedEvent"))
+      case KeyedEvent(orderId: OrderId, _: OrderFailedEvent) =>
+        release(orderId)
+
+      case _ => Left(Problem.pure(s"Invalid event for '$lockName': $keyedEvent"))
     }
+  }
 
   private def enqueue(orderId: OrderId): LockState =
     copy(queue = queue.enqueue(orderId))
+
+  def release(orderId: OrderId): Checked[LockState] =
+    toLockState(acquired.release(orderId))
 
   def firstQueuedOrderId: Option[OrderId] =
     queue.headOption
@@ -63,6 +76,8 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
       .left.map(refusal => refusal.toProblem(lock.name))
       .map(acquired =>
         copy(acquired = acquired))
+
+  private def lockName = lock.name
 }
 
 object LockState

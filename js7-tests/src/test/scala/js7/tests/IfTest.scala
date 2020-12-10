@@ -129,7 +129,7 @@ object IfTest {
       OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(2)))),
       OrderDetachable,
       OrderDetached,
-      OrderFailed()))
+      OrderFailed(Position(0) / Then % 0 / Then % 0)))
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
     FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(

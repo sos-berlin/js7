@@ -105,15 +105,17 @@ extends JournaledStateBuilder[ControllerState]
         case OrderRemoved =>
           idToOrder -= orderId
 
+        case event: OrderLockEvent =>
+          for (lockId <- event.lockIds) {
+            nameToLockState(lockId) = nameToLockState(lockId).applyEvent(orderId <-: event).orThrow
+          }
+          idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
+
         case event: OrderCoreEvent =>
           handleForkJoinEvent(orderId, event)
           idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
 
         case _: OrderStdWritten =>
-
-        case event: OrderLockEvent =>
-          idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
-          nameToLockState(event.lockName).applyEvent(orderId <-: event).orThrow
       }
 
     case Stamped(_, _, KeyedEvent(name: LockName, event: LockEvent)) =>

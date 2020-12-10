@@ -10,7 +10,7 @@ import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.FailTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -55,7 +55,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Some(Outcome.failed))))
+        OrderFailed(Position(1), Some(Outcome.failed))))
   }
 
   "Fail (returnCode=7)" in {
@@ -76,7 +76,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Some(Outcome.Failed(NamedValues.rc(7))))))
+        OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(7))))))
   }
 
   "Fail (returnCode=7, message='ERROR')" in {
@@ -89,7 +89,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
       Vector(
         OrderAdded(workflowId),
         OrderStarted,
-        OrderFailed(Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(7))))))
+        OrderFailed(Position(0), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(7))))))
   }
 
   "Fail in fork" in {
@@ -109,9 +109,9 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
           OrderForked.Child("🥕", OrderId("🔺|🥕")),
           OrderForked.Child("🍋", OrderId("🔺|🍋")))),
         OrderJoined(Outcome.failed),
-        OrderFailed()),
+        OrderFailed(Position(0))),
       OrderId("🔺|🍋") -> Vector(
-        OrderFailedInFork(Some(Outcome.failed))))
+        OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0, Some(Outcome.failed))))
   }
 
   "Uncatchable fail in fork" in {
@@ -131,10 +131,10 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
           OrderForked.Child("🥕", OrderId("🟥|🥕")),
           OrderForked.Child("🍋", OrderId("🟥|🍋")))),
         OrderJoined(Outcome.failed),
-        OrderFailed()),
+        OrderFailed(Position(0))),
       OrderId("🟥|🍋") -> Vector(
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
-        OrderFailedInFork(Some(Outcome.failed))))
+        OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0, Some(Outcome.failed))))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](

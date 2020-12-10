@@ -99,22 +99,24 @@ final case class Order[+S <: Order.State](
           check(isState[Processed] && !isSuspended && isAttached,
             copy(state = ProcessingKilled))
 
-        case OrderFailed(outcome_) =>
+        case OrderFailed(movedTo, outcome_, _) =>
           check(isOrderFailedApplicable,
             copy(
               state = if (isState[Fresh]) FailedWhileFresh else Failed,
+              workflowPosition = workflowPosition.copy(position = movedTo),
               historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
-        case OrderFailedInFork(outcome_) =>
+        case OrderFailedInFork(movedTo, outcome_, _) =>
           check((isState[Ready] || isState[Processed]) && !isSuspended && (isDetached || isAttached),
             copy(
               state = FailedInFork,
+              workflowPosition = workflowPosition.copy(position = movedTo),
               historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
         case OrderFailedIntermediate_(_, _) =>
           inapplicable  // Intermediate event, internal only
 
-        case OrderCatched(outcome_, movedTo) =>
+        case OrderCatched(movedTo, outcome_, _) =>
           check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached),
             copy(
               state = Ready,

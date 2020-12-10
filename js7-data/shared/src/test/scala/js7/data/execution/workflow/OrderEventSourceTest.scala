@@ -12,6 +12,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
 import js7.data.job.ExecutablePath
+import js7.data.lock.{Lock, LockName, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
@@ -697,20 +698,20 @@ final class OrderEventSourceTest extends AnyFreeSpec
     val workflow = WorkflowParser.parse(
        """define workflow {
          |  try {                                     // 0
-         |    try {                                   // 0/0:0
-         |      execute agent="a", executable="ex";  // 0/0:0/0:0
+         |    try {                                   // 0/try:0
+         |      execute agent="a", executable="ex";   // 0/try:0/try:0
          |    } catch {
-         |      execute agent="a", executable="ex";  // 0/0:0/1:0
+         |      execute agent="a", executable="ex";   // 0/try:0/catch:0
          |    }
          |  } catch {
-         |    execute agent="a", executable="ex";    // 0/1:0
-         |    try {                                   // 0/1:1
-         |      execute agent="a", executable="ex";  // 0/1:1/0:0
+         |    execute agent="a", executable="ex";     // 0/catch:0
+         |    try (maxTries=3) {                      // 0/catch:1
+         |      execute agent="a", executable="ex";   // 0/catch:1/try:0
          |    } catch {
-         |      execute agent="a", executable="ex";  // 0/1:1/1:0
+         |      retry;                                // 0/catch:1/catch:0
          |    }
          |  };
-         |  execute agent="a", executable="ex";      // 1
+         |  execute agent="a", executable="ex";       // 1
          |}""".stripMargin).orThrow
 
     def eventSource(order: Order[Order.State]) =
@@ -719,7 +720,26 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Map(workflow.id -> workflow).checked,
         _ => Left(Problem("OrderEventSourceTest does not know locks")),
         isAgent = false)
+
     val failed7 = Outcome.Failed(NamedValues.rc(7))
+
+    "failToPosition" in {
+      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
+      def failToPosition(position: Position, uncatchable: Boolean = false) =
+        eventSource(order).failToPosition(workflow, position, outcome = None, uncatchable = uncatchable)
+
+      assert(failToPosition(Position(0)) == Right(OrderFailed(Position(0))))
+      assert(failToPosition(Position(0) / BranchId.try_(0) % 0) == Right(OrderCatched(Position(0) / BranchId.catch_(0) % 0)))
+      var pos = Position(0) / BranchId.try_(0) % 0
+      assert(failToPosition(pos / BranchId.try_(0) % 0) == Right(OrderCatched(pos / BranchId.catch_(0) % 0)))
+      assert(failToPosition(pos / BranchId.catch_(0) % 0) == Right(OrderCatched(Position(0) / BranchId.catch_(0) % 0)))
+
+      pos = Position(0) / BranchId.catch_(0) % 1
+      assert(failToPosition(pos / BranchId.try_(0) % 0) == Right(OrderCatched(pos / BranchId.catch_(0) % 0)))
+      assert(failToPosition(pos / BranchId.try_(1) % 0) == Right(OrderCatched(pos / BranchId.catch_(1) % 0)))
+      assert(failToPosition(pos / BranchId.try_(2) % 0) == Right(OrderFailed(pos / BranchId.try_(2) % 0)))
+      assert(failToPosition(Position(1)) == Right(OrderFailed(Position(1))))
+    }
 
     "Fresh at try instruction -> OrderMoved" in {
       val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
@@ -753,8 +773,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       val pos = Position(0) / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
-      assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
-        OrderFailed()))
+      assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-: OrderFailed(pos)))
     }
 
     "Processed failed in try in catch -> OrderCatched" in {
@@ -766,18 +785,17 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Processed failed in catch in catch -> OrderFailed" in {
-      val order = Order(OrderId("ORDER"), workflow.id /: (Position(0) / catch_(0) % 0), Order.Processed,
+      val pos = Position(0) / catch_(0) % 0
+      val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(Position(0), failed7) :: Nil)
-      assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
-        OrderFailed()))
+      assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-: OrderFailed(pos)))
     }
 
     "Processed failed not in try/catch -> OrderFailed" in {
       val pos = Position(1)
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
-      assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
-        OrderFailed()))
+      assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-: OrderFailed(pos)))
     }
 
     "Try catch and fork" in {
@@ -823,13 +841,75 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Map.empty.checked,
         isAgent = false)
 
-      val event = OrderFailedInFork()
-      assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: event))
-      aChild = aChild.update(event).orThrow
+      val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
+      assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
+      aChild = aChild.update(orderFailedInFork).orThrow
 
       assert(liveEventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
       assert(liveEventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
       assert(liveEventSource.nextEvents(forkingOrder.id) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
+    }
+
+    "Try catch, fork and lock" in {
+      val workflow = WorkflowParser.parse(
+         """define workflow {
+           |  lock (lock="LOCK") {
+           |    try
+           |      fork {
+           |        "🥕": {
+           |          execute agent="a", executable="ex";   // 0/lock:0/try:0/fork+🥕:0
+           |        },
+           |        "🍋": {
+           |          lock (lock="LOCK-1") {
+           |            lock (lock="LOCK-2") {
+           |              execute agent="a", executable="ex";   // 0/lock:0/try:0/fork+🍋:0/lock:0/lock:0
+           |            }
+           |          }
+           |        }
+           |      }
+           |    catch {
+           |      execute agent="a", executable="ex";     // 0/lock:&catch:0
+           |    };
+           |  }
+           |}""".stripMargin).orThrow
+      var aChild: Order[Order.State] = {
+        val pos = Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0   // Execute
+        Order(OrderId("ORDER|🥕"), workflow.id /: pos, Order.Processed,
+          historicOutcomes = HistoricOutcome(pos, failed7) :: Nil,
+          parent = Some(OrderId("ORDER")))
+      }
+      val bChild = {
+        val pos = Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0 / BranchId.Lock % 0 / BranchId.Lock % 0
+        Order(OrderId("ORDER|🍋"), workflow.id /: pos, Order.Processed,
+          historicOutcomes = HistoricOutcome(pos, failed7) :: Nil,
+          parent = Some(OrderId("ORDER")))
+      }
+      val forkingOrder = Order(OrderId("ORDER"), workflow.id /: (Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0),  // Fork
+        Order.Forked(Vector(
+          Order.Forked.Child("🥕", aChild.id),
+          Order.Forked.Child("🍋", bChild.id))))
+      def liveEventSource = new OrderEventSource(
+        Map(
+          forkingOrder.id -> forkingOrder,
+          aChild.id -> aChild,
+          bChild.id -> bChild
+        ).checked,
+        Map(workflow.id -> workflow).checked,
+        Map(
+          LockName("LOCK") -> LockState(Lock(LockName("LOCK"))),
+          LockName("LOCK-1") -> LockState(Lock(LockName("LOCK-1"))),
+          LockName("LOCK-2") -> LockState(Lock(LockName("LOCK-2")))
+        ).checked,
+        isAgent = false)
+
+      val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
+      assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
+      aChild = aChild.update(orderFailedInFork).orThrow
+
+      assert(liveEventSource.nextEvents(bChild.id) == Seq(
+        bChild.id <-: OrderFailedInFork(
+          Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0,
+          lockIds = Seq(LockName("LOCK-2"), LockName("LOCK-1")))))
     }
   }
 }

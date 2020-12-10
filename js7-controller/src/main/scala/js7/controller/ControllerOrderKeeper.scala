@@ -61,9 +61,9 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.{InventoryItem, RepoEvent}
-import js7.data.lock.Lock
 import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
+import js7.data.lock.{Lock, LockId}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailedEvent, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
@@ -852,17 +852,24 @@ with MainJournalingActor[ControllerState, Event]
       updatedOrderIds foreach proceedWithOrder
 
       stamped.value.event match {
-        case OrderLockReleased(lockName) =>
-          for (lockState <- _controllerState.nameToLockState.get(lockName);
-               queuedOrderId <- lockState.firstQueuedOrderId) {
-            proceedWithOrder(queuedOrderId)
-          }
+        case OrderLockReleased(lockId) =>
+          proceedWithLockQueuedOrders(lockId :: Nil)
+
+        case event: OrderFailedEvent =>
+          proceedWithLockQueuedOrders(event.lockIds)
 
         case _ =>
       }
     }
     _controllerState = updatedState  // Reduce memory usage (they are equal)
   }
+
+  private def proceedWithLockQueuedOrders(lockIds: Seq[LockId]): Unit =
+    for (lockId <- lockIds;
+         lockState <- _controllerState.nameToLockState.get(lockId);
+         queuedOrderId <- lockState.firstQueuedOrderId) {
+      proceedWithOrder(queuedOrderId)
+    }
 
   private def handleOrderEventOnly(stamped: Stamped[KeyedEvent[OrderEvent]]): Seq[OrderId] = {
     val KeyedEvent(orderId, event) = stamped.value

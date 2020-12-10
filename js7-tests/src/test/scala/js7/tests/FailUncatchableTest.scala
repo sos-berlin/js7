@@ -9,7 +9,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Fork
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.FailUncatchableTest._
 import js7.tests.testenv.DirectoryProvider
@@ -37,7 +37,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Some(Outcome.failed))))
+        OrderFailed(Position(1), Some(Outcome.failed))))
   }
 
   "fail (uncatchable=true, returnCode=7)" in {
@@ -56,7 +56,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Some(Outcome.Failed(NamedValues.rc(7))))))
+        OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(7))))))
   }
 
   "fail (uncatchable=true, returnCode=7, message='ERROR')" in {
@@ -75,7 +75,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Some(Outcome.Failed(Some("TEST-ERROR"), NamedValues.rc(7))))))
+        OrderFailed(Position(1), Some(Outcome.Failed(Some("TEST-ERROR"), NamedValues.rc(7))))))
   }
 
   "fail in fork, fail first" in {
@@ -100,7 +100,7 @@ final class FailUncatchableTest extends AnyFreeSpec
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.failed),
-        OrderFailed()))
+        OrderFailed(Position(0))))
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
@@ -109,7 +109,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderFailedInFork(Some(Outcome.Failed(Some("TEST-ERROR")))),
+        OrderFailedInFork(Position(0) / BranchId.fork("🥕") % 1, Some(Outcome.Failed(Some("TEST-ERROR")))),
         OrderDetachable,
         OrderDetached))
 
@@ -146,7 +146,7 @@ final class FailUncatchableTest extends AnyFreeSpec
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.failed),
-        OrderFailed()))
+        OrderFailed(Position(0))))
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
@@ -155,7 +155,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderFailedInFork(Some(Outcome.Failed(Some("TEST-ERROR")))),
+        OrderFailedInFork(Position(0) / BranchId.fork("🥕") % 1, Some(Outcome.Failed(Some("TEST-ERROR")))),
         OrderDetachable,
         OrderDetached))
 

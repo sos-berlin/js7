@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.RetryExecutor._
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderFailed, OrderRetrying}
+import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderRetrying}
 import js7.data.workflow.instructions.{Retry, TryInstruction}
 import js7.data.workflow.position.{BranchPath, TryBranchId}
 import scala.concurrent.duration._
@@ -36,7 +36,7 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
             .toChecked(missingTryProblem(branchPath))
             .map {
               case (Some(maxRetries), _) if order.position.tryCount >= maxRetries =>
-                (order.id <-: OrderFailed()) :: Nil
+                (order.id <-: OrderFailedIntermediate_()) :: Nil
               case (_, delay) =>
                 (order.id <-: OrderRetrying(
                   movedTo = branchPath % 0,

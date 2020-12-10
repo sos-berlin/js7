@@ -334,19 +334,6 @@ extends InventoryItem
       case o => Left(Problem(s"Expected 'Execute' statement at workflow position $position (not: ${o.getClass.simpleScalaName})"))
     }
 
-  /** Find catch instruction and return position of the first instruction. */
-  def findCatchPosition(position: Position): Option[Position] =
-    position.splitBranchAndNr flatMap { case (parent, branchId, _) =>
-      instruction(parent) match {
-        case _: Fork => None  // Do not escape Fork!
-        case instr =>
-          instr.toCatchBranchId(branchId) match {
-            case None => findCatchPosition(parent)
-            case Some(catchBranchId) => Some(parent / catchBranchId % 0)
-          }
-      }
-    }
-
   def isMoveable(from: Position, to: Position): Boolean =
     isDefinedAt(from) && isDefinedAt(to) && isMoveable(from.branchPath, to.branchPath)
 

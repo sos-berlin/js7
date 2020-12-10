@@ -150,21 +150,22 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched" in {
-    check(OrderCatched(Some(Outcome.Failed(NamedValues.rc(1))), Position(1)), json"""
+    check(OrderCatched(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderCatched",
+        "movedTo": [ 1 ],
         "outcome": {
           "TYPE": "Failed",
           "namedValues": {
             "returnCode": 1
           }
         },
-        "movedTo": [ 1 ]
+        "lockIds": []
       }""")
   }
 
   "OrderCatched complete" in {
-    check(OrderCatched(Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Position(1)), json"""
+    check(OrderCatched(Position(1), Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Seq(LockName("LOCK"))), json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
@@ -174,41 +175,47 @@ final class OrderEventTest extends AnyFreeSpec
           },
           "message": "FAILED"
         },
-        "movedTo": [ 1 ]
+        "movedTo": [ 1 ],
+        "lockIds": [ "LOCK" ]
       }""")
   }
 
   "OrderFailed" in {
-    check(OrderFailed(Some(Outcome.Failed(NamedValues.rc(1)))), json"""
+    check(OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailed",
+        "movedTo": [ 1 ],
         "outcome": {
           "TYPE": "Failed",
           "namedValues": {
             "returnCode": 1
           }
-        }
+        },
+        "lockIds": []
       }""")
   }
 
   "OrderFailed(Failed) complete" in {
-    check(OrderFailed(Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))), json"""
+    check(OrderFailed(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockName("LOCK"))), json"""
       {
         "TYPE": "OrderFailed",
+        "movedTo": [ 1 ],
         "outcome": {
           "TYPE": "Failed",
           "namedValues": {
             "returnCode": 1
           },
           "message": "ERROR"
-        }
+        },
+        "lockIds": [ "LOCK" ]
       }""")
   }
 
   "OrderFailed(Disrupted(PROBLEM))" in {
-    check(OrderFailed(Some(Outcome.Disrupted(Problem("PROBLEM")))), json"""
+    check(OrderFailed(Position(1), Some(Outcome.Disrupted(Problem("PROBLEM")))), json"""
       {
         "TYPE": "OrderFailed",
+        "movedTo": [ 1 ],
         "outcome": {
           "TYPE": "Disrupted",
           "reason": {
@@ -217,34 +224,39 @@ final class OrderEventTest extends AnyFreeSpec
               "message": "PROBLEM"
             }
           }
-        }
+        },
+        "lockIds": []
       }""")
   }
 
   "OrderFailedInFork" in {
-    check(OrderFailedInFork(Some(Outcome.Failed(NamedValues.rc(1)))), json"""
+    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailedInFork",
+        "movedTo": [ 1 ],
         "outcome": {
           "TYPE": "Failed",
           "namedValues": {
             "returnCode": 1
           }
-        }
+        },
+        "lockIds": []
       }""")
   }
 
   "OrderFailedInFork complete" in {
-    check(OrderFailedInFork(Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))), json"""
+    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockName("LOCK"))), json"""
       {
         "TYPE": "OrderFailedInFork",
+        "movedTo": [ 1 ],
         "outcome": {
           "TYPE": "Failed",
           "namedValues": {
             "returnCode": 1
           },
           "message": "ERROR"
-        }
+        },
+        "lockIds": [ "LOCK" ]
       }""")
   }
 

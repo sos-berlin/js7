@@ -1,12 +1,13 @@
 package js7.data.execution.workflow
 
 import cats.instances.either._
-import cats.instances.vector._
 import cats.instances.list._
+import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
 import js7.data.command.{CancelMode, SuspendMode}
@@ -15,11 +16,12 @@ import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.lock.{LockName, LockState}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
-import js7.data.workflow.instructions.{End, Fork, Goto, IfFailedGoto, Retry, TryInstruction}
-import js7.data.workflow.position.{BranchId, BranchPath, Position, WorkflowPosition}
+import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.position.BranchPath.Segment
+import js7.data.workflow.position.{BranchId, ForkBranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
 
@@ -75,16 +77,15 @@ final class OrderEventSource(
                   .traverse {
                     case orderId <-: (moved: OrderMoved) =>
                       applyMoveInstructions(orderId, moved)
-                        .map(_ :: Nil)
 
                     case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
                       // OrderFailedIntermediate_ is used internally only
                       assertThat(orderId == order.id)
-                      fail(order, outcome, uncatchable)
+                      failOrDetach(order, outcome, uncatchable)
+                        .map(orderId <-: _)
 
-                    case o => Right(o :: Nil)
+                    case o => Right(o)
                   })
-                .map(_.flatten)
           }))
       .flatMap(checkEvents)
   }
@@ -105,57 +106,86 @@ final class OrderEventSource(
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
   // In this case, OrderFailed event must have original failures's position, not failed retry's position.
-  private def isMaxRetriesReached(order: Order[Order.State], firstCatchPos: Position): Boolean =
-    catchStartsWithRetry(order.workflowId /: firstCatchPos) &&
+  private def isMaxRetriesReached(workflowId: WorkflowId, firstCatchPos: Position): Boolean =
+    catchStartsWithRetry(workflowId /: firstCatchPos) &&
       firstCatchPos.dropChild.forall(parentPos =>
-        instruction(order.workflowId /: parentPos) match {  // Parent must be a TryInstruction
+        instruction(workflowId /: parentPos) match {  // Parent must be a TryInstruction
           case t: TryInstruction => t.maxTries.forall(firstCatchPos.tryCount >= _)
         })
 
   private def catchStartsWithRetry(firstCatchPos: WorkflowPosition) =
     instruction(firstCatchPos).withoutSourcePos == Retry()
 
-  private def invalidToEvent[A](order: Order[Order.State], checkedEvent: Checked[List[KeyedEvent[OrderActorEvent]]])
+  private def invalidToEvent[A](order: Order[Order.State], checkedEvents: Checked[List[KeyedEvent[OrderActorEvent]]])
   : List[KeyedEvent[OrderActorEvent]] =
-    checkedEvent match {
+    checkedEvents match {
       case Left(problem) =>
-        if (order.isOrderFailedApplicable)
-          orderFailed(order, Some(Outcome.Disrupted(problem)))
-        else if (order.isAttached && order.isInDetachableState && order.copy(attachedState = None).isOrderFailedApplicable) {
-          scribe.warn(s"Detaching ${order.id} after failure: $problem")
-          // Introduce a new 'OrderPrefailed' event for not loosing the problem ???
-          // Controller should reproduce the problem.
-          (order.id <-: OrderDetachable) :: Nil
-        } else
-          (order.id <-: OrderBroken(problem)) :: Nil
+        val event =
+          if (order.isOrderFailedApplicable)
+            failOrDetach(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
+              case Left(prblm) =>
+                scribe.debug(s"WARN ${order.id}: $prblm")
+                OrderBroken(problem)
+              case Right(event) => event
+            }
+          else if (order.isAttached && order.isInDetachableState && order.copy(attachedState = None).isOrderFailedApplicable) {
+            scribe.warn(s"Detaching ${order.id} after failure: $problem")
+            // Controller is expected to reproduce the problem.
+            OrderDetachable
+          } else
+            OrderBroken(problem)
+        (order.id <-: event) :: Nil
 
       case Right(o) => o
     }
 
-  private def fail(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
-  : Checked[List[KeyedEvent[OrderActorEvent]]] =
-    findCatchPosition(order) match {
-      case Some(firstCatchPos) if !uncatchable && !isMaxRetriesReached(order, firstCatchPos) =>
-        applyMoveInstructions(order.withPosition(firstCatchPos))
-          .flatMap(movedPos => Right((order.id <-: OrderCatched(outcome, movedPos)) :: Nil))
-      case _ =>
-        Right(orderFailed(order, outcome))
-    }
-
-  private def orderFailed(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded]) =
-    List(order.id <-: (
-      if (order.position.isInFork)
-        OrderFailedInFork(outcome)
-      else if (order.isAttached)
+  private def failOrDetach(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
+  : Checked[OrderActorEvent] =
+    for (orderFailedEvent <- fail(order, outcome, uncatchable)) yield
+      if (order.isAttached && orderFailedEvent.lockIds.nonEmpty) {
+        scribe.warn(s"Detaching ${order.id} after Outcome.NotSucceeded to release locks ${orderFailedEvent.lockIds.mkString(", ")}")
+        // Controller is expected to reproduce the problem.
         OrderDetachable
-      else
-        OrderFailed(outcome)))
+      } else
+        orderFailedEvent
 
-  private def findCatchPosition(order: Order[Order.State]): Option[Position] =
-    for {
-      workflow <- idToWorkflow(order.workflowId).toOption
-      position <- workflow.findCatchPosition(order.position)
-    } yield position
+  private def fail(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
+  : Checked[OrderFailedEvent] =
+    idToWorkflow(order.workflowId)
+      .flatMap(workflow => failToPosition(workflow, order.position, outcome, uncatchable = uncatchable))
+
+  private[workflow] def failToPosition(
+    workflow: Workflow,
+    position: Position,
+    outcome: Option[Outcome.NotSucceeded],
+    uncatchable: Boolean):
+  Checked[OrderFailedEvent] = {
+    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockNames: Vector[LockName] = Vector.empty): Checked[OrderFailedEvent] =
+      reverseBranchPath match {
+        case Nil =>
+          Right(OrderFailed(failPosition, outcome, lockNames))
+
+        case Segment(_, ForkBranchId(_)) :: _ =>
+          Right(OrderFailedInFork(failPosition, outcome, lockNames))
+
+        case Segment(nr, BranchId.Lock) :: prefix =>
+          val pos = prefix.reverse % 0
+          checkedCast[LockInstruction](workflow.instruction(pos))
+            .flatMap(lockInstr => loop(prefix, pos, lockNames :+ lockInstr.lockName))
+
+        case Segment(nr, TryBranchId(retry)) :: prefix if !uncatchable =>
+          val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
+          if (isMaxRetriesReached(workflow.id, catchPos))
+            loop(prefix, failPosition, lockNames)
+          else
+            Right(OrderCatched(catchPos, outcome, lockNames))
+
+        case Segment(_, _) :: prefix =>
+          loop(prefix, failPosition, lockNames)
+      }
+
+    loop(position.branchPath.reverse, position, Vector.empty)
+  }
 
   private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     if ((order.isDetached || order.isAttached) && order.isState[Order.FailedInFork])
@@ -326,8 +356,10 @@ final class OrderEventSource(
     order.isAttached && isAgent
 
   private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
-    for (pos <- applyMoveInstructions(idToOrder(orderId).orThrow.withPosition(orderMoved.to)))
-      yield orderId <-: OrderMoved(pos)
+    for {
+      order <- idToOrder(orderId)
+      pos <- applyMoveInstructions(order.withPosition(orderMoved.to))
+    } yield orderId <-: OrderMoved(pos)
 
   private[workflow] def applyMoveInstructions(order: Order[Order.State]): Checked[Position] =
     applyMoveInstructions(order, Nil) map {
@@ -381,5 +413,11 @@ final class OrderEventSource(
   }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    idToWorkflow(workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
+    idToWorkflow(workflowPosition.workflowId) match {
+      case Left(_) =>
+        scribe.error(s"Missing ${workflowPosition.workflowId}")
+        Gap()
+      case Right(workflow) =>
+        workflow.instruction(workflowPosition.position)
+    }
 }

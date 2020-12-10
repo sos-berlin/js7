@@ -19,4 +19,11 @@ final class OrderIdTest extends AnyFreeSpec {
     assert(OrderId("A").checkedNameSyntax == Right(OrderId("A")))
     assert(OrderId("A-_.B").checkedNameSyntax == Right(OrderId("A-_.B")))
   }
+
+  "allParents" in {
+    assert(OrderId("A").allParents == Nil)
+    assert(OrderId("A|B").allParents == Seq(OrderId("A")))
+    assert(OrderId("A|B").allParents == Seq(OrderId("A")))
+    assert(OrderId("A|BBB|C|D").allParents == Seq(OrderId("A"), OrderId("A|BBB"), OrderId("A|BBB|C")))
+  }
 }

@@ -129,22 +129,34 @@ object OrderEvent {
   final case class OrderMoved(to: Position)
   extends OrderActorEvent
 
-  final case class OrderFailed(outcome: Option[Outcome.NotSucceeded] = None)
-  extends OrderActorEvent with OrderTerminated
+  sealed trait OrderLockEvent extends OrderActorEvent {
+    def lockIds: Seq[LockName]
+  }
 
-  final case class OrderFailedInFork(outcome: Option[Outcome.NotSucceeded] = None)
-  extends OrderActorEvent
+  sealed trait OrderFailedEvent extends OrderActorEvent with OrderLockEvent {
+    def moveTo(movedTo: Position): OrderFailedEvent
+
+    def movedTo: Position
+  }
+
+  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockName] = Nil)
+  extends OrderFailedEvent with OrderTerminated {
+    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
+
+  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockName] = Nil)
+  extends OrderFailedEvent {
+    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
+
+  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockName] = Nil)
+  extends OrderFailedEvent {
+    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCatched`. */
   final case class OrderFailedIntermediate_(outcome: Option[Outcome.NotSucceeded] = None, uncatchable: Boolean = false)
   extends OrderActorEvent
-
-  final case class OrderCatched(outcome: Option[Outcome.NotSucceeded], movedTo: Position)
-  extends OrderActorEvent
-  object OrderCatched {
-    def apply(movedTo: Position): OrderCatched =
-      apply(None, movedTo)
-  }
 
   final case class OrderRetrying(movedTo: Position, delayedUntil: Option[Timestamp] = None)
   extends OrderActorEvent
@@ -220,18 +232,20 @@ object OrderEvent {
     historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
 
-  sealed trait OrderLockEvent extends OrderActorEvent {
-    def lockName: LockName
+  final case class OrderLockAcquired(lockName: LockName, exclusively: Boolean = false)
+  extends OrderLockEvent {
+    def lockIds = lockName :: Nil
   }
 
-  final case class OrderLockAcquired(lockName: LockName, exclusively: Boolean = false)
-  extends OrderLockEvent
-
   final case class OrderLockQueued(lockName: LockName)
-  extends OrderLockEvent
+  extends OrderLockEvent  {
+    def lockIds = lockName :: Nil
+  }
 
   final case class OrderLockReleased(lockName: LockName)
-  extends OrderLockEvent
+  extends OrderLockEvent {
+    def lockIds = lockName :: Nil
+  }
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
