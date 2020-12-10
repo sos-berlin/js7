@@ -15,7 +15,7 @@ object Dependencies
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.13.0"
-  val scalaTestVersion = "3.2.0"
+  val scalaTestVersion = "3.2.2"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
