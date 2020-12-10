@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.folder.FolderPath
 import js7.data.item.ItemPath
-import js7.data.lock.LockName
+import js7.data.lock.LockId
 import scala.reflect.ClassTag
 
 /**
@@ -109,9 +109,9 @@ object BasicParsers
         case Right(name) => Pass(name)
       }))
 
-  def lockName(implicit ctx: P[_]) = P[LockName](
+  def lockId(implicit ctx: P[_]) = P[LockId](
     pathString.flatMap(string =>
-      LockName.checked(string) match {
+      LockId.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)
       }))

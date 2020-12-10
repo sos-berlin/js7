@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentName
 import js7.data.job.{CommandLineExecutable, CommandLineParser, ExecutablePath, ExecutableScript, ReturnCode}
-import js7.data.lock.LockName
+import js7.data.lock.LockId
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
@@ -231,14 +231,14 @@ object WorkflowParser
     private def lockInstruction[_: P] = P[LockInstruction](
       (Index ~ keyword("lock") ~ w ~/
         inParentheses(keyValues(
-          keyValue("lock", lockName))
+          keyValue("lock", lockId))
         ) ~/
         Index ~/
         w ~/ curlyWorkflowOrInstruction
       ).flatMap { case (start, keyToValue, end, subworkflow) =>
-        for (LockName <- keyToValue[LockName]("lock")) yield
+        for (lockId <- keyToValue[LockId]("lock")) yield
           LockInstruction(
-            LockName,
+            lockId,
             exclusive = true,
             subworkflow,
             sourcePos(start, end))

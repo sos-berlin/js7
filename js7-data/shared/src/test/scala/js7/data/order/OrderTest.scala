@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
-import js7.data.lock.LockName
+import js7.data.lock.LockId
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.value.{NamedValues, StringValue}
@@ -279,9 +279,9 @@ final class OrderTest extends AnyFreeSpec
       OrderResumeMarked(),
       OrderResumed(),
 
-      OrderLockAcquired(LockName("LOCK")),
-      OrderLockQueued(LockName("LOCK")),
-      OrderLockReleased(LockName("LOCK")),
+      OrderLockAcquired(LockId("LOCK")),
+      OrderLockQueued(LockId("LOCK")),
+      OrderLockReleased(LockId("LOCK")),
 
       OrderBroken(Problem("Problem")),
 

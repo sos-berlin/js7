@@ -10,7 +10,7 @@ import js7.data.agent.{AgentName, AgentRef}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
-import js7.data.lock.{Lock, LockName}
+import js7.data.lock.{Lock, LockId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -74,12 +74,12 @@ final class ControllerCommandTest extends AnyFreeSpec
   }
 
   "UpdateLocks" in {
-    testJson[ControllerCommand](UpdateLocks(Seq(Lock(LockName("LOCK")))),
+    testJson[ControllerCommand](UpdateLocks(Seq(Lock(LockId("LOCK")))),
       json"""{
          "TYPE": "UpdateLocks",
          "locks": [
             {
-              "name": "LOCK"
+              "id": "LOCK"
             }
          ]
       }""")

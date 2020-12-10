@@ -21,7 +21,7 @@ import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.{Repo, RepoEvent}
 import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
-import js7.data.lock.{Lock, LockEvent, LockName, LockState}
+import js7.data.lock.{Lock, LockEvent, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import monix.reactive.Observable
@@ -34,7 +34,7 @@ final case class ControllerState(
   standards: JournaledState.Standards,
   controllerMetaState: ControllerMetaState,
   nameToAgent: Map[AgentName, AgentRefState],
-  nameToLockState: Map[LockName, LockState],
+  nameToLockState: Map[LockId, LockState],
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
@@ -154,7 +154,7 @@ extends JournaledState[ControllerState]
                   .map(lockStates =>
                     copy(
                       idToOrder = updatedIdToOrder,
-                      nameToLockState = nameToLockState ++ (lockStates.map(o => o.lock.name -> o))))
+                      nameToLockState = nameToLockState ++ (lockStates.map(o => o.lock.id -> o))))
 
               case _ => Right(copy(idToOrder = updatedIdToOrder))
             }
@@ -170,7 +170,7 @@ extends JournaledState[ControllerState]
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
 
-    case KeyedEvent(name: LockName, event: LockEvent) =>
+    case KeyedEvent(name: LockId, event: LockEvent) =>
       event match {
         case LockAdded(nonExclusiveLimit) =>
           if (nameToLockState contains name)

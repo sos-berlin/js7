@@ -13,28 +13,28 @@ import scala.collection.immutable.Queue
 final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Queue[OrderId] = Queue.empty)
 {
   def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
-    assertThat(keyedEvent.event.lockIds contains lock.name)
+    assertThat(keyedEvent.event.lockIds contains lock.id)
     keyedEvent match {
-      case KeyedEvent(orderId, OrderLockAcquired(lock.name, isExclusive)) =>
+      case KeyedEvent(orderId, OrderLockAcquired(lock.id, isExclusive)) =>
         for (lockState <- toLockState(tryAcquire(orderId, isExclusive))) yield
           queue.dequeueOption  match {
             case Some((`orderId`, tail)) => lockState.copy(queue = tail)
             case _ => lockState
           }
 
-      case KeyedEvent(orderId, OrderLockReleased(lock.name)) =>
+      case KeyedEvent(orderId, OrderLockReleased(lock.id)) =>
         release(orderId)
 
-      case KeyedEvent(orderId, OrderLockQueued(lock.name)) =>
+      case KeyedEvent(orderId, OrderLockQueued(lock.id)) =>
         if (acquired == Available)
-          Left(Problem(s"$lockName is available an does not accept queuing"))
+          Left(Problem(s"$lockId is available an does not accept queuing"))
         else if (acquired.isAcquiredBy(orderId))
-          Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.name))
+          Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.id))
         else if (queue contains orderId)
-          Left(Problem(s"Order '${orderId.string}' already queues for $lockName"))
+          Left(Problem(s"Order '${orderId.string}' already queues for $lockId"))
         else orderId.allParents find acquired.isAcquiredBy match {
           case Some(parentOrderId) =>
-            Left(Problem(s"$lockName has already been acquired by parent $parentOrderId"))
+            Left(Problem(s"$lockId has already been acquired by parent $parentOrderId"))
           case None =>
             Right(enqueue(orderId))
         }
@@ -42,7 +42,7 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
       case KeyedEvent(orderId: OrderId, _: OrderFailedEvent) =>
         release(orderId)
 
-      case _ => Left(Problem.pure(s"Invalid event for '$lockName': $keyedEvent"))
+      case _ => Left(Problem.pure(s"Invalid event for '$lockId': $keyedEvent"))
     }
   }
 
@@ -73,17 +73,17 @@ final case class LockState(lock: Lock, acquired: Acquired = Available, queue: Qu
 
   private def toLockState(result: Either[LockRefusal, Acquired]): Checked[LockState] =
     result
-      .left.map(refusal => refusal.toProblem(lock.name))
+      .left.map(refusal => refusal.toProblem(lock.id))
       .map(acquired =>
         copy(acquired = acquired))
 
-  private def lockName = lock.name
+  private def lockId = lock.id
 }
 
 object LockState
 {
-  def OrderLockNotAvailableProblem(lockName: LockName) =
-    Problem(s"Lock '${lockName.string}' is not available")
+  def OrderLockNotAvailableProblem(lockId: LockId) =
+    Problem(s"Lock '${lockId.string}' is not available")
 
   implicit val jsonCodec = deriveCodec[LockState]
 }

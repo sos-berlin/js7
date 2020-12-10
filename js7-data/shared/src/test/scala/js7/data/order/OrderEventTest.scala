@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.lock.LockName
+import js7.data.lock.LockId
 import js7.data.order.OrderEvent._
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -165,7 +165,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched complete" in {
-    check(OrderCatched(Position(1), Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Seq(LockName("LOCK"))), json"""
+    check(OrderCatched(Position(1), Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Seq(LockId("LOCK"))), json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
@@ -196,7 +196,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailed(Failed) complete" in {
-    check(OrderFailed(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockName("LOCK"))), json"""
+    check(OrderFailed(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockId("LOCK"))), json"""
       {
         "TYPE": "OrderFailed",
         "movedTo": [ 1 ],
@@ -245,7 +245,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailedInFork complete" in {
-    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockName("LOCK"))), json"""
+    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockId("LOCK"))), json"""
       {
         "TYPE": "OrderFailedInFork",
         "movedTo": [ 1 ],
@@ -430,27 +430,27 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderLockAcquired" in {
-    check(OrderLockAcquired(LockName("LOCK"), exclusively = false), json"""
+    check(OrderLockAcquired(LockId("LOCK"), exclusively = false), json"""
       {
         "TYPE": "OrderLockAcquired",
-        "lockName": "LOCK",
+        "lockId": "LOCK",
         "exclusively": false
       }""")
   }
 
   "OrderLockQueued" in {
-    check(OrderLockQueued(LockName("LOCK")), json"""
+    check(OrderLockQueued(LockId("LOCK")), json"""
       {
         "TYPE": "OrderLockQueued",
-        "lockName": "LOCK"
+        "lockId": "LOCK"
       }""")
   }
 
   "OrderLockReleased" in {
-    check(OrderLockReleased(LockName("LOCK")), json"""
+    check(OrderLockReleased(LockId("LOCK")), json"""
       {
         "TYPE": "OrderLockReleased",
-        "lockName": "LOCK"
+        "lockId": "LOCK"
       }""")
   }
 

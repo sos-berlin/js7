@@ -633,8 +633,8 @@ with MainJournalingActor[ControllerState, Event]
             .map(_ => Right(ControllerCommand.Response.Accepted))
 
       case ControllerCommand.UpdateLocks(locks) =>
-        if (locks.map(_.name).distinct.sizeIs != locks.size)
-          Future.successful(Left(Problem.pure("Duplicate LockNames in UpdateLocks command")))
+        if (locks.map(_.id).distinct.sizeIs != locks.size)
+          Future.successful(Left(Problem.pure("Duplicate LockIds in UpdateLocks command")))
         else
           persistTransaction(
             locks.flatMap {

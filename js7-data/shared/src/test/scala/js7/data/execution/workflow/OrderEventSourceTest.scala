@@ -12,7 +12,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
 import js7.data.job.ExecutablePath
-import js7.data.lock.{Lock, LockName, LockState}
+import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
@@ -896,9 +896,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
         ).checked,
         Map(workflow.id -> workflow).checked,
         Map(
-          LockName("LOCK") -> LockState(Lock(LockName("LOCK"))),
-          LockName("LOCK-1") -> LockState(Lock(LockName("LOCK-1"))),
-          LockName("LOCK-2") -> LockState(Lock(LockName("LOCK-2")))
+          LockId("LOCK") -> LockState(Lock(LockId("LOCK"))),
+          LockId("LOCK-1") -> LockState(Lock(LockId("LOCK-1"))),
+          LockId("LOCK-2") -> LockState(Lock(LockId("LOCK-2")))
         ).checked,
         isAgent = false)
 
@@ -909,7 +909,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       assert(liveEventSource.nextEvents(bChild.id) == Seq(
         bChild.id <-: OrderFailedInFork(
           Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0,
-          lockIds = Seq(LockName("LOCK-2"), LockName("LOCK-1")))))
+          lockIds = Seq(LockId("LOCK-2"), LockId("LOCK-1")))))
     }
   }
 }

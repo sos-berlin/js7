@@ -5,7 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.event.Event
 
 sealed trait LockEvent extends Event {
-  type Key = LockName
+  type Key = LockId
 }
 
 object LockEvent {

@@ -1,13 +1,13 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.deriveCodec
-import js7.data.lock.LockName
+import js7.data.lock.LockId
 import js7.data.source.SourcePos
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
 final case class LockInstruction(
-  lockName: LockName,
+  lockId: LockId,
   exclusive: Boolean,
   lockedWorkflow: Workflow,
   sourcePos: Option[SourcePos] = None)

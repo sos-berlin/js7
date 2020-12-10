@@ -1,7 +1,7 @@
 package js7.data.lock
 
 import js7.base.circeutils.CirceUtils._
-import js7.data.lock.Acquired.{Exclusive, Available, NonExclusiv}
+import js7.data.lock.Acquired.{Available, Exclusive, NonExclusiv}
 import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -9,10 +9,10 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AcquiredTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(LockState(Lock(LockName("LOCK"))), json"""
+    testJson(LockState(Lock(LockId("LOCK"))), json"""
       {
         "lock": {
-          "name": "LOCK"
+          "id": "LOCK"
         },
         "acquired": {
           "TYPE": "Available"

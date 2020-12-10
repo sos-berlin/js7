@@ -13,7 +13,7 @@ import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStat
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.item.{Repo, RepoEvent}
 import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
-import js7.data.lock.{Lock, LockEvent, LockName, LockState}
+import js7.data.lock.{Lock, LockEvent, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.Workflow
@@ -27,7 +27,7 @@ extends JournaledStateBuilder[ControllerState]
   private var repo = Repo.empty
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val nameToAgentRefState = mutable.Map[AgentName, AgentRefState]()
-  private val nameToLockState = mutable.Map[LockName, LockState]()
+  private val nameToLockState = mutable.Map[LockId, LockState]()
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -51,7 +51,7 @@ extends JournaledStateBuilder[ControllerState]
       nameToAgentRefState.insert(agentRefState.name -> agentRefState)
 
     case lockState: LockState =>
-      nameToLockState.insert(lockState.lock.name -> lockState)
+      nameToLockState.insert(lockState.lock.id -> lockState)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -118,7 +118,7 @@ extends JournaledStateBuilder[ControllerState]
         case _: OrderStdWritten =>
       }
 
-    case Stamped(_, _, KeyedEvent(name: LockName, event: LockEvent)) =>
+    case Stamped(_, _, KeyedEvent(name: LockId, event: LockEvent)) =>
       event match {
         case LockAdded(nonExclusiveLimit) =>
           nameToLockState.insert(name -> LockState(Lock(name, nonExclusiveLimit)))

@@ -15,7 +15,7 @@ import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.RepoEvent.VersionAdded
 import js7.data.item.{Repo, VersionId}
-import js7.data.lock.{Lock, LockName, LockState}
+import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -44,7 +44,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     (AgentRefState(AgentRef(AgentName("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil)
       .toKeyedMap(_.name),
-    Map(LockName("LOCK") -> LockState(Lock(LockName("LOCK")))),
+    Map(LockId("LOCK") -> LockState(Lock(LockId("LOCK")))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
 
@@ -141,7 +141,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
           }, {
             "TYPE": "LockState",
             "lock": {
-              "name": "LOCK"
+              "id": "LOCK"
             },
             "acquired": {
               "TYPE": "Available"

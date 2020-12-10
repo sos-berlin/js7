@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentName
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
-import js7.data.lock.LockName
+import js7.data.lock.LockId
 import js7.data.order.Order._
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.value.NamedValues
@@ -130,7 +130,7 @@ object OrderEvent {
   extends OrderActorEvent
 
   sealed trait OrderLockEvent extends OrderActorEvent {
-    def lockIds: Seq[LockName]
+    def lockIds: Seq[LockId]
   }
 
   sealed trait OrderFailedEvent extends OrderActorEvent with OrderLockEvent {
@@ -139,17 +139,17 @@ object OrderEvent {
     def movedTo: Position
   }
 
-  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockName] = Nil)
+  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockId] = Nil)
   extends OrderFailedEvent with OrderTerminated {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
 
-  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockName] = Nil)
+  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockId] = Nil)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
 
-  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockName] = Nil)
+  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockId] = Nil)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
@@ -232,19 +232,19 @@ object OrderEvent {
     historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
 
-  final case class OrderLockAcquired(lockName: LockName, exclusively: Boolean = false)
+  final case class OrderLockAcquired(lockId: LockId, exclusively: Boolean = false)
   extends OrderLockEvent {
-    def lockIds = lockName :: Nil
+    def lockIds = lockId :: Nil
   }
 
-  final case class OrderLockQueued(lockName: LockName)
+  final case class OrderLockQueued(lockId: LockId)
   extends OrderLockEvent  {
-    def lockIds = lockName :: Nil
+    def lockIds = lockId :: Nil
   }
 
-  final case class OrderLockReleased(lockName: LockName)
+  final case class OrderLockReleased(lockId: LockId)
   extends OrderLockEvent {
-    def lockIds = lockName :: Nil
+    def lockIds = lockId :: Nil
   }
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](

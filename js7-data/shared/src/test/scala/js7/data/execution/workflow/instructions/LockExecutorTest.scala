@@ -5,7 +5,7 @@ import js7.data.agent.AgentName
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.LockExecutorTest._
 import js7.data.job.ExecutablePath
-import js7.data.lock.{Acquired, Lock, LockName, LockState}
+import js7.data.lock.{Acquired, Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockQueued, OrderLockReleased}
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -21,42 +21,42 @@ final class LockExecutorTest extends AnyFreeSpec {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(workflow.id -> workflow).checked(id)
     val nameToLockState = Map(
-      freeLockName -> LockState(Lock(freeLockName)),
-      occupiedLockName -> LockState(Lock(occupiedLockName), Acquired.Exclusive(OrderId("OCCUPANT"))),
+      freeLockId -> LockState(Lock(freeLockId)),
+      occupiedLockId -> LockState(Lock(occupiedLockId), Acquired.Exclusive(OrderId("OCCUPANT"))),
     ).checked
   }
 
   "Lock acquired" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(freeLockOrder.position), freeLockOrder, context) ==
-      Right(Seq(freeLockOrder.id <-: OrderLockAcquired(freeLockName))))
+      Right(Seq(freeLockOrder.id <-: OrderLockAcquired(freeLockId))))
   }
 
   "Lock released" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, context) ==
-      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockName))))
+      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockId))))
   }
 
   "Lock can not acquired" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(occupiedLockOrder.position), occupiedLockOrder, context) ==
-      Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockName))))
+      Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockId))))
   }
 
   "Lock released and waiting order continues" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, context) ==
-      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockName))))
+      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockId))))
   }
 }
 
 object LockExecutorTest {
-  private val freeLockName = LockName("FREE-LOCK")
-  private val occupiedLockName = LockName("OCCUPIED-LOCK")
-  private val exclusiveLockName = LockName("EXCLUSIVE-LOCK")
+  private val freeLockId = LockId("FREE-LOCK")
+  private val occupiedLockId = LockId("OCCUPIED-LOCK")
+  private val exclusiveLockId = LockId("EXCLUSIVE-LOCK")
   private val execute = Execute(WorkflowJob(AgentName("AGENT"), ExecutablePath("JOB")))
 
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "VERSION",
-    LockInstruction(freeLockName, exclusive = false, Workflow.of(execute)),
-    LockInstruction(occupiedLockName, exclusive = false, Workflow.of(execute)),
-    LockInstruction(exclusiveLockName, exclusive = false, Workflow.of(execute)))
+    LockInstruction(freeLockId, exclusive = false, Workflow.of(execute)),
+    LockInstruction(occupiedLockId, exclusive = false, Workflow.of(execute)),
+    LockInstruction(exclusiveLockId, exclusive = false, Workflow.of(execute)))
 
   private val freeLockOrder = Order(OrderId("ORDER-A"), workflow.id /: Position(0), Order.Ready)
   private val freeLockedOrder = Order(OrderId("ORDER-A"), workflow.id /: (Position(0) / BranchId.Lock % 1), Order.Ready)

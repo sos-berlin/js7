@@ -14,7 +14,7 @@ object LockExecutor extends EventInstructionExecutor
   type Instr = LockInstruction
 
   def toEvents(instruction: LockInstruction, order: Order[Order.State], context: OrderContext) = {
-    import instruction.{exclusive, lockName}
+    import instruction.{exclusive, lockId}
 
     if (order.isAttached)
       Right((order.id <-: OrderDetachable) :: Nil)
@@ -22,17 +22,17 @@ object LockExecutor extends EventInstructionExecutor
       Right((order.id <-: OrderStarted) :: Nil)
     else if (order.isState[Order.Ready] || order.isState[Order.WaitingForLock])
       for {
-        lockState <- context.nameToLockState(lockName)
+        lockState <- context.nameToLockState(lockId)
         event <- lockState.checkAcquire(order.id, exclusive = exclusive) match {
           case Right(()) =>
-            Right(Some(OrderLockAcquired(lockName, exclusively = exclusive)))
+            Right(Some(OrderLockAcquired(lockId, exclusively = exclusive)))
 
           case Left(refusal @ (LockRefusal.IsInUse | _: LockRefusal.LimitReached)) =>
-            scribe.debug(s"Order '${order.id.string}': ${refusal.toProblem(lockName).toString}, $lockState")
-            Right(!order.isState[Order.WaitingForLock] ? OrderLockQueued(lockName))
+            scribe.debug(s"Order '${order.id.string}': ${refusal.toProblem(lockId).toString}, $lockState")
+            Right(!order.isState[Order.WaitingForLock] ? OrderLockQueued(lockId))
 
           case Left(refusal) =>
-            Left(refusal.toProblem(lockName))
+            Left(refusal.toProblem(lockId))
         }
         maybeKeyedEvent = event.map(order.id <-: _)
         _ <- maybeKeyedEvent match {
@@ -53,5 +53,5 @@ object LockExecutor extends EventInstructionExecutor
       if (order.isAttached)
         OrderDetachable
       else
-        OrderLockReleased(instruction.lockName)))
+        OrderLockReleased(instruction.lockId)))
 }
