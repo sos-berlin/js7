@@ -11,6 +11,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand.Response.Accepted
 import js7.controller.data.ControllerCommand.{AddOrders, ReleaseEvents}
+import js7.controller.data.ControllerState.generic.itemPathJsonCodec
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting

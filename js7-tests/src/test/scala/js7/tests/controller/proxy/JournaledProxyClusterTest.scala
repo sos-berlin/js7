@@ -22,7 +22,7 @@ import js7.common.utils.ByteUnits.toKBGB
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.ControllerState
-import js7.data.controller.ControllerItems.jsonCodec
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.{UpdateRepoOperation, VersionId, VersionedItem}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}

@@ -6,16 +6,16 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.SignedString
+import js7.base.problem.Checked
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
+import js7.controller.data.ControllerState.generic.itemPathJsonCodec
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
-import js7.data.controller.ControllerItems.itemPathJsonDecoder
 import js7.data.event.EventId
 import js7.data.item.{ItemPath, VersionId}
 import js7.data.lock.Lock
@@ -35,7 +35,7 @@ sealed trait ControllerCommand extends CommonCommand
 
 object ControllerCommand extends CommonCommand.Companion
 {
-  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonEncoder[Int], checkedJsonDecoder[Int], Problem, itemPathJsonDecoder))
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonEncoder[Int], checkedJsonDecoder[Int], itemPathJsonCodec))
 
   protected type Command = ControllerCommand
 

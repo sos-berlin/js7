@@ -3,7 +3,7 @@ package js7.data.item
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
@@ -39,12 +39,11 @@ trait ItemPath extends GenericString
   def toFile(t: SourceType): Path =
     Paths.get(withoutStartingSlash + companion.sourceTypeToFilenameExtension(t))
 
-  final def asTyped[P <: ItemPath](implicit P: ItemPath.Companion[P]): P = {
+  final def asTyped[P <: ItemPath](implicit P: ItemPath.Companion[P]): P =
     if (P == companion)
       this.asInstanceOf[P]
     else
       P.apply(string)
-  }
 
   final def cast[P <: ItemPath](implicit P: ItemPath.Companion[P]): P = {
     if (P != companion) throw new ClassCastException(s"Expected ${companion.name}, but is: $toString")
@@ -157,7 +156,7 @@ object ItemPath
 
   def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[ItemPath] =
     new Encoder[ItemPath] with Decoder[ItemPath] {
-      private val typeToCompanion = companions toKeyedMap (_.camelName)
+      private val typeToCompanion = companions.toKeyedMap(_.camelName)
 
       def apply(a: ItemPath) = Json.fromString(a.toTypedString)
 
@@ -190,16 +189,4 @@ object ItemPath
 
   def isAbsolute(path: String): Boolean =
     path startsWith "/"
-
-  implicit val jsonEncoder: Encoder.AsObject[ItemPath] = o => JsonObject(
-    "TYPE" -> Json.fromString(o.companion.name),
-    "path" -> Json.fromString(o.string))
-
-  def jsonDecoder(toItemPathCompanion: String => Checked[ItemPath.AnyCompanion]): Decoder[ItemPath] =
-    c => for {
-      typ <- c.get[String]("TYPE")
-      path <- c.get[String]("path")
-      t <- toItemPathCompanion(typ).toDecoderResult(c.history)
-      itemPath <- t.checked(path).toDecoderResult(c.history)
-    } yield itemPath
 }

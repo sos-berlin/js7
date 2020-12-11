@@ -31,9 +31,9 @@ import js7.common.utils.JavaResource
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, UpdateRepo}
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.controller.ControllerItems
 import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.job.RelativeExecutablePath
 import js7.tests.testenv.DirectoryProvider._
@@ -105,7 +105,7 @@ extends HasCloser
     agents foreach prepareAgentFiles
   }
 
-  val itemSigner = new VersionedItemSigner(signer, ControllerItems.jsonCodec)
+  val itemSigner = new VersionedItemSigner(signer, versionedItemJsonCodec)
 
   val toSigned: VersionedItem => Signed[VersionedItem] = o => Signed(o, sign(o))
   val sign: VersionedItem => SignedString = itemSigner.sign

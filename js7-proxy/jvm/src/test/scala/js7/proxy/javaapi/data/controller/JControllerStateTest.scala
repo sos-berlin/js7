@@ -7,11 +7,12 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.agent.AgentRefState
 import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
-import js7.data.controller.{ControllerId, ControllerItems}
+import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.RepoEvent.VersionAdded
 import js7.data.item.{Repo, VersionId, VersionedItemSigner}
@@ -75,7 +76,7 @@ private object JControllerStateTest
        |}
        |""".stripMargin).orThrow
 
-  private val itemSigner = new VersionedItemSigner(SillySigner.Default, ControllerItems.jsonCodec)
+  private val itemSigner = new VersionedItemSigner(SillySigner.Default, versionedItemJsonCodec)
 
   private val controllerState = ControllerState(
     EventId(1001),

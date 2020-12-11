@@ -1,12 +1,11 @@
 package js7.data.item
 
 import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString}
-import js7.data.controller.ControllerItems._
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
-import js7.data.item.RepoEventTest._
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -16,6 +15,8 @@ import org.scalatest.freespec.AnyFreeSpec
   * @author Joacim Zschimmer
   */
 final class RepoEventTest extends AnyFreeSpec {
+
+  import RepoEventTest.{itemEventJsonCodec, itemJsonCodec}
 
   "JSON" - {
     "VersionAdded" in {
@@ -88,5 +89,10 @@ final class RepoEventTest extends AnyFreeSpec {
 
 object RepoEventTest
 {
+  implicit private val itemPathJsonCodec: CirceCodec[ItemPath] = ItemPath.jsonCodec(Set(WorkflowPath))
+
+  implicit private val itemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
+    Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
+
   private[RepoEventTest] implicit val itemEventJsonCodec: TypedJsonCodec[RepoEvent] = RepoEvent.jsonCodec
 }

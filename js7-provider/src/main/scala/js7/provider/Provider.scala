@@ -19,11 +19,11 @@ import js7.common.time.JavaTimeConverters._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, UpdateRepo}
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
 import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.controller.ControllerItems
 import js7.data.item.IntentoryItems.diffVersionedItems
 import js7.data.item.{IntentoryItems, ItemPath, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.workflow.WorkflowPath
@@ -229,7 +229,7 @@ object Provider
       val password = SecretString(conf.config.getString(s"$configPath.password"))
       MessageSigners.typeToMessageSignersCompanion(typeName)
         .flatMap(companion => companion.checked(keyFile.byteArray, password))
-        .map(messageSigner => new VersionedItemSigner(messageSigner, ControllerItems.jsonCodec))
+        .map(messageSigner => new VersionedItemSigner(messageSigner, versionedItemJsonCodec))
     }.orThrow
     Right(new Provider(itemSigner, conf))
   }

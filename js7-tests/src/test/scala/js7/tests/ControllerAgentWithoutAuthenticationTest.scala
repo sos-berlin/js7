@@ -17,9 +17,9 @@ import js7.common.utils.FreeTcpPortFinder
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs}
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.controller.ControllerItems
 import js7.data.item.{VersionId, VersionedItemSigner}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -75,7 +75,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
             "js7.configuration.trusted-signature-keys.Silly = " +
               "\"" + keyDirectory.toString.replace("""\""", """\\""") + "\"\n"
         }
-        new VersionedItemSigner(new SillySigner(signature), ControllerItems.jsonCodec)
+        new VersionedItemSigner(new SillySigner(signature), versionedItemJsonCodec)
       }
 
       val controllerPort :: agentPort :: Nil = FreeTcpPortFinder.findFreeTcpPorts(2)

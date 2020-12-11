@@ -216,12 +216,7 @@ final class ControllerCommandTest extends AnyFreeSpec
             }
           }
         ],
-        "delete": [
-          {
-            "TYPE": "WorkflowPath",
-            "path": "/WORKFLOW-A"
-          }
-        ]
+        "delete": [ "Workflow:/WORKFLOW-A" ]
       }""")
   }
 

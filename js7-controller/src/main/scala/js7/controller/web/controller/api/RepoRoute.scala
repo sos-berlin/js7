@@ -22,9 +22,10 @@ import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
+import js7.controller.data.ControllerState.generic.itemPathJsonCodec
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
 import js7.controller.web.common.ControllerRouteProvider
-import js7.controller.web.controller.api.RepoRoute.{ExitStreamException, _}
+import js7.controller.web.controller.api.RepoRoute._
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.crypt.VersionedItemVerifier.Verified
 import js7.data.item.{ItemPath, UpdateRepoOperation, VersionId, VersionedItem}

@@ -7,8 +7,8 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.command.CommandMeta
-import js7.data.controller.ControllerItems
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.Repo.Entry
 import js7.data.item.{Repo, VersionId, VersionedItem, VersionedItemSigner}
@@ -24,8 +24,8 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
 {
   private lazy val signer = new SillySigner(SillySignature("RepoCommandExecutorTest"))
   private lazy val signatureVerifier = signer.toVerifier
-  private lazy val itemVerifier = new VersionedItemVerifier[VersionedItem](signatureVerifier, ControllerItems.jsonCodec)
-  private lazy val itemSigner = new VersionedItemSigner[VersionedItem](signer, ControllerItems.jsonCodec)
+  private lazy val itemVerifier = new VersionedItemVerifier[VersionedItem](signatureVerifier, versionedItemJsonCodec)
+  private lazy val itemSigner = new VersionedItemSigner[VersionedItem](signer, versionedItemJsonCodec)
   private lazy val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")

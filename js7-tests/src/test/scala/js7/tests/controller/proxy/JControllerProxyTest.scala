@@ -12,8 +12,8 @@ import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.data.agent.AgentId
-import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.item.{VersionId, VersionedItem}
 import js7.data.job.RelativeExecutablePath
 import js7.data.workflow.WorkflowPath

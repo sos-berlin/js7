@@ -15,9 +15,9 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.UpdateRepo
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.crypt.x509.OpensslContext
-import js7.data.controller.ControllerItems._
-import js7.data.item.{VersionedItem, VersionId}
+import js7.data.item.{VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509RootTest._
 import js7.tests.testenv.ControllerAgentForScalaTest

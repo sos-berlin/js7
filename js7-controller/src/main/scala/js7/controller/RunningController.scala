@@ -39,6 +39,7 @@ import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
 import js7.controller.data.ControllerCommand.AddOrder
+import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
 import js7.controller.web.ControllerWebServer
@@ -52,7 +53,6 @@ import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
-import js7.data.controller.ControllerItems
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
 import js7.data.item.VersionedItem
@@ -241,7 +241,7 @@ object RunningController
     private implicit lazy val actorSystem = injector.instance[ActorSystem]
     private lazy val itemVerifier = new VersionedItemVerifier(
       GenericSignatureVerifier(controllerConfiguration.config).orThrow,
-      ControllerItems.jsonCodec)
+      versionedItemJsonCodec)
     import controllerConfiguration.{akkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ControllerTermination.Terminate()
 
