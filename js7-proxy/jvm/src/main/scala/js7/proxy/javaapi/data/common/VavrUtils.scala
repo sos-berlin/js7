@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.proxy.javaapi.data.common.VavrConverters._
 
 @javaApi
@@ -23,7 +24,7 @@ object VavrUtils
       case o: VEither.Left[Problem, A] =>
         val throwable = o.getLeft.throwable
         // Wrapping in own exception to add own stacktrace
-        throw new RuntimeException(s"Operation returned Left(Problem): $throwable", throwable)
+        throw new RuntimeException(throwable.toStringWithCauses, throwable)
 
       case o: VEither.Right[Problem, A] =>
         o.get();
