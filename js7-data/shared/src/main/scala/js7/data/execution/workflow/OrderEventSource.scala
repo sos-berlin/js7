@@ -37,7 +37,7 @@ final class OrderEventSource(
   private val context = new OrderContext {
     def idToOrder                               = OrderEventSource.this.idToOrder
     def idToWorkflow(id: WorkflowId)            = OrderEventSource.this.idToWorkflow(id)
-    def nameToLockState                         = OrderEventSource.this.pathToLock
+    def idToLockState                         = OrderEventSource.this.pathToLock
 
     def childOrderEnded(order: Order[Order.State]): Boolean =
       order.parent.flatMap(o => idToOrder(o).toOption) match {

@@ -19,7 +19,7 @@ trait OrderContext
 {
   def idToOrder: OrderId => Checked[Order[Order.State]]
 
-  def nameToLockState: LockId => Checked[LockState]
+  def idToLockState: LockId => Checked[LockState]
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow(workflowPosition.workflowId)

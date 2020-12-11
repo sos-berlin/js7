@@ -28,7 +28,7 @@ import monix.execution.Scheduler
 trait AgentProxyRoute extends ControllerRouteProvider
 {
   protected implicit def actorSystem: ActorSystem
-  protected def nameToAgentRefState: Task[Checked[Map[AgentId, AgentRefState]]]
+  protected def idToAgentRefState: Task[Checked[Map[AgentId, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -40,7 +40,7 @@ trait AgentProxyRoute extends ControllerRouteProvider
           extractRequest { request =>
             completeTask(
               Task.pure(AgentId.checked(pathString))
-                .flatMapT(name => nameToAgentRefState.map(_.flatMap(_.checked(name))))
+                .flatMapT(name => idToAgentRefState.map(_.flatMap(_.checked(name))))
                 .flatMapT(agentRefState =>
                   forward(agentRefState.agentRef, request)
                     .map(Right.apply)))

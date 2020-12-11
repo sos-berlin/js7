@@ -20,7 +20,7 @@ final class LockExecutorTest extends AnyFreeSpec {
     def idToOrder = Map(freeLockOrder.id -> freeLockOrder, freeLockedOrder.id -> freeLockedOrder, occupiedLockOrder.id -> occupiedLockOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(workflow.id -> workflow).checked(id)
-    val nameToLockState = Map(
+    val idToLockState = Map(
       freeLockId -> LockState(Lock(freeLockId, limit = 1)),
       occupiedLockId -> LockState(Lock(occupiedLockId, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))),
     ).checked

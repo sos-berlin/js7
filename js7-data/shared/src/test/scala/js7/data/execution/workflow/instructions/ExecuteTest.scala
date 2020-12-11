@@ -28,7 +28,7 @@ final class ExecuteTest extends AnyFreeSpec {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToOrder = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-    val nameToLockState = _ => Left(Problem("nameToLockState is not implemented here"))
+    val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
   }
 
   "toOutcome" in {

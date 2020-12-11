@@ -85,7 +85,7 @@ extends JournaledState[ControllerState]
       for (o <- repo.applyEvent(event)) yield
         copy(repo = o)
 
-    case KeyedEvent(name: AgentId, event: AgentRefEvent) =>
+    case KeyedEvent(agentId: AgentId, event: AgentRefEvent) =>
       event match {
         case AgentAdded(uri) =>
           if (nameToAgent contains name)
@@ -173,7 +173,7 @@ extends JournaledState[ControllerState]
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)
 
-    case KeyedEvent(name: LockId, event: LockEvent) =>
+    case KeyedEvent(lockId: LockId, event: LockEvent) =>
       event match {
         case LockAdded(nonExclusiveLimit) =>
           if (nameToLockState contains name)

@@ -22,7 +22,7 @@ import monix.execution.Scheduler
   */
 trait AgentRefRoute extends ControllerRouteProvider
 {
-  protected def nameToAgentRefState: Task[Checked[Map[AgentId, AgentRefState]]]
+  protected def idToAgentRefState: Task[Checked[Map[AgentId, AgentRefState]]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -37,15 +37,15 @@ trait AgentRefRoute extends ControllerRouteProvider
             parameter("return".?) {
               case None =>
                 completeTask[Checked[Iterable[AgentId]]](
-                  nameToAgentRefState.map(_.map(_.keys)))
+                  idToAgentRefState.map(_.map(_.keys)))
 
               case Some("AgentRef") =>
                 completeTask[Checked[Iterable[AgentRef]]](
-                  nameToAgentRefState.map(_.map(_.values.map(_.agentRef))))
+                  idToAgentRefState.map(_.map(_.values.map(_.agentRef))))
 
               case Some("AgentRefState") =>
                 completeTask[Checked[Iterable[AgentRefState]]](
-                  nameToAgentRefState.map(_.map(_.values)))
+                  idToAgentRefState.map(_.map(_.values)))
 
               case _ =>
                 complete(NotFound)
@@ -55,11 +55,11 @@ trait AgentRefRoute extends ControllerRouteProvider
             parameter("return".?) {
               case None | Some("AgentRefState") =>
                 completeTask[Checked[AgentRefState]](
-                  nameToAgentRefState.map(_.flatMap(_.checked(name))))
+                  idToAgentRefState.map(_.flatMap(_.checked(name))))
 
               case Some("AgentRef") =>
                 completeTask[Checked[AgentRef]](
-                  nameToAgentRefState.map(_.flatMap(_.checked(name).map(_.agentRef))))
+                  idToAgentRefState.map(_.flatMap(_.checked(name).map(_.agentRef))))
 
               case _ =>
                 complete(NotFound)

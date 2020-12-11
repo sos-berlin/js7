@@ -21,7 +21,7 @@ final class FailExecutorTest extends AnyFreeSpec
   private lazy val context = new OrderContext {
     val idToOrder = Map(TestOrder.id -> TestOrder, ForkedOrder.id -> ForkedOrder, Carrot.id -> Carrot, Lemon.id -> Lemon).checked
 
-    val nameToLockState = _ => Left(Problem("nameToLockState is not implemented here"))
+    val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
 
     def childOrderEnded(order: Order[Order.State]) = Set(Carrot.id, Lemon.id)(order.id)
 

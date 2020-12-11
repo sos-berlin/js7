@@ -26,8 +26,8 @@ extends JournaledStateBuilder[ControllerState]
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val nameToAgentRefState = mutable.Map[AgentId, AgentRefState]()
-  private val nameToLockState = mutable.Map[LockId, LockState]()
+  private val idToAgentRefState = mutable.Map[AgentId, AgentRefState]()
+  private val idToLockState = mutable.Map[LockId, LockState]()
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -48,10 +48,10 @@ extends JournaledStateBuilder[ControllerState]
       repo = repo.applyEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
-      nameToAgentRefState.insert(agentRefState.name -> agentRefState)
+      idToAgentRefState.insert(agentRefState.agentId -> agentRefState)
 
     case lockState: LockState =>
-      nameToLockState.insert(lockState.lock.id -> lockState)
+      idToLockState.insert(lockState.lock.id -> lockState)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -85,17 +85,17 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(name: AgentId, event: AgentRefEvent)) =>
       event match {
         case AgentAdded(uri) =>
-          nameToAgentRefState.insert(name -> AgentRefState(AgentRef(name, uri)))
+          idToAgentRefState.insert(name -> AgentRefState(AgentRef(name, uri)))
 
         case AgentUpdated(uri) =>
-          val agentRefState = nameToAgentRefState(name)
-          nameToAgentRefState += name -> agentRefState.copy(
+          val agentRefState = idToAgentRefState(name)
+          idToAgentRefState += name -> agentRefState.copy(
             agentRef = agentRefState.agentRef.copy(
               uri = uri))
       }
 
     case Stamped(_, _, KeyedEvent(name: AgentId, event: AgentRefStateEvent)) =>
-      nameToAgentRefState += name -> nameToAgentRefState(name).applyEvent(event).orThrow
+      idToAgentRefState += name -> idToAgentRefState(name).applyEvent(event).orThrow
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
@@ -107,7 +107,7 @@ extends JournaledStateBuilder[ControllerState]
 
         case event: OrderLockEvent =>
           for (lockId <- event.lockIds) {
-            nameToLockState(lockId) = nameToLockState(lockId).applyEvent(orderId <-: event).orThrow
+            idToLockState(lockId) = idToLockState(lockId).applyEvent(orderId <-: event).orThrow
           }
           idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
 
@@ -118,13 +118,13 @@ extends JournaledStateBuilder[ControllerState]
         case _: OrderStdWritten =>
       }
 
-    case Stamped(_, _, KeyedEvent(name: LockId, event: LockEvent)) =>
+    case Stamped(_, _, KeyedEvent(lockId: LockId, event: LockEvent)) =>
       event match {
         case LockAdded(nonExclusiveLimit) =>
-          nameToLockState.insert(name -> LockState(Lock(name, nonExclusiveLimit)))
+          idToLockState.insert(lockId -> LockState(Lock(lockId, nonExclusiveLimit)))
 
         case LockUpdated(nonExclusiveLimit) =>
-          nameToLockState += name -> LockState(Lock(name, nonExclusiveLimit))
+          idToLockState += lockId -> LockState(Lock(lockId, nonExclusiveLimit))
       }
 
     case Stamped(_, _, KeyedEvent(_, _: ControllerShutDown)) =>
@@ -172,8 +172,8 @@ extends JournaledStateBuilder[ControllerState]
       eventId = eventId,
       standards,
       controllerMetaState,
-      nameToAgentRefState.toMap,
-      nameToLockState.toMap,
+      idToAgentRefState.toMap,
+      idToLockState.toMap,
       repo,
       idToOrder.toMap)
 

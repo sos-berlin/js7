@@ -12,8 +12,8 @@ extends JJsonable[JAgentRefState]
   protected type AsScala = AgentRefState
   protected def companion = JAgentRefState
 
-  def name: AgentId =
-    asScala.name
+  def agentId: AgentId =
+    asScala.agentId
 
   def agentRef: JAgentRef =
     JAgentRef(asScala.agentRef)

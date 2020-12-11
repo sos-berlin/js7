@@ -25,7 +25,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
 {
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected val nameToAgentRefState = Task { Right(nameToAgent) }
+  protected val idToAgentRefState = Task { Right(nameToAgent) }
 
   private def route: Route =
     pathSegments("api/agent") {
@@ -69,7 +69,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
   }
 
   // AgentRef
-  for (uri <- List(s"$AgentUri/${nameToAgent.values.head.name}")) {
+  for (uri <- List(s"$AgentUri/${nameToAgent.values.head.agentId}")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
@@ -84,5 +84,5 @@ object AgentRefRouteTest
   private val AgentUri = "/api/agent"
   private val aAgent = AgentRef(AgentId("A-AGENT"), Uri("https://localhost:0"))
   private val bAgent = AgentRef(AgentId("B-AGENT"), Uri("https://localhost:65535"))
-  private val nameToAgent = Seq(aAgent, bAgent).map(AgentRefState.apply).toKeyedMap(_.name)
+  private val nameToAgent = Seq(aAgent, bAgent).map(AgentRefState.apply).toKeyedMap(_.agentId)
 }

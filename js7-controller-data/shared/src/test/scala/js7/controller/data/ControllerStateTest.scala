@@ -43,7 +43,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     (AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil)
-      .toKeyedMap(_.name),
+      .toKeyedMap(_.agentId),
     Map(LockId("LOCK") -> LockState(Lock(LockId("LOCK"), limit = 1))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
