@@ -8,7 +8,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand.UpdateRepo
-import js7.data.item.{InventoryItem, ItemPath, VersionId}
+import js7.data.item.{ItemPath, VersionId, VersionedItem}
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
 
@@ -48,11 +48,11 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   private val usedVersionIds = mutable.Set[VersionId]()
 
-  final def updateRepo(change: Seq[InventoryItem]): VersionId =
+  final def updateRepo(change: Seq[VersionedItem]): VersionId =
     updateRepo(change, Nil)
 
   final def updateRepo(
-    change: Seq[InventoryItem],
+    change: Seq[VersionedItem],
     delete: Seq[ItemPath])
   : VersionId = {
     val versionId = VersionId.generate(usedVersionIds)
@@ -62,7 +62,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   final def updateRepo(
     versionId: VersionId,
-    change: Seq[InventoryItem] = Nil,
+    change: Seq[VersionedItem] = Nil,
     delete: Seq[ItemPath] = Nil)
   : Unit = {
     usedVersionIds += versionId

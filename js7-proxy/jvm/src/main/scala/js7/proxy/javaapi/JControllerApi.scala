@@ -75,7 +75,7 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
       .runToFuture
       .asJava
 
-  /** Update the Repo, i.e. add, change or delete inventory items.
+  /** Update the Repo, i.e. add, change or delete versioned items.
     *
     * Each `JUpdateRepoOperation` adds/replaces or deletes an item.
     *
@@ -88,7 +88,7 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
     *     signatureString)
     * }}}
     * `SignedString.of` requires three arguments:
-    *   - `jsonString` is the JSON-encoded `InventoryItem`, i.e. a Workflow or an AgentId.
+    *   - `jsonString` is the JSON-encoded `VersionedItem`, i.e. a Workflow or an AgentId.
     *     The item must include its id with `path` and `versionId`.
     *     The `versionId` must be the same as the first argument for `updateRepo`.
     *   - "PGP" or any supported signature type.

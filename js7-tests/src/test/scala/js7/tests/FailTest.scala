@@ -22,7 +22,7 @@ import scala.reflect.runtime.universe._
 final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Seq(agentId)
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
   override protected def controllerConfig = config"""
     js7.web.server.auth.public = on
     """

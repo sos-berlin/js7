@@ -6,15 +6,15 @@ import io.circe.generic.JsonCodec
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class AItem(id: ItemId[APath], content: String) extends InventoryItem {
+final case class AItem(id: VersionedItemId[APath], content: String) extends VersionedItem {
   type Self = AItem
 
   val companion = AItem
 
-  def withId(id: ItemId[APath]) = copy(id = id)
+  def withId(id: VersionedItemId[APath]) = copy(id = id)
 }
 
-object AItem extends InventoryItem.Companion[AItem] {
+object AItem extends VersionedItem.Companion[AItem] {
   type ThisItem = AItem
   type Path = APath
 

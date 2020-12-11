@@ -16,7 +16,7 @@ import js7.common.system.startup.JavaMain.runMain
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.data.agent.AgentId
-import js7.data.item.{InventoryItem, InventoryItemSigner, VersionId}
+import js7.data.item.{VersionedItem, VersionedItemSigner, VersionId}
 import js7.data.job.ExecutablePath
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -58,7 +58,7 @@ final class TestAddWorkflows(settings: Settings)
     a
   }
 
-  private def generateCommands(signer: InventoryItemSigner[InventoryItem]): Seq[UpdateRepo] = {
+  private def generateCommands(signer: VersionedItemSigner[VersionedItem]): Seq[UpdateRepo] = {
     val workflow0 = Workflow.of(Execute(WorkflowJob(agentId, ExecutablePath("EXECUTABLE"))))
     val versionCounter = AtomicInt(0)
     Observable.fromIterable(1 to settings.workflowCount)

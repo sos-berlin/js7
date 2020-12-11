@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = workflow:: Nil
+  protected val versionedItems = workflow:: Nil
   override protected def controllerConfig = config"""js7.order.remove-delay = 1s"""
     .withFallback(super.controllerConfig)
 

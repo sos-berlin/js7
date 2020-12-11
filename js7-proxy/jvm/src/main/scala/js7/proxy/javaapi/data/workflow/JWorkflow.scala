@@ -8,12 +8,12 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.common.VavrConverters._
-import js7.proxy.javaapi.data.item.JInventoryItem
+import js7.proxy.javaapi.data.item.JVersionedItem
 import js7.proxy.javaapi.data.workflow.position.JPosition
 
 @javaApi
 final case class JWorkflow(asScala: Workflow)
-extends JInventoryItem[JWorkflow, WorkflowPath]
+extends JVersionedItem[JWorkflow, WorkflowPath]
 {
   protected type AsScala = Workflow
 

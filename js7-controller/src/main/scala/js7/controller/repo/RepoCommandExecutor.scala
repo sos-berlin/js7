@@ -12,15 +12,15 @@ import js7.common.scalautil.Logger
 import js7.controller.data.ControllerCommand
 import js7.controller.repo.RepoCommandExecutor._
 import js7.core.command.CommandMeta
-import js7.data.crypt.InventoryItemVerifier
-import js7.data.item.{InventoryItem, Repo, RepoEvent}
+import js7.data.crypt.VersionedItemVerifier
+import js7.data.item.{Repo, RepoEvent, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
 
 /**
   * @author Joacim Zschimmer
   */
-final class RepoCommandExecutor(itemVerifier: InventoryItemVerifier[InventoryItem])
+final class RepoCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedItem])
 {
   // ReplaceRepo and UpdateRepo may detect equal objects and optimize the ItemChanged away,
   // if we can make sure that the different signature (due to different VersionId) refer the same trusted signer key.
@@ -50,7 +50,7 @@ final class RepoCommandExecutor(itemVerifier: InventoryItemVerifier[InventoryIte
             .sequence
             .flatMap(repo.itemToEvents(updateRepo.versionId, _, updateRepo.delete))))
 
-  private def verify(signedString: SignedString): Checked[Signed[InventoryItem]] =
+  private def verify(signedString: SignedString): Checked[Signed[VersionedItem]] =
     for (verified <- itemVerifier.verify(signedString)) yield {
       logger.info(Logger.SignatureVerified, verified.toString)
       verified.signedItem

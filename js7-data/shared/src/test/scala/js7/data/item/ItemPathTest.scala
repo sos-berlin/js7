@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.problem.{Problem, ProblemException}
-import js7.data.item.ItemId.VersionSeparator
+import js7.data.item.VersionedItemId.VersionSeparator
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -29,8 +29,8 @@ final class ItemPathTest extends AnyFreeSpec
   }
 
   "%" in {
-    assert(APath("/PATH") ~ "VERSION"            == ItemId(APath("/PATH"), VersionId("VERSION")))
-    assert(APath("/PATH") ~ VersionId("VERSION") == ItemId(APath("/PATH"), VersionId("VERSION")))
+    assert(APath("/PATH") ~ "VERSION"            == VersionedItemId(APath("/PATH"), VersionId("VERSION")))
+    assert(APath("/PATH") ~ VersionId("VERSION") == VersionedItemId(APath("/PATH"), VersionId("VERSION")))
   }
 
   "validate" in {

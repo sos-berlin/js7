@@ -53,14 +53,14 @@ import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
 import js7.data.agent.{AgentId, AgentRef, AgentRefEvent, AgentRunId}
 import js7.data.cluster.ClusterState
-import js7.data.crypt.InventoryItemVerifier
+import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
-import js7.data.item.{InventoryItem, RepoEvent}
+import js7.data.item.{RepoEvent, VersionedItem}
 import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
 import js7.data.lock.{Lock, LockId}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailedEvent, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
@@ -87,7 +87,7 @@ final class ControllerOrderKeeper(
   protected val journalActor: ActorRef @@ JournalActor.type,
   activeClusterNode: ActiveClusterNode[ControllerState],
   controllerConfiguration: ControllerConfiguration,
-  itemVerifier: InventoryItemVerifier[InventoryItem],
+  itemVerifier: VersionedItemVerifier[VersionedItem],
   testEventPublisher: EventPublisher[Any])
   (implicit protected val scheduler: Scheduler)
 extends Stash

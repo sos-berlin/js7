@@ -11,7 +11,7 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
 import js7.data.agent.AgentId
-import js7.data.crypt.InventoryItemVerifier
+import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.RepoTest._
@@ -63,7 +63,7 @@ final class RepoTest extends AnyFreeSpec
     assert(testRepo.idTo[AItem](APath("/A") ~ "UNKNOWN") == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
     assert(testRepo.idTo[AItem](APath("/X") ~ V1) == Left(UnknownKeyProblem("ItemPath", APath("/X"))))
     assert(testRepo.idTo[AItem](APath("/X") ~ V1) == Left(UnknownKeyProblem("ItemPath", APath("/X"))))
-    assert(testRepo.idTo[BItem](BPath("/Bx") ~ V1) == Left(UnknownKeyProblem("ItemId", BPath("/Bx") ~ V1)))
+    assert(testRepo.idTo[BItem](BPath("/Bx") ~ V1) == Left(UnknownKeyProblem("VersionedItemId", BPath("/Bx") ~ V1)))
     assert(testRepo.idTo[BItem](BPath("/Bx") ~ V3) == Left(ItemDeletedProblem(BPath("/Bx"))))
     assert(testRepo.idTo[AItem](APath("/A") ~ V1) == Right(a1))
     assert(testRepo.idTo[AItem](APath("/A") ~ V2) == Right(a2))
@@ -129,16 +129,16 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "toEvents" - {
-    "InventoryItem with alien version is rejected" in {
+    "VersionedItem with alien version is rejected" in {
       assert(emptyRepo.itemToEvents(V1, toSigned(a1.withVersion(V2)) :: Nil) == Left(ItemVersionDoesNotMatchProblem(VersionId("1"), a1.path ~ V2)))
     }
 
-    "InventoryItem without version is rejected" in {
+    "VersionedItem without version is rejected" in {
       // The signer signs the VersionId, too. It must not be diverge from the commands VersionId
       assert(emptyRepo.itemToEvents(V1, toSigned(a1.withoutVersion)  :: Nil) == Left(ItemVersionDoesNotMatchProblem(VersionId("1"), a1.path)))
     }
 
-    "InventoryItem with matching version" in {
+    "VersionedItem with matching version" in {
       assert(emptyRepo.itemToEvents(V1, toSigned(a1) :: Nil)
         == Right(VersionAdded(V1) :: ItemAdded(toSigned(a1)) :: Nil))
     }
@@ -283,12 +283,12 @@ object RepoTest
   private val by2 = BItem(BPath("/By") ~ V2, "Bb-2")
   private val a3 = AItem(APath("/A") ~ V3, "A-3")
 
-  private implicit val itemJsonCodec = TypedJsonCodec[InventoryItem](
+  private implicit val itemJsonCodec = TypedJsonCodec[VersionedItem](
     Subtype[AItem],
     Subtype[BItem])
 
-  private val itemSigner = new InventoryItemSigner(SillySigner.Default, itemJsonCodec)
-  private val itemVerifier = new InventoryItemVerifier(new SillySignatureVerifier, itemJsonCodec)
+  private val itemSigner = new VersionedItemSigner(SillySigner.Default, itemJsonCodec)
+  private val itemVerifier = new VersionedItemVerifier(new SillySignatureVerifier, itemJsonCodec)
   private val emptyRepo = Repo.signatureVerifying(itemVerifier)
 
   import itemSigner.toSigned

@@ -5,14 +5,14 @@ import js7.base.utils.ScalaUtils.syntax._
 /**
   * @author Joacim Zschimmer
   */
-trait InventoryItem {
-  type Self <: InventoryItem
+trait VersionedItem {
+  type Self <: VersionedItem
   type Path = companion.Path
-  type Id = ItemId[Path]
+  type Id = VersionedItemId[Path]
 
-  val companion: InventoryItem.Companion[Self]
-  def id: ItemId[Path]
-  def withId(id: ItemId[Path]): Self
+  val companion: VersionedItem.Companion[Self]
+  def id: VersionedItemId[Path]
+  def withId(id: VersionedItemId[Path]): Self
 
   final def path: Path = id.path
 
@@ -24,16 +24,16 @@ trait InventoryItem {
 
   final def withVersion(v: VersionId): Self = withId(id = id.copy(versionId = v))
 
-  def cast[A <: InventoryItem](implicit A: InventoryItem.Companion[A]): A = {
+  def cast[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): A = {
     if (A != companion) throw new ClassCastException(s"Expected ${companion.itemPathCompanion.name}, but is: $path")
     this.asInstanceOf[A]
   }
 }
 
-object InventoryItem {
-  type Companion_ = Companion[_ <: InventoryItem]
+object VersionedItem {
+  type Companion_ = Companion[_ <: VersionedItem]
 
-  trait Companion[A <: InventoryItem]
+  trait Companion[A <: VersionedItem]
   {
     type ThisItem <: A
     type Path <: ItemPath

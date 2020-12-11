@@ -22,7 +22,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.repo.RepoUpdater
 import js7.core.command.CommandMeta
-import js7.core.item.InventoryItemApi
+import js7.core.item.VersionedItemApi
 import js7.data.cluster.ClusterState
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -35,7 +35,7 @@ import scala.concurrent.duration.Deadline
 final class ControllerWebServer private(
   controllerConfiguration: ControllerConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-  itemApi: InventoryItemApi,
+  itemApi: VersionedItemApi,
   orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
   repoUpdater: RepoUpdater,
@@ -98,7 +98,7 @@ object ControllerWebServer
     scheduler: Scheduler,
     closer: Closer)
   {
-    def apply(itemApi: InventoryItemApi, orderApi: OrderApi,
+    def apply(itemApi: VersionedItemApi, orderApi: OrderApi,
       commandExecutor: ControllerCommandExecutor,
       repoUpdater: RepoUpdater,
       clusterState: Task[Checked[ClusterState]],

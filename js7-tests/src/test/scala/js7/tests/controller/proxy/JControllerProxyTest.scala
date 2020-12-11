@@ -14,7 +14,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerItems.jsonCodec
-import js7.data.item.{InventoryItem, VersionId}
+import js7.data.item.{VersionId, VersionedItem}
 import js7.data.job.RelativeExecutablePath
 import js7.data.workflow.WorkflowPath
 import js7.proxy.javaapi.JProxyContext
@@ -40,7 +40,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     """
 
   protected val agentIds = AgentId("AGENT") :: Nil
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
 
   override def beforeAll() = {
     super.beforeAll()
@@ -67,7 +67,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", ClusterProxyTest.primaryCredentials)).asJava
         val myVersionId = VersionId("MY-VERSION")
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
-          List[InventoryItem](
+          List[VersionedItem](
             workflow.withVersion(myVersionId),
             workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
           ).map(_.asJson.compactPrint).asJava,

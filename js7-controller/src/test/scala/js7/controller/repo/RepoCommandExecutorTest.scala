@@ -9,9 +9,9 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
 import js7.core.command.CommandMeta
 import js7.data.controller.ControllerItems
-import js7.data.crypt.InventoryItemVerifier
+import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.Repo.Entry
-import js7.data.item.{InventoryItem, InventoryItemSigner, Repo, VersionId}
+import js7.data.item.{Repo, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.global
@@ -24,8 +24,8 @@ final class RepoCommandExecutorTest extends AnyFreeSpec
 {
   private lazy val signer = new SillySigner(SillySignature("RepoCommandExecutorTest"))
   private lazy val signatureVerifier = signer.toVerifier
-  private lazy val itemVerifier = new InventoryItemVerifier[InventoryItem](signatureVerifier, ControllerItems.jsonCodec)
-  private lazy val itemSigner = new InventoryItemSigner[InventoryItem](signer, ControllerItems.jsonCodec)
+  private lazy val itemVerifier = new VersionedItemVerifier[VersionedItem](signatureVerifier, ControllerItems.jsonCodec)
+  private lazy val itemSigner = new VersionedItemSigner[VersionedItem](signer, ControllerItems.jsonCodec)
   private lazy val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")

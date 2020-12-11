@@ -18,7 +18,7 @@ import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.core.crypt.x509.X509SignatureVerifier
 import js7.data.controller.ControllerItems._
-import js7.data.item.{InventoryItem, VersionId}
+import js7.data.item.{VersionedItem, VersionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509Test._
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -31,7 +31,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Nil
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
   override protected lazy val verifier = {
     runProcess(s"openssl req -x509 -sha512 -newkey rsa:1024 -days 2 -subj '/CN=SIGNER' -nodes" +
       s" -keyout '$privateKeyFile' -out '$certificateFile'")
@@ -74,7 +74,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
       val publicKeyFile = dir / "test.pem"
       val v2 = VersionId("2")
 
-      itemFile := (workflow.withVersion(v2): InventoryItem)
+      itemFile := (workflow.withVersion(v2): VersionedItem)
 
       runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
       runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
@@ -90,7 +90,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
 
       locally {
         val v3 = VersionId("3")
-        itemFile := (workflow.withVersion(v3): InventoryItem)
+        itemFile := (workflow.withVersion(v3): VersionedItem)
         runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
         runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
         val signedStringV3 = SignedString(
@@ -101,7 +101,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
 
       locally {
         val v4 = VersionId("4")
-        itemFile := (workflow.withVersion(v4): InventoryItem)
+        itemFile := (workflow.withVersion(v4): VersionedItem)
         runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
         runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
         val signedStringV4 = SignedString(

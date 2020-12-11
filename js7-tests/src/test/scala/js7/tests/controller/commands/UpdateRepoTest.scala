@@ -36,7 +36,7 @@ import scala.concurrent.duration._
 final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = TestAgentId :: Nil
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
 
   override def beforeAll() = {
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=

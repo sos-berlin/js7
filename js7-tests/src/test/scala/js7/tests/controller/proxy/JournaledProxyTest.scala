@@ -38,7 +38,7 @@ final class JournaledProxyTest
 extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with ControllerAgentForScalaTest
 {
   override protected def agentIds = agentId :: Nil
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
   protected def config = ProxyConfs.defaultConfig
 
   override protected def controllerConfig = config"""

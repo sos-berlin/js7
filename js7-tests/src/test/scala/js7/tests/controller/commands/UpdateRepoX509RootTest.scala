@@ -17,7 +17,7 @@ import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.core.crypt.x509.OpensslContext
 import js7.data.controller.ControllerItems._
-import js7.data.item.{InventoryItem, VersionId}
+import js7.data.item.{VersionedItem, VersionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509RootTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -30,7 +30,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Nil
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
   //private lazy val (signer_, verifier_) = X509Signer.forTest()
   //override protected def verifier = verifier_
   private lazy val workDir = createTempDirectory("UpdateRepoX509RootTest")
@@ -71,7 +71,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
     lazy val signatureFile = signer.sign(itemFile)
 
     "Signature matches item" in {
-      itemFile := (workflow.withVersion(v2): InventoryItem)
+      itemFile := (workflow.withVersion(v2): VersionedItem)
       val signedString = SignedString.x509WithCertificate(
         itemFile.contentString,
         signatureFile.contentString,
@@ -82,7 +82,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
 
     "Signature does not match item (item tampered)" in {
       val v3 = VersionId("3")
-      itemFile := (workflow.withVersion(v3): InventoryItem)
+      itemFile := (workflow.withVersion(v3): VersionedItem)
       val signedString = SignedString(
         itemFile.contentString + "-TAMPERED",
         GenericSignature("X509", signatureFile.contentString,
@@ -95,7 +95,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
   "Add item with an unknown signer's certificate which controller fails to verify against installed root certificate" in {
     val v4 = VersionId("4")
     val itemFile = workDir / "workflow.json"
-    itemFile := (workflow.withVersion(v4): InventoryItem)
+    itemFile := (workflow.withVersion(v4): VersionedItem)
     val alienRoot = new openssl.Root("ALIEN-ROOT")
     val alienSigner = new alienRoot.Signer("ALIEN")
     val alienSignatureFile = alienSigner.sign(itemFile)

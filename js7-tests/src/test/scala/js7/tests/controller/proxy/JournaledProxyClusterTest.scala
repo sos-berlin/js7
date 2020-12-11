@@ -24,7 +24,7 @@ import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.ControllerState
 import js7.data.controller.ControllerItems.jsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.item.{InventoryItem, UpdateRepoOperation, VersionId}
+import js7.data.item.{UpdateRepoOperation, VersionId, VersionedItem}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -83,7 +83,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
         execute executable="path-to-my-script", agent="AGENT",
           arguments = { "A": "${"A" * 700}" };
       }""").orThrow.withoutSource
-    val n = calculateNumberOf[InventoryItem](200_000, workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
+    val n = calculateNumberOf[VersionedItem](200_000, workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
     logger.info(s"Adding $n Workflows")
     runControllerAndBackup() { (primary, primaryController, _, _, _) =>
       val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")

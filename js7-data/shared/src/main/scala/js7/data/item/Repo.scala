@@ -13,14 +13,14 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
-import js7.data.crypt.InventoryItemVerifier
+import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.Repo.Entry
 import js7.data.item.RepoEvent.{ItemAdded, ItemAddedOrChanged, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
 
 /**
-  * Representation of versioned InventoryItem (configuration objects).
+  * Representation of versioned VersionedItem (configuration objects).
   * @param versionSet `versionSet == versions.toSet`
   * @author Joacim Zschimmer
   */
@@ -28,7 +28,7 @@ final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
   pathToVersionToSignedItems: Map[ItemPath, List[Entry]],
-  itemVerifier: Option[InventoryItemVerifier[InventoryItem]])
+  itemVerifier: Option[VersionedItemVerifier[VersionedItem]])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
 
@@ -45,11 +45,11 @@ final case class Repo private(
   def currentVersionSize =
     currentSignedItems.size
 
-  lazy val currentVersion: Map[ItemPath, Signed[InventoryItem]] =
+  lazy val currentVersion: Map[ItemPath, Signed[VersionedItem]] =
     currentSignedItems.view.map(o => o.value.path -> o).toMap
 
-  private lazy val typeToPathToCurrentItem: InventoryItem.Companion_ => Map[ItemPath, Signed[InventoryItem]] =
-    Memoizer.nonStrict { companion: InventoryItem.Companion_ =>
+  private lazy val typeToPathToCurrentItem: VersionedItem.Companion_ => Map[ItemPath, Signed[VersionedItem]] =
+    Memoizer.nonStrict { companion: VersionedItem.Companion_ =>
       currentVersion collect {
         case (path, signedItem) if signedItem.value.companion == companion =>
           path -> signedItem
@@ -57,7 +57,7 @@ final case class Repo private(
     }
 
   /** Returns the difference to the repo as events. */
-  def itemToEvents(versionId: VersionId, changed: Iterable[Signed[InventoryItem]], deleted: Iterable[ItemPath] = Nil)
+  def itemToEvents(versionId: VersionId, changed: Iterable[Signed[VersionedItem]], deleted: Iterable[ItemPath] = Nil)
   : Checked[Seq[RepoEvent]] =
     checkItemVersions(versionId, changed)
       .flatMap { changed =>
@@ -83,7 +83,7 @@ final case class Repo private(
     val added = currentItems.view
       .filter(o => !base.exists(o.path))
       .map(o => o.path -> o)
-      .toMap[ItemPath, InventoryItem]
+      .toMap[ItemPath, VersionedItem]
     val updated = currentItems.view
       .filter(o => base.pathToItem(o.path).exists(_.id.versionId != o.id.versionId))
     val deleted = base.currentItems.view
@@ -96,33 +96,33 @@ final case class Repo private(
       .sortBy(_.path)
   }
 
-  private def checkItemVersions(versionId: VersionId, signedItems: Iterable[Signed[InventoryItem]]): Checked[Vector[Signed[InventoryItem]]] =
+  private def checkItemVersions(versionId: VersionId, signedItems: Iterable[Signed[VersionedItem]]): Checked[Vector[Signed[VersionedItem]]] =
     signedItems.toVector.traverse(o =>
       o.value.id.versionId match {
         case `versionId` => Right(o)
         case _ => Left(ItemVersionDoesNotMatchProblem(versionId, o.value.id))
       })
 
-  private def toAddedOrChanged(signedItem: Signed[InventoryItem]): Option[RepoEvent.ItemEvent] =
+  private def toAddedOrChanged(signedItem: Signed[VersionedItem]): Option[RepoEvent.ItemEvent] =
     pathToSigned(signedItem.value.path) match {
       case Right(`signedItem`) => None
       case Right(_) => Some(ItemChanged(signedItem))
       case Left(_) => Some(ItemAdded(signedItem))
     }
 
-  def typedCount[A <: InventoryItem](implicit A: InventoryItem.Companion[A]): Int =
+  def typedCount[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): Int =
     pathToVersionToSignedItems.values.view.flatten.count {
       case Entry(_, Some(signed)) if signed.value.companion == A => true
       case _ => false
     }
 
-  def currentTyped[A <: InventoryItem](implicit A: InventoryItem.Companion[A]): Map[A#Path, A] =
+  def currentTyped[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): Map[A#Path, A] =
     typeToPathToCurrentItem(A).view.mapValues(_.value).toMap.asInstanceOf[Map[A#Path, A]]
 
-  def currentItems: View[InventoryItem] =
+  def currentItems: View[VersionedItem] =
     currentSignedItems.view.map(_.value)
 
-  def currentSignedItems: View[Signed[InventoryItem]] =
+  def currentSignedItems: View[Signed[VersionedItem]] =
     for {
       versionToItem <- pathToVersionToSignedItems.values.view
       item <- versionToItem.head.maybeSignedItems
@@ -186,7 +186,7 @@ final case class Repo private(
     }
   }
 
-  def verify[A <: InventoryItem](signed: Signed[A]): Checked[A] =
+  def verify[A <: VersionedItem](signed: Signed[A]): Checked[A] =
     itemVerifier match {
       case Some(verifier) =>
         verifier.verify(signed.signedString).map(_.item).flatMap(item =>
@@ -199,7 +199,7 @@ final case class Repo private(
         Right(signed.value)
     }
 
-  private def addEntry(path: ItemPath, itemOption: Option[Signed[InventoryItem]]): Repo = {
+  private def addEntry(path: ItemPath, itemOption: Option[Signed[VersionedItem]]): Repo = {
     val version = versions.head
     copy(pathToVersionToSignedItems =
       pathToVersionToSignedItems +
@@ -213,8 +213,8 @@ final case class Repo private(
       case Some(entries) => entries.head.maybeSignedItems.isDefined  // Deleted?
     }
 
-  /** Returns the current InventoryItem to a Path. */
-  def pathTo[A <: InventoryItem](path: A#Path)(implicit A: InventoryItem.Companion[A]): Checked[A] =
+  /** Returns the current VersionedItem to a Path. */
+  def pathTo[A <: VersionedItem](path: A#Path)(implicit A: VersionedItem.Companion[A]): Checked[A] =
     pathToVersionToSignedItems
       .checked(path)
       .flatMap(_.head
@@ -222,34 +222,34 @@ final case class Repo private(
         .toChecked(ItemDeletedProblem(path))
         .map(_.value.asInstanceOf[A]))
 
-  def pathToItem(path: ItemPath): Checked[InventoryItem] =
+  def pathToItem(path: ItemPath): Checked[VersionedItem] =
     pathToSigned(path)
       .map(_.value)
 
-  private def pathToSigned(path: ItemPath): Checked[Signed[InventoryItem]] =
+  private def pathToSigned(path: ItemPath): Checked[Signed[VersionedItem]] =
     pathToVersionToSignedItems
       .checked(path)
       .flatMap(_.head
         .maybeSignedItems
         .toChecked(ItemDeletedProblem(path)))
 
-  /** Returns the InventoryItem to a ItemId. */
-  def idTo[A <: InventoryItem](id: ItemId[A#Path])(implicit A: InventoryItem.Companion[A]): Checked[A] =
+  /** Returns the VersionedItem to a VersionedItemId. */
+  def idTo[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A]): Checked[A] =
     idToSigned[A](id).map(_.value)
 
-  /** Returns the InventoryItem to a ItemId. */
-  def idToSigned[A <: InventoryItem](id: ItemId[A#Path])(implicit A: InventoryItem.Companion[A]): Checked[Signed[A]] =
+  /** Returns the VersionedItem to a VersionedItemId. */
+  def idToSigned[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A]): Checked[Signed[A]] =
     for {
       versionToSignedItem <- pathToVersionToSignedItems.checked(id.path)
       itemOption <- versionToSignedItem
         .collectFirst { case Entry(id.versionId, o) => o }
-        .toChecked(UnknownKeyProblem("ItemId", id))
+        .toChecked(UnknownKeyProblem("VersionedItemId", id))
         .orElse(
           for {
             history <- historyBefore(id.versionId)
-            fb <- findInHistory(versionToSignedItem, history.contains) toChecked UnknownKeyProblem("ItemId", id)
+            fb <- findInHistory(versionToSignedItem, history.contains) toChecked UnknownKeyProblem("VersionedItemId", id)
           } yield fb
-        ): Checked[Option[Signed[InventoryItem]]]
+        ): Checked[Option[Signed[VersionedItem]]]
       signedItem <- itemOption.toChecked(ItemDeletedProblem(id.path))
     } yield signedItem.copy(signedItem.value.cast[A])
 
@@ -268,7 +268,7 @@ final case class Repo private(
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
   private[item] def toEvents: Seq[RepoEvent] = {
-    type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[InventoryItem/*added/updated*/]]
+    type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[VersionedItem/*added/updated*/]]
     val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
       pathToVersionToSignedItems.toVector
         .flatMap { case (path, entries) =>
@@ -318,13 +318,13 @@ object Repo
 {
   val empty = new Repo(Nil, Set.empty, Map.empty, None)
 
-  def signatureVerifying(itemVerifier: InventoryItemVerifier[InventoryItem]): Repo =
+  def signatureVerifying(itemVerifier: VersionedItemVerifier[VersionedItem]): Repo =
     new Repo(Nil, Set.empty, Map.empty, Some(itemVerifier))
 
   @TestOnly
   private[item] object testOnly {
     implicit final class OpRepo(private val underlying: Repo.type) extends AnyVal {
-      def fromOp(versionIds: Seq[VersionId], operations: Iterable[Operation], itemVerifier: Option[InventoryItemVerifier[InventoryItem]]) =
+      def fromOp(versionIds: Seq[VersionId], operations: Iterable[Operation], itemVerifier: Option[VersionedItemVerifier[VersionedItem]]) =
         new Repo(
           versionIds.toList,
           versionIds.toSet,
@@ -335,20 +335,20 @@ object Repo
     }
 
     sealed trait Operation {
-      def fold[A](whenChanged: Signed[InventoryItem] => A, whenDeleted: ItemId_ => A): A
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: ItemId_ => A): A
     }
-    final case class Changed(item: Signed[InventoryItem]) extends Operation {
-      def fold[A](whenChanged: Signed[InventoryItem] => A, whenDeleted: ItemId_ => A) = whenChanged(item)
+    final case class Changed(item: Signed[VersionedItem]) extends Operation {
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: ItemId_ => A) = whenChanged(item)
     }
     final case class Deleted(id: ItemId_) extends Operation {
-      def fold[A](whenChanged: Signed[InventoryItem] => A, whenDeleted: ItemId_ => A) = whenDeleted(id)
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: ItemId_ => A) = whenDeleted(id)
     }
   }
 
-  final case class Entry private(versionId: VersionId, maybeSignedItems: Option[Signed[InventoryItem]])
+  final case class Entry private(versionId: VersionId, maybeSignedItems: Option[Signed[VersionedItem]])
 
   /** None: not known at or before this VersionId; Some(None): deleted at or before this VersionId. */
-  private def findInHistory(entries: List[Entry], isKnownVersion: VersionId => Boolean): Option[Option[Signed[InventoryItem]]] =
+  private def findInHistory(entries: List[Entry], isKnownVersion: VersionId => Boolean): Option[Option[Signed[VersionedItem]]] =
     entries
       .dropWhile(e => !isKnownVersion(e.versionId))
       .map(_.maybeSignedItems)

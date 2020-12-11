@@ -17,7 +17,7 @@ final class OrderEventHandler(
   idToWorkflow: WorkflowId => Checked[Workflow],
   idToOrder: OrderId => Checked[Order[Order.State]])
 {
-  private val _offeredToAwaitingOrder = mutable.Map[OrderId, Set[OrderId]]()  // FIXME Verschwindet, wenn InventoryItem erneut eingelesen werden. Event OrderOffered?
+  private val _offeredToAwaitingOrder = mutable.Map[OrderId, Set[OrderId]]()  // FIXME Verschwindet, wenn VersionedItem erneut eingelesen werden. Event OrderOffered?
 
   def offeredToAwaitingOrder(orderId: OrderId): Set[OrderId] =
     _offeredToAwaitingOrder.getOrElse(orderId, Set.empty)

@@ -10,9 +10,9 @@ import js7.base.problem.Checked.Ops
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.tests.IntentoryItemsTest._
-import js7.core.item.InventoryItemReader
-import js7.data.item.IntentoryItems.diffInventoryItems
-import js7.data.item.{IntentoryItems, InventoryItem, ItemId, ItemPath, RepoChange, SourceType, VersionId}
+import js7.core.item.VersionedItemReader
+import js7.data.item.IntentoryItems.diffVersionedItems
+import js7.data.item.{IntentoryItems, ItemPath, RepoChange, SourceType, VersionId, VersionedItem, VersionedItemId}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
@@ -22,9 +22,9 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class IntentoryItemsTest extends AnyFreeSpec
 {
-  "diffInventoryItems" - {
+  "diffVersionedItems" - {
     "empty"  in {
-      assert(diffInventoryItems(Nil, Nil).isEmpty)
+      assert(diffVersionedItems(Nil, Nil).isEmpty)
     }
 
     lazy val a = Workflow.of(WorkflowPath("/A") ~ "1", Fail(None))
@@ -33,7 +33,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
 
     "different order" in {
       assert(
-        diffInventoryItems(
+        diffVersionedItems(
           a :: b :: Nil,
           b :: a :: Nil
         ).isEmpty)
@@ -41,7 +41,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
 
     "one added" in {
       assert(
-        diffInventoryItems(
+        diffVersionedItems(
           a :: b :: c :: Nil,
           a :: b :: Nil)
         == RepoChange.Added(c) :: Nil)
@@ -49,7 +49,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
 
     "one deleted" in {
       assert(
-        diffInventoryItems(
+        diffVersionedItems(
           a :: Nil,
           a :: b :: Nil)
         == RepoChange.Deleted(b.path) :: Nil)
@@ -59,7 +59,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
       val bUpdated = Workflow.of(WorkflowPath("/B") ~ "1", Fail(None), Fail(None))
       assert(bUpdated != b)
       assert(
-        diffInventoryItems(
+        diffVersionedItems(
           a :: bUpdated :: Nil,
           a :: b :: Nil
         ) == RepoChange.Updated(bUpdated) :: Nil)
@@ -69,7 +69,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
       val aUpdated = Workflow.of(WorkflowPath("/A") ~ "1", Fail(None), Fail(None))
       assert(aUpdated != a)
       assert(
-        diffInventoryItems(
+        diffVersionedItems(
           aUpdated :: c :: Nil,
           a :: b :: Nil
         ).toSet == Set(
@@ -80,7 +80,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
 
     "version updated" in {
       assert(
-        diffInventoryItems(
+        diffVersionedItems(
           a :: b.withVersion(VersionId("CHANGED")) :: Nil,
           a :: b :: Nil
         ) == RepoChange.Updated(b withVersion VersionId("CHANGED")) :: Nil)
@@ -88,7 +88,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
 
     "version updated, ignoreVersion=true" in {
       assert(
-        diffInventoryItems(
+        diffVersionedItems(
           a :: b.withVersion(VersionId("CHANGED")) :: Nil,
           a :: b :: Nil,
           ignoreVersion = true
@@ -104,7 +104,7 @@ final class IntentoryItemsTest extends AnyFreeSpec
         RepoChange.Added(CWorkflow withVersion V1),
         RepoChange.Updated(D1Workflow withVersion V1)))
 
-    assert(diff == IntentoryItems.Diff[ItemPath, InventoryItem](
+    assert(diff == IntentoryItems.Diff[ItemPath, VersionedItem](
       added = List(BTestItem withVersion V0, CWorkflow withVersion V1),
       updated = List(D1Workflow withVersion V1),
       deleted = List(BWorkflow.path)))
@@ -154,27 +154,27 @@ object IntentoryItemsTest {
     protected def unchecked(string: String) = new TestPath(string)
   }
 
-  private[tests] type TestId = ItemId[TestPath]
-  private[tests] val TestId = new ItemId.Companion[TestPath] {}
+  private[tests] type TestId = VersionedItemId[TestPath]
+  private[tests] val TestId = new VersionedItemId.Companion[TestPath] {}
 
-  private[tests] final case class TestItem(id: TestId, content: String) extends InventoryItem {
+  private[tests] final case class TestItem(id: TestId, content: String) extends VersionedItem {
     type Self = TestItem
     val companion = TestItem
 
-    def withId(id: ItemId[Path]) = copy(id)
+    def withId(id: VersionedItemId[Path]) = copy(id)
   }
-  private[tests] object TestItem extends InventoryItem.Companion[TestItem] {
+  private[tests] object TestItem extends VersionedItem.Companion[TestItem] {
     type ThisItem = TestItem
     type Path = TestPath
     def itemPathCompanion = TestPath
     implicit val jsonCodec = deriveCodec[TestItem]
   }
 
-  private[tests] object TestItemReader extends InventoryItemReader
+  private[tests] object TestItemReader extends VersionedItemReader
   {
     val companion = TestItem
 
-    protected def read(testId: ItemId[TestPath], byteArray: ByteArray) = {
+    protected def read(testId: VersionedItemId[TestPath], byteArray: ByteArray) = {
       case t: SourceType.JsonLike =>
         readAnonymousJsonLike(t, byteArray).map(_ withId testId)
     }

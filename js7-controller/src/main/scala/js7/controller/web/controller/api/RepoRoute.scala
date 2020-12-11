@@ -26,8 +26,8 @@ import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.RepoRoute.{ExitStreamException, _}
 import js7.core.web.EntitySizeLimitProvider
-import js7.data.crypt.InventoryItemVerifier.Verified
-import js7.data.item.{InventoryItem, ItemPath, UpdateRepoOperation, VersionId}
+import js7.data.crypt.VersionedItemVerifier.Verified
+import js7.data.item.{ItemPath, UpdateRepoOperation, VersionId, VersionedItem}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
@@ -57,7 +57,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                 val startedAt = now
                 var byteCount = 0L
                 val versionId = SetOnce[VersionId]
-                val addOrReplace = Vector.newBuilder[Verified[InventoryItem]]
+                val addOrReplace = Vector.newBuilder[Verified[VersionedItem]]
                 val delete = mutable.Buffer[ItemPath]()
                 val problemOccurred = AtomicAny[Problem](null)
                 httpEntity
@@ -86,7 +86,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .foreachL {
                     case UpdateRepoOperation.Delete(path) =>
                       delete += path
-                    case Right(verifiedItem: Verified[InventoryItem] @unchecked) =>
+                    case Right(verifiedItem: Verified[VersionedItem] @unchecked) =>
                       addOrReplace += verifiedItem
                     case Left(_) =>
                     case UpdateRepoOperation.AddVersion(v) =>
@@ -131,7 +131,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
       }
     }
 
-  private def verify(signedString: SignedString): Checked[Verified[InventoryItem]] = {
+  private def verify(signedString: SignedString): Checked[Verified[VersionedItem]] = {
     val verified = repoUpdater.itemVerifier.verify(signedString)
     verified match {
       case Left(problem) => logger.warn(problem.toString)

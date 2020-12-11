@@ -3,7 +3,7 @@ package js7.proxy.javaapi.data.workflow
 import io.vavr.control.{Either => VEither}
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
-import js7.data.item.{ItemId, VersionId}
+import js7.data.item.{VersionId, VersionedItemId}
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import js7.proxy.javaapi.data.common.JJsonable
 import js7.proxy.javaapi.data.item.JItemId
@@ -33,6 +33,6 @@ object JWorkflowId extends JJsonable.Companion[JWorkflowId]
   override def fromJson(jsonString: String): VEither[Problem, JWorkflowId] =
     super.fromJson(jsonString)
 
-  protected val jsonEncoder = ItemId.jsonEncoder[WorkflowPath]
-  protected val jsonDecoder = ItemId.jsonDecoder[WorkflowPath]
+  protected val jsonEncoder = VersionedItemId.jsonEncoder[WorkflowPath]
+  protected val jsonDecoder = VersionedItemId.jsonDecoder[WorkflowPath]
 }

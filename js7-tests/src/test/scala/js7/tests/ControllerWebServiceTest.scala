@@ -67,7 +67,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   private lazy val uri = controller.localUri
 
   protected val agentIds = TestAgentId :: AgentId("AGENT-A") :: Nil
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
   private lazy val agent1Uri = directoryProvider.agents(0).localUri
   private lazy val agent2Uri = directoryProvider.agents(1).localUri
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "ControllerWebServiceTest", uri, "/controller")

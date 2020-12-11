@@ -25,7 +25,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false

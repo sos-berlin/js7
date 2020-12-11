@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class IfTest extends AnyFreeSpec {
 
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, inventoryItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentId :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST-RC$sh"), jobScript)
 

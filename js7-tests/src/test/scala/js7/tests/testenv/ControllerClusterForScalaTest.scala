@@ -22,7 +22,7 @@ import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentId
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
-import js7.data.item.InventoryItem
+import js7.data.item.VersionedItem
 import js7.data.job.RelativeExecutablePath
 import js7.data.node.NodeId
 import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
@@ -39,7 +39,7 @@ trait ControllerClusterForScalaTest
   this: TestSuite =>
 
   protected def agentIds: Seq[AgentId] = AgentId("AGENT") :: Nil
-  protected def inventoryItems: Seq[InventoryItem]
+  protected def versionedItems: Seq[VersionedItem]
   protected def shellScript = script(0.s)
 
   protected def configureClusterNodes = true
@@ -73,7 +73,7 @@ trait ControllerClusterForScalaTest
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentIds.size)
       val timing = ClusterTiming(1.s, 5.s)
-      val primary = new DirectoryProvider(agentIds, inventoryItems, testName = Some(s"$testName-Primary"),
+      val primary = new DirectoryProvider(agentIds, versionedItems, testName = Some(s"$testName-Primary"),
         controllerConfig = combineArgs(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""

@@ -30,7 +30,7 @@ import scala.collection.immutable.Queue
 final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Seq(agentId)
-  protected val inventoryItems = Nil
+  protected val versionedItems = Nil
   override protected def controllerConfig = config"""
     js7.web.server.auth.public = on
     """

@@ -27,7 +27,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = workflow :: Nil
+  protected val versionedItems = workflow :: Nil
   override protected def controllerConfig = config"js7.journal.release-events-delay = 0s"
     .withFallback(super.controllerConfig)
 

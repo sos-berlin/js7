@@ -28,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = TestWorkflow :: Nil
+  protected val versionedItems = TestWorkflow :: Nil
   override protected def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.akka.http.connection-pool-shutdown-timeout = 0s

@@ -53,9 +53,9 @@ import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetRead
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerItems
-import js7.data.crypt.InventoryItemVerifier
+import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
-import js7.data.item.InventoryItem
+import js7.data.item.VersionedItem
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, OrderEvent}
 import monix.eval.Task
@@ -239,7 +239,7 @@ object RunningController
     private implicit val scheduler = injector.instance[Scheduler]
     private implicit lazy val closer = injector.instance[Closer]
     private implicit lazy val actorSystem = injector.instance[ActorSystem]
-    private lazy val itemVerifier = new InventoryItemVerifier(
+    private lazy val itemVerifier = new VersionedItemVerifier(
       GenericSignatureVerifier(controllerConfiguration.config).orThrow,
       ControllerItems.jsonCodec)
     import controllerConfiguration.{akkaAskTimeout, journalMeta}
@@ -465,7 +465,7 @@ object RunningController
   }
 
   private class MyRepoUpdater(
-    val itemVerifier: InventoryItemVerifier[InventoryItem],
+    val itemVerifier: VersionedItemVerifier[VersionedItem],
     orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends RepoUpdater

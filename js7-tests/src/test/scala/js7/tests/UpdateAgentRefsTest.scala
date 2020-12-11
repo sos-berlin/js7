@@ -29,7 +29,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentIds = Nil
-  protected val inventoryItems = workflow :: Nil
+  protected val versionedItems = workflow :: Nil
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
   private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory, agentId, "AGENT", agentPort1)
   private lazy val controller = directoryProvider.startController() await 99.s

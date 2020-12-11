@@ -11,7 +11,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.data.agent.AgentId
-import js7.data.item.InventoryItem
+import js7.data.item.VersionedItem
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
 
@@ -31,7 +31,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentIds,
-    inventoryItems = inventoryItems,
+    versionedItems = versionedItems,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,
     agentHttpsMutual = agentHttpsMutual,
@@ -55,12 +55,12 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def provideAgentClientCertificate = false
   protected def controllerTrustStores: Iterable[JavaResource] = Nil
   protected def controllerConfig: Config = ConfigFactory.empty
-  protected def inventoryItems: Seq[InventoryItem]
+  protected def versionedItems: Seq[VersionedItem]
   protected def signer: DocumentSigner = DirectoryProvider.defaultSigner
   protected def verifier: SignatureVerifier = DirectoryProvider.defaultVerifier
 
-  protected final def toSigned(item: InventoryItem) = directoryProvider.toSigned(item)
-  protected final def sign(item: InventoryItem) = directoryProvider.sign(item)
+  protected final def toSigned(item: VersionedItem) = directoryProvider.toSigned(item)
+  protected final def sign(item: VersionedItem) = directoryProvider.sign(item)
 
   override def beforeAll() = {
     super.beforeAll()

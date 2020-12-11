@@ -41,7 +41,7 @@ import scala.collection.mutable
 final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = workflow :: Nil
+  protected val versionedItems = workflow :: Nil
   private lazy val uri = controller.localUri
   private lazy val controllerApi = new AkkaHttpControllerApi(
     uri,

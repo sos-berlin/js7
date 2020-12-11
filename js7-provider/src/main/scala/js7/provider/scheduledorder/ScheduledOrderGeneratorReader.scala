@@ -5,17 +5,17 @@ import java.time.ZoneId
 import js7.base.data.ByteArray
 import js7.base.problem.Problem
 import js7.common.scalautil.xmls.XmlSources.stringToSource
-import js7.core.item.InventoryItemReader
-import js7.data.item.{ItemId, SourceType}
+import js7.core.item.VersionedItemReader
+import js7.data.item.{SourceType, VersionedItemId}
 
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends InventoryItemReader
+final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends VersionedItemReader
 {
   val companion = ScheduledOrderGenerator
 
-  def read(id: ItemId[ScheduledOrderGeneratorPath], source: ByteArray) = {
+  def read(id: VersionedItemId[ScheduledOrderGeneratorPath], source: ByteArray) = {
     case SourceType.Xml => ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)
   }
 

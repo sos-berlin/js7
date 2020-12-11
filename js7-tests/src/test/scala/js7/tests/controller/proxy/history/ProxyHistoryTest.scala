@@ -47,7 +47,7 @@ import scala.language.implicitConversions
 
 final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
-  override protected val inventoryItems = TestWorkflow :: Nil
+  override protected val versionedItems = TestWorkflow :: Nil
   override protected val agentIds = AAgentId :: BAgentId :: Nil
   private val controllerConfig = config"""
     js7.proxy.mirror.torn-older = 0s  # Should be irrelevant

@@ -36,7 +36,7 @@ import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
-import js7.data.crypt.InventoryItemVerifier
+import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
@@ -83,7 +83,7 @@ with Stash {
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
-  private val workflowVerifier = new InventoryItemVerifier(signatureVerifier, Workflow.topJsonDecoder)
+  private val workflowVerifier = new VersionedItemVerifier(signatureVerifier, Workflow.topJsonDecoder)
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)

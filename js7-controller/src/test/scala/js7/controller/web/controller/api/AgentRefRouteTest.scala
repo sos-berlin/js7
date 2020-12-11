@@ -32,11 +32,11 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
       agentRefRoute
     }
 
-  // InventoryItemOverview
+  // VersionedItemOverview
   //AgentUri in {
   //  Get(AgentUri) ~> Accept(`application/json`) ~> route ~> check {
   //    assert(status == OK)
-  //    assert(responseAs[InventoryItemOverview.Standard] == InventoryItemOverview.Standard(count = nameToAgent.size))
+  //    assert(responseAs[VersionedItemOverview.Standard] == VersionedItemOverview.Standard(count = nameToAgent.size))
   //  }
   //}
 

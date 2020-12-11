@@ -42,7 +42,7 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JWorkflow.apply)
       .toVavr
 
-  /** Looks up an AgentRef InventoryItem in the current version. */
+  /** Looks up an AgentRef VersionedItem in the current version. */
   def nameToAgentRef(name: AgentId): VEither[Problem, JAgentRef] =
     asScala.nameToAgent.checked(name)
       .map(_.agentRef)

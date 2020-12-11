@@ -10,7 +10,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 private[cluster] trait ControllerClusterTester extends AnyFreeSpec with ControllerClusterForScalaTest
 {
-  override protected def inventoryItems = TestWorkflow :: Nil
+  override protected def versionedItems = TestWorkflow :: Nil
   override protected def shellScript = ControllerClusterTester.shellScript
 }
 

@@ -32,7 +32,7 @@ import scala.concurrent.duration._
 final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
+  protected val versionedItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) a.writeExecutable(executablePath, script(2.s))

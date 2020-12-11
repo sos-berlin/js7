@@ -7,25 +7,25 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.common.http.CirceToYaml.yamlToJson
-import js7.core.item.InventoryItemReader._
-import js7.data.item.{InventoryItem, ItemId, ItemId_, SourceType, ItemPath}
+import js7.core.item.VersionedItemReader._
+import js7.data.item.{ItemId_, ItemPath, SourceType, VersionedItem, VersionedItemId}
 
 /**
   * @author Joacim Zschimmer
   */
-trait InventoryItemReader
+trait VersionedItemReader
 {
-  val companion: InventoryItem.Companion_
+  val companion: VersionedItem.Companion_
 
   import companion.{ThisItem, Path => ThisItemPath}
 
-  protected def read(id: ItemId[ThisItemPath], byteArray: ByteArray): PartialFunction[SourceType, Checked[ThisItem]]
+  protected def read(id: VersionedItemId[ThisItemPath], byteArray: ByteArray): PartialFunction[SourceType, Checked[ThisItem]]
 
   def convertFromJson(json: Json): Checked[ThisItem]
 
   private[item] def readUntyped(id: ItemId_, byteArray: ByteArray, sourceType: SourceType): Checked[ThisItem] = {
-    assertThat(id.path.companion eq itemPathCompanion, "InventoryItemReader readUntyped")
-    val result: Checked[ThisItem] = read(id.asInstanceOf[ItemId[ThisItemPath]], byteArray).applyOrElse(sourceType,
+    assertThat(id.path.companion eq itemPathCompanion, "VersionedItemReader readUntyped")
+    val result: Checked[ThisItem] = read(id.asInstanceOf[VersionedItemId[ThisItemPath]], byteArray).applyOrElse(sourceType,
       (_: SourceType) => Problem(s"Unrecognized SourceType '$sourceType' for path '$id'"))
     result.mapProblem(p => SourceProblem(id.path, sourceType, p))
   }
@@ -45,7 +45,7 @@ trait InventoryItemReader
   private[item] def itemPathCompanion: ItemPath.Companion[ThisItemPath] = companion.itemPathCompanion
 }
 
-object InventoryItemReader
+object VersionedItemReader
 {
   final case class SourceProblem private(path: ItemPath, sourceType: SourceType, underlying: Problem)
     extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))

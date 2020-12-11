@@ -3,7 +3,7 @@ package js7.data.item
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.base.crypt.{GenericSignature, Signed, SignedString}
+import js7.base.crypt.{Signed, SignedString}
 import js7.data.controller.ControllerItems._
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.RepoEventTest._
@@ -31,7 +31,7 @@ final class RepoEventTest extends AnyFreeSpec {
 
     "ItemAdded" in {
       testJson[RepoEvent](
-        ItemAdded(Signed(workflow, SignedString.pgp((workflow: InventoryItem).asJson.compactPrint, "SIGNATURE"))),
+        ItemAdded(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "ItemAdded",
           "path": "Workflow:/WORKFLOW",
@@ -47,7 +47,7 @@ final class RepoEventTest extends AnyFreeSpec {
 
     "ItemChanged" in {
       testJson[RepoEvent](
-        ItemChanged(Signed(workflow, SignedString.pgp((workflow: InventoryItem).asJson.compactPrint, "SIGNATURE"))),
+        ItemChanged(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "ItemChanged",
           "path": "Workflow:/WORKFLOW",

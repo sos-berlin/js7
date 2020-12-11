@@ -12,7 +12,7 @@ import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.item.{InventoryItem, ItemId}
+import js7.data.item.{VersionedItem, VersionedItemId}
 import js7.data.job.JobKey
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
@@ -32,7 +32,7 @@ final case class Workflow private(
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   source: Option[String],
   outer: Option[Workflow])
-extends InventoryItem
+extends VersionedItem
 {
   override def equals(o: Any) = o match {
     case o: Workflow =>
@@ -55,7 +55,7 @@ extends InventoryItem
     numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _, _)) => maybeLabel.map(_ -> nr) }
       .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
-  def withId(id: ItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
+  def withId(id: VersionedItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
 
   private def checked: Checked[Workflow] = {
     val problems = labeledInstructions.map (_.instruction).collect {
@@ -382,7 +382,7 @@ extends InventoryItem
     s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
 }
 
-object Workflow extends InventoryItem.Companion[Workflow] {
+object Workflow extends VersionedItem.Companion[Workflow] {
   type ThisItem = Workflow
   type Path = WorkflowPath
 

@@ -25,7 +25,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.AgentId
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
-import js7.data.item.InventoryItemSigner
+import js7.data.item.VersionedItemSigner
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
@@ -152,7 +152,7 @@ private object OrderAgentTest
       |""".stripMargin
 
   private val (signer, verifier) = PgpSigner.forTest()
-  private val itemSigner = new InventoryItemSigner(signer, Workflow.jsonEncoder)
+  private val itemSigner = new VersionedItemSigner(signer, Workflow.jsonEncoder)
   private val SignedSimpleWorkflow = itemSigner.sign(SimpleTestWorkflow)
 
   private def toExpectedOrder(order: Order[Order.State]) =

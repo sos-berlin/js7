@@ -1,12 +1,12 @@
 package js7.data
 
-import js7.data.item.ItemId
+import js7.data.item.VersionedItemId
 
 /**
   * @author Joacim Zschimmer
   */
 package object workflow
 {
-  type WorkflowId = ItemId[WorkflowPath]
-  val WorkflowId = new ItemId.Companion[WorkflowPath] {}
+  type WorkflowId = VersionedItemId[WorkflowPath]
+  val WorkflowId = new VersionedItemId.Companion[WorkflowPath] {}
 }

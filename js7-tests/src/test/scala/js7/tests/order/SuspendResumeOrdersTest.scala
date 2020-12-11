@@ -33,7 +33,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: tryWorkflow :: Nil
+  protected val versionedItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: tryWorkflow :: Nil
   override def controllerConfig = config"js7.journal.remove-obsolete-files = false" withFallback super.controllerConfig
 
   override def beforeAll() = {

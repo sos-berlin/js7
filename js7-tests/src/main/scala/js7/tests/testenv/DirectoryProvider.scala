@@ -34,7 +34,7 @@ import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, Upda
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerItems
-import js7.data.item.{InventoryItem, InventoryItemSigner, ItemPath, VersionId}
+import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.job.RelativeExecutablePath
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -51,7 +51,7 @@ import scala.util.control.NonFatal
   */
 final class DirectoryProvider(
   agentIds: Seq[AgentId],
-  inventoryItems: Seq[InventoryItem] = Nil,
+  versionedItems: Seq[VersionedItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
@@ -105,10 +105,10 @@ extends HasCloser
     agents foreach prepareAgentFiles
   }
 
-  val itemSigner = new InventoryItemSigner(signer, ControllerItems.jsonCodec)
+  val itemSigner = new VersionedItemSigner(signer, ControllerItems.jsonCodec)
 
-  val toSigned: InventoryItem => Signed[InventoryItem] = o => Signed(o, sign(o))
-  val sign: InventoryItem => SignedString = itemSigner.sign
+  val toSigned: VersionedItem => Signed[VersionedItem] = o => Signed(o, sign(o))
+  val sign: VersionedItem => SignedString = itemSigner.sign
 
   def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
     runAgents()(agents =>
@@ -143,7 +143,7 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    items: Seq[InventoryItem] = inventoryItems,
+    items: Seq[VersionedItem] = versionedItems,
     name: String = controllerName)
   : Task[RunningController]
   =
@@ -195,7 +195,7 @@ extends HasCloser
   def updateRepo(
     controller: RunningController,
     versionId: VersionId,
-    change: Seq[InventoryItem] = Nil,
+    change: Seq[VersionedItem] = Nil,
     delete: Seq[ItemPath] = Nil)
   : Unit =
     controller.executeCommandAsSystemUser(UpdateRepo(

@@ -13,7 +13,7 @@ import js7.controller.agent.AgentDriver.{Input, Queueable}
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.agent.CommandQueueTest._
 import js7.data.agent.AgentId
-import js7.data.item.InventoryItemSigner
+import js7.data.item.VersionedItemSigner
 import js7.data.job.ExecutablePath
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.instructions.Execute
@@ -134,7 +134,7 @@ object CommandQueueTest {
   private val TestAgentId = AgentId("AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("/A") ~ "VERSION",
     Execute(WorkflowJob(TestAgentId, ExecutablePath("EXECUTABLE"))))
-  private val itemSigner = new InventoryItemSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
+  private val itemSigner = new VersionedItemSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
   private val signedWorkflow: Signed[Workflow] = itemSigner.toSigned(TestWorkflow)
 
   private def toQueuedInputResponse(order: Order[Order.IsFreshOrReady]) =

@@ -9,20 +9,20 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.core.crypt.pgp.PgpCommons.RichPGPPublicKey
 import js7.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
-import js7.core.item.InventoryItemVerifierTest._
-import js7.data.crypt.InventoryItemVerifier
-import js7.data.item.{InventoryItem, InventoryItemSigner}
+import js7.core.item.VersionedItemVerifierTest._
+import js7.data.crypt.VersionedItemVerifier
+import js7.data.item.{VersionedItem, VersionedItemSigner}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class InventoryItemVerifierTest extends AnyFreeSpec
+final class VersionedItemVerifierTest extends AnyFreeSpec
 {
-  "InventoryItemSigner.sign" in {
-    implicit val jsonCodec = InventoryItemVerifierTest.jsonCodec
-    val workflowString = jsonCodec(workflow: InventoryItem).asJson.compactPrint
+  "VersionedItemSigner.sign" in {
+    implicit val jsonCodec = VersionedItemVerifierTest.jsonCodec
+    val workflowString = jsonCodec(workflow: VersionedItem).asJson.compactPrint
 
     def check() = {
       val signature = signer.signString(workflowString).toGenericSignature
@@ -39,7 +39,7 @@ final class InventoryItemVerifierTest extends AnyFreeSpec
     def check() = {
       val signedString = itemSigner.sign(workflow)
       assert(signedString == itemSigner.sign(workflow))
-      assert(itemVerifier.verify(signedString) == Right(InventoryItemVerifier.Verified(Signed(workflow, signedString), signerIds)))
+      assert(itemVerifier.verify(signedString) == Right(VersionedItemVerifier.Verified(Signed(workflow, signedString), signerIds)))
     }
     try check()
     catch { case _: Throwable =>
@@ -54,14 +54,14 @@ final class InventoryItemVerifierTest extends AnyFreeSpec
   }
 }
 
-object InventoryItemVerifierTest
+object VersionedItemVerifierTest
 {
   private val workflow = {
     val workflowScript = """define workflow { execute executable="SCRIPT.cmd", agent="AGENT"; }"""
     WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "1.0", workflowScript).orThrow
   }
 
-  private val signerIds = SignerId("InventoryItemVerifierTest") :: Nil
+  private val signerIds = SignerId("VersionedItemVerifierTest") :: Nil
 
   private val (signer, verifier) = {
     val password = SecretString("TEST-PASSWORD")
@@ -71,8 +71,8 @@ object InventoryItemVerifierTest
     (signer, verifier)
   }
 
-  private implicit val jsonCodec = TypedJsonCodec[InventoryItem](
+  private implicit val jsonCodec = TypedJsonCodec[VersionedItem](
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
-  private val itemSigner = new InventoryItemSigner(signer, jsonCodec)
-  private val itemVerifier = new InventoryItemVerifier(verifier, jsonCodec)
+  private val itemSigner = new VersionedItemSigner(signer, jsonCodec)
+  private val itemVerifier = new VersionedItemVerifier(verifier, jsonCodec)
 }

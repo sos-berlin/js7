@@ -24,8 +24,8 @@ import js7.core.crypt.generic.MessageSigners
 import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerItems
-import js7.data.item.IntentoryItems.diffInventoryItems
-import js7.data.item.{IntentoryItems, InventoryItem, InventoryItemSigner, ItemPath, VersionId}
+import js7.data.item.IntentoryItems.diffVersionedItems
+import js7.data.item.{IntentoryItems, ItemPath, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -42,7 +42,7 @@ import scala.jdk.CollectionConverters._
   * @author Joacim Zschimmer
   */
 final class Provider(
-  itemSigner: InventoryItemSigner[InventoryItem],
+  itemSigner: VersionedItemSigner[VersionedItem],
   protected val conf: ProviderConfiguration)
 extends HasCloser with Observing with ProvideActorSystem
 {
@@ -120,12 +120,12 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   @TestOnly
-  def testControllerDiff: Task[Checked[IntentoryItems.Diff[ItemPath, InventoryItem]]] =
+  def testControllerDiff: Task[Checked[IntentoryItems.Diff[ItemPath, VersionedItem]]] =
     loginUntilReachable >> controllerDiff(readDirectory())
 
   /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[IntentoryItems.Diff[ItemPath, InventoryItem]]] =
+  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[IntentoryItems.Diff[ItemPath, VersionedItem]]] =
     for {
       pair <- Task.parZip2(readLocalItem(localEntries.map(_.file)), fetchControllerItemSeq)
       (checkedLocalItemSeq, controllerItemSeq) = pair
@@ -133,10 +133,10 @@ extends HasCloser with Observing with ProvideActorSystem
       checkedLocalItemSeq.map(o => itemDiff(o, controllerItemSeq))
 
   private def readLocalItem(files: Seq[Path]) =
-    Task { typedSourceReader.readInventoryItems(files) }
+    Task { typedSourceReader.readVersionedItems(files) }
 
-  private def itemDiff(aSeq: Seq[InventoryItem], bSeq: Seq[InventoryItem]): IntentoryItems.Diff[ItemPath, InventoryItem] =
-    IntentoryItems.Diff.fromRepoChanges(diffInventoryItems(aSeq, bSeq, ignoreVersion = true))
+  private def itemDiff(aSeq: Seq[VersionedItem], bSeq: Seq[VersionedItem]): IntentoryItems.Diff[ItemPath, VersionedItem] =
+    IntentoryItems.Diff.fromRepoChanges(diffVersionedItems(aSeq, bSeq, ignoreVersion = true))
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
@@ -168,7 +168,7 @@ extends HasCloser with Observing with ProvideActorSystem
           }
     }
 
-  private def execute(versionId: Option[VersionId], diff: IntentoryItems.Diff[ItemPath, InventoryItem]): Task[Checked[Completed.type]] =
+  private def execute(versionId: Option[VersionId], diff: IntentoryItems.Diff[ItemPath, VersionedItem]): Task[Checked[Completed.type]] =
     if (diff.isEmpty && versionId.isEmpty)
       Task(Checked.completed)
     else {
@@ -179,28 +179,28 @@ extends HasCloser with Observing with ProvideActorSystem
           .map((_: ControllerCommand.Response) => Completed))
     }
 
-  private def logUpdate(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, InventoryItem]): Unit = {
+  private def logUpdate(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, VersionedItem]): Unit = {
     logger.info(s"Version ${versionId.string}")
     for (o <- diff.deleted            .sorted) logger.info(s"Delete ${o.pretty}")
     for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
     for (o <- diff.updated.map(_.path).sorted) logger.info(s"Update ${o.pretty}")
   }
 
-  private def toUpdateRepo(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, InventoryItem]) =
+  private def toUpdateRepo(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, VersionedItem]) =
     UpdateRepo(
       versionId,
       change = (diff.added ++ diff.updated).map(_ withVersion versionId) map itemSigner.sign,
       delete = diff.deleted)
 
-  private def fetchControllerItemSeq: Task[Seq[InventoryItem]] =
+  private def fetchControllerItemSeq: Task[Seq[VersionedItem]] =
     controllerApi.workflows.map(_.orThrow)
 
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector
 
-  private def toItemDiff(diff: PathSeqDiff): Checked[IntentoryItems.Diff[ItemPath, InventoryItem]] = {
-    val checkedAdded = typedSourceReader.readInventoryItems(diff.added)
-    val checkedChanged = typedSourceReader.readInventoryItems(diff.changed)
+  private def toItemDiff(diff: PathSeqDiff): Checked[IntentoryItems.Diff[ItemPath, VersionedItem]] = {
+    val checkedAdded = typedSourceReader.readVersionedItems(diff.added)
+    val checkedChanged = typedSourceReader.readVersionedItems(diff.changed)
     val checkedDeleted: Checked[Vector[ItemPath]] =
       diff.deleted.toVector
         .traverse(path => ItemPaths.fileToItemPath(itemPathCompanions, conf.liveDirectory, path))
@@ -208,7 +208,7 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   private def toReplaceRepoCommand(versionId: VersionId, files: Seq[Path]): Checked[ReplaceRepo] =
-    typedSourceReader.readInventoryItems(files)
+    typedSourceReader.readVersionedItems(files)
       .map(items => ReplaceRepo(versionId, items.map(x => itemSigner.sign(x withVersion versionId))))
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
@@ -229,7 +229,7 @@ object Provider
       val password = SecretString(conf.config.getString(s"$configPath.password"))
       MessageSigners.typeToMessageSignersCompanion(typeName)
         .flatMap(companion => companion.checked(keyFile.byteArray, password))
-        .map(messageSigner => new InventoryItemSigner(messageSigner, ControllerItems.jsonCodec))
+        .map(messageSigner => new VersionedItemSigner(messageSigner, ControllerItems.jsonCodec))
     }.orThrow
     Right(new Provider(itemSigner, conf))
   }

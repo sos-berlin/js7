@@ -32,7 +32,7 @@ import scala.util.Random
 final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Seq(agentId1, agentId2)
-  protected val inventoryItems = Seq(workflow, workflow2)
+  protected val versionedItems = Seq(workflow, workflow2)
   override def controllerConfig = config"""
     js7.auth.users.TEST-USER {
       password = "plain:TEST-PASSWORD"

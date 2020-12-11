@@ -8,7 +8,7 @@ import js7.base.utils.Collections._
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 import js7.core.common.VariablesXmlParser
 import js7.data.folder.FolderPath
-import js7.data.item.ItemId
+import js7.data.item.VersionedItemId
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.{OldSchedule, OldScheduleXmlParser}
@@ -18,7 +18,7 @@ import js7.provider.scheduledorder.oldruntime.{OldSchedule, OldScheduleXmlParser
   */
 object ScheduledOrderGeneratorXmlParser {
 
-  def parseXml(id: ItemId[ScheduledOrderGeneratorPath], source: Source, timeZone: ZoneId): Checked[ScheduledOrderGenerator] =
+  def parseXml(id: VersionedItemId[ScheduledOrderGeneratorPath], source: Source, timeZone: ZoneId): Checked[ScheduledOrderGenerator] =
     Checked.catchNonFatal {
       ScalaXMLEventReader.parseDocument(source) { eventReader =>
         import eventReader._

@@ -24,7 +24,7 @@ import scala.concurrent.duration._
 final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = agentId :: Nil
-  protected val inventoryItems = quickWorkflow:: Nil
+  protected val versionedItems = quickWorkflow:: Nil
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {

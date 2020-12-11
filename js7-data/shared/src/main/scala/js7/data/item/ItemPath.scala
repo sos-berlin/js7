@@ -16,8 +16,8 @@ import js7.base.standards.NameValidator
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.item.ItemId.VersionSeparator
 import js7.data.item.ItemPath._
+import js7.data.item.VersionedItemId.VersionSeparator
 import scala.reflect.ClassTag
 
 trait ItemPath extends GenericString
@@ -88,15 +88,15 @@ object ItemPath
   type AnyCompanion = Companion[_ <: ItemPath]
 
   implicit final class ImplicitItemPath[P <: ItemPath](private val underlying: P) extends AnyVal {
-    def ~(version: String): ItemId[P] = this ~ VersionId(version)
-    def ~(v: VersionId): ItemId[P] = ItemId(underlying, v)
+    def ~(version: String): VersionedItemId[P] = this ~ VersionId(version)
+    def ~(v: VersionId): VersionedItemId[P] = VersionedItemId(underlying, v)
   }
 
   abstract class Companion[P <: ItemPath: ClassTag] extends GenericString.Checked_[P]
   {
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
     final lazy val Anonymous: P = unchecked(InternalPrefix + "anonymous")
-    final lazy val NoId: ItemId[P] = Anonymous ~ VersionId.Anonymous
+    final lazy val NoId: VersionedItemId[P] = Anonymous ~ VersionId.Anonymous
 
     def isEmptyAllowed = false
     def isSingleSlashAllowed = false

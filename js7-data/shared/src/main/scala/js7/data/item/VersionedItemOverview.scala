@@ -6,18 +6,18 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 /**
   * @author Joacim Zschimmer
   */
-trait InventoryItemOverview {
+trait VersionedItemOverview {
   def count: Int
 }
 
-object InventoryItemOverview {
-  final case class Standard(count: Int) extends InventoryItemOverview
+object VersionedItemOverview {
+  final case class Standard(count: Int) extends VersionedItemOverview
   object Standard {
     implicit val jsonCodec = deriveCodec[Standard]
   }
 
-  trait Companion[A <: InventoryItem] {
-    type Overview <: InventoryItemOverview
+  trait Companion[A <: VersionedItem] {
+    type Overview <: VersionedItemOverview
     implicit def jsonCodec: CirceCodec[Overview]
     def itemsToOverview(items: Seq[A]): Overview
   }

@@ -31,7 +31,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentIds = AAgentId :: BAgentId :: Nil
   override protected val controllerConfig = config"""
     js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕" """
-  protected val inventoryItems = TestWorkflow :: DuplicateWorkflow :: Nil
+  protected val versionedItems = TestWorkflow :: DuplicateWorkflow :: Nil
 
   override def beforeAll() = {
     directoryProvider.agents(0).writeExecutable(RelativeExecutablePath("SLOW.cmd"), script(60.s))

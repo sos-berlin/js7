@@ -5,8 +5,8 @@ package js7.data.item
   */
 object IntentoryItems
 {
-  def diffInventoryItems(changed: Iterable[InventoryItem], base: Iterable[InventoryItem], ignoreVersion: Boolean = false): Seq[RepoChange] = {
-    val pathToMaybeItem = base.view.map(o => o.path -> o).toMap[ItemPath, InventoryItem].lift
+  def diffVersionedItems(changed: Iterable[VersionedItem], base: Iterable[VersionedItem], ignoreVersion: Boolean = false): Seq[RepoChange] = {
+    val pathToMaybeItem = base.view.map(o => o.path -> o).toMap[ItemPath, VersionedItem].lift
     val addedOrChanged = changed.view flatMap toAddedOrChanged(pathToMaybeItem, ignoreVersion)
     val changedPaths = changed.view.map(_.path).toSet
     val deletedEvents = base.view.map(_.path) filterNot changedPaths map RepoChange.Deleted.apply
@@ -15,7 +15,7 @@ object IntentoryItems
       .sortBy(_.path)
   }
 
-  private def toAddedOrChanged(previousPathToItem: ItemPath => Option[InventoryItem], ignoreVersion: Boolean)(item: InventoryItem): Option[RepoChange] =
+  private def toAddedOrChanged(previousPathToItem: ItemPath => Option[VersionedItem], ignoreVersion: Boolean)(item: VersionedItem): Option[RepoChange] =
     previousPathToItem(item.path) match {
       case Some(previous) if previous == (if (ignoreVersion) item.withVersion(previous.id.versionId) else item) =>
         None
@@ -27,7 +27,7 @@ object IntentoryItems
         Some(RepoChange.Added(item))
     }
 
-  final case class Diff[P <: ItemPath, A <: InventoryItem](added: Seq[A] = Nil, updated: Seq[A] = Nil, deleted: Seq[P] = Nil)
+  final case class Diff[P <: ItemPath, A <: VersionedItem](added: Seq[A] = Nil, updated: Seq[A] = Nil, deleted: Seq[P] = Nil)
   {
     /** For tests: ordering is irrelevant. */
     override def equals(other: Any) = other match {
@@ -37,8 +37,8 @@ object IntentoryItems
 
     def isEmpty = added.isEmpty && updated.isEmpty && deleted.isEmpty
 
-    /** Returns a subset of a certain `ItemPath` and `InventoryItem`. */
-    def select[P1 <: P, A1 <: A](implicit A1: InventoryItem.Companion[A1]): Diff[P1, A1] =
+    /** Returns a subset of a certain `ItemPath` and `VersionedItem`. */
+    def select[P1 <: P, A1 <: A](implicit A1: VersionedItem.Companion[A1]): Diff[P1, A1] =
       Diff(
         added   collect { case o if o.companion eq A1 => o.asInstanceOf[A1] },
         updated collect { case o if o.companion eq A1 => o.asInstanceOf[A1] },
@@ -50,7 +50,7 @@ object IntentoryItems
   }
   object Diff {
     def fromRepoChanges(events: Seq[RepoChange]) =
-      Diff[ItemPath, InventoryItem](
+      Diff[ItemPath, VersionedItem](
         events collect { case o: RepoChange.Added => o.item },
         events collect { case o: RepoChange.Updated => o.item },
         events collect { case o: RepoChange.Deleted => o.path })

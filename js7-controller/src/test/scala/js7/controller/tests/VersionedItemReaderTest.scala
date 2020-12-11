@@ -17,7 +17,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class InventoryItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
+final class VersionedItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private lazy val directory = createTempDirectory("test-")
 
@@ -42,28 +42,28 @@ final class InventoryItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
 
   private lazy val typedSourceReader = new TypedSourceReader(directory, Set(WorkflowReader, TestItemReader))
 
-  "readInventoryItem with syntax errors and an alien file" in {
-      assert(typedSourceReader.readInventoryItems(DirectoryReader.files(directory)) ==
+  "readVersionedItem with syntax errors and an alien file" in {
+      assert(typedSourceReader.readVersionedItems(DirectoryReader.files(directory)) ==
         Left(Problem.Combined(Set(
           Problem("""Problem with 'Workflow:/D' (txt) [Expected "define":1:1, found "ERROR"]"""),
           Problem("""Problem with 'Workflow:/E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
           Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
   }
 
-  "Duplicate InventoryItem, Workflows are not checked" in {
+  "Duplicate VersionedItem, Workflows are not checked" in {
     directory / "A.workflow.txt" := "DUPLICATE"
-    assert(typedSourceReader.readInventoryItems(DirectoryReader.files(directory)) ==
+    assert(typedSourceReader.readVersionedItems(DirectoryReader.files(directory)) ==
       Left(Problem.Combined(Set(
         Problem(s"Duplicate configuration files: ${directory / "A.workflow.json"}, ${directory / "A.workflow.txt"}"),
         Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
   }
 
-  "Only valid InventoryItem" in {
+  "Only valid VersionedItem" in {
     delete(directory / "A.workflow.txt")
     delete(directory / "D.workflow.txt")
     delete(directory / "E.workflow.json")
     delete(directory / "folder/test.alien.json")
-    assert(typedSourceReader.readInventoryItems(DirectoryReader.files(directory)).map(_.toSet)
+    assert(typedSourceReader.readVersionedItems(DirectoryReader.files(directory)).map(_.toSet)
       == Right(Set(AWorkflow, BWorkflow, CWorkflow, ATestItem, BTestItem)))
   }
 }
