@@ -8,6 +8,7 @@ import js7.data.order.OrderId
 
 sealed trait Acquired {
   def lockCount: Int
+  def orderIds: Iterable[OrderId]
   def isAcquiredBy(orderId: OrderId): Boolean
   def acquireFor(orderId: OrderId, count: Option[Int]): Either[LockRefusal, Acquired]
   def release(orderId: OrderId): Either[LockRefusal, Acquired]
@@ -18,6 +19,8 @@ object Acquired {
   case object Available extends Acquired
   {
     def lockCount = 0
+
+    def orderIds = Nil
 
     def isAcquiredBy(orderId: OrderId) = false
 
@@ -36,6 +39,8 @@ object Acquired {
   final case class Exclusive(orderId: OrderId) extends Acquired
   {
     def lockCount = 1
+
+    def orderIds = orderId :: Nil
 
     def isAcquiredBy(orderId: OrderId) =
       this.orderId == orderId
@@ -64,6 +69,8 @@ object Acquired {
     assertThat(orderToCount.values.forall(_ >= 1))
 
     def lockCount = orderToCount.values.sum
+
+    def orderIds = orderToCount.keys
 
     def isAcquiredBy(orderId: OrderId) =
       orderToCount contains orderId

@@ -7,12 +7,14 @@ import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.controller.data.ControllerState
 import js7.data.agent.AgentId
+import js7.data.lock.LockId
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.data.agent.{JAgentRef, JAgentRefState}
 import js7.proxy.javaapi.data.cluster.JClusterState
 import js7.proxy.javaapi.data.common.JJournaledState
 import js7.proxy.javaapi.data.common.VavrConverters._
+import js7.proxy.javaapi.data.lock.JLockState
 import js7.proxy.javaapi.data.order.JOrder
 import js7.proxy.javaapi.data.order.JOrderPredicates.any
 import js7.proxy.javaapi.data.workflow.{JWorkflow, JWorkflowId}
@@ -47,19 +49,25 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JAgentRef.apply)
       .toVavr
 
-  /** Looks up an AgentRefState in the current version. */
-  def nameToAgentRefState(name: AgentId): VEither[Problem, JAgentRefState] =
-    asScala.nameToAgent.checked(name)
+  /** Looks up an AgentRefState. */
+  def nameToAgentRefState(agentId: AgentId): VEither[Problem, JAgentRefState] =
+    asScala.nameToAgent.checked(agentId)
       .map(JAgentRefState.apply)
+      .toVavr
+
+  /** Looks up a LockState. */
+  def nameToLockState(lockId: LockId): VEither[Problem, JLockState] =
+    asScala.nameToLockState.checked(lockId)
+      .map(JLockState.apply)
       .toVavr
 
   def orderIds: java.util.Set[OrderId] =
     asScala.idToOrder.keySet.asJava
 
   def idToOrder(orderId: OrderId): java.util.Optional[JOrder] =
-      asScala.idToOrder.get(orderId)
-        .map(JOrder.apply)
-        .toJava
+    asScala.idToOrder.get(orderId)
+      .map(JOrder.apply)
+      .toJava
 
   /** Looks up an OrderId and returns a Left(Problem) if the OrderId is unknown. */
   def idToCheckedOrder(orderId: OrderId): VEither[Problem, JOrder] =
