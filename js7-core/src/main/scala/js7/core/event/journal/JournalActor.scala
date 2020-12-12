@@ -489,7 +489,7 @@ extends Actor with Stash
           " ACK"    // Last event of an acknowledged event bundle. Caller may continue
       val committed = if (isLast) "COMMITTED" else "committed"
       val t = if (isLast) ((committedAt - persist.since).msPretty + "      ") take 7 else "       "
-      logger.trace(s"#$nr $flushOrSync$a $committed $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
+      logger.trace(s"$committed #$nr $flushOrSync$a $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
       nr += 1
       isFirst = false
     }
