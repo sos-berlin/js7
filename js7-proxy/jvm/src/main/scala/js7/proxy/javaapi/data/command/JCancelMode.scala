@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.command
 
 import java.util.Optional
+import javax.annotation.Nonnull
 import js7.data.command.CancelMode
 import js7.data.command.CancelMode.Kill
 import js7.proxy.javaapi.data.common.JavaWrapper
@@ -25,13 +26,18 @@ object JCancelMode
   /** Kill a running job.
     * @param immediately true: try SIGKILL else SIGTERM
     **/
+  @Nonnull
   def kill(immediately: Boolean): JCancelMode =
     kill(immediately, Optional.empty)
 
   /** Kill a running job.
     * @param immediately true: try SIGKILL else SIGTERM
     **/
-  def kill(immediately: Boolean, position: Optional[JWorkflowPosition]): JCancelMode =
+  @Nonnull
+  def kill(
+    immediately: Boolean,
+    @Nonnull position: Optional[JWorkflowPosition])
+  : JCancelMode =
     JCancelMode(CancelMode.FreshOrStarted(Some(
       Kill(immediately = immediately, position.toScala.map(_.asScala)))))
 }

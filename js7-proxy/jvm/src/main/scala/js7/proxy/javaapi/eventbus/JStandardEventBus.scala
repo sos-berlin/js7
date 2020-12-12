@@ -1,5 +1,7 @@
 package js7.proxy.javaapi.eventbus
 
+import java.util.Objects.requireNonNull
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.eventbus.StandardEventBus
 import js7.base.utils.Assertions.assertThat
@@ -23,27 +25,29 @@ extends JavaWrapper with AutoCloseable
   /** Close all subscriptions. */
   def close() = asScala.close()
 
-  @javaApi
+  @javaApi @Nonnull
   def subscribe[E1 <: E](
-    eventClasses: java.lang.Iterable[Class[_ <: E1]],
-    callback: java.util.function.Consumer[E1])
+    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: E1]],
+    @Nonnull callback: java.util.function.Consumer[E1])
   : EventSubscription = {
     val subscription = newSubscription(eventClasses, callback)
     addSubscription(subscription)
     subscription
   }
 
-  @javaApi
+  @javaApi @Nonnull
   def newSubscription[E1 <: E](
-    eventClasses: java.lang.Iterable[Class[_ <: E1]],
-    callback: java.util.function.Consumer[E1])
-  : EventSubscription =
+    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: E1]],
+    @Nonnull callback: java.util.function.Consumer[E1])
+  : EventSubscription = {
+    requireNonNull(callback)
     EventSubscription(new asScala.EventSubscription(
       eventClasses.asScala.toSet,
       e => callback.accept(e.asInstanceOf[E1])))
+  }
 
   @javaApi
-  def addSubscription(subscription: EventSubscription): Unit = {
+  def addSubscription(@Nonnull subscription: EventSubscription): Unit = {
     assertThat(subscription.eventBus eq asScala)
     subscription.internalAddToEventBus()
   }

@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.order
 
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.data.order.Outcome
@@ -19,15 +20,15 @@ object JOutcome extends JJsonable.Companion[JOutcome]
   @javaApi
   val succeeded = JOutcome(Outcome.succeeded)
 
-  @javaApi
-  def succeeded(namedValues: java.util.Map[String, Value]) =
+  @javaApi @Nonnull
+  def succeeded(@Nonnull namedValues: java.util.Map[String, Value]) =
     JOutcome(Outcome.Succeeded(namedValues.asScala.toMap))
 
   @javaApi
   val failed = JOutcome(Outcome.failed)
 
-  @javaApi
-  def failed(namedValues: java.util.Map[String, Value]) =
+  @javaApi @Nonnull
+  def failed(@Nonnull namedValues: java.util.Map[String, Value]) =
     JOutcome(Outcome.Failed(namedValues.asScala.toMap))
 
   def apply(asScala: Outcome) = asScala match {
@@ -37,12 +38,15 @@ object JOutcome extends JJsonable.Companion[JOutcome]
     case asScala: Outcome.Disrupted => new Disrupted(asScala)
   }
 
-  override def fromJson(jsonString: String): VEither[Problem, JOutcome] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JOutcome] =
     super.fromJson(jsonString)
 
   sealed trait Completed extends JOutcome {
     def asScala: Outcome.Completed
-    def namedValues: java.util.Map[String, Value] = asScala.namedValues.asJava
+
+    @Nonnull
+    final def namedValues: java.util.Map[String, Value] = asScala.namedValues.asJava
   }
 
   final case class Succeeded(asScala: Outcome.Succeeded) extends Completed

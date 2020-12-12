@@ -1,5 +1,6 @@
 package js7.proxy.javaapi.data.item
 
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.data.item.{ItemPath, VersionId, VersionedItemId}
 
@@ -14,6 +15,7 @@ trait JItemId[P <: ItemPath]
 
   def path: P
 
+  @Nonnull
   def versionId: VersionId =
     asScala.versionId
 }

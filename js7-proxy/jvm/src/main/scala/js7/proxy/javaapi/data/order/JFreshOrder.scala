@@ -1,8 +1,8 @@
 package js7.proxy.javaapi.data.order
 
-import io.circe.{Decoder, Encoder}
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
@@ -21,6 +21,7 @@ extends JJsonable[JFreshOrder]
 
   protected def companion = JFreshOrder
 
+  @Nonnull
   def id: OrderId =
     asScala.id
 }
@@ -28,22 +29,28 @@ extends JJsonable[JFreshOrder]
 @javaApi
 object JFreshOrder extends JJsonable.Companion[JFreshOrder]
 {
-  @throws[RuntimeException]("on invalid syntax")
-  def of(id: OrderId, workflowPath: WorkflowPath): JFreshOrder =
-    JFreshOrder(FreshOrder(id, workflowPath, None, Map.empty))
-
+  @Nonnull
   @throws[RuntimeException]("on invalid syntax")
   def of(
-    id: OrderId,
-    workflowPath: WorkflowPath,
-    scheduledFor: java.util.Optional[Instant],
-    arguments: java.util.Map[String, Value] = java.util.Collections.emptyMap())
+    @Nonnull id: OrderId,
+    @Nonnull workflowPath: WorkflowPath)
+  : JFreshOrder =
+    JFreshOrder(FreshOrder(id, workflowPath, None, Map.empty))
+
+  @Nonnull
+  @throws[RuntimeException]("on invalid syntax")
+  def of(
+    @Nonnull id: OrderId,
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull scheduledFor: java.util.Optional[Instant],
+    @Nonnull arguments: java.util.Map[String, Value] = java.util.Collections.emptyMap())
   : JFreshOrder =
     JFreshOrder(FreshOrder(id, workflowPath,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       arguments.asScala.toMap))
 
-  override def fromJson(jsonString: String): VEither[Problem, JFreshOrder] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JFreshOrder] =
     super.fromJson(jsonString)
 
   protected def jsonEncoder = FreshOrder.jsonEncoder

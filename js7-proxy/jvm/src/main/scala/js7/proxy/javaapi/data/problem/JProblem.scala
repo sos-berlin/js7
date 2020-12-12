@@ -2,6 +2,7 @@ package js7.proxy.javaapi.data.problem
 
 import io.vavr.control.{Either => VEither}
 import java.util.Optional
+import javax.annotation.Nonnull
 import js7.base.problem.{Problem, ProblemCode}
 import js7.proxy.javaapi.data.common.JJsonable
 import scala.jdk.OptionConverters._
@@ -12,10 +13,12 @@ extends JJsonable[JProblem]
   protected type AsScala = Problem
   def companion = JProblem
 
+  @Nonnull
   def maybeCode: Optional[ProblemCode] =
     asScala.maybeCode.toJava
 
-  def argumentAsString(key: String): Optional[String] =
+  @Nonnull
+  def argumentAsString(@Nonnull key: String): Optional[String] =
     asScala match {
       case problem: Problem.HasCode => problem.arguments.get(key).toJava
       case _ => Optional.empty()

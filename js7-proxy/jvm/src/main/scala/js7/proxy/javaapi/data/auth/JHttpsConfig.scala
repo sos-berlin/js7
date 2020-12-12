@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.auth
 
 import java.util.Optional
+import javax.annotation.Nonnull
 import js7.common.akkahttp.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.proxy.javaapi.data.common.JavaWrapper
 import scala.jdk.CollectionConverters._
@@ -15,6 +16,10 @@ object JHttpsConfig
 {
   val empty = JHttpsConfig(HttpsConfig.empty)
 
-  def of(keyStoreFile: Optional[KeyStoreRef], trustStoreRefs: java.util.List[TrustStoreRef]) =
+  @Nonnull
+  def of(
+    @Nonnull keyStoreFile: Optional[KeyStoreRef],
+    @Nonnull trustStoreRefs: java.util.List[TrustStoreRef])
+  : HttpsConfig =
     HttpsConfig(keyStoreFile.toScala, trustStoreRefs.asScala.toSeq)
 }

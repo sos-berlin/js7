@@ -1,5 +1,6 @@
 package js7.proxy.javaapi.data.controller
 
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.controller.data.ControllerState
 import js7.data.event.{Event, KeyedEvent, Stamped}
@@ -12,12 +13,15 @@ extends JavaWrapper
 {
   protected type AsScala = EventAndState[E, ControllerState]
 
+  @Nonnull
   def stampedEvent: Stamped[KeyedEvent[E]] =
     asScala.stampedEvent
 
+  @Nonnull
   def state: JControllerState =
     JControllerState(asScala.state)
 
+  @Nonnull
   def previousState: JControllerState =
     JControllerState(asScala.previousState)
 }

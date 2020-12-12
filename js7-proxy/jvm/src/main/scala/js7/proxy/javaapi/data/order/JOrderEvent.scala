@@ -4,6 +4,7 @@ import io.circe.{Decoder, Encoder}
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
 import java.util.Optional
+import javax.annotation.Nonnull
 import js7.base.generic.GenericString
 import js7.base.problem.Problem
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStdWritten}
@@ -29,10 +30,12 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   protected val jsonEncoder: Encoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Encoder[AsScala]]
   protected val jsonDecoder: Decoder[AsScala] = OrderEvent.jsonCodec.asInstanceOf[Decoder[AsScala]]
 
-  def of(orderEvent: OrderEvent): JOrderEvent =
+  @Nonnull
+  def of(@Nonnull orderEvent: OrderEvent): JOrderEvent =
     apply(orderEvent.asInstanceOf[AsScala])
 
-  def apply(underlying: AsScala): JOrderEvent =
+  @Nonnull
+  def apply(@Nonnull underlying: AsScala): JOrderEvent =
     underlying match {
       case event: OrderAdded => JOrderAdded(event)
       case event: OrderProcessingStarted => JOrderProcessingStarted(event)
@@ -54,9 +57,11 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   extends JOrderEvent {
     protected type AsScala = OrderAdded
 
+    @Nonnull
     def arguments: java.util.Map[String, Value] =
       asScala.arguments.asJava
 
+    @Nonnull
     def scheduledFor: Optional[Instant] =
       asScala.scheduledFor.map(o => o.toInstant).toJava
   }
@@ -75,9 +80,11 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   extends JOrderEvent {
     protected type AsScala = OrderStdWritten
 
+    @Nonnull
     def stdoutOrStderr: StdoutOrStderr =
       asScala.stdoutStderr
 
+    @Nonnull
     def chunk: String =
       asScala.chunk
   }
@@ -86,6 +93,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   extends JOrderEvent {
     protected type AsScala = OrderProcessed
 
+    @Nonnull
     def outcome = asScala.outcome
   }
 
@@ -93,6 +101,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   extends JOrderEvent {
     protected type AsScala = OrderForked
 
+    @Nonnull
     def children: java.util.List[JOrderForked.ForkedChild] =
       asScala.children.map(JOrderForked.ForkedChild.fromScala).asJava
   }
@@ -116,6 +125,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   {
     protected type AsScala = OrderFailed
 
+    @Nonnull
     def outcome = asScala.outcome
   }
 

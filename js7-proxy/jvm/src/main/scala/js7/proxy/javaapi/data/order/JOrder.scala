@@ -2,6 +2,7 @@ package js7.proxy.javaapi.data.order
 
 import io.vavr.control.{Either => VEither}
 import java.util.Optional
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -26,25 +27,32 @@ extends JJsonable[JOrder]
 
   protected def companion = JOrder
 
+  @Nonnull
   def id: OrderId =
     asScala.id
 
+  @Nonnull
   def workflowPosition: JWorkflowPosition =
     JWorkflowPosition(asScala.workflowPosition)
 
+  @Nonnull
   def workflowId: JWorkflowId =
     JWorkflowId(asScala.workflowId)
 
+  @Nonnull
   def arguments: java.util.Map[String, Value] =
     asScala.arguments.asJava
 
+  @Nonnull
   def parent: Optional[OrderId] =
     asScala.parent.toJava
 
+  @Nonnull
   def attached: VEither[Problem, AgentId] =
     asScala.attached.toVavr
 
-  def checkedState[S <: State](s: StateType[S]): VEither[Problem, S] =
+  @Nonnull
+  def checkedState[S <: State](@Nonnull s: StateType[S]): VEither[Problem, S] =
     asScala.checkedState(ClassTag(s.scalaClass))
       .flatMap((o: Order[Order.State]) =>
         o.state match {
@@ -59,7 +67,8 @@ extends JJsonable[JOrder]
 @javaApi
 object JOrder extends JJsonable.Companion[JOrder]
 {
-  override def fromJson(jsonString: String): VEither[Problem, JOrder] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JOrder] =
     super.fromJson(jsonString)
 
   protected def jsonEncoder = Order.jsonEncoder
@@ -76,6 +85,7 @@ object JOrder extends JJsonable.Companion[JOrder]
   final case class Forked(asScala: Order.Forked) extends State {
     protected type AsScala = Order.Forked
 
+    @Nonnull
     def childOrderIds: java.util.List[OrderId] =
       asScala.children.map(_.orderId).asJava
   }

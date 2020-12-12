@@ -22,13 +22,18 @@ object JSuspendMode
   /** Kill a running job.
     * @param immediately true: try SIGKILL else SIGTERM
     **/
+  @Nonnull
   def kill(immediately: Boolean): JSuspendMode =
     kill(immediately, Optional.empty)
 
   /** Kill a running job.
     * @param immediately true: try SIGKILL else SIGTERM
     **/
-  def kill(immediately: Boolean, position: Optional[JWorkflowPosition]): JSuspendMode =
+  @Nonnull
+  def kill(
+    immediately: Boolean,
+    @Nonnull position: Optional[JWorkflowPosition]
+  ): JSuspendMode =
     JSuspendMode(SuspendMode(Some(
       Kill(immediately = immediately, position.toScala.map(_.asScala)))))
 }

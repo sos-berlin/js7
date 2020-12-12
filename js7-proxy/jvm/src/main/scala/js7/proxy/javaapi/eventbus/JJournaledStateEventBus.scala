@@ -1,5 +1,7 @@
 package js7.proxy.javaapi.eventbus
 
+import java.util.Objects.requireNonNull
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.utils.Assertions.assertThat
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
@@ -17,30 +19,32 @@ extends AutoCloseable
   /** Close all subscriptions. */
   def close() = asScala.close()
 
-  @javaApi
+  @javaApi @Nonnull
   final def subscribe[E <: Event](
-    eventClasses: java.lang.Iterable[Class[_ <: Event]],
-    callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
+    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: Event]],
+    @Nonnull callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
   : EventSubscription = {
     val subscription = newSubscription(eventClasses, callback)
     addSubscription(subscription)
     subscription
   }
 
-  @javaApi
+  @javaApi @Nonnull
   final def newSubscription[E <: Event](
-    eventClasses: java.lang.Iterable[Class[_ <: Event]],
-    callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
-  : EventSubscription =
+    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: Event]],
+    @Nonnull callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
+  : EventSubscription = {
+    requireNonNull(callback)
     EventSubscription(
       new asScala.EventSubscription(
         eventClasses.asScala.toSet,
         o => callback.accept(
           o.stampedEvent.asInstanceOf[Stamped[KeyedEvent[E]]],
           JS(o.state))))
+  }
 
   @javaApi
-  final def addSubscription[E <: Event](subscription: EventSubscription): Unit = {
+  final def addSubscription[E <: Event](@Nonnull subscription: EventSubscription): Unit = {
     assertThat(subscription.eventBus eq asScala)
     subscription.internalAddToEventBus()
   }

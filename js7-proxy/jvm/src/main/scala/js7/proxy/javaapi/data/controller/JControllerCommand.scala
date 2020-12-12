@@ -1,7 +1,7 @@
 package js7.proxy.javaapi.data.controller
 
-import io.circe.{Decoder, Encoder}
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.controller.data.ControllerCommand
@@ -20,10 +20,12 @@ extends JJsonable[JControllerCommand]
 @javaApi
 object JControllerCommand extends JJsonable.Companion[JControllerCommand]
 {
-  def addOrder(jFreshOrder: JFreshOrder): JControllerCommand =
+  @Nonnull
+  def addOrder(@Nonnull jFreshOrder: JFreshOrder): JControllerCommand =
     JControllerCommand(ControllerCommand.AddOrder(jFreshOrder.asScala))
 
-  override def fromJson(jsonString: String): VEither[Problem, JControllerCommand] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =
     super.fromJson(jsonString)
 
   protected def jsonDecoder = ControllerCommand.jsonCodec

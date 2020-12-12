@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.workflow
 
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.data.workflow.instructions.Execute
@@ -19,8 +20,10 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
 
   def companion = JWorkflow
 
+  @Nonnull
   def id = JWorkflowId(asScala.id)
 
+  @Nonnull
   def checkedJobName(position: JPosition): VEither[Problem, WorkflowJob.Name] =
     asScala.checkedExecute(position.asScala)
       .flatMap {
@@ -29,13 +32,15 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
       }
       .toVavr
 
+  @Nonnull
   def withPositions = JWorkflow(asScala.withPositions(Nil))
 }
 
 @javaApi
 object JWorkflow extends JJsonable.Companion[JWorkflow]
 {
-  override def fromJson(jsonString: String): VEither[Problem, JWorkflow] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JWorkflow] =
     super.fromJson(jsonString)
 
   protected def jsonEncoder = Workflow.jsonEncoder

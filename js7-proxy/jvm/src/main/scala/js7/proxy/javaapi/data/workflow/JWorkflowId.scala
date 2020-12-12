@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.workflow
 
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.data.item.{VersionId, VersionedItemId}
@@ -16,21 +17,23 @@ extends JJsonable[JWorkflowId] with JItemId[WorkflowPath]
   protected type ScalaPath = WorkflowPath
   protected def companion = JWorkflowId
 
+  @Nonnull
   def path = asScala.path
 }
 
 @javaApi
 object JWorkflowId extends JJsonable.Companion[JWorkflowId]
 {
-  @javaApi @throws[RuntimeException]("on invalid syntax")
+  @javaApi @Nonnull @throws[RuntimeException]("on invalid syntax")
   def of(path: String, versionId: String): JWorkflowId =
     JWorkflowId(WorkflowPath(path) ~ versionId)
 
-  @javaApi
+  @javaApi @Nonnull
   def of(path: WorkflowPath, versionId: VersionId): JWorkflowId =
     JWorkflowId(path ~ versionId)
 
-  override def fromJson(jsonString: String): VEither[Problem, JWorkflowId] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JWorkflowId] =
     super.fromJson(jsonString)
 
   protected val jsonEncoder = VersionedItemId.jsonEncoder[WorkflowPath]

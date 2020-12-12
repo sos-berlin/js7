@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.controller
 
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichTraversable
@@ -26,32 +27,38 @@ import scala.jdk.StreamConverters._
 final case class JControllerState(asScala: ControllerState)
 extends JJournaledState[JControllerState, ControllerState]
 {
+  @Nonnull
   def eventId: Long =
     asScala.eventId
 
+  @Nonnull
   def clusterState: JClusterState =
     JClusterState(asScala.clusterState)
 
-  def idToWorkflow(workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
+  @Nonnull
+  def idToWorkflow(@Nonnull workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
     asScala.repo.idTo[Workflow](workflowId.asScala)
       .map(JWorkflow.apply)
       .toVavr
 
-  def pathToWorkflow(workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
+  @Nonnull
+  def pathToWorkflow(@Nonnull workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
     asScala.repo.pathTo[Workflow](workflowPath)
       .map(JWorkflow.apply)
       .toVavr
 
   /** Looks up an AgentRef VersionedItem in the current version. */
-  def nameToAgentRef(name: AgentId): VEither[Problem, JAgentRef] =
-    asScala.nameToAgent.checked(name)
+  @Nonnull
+  def idToAgentRef(@Nonnull id: AgentId): VEither[Problem, JAgentRef] =
+    asScala.idToAgent.checked(id)
       .map(_.agentRef)
       .map(JAgentRef.apply)
       .toVavr
 
   /** Looks up an AgentRefState. */
-  def nameToAgentRefState(agentId: AgentId): VEither[Problem, JAgentRefState] =
-    asScala.nameToAgent.checked(agentId)
+  @Nonnull
+  def idToAgentRefState(@Nonnull agentId: AgentId): VEither[Problem, JAgentRefState] =
+    asScala.idToAgent.checked(agentId)
       .map(JAgentRefState.apply)
       .toVavr
 
@@ -61,16 +68,19 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JLockState.apply)
       .toVavr
 
+  @Nonnull
   def orderIds: java.util.Set[OrderId] =
     asScala.idToOrder.keySet.asJava
 
-  def idToOrder(orderId: OrderId): java.util.Optional[JOrder] =
+  @Nonnull
+  def idToOrder(@Nonnull orderId: OrderId): java.util.Optional[JOrder] =
     asScala.idToOrder.get(orderId)
       .map(JOrder.apply)
       .toJava
 
   /** Looks up an OrderId and returns a Left(Problem) if the OrderId is unknown. */
-  def idToCheckedOrder(orderId: OrderId): VEither[Problem, JOrder] =
+  @Nonnull
+  def idToCheckedOrder(@Nonnull orderId: OrderId): VEither[Problem, JOrder] =
     asScala.idToOrder.get(orderId)
       .map(JOrder.apply) match {
         case None => VEither.left(Problem(s"Unknown OrderId in JControllerState: ${orderId.string}"))
@@ -84,19 +94,23 @@ extends JJournaledState[JControllerState, ControllerState]
       .toKeyedMap(_.id)
       .asJava
 
-  def ordersBy(predicate: Order[Order.State] => Boolean): java.util.stream.Stream[JOrder] =
+  @Nonnull
+  def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean): java.util.stream.Stream[JOrder] =
     asScala.idToOrder
       .valuesIterator
       .filter(predicate)
       .map(JOrder.apply)
       .asJavaSeqStream
 
+  @Nonnull
   def orderIsInCurrentVersionWorkflow: Order[Order.State] => Boolean =
     _.workflowId.versionId == asScala.repo.versionId
 
+  @Nonnull
   def orderStateToCount(): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
     orderStateToCount(any)
 
+  @Nonnull
   def orderStateToCount(predicate: Order[Order.State] => Boolean): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
     asScala.idToOrder.values.view
       .filter(predicate)

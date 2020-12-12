@@ -2,6 +2,7 @@ package js7.proxy.javaapi
 
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.ForkJoinPool
+import javax.annotation.Nonnull
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.utils.ScalaUtils.syntax._
@@ -50,8 +51,11 @@ extends HasCloser
     for (a <- actorSystemLazy) Akkas.terminateAndWait(a)
   }
 
-  @javaApi
-  def newControllerApi(admissions: java.lang.Iterable[JAdmission], httpsConfig: JHttpsConfig): JControllerApi = {
+  @javaApi @Nonnull
+  def newControllerApi(
+    @Nonnull admissions: java.lang.Iterable[JAdmission],
+    @Nonnull httpsConfig: JHttpsConfig
+  ): JControllerApi = {
     if (admissions.asScala.isEmpty) throw new IllegalArgumentException("admissions argument must not be empty")
     new JControllerApi(
       new ControllerApi(

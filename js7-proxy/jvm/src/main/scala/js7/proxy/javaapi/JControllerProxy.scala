@@ -1,7 +1,9 @@
 package js7.proxy.javaapi
 
 import io.vavr.control.{Either => VEither}
+import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
@@ -34,22 +36,26 @@ final class JControllerProxy private[proxy](
   (implicit scheduler: Scheduler)
 {
   /** Listen to the already running event stream. */
+  @Nonnull
   def flux(): Flux[JEventAndControllerState[Event]] =
     asScala.observable
       .map(JEventAndControllerState.apply)
       .asFlux
 
+  @Nonnull
   def stop(): CompletableFuture[Void] =
     asScala.stop
       .map(_ => Void)
       .runToFuture
       .asJava
 
+  @Nonnull
   def currentState: JControllerState =
     JControllerState(asScala.currentState)
 
   /** Like JControllerApi addOrders, but waits until the Proxy mirrors the added orders. */
-  def addOrders(orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
+  @Nonnull
+  def addOrders(@Nonnull orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
     asScala.addOrders(orders.asObservable.map(_.asScala))
       .map(_.toVavr)
       .runToFuture
@@ -59,19 +65,25 @@ final class JControllerProxy private[proxy](
     * Synchronize this mirror with an EventId.
     * The Future completes when this mirror has reached the requested EventId.
     */
+  @Nonnull
   def sync(eventId: EventId): CompletableFuture[Void] =
     asScala.sync(eventId)
       .map(_ => Void)
       .runToFuture
       .asJava
 
-  def when(predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] =
+  @Nonnull
+  def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] = {
+    requireNonNull(predicate)
     asScala.when(es => predicate(JEventAndControllerState(es)))
       .map(JEventAndControllerState.apply)
       .runToFuture
       .asJava
+  }
 
-  private def runOrderForTest(order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] = {
+  @Nonnull
+  private def runOrderForTest(@Nonnull order: JFreshOrder): CompletableFuture[Stamped[KeyedEvent[OrderTerminated]]] = {
+    requireNonNull(order)
     val whenOrderTerminated = asScala.observable
       .collect {
         case EventAndState(stamped @ Stamped(_, _, KeyedEvent(orderId, _: OrderTerminated)), _, _)

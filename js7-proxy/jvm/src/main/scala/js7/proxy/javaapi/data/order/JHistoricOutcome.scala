@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.order
 
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.data.order.HistoricOutcome
@@ -17,11 +18,12 @@ extends JJsonable[JHistoricOutcome]
 
 object JHistoricOutcome extends JJsonable.Companion[JHistoricOutcome]
 {
-  @javaApi
-  def of(position: JPosition, outcome: JOutcome) =
+  @javaApi @Nonnull
+  def of(@Nonnull position: JPosition, @Nonnull outcome: JOutcome) =
     JHistoricOutcome(HistoricOutcome(position.asScala, outcome.asScala))
 
-  override def fromJson(jsonString: String): VEither[Problem, JHistoricOutcome] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JHistoricOutcome] =
     super.fromJson(jsonString)
 
   protected def jsonEncoder = HistoricOutcome.jsonCodec

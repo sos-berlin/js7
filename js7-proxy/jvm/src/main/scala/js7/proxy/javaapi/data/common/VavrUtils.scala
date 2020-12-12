@@ -3,6 +3,7 @@ package js7.proxy.javaapi.data.common
 import io.vavr.control.{Either => VEither}
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
@@ -13,13 +14,15 @@ object VavrUtils
 {
   /** For testing. */
   @javaApi
+  //Void is null: @Nonnull
   @throws[RuntimeException]("iff Left or timeout")
-  def await[A](future: CompletableFuture[VEither[Problem, A]]): A =
+  def await[A](@Nonnull future: CompletableFuture[VEither[Problem, A]]): A =
     getOrThrow(future.get(99, SECONDS))
 
   @javaApi
+  //Void is null: @Nonnull
   @throws[RuntimeException]("iff Left")
-  def getOrThrow[A](either: VEither[Problem, A]): A =
+  def getOrThrow[A](@Nonnull either: VEither[Problem, A]): A =
     either match {
       case o: VEither.Left[Problem, A] =>
         val throwable = o.getLeft.throwable
@@ -31,7 +34,8 @@ object VavrUtils
     }
 
   @javaApi
+  //Void is null: @Nonnull
   @throws[RuntimeException]("iff Left")
-  def getOrThrow[A](either: Either[Problem, A]): A =
+  def getOrThrow[A](@Nonnull either: Either[Problem, A]): A =
     getOrThrow(either.toVavr)
 }

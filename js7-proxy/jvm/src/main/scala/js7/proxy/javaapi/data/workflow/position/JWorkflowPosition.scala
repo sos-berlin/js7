@@ -1,6 +1,7 @@
 package js7.proxy.javaapi.data.workflow.position
 
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.workflow.position.WorkflowPosition
 import js7.proxy.javaapi.data.common.JJsonable
@@ -12,17 +13,24 @@ extends JJsonable [JWorkflowPosition]
   protected type AsScala = WorkflowPosition
   protected def companion = JWorkflowPosition
 
+  @Nonnull
   def workflowId = JWorkflowId(asScala.workflowId)
 
+  @Nonnull
   def position = JPosition(asScala.position)
 }
 
 object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]
 {
-  def of(workflowId: JWorkflowId, position: JPosition) =
+  @Nonnull
+  def of(
+    @Nonnull workflowId: JWorkflowId,
+    @Nonnull position: JPosition)
+  : JWorkflowPosition =
     new JWorkflowPosition(WorkflowPosition(workflowId.asScala, position.asScala))
 
-  override def fromJson(jsonString: String): VEither[Problem, JWorkflowPosition] =
+  @Nonnull
+  override def fromJson(@Nonnull jsonString: String): VEither[Problem, JWorkflowPosition] =
     super.fromJson(jsonString)
 
   protected def jsonEncoder = WorkflowPosition.jsonEncoder

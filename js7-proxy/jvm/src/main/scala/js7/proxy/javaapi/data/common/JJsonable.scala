@@ -2,6 +2,7 @@ package js7.proxy.javaapi.data.common
 
 import io.circe.{Decoder, Encoder}
 import io.vavr.control.{Either => VEither}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
@@ -33,7 +34,8 @@ object JJsonable
     protected def jsonEncoder: Encoder[A#AsScala]
     protected def jsonDecoder: Decoder[A#AsScala]
 
-    def fromJson(jsonString: String): VEither[Problem, A] =
+    @Nonnull
+    def fromJson(@Nonnull jsonString: String): VEither[Problem, A] =
       io.circe.parser.parse(jsonString).toChecked
         .flatMap(o => jsonDecoder.decodeJson(o).toChecked map apply)
         .toVavr

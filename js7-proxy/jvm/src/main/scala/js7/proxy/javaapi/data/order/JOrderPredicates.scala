@@ -1,5 +1,7 @@
 package js7.proxy.javaapi.data.order
 
+import java.util.Objects.requireNonNull
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -14,35 +16,61 @@ object JOrderPredicates
 
   val none: Predicate = _ => false
 
-  def by(workflowId: JWorkflowId): Predicate =
+  @Nonnull
+  def by(@Nonnull workflowId: JWorkflowId): Predicate =
     byWorkflowId(workflowId)
 
-  def by(workflowPath: WorkflowPath): Predicate =
+  @Nonnull
+  def by(@Nonnull workflowPath: WorkflowPath): Predicate =
     byWorkflowPath(workflowPath)
 
-  def byWorkflowId(workflowId: JWorkflowId): Predicate = {
+  @Nonnull
+  def byWorkflowId(@Nonnull workflowId: JWorkflowId): Predicate = {
     val id = workflowId.asScala
     _.workflowId == id
   }
 
-  def byWorkflowPath(workflowPath: WorkflowPath): Predicate =
+  @Nonnull
+  def byWorkflowPath(@Nonnull workflowPath: WorkflowPath): Predicate = {
+    requireNonNull(workflowPath)
     _.workflowId.path == workflowPath
+  }
 
-  def byOrderState(stateClass: Class[_ <: Order.State]): Predicate =
+  @Nonnull
+  def byOrderState(@Nonnull stateClass: Class[_ <: Order.State]): Predicate = {
+    requireNonNull(stateClass)
     order => stateClass isAssignableFrom order.state.getClass
+  }
 
-  def markedAsRemoveWhenTerminated(value: Boolean): Predicate =
+  @Nonnull
+  def markedAsRemoveWhenTerminated(@Nonnull value: Boolean): Predicate = {
+    requireNonNull(value)
     _.removeWhenTerminated == value
+  }
 
-  def byOrderIdPredicate(predicate: java.util.function.Predicate[OrderId]): Predicate =
+  @Nonnull
+  def byOrderIdPredicate(@Nonnull predicate: java.util.function.Predicate[OrderId]): Predicate = {
+    requireNonNull(predicate)
     order => predicate.test(order.id)
+  }
 
-  def and(a: Predicate, b: Predicate): Predicate =
+  @Nonnull
+  def and(@Nonnull a: Predicate, @Nonnull b: Predicate): Predicate = {
+    requireNonNull(a)
+    requireNonNull(b)
     order => a(order) && b(order)
+  }
 
-  def or(a: Predicate, b: Predicate): Predicate =
+  @Nonnull
+  def or(@Nonnull a: Predicate, @Nonnull b: Predicate): Predicate = {
+    requireNonNull(a)
+    requireNonNull(b)
     order => a(order) || b(order)
+  }
 
-  def not(predicate: Predicate): Predicate =
+  @Nonnull
+  def not(@Nonnull predicate: Predicate): Predicate = {
+    requireNonNull(predicate)
     order => !predicate(order)
+  }
 }

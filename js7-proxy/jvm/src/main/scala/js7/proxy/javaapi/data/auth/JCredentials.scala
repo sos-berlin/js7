@@ -1,5 +1,6 @@
 package js7.proxy.javaapi.data.auth
 
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -22,7 +23,8 @@ object JCredentials
 
   object NoCredentials extends JCredentials
 
-  def of(userId: String, password: String): JCredentials =
+  @Nonnull
+  def of(@Nonnull userId: String, @Nonnull password: String): JCredentials =
     JUserAndPassword(UserAndPassword(UserId(userId), SecretString(password)))
 
   final case class JUserAndPassword(asScala: UserAndPassword)
