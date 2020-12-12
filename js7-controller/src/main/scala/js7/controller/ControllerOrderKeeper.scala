@@ -51,7 +51,7 @@ import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
-import js7.data.agent.{AgentId, AgentRef, AgentRefEvent, AgentRunId}
+import js7.data.agent.{AgentId, AgentRef, AgentRunId}
 import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -60,7 +60,7 @@ import js7.data.event.{<-:, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
-import js7.data.item.{RepoEvent, VersionedItem}
+import js7.data.item.{RepoEvent, SimpleItemEvent, VersionedItem}
 import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
 import js7.data.lock.{Lock, LockId}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailedEvent, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
@@ -275,8 +275,8 @@ with MainJournalingActor[ControllerState, Event]
           .throwable
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
-      for (agentRef <- controllerState.nameToAgent.values.map(_.agentRef)) {
-        val agentRefState = controllerState.nameToAgent.getOrElse(agentRef.id, AgentRefState(agentRef))
+      for (agentRef <- controllerState.idToAgent.values.map(_.agentRef)) {
+        val agentRefState = controllerState.idToAgent.getOrElse(agentRef.id, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
       }
 
@@ -344,7 +344,7 @@ with MainJournalingActor[ControllerState, Event]
       }
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
-        logger.info(s"${_controllerState.idToOrder.size} Orders, ${_controllerState.repo.typedCount[Workflow]} Workflows and ${_controllerState.nameToAgent.size} AgentRefs recovered")
+        logger.info(s"${_controllerState.idToOrder.size} Orders, ${_controllerState.repo.typedCount[Workflow]} Workflows and ${_controllerState.idToAgent.size} AgentRefs recovered")
       }
 
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
@@ -614,32 +614,23 @@ with MainJournalingActor[ControllerState, Event]
             }
         }
 
-      case ControllerCommand.UpdateAgentRefs(agentRefs) =>
-        if (agentRefs.map(_.id).distinct.sizeIs != agentRefs.size)
-          Future.successful(Left(Problem.pure("Duplicate AgentIds in UpdateAgentRefs command")))
+      case ControllerCommand.UpdateSimpleItems(items) =>
+        if (items.map(_.id).distinct.sizeIs != items.size)
+          Future.successful(Left(Problem.pure("Duplicate ItemIds in UpdateSimpleItems command")))
         else
           persistTransaction(
-            agentRefs.flatMap {
-              case AgentRef(name, uri) =>
-                _controllerState.nameToAgent.get(name).map(_.agentRef) match {
+            items.flatMap {
+              case AgentRef(agentId, uri) =>
+                _controllerState.idToAgent.get(agentId).map(_.agentRef) match {
                   case None =>
-                    Some(name <-: AgentAdded(uri))
-                  case Some(AgentRef(`name`, `uri`)) =>
+                    Some(agentId <-: AgentAdded(uri))
+                  case Some(AgentRef(`agentId`, `uri`)) =>
                     None
                   case Some(_) =>
-                    Some(name <-: AgentUpdated(uri))
+                    Some(agentId <-: AgentUpdated(uri))
                 }
-          })(handleAgentRefEvents)
-            .map(_ => Right(ControllerCommand.Response.Accepted))
-
-      case ControllerCommand.UpdateLocks(locks) =>
-        if (locks.map(_.id).distinct.sizeIs != locks.size)
-          Future.successful(Left(Problem.pure("Duplicate LockIds in UpdateLocks command")))
-        else
-          persistTransaction(
-            locks.flatMap {
               case lock @ Lock(lockId, nonExclusiveLimit) =>
-                _controllerState.nameToLockState.get(lockId).map(_.lock) match {
+                _controllerState.idToLockState.get(lockId).map(_.lock) match {
                   case None =>
                     Some(lockId <-: LockAdded(nonExclusiveLimit))
                   case Some(`lock`) =>
@@ -647,9 +638,8 @@ with MainJournalingActor[ControllerState, Event]
                   case Some(_) =>
                     Some(lockId <-: LockUpdated(nonExclusiveLimit))
                 }
-          }) { (_, updatedState) =>
-            _controllerState = updatedState
-          }.map(_ => Right(ControllerCommand.Response.Accepted))
+          })(handleSimpleItemEvents)
+            .map(_ => Right(ControllerCommand.Response.Accepted))
 
       case cmd: ControllerCommand.ReplaceRepo =>
         Try(
@@ -767,18 +757,23 @@ with MainJournalingActor[ControllerState, Event]
       case ItemDeleted(path)     => logger.trace(s"$path deleted")
     }
 
-  private def handleAgentRefEvents(stamped: Seq[Stamped[KeyedEvent[AgentRefEvent]]], updatedState: ControllerState): Unit = {
+  private def handleSimpleItemEvents(stamped: Seq[Stamped[KeyedEvent[SimpleItemEvent]]], updatedState: ControllerState): Unit = {
     _controllerState = updatedState
     stamped.map(_.value) foreach {
-      case KeyedEvent(agentId, AgentAdded(uri)) =>
+      case KeyedEvent(agentId: AgentId, AgentAdded(uri)) =>
         val agentRef = AgentRef(agentId, uri)
         val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
         entry.actor ! AgentDriver.Input.StartFetchingEvents
 
-      case KeyedEvent(agentId, AgentUpdated(uri)) =>
+      case KeyedEvent(agentId: AgentId, AgentUpdated(uri)) =>
         val agentRef = AgentRef(agentId, uri)
         agentRegister.update(agentRef)
         agentRegister(agentRef.id).reconnect()
+
+      case KeyedEvent(lockId: LockId, LockUpdated(_)) =>
+        proceedWithLockQueuedOrders(lockId :: Nil)
+
+      case _ =>
     }
   }
 
@@ -866,7 +861,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithLockQueuedOrders(lockIds: Seq[LockId]): Unit =
     for (lockId <- lockIds;
-         lockState <- _controllerState.nameToLockState.get(lockId);
+         lockState <- _controllerState.idToLockState.get(lockId);
          queuedOrderId <- lockState.firstQueuedOrderId) {
       proceedWithOrder(queuedOrderId)
     }
@@ -1062,7 +1057,7 @@ with MainJournalingActor[ControllerState, Event]
     new OrderEventSource(
       controllerState.idToOrder.checked,
       controllerState.repo.idTo[Workflow],
-      controllerState.nameToLockState.checked,
+      controllerState.idToLockState.checked,
       isAgent = false)
 
   private def orderEventHandler(controllerState: ControllerState) =

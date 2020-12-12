@@ -43,7 +43,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     super.beforeAll()
-    controllerApi.updateLocks(Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))).await(99.s).orThrow
+    controllerApi.updateSimpleItems(Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))).await(99.s).orThrow
   }
 
   "TEST" in {
@@ -105,7 +105,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         assert(controller.eventWatch.await[OrderLockAcquired](_.key == pair(0)).map(_.eventId).head <
                controller.eventWatch.await[OrderLockAcquired](_.key == pair(1)).map(_.eventId).head)
       }
-      assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+      assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
         LockState(Lock(lockId, limit = 1), Available, Queue.empty))
     }
   }
@@ -129,7 +129,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockAcquired(lockId, None),
       OrderLockAcquired(lock2Name, None),
       OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Name, lockId))))
-    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
@@ -164,7 +164,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderDetached,
       OrderLockReleased(lockId),
       OrderFinished))
-    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
@@ -194,7 +194,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockAcquired(lockId, None),
       OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockIds = Seq(lockId))))
 
-    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
@@ -225,7 +225,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFailedInFork(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
         "Lock:LOCK has already been acquired by parent Order:🟪"))))))
 
-    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
@@ -243,7 +243,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1"))))))
 
-    assert(controller.controllerState.await(99.s).nameToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 

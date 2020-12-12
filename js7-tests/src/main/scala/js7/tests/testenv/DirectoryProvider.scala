@@ -30,7 +30,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, UpdateRepo}
+import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo, UpdateSimpleItems}
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentId, AgentRef}
@@ -155,7 +155,7 @@ extends HasCloser
       if (!suppressAgentAndRepoInitialization && (agentRefs.nonEmpty || items.nonEmpty)) {
         if (!itemHasBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
-          runningController.executeCommandAsSystemUser(UpdateAgentRefs(agentRefs))
+          runningController.executeCommandAsSystemUser(UpdateSimpleItems(agentRefs))
             .await(99.s).orThrow
           if (items.nonEmpty) {
             // startController may be called several times. We configure only once.

@@ -24,7 +24,7 @@ import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.controller.{JControllerCommand, JControllerState, JEventAndControllerState}
-import js7.proxy.javaapi.data.item.JUpdateRepoOperation
+import js7.proxy.javaapi.data.item.{JSimpleItem, JUpdateRepoOperation}
 import js7.proxy.javaapi.data.order.{JFreshOrder, JHistoricOutcome}
 import js7.proxy.javaapi.data.workflow.position.JPosition
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
@@ -124,7 +124,6 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
     *     }}}
     *
     * '''To delete an item:'''
-    *
     * {{{
     * JUpdateRepoOperations.addOrReplace(ItemPath)
     * }}}

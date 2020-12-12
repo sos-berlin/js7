@@ -15,7 +15,7 @@ import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.UpdateAgentRefs
+import js7.controller.data.ControllerCommand.UpdateSimpleItems
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -63,7 +63,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
             httpPort = Some(port))
           ).await(99.seconds)
 
-          executeCommand(controller, UpdateAgentRefs(Seq(AgentRef(agentId, uri = agent2.localUri))))
+          executeCommand(controller, UpdateSimpleItems(Seq(AgentRef(agentId, uri = agent2.localUri))))
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }

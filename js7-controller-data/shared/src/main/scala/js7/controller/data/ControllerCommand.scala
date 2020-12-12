@@ -13,12 +13,12 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.controller.data.ControllerState.generic.itemPathJsonCodec
+import js7.controller.data.ControllerState.simpleItemJsonCodec
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
 import js7.data.event.EventId
-import js7.data.item.{ItemPath, VersionId}
-import js7.data.lock.Lock
+import js7.data.item.{ItemPath, SimpleItem, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderId}
 import js7.data.workflow.position.Position
@@ -35,7 +35,9 @@ sealed trait ControllerCommand extends CommonCommand
 
 object ControllerCommand extends CommonCommand.Companion
 {
-  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder, checkedJsonEncoder[Int], checkedJsonDecoder[Int], itemPathJsonCodec))
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
+    checkedJsonEncoder[Int], checkedJsonDecoder[Int],
+    itemPathJsonCodec, simpleItemJsonCodec))
 
   protected type Command = ControllerCommand
 
@@ -95,16 +97,6 @@ object ControllerCommand extends CommonCommand.Companion
   extends ControllerCommand {
     type Response = Response.Accepted
     override def toShortString = s"RemoveOrdersWhenTerminated(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
-  }
-
-  final case class UpdateAgentRefs(agentRefs: Seq[AgentRef])
-  extends ControllerCommand {
-    type Response = Response.Accepted
-  }
-
-  final case class UpdateLocks(locks: Seq[Lock])
-  extends ControllerCommand {
-    type Response = Response.Accepted
   }
 
   final case class NoOperation(duration: Option[FiniteDuration] = None)
@@ -196,6 +188,11 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class UpdateSimpleItems(items: Seq[SimpleItem])
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
   final case class UpdateRepo(
     versionId: VersionId,
     change: Seq[SignedString] = Nil,
@@ -254,12 +251,11 @@ object ControllerCommand extends CommonCommand.Companion
 
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
     Subtype(deriveCodec[Batch]),
-    Subtype(deriveCodec[UpdateAgentRefs]),
-    Subtype(deriveCodec[UpdateLocks]),
     Subtype(deriveCodec[AddOrder]),
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],
     Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
+    Subtype(deriveCodec[UpdateSimpleItems]),
     Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),
     Subtype(deriveCodec[NoOperation]),

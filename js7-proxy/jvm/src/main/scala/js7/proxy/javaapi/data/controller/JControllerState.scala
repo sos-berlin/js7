@@ -15,7 +15,7 @@ import js7.proxy.javaapi.data.agent.{JAgentRef, JAgentRefState}
 import js7.proxy.javaapi.data.cluster.JClusterState
 import js7.proxy.javaapi.data.common.JJournaledState
 import js7.proxy.javaapi.data.common.VavrConverters._
-import js7.proxy.javaapi.data.lock.JLockState
+import js7.proxy.javaapi.data.lock.{JLock, JLockState}
 import js7.proxy.javaapi.data.order.JOrder
 import js7.proxy.javaapi.data.order.JOrderPredicates.any
 import js7.proxy.javaapi.data.workflow.{JWorkflow, JWorkflowId}
@@ -55,6 +55,13 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JAgentRef.apply)
       .toVavr
 
+  /** Looks up an AgentRef VersionedItem in the current version. */
+  @Deprecated
+  @deprecated("Use idToAgentRef", "2020-12-11")
+  @Nonnull
+  def nameToAgentRef(@Nonnull id: AgentId): VEither[Problem, JAgentRef] =
+    idToAgentRef(id)
+
   /** Looks up an AgentRefState. */
   @Nonnull
   def idToAgentRefState(@Nonnull agentId: AgentId): VEither[Problem, JAgentRefState] =
@@ -62,9 +69,18 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JAgentRefState.apply)
       .toVavr
 
+  /** Looks up an AgentRef VersionedItem in the current version. */
+  @Nonnull
+  def idToLock(@Nonnull id: LockId): VEither[Problem, JLock] =
+    asScala.idToLockState.checked(id)
+      .map(_.lock)
+      .map(JLock.apply)
+      .toVavr
+
   /** Looks up a LockState. */
-  def nameToLockState(lockId: LockId): VEither[Problem, JLockState] =
-    asScala.nameToLockState.checked(lockId)
+  @Nonnull
+  def idToLockState(@Nonnull lockId: LockId): VEither[Problem, JLockState] =
+    asScala.idToLockState.checked(lockId)
       .map(JLockState.apply)
       .toVavr
 

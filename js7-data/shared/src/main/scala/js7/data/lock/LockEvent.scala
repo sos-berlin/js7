@@ -2,9 +2,9 @@ package js7.data.lock
 
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.data.event.Event
+import js7.data.item.SimpleItemEvent
 
-sealed trait LockEvent extends Event {
+sealed trait LockEvent extends SimpleItemEvent {
   type Key = LockId
 }
 

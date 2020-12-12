@@ -18,7 +18,7 @@ import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs, UpdateRepo}
+import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo, UpdateSimpleItems}
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
@@ -79,7 +79,7 @@ extends HasCloser with Observing with ProvideActorSystem
       _ <- loginUntilReachable
      completed <- controllerApi
        .retryUntilReachable()(
-         controllerApi.executeCommand(UpdateAgentRefs(agentRefs)))
+         controllerApi.executeCommand(UpdateSimpleItems(agentRefs)))
        .map((_: ControllerCommand.Response) => Completed)
     } yield completed
   }

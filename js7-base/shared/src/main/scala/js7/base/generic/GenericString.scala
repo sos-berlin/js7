@@ -1,6 +1,7 @@
 package js7.base.generic
 
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
+import java.util.Objects.requireNonNull
 import javax.annotation.Nullable
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.convert.As
@@ -43,7 +44,8 @@ object GenericString
 
     protected def unchecked(string: String): A
 
-    def checked(string: String): Checked[A] = Checked.catchNonFatal(unchecked(string))
+    def checked(string: String): Checked[A] =
+      Checked.catchNonFatal(unchecked(requireNonNull(string)))
 
     final def apply(o: String): A = checked(o).orThrow
 

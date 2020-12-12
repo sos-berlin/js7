@@ -3,9 +3,9 @@ package js7.data.agent
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.web.Uri
-import js7.data.event.Event
+import js7.data.item.SimpleItemEvent
 
-sealed trait AgentRefEvent extends Event
+sealed trait AgentRefEvent extends SimpleItemEvent
 {
   type Key = AgentId
 }

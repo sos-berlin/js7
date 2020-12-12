@@ -16,8 +16,7 @@ import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.{UpdateRepoOperation, VersionId}
-import js7.data.lock.Lock
+import js7.data.item.{SimpleItem, UpdateRepoOperation, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.FreshOrder
 import js7.proxy.JournaledProxy.EndOfEventStreamException
@@ -58,11 +57,11 @@ extends ControllerApiWithHttp
   : Task[Checked[Accepted]] =
     executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches))
 
-  def updateAgentRefs(agentRefs: Seq[AgentRef]): Task[Checked[Accepted]] =
-    executeCommand(ControllerCommand.UpdateAgentRefs(agentRefs))
+  def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Accepted]] =
+    executeCommand(ControllerCommand.UpdateSimpleItems(items))
 
-  def updateLocks(locks: Seq[Lock]): Task[Checked[Accepted]] =
-    executeCommand(ControllerCommand.UpdateLocks(locks))
+  def updateAgentRefs(agentRefs: Seq[AgentRef]): Task[Checked[Accepted]] =
+    executeCommand(ControllerCommand.UpdateSimpleItems(agentRefs))
 
   def updateRepo(versionId: VersionId, operations: Observable[UpdateRepoOperation.ItemOperation]): Task[Checked[Completed]] =
     apiResource.use(api =>

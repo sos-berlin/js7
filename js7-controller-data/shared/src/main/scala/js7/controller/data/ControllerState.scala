@@ -2,6 +2,7 @@ package js7.controller.data
 
 import cats.instances.list._
 import cats.syntax.traverse._
+import io.circe.Decoder
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -21,7 +22,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
-import js7.data.item.{ItemPath, Repo, RepoEvent, VersionedItem}
+import js7.data.item.{ItemPath, Repo, RepoEvent, SimpleItem, SimpleItemId, VersionedItem}
 import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
 import js7.data.lock.{Lock, LockEvent, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
@@ -36,8 +37,8 @@ final case class ControllerState(
   eventId: EventId,
   standards: JournaledState.Standards,
   controllerMetaState: ControllerMetaState,
-  nameToAgent: Map[AgentId, AgentRefState],
-  nameToLockState: Map[LockId, LockState],
+  idToAgent: Map[AgentId, AgentRefState],
+  idToLockState: Map[LockId, LockState],
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
@@ -46,8 +47,8 @@ extends JournaledState[ControllerState]
     2 +
     standards.snapshotSize +
     repo.estimatedEventCount +
-    nameToAgent.size +
-    nameToLockState.size +
+    idToAgent.size +
+    idToLockState.size +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -55,8 +56,8 @@ extends JournaledState[ControllerState]
     standards.toSnapshotObservable ++
     Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState) ++
     Observable.fromIterable(repo.eventsFor(itemPathCompanions)) ++
-    Observable.fromIterable(nameToAgent.values) ++
-    Observable.fromIterable(nameToLockState.values) ++
+    Observable.fromIterable(idToAgent.values) ++
+    Observable.fromIterable(idToLockState.values) ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
@@ -88,26 +89,26 @@ extends JournaledState[ControllerState]
     case KeyedEvent(agentId: AgentId, event: AgentRefEvent) =>
       event match {
         case AgentAdded(uri) =>
-          if (nameToAgent contains name)
-            Left(DuplicateKey("AgentRef", name))
+          if (idToAgent contains agentId)
+            Left(DuplicateKey("AgentRef", agentId))
           else
             Right(copy(
-              nameToAgent = nameToAgent + (name -> AgentRefState(AgentRef(name, uri)))))
+              idToAgent = idToAgent + (agentId -> AgentRefState(AgentRef(agentId, uri)))))
 
         case AgentUpdated(uri) =>
-          for (agentRefState <- nameToAgent.checked(name)) yield
+          for (agentRefState <- idToAgent.checked(agentId)) yield
             copy(
-              nameToAgent = nameToAgent + (name -> agentRefState.copy(
+              idToAgent = idToAgent + (agentId -> agentRefState.copy(
                 agentRef = agentRefState.agentRef.copy(
                   uri = uri))))
       }
 
-    case KeyedEvent(name: AgentId, event: AgentRefStateEvent) =>
-      nameToAgent.checked(name)
+    case KeyedEvent(agentId: AgentId, event: AgentRefStateEvent) =>
+      idToAgent.checked(agentId)
         .flatMap(agentRefState =>
           agentRefState.applyEvent(event)
             .map(updated => copy(
-              nameToAgent = nameToAgent + (name -> updated))))
+              idToAgent = idToAgent + (agentId -> updated))))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
@@ -153,11 +154,11 @@ extends JournaledState[ControllerState]
               case event: OrderLockEvent =>
                 event.lockIds
                   .toList
-                  .traverse(lockId => nameToLockState(lockId).applyEvent(orderId <-: event))
+                  .traverse(lockId => idToLockState(lockId).applyEvent(orderId <-: event))
                   .map(lockStates =>
                     copy(
                       idToOrder = updatedIdToOrder,
-                      nameToLockState = nameToLockState ++ (lockStates.map(o => o.lock.id -> o))))
+                      idToLockState = idToLockState ++ (lockStates.map(o => o.lock.id -> o))))
 
               case _ => Right(copy(idToOrder = updatedIdToOrder))
             }
@@ -176,15 +177,15 @@ extends JournaledState[ControllerState]
     case KeyedEvent(lockId: LockId, event: LockEvent) =>
       event match {
         case LockAdded(nonExclusiveLimit) =>
-          if (nameToLockState contains name)
-            Left(DuplicateKey("Lock", name))
+          if (idToLockState contains lockId)
+            Left(DuplicateKey("Lock", lockId))
           else
             Right(copy(
-              nameToLockState = nameToLockState + (name -> LockState(Lock(name, nonExclusiveLimit)))))
+              idToLockState = idToLockState + (lockId -> LockState(Lock(lockId, nonExclusiveLimit)))))
 
         case LockUpdated(nonExclusiveLimit) =>
           Right(copy(
-              nameToLockState = nameToLockState + (name -> LockState(Lock(name, nonExclusiveLimit)))))
+              idToLockState = idToLockState + (lockId -> LockState(Lock(lockId, nonExclusiveLimit)))))
       }
 
     case _ => applyStandardEvent(keyedEvent)
@@ -208,6 +209,15 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   val empty = Undefined
 
   def newBuilder() = new ControllerStateBuilder
+
+  val simpleItemIdCompanions = Set[SimpleItemId.AnyCompanion](
+    AgentId, LockId)
+
+  //implicit val simpleItemIdJsonEncoder: Encoder[SimpleItemId] = SimpleItemId.jsonEncoder(simpleItemIdCompanions.toKeyedMap(_.name).checked)
+  implicit val simpleItemIdJsonDecoder: Decoder[SimpleItemId] = SimpleItemId.jsonDecoder(simpleItemIdCompanions)
+  implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] = TypedJsonCodec(
+    Subtype[AgentRef],
+    Subtype[Lock])
 
   val itemPathCompanions = Set[ItemPath.AnyCompanion](
     WorkflowPath)

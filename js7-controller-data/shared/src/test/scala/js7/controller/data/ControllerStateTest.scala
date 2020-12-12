@@ -76,8 +76,8 @@ final class ControllerStateTest extends AsyncFreeSpec {
           controllerState.controllerMetaState,
           VersionAdded(VersionId("1.0"))
         ) ++
-          controllerState.nameToAgent.values ++
-          controllerState.nameToLockState.values ++
+          controllerState.idToAgent.values ++
+          controllerState.idToLockState.values ++
           controllerState.idToOrder.values)
   }
 

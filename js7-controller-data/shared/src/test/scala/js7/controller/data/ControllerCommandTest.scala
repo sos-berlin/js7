@@ -60,27 +60,22 @@ final class ControllerCommandTest extends AnyFreeSpec
     }
   }
 
-  "UpdateAgentRefs" in {
-    testJson[ControllerCommand](UpdateAgentRefs(Seq(AgentRef(AgentId("AGENT"), Uri("https://agent")))),
+  "UpdateSimpleItems" in {
+    val items = Seq(
+      AgentRef(AgentId("AGENT"), Uri("https://agent")),
+      Lock(LockId("LOCK"), limit = 1))
+    testJson[ControllerCommand](UpdateSimpleItems(items),
       json"""{
-         "TYPE": "UpdateAgentRefs",
-         "agentRefs": [
+         "TYPE": "UpdateSimpleItems",
+         "items": [
             {
+              "TYPE": "AgentRef",
               "id": "AGENT",
               "uri": "https://agent"
-            }
-         ]
-      }""")
-  }
-
-  "UpdateLocks" in {
-    testJson[ControllerCommand](UpdateLocks(Seq(Lock(LockId("LOCK"), limit = 3))),
-      json"""{
-         "TYPE": "UpdateLocks",
-         "locks": [
-            {
+            }, {
+              "TYPE": "Lock",
               "id": "LOCK",
-              "limit": 3
+              "limit": 1
             }
          ]
       }""")

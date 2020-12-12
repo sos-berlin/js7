@@ -36,7 +36,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
   //AgentUri in {
   //  Get(AgentUri) ~> Accept(`application/json`) ~> route ~> check {
   //    assert(status == OK)
-  //    assert(responseAs[VersionedItemOverview.Standard] == VersionedItemOverview.Standard(count = nameToAgent.size))
+  //    assert(responseAs[VersionedItemOverview.Standard] == VersionedItemOverview.Standard(count = idToAgent.size))
   //  }
   //}
 
@@ -69,7 +69,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
   }
 
   // AgentRef
-  for (uri <- List(s"$AgentUri/${nameToAgent.values.head.agentId}")) {
+  for (uri <- List(s"$AgentUri/${nameToAgent.values.head.agentId.string}")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)

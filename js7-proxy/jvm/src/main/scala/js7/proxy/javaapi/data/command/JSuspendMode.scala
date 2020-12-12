@@ -1,8 +1,9 @@
 package js7.proxy.javaapi.data.command
 
 import java.util.Optional
-import js7.data.command.SuspendMode
+import javax.annotation.Nonnull
 import js7.data.command.CancelMode.Kill
+import js7.data.command.SuspendMode
 import js7.proxy.javaapi.data.common.JavaWrapper
 import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
 import scala.jdk.OptionConverters._

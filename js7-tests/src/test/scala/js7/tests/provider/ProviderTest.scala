@@ -73,7 +73,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       s"""js7.provider.add-orders-every = 0.1s
         |js7.provider.add-orders-earlier = 0.1s
         |js7.provider.agents {
-        |  ${agentRef.id} {
+        |  ${agentRef.id.string} {
         |    uri = "${agentRef.uri}"
         |  }
         |}
@@ -131,7 +131,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         added = TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.seconds).orThrow
-      //assert(controller.controllerState.map(_.nameToAgent.values).await(99.seconds) == Seq(agentRef))
+      //assert(controller.controllerState.map(_.idToAgent.values).await(99.seconds) == Seq(agentRef))
       assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
           Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),

@@ -16,7 +16,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateAgentRefs}
+import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateSimpleItems}
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentId, AgentRef}
@@ -93,7 +93,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       val controller = RunningController(controllerConfiguration) await 99.seconds
       controller.waitUntilReady()
 
-      controller.executeCommandAsSystemUser(UpdateAgentRefs(Seq(agentRef))).await(99.s).orThrow
+      controller.executeCommandAsSystemUser(UpdateSimpleItems(Seq(agentRef))).await(99.s).orThrow
       val replaceRepo = ReplaceRepo(versionId, Seq(workflow) map itemSigner.sign)
       controller.executeCommandAsSystemUser(replaceRepo).await(99.s).orThrow
 

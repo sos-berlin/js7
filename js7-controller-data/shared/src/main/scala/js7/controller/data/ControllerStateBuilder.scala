@@ -35,9 +35,9 @@ extends JournaledStateBuilder[ControllerState]
     repo = state.repo
     idToOrder.clear()
     idToOrder ++= state.idToOrder
-    nameToAgentRefState.clear()
-    nameToAgentRefState ++= state.nameToAgent
-    nameToLockState ++= state.nameToLockState
+    idToAgentRefState.clear()
+    idToAgentRefState ++= state.idToAgent
+    idToLockState ++= state.idToLockState
   }
 
   protected def onAddSnapshotObject = {
