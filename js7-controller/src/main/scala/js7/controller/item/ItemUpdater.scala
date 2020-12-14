@@ -6,7 +6,7 @@ import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.VersionedItem
 import monix.eval.Task
 
-trait ItemsUpdater
+trait ItemUpdater
 {
   def versionedItemVerifier: VersionedItemVerifier[VersionedItem]
 

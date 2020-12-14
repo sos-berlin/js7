@@ -6,6 +6,7 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient.HttpException
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
@@ -15,7 +16,6 @@ import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.UpdateSimpleItems
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -63,7 +63,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
             httpPort = Some(port))
           ).await(99.seconds)
 
-          executeCommand(controller, UpdateSimpleItems(Seq(AgentRef(agentId, uri = agent2.localUri))))
+          controller.updateSimpleItems(Seq(AgentRef(agentId, uri = agent2.localUri))).await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }

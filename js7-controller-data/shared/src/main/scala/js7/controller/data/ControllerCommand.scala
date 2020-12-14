@@ -17,7 +17,7 @@ import js7.controller.data.ControllerState.simpleItemJsonCodec
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
 import js7.data.event.EventId
-import js7.data.item.{ItemPath, SimpleItem, VersionId}
+import js7.data.item.{ItemPath, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderId}
 import js7.data.workflow.position.Position
@@ -187,12 +187,6 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  @deprecated
-  final case class UpdateSimpleItems(items: Seq[SimpleItem])
-  extends ControllerCommand {
-    type Response = Response.Accepted
-  }
-
   final case class UpdateRepo(
     versionId: VersionId,
     change: Seq[SignedString] = Nil,
@@ -255,7 +249,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],
     Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
-    Subtype(deriveCodec[UpdateSimpleItems]),
     Subtype(deriveCodec[ReplaceRepo]),
     Subtype(deriveCodec[UpdateRepo]),
     Subtype(deriveCodec[NoOperation]),

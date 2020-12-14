@@ -60,7 +60,7 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.{ItemEvent, RepoEvent, SimpleItem, SimpleItemEvent, SimpleItemId, VersionedItem}
+import js7.data.item.{ItemEvent, RepoEvent, SimpleItemEvent, VersionedItem}
 import js7.data.lock.{Lock, LockId}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailedEvent, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
@@ -630,21 +630,6 @@ with MainJournalingActor[ControllerState, Event]
             }
         }
 
-      case ControllerCommand.UpdateSimpleItems(items) =>
-        if (items.map(_.id).distinct.sizeIs != items.size)
-          Future.successful(Left(Problem.pure("Duplicate ItemIds in UpdateSimpleItems command")))
-        else
-          persistTransaction(
-            items.flatMap(item =>
-              _controllerState.idToItem.get(item.id) match {
-                case None =>
-                  Some(NoKey <-: SimpleItemAdded(item))
-                case Some(existing) =>
-                  (item != existing) ? (NoKey <-: SimpleItemChanged(item))
-              }
-          ))(handleSimpleItemEvents)
-            .map(_ => Right(ControllerCommand.Response.Accepted))
-
       case cmd: ControllerCommand.ReplaceRepo =>
         Try(
           repoCommandExecutor.replaceRepoCommandToEvents(_controllerState.repo, cmd, commandMeta)
@@ -742,17 +727,15 @@ with MainJournalingActor[ControllerState, Event]
 
   private def applyItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] = {
     // Precheck events
-    val repoEvents = events.collect { case o: RepoEvent => o }
-    _controllerState.repo.applyEvents(repoEvents)/*May return DuplicateVersionProblem*/
-      match {
-        case Left(problem) => Future.successful(Left(problem))
-        case Right(_) =>
-          persistTransaction(events.map(KeyedEvent(_))) { (_, updatedState) =>
-            _controllerState = updatedState
-            events foreach logEvent
-            Right(Completed)
-          }
-      }
+    _controllerState.repo.applyEvents(events.collect { case o: RepoEvent => o }) match {
+      case Left(problem) =>
+        // For example DuplicateVersionProblem
+        Future.successful(Left(problem))
+
+      case Right(_) =>
+        persistTransaction(events.map(KeyedEvent(_)))(handleItemEvents)
+          .map(_ => Right(Completed))
+    }
   }
 
   private def logEvent(event: Event): Unit =
@@ -766,21 +749,24 @@ with MainJournalingActor[ControllerState, Event]
       case ItemDeleted(path)     => logger.trace(s"$path deleted")
     }
 
-  private def handleSimpleItemEvents(stamped: Seq[Stamped[KeyedEvent[SimpleItemEvent]]], updatedState: ControllerState): Unit = {
+  private def handleItemEvents(stamped: Seq[Stamped[KeyedEvent[ItemEvent]]], updatedState: ControllerState): Unit = {
     _controllerState = updatedState
-    stamped.map(_.value) foreach {
-      case NoKey <-: SimpleItemAdded(agentRef: AgentRef) =>
-        val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
-        entry.actor ! AgentDriver.Input.StartFetchingEvents
+    stamped.map(_.value.event) foreach { event =>
+      logEvent(event)
+      event match {
+        case SimpleItemAdded(agentRef: AgentRef) =>
+          val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+          entry.actor ! AgentDriver.Input.StartFetchingEvents
 
-      case NoKey <-: SimpleItemChanged(agentRef: AgentRef) =>
-        agentRegister.update(agentRef)
-        agentRegister(agentRef.id).reconnect()
+        case SimpleItemChanged(agentRef: AgentRef) =>
+          agentRegister.update(agentRef)
+          agentRegister(agentRef.id).reconnect()
 
-      case NoKey <-: SimpleItemChanged(lock: Lock) =>
-        proceedWithLockQueuedOrders(lock.id :: Nil)
+        case SimpleItemChanged(lock: Lock) =>
+          proceedWithLockQueuedOrders(lock.id :: Nil)
 
-      case _ =>
+        case _ =>
+      }
     }
   }
 

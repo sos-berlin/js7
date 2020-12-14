@@ -41,7 +41,7 @@ import js7.controller.configuration.inject.ControllerModule
 import js7.controller.data.ControllerCommand.AddOrder
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.controller.item.{ItemsUpdater, VerifiedUpdateItems}
+import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.crypt.generic.GenericSignatureVerifier
@@ -55,11 +55,12 @@ import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
-import js7.data.item.VersionedItem
+import js7.data.item.{ItemOperation, SimpleItem, VersionedItem}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, OrderEvent}
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise, blocking}
@@ -83,6 +84,7 @@ final class RunningController private(
   val orderApi: OrderApi,
   val controllerState: Task[ControllerState],
   commandExecutor: ControllerCommandExecutor,
+  itemUpdater: ItemUpdater,
   whenReady: Future[Unit],
   terminated1: Future[ControllerTermination],
   val testEventBus: StandardEventBus[Any],
@@ -133,9 +135,19 @@ extends AutoCloseable
     commandExecutor.executeCommand(command, meta)
 
   @TestOnly
+  def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Completed]] =
+    VerifiedUpdateItems
+      .fromOperations(
+        Observable.fromIterable(items)
+          .map(ItemOperation.SimpleAddOrReplace.apply),
+        _ => Left(Problem.pure("No verifier")))
+      .flatMapT(itemUpdater.updateItems)
+
+  @TestOnly
   def addOrderBlocking(order: FreshOrder): Unit =
     addOrder(order).runToFuture.await(99.s).orThrow
 
+  @TestOnly
   def addOrder(order: FreshOrder): Task[Checked[Unit]] =
     executeCommandAsSystemUser(AddOrder(order)).mapT(response =>
       check(!response.ignoredBecauseDuplicate, (), Problem(s"Duplicate OrderId '${order.id}'")))
@@ -331,12 +343,12 @@ object RunningController
               cluster.stop
             },
           orderKeeperStarted.map(_.toOption)))
-      val repoUpdater = new MyItemsUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
+      val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
       val itemApi = new DirectItemApi(controllerState)
       val orderApi = new MainOrderApi(controllerState)
 
       val webServer = injector.instance[ControllerWebServer.Factory]
-        .apply(itemApi, orderApi, commandExecutor, repoUpdater,
+        .apply(itemApi, orderApi, commandExecutor, itemUpdater,
           controllerState.map(_.map(_.clusterState)),  // ??? cluster.currentClusterState,
           controllerState,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
@@ -351,6 +363,7 @@ object RunningController
           itemApi, orderApi,
           controllerState.map(_.orThrow),
           commandExecutor,
+          itemUpdater,
           whenReady.future, orderKeeperTerminated, testEventBus, closer, injector)
       }
     }
@@ -464,11 +477,11 @@ object RunningController
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
   }
 
-  private class MyItemsUpdater(
+  private class MyItemUpdater(
     val versionedItemVerifier: VersionedItemVerifier[VersionedItem],
     orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
-  extends ItemsUpdater
+  extends ItemUpdater
   {
     def updateItems(verifiedUpdateItems: VerifiedUpdateItems) =
       Task.defer(

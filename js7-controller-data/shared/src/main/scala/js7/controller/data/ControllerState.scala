@@ -11,7 +11,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.controller.data.ControllerState.generic.itemPathJsonCodec
 import js7.controller.data.ControllerState.itemPathCompanions
 import js7.controller.data.agent.AgentRefState
-import js7.controller.data.events.AgentRefStateEvent.AgentRegisteredController
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.events.{AgentRefStateEvent, ControllerEvent}
 import js7.data.agent.{AgentId, AgentRef}
@@ -38,7 +37,6 @@ final case class ControllerState(
   controllerMetaState: ControllerMetaState,
   idToAgentRefState: Map[AgentId, AgentRefState],
   idToLockState: Map[LockId, LockState],
-  //simpleItemInventory: SimpleItemInventory,
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
@@ -226,8 +224,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     AgentRef, Lock)
   val simpleItemIdCompanions = simpleItemCompanions.map(_.idCompanion)
 
-  //implicit val simpleItemIdJsonEncoder: Encoder[SimpleItemId] = SimpleItemId.jsonEncoder(simpleItemIdCompanions.toKeyedMap(_.name).checked)
-  //implicit val simpleItemIdJsonDecoder: Decoder[SimpleItemId] = SimpleItemId.jsonDecoder(simpleItemIdCompanions)
   implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] = TypedJsonCodec(
     Subtype[AgentRef],
     Subtype[Lock])
@@ -237,9 +233,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   val itemPathCompanions = Set[ItemPath.AnyCompanion](
     WorkflowPath)
 
-  //implicit val itemPathJsonCodec: CirceCodec[ItemPath] = ItemPath.jsonCodec(itemPathCompanions)
-
-  //implicit val itemPathJsonDecoder: Decoder[ItemPath] = ItemPath.jsonDecoder(itemPathCompanions.toKeyedMap(_.name).checked)
   object generic {
     implicit val simpleItemIdJsonCodec: CirceCodec[SimpleItemId] =
       SimpleItemId.jsonCodec(simpleItemIdCompanions)
@@ -261,7 +254,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[AgentRefState],
       Subtype[LockState],
       Subtype[RepoEvent],  // These events describe complete objects
-      Subtype[AgentRegisteredController],  // These events describe complete objects
       Subtype[Order[Order.State]])
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =

@@ -6,11 +6,9 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand._
-import js7.data.agent.{AgentId, AgentRef}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
-import js7.data.lock.{Lock, LockId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -58,27 +56,6 @@ final class ControllerCommandTest extends AnyFreeSpec
       assert(Batch.Response(threeResponses).toString == "BatchResponse(2 succeeded and 1 failed)")
       assert(Batch.Response(threeResponses ::: Right(Response.Accepted) :: Nil).toString == "BatchResponse(3 succeeded and 1 failed)")
     }
-  }
-
-  "UpdateSimpleItems" in {
-    val items = Seq(
-      AgentRef(AgentId("AGENT"), Uri("https://agent")),
-      Lock(LockId("LOCK"), limit = 1))
-    testJson[ControllerCommand](UpdateSimpleItems(items),
-      json"""{
-         "TYPE": "UpdateSimpleItems",
-         "items": [
-            {
-              "TYPE": "AgentRef",
-              "id": "AGENT",
-              "uri": "https://agent"
-            }, {
-              "TYPE": "Lock",
-              "id": "LOCK",
-              "limit": 1
-            }
-         ]
-      }""")
   }
 
   "AddOrder" - {

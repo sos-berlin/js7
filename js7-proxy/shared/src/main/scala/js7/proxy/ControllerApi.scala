@@ -17,7 +17,7 @@ import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.{ItemOperation, VersionId}
+import js7.data.item.{ItemOperation, SimpleItem, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.FreshOrder
 import js7.proxy.JournaledProxy.EndOfEventStreamException
@@ -68,6 +68,10 @@ extends ControllerApiWithHttp
   @deprecated("Use updateItems", "2020-12-11")
   def updateRepo(versionId: VersionId, operations: Observable[ItemOperation.UpdateRepoOperation]): Task[Checked[Completed]] =
     updateItems(ItemOperation.AddVersion(versionId) +: operations)
+
+  def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Completed]] =
+    updateItems(
+      Observable.fromIterable(items) map ItemOperation.SimpleAddOrReplace.apply)
 
   def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     apiResource.use(api =>
