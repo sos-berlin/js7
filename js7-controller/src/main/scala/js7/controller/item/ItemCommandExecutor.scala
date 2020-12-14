@@ -3,7 +3,7 @@ package js7.controller.item
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import js7.base.auth.UpdateRepoPermission
+import js7.base.auth.UpdateItemPermission
 import js7.base.crypt.{Signed, SignedString}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
@@ -27,7 +27,7 @@ final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
   // Signatures refering different signer keys must be kept to allow the operator to delete old signer keys.
 
   def replaceRepoCommandToEvents(repo: Repo, replaceRepo: ControllerCommand.ReplaceRepo, meta: CommandMeta): Task[Checked[Seq[RepoEvent]]] =
-    Task(meta.user.checkPermission(UpdateRepoPermission))
+    Task(meta.user.checkPermission(UpdateItemPermission))
       .flatMapT(_ =>
         Observable.fromIterable(replaceRepo.objects)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))
@@ -41,7 +41,7 @@ final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
                 .to(Vector)))))
 
   def updateRepoCommandToEvents(repo: Repo, updateRepo: ControllerCommand.UpdateRepo, meta: CommandMeta): Task[Checked[Seq[RepoEvent]]] =
-    Task(meta.user.checkPermission(UpdateRepoPermission))
+    Task(meta.user.checkPermission(UpdateItemPermission))
       .flatMapT(_ =>
         Observable.fromIterable(updateRepo.change)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))

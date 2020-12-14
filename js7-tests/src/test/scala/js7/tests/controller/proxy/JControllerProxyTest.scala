@@ -34,7 +34,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     js7.auth.users {
       Proxy {
         password = "plain:PROXYS-PASSWORD-FOR-PRIMARY"
-        permissions = [ UpdateRepo ]
+        permissions = [ UpdateItem ]
       }
     }
     """

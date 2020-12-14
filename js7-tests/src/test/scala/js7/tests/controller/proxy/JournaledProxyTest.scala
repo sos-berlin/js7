@@ -46,7 +46,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
     js7.auth.users {
       Proxy {
         password = "plain:PROXYS-PASSWORD-FOR-PRIMARY"
-        permissions = [ UpdateRepo ]
+        permissions = [ UpdateItem ]
       }
     }
     """

@@ -47,7 +47,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
      """js7.auth.users {
        |  UpdateRepoX509Test {
        |    password = "plain:TEST-PASSWORD"
-       |    permissions = [ UpdateRepo ]
+       |    permissions = [ UpdateItem ]
        |  }
        |}
        |""".stripMargin

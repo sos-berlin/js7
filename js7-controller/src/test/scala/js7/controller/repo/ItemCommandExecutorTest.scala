@@ -1,7 +1,7 @@
 package js7.controller.repo
 
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
-import js7.base.auth.{SimpleUser, UpdateRepoPermission, UserId}
+import js7.base.auth.{SimpleUser, UpdateItemPermission, UserId}
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
@@ -34,20 +34,20 @@ final class ItemCommandExecutorTest extends AnyFreeSpec
   private val workflow1 = Workflow(WorkflowPath("/WORKFLOW-A") ~ v1, Vector(Fail(None)))
   private val workflow2 = Workflow(WorkflowPath("/WORKFLOW") ~ v2, Vector(Fail(None)))
   private val workflow3 = workflow2 withVersion v3
-  private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateRepoPermission)))
+  private val commandMeta = CommandMeta(SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(UpdateItemPermission)))
 
   private var repo = Repo.empty
 
-  "replaceRepoCommandToEvents requires UpdateRepo permission" in {
+  "replaceRepoCommandToEvents requires UpdateItemPermission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))
     assert(repoCommandExecutor.replaceRepoCommandToEvents(repo, ReplaceRepo(v1, Nil), commandMeta).await(99.s)
-      == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
+      == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateItemPermission)))
   }
 
-  "updateRepoCommandToEvents requires UpdateRepo permission" in {
+  "updateRepoCommandToEvents requires UpdateItemPermission" in {
     val commandMeta = CommandMeta(SimpleUser(UserId("HACKER")))
     assert(repoCommandExecutor.updateRepoCommandToEvents(repo, UpdateRepo(v1), commandMeta).await(99.s)
-      == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateRepoPermission)))
+      == Left(UserDoesNotHavePermissionProblem(UserId("HACKER"), UpdateItemPermission)))
   }
 
   "replaceRepoCommandToEvents" in {

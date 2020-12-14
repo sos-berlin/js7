@@ -93,7 +93,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
      s"""js7.auth.users {
         |  $loginName {
         |    password = "plain:$loginPassword"
-        |    permissions = [ UpdateRepo ]
+        |    permissions = [ UpdateItem ]
         |  }
         |}
       """.stripMargin

@@ -4,7 +4,7 @@ import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.typesafe.config.Config
 import javax.inject.Singleton
-import js7.base.auth.{Permission, SimpleUser, UpdateRepoPermission}
+import js7.base.auth.{Permission, SimpleUser, UpdateItemPermission}
 import js7.base.eventbus.StandardEventBus
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
@@ -91,5 +91,5 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
 object ControllerModule {
   private val logger = Logger(getClass)
   private val stringToPermission = Permission.toStringToPermission(List(
-    UpdateRepoPermission))
+    UpdateItemPermission))
 }

@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.server.Directives.{as, complete, entity, pathEnd, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
 import io.circe.Json
-import js7.base.auth.{Permission, UpdateRepoPermission, ValidUserPermission}
+import js7.base.auth.{Permission, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
@@ -48,7 +48,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
   final lazy val itemRoute: Route =
     post {
       pathEnd {
-        authorizedUser(Set[Permission](ValidUserPermission, UpdateRepoPermission)) { user =>
+        authorizedUser(Set[Permission](ValidUserPermission, UpdateItemPermission)) { user =>
           withSizeLimit(entitySizeLimit) (
             entity(as[HttpEntity]) { httpEntity =>
               complete {

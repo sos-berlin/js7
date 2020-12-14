@@ -814,7 +814,7 @@ object ControllerWebServiceTest
       |js7.auth.users {
       |  TEST-USER {
       |    password = "plain:TEST-PASSWORD",
-      |    permissions = [ UpdateRepo ]
+      |    permissions = [ UpdateItem ]
       |  }
       |}
       |""".stripMargin)

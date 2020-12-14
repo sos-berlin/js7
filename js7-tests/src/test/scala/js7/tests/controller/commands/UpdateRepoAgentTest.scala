@@ -40,7 +40,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
         """js7.auth.users {
           |  UpdateRepoAgentTest {
           |    password = "plain:TEST-PASSWORD"
-          |    permissions = [ UpdateRepo ]
+          |    permissions = [ UpdateItem ]
           |  }
           |}
           |""".stripMargin

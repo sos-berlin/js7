@@ -2,7 +2,7 @@ package js7.tests.controller.commands
 
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
-import js7.base.auth.{UpdateRepoPermission, UserAndPassword, UserId}
+import js7.base.auth.{UpdateItemPermission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
@@ -43,7 +43,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
        """js7.auth.users {
          |  UpdateRepoTest {
          |    password = "plain:TEST-PASSWORD"
-         |    permissions = [ UpdateRepo ]
+         |    permissions = [ UpdateItem ]
          |  }
          |  without-permission {
          |    password = "plain:TEST-PASSWORD"
@@ -56,10 +56,10 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     super.beforeAll()
   }
 
-  "User requires permission 'UpdateRepo'" in {
+  "User requires permission 'UpdateItem'" in {
     controller.httpApi.login_(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.s
     assert(executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)) ==
-      Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateRepoPermission)))
+      Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateItemPermission)))
 
     controller.httpApi.login_(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.s
   }

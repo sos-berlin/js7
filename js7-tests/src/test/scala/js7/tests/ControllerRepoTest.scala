@@ -49,7 +49,7 @@ final class ControllerRepoTest extends AnyFreeSpec
       provider.controller.configDir / "controller.conf" ++=
         """js7.auth.users.TEST-USER {
           |  password = "plain:TEST-PASSWORD"
-          |  permissions = [ UpdateRepo ]
+          |  permissions = [ UpdateItem ]
           |}
           |""".stripMargin
 

@@ -49,7 +49,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
          |js7.auth.users {
          |  UpdateRepoX509RootTest {
          |    password = "plain:TEST-PASSWORD"
-         |    permissions = [ UpdateRepo ]
+         |    permissions = [ UpdateItem ]
          |  }
          |}
          |""".stripMargin

@@ -45,7 +45,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
     js7.auth.users {
       Proxy {
         password = "plain:PROXYS-PASSWORD-FOR-PRIMARY"
-        permissions = [ UpdateRepo ]
+        permissions = [ UpdateItem ]
       }
     }
     """
@@ -54,7 +54,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
     js7.auth.users {
       Proxy {
         password = "plain:PROXYS-PASSWORD-FOR-BACKUP"
-        permissions = [ UpdateRepo ]
+        permissions = [ UpdateItem ]
       }
     }
     """
