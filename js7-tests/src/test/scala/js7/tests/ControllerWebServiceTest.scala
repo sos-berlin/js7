@@ -582,14 +582,20 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "totalRunningTime": ${totalRunningTime.toBigDecimalSeconds}
         }, {
           "eventId": 1004,
-          "TYPE": "AgentAdded",
-          "key": "AGENT",
-          "uri": "$agent1Uri"
+          "TYPE": "SimpleItemAdded",
+          "item": {
+            "TYPE": "AgentRef",
+            "id": "AGENT",
+            "uri": "$agent1Uri"
+          }
         }, {
           "eventId": 1005,
-          "TYPE": "AgentAdded",
-          "key": "AGENT-A",
-          "uri": "$agent2Uri"
+          "TYPE": "SimpleItemAdded",
+          "item": {
+            "TYPE": "AgentRef",
+            "id": "AGENT-A",
+            "uri": "$agent2Uri"
+          }
         }, {
           "eventId": 1006,
           "key": "AGENT",

@@ -66,8 +66,8 @@ private[provider] trait Observing extends OrderProvider {
         }
         val logout =
           if (HttpClient.sessionMayBeLost(throwable))
-            controllerApi.logout().onErrorHandle { _ =>
-              controllerApi.clearSession()
+            httpControllerApi.logout().onErrorHandle { _ =>
+              httpControllerApi.clearSession()
               Completed
             }
           else

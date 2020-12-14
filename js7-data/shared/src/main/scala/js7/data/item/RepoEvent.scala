@@ -5,12 +5,11 @@ import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString}
-import js7.data.event.NoKeyEvent
 
 /**
   * @author Joacim Zschimmer
   */
-sealed trait RepoEvent extends NoKeyEvent
+sealed trait RepoEvent extends ItemEvent
 
 object RepoEvent {
   final case class VersionAdded(versionId: VersionId) extends RepoEvent
@@ -32,7 +31,8 @@ object RepoEvent {
         "path" -> o.signed.value.path.toTypedString.asJson,
         "signed" -> o.signed.signedString.asJson)
 
-    private[RepoEvent] def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath]): Decoder[(VersionedItem, SignedString)] =
+    private[RepoEvent] def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath])
+    : Decoder[(VersionedItem, SignedString)] =
       c => for {
         path <- c.get[ItemPath]("path")
         signed <- c.get[SignedString]("signed")
@@ -49,7 +49,8 @@ object RepoEvent {
     private[RepoEvent] implicit val jsonEncoder: Encoder.AsObject[ItemAdded] =
       o => ItemAddedOrChanged.jsonEncoder.encodeObject(o)
 
-    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath]): Decoder[ItemAdded] =
+    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath])
+    : Decoder[ItemAdded] =
       hCursor =>
         ItemAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (item, signedString) =>
           new ItemAdded(Signed(item, signedString))
@@ -62,7 +63,8 @@ object RepoEvent {
     private[RepoEvent] implicit val jsonEncoder: Encoder.AsObject[ItemChanged] =
       o => ItemAddedOrChanged.jsonEncoder.encodeObject(o)
 
-    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath]): Decoder[ItemChanged] =
+    private[RepoEvent] implicit def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath])
+    : Decoder[ItemChanged] =
       hCursor =>
         ItemAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (item, signedString) =>
           new ItemChanged(Signed(item, signedString))
@@ -72,7 +74,8 @@ object RepoEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }
 
-  implicit def jsonCodec(implicit w: Encoder.AsObject[VersionedItem], x: Decoder[VersionedItem], y: Encoder[ItemPath], z: Decoder[ItemPath])
+  implicit def jsonCodec(implicit w: Encoder.AsObject[VersionedItem], x: Decoder[VersionedItem],
+    y: Encoder[ItemPath], z: Decoder[ItemPath])
   : TypedJsonCodec[RepoEvent] = TypedJsonCodec(
       Subtype(deriveCodec[VersionAdded]),
       Subtype[ItemAdded],

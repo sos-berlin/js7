@@ -24,7 +24,8 @@ import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.ControllerState
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.item.{UpdateRepoOperation, VersionId, VersionedItem}
+import js7.data.item.ItemOperation.AddVersion
+import js7.data.item.{ItemOperation, VersionId, VersionedItem}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -76,7 +77,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     }
   }
 
-  "updateRepo" in {
+  "updateItems" in {
     val versionId = VersionId("MY-VERSION")
     val workflow = WorkflowParser.parse(s"""
       define workflow {
@@ -92,12 +93,12 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
       val sw = new Stopwatch
       val operations = Observable.fromIterable(workflowPaths)
         .mapParallelUnordered(sys.runtime.availableProcessors)(path => Task(
-          UpdateRepoOperation.AddOrReplace(
+          ItemOperation.VersionedAddOrReplace(
             primary.sign(workflow.copy(id = path ~ versionId)))))
           .toListL await 99.s
       logger.info(sw.itemsPerSecondString(n, "signatures"))
       val logLine = measureTimeOfSingleRun(n, "workflows") {
-        api.updateRepo(versionId, Observable.fromIterable(operations))
+        api.updateItems(Observable.fromIterable(AddVersion(versionId) :: operations))
           .await(999.s).orThrow
       }
       logger.info(logLine.toString)

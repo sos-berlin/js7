@@ -14,7 +14,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.controller.data.ControllerState.generic.itemPathJsonCodec
 import js7.controller.data.ControllerState.simpleItemJsonCodec
-import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
 import js7.data.event.EventId
@@ -188,6 +187,7 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  @deprecated
   final case class UpdateSimpleItems(items: Seq[SimpleItem])
   extends ControllerCommand {
     type Response = Response.Accepted

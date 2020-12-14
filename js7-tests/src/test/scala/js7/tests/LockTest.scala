@@ -11,6 +11,7 @@ import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
+import js7.data.item.ItemOperation.SimpleAddOrReplace
 import js7.data.item.VersionId
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockId, LockState}
@@ -24,6 +25,7 @@ import js7.tests.LockTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.waitingForFileScript
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Queue
 
@@ -43,7 +45,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     super.beforeAll()
-    controllerApi.updateSimpleItems(Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))).await(99.s).orThrow
+    val items = Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))
+    controllerApi.updateItems(Observable.fromIterable(items) map SimpleAddOrReplace.apply)
+      .await(99.s).orThrow
   }
 
   "TEST" in {

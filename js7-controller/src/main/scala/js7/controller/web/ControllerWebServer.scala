@@ -20,7 +20,7 @@ import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.controller.repo.RepoUpdater
+import js7.controller.item.ItemsUpdater
 import js7.core.command.CommandMeta
 import js7.core.item.VersionedItemApi
 import js7.data.cluster.ClusterState
@@ -38,7 +38,7 @@ final class ControllerWebServer private(
   itemApi: VersionedItemApi,
   orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
-  repoUpdater: RepoUpdater,
+  repoUpdater: ItemsUpdater,
   checkedClusterState: Task[Checked[ClusterState]],
   controllerState: Task[Checked[ControllerState]],
   totalRunningSince: Deadline,
@@ -67,7 +67,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
         isLoopback = binding.address.getAddress.isLoopbackAddress)
       protected val sessionRegister     = ControllerWebServer.this.sessionRegister
       protected val eventWatch          = ControllerWebServer.this.eventWatch
-      protected val idToAgentRefState = controllerState.map(_.map(_.idToAgent))
+      protected val idToAgentRefState = controllerState.map(_.map(_.idToAgentRefState))
       protected val itemApi = ControllerWebServer.this.itemApi
       protected val orderApi = ControllerWebServer.this.orderApi
       protected val repoUpdater = ControllerWebServer.this.repoUpdater
@@ -100,7 +100,7 @@ object ControllerWebServer
   {
     def apply(itemApi: VersionedItemApi, orderApi: OrderApi,
       commandExecutor: ControllerCommandExecutor,
-      repoUpdater: RepoUpdater,
+      repoUpdater: ItemsUpdater,
       clusterState: Task[Checked[ClusterState]],
       controllerState: Task[Checked[ControllerState]],
       totalRunningSince: Deadline,

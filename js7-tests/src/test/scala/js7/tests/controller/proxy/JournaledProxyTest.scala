@@ -13,8 +13,9 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
 import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.item.ItemOperation.{VersionedAddOrReplace, AddVersion}
 import js7.data.item.RepoEvent.ItemAdded
-import js7.data.item.{UpdateRepoOperation, VersionId}
+import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Succeeded
@@ -68,18 +69,22 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
     super.afterAll()
   }
 
-  "updateRepo" - {
+  "updateItems" - {
     "VersionId mismatch" in {
-      val response = api.updateRepo(VersionId("OTHER-VERSION"), Observable(UpdateRepoOperation.AddOrReplace(sign(workflow))))
-        .await(99.s)
+      val response = api.updateItems(Observable(
+        AddVersion(VersionId("OTHER-VERSION")),
+        VersionedAddOrReplace(sign(workflow))
+      )).await(99.s)
       assert(response == Left(ItemVersionDoesNotMatchProblem(VersionId("OTHER-VERSION"), workflow.id)))
     }
 
     "success" in {
       val myWorkflow = workflow withVersion versionId
       proxy.awaitEvent[ItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow) {
-        api.updateRepo(versionId, Observable(UpdateRepoOperation.AddOrReplace(sign(myWorkflow))))
-          .map { o => assert(o.orThrow == Completed) }
+        api.updateItems(Observable(
+          AddVersion(versionId),
+          VersionedAddOrReplace(sign(myWorkflow))
+        )).map { o => assert(o.orThrow == Completed) }
       }.await(99.s)
     }
   }

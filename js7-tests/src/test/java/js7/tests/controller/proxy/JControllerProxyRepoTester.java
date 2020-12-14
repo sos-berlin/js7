@@ -15,19 +15,21 @@ import js7.base.problem.Problem;
 import js7.base.problem.ProblemCode;
 import js7.data.event.Event;
 import js7.data.event.KeyedEvent;
-import js7.data.item.RepoEvent;
 import js7.data.item.ItemPath;
+import js7.data.item.RepoEvent;
 import js7.data.item.VersionId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
-import js7.proxy.javaapi.data.item.JUpdateRepoOperation;
 import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.await;
+import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrReplace;
+import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addVersion;
+import static js7.proxy.javaapi.data.item.JUpdateItemOperation.deleteItem;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
@@ -55,11 +57,11 @@ final class JControllerProxyRepoTester
         assertThat(bigSpace.length(), equalTo(100_000));
         assertThat(manyItemJsons.stream().mapToInt(o -> o.length() + bigSpace.length()).sum(), greaterThan(100_000_000/*bytes*/));
         assertThat(
-            api.updateRepo(
-                    versionId,
-                    Flux.fromStream(
+            api.updateItems(
+                Flux.just(addVersion(versionId))
+                    .concatWith(Flux.fromStream(
                         manyItemJsons.stream()
-                            .map(json -> JUpdateRepoOperation.addOrReplace(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE")))))
+                            .map(json -> addOrReplace(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE"))))))
                 .get(99, SECONDS)
                 .mapLeft(problem -> new Tuple2<>(
                     Optional.ofNullable(problem.codeOrNull()).map(ProblemCode::string),
@@ -68,7 +70,6 @@ final class JControllerProxyRepoTester
                 Either.left(new Tuple2<>(
                     Optional.of("TamperedWithSignedMessage"),
                     "TamperedWithSignedMessage: The message does not match its signature"))));
-
     }
 
     void addItems(List<String> itemJsons)
@@ -94,14 +95,15 @@ final class JControllerProxyRepoTester
     }
 
     private void addItemsOnly(List<String> itemJsons) {
-        await(api.updateRepo(
-            versionId,
+        await(api.updateItems(
             Flux.fromStream(
-                itemJsons.stream()
-                    .map(json -> JUpdateRepoOperation.addOrReplace(sign(json))))));
+                Stream.concat(
+                    Stream.of(addVersion(versionId)),
+                    itemJsons.stream()
+                        .map(json -> addOrReplace(sign(json)))))));
     }
 
-    void deleteItem() throws InterruptedException, ExecutionException, TimeoutException {
+    void deleteWorkflow() throws InterruptedException, ExecutionException, TimeoutException {
         VersionId versionId = VersionId.of("MY-VERSION-2");  // Must match the versionId in added or replaced objects
 
         // The workflow shoud be known (latest version)
@@ -110,10 +112,11 @@ final class JControllerProxyRepoTester
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowDeleted =
             awaitEvent(keyedEvent -> isItemDeleted(keyedEvent, bWorkflowPath));
 
-        await(api.updateRepo(
-            versionId,
-            Flux.fromIterable(asList(
-                JUpdateRepoOperation.delete(bWorkflowPath)))));
+        await(api.updateItems(
+            Flux.just(addVersion(versionId))
+                .concatWith(
+                    Flux.fromIterable(asList(
+                        deleteItem(bWorkflowPath))))));
 
         whenWorkflowDeleted.get(99, SECONDS);
 

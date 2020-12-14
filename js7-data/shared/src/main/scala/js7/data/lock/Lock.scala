@@ -17,7 +17,11 @@ object Lock extends SimpleItem.Companion
 {
   type Item = Lock
   type Id = LockId
+
   val jsonCodec = deriveCodec[Lock]
+
   implicit val jsonEncoder: Encoder.AsObject[Lock] = jsonCodec
   implicit val jsonDecoder: Decoder[Lock] = jsonCodec
+
+  val idCompanion = LockId
 }

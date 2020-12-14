@@ -10,7 +10,7 @@ final case class LockId private(string: String) extends SimpleItemId
 {
   protected type Self = LockId
 
-  def companion = LockId
+  val companion = LockId
 
   override def toString = s"Lock:$string"   // Used in LockState error message
 }

@@ -24,7 +24,7 @@ import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.controller.{JControllerCommand, JControllerState, JEventAndControllerState}
-import js7.proxy.javaapi.data.item.{JSimpleItem, JUpdateRepoOperation}
+import js7.proxy.javaapi.data.item.{JUpdateItemOperation, JUpdateRepoOperation}
 import js7.proxy.javaapi.data.order.{JFreshOrder, JHistoricOutcome}
 import js7.proxy.javaapi.data.workflow.position.JPosition
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
@@ -85,15 +85,8 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
       .asJava
   }
 
-  @Nonnull
-  def updateSimpleItems(@Nonnull items: java.util.List[JSimpleItem]): CompletableFuture[VEither[Problem, Void]] =
-    asScala.updateSimpleItems(items.asScala.view.map(_.asScala).toVector)
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
-
   @Deprecated
-  @deprecated("Use updateSimpleItems", "2020-12-11")
+  @deprecated("Use updateItems", "2020-12-11")
   @Nonnull
   def updateAgentRefs(@Nonnull agentRefs: java.util.List[JAgentRef]): CompletableFuture[VEither[Problem, Void]] =
     asScala.updateAgentRefs(agentRefs.asScala.map(_.asScala).toVector)
@@ -101,7 +94,7 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
       .runToFuture
       .asJava
 
-  /** Update the Repo, i.e. add, change or delete versioned items.
+  /** Update the Repo, i.e. add, change or deleteItem versioned items.
     *
     * Each `JUpdateRepoOperation` adds/replaces or deletes an item.
     *
@@ -123,7 +116,7 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
     * signatureString = sign(jsonString.getBytes(UTF_8))
     *     }}}
     *
-    * '''To delete an item:'''
+    * '''To deleteItem an item:'''
     * {{{
     * JUpdateRepoOperations.addOrReplace(ItemPath)
     * }}}
@@ -135,12 +128,73 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
     * @param operations Stream of JUpdateRepoOperations
     *
     */
+  @Deprecated
+  @deprecated("Use updateItems")
   @Nonnull
   def updateRepo(
     @Nonnull versionId: VersionId,
     @Nonnull operations: Flux[JUpdateRepoOperation])
   : CompletableFuture[VEither[Problem, Void]] =
     asScala.updateRepo(requireNonNull(versionId), operations.asObservable.map(_.asScala))
+      .map(_.toVoidVavr)
+      .runToFuture
+      .asJava
+
+  /** Update the Items, i.e. add, change or deleteItem simple or versioned items.
+    *
+    * The `JUpdateItemOperation.addVersion` adds a version.
+    * This operation must be given exactly only if any versioned times are concerned.
+    *
+    * All other `JUpdateItemOperation`s add/replace or deleteItem items.
+    *
+    * '''Example'''
+    *
+    * Add a AgentRef and a versions with some signed workflows.
+    * {{{
+
+    * controllerApi.updateItems(
+    *   Flux.fromStream(
+    *     Stream.concat(
+    *       Stream.of(JUpdateItemOperation.addOrReplace(agentRef)),
+    *       Stream.concat(
+    *         Stream.of(JUpdateItemOperation.addVersion(versionId)),
+    *         workflowJsons.stream()
+    *           .map(json -> JUpdateItemOperation.addOrReplace(sign(json))))))));
+
+    * }}}
+    * '''To add or replace a signed versioneditem:'''
+    * {{{
+    * JUpdateItemOperations.addOrReplace(
+    *   SignedString.of(
+    *     jsonString,
+    *     "PGP"/*for example*/,
+    *     signatureString)
+    * }}}
+    * `SignedString.of` requires three arguments:
+    *   - `jsonString` is the JSON-encoded `VersionedItem`, i.e. a Workflow or an AgentId.
+    *     The item must include its id with `path` and `versionId`.
+    *     The `versionId` must be the same as the one `JUpdateItemOperations.addVersion`.
+    *   - "PGP" or any supported signature type.
+    *   - `signatureString` is the the signature of the UTF-8 encoded `jsonString`.
+    *     {{{
+    * signatureString = sign(jsonString.getBytes(UTF_8))
+    *     }}}
+    *
+    * '''To deleteItem an item:'''
+    * {{{
+    * JUpdateItemOperations.deleteItem(ItemPath)
+    * }}}
+    *
+    * `ItemPath` may be a [[js7.data.workflow.WorkflowPath]]
+    * (it has a Java-compatible static factory method `of`).
+    *
+    * @param operations Stream of JUpdateItemOperations
+    *
+    */
+  @Nonnull
+  def updateItems(@Nonnull operations: Flux[JUpdateItemOperation])
+  : CompletableFuture[VEither[Problem, Void]] =
+    asScala.updateItems(operations.asObservable.map(_.asScala))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava

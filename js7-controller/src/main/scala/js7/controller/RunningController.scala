@@ -41,7 +41,7 @@ import js7.controller.configuration.inject.ControllerModule
 import js7.controller.data.ControllerCommand.AddOrder
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.controller.repo.{RepoUpdater, VerifiedUpdateRepo}
+import js7.controller.item.{ItemsUpdater, VerifiedUpdateItems}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.crypt.generic.GenericSignatureVerifier
@@ -331,7 +331,7 @@ object RunningController
               cluster.stop
             },
           orderKeeperStarted.map(_.toOption)))
-      val repoUpdater = new MyRepoUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
+      val repoUpdater = new MyItemsUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
       val itemApi = new DirectItemApi(controllerState)
       val orderApi = new MainOrderApi(controllerState)
 
@@ -464,13 +464,13 @@ object RunningController
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
   }
 
-  private class MyRepoUpdater(
-    val itemVerifier: VersionedItemVerifier[VersionedItem],
+  private class MyItemsUpdater(
+    val versionedItemVerifier: VersionedItemVerifier[VersionedItem],
     orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
-  extends RepoUpdater
+  extends ItemsUpdater
   {
-    def updateRepo(verifiedUpdateRepo: VerifiedUpdateRepo) =
+    def updateItems(verifiedUpdateItems: VerifiedUpdateItems) =
       Task.defer(
         // TODO Duplicate code
         orderKeeperStarted.value match {
@@ -482,7 +482,7 @@ object RunningController
             Task.pure(Left(JobSchedulerIsShuttingDownProblem))
           case Some(Success(Some(actor))) =>
             Task.deferFuture(
-              (actor ? ControllerOrderKeeper.Command.VerifiedUpdateRepoCmd(verifiedUpdateRepo))
+              (actor ? ControllerOrderKeeper.Command.VerifiedUpdateItemsCmd(verifiedUpdateItems))
                 .mapTo[Checked[Completed]])
         })
   }

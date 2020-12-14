@@ -10,7 +10,7 @@ final case class AgentId private(string: String) extends SimpleItemId
 {
   protected type Self = AgentId
 
-  def companion = AgentId
+  val companion = AgentId
 
   override def toString = s"Agent:$string"
 }

@@ -5,7 +5,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class IventoryItemTest extends AnyFreeSpec
+final class VersionedItemTest extends AnyFreeSpec
 {
   "Companion" in {
     assert(AItem.name == "AItem")

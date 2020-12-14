@@ -57,7 +57,7 @@ final case class Repo private(
     }
 
   /** Returns the difference to the repo as events. */
-  def itemToEvents(versionId: VersionId, changed: Iterable[Signed[VersionedItem]], deleted: Iterable[ItemPath] = Nil)
+  def itemsToEvents(versionId: VersionId, changed: Iterable[Signed[VersionedItem]], deleted: Iterable[ItemPath] = Nil)
   : Checked[Seq[RepoEvent]] =
     checkItemVersions(versionId, changed)
       .flatMap { changed =>

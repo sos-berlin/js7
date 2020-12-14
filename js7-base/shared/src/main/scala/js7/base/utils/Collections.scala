@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import javax.annotation.Nullable
+import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
@@ -195,6 +196,12 @@ object Collections
 
     def mapValuesStrict[W](f: V => W): Map[K, W] =
       underlying map { case (k, v) => k -> f(v) }
+
+    def insert(kv: (K, V)): Checked[Map[K, V]] =
+      if (underlying contains kv._1)
+        Left(DuplicateKey(kv.getClass.toString, kv._1))
+      else
+        Right(underlying + kv)
   }
 
   implicit final class RichMutableMap[K, V](private val underlying: mutable.Map[K, V]) extends AnyVal {

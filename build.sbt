@@ -361,7 +361,7 @@ lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-co
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-provider` = project.dependsOn(`js7-controller-data`.jvm, `js7-controller`, `js7-controller-client`.jvm, `js7-core`, `js7-common`, `js7-tester`.jvm % "test")
+lazy val `js7-provider` = project.dependsOn(`js7-proxy`.jvm, `js7-controller`, `js7-controller-client`.jvm, `js7-core`, `js7-common`, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(

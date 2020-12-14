@@ -1,4 +1,4 @@
-package js7.controller.repo
+package js7.controller.item
 
 import cats.instances.either._
 import cats.instances.vector._
@@ -10,7 +10,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.data.ControllerCommand
-import js7.controller.repo.RepoCommandExecutor._
+import js7.controller.item.ItemCommandExecutor._
 import js7.core.command.CommandMeta
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.{Repo, RepoEvent, VersionedItem}
@@ -20,7 +20,7 @@ import monix.reactive.Observable
 /**
   * @author Joacim Zschimmer
   */
-final class RepoCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedItem])
+final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedItem])
 {
   // ReplaceRepo and UpdateRepo may detect equal objects and optimize the ItemChanged away,
   // if we can make sure that the different signature (due to different VersionId) refer the same trusted signer key.
@@ -34,7 +34,7 @@ final class RepoCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
           .toL(Vector)
           .map(_
             .sequence
-            .flatMap(signedItemSeq => repo.itemToEvents(replaceRepo.versionId, signedItemSeq,
+            .flatMap(signedItemSeq => repo.itemsToEvents(replaceRepo.versionId, signedItemSeq,
               deleted = repo.currentItems.view
                 .map(_.path)
                 .filterNot(signedItemSeq.view.map(_.value.path).toSet)
@@ -48,7 +48,7 @@ final class RepoCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
           .toL(Vector)
           .map(_
             .sequence
-            .flatMap(repo.itemToEvents(updateRepo.versionId, _, updateRepo.delete))))
+            .flatMap(repo.itemsToEvents(updateRepo.versionId, _, updateRepo.delete))))
 
   private def verify(signedString: SignedString): Checked[Signed[VersionedItem]] =
     for (verified <- itemVerifier.verify(signedString)) yield {
@@ -57,6 +57,6 @@ final class RepoCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
     }
 }
 
-object RepoCommandExecutor {
+object ItemCommandExecutor {
   private val logger = Logger(getClass)
 }

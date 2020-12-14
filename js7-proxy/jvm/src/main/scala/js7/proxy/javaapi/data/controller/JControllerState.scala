@@ -50,7 +50,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up an AgentRef VersionedItem in the current version. */
   @Nonnull
   def idToAgentRef(@Nonnull id: AgentId): VEither[Problem, JAgentRef] =
-    asScala.idToAgent.checked(id)
+    asScala.idToAgentRefState.checked(id)
       .map(_.agentRef)
       .map(JAgentRef.apply)
       .toVavr
@@ -65,7 +65,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up an AgentRefState. */
   @Nonnull
   def idToAgentRefState(@Nonnull agentId: AgentId): VEither[Problem, JAgentRefState] =
-    asScala.idToAgent.checked(agentId)
+    asScala.idToAgentRefState.checked(agentId)
       .map(JAgentRefState.apply)
       .toVavr
 

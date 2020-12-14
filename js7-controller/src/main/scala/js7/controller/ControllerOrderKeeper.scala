@@ -42,15 +42,14 @@ import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, Agent
 import js7.controller.data.events.ControllerEvent
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.{ControllerCommand, ControllerState}
+import js7.controller.item.{ItemCommandExecutor, VerifiedUpdateItems}
 import js7.controller.problems.ControllerIsNotYetReadyProblem
-import js7.controller.repo.{RepoCommandExecutor, VerifiedUpdateRepo}
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.event.journal.recover.Recovered
 import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
-import js7.data.agent.AgentRefEvent.{AgentAdded, AgentUpdated}
 import js7.data.agent.{AgentId, AgentRef, AgentRunId}
 import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier
@@ -60,8 +59,8 @@ import js7.data.event.{<-:, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
-import js7.data.item.{RepoEvent, SimpleItemEvent, VersionedItem}
-import js7.data.lock.LockEvent.{LockAdded, LockUpdated}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
+import js7.data.item.{ItemEvent, RepoEvent, SimpleItem, SimpleItemEvent, SimpleItemId, VersionedItem}
 import js7.data.lock.{Lock, LockId}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailedEvent, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
@@ -103,7 +102,7 @@ with MainJournalingActor[ControllerState, Event]
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
 
-  private val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
+  private val repoCommandExecutor = new ItemCommandExecutor(itemVerifier)
   private val agentRegister = new AgentRegister
   private val orderRegister = mutable.HashMap[OrderId, OrderEntry]()
   private val recoveredJournalHeader = SetOnce[JournalHeader]
@@ -275,8 +274,8 @@ with MainJournalingActor[ControllerState, Event]
           .throwable
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
-      for (agentRef <- controllerState.idToAgent.values.map(_.agentRef)) {
-        val agentRefState = controllerState.idToAgent.getOrElse(agentRef.id, AgentRefState(agentRef))
+      for (agentRef <- controllerState.idToAgentRefState.values.map(_.agentRef)) {
+        val agentRefState = controllerState.idToAgentRefState.getOrElse(agentRef.id, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
       }
 
@@ -307,8 +306,8 @@ with MainJournalingActor[ControllerState, Event]
         logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
         sender() ! Left(ControllerIsNotYetReadyProblem)
 
-      case Command.VerifiedUpdateRepoCmd(_) =>
-        logger.warn(s"$ControllerIsNotYetReadyProblem: VerifiedUpdateRepoCmd")
+      case Command.VerifiedUpdateItemsCmd(_) =>
+        logger.warn(s"$ControllerIsNotYetReadyProblem: VerifiedUpdateItemsCmd")
         sender() ! Left(ControllerIsNotYetReadyProblem)
 
       case cmd: Command =>
@@ -344,7 +343,7 @@ with MainJournalingActor[ControllerState, Event]
       }
       afterProceedEvents.persistThenHandleEvents()  // Persist and handle before Internal.Ready
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
-        logger.info(s"${_controllerState.idToOrder.size} Orders, ${_controllerState.repo.typedCount[Workflow]} Workflows and ${_controllerState.idToAgent.size} AgentRefs recovered")
+        logger.info(s"${_controllerState.idToOrder.size} Orders, ${_controllerState.repo.typedCount[Workflow]} Workflows and ${_controllerState.idToAgentRefState.size} AgentRefs recovered")
       }
 
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
@@ -404,30 +403,29 @@ with MainJournalingActor[ControllerState, Event]
           case Success(response) => sender ! response
         }
 
-    case Command.VerifiedUpdateRepoCmd(verifiedUpdateRepo) =>
+    case Command.VerifiedUpdateItemsCmd(VerifiedUpdateItems(simple, maybeVersioned)) =>
       val sender = this.sender()
       val t = now
-      (Try(
-        _controllerState.repo.itemToEvents(
-          verifiedUpdateRepo.versionId,
-          verifiedUpdateRepo.verifiedItem.map(_.signedItem),
-          verifiedUpdateRepo.delete)
-      ) match {
-        // TODO Duplicate code
-        case Failure(t) => Future.failed(t)
-        case Success(Left(problem)) => Future.successful(Left(problem))
-        case Success(Right(repoEvents)) =>
-          applyRepoEvents(repoEvents)
-            .map(_.map { o =>
-              if (t.elapsed > 1.s) logger.debug("RepoEvents calculated - " +
-                itemsPerSecondString(t.elapsed, repoEvents.size, "items"))
-              o
-            })
-      }) onComplete {
-        case Failure(t) =>
-          sender ! Status.Failure(t)
-        case Success(response) =>
-          sender ! (response: Checked[Completed])
+      val simpleItemEvents = simpleItemsToEvent(simple)
+      val whenPersisted = maybeVersioned
+        .map(repoItemsToEvent)
+        .getOrElse(Success(Right(Nil)))
+        match {
+          case Failure(t) => Future.failed(t)
+          case Success(Left(problem)) => Future.successful(Left(problem))
+          case Success(Right(repoEvents)) =>
+            applyItemEvents(simpleItemEvents ++ repoEvents)
+              .map(_.map { o =>
+                if (t.elapsed > 1.s) logger.debug("RepoEvents calculated - " +
+                  itemsPerSecondString(t.elapsed,
+                    simple.items.size + maybeVersioned.fold(0)(_.verifiedItems.size),
+                    "items"))
+                o
+              })
+        }
+      whenPersisted.onComplete {
+        case Failure(t) => sender ! Status.Failure(t)
+        case Success(response) => sender ! (response: Checked[Completed])
       }
 
     case AgentDriver.Output.EventsFromAgent(stampedAgentEvents, committedPromise) =>
@@ -436,7 +434,6 @@ with MainJournalingActor[ControllerState, Event]
       var timestampedEvents: Seq[Timestamped[Event]] =
         stampedAgentEvents.view.flatMap {
           case Stamped(_, timestamp, keyedEvent) =>
-            // TODO Event vor dem Speichern mit Order.applyEvent ausprobieren! Bei Fehler ignorieren?
             keyedEvent match {
               case KeyedEvent(_, _: OrderCancelMarked | _: OrderSuspendMarked | _: OrderResumeMarked | OrderDetached) =>
                 // We (the Controller) have emitted the same event
@@ -521,6 +518,25 @@ with MainJournalingActor[ControllerState, Event]
         shutdown.continue()
       }
   }
+
+  private def simpleItemsToEvent(simple: VerifiedUpdateItems.Simple): Seq[SimpleItemEvent] =
+    simple.items
+      .map { item =>
+        val exists = item match {
+          case item: AgentRef => _controllerState.idToAgentRefState contains item.id
+          case item: Lock => _controllerState.idToLockState contains item.id
+        }
+        if (exists) SimpleItemChanged(item) else SimpleItemAdded(item)
+      } ++
+        simple.delete.map(SimpleItemDeleted.apply)
+
+  private def repoItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
+  : Try[Checked[Seq[RepoEvent]]] =
+    Try(
+      _controllerState.repo.itemsToEvents(
+        forRepo.versionId,
+        forRepo.verifiedItems.map(_.signedItem),
+        forRepo.delete))
 
   // JournalActor's termination must be handled in any `become`-state and must lead to ControllerOrderKeeper's termination
   override def journaling = handleExceptionalMessage orElse super.journaling
@@ -619,26 +635,14 @@ with MainJournalingActor[ControllerState, Event]
           Future.successful(Left(Problem.pure("Duplicate ItemIds in UpdateSimpleItems command")))
         else
           persistTransaction(
-            items.flatMap {
-              case AgentRef(agentId, uri) =>
-                _controllerState.idToAgent.get(agentId).map(_.agentRef) match {
-                  case None =>
-                    Some(agentId <-: AgentAdded(uri))
-                  case Some(AgentRef(`agentId`, `uri`)) =>
-                    None
-                  case Some(_) =>
-                    Some(agentId <-: AgentUpdated(uri))
-                }
-              case lock @ Lock(lockId, nonExclusiveLimit) =>
-                _controllerState.idToLockState.get(lockId).map(_.lock) match {
-                  case None =>
-                    Some(lockId <-: LockAdded(nonExclusiveLimit))
-                  case Some(`lock`) =>
-                    None
-                  case Some(_) =>
-                    Some(lockId <-: LockUpdated(nonExclusiveLimit))
-                }
-          })(handleSimpleItemEvents)
+            items.flatMap(item =>
+              _controllerState.idToItem.get(item.id) match {
+                case None =>
+                  Some(NoKey <-: SimpleItemAdded(item))
+                case Some(existing) =>
+                  (item != existing) ? (NoKey <-: SimpleItemChanged(item))
+              }
+          ))(handleSimpleItemEvents)
             .map(_ => Right(ControllerCommand.Response.Accepted))
 
       case cmd: ControllerCommand.ReplaceRepo =>
@@ -650,7 +654,7 @@ with MainJournalingActor[ControllerState, Event]
           case Failure(t) => Future.failed(t)
           case Success(checkedRepoEvents) =>
             checkedRepoEvents
-              .traverse(applyRepoEvents)
+              .traverse(applyItemEvents)
               .map(_.flatten.map((_: Completed) => ControllerCommand.Response.Accepted))
         }
 
@@ -663,7 +667,7 @@ with MainJournalingActor[ControllerState, Event]
           case Failure(t) => Future.failed(t)
           case Success(checkedRepoEvents) =>
             checkedRepoEvents
-              .traverse(applyRepoEvents)
+              .traverse(applyItemEvents)
               .map(_.flatten.map((_: Completed) => ControllerCommand.Response.Accepted))
         }
 
@@ -736,42 +740,45 @@ with MainJournalingActor[ControllerState, Event]
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
-  private def applyRepoEvents(events: Seq[RepoEvent]): Future[Checked[Completed]] =
+  private def applyItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] = {
     // Precheck events
-    _controllerState.repo.applyEvents(events)/*May return DuplicateVersionProblem*/
+    val repoEvents = events.collect { case o: RepoEvent => o }
+    _controllerState.repo.applyEvents(repoEvents)/*May return DuplicateVersionProblem*/
       match {
         case Left(problem) => Future.successful(Left(problem))
         case Right(_) =>
           persistTransaction(events.map(KeyedEvent(_))) { (_, updatedState) =>
             _controllerState = updatedState
-            events foreach logRepoEvent
+            events foreach logEvent
             Right(Completed)
           }
       }
+  }
 
-  private def logRepoEvent(event: RepoEvent): Unit =
+  private def logEvent(event: Event): Unit =
     event match {
+      case o: SimpleItemAdded    => logger.trace(s"${o.id} added")
+      case o: SimpleItemChanged  => logger.trace(s"${o.id} changed")
+      case SimpleItemDeleted(id) => logger.trace(s"$id deleted")
       case VersionAdded(version) => logger.trace(s"Version '${version.string}' added")
-      case o: ItemAdded          => logger.trace(s"${o.path} } added")
-      case o: ItemChanged        => logger.trace(s"${o.path} } changed")
+      case o: ItemAdded          => logger.trace(s"${o.path} added")
+      case o: ItemChanged        => logger.trace(s"${o.path} changed")
       case ItemDeleted(path)     => logger.trace(s"$path deleted")
     }
 
   private def handleSimpleItemEvents(stamped: Seq[Stamped[KeyedEvent[SimpleItemEvent]]], updatedState: ControllerState): Unit = {
     _controllerState = updatedState
     stamped.map(_.value) foreach {
-      case KeyedEvent(agentId: AgentId, AgentAdded(uri)) =>
-        val agentRef = AgentRef(agentId, uri)
+      case NoKey <-: SimpleItemAdded(agentRef: AgentRef) =>
         val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
         entry.actor ! AgentDriver.Input.StartFetchingEvents
 
-      case KeyedEvent(agentId: AgentId, AgentUpdated(uri)) =>
-        val agentRef = AgentRef(agentId, uri)
+      case NoKey <-: SimpleItemChanged(agentRef: AgentRef) =>
         agentRegister.update(agentRef)
         agentRegister(agentRef.id).reconnect()
 
-      case KeyedEvent(lockId: LockId, LockUpdated(_)) =>
-        proceedWithLockQueuedOrders(lockId :: Nil)
+      case NoKey <-: SimpleItemChanged(lock: Lock) =>
+        proceedWithLockQueuedOrders(lock.id :: Nil)
 
       case _ =>
     }
@@ -1085,7 +1092,7 @@ private[controller] object ControllerOrderKeeper
   sealed trait Command
   object Command {
     final case class Execute(command: ControllerCommand, meta: CommandMeta) extends Command
-    final case class VerifiedUpdateRepoCmd(verifiedUpdateRepo: VerifiedUpdateRepo) extends Command
+    final case class VerifiedUpdateItemsCmd(verifiedUpdateRepo: VerifiedUpdateItems) extends Command
   }
 
   sealed trait Reponse

@@ -131,7 +131,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         added = TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.seconds).orThrow
-      //assert(controller.controllerState.map(_.idToAgent.values).await(99.seconds) == Seq(agentRef))
+      //assert(controller.controllerState.map(_.idToAgentRefState.values).await(99.seconds) == Seq(agentRef))
       assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
           Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),

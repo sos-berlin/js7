@@ -3,7 +3,7 @@ package js7.provider
 import cats.implicits._
 import com.typesafe.config.{ConfigObject, ConfigUtil}
 import java.nio.file.{Path, Paths}
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.convert.As._
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked._
@@ -18,17 +18,19 @@ import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo, UpdateSimpleItems}
+import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
 import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.item.IntentoryItems.diffVersionedItems
+import js7.data.item.ItemOperation.SimpleAddOrReplace
 import js7.data.item.{IntentoryItems, ItemPath, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
+import js7.proxy.ControllerApi
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
@@ -50,8 +52,10 @@ extends HasCloser with Observing with ProvideActorSystem
       userName <- conf.config.optionAs[String]("js7.provider.controller.user")
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
-  protected val controllerApi = new AkkaHttpControllerApi(conf.controllerUri, userAndPassword, actorSystem = actorSystem,
+  protected val httpControllerApi = new AkkaHttpControllerApi(conf.controllerUri, userAndPassword, actorSystem = actorSystem,
     config = conf.config, keyStoreRef = conf.httpsConfig.keyStoreRef, trustStoreRefs = conf.httpsConfig.trustStoreRefs)
+  val controllerApi = new ControllerApi(Seq(AkkaHttpControllerApi.admissionToApiResource(
+    Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))
   protected def config = conf.config
 
   private val firstRetryLoginDurations = conf.config.getDurationList("js7.provider.controller.login-retry-delays")
@@ -61,12 +65,12 @@ extends HasCloser with Observing with ProvideActorSystem
   private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
 
   def closeTask: Task[Completed] =
-    controllerApi.logout()
-      .guarantee(Task(controllerApi.close()))
+    httpControllerApi.logout()
+      .guarantee(Task(httpControllerApi.close()))
       .memoize
 
   protected val relogin: Task[Completed] =
-    controllerApi.logout().onErrorHandle(_ => ()) >>
+    httpControllerApi.logout().onErrorHandle(_ => ()) >>
       loginUntilReachable
 
   private def updateAgents: Task[Completed] = {
@@ -74,14 +78,13 @@ extends HasCloser with Observing with ProvideActorSystem
       .collect { case (name, obj: ConfigObject) =>
         AgentRef(AgentId(name), Uri(obj.toConfig.getString("uri")))
       }
-      .toVector
-    for {
-      _ <- loginUntilReachable
-     completed <- controllerApi
-       .retryUntilReachable()(
-         controllerApi.executeCommand(UpdateSimpleItems(agentRefs)))
-       .map((_: ControllerCommand.Response) => Completed)
-    } yield completed
+    controllerApi.updateItems(Observable.fromIterable(agentRefs) map SimpleAddOrReplace)
+      .map {
+        case Left(problem) =>
+          logger.error(problem.toString)
+          Completed
+        case Right(completed) => completed
+      }
   }
 
   // We don't use ReplaceRepo because it changes every existing object only because of changed signature.
@@ -92,7 +95,7 @@ extends HasCloser with Observing with ProvideActorSystem
       checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries.map(_.file))
       response <- checkedCommand
         .traverse(o => HttpClient.liftProblem(
-          controllerApi.executeCommand(o).map((_: ControllerCommand.Response) => Completed)))
+          httpControllerApi.executeCommand(o).map((_: ControllerCommand.Response) => Completed)))
         .map(_.flatten)
     } yield {
       if (response.isRight) {
@@ -158,10 +161,10 @@ extends HasCloser with Observing with ProvideActorSystem
 
   protected lazy val loginUntilReachable: Task[Completed] =
     Task.defer {
-      if (controllerApi.hasSession)
+      if (httpControllerApi.hasSession)
         Task.pure(Completed)
       else
-        controllerApi.loginUntilReachable(retryLoginDurations)
+        httpControllerApi.loginUntilReachable(retryLoginDurations)
           .map { completed =>
             logger.info("Logged-in at Controller")
             completed
@@ -175,7 +178,7 @@ extends HasCloser with Observing with ProvideActorSystem
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
       HttpClient.liftProblem(
-        controllerApi.executeCommand(toUpdateRepo(v, diff))
+        httpControllerApi.executeCommand(toUpdateRepo(v, diff))
           .map((_: ControllerCommand.Response) => Completed))
     }
 
@@ -193,7 +196,7 @@ extends HasCloser with Observing with ProvideActorSystem
       delete = diff.deleted)
 
   private def fetchControllerItemSeq: Task[Seq[VersionedItem]] =
-    controllerApi.workflows.map(_.orThrow)
+    httpControllerApi.workflows.map(_.orThrow)
 
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector

@@ -11,12 +11,13 @@ import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
 import js7.controller.data.ControllerCommand.Response.Accepted
 import js7.controller.data.ControllerCommand.{AddOrders, ReleaseEvents}
-import js7.controller.data.ControllerState.generic.itemPathJsonCodec
+import js7.controller.data.ControllerState.generic.{itemPathJsonCodec, simpleItemIdJsonCodec}
+import js7.controller.data.ControllerState.simpleItemJsonCodec
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.{SimpleItem, UpdateRepoOperation, VersionId}
+import js7.data.item.{ItemOperation, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.FreshOrder
 import js7.proxy.JournaledProxy.EndOfEventStreamException
@@ -57,19 +58,24 @@ extends ControllerApiWithHttp
   : Task[Checked[Accepted]] =
     executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches))
 
-  def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Accepted]] =
-    executeCommand(ControllerCommand.UpdateSimpleItems(items))
-
+  @deprecated
   def updateAgentRefs(agentRefs: Seq[AgentRef]): Task[Checked[Accepted]] =
-    executeCommand(ControllerCommand.UpdateSimpleItems(agentRefs))
+    updateItems(Observable
+      .fromIterable(agentRefs)
+      .map(ItemOperation.SimpleAddOrReplace.apply))
+      .map(_.map((_: Completed) => Accepted))
 
-  def updateRepo(versionId: VersionId, operations: Observable[UpdateRepoOperation.ItemOperation]): Task[Checked[Completed]] =
+  @deprecated("Use updateItems", "2020-12-11")
+  def updateRepo(versionId: VersionId, operations: Observable[ItemOperation.UpdateRepoOperation]): Task[Checked[Completed]] =
+    updateItems(ItemOperation.AddVersion(versionId) +: operations)
+
+  def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     apiResource.use(api =>
       api.retryUntilReachable()(
         HttpClient.liftProblem(
-          api.postObservable[UpdateRepoOperation, JsonObject](
-            "controller/api/repo",
-            UpdateRepoOperation.AddVersion(versionId) +: operations
+          api.postObservable[ItemOperation, JsonObject](
+            "controller/api/item",
+            operations
           ).map(_ => Completed))))
 
   def addOrders(orders: Observable[FreshOrder]): Task[Checked[AddOrders.Response]] =

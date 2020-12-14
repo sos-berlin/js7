@@ -34,7 +34,7 @@ class JControllerProxyTester
         JControllerProxyRepoTester repoTester = new JControllerProxyRepoTester(proxy);
         repoTester.addTamperedItems(manyItemJsons);
         repoTester.addItems(itemJsons);
-        repoTester.deleteItem();
+        repoTester.deleteWorkflow();
 
         JControllerApiOrderTester apiOrderTester = new JControllerApiOrderTester(api);
         apiOrderTester.testCancelOrder();

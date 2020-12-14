@@ -19,7 +19,7 @@ import monix.execution.Scheduler
 trait OrderProvider extends HasCloser
 {
   protected def conf: ProviderConfiguration
-  protected def controllerApi: HttpControllerApi
+  protected def httpControllerApi: HttpControllerApi
   protected def retryUntilNoError[A](body: => Task[Checked[A]]): Task[A]
 
   private lazy val typedSourceReader = new TypedSourceReader(conf.orderGeneratorsDirectory,
@@ -32,10 +32,10 @@ trait OrderProvider extends HasCloser
 
   private def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
     retryUntilNoError {
-      controllerApi.login(onlyIfNotLoggedIn = true) >>
-        controllerApi.addOrders(orders)
+      httpControllerApi.login(onlyIfNotLoggedIn = true) >>
+        httpControllerApi.addOrders(orders)
           .flatMap((_: Completed) =>
-            controllerApi.removeOrdersWhenTerminated(orders.map(_.id)))
+            httpControllerApi.removeOrdersWhenTerminated(orders.map(_.id)))
           .map(Right.apply)
     }
 

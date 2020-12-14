@@ -1,6 +1,7 @@
 package js7.data.agent
 
 import io.circe.{Decoder, Encoder}
+import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.web.Uri
 import js7.data.item.SimpleItem
@@ -17,7 +18,9 @@ object AgentRef extends SimpleItem.Companion
   type Item = AgentRef
   type Id = AgentId
 
-  implicit val jsonCodec = deriveCodec[AgentRef]
+  val idCompanion = AgentId
+
+  implicit val jsonCodec: CirceObjectCodec[AgentRef] = deriveCodec[AgentRef]
   implicit val jsonEncoder: Encoder.AsObject[AgentRef] = jsonCodec
   implicit val jsonDecoder: Decoder[AgentRef] = jsonCodec
 }
