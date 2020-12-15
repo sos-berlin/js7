@@ -133,7 +133,7 @@ extends JournaledState[ControllerState]
         case event: OrderCoreEvent =>
           for {
             previousOrder <- idToOrder.checked(orderId)
-            updatedOrder <- previousOrder.update(event)
+            updatedOrder <- previousOrder.applyEvent(event)
             updatedIdToOrder = idToOrder + (updatedOrder.id -> updatedOrder)
             updatedControllerState <- event match {
               case event: OrderForked =>

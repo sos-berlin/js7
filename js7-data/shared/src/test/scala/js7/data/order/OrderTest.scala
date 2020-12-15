@@ -522,41 +522,41 @@ final class OrderTest extends AnyFreeSpec
     "attachedState" - {
       "attachedState=None" in {
         val order = Order(orderId, workflowId, Ready, attachedState = None)
-        assert(order.update(OrderAttachable(agentId)) == Right(order.copy(attachedState = Some(Attaching(agentId)))))
-        assert(order.update(OrderAttached(agentId)).isLeft)
-        assert(order.update(OrderDetachable).isLeft)
-        assert(order.update(OrderDetached).isLeft)
-        assert(order.update(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderAttachable(agentId)) == Right(order.copy(attachedState = Some(Attaching(agentId)))))
+        assert(order.applyEvent(OrderAttached(agentId)).isLeft)
+        assert(order.applyEvent(OrderDetachable).isLeft)
+        assert(order.applyEvent(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderDetached).isLeft)
       }
 
       "attachedState=Attaching" in {
         val order = Order(orderId, workflowId, Ready, attachedState = Some(Attaching(agentId)))
-        assert(order.update(OrderAttachable(agentId)).isLeft)
-        assert(order.update(OrderAttached(agentId)) == Right(order.copy(attachedState = Some(Attached(agentId)))))
-        assert(order.update(OrderAttached(AgentId("OTHER"))).isLeft)
-        assert(order.update(OrderDetachable).isLeft)
-        assert(order.update(OrderDetached).isLeft)
-        assert(order.update(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderAttachable(agentId)).isLeft)
+        assert(order.applyEvent(OrderAttached(agentId)) == Right(order.copy(attachedState = Some(Attached(agentId)))))
+        assert(order.applyEvent(OrderAttached(AgentId("OTHER"))).isLeft)
+        assert(order.applyEvent(OrderDetachable).isLeft)
+        assert(order.applyEvent(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderDetached).isLeft)
       }
 
       "attachedState=Attached" in {
         val order = Order(orderId, workflowId, Ready, attachedState = Some(Attached(agentId)))
-        assert(order.update(OrderAttachable(agentId)).isLeft)
-        assert(order.update(OrderAttached(agentId)).isLeft)
-        assert(order.update(OrderAttached(AgentId("OTHER"))).isLeft)
-        assert(order.update(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentId)))))
-        assert(order.update(OrderDetached).isLeft)
-        assert(order.update(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderAttachable(agentId)).isLeft)
+        assert(order.applyEvent(OrderAttached(agentId)).isLeft)
+        assert(order.applyEvent(OrderAttached(AgentId("OTHER"))).isLeft)
+        assert(order.applyEvent(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentId)))))
+        assert(order.applyEvent(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderDetached).isLeft)
       }
 
       "attachedState=Detaching" in {
         val order = Order(orderId, workflowId, Ready, attachedState = Some(Detaching(agentId)))
-        assert(order.update(OrderAttachable(agentId)).isLeft)
-        assert(order.update(OrderAttached(agentId)).isLeft)
-        assert(order.update(OrderAttached(AgentId("OTHER"))).isLeft)
-        assert(order.update(OrderDetachable).isLeft)
-        assert(order.update(OrderDetached) == Right(order.copy(attachedState = None)))
-        assert(order.update(OrderDetached) == Right(order.copy(attachedState = None)))
+        assert(order.applyEvent(OrderAttachable(agentId)).isLeft)
+        assert(order.applyEvent(OrderAttached(agentId)).isLeft)
+        assert(order.applyEvent(OrderAttached(AgentId("OTHER"))).isLeft)
+        assert(order.applyEvent(OrderDetachable).isLeft)
+        assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
+        assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
       }
     }
 
@@ -600,7 +600,7 @@ final class OrderTest extends AnyFreeSpec
               val mString = m.fold("no mark")(_.getClass.simpleScalaName)
               val aString = a.fold("detached")(_.getClass.simpleScalaName)
               val order = templateOrder.copy(attachedState = a, mark = m, isSuspended = isSuspended)
-              val updated = order.update(event)
+              val updated = order.applyEvent(event)
               val maybeState = updated.map(_.state)
               val maybePredicate = toPredicate.lift((event, order, a))
               (maybeState, maybePredicate) match {
@@ -671,7 +671,7 @@ final class OrderTest extends AnyFreeSpec
   }
 
   "Error message when updated failed" in {
-    assert(testOrder.update(OrderDetachable) ==
+    assert(testOrder.applyEvent(OrderDetachable) ==
       Left(Problem("Order 'ID' at position '/WORKFLOW~VERSION:0' in state 'Ready', on Controller, received an inapplicable event: OrderDetachable")))
   }
 

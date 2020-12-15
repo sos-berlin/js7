@@ -843,7 +843,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
       assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
-      aChild = aChild.update(orderFailedInFork).orThrow
+      aChild = aChild.applyEvent(orderFailedInFork).orThrow
 
       assert(liveEventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
       assert(liveEventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
@@ -904,7 +904,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
       assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
-      aChild = aChild.update(orderFailedInFork).orThrow
+      aChild = aChild.applyEvent(orderFailedInFork).orThrow
 
       assert(liveEventSource.nextEvents(bChild.id) == Seq(
         bChild.id <-: OrderFailedInFork(
@@ -1019,7 +1019,7 @@ object OrderEventSourceTest {
         case event: OrderCoreEvent =>
           processEvent(keyedEvent)
           if (event != OrderFinished) {
-            idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
+            idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
           }
 
         case _ =>

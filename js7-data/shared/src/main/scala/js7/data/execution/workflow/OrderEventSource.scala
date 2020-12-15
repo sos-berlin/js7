@@ -94,7 +94,7 @@ final class OrderEventSource(
     var id2o = Map.empty[OrderId, Checked[Order[Order.State]]]
     var problem: Option[Problem] = None
     for (KeyedEvent(orderId, event) <- keyedEvents if problem.isEmpty) {
-      id2o.getOrElse(orderId, idToOrder(orderId)).flatMap(_.update(event)) match {
+      id2o.getOrElse(orderId, idToOrder(orderId)).flatMap(_.applyEvent(event)) match {
         case Left(prblm) => problem = Some(prblm)
         case Right(order) => id2o += orderId -> Right(order)
       }
@@ -341,7 +341,7 @@ final class OrderEventSource(
   private def withOrder[E <: OrderCoreEvent](orderId: OrderId)(body: Order[Order.State] => Checked[Option[E]]): Checked[Option[E]] =
     idToOrder(orderId).flatMap(order =>
       body(order).flatMapT(event =>
-        order.update(event)
+        order.applyEvent(event)
           .map(_ => Some(event))))
 
   private def tryResume(

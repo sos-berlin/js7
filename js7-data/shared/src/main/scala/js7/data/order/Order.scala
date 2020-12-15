@@ -63,7 +63,7 @@ final case class Order[+S <: Order.State](
       Right(reversed.tail.reverse % reversed.head.nr)
   }
 
-  def update(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
+  def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
     def inapplicable = Left(Problem(
       s"Order '${id.string}' at position '$workflowPosition' in state '${state.getClass.simpleScalaName}', " +
         s"${markString.fold("")(o => s"$o, ")}$attachedStateString, " +

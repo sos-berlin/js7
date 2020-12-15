@@ -190,7 +190,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   private def handleEvent(event: OrderCoreEvent, jobActor: ActorRef = noSender): Future[Completed] =
-    order.update(event) match {
+    order.applyEvent(event) match {
       case Left(problem) =>
         logger.error(problem.toString)
         Future.successful(Completed)
@@ -287,7 +287,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         order
 
       case event: OrderCoreEvent if order != null =>
-        order.update(event).orThrow  // 🔥 ProblemException, snapshot will be lost!
+        order.applyEvent(event).orThrow  // 🔥 ProblemException, snapshot will be lost!
         // Vielleicht anschließend: order.forceUpdate(OrderBroken(problem)) ?
 
       case _ =>

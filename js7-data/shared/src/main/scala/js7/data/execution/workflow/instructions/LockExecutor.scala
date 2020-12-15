@@ -39,7 +39,7 @@ object LockExecutor extends EventInstructionExecutor
           case None => Right(None)
           case Some(keyedEvent) => for {
             _ <- lockState.applyEvent(keyedEvent)
-            _ <- order.update(keyedEvent.event)
+            _ <- order.applyEvent(keyedEvent.event)
           } yield ()
         }
       } yield maybeKeyedEvent.toList

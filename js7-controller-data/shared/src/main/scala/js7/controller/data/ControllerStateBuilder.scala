@@ -120,11 +120,11 @@ extends JournaledStateBuilder[ControllerState]
           for (lockId <- event.lockIds) {
             idToLockState(lockId) = idToLockState(lockId).applyEvent(orderId <-: event).orThrow
           }
-          idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
+          idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
 
         case event: OrderCoreEvent =>
           handleForkJoinEvent(orderId, event)
-          idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
+          idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
 
         case _: OrderStdWritten =>
       }
@@ -164,7 +164,7 @@ extends JournaledStateBuilder[ControllerState]
       case event: OrderOffered =>
         val offered = idToOrder(orderId).newOfferedOrder(event)
         idToOrder += offered.id -> offered
-        idToOrder(orderId) = idToOrder(orderId).update(event).orThrow
+        idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
 
       case _ =>
     }

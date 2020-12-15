@@ -70,7 +70,7 @@ extends JournaledState[AgentState]
       case event: OrderCoreEvent =>
         // See also OrderActor#update
         idToOrder.checked(orderId)
-          .flatMap(_.update(event))
+          .flatMap(_.applyEvent(event))
           .flatMap(order =>
             event match {
               case event: OrderForked =>
