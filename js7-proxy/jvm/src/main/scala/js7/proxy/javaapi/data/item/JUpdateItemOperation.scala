@@ -16,7 +16,7 @@ object JUpdateItemOperation
 {
   /** Adds or replaces a non-versioned item. */
   @Nonnull
-  def addOrReplace(@Nonnull item: JSimpleItem) =
+  def addOrChange(@Nonnull item: JSimpleItem) =
     new JUpdateItemOperation(ItemOperation.SimpleAddOrChange(item.asScala))
 
   /** Deletes a non-versioned item. */
@@ -32,7 +32,7 @@ object JUpdateItemOperation
     * signed with a signature.
     * Adds the versioned item to the versioned specified with `addVersion`. */
   @Nonnull
-  def addOrReplace(@Nonnull signedString: SignedString) =
+  def addOrChange(@Nonnull signedString: SignedString) =
     new JUpdateItemOperation(ItemOperation.VersionedAddOrChange(signedString))
 
   /** Delete the given path in the new version,

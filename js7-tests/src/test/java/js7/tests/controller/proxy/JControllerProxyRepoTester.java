@@ -27,7 +27,7 @@ import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.await;
-import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrReplace;
+import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrChange;
 import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addVersion;
 import static js7.proxy.javaapi.data.item.JUpdateItemOperation.deleteItem;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -59,9 +59,9 @@ final class JControllerProxyRepoTester
         assertThat(
             api.updateItems(
                 Flux.just(addVersion(versionId))
-                    .concatWith(Flux.fromStream(
-                        manyItemJsons.stream()
-                            .map(json -> addOrReplace(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE"))))))
+                    .concatWith(
+                        Flux.fromIterable(manyItemJsons)
+                            .map(json -> addOrChange(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE")))))
                 .get(99, SECONDS)
                 .mapLeft(problem -> new Tuple2<>(
                     Optional.ofNullable(problem.codeOrNull()).map(ProblemCode::string),
@@ -100,7 +100,7 @@ final class JControllerProxyRepoTester
                 Stream.concat(
                     Stream.of(addVersion(versionId)),
                     itemJsons.stream()
-                        .map(json -> addOrReplace(sign(json)))))));
+                        .map(json -> addOrChange(sign(json)))))));
     }
 
     void deleteWorkflow() throws InterruptedException, ExecutionException, TimeoutException {

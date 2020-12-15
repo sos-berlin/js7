@@ -155,16 +155,16 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
     * controllerApi.updateItems(
     *   Flux.fromStream(
     *     Stream.concat(
-    *       Stream.of(JUpdateItemOperation.addOrReplace(agentRef)),
+    *       Stream.of(JUpdateItemOperation.addOrChange(agentRef)),
     *       Stream.concat(
     *         Stream.of(JUpdateItemOperation.addVersion(versionId)),
     *         workflowJsons.stream()
-    *           .map(json -> JUpdateItemOperation.addOrReplace(sign(json))))))));
+    *           .map(json -> JUpdateItemOperation.addOrChange(sign(json))))))));
 
     * }}}
     * '''To add or replace a signed versioneditem:'''
     * {{{
-    * JUpdateItemOperations.addOrReplace(
+    * JUpdateItemOperations.addOrChange(
     *   SignedString.of(
     *     jsonString,
     *     "PGP"/*for example*/,

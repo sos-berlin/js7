@@ -11,6 +11,9 @@ trait SimpleItemEvent extends ItemEvent
 object SimpleItemEvent
 {
   sealed trait SimpleItemAddedOrChanged extends SimpleItemEvent
+  object SimpleItemAddedOrChanged {
+    def unapply(item: SimpleItem) = Some(item)
+  }
 
   final case class SimpleItemAdded(item: SimpleItem)
   extends SimpleItemAddedOrChanged
