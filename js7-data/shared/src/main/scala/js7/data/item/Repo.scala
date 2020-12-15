@@ -90,7 +90,7 @@ final case class Repo private(
       .map(_.path)
       .filter(path => !exists(path) && !added.contains(path))
     (deleted.map(RepoChange.Deleted.apply) ++
-      updated.map(RepoChange.Updated.apply) ++
+      updated.map(RepoChange.Changed.apply) ++
       added.values.view.map(RepoChange.Added.apply)
     ).toVector
       .sortBy(_.path)
@@ -268,7 +268,7 @@ final case class Repo private(
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
   private[item] def toEvents: Seq[VersionedEvent] = {
-    type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[VersionedItem/*added/updated*/]]
+    type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[VersionedItem/*added/changed*/]]
     val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
       pathToVersionToSignedItems.toVector
         .flatMap { case (path, entries) =>

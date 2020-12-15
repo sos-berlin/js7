@@ -24,7 +24,7 @@ import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
 import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.item.ItemOperation.SimpleAddOrReplace
+import js7.data.item.ItemOperation.SimpleAddOrChange
 import js7.data.item.VersionedItems.diffVersionedItems
 import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner, VersionedItems}
 import js7.data.workflow.WorkflowPath
@@ -78,7 +78,7 @@ extends HasCloser with Observing with ProvideActorSystem
       .collect { case (name, obj: ConfigObject) =>
         AgentRef(AgentId(name), Uri(obj.toConfig.getString("uri")))
       }
-    controllerApi.updateItems(Observable.fromIterable(agentRefs) map SimpleAddOrReplace)
+    controllerApi.updateItems(Observable.fromIterable(agentRefs) map SimpleAddOrChange)
       .map {
         case Left(problem) =>
           logger.error(problem.toString)
@@ -186,13 +186,13 @@ extends HasCloser with Observing with ProvideActorSystem
     logger.info(s"Version ${versionId.string}")
     for (o <- diff.deleted            .sorted) logger.info(s"Delete ${o.pretty}")
     for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
-    for (o <- diff.updated.map(_.path).sorted) logger.info(s"Update ${o.pretty}")
+    for (o <- diff.changed.map(_.path).sorted) logger.info(s"Change ${o.pretty}")
   }
 
   private def toUpdateRepo(versionId: VersionId, diff: VersionedItems.Diff[ItemPath, VersionedItem]) =
     UpdateRepo(
       versionId,
-      change = (diff.added ++ diff.updated).map(_ withVersion versionId) map itemSigner.sign,
+      change = (diff.added ++ diff.changed).map(_ withVersion versionId) map itemSigner.sign,
       delete = diff.deleted)
 
   private def fetchControllerItemSeq: Task[Seq[VersionedItem]] =

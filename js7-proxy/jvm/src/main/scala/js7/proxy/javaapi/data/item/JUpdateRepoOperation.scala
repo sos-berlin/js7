@@ -19,7 +19,7 @@ object JUpdateRepoOperation
   @Deprecated
   @Nonnull
   def addOrReplace(@Nonnull signedString: SignedString) =
-    new JUpdateRepoOperation(ItemOperation.VersionedAddOrReplace(signedString))
+    new JUpdateRepoOperation(ItemOperation.VersionedAddOrChange(signedString))
 
   @Nonnull
   @Deprecated

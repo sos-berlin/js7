@@ -11,7 +11,7 @@ import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
-import js7.data.item.ItemOperation.SimpleAddOrReplace
+import js7.data.item.ItemOperation.SimpleAddOrChange
 import js7.data.item.VersionId
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockId, LockState}
@@ -46,7 +46,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override def beforeAll() = {
     super.beforeAll()
     val items = Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))
-    controllerApi.updateItems(Observable.fromIterable(items) map SimpleAddOrReplace.apply)
+    controllerApi.updateItems(Observable.fromIterable(items) map SimpleAddOrChange.apply)
       .await(99.s).orThrow
   }
 

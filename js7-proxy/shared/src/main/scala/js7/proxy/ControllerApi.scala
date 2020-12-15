@@ -62,7 +62,7 @@ extends ControllerApiWithHttp
   def updateAgentRefs(agentRefs: Seq[AgentRef]): Task[Checked[Accepted]] =
     updateItems(Observable
       .fromIterable(agentRefs)
-      .map(ItemOperation.SimpleAddOrReplace.apply))
+      .map(ItemOperation.SimpleAddOrChange.apply))
       .map(_.map((_: Completed) => Accepted))
 
   @deprecated("Use updateItems", "2020-12-11")
@@ -71,7 +71,7 @@ extends ControllerApiWithHttp
 
   def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Completed]] =
     updateItems(
-      Observable.fromIterable(items) map ItemOperation.SimpleAddOrReplace.apply)
+      Observable.fromIterable(items) map ItemOperation.SimpleAddOrChange.apply)
 
   def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     apiResource.use(api =>

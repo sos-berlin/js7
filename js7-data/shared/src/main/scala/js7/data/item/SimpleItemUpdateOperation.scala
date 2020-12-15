@@ -10,7 +10,7 @@ object SimpleItemUpdateOperation
 {
   sealed trait ItemOperation extends SimpleItemUpdateOperation
 
-  final case class AddOrReplace(item: SimpleItem)
+  final case class AddOrChange(item: SimpleItem)
   extends ItemOperation
 
   final case class Delete(id: SimpleItemId)
@@ -23,6 +23,6 @@ object SimpleItemUpdateOperation
     itemPathJsonDecoder: Decoder[SimpleItemId])
   : TypedJsonCodec[SimpleItemUpdateOperation] =
     TypedJsonCodec(
-      Subtype(deriveCodec[AddOrReplace]),
+      Subtype(deriveCodec[AddOrChange]),
       Subtype(deriveCodec[Delete]))
 }

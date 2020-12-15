@@ -34,7 +34,7 @@ object RepoChange
     //require(!item.id.versionId.isAnonymous, s"VersionId is required in $toString")
   }
 
-  final case class Updated(item: VersionedItem) extends AddedOrChanged {
+  final case class Changed(item: VersionedItem) extends AddedOrChanged {
     require(!item.id.path.isAnonymous, "FileChangedChanged event requires a path")
     //require(!item.id.versionId.isAnonymous, s"VersionId is required in $toString")
   }

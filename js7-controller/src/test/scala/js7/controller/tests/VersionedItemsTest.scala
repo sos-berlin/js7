@@ -55,17 +55,17 @@ final class VersionedItemsTest extends AnyFreeSpec
         == RepoChange.Deleted(b.path) :: Nil)
     }
 
-    "one updated" in {
+    "one changed" in {
       val bUpdated = Workflow.of(WorkflowPath("/B") ~ "1", Fail(None), Fail(None))
       assert(bUpdated != b)
       assert(
         diffVersionedItems(
           a :: bUpdated :: Nil,
           a :: b :: Nil
-        ) == RepoChange.Updated(bUpdated) :: Nil)
+        ) == RepoChange.Changed(bUpdated) :: Nil)
     }
 
-    "added, deleted and updated" in {
+    "added, deleted and changed" in {
       val aUpdated = Workflow.of(WorkflowPath("/A") ~ "1", Fail(None), Fail(None))
       assert(aUpdated != a)
       assert(
@@ -73,7 +73,7 @@ final class VersionedItemsTest extends AnyFreeSpec
           aUpdated :: c :: Nil,
           a :: b :: Nil
         ).toSet == Set(
-          RepoChange.Updated(aUpdated),
+          RepoChange.Changed(aUpdated),
           RepoChange.Deleted(b.path),
           RepoChange.Added(c)))
     }
@@ -83,7 +83,7 @@ final class VersionedItemsTest extends AnyFreeSpec
         diffVersionedItems(
           a :: b.withVersion(VersionId("CHANGED")) :: Nil,
           a :: b :: Nil
-        ) == RepoChange.Updated(b withVersion VersionId("CHANGED")) :: Nil)
+        ) == RepoChange.Changed(b withVersion VersionId("CHANGED")) :: Nil)
     }
 
     "version updated, ignoreVersion=true" in {
@@ -102,23 +102,23 @@ final class VersionedItemsTest extends AnyFreeSpec
         RepoChange.Deleted(BWorkflow.path),
         RepoChange.Added(BTestItem withVersion V0),
         RepoChange.Added(CWorkflow withVersion V1),
-        RepoChange.Updated(D1Workflow withVersion V1)))
+        RepoChange.Changed(D1Workflow withVersion V1)))
 
     assert(diff == VersionedItems.Diff[ItemPath, VersionedItem](
       added = List(BTestItem withVersion V0, CWorkflow withVersion V1),
-      updated = List(D1Workflow withVersion V1),
+      changed = List(D1Workflow withVersion V1),
       deleted = List(BWorkflow.path)))
 
     assert(diff.select[WorkflowPath, Workflow] ==
       VersionedItems.Diff[WorkflowPath, Workflow](
         added = List(CWorkflow withVersion V1),
-        updated = List(D1Workflow withVersion V1),
+        changed = List(D1Workflow withVersion V1),
         deleted = List(BWorkflow.path)))
 
     assert(diff.select[TestPath, TestItem] ==
       VersionedItems.Diff[TestPath, TestItem](
         added = List(BTestItem withVersion V0),
-        updated = Nil,
+        changed = Nil,
         deleted = Nil))
   }
 }

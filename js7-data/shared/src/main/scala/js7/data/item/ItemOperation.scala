@@ -11,7 +11,7 @@ object ItemOperation
 {
   sealed trait SimpleItemOperation extends ItemOperation
 
-  final case class SimpleAddOrReplace(item: SimpleItem)
+  final case class SimpleAddOrChange(item: SimpleItem)
   extends SimpleItemOperation
 
   final case class SimpleDelete(id: SimpleItemId)
@@ -28,7 +28,7 @@ object ItemOperation
     : TypedJsonCodec[VersionedOperation] =
       TypedJsonCodec(
         Subtype(deriveCodec[AddVersion]),
-        Subtype(deriveCodec[VersionedAddOrReplace]),
+        Subtype(deriveCodec[VersionedAddOrChange]),
         Subtype(deriveCodec[VersionedDelete]))
   }
 
@@ -37,7 +37,7 @@ object ItemOperation
 
   sealed trait VersionedItemOperation extends VersionedOperation
 
-  final case class VersionedAddOrReplace(signedString: SignedString)
+  final case class VersionedAddOrChange(signedString: SignedString)
   extends VersionedItemOperation
 
   final case class VersionedDelete(path: ItemPath)
@@ -52,7 +52,7 @@ object ItemOperation
     simpleItemJsonDecoder: Decoder[SimpleItem])
   : TypedJsonCodec[ItemOperation] =
     TypedJsonCodec(
-      Subtype(deriveCodec[SimpleAddOrReplace]),
+      Subtype(deriveCodec[SimpleAddOrChange]),
       Subtype(deriveCodec[SimpleDelete]),
       Subtype[VersionedOperation])
 }

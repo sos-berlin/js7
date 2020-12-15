@@ -4,7 +4,7 @@ import js7.base.crypt.SignedString
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
 import js7.data.crypt.VersionedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrReplace, SimpleDelete, VersionedAddOrReplace, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemOperation, ItemPath, SimpleItem, SimpleItemId, VersionId, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
@@ -37,7 +37,7 @@ object VerifiedUpdateItems
 
     observable
       .mapParallelUnorderedBatch() {
-          case VersionedAddOrReplace(signedJson) =>
+          case VersionedAddOrChange(signedJson) =>
             if (problemOccurred.isEmpty) {
               verify(signedJson) match {
                 case Left(problem) =>
@@ -50,7 +50,7 @@ object VerifiedUpdateItems
           case o => o
         }
       .foreachL {
-        case SimpleAddOrReplace(item) => simpleItems += item
+        case SimpleAddOrChange(item) => simpleItems += item
         case SimpleDelete(itemId) => simpleDeletes += itemId
         case verifiedItem: Verified[VersionedItem] @unchecked => versionedItems += verifiedItem
         case () => assert(problemOccurred.nonEmpty)
