@@ -24,7 +24,6 @@ import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import reactor.core.publisher.Flux;
-import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.proxy.javaapi.data.common.VavrUtils.await;
 import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrChange;
@@ -57,12 +56,11 @@ final class JControllerProxyRepoTester
         assertThat(bigSpace.length(), equalTo(100_000));
         assertThat(manyItemJsons.stream().mapToInt(o -> o.length() + bigSpace.length()).sum(), greaterThan(100_000_000/*bytes*/));
         assertThat(
-            api.updateItems(
-                Flux.just(addVersion(versionId))
-                    .concatWith(
-                        Flux.fromIterable(manyItemJsons)
-                            .map(json -> addOrChange(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE")))))
-                .get(99, SECONDS)
+            api.updateItems(Flux.concat(
+                Flux.just(addVersion(versionId)),
+                Flux.fromIterable(manyItemJsons)
+                    .map(json -> addOrChange(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE"))))
+            ).get(99, SECONDS)
                 .mapLeft(problem -> new Tuple2<>(
                     Optional.ofNullable(problem.codeOrNull()).map(ProblemCode::string),
                     problem.toString())),
@@ -95,12 +93,10 @@ final class JControllerProxyRepoTester
     }
 
     private void addItemsOnly(List<String> itemJsons) {
-        await(api.updateItems(
-            Flux.fromStream(
-                Stream.concat(
-                    Stream.of(addVersion(versionId)),
-                    itemJsons.stream()
-                        .map(json -> addOrChange(sign(json)))))));
+        await(api.updateItems(Flux.concat(
+            Flux.just(addVersion(versionId)),
+            Flux.fromIterable(itemJsons)
+                .map(json -> addOrChange(sign(json))))));
     }
 
     void deleteWorkflow() throws InterruptedException, ExecutionException, TimeoutException {
@@ -112,11 +108,9 @@ final class JControllerProxyRepoTester
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowDeleted =
             awaitEvent(keyedEvent -> isItemDeleted(keyedEvent, bWorkflowPath));
 
-        await(api.updateItems(
-            Flux.just(addVersion(versionId))
-                .concatWith(
-                    Flux.fromIterable(asList(
-                        deleteItem(bWorkflowPath))))));
+        await(api.updateItems(Flux.just(
+            addVersion(versionId),
+            deleteItem(bWorkflowPath))));
 
         whenWorkflowDeleted.get(99, SECONDS);
 

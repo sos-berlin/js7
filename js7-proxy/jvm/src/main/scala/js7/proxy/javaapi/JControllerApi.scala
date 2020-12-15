@@ -149,18 +149,21 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
     *
     * '''Example'''
     *
-    * Add a AgentRef and a versions with some signed workflows.
+    * Add AgentRefs and a version with some signed workflows.
     * {{{
-
+    *
+    * import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrChange;
+    * import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addVersion;
+    * import static js7.proxy.javaapi.data.item.JUpdateItemOperation.deleteItem;
+    *
     * controllerApi.updateItems(
-    *   Flux.fromStream(
-    *     Stream.concat(
-    *       Stream.of(JUpdateItemOperation.addOrChange(agentRef)),
-    *       Stream.concat(
-    *         Stream.of(JUpdateItemOperation.addVersion(versionId)),
-    *         workflowJsons.stream()
-    *           .map(json -> JUpdateItemOperation.addOrChange(sign(json))))))));
-
+    *   Flux.concat(
+    *     Flux.fromIterable(agentRefs)
+    *       .map(item -> addOrChange(item)),
+    *     Flux.just(addVersion(versionId)),
+    *     Flux.fromIterable(workflowJsons)
+    *       .map(json -> addOrChange(sign(json)))));
+    *
     * }}}
     * '''To add or replace a signed versioneditem:'''
     * {{{
