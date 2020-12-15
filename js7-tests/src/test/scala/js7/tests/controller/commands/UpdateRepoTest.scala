@@ -14,7 +14,7 @@ import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{RemoveOrdersWhenTerminated, ReplaceRepo, UpdateRepo}
-import js7.data.Problems.{ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
+import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.VersionId
@@ -91,7 +91,7 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
     executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow  /*Duplicate effect is ignored*/
     assert(controller.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
-      Left(ItemDeletedProblem(TestWorkflowPath)))
+      Left(VersionedItemDeletedProblem(TestWorkflowPath)))
 
     withClue("Tampered with configuration: ") {
       val updateRepo = UpdateRepo(VersionId("vTampered"), sign(workflow2).copy(string = "TAMPERED") :: Nil)

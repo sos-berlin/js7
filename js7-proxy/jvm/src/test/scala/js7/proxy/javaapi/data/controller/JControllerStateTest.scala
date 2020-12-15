@@ -14,7 +14,7 @@ import js7.data.agent.{AgentId, AgentRef}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.RepoEvent.VersionAdded
+import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{Repo, VersionId, VersionedItemSigner}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}

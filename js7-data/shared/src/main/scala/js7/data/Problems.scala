@@ -2,7 +2,7 @@ package js7.data
 
 import js7.base.problem.Problem
 import js7.data.event.EventId
-import js7.data.item.RepoEvent.ItemAddedOrChanged
+import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
 import js7.data.item.{ItemPath, VersionId, VersionedItemId}
 import js7.data.order.OrderId
 
@@ -22,7 +22,7 @@ object Problems
     def arguments = Map("orderId" -> orderId.string)
   }
 
-  final case class ItemDeletedProblem(path: ItemPath) extends Problem.Coded {
+  final case class VersionedItemDeletedProblem(path: ItemPath) extends Problem.Coded {
     def arguments = Map("path" -> path.pretty)
   }
 
@@ -30,7 +30,7 @@ object Problems
     def arguments = Map("versionId" -> versionId.string, "id" -> itemId.toString)
   }
 
-  final case class EventVersionDoesNotMatchProblem(versionId: VersionId, event: ItemAddedOrChanged) extends Problem.Coded {
+  final case class EventVersionDoesNotMatchProblem(versionId: VersionId, event: VersionedItemAddedOrChanged) extends Problem.Coded {
     def arguments = Map("versionId" -> versionId.string, "event" -> event.toShortString)
   }
 

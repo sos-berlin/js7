@@ -9,10 +9,10 @@ import js7.base.data.ByteArray
 import js7.base.problem.Checked.Ops
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
-import js7.controller.tests.IntentoryItemsTest._
+import js7.controller.tests.VersionedItemsTest._
 import js7.core.item.VersionedItemReader
-import js7.data.item.IntentoryItems.diffVersionedItems
-import js7.data.item.{IntentoryItems, ItemPath, RepoChange, SourceType, VersionId, VersionedItem, VersionedItemId}
+import js7.data.item.VersionedItems.diffVersionedItems
+import js7.data.item.{ItemPath, RepoChange, SourceType, VersionId, VersionedItem, VersionedItemId, VersionedItems}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
@@ -20,7 +20,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class IntentoryItemsTest extends AnyFreeSpec
+final class VersionedItemsTest extends AnyFreeSpec
 {
   "diffVersionedItems" - {
     "empty"  in {
@@ -97,33 +97,33 @@ final class IntentoryItemsTest extends AnyFreeSpec
   }
 
   "Diff" in {
-    val diff = IntentoryItems.Diff.fromRepoChanges(
+    val diff = VersionedItems.Diff.fromRepoChanges(
       List(
         RepoChange.Deleted(BWorkflow.path),
         RepoChange.Added(BTestItem withVersion V0),
         RepoChange.Added(CWorkflow withVersion V1),
         RepoChange.Updated(D1Workflow withVersion V1)))
 
-    assert(diff == IntentoryItems.Diff[ItemPath, VersionedItem](
+    assert(diff == VersionedItems.Diff[ItemPath, VersionedItem](
       added = List(BTestItem withVersion V0, CWorkflow withVersion V1),
       updated = List(D1Workflow withVersion V1),
       deleted = List(BWorkflow.path)))
 
     assert(diff.select[WorkflowPath, Workflow] ==
-      IntentoryItems.Diff[WorkflowPath, Workflow](
+      VersionedItems.Diff[WorkflowPath, Workflow](
         added = List(CWorkflow withVersion V1),
         updated = List(D1Workflow withVersion V1),
         deleted = List(BWorkflow.path)))
 
     assert(diff.select[TestPath, TestItem] ==
-      IntentoryItems.Diff[TestPath, TestItem](
+      VersionedItems.Diff[TestPath, TestItem](
         added = List(BTestItem withVersion V0),
         updated = Nil,
         deleted = Nil))
   }
 }
 
-object IntentoryItemsTest {
+object VersionedItemsTest {
   private[tests] val V0 = VersionId("0")
   private[tests] val V1 = VersionId("1")
 

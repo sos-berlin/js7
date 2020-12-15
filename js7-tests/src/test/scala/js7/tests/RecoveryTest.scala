@@ -21,8 +21,8 @@ import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
-import js7.data.item.RepoEvent.{ItemAdded, VersionAdded}
-import js7.data.item.{RepoEvent, VersionId}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
+import js7.data.item.{VersionId, VersionedEvent}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -69,11 +69,11 @@ final class RecoveryTest extends AnyFreeSpec
           }
           controller.eventWatch.await[ControllerEvent.ControllerReady](after = lastEventId)
           import directoryProvider.toSigned
-          assert(controller.eventWatch.await[RepoEvent]().map(_.value).sortBy(_.toString) ==
+          assert(controller.eventWatch.await[VersionedEvent]().map(_.value).sortBy(_.toString) ==
             Vector(
               NoKey <-: VersionAdded(VersionId("INITIAL")),
-              NoKey <-: ItemAdded(toSigned(TestWorkflow)),
-              NoKey <-: ItemAdded(toSigned(QuickWorkflow)))
+              NoKey <-: VersionedItemAdded(toSigned(TestWorkflow)),
+              NoKey <-: VersionedItemAdded(toSigned(QuickWorkflow)))
             .sortBy(_.toString))
           runAgents(directoryProvider) { _ =>
             controller.addOrderBlocking(order1)

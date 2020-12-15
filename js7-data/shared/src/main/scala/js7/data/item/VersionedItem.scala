@@ -5,7 +5,7 @@ import js7.base.utils.ScalaUtils.syntax._
 /**
   * @author Joacim Zschimmer
   */
-trait VersionedItem extends InventoryItem {
+trait VersionedItem {
   type Self <: VersionedItem
   type Path = companion.Path
   type Id = VersionedItemId[Path]

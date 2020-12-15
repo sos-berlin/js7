@@ -6,10 +6,10 @@ import js7.data.item.{ItemOperation, ItemPath}
 import js7.proxy.javaapi.data.common.JavaWrapper
 
 @Deprecated // Use JUpdateItemOperation
-final case class JUpdateRepoOperation(asScala: ItemOperation.UpdateRepoOperation)
+final case class JUpdateRepoOperation(asScala: ItemOperation.VersionedOperation)
 extends JavaWrapper
 {
-  protected type AsScala = ItemOperation.UpdateRepoOperation
+  protected type AsScala = ItemOperation.VersionedOperation
 }
 
 object JUpdateRepoOperation

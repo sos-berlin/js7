@@ -3,7 +3,7 @@ package js7.data.item
 import io.circe.Encoder
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{DocumentSigner, Signed, SignedString}
-import js7.data.item.RepoEvent.{ItemAdded, ItemChanged}
+import js7.data.item.VersionedEvent.{VersionedItemAdded, VersionedItemChanged}
 
 /**
   * @author Joacim Zschimmer
@@ -21,9 +21,9 @@ final class VersionedItemSigner[A <: VersionedItem](val signer: DocumentSigner, 
     SignedString(string, signer.signString(string).toGenericSignature)
   }
 
-  def toAddedEvent(item: A): ItemAdded =
-    ItemAdded(toSigned_(item))
+  def toAddedEvent(item: A): VersionedItemAdded =
+    VersionedItemAdded(toSigned_(item))
 
-  def toChangedEvent(item: A): ItemChanged =
-    ItemChanged(toSigned_(item))
+  def toChangedEvent(item: A): VersionedItemChanged =
+    VersionedItemChanged(toSigned_(item))
 }

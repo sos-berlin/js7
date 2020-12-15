@@ -8,7 +8,7 @@ import js7.base.problem.Problem
 import js7.common.files.DirectoryReader
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
-import js7.controller.tests.IntentoryItemsTest.{ATestItem, AWorkflow, BTestItem, BWorkflow, CWorkflow, TestItemReader}
+import js7.controller.tests.VersionedItemsTest.{ATestItem, AWorkflow, BTestItem, BWorkflow, CWorkflow, TestItemReader}
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.TypedSourceReader
 import org.scalatest.BeforeAndAfterAll

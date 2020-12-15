@@ -13,7 +13,7 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, Clu
 import js7.data.controller.ControllerId
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.RepoEvent.VersionAdded
+import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{Repo, VersionId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.node.NodeId

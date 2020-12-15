@@ -12,7 +12,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.{Repo, RepoEvent, SimpleItemEvent}
+import js7.data.item.{Repo, SimpleItemEvent, VersionedEvent}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -44,7 +44,7 @@ extends JournaledStateBuilder[ControllerState]
     case order: Order[Order.State] =>
       idToOrder.insert(order.id -> order)
 
-    case event: RepoEvent =>
+    case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
@@ -79,7 +79,7 @@ extends JournaledStateBuilder[ControllerState]
       controllerMetaState = controllerMetaState.copy(
         timezone = event.timezone)
 
-    case Stamped(_, _, KeyedEvent(_: NoKey, event: RepoEvent)) =>
+    case Stamped(_, _, KeyedEvent(_: NoKey, event: VersionedEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
     case Stamped(_, _, KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>

@@ -19,7 +19,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.UpdateRepo
-import js7.data.Problems.ItemDeletedProblem
+import js7.data.Problems.VersionedItemDeletedProblem
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
@@ -114,7 +114,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           // Delete workflow
           provider.updateRepo(controller, V6, delete = CWorkflowPath :: Nil)
           assert(Try { runOrder(controller, CWorkflowPath ~ V6, OrderId("B-6")) }
-            .failed.get.asInstanceOf[HttpException].problem contains ItemDeletedProblem(CWorkflowPath))
+            .failed.get.asInstanceOf[HttpException].problem contains VersionedItemDeletedProblem(CWorkflowPath))
 
           // Command is rejected due to duplicate VersionId
           assert(controller.executeCommandAsSystemUser(UpdateRepo(V2)).await(99.s) ==

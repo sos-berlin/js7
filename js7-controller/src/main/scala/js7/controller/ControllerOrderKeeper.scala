@@ -58,9 +58,9 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
-import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.{ItemEvent, RepoEvent, SimpleItemEvent, VersionedItem}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
+import js7.data.item.{ItemEvent, SimpleItemEvent, VersionedEvent, VersionedItem}
 import js7.data.lock.{Lock, LockId}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailedEvent, OrderLockReleased, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
@@ -413,10 +413,10 @@ with MainJournalingActor[ControllerState, Event]
         match {
           case Failure(t) => Future.failed(t)
           case Success(Left(problem)) => Future.successful(Left(problem))
-          case Success(Right(repoEvents)) =>
-            applyItemEvents(simpleItemEvents ++ repoEvents)
+          case Success(Right(versionedEvents)) =>
+            persistItemEvents(simpleItemEvents ++ versionedEvents)
               .map(_.map { o =>
-                if (t.elapsed > 1.s) logger.debug("RepoEvents calculated - " +
+                if (t.elapsed > 1.s) logger.debug("VersionedEvents calculated - " +
                   itemsPerSecondString(t.elapsed,
                     simple.items.size + maybeVersioned.fold(0)(_.verifiedItems.size),
                     "items"))
@@ -531,7 +531,7 @@ with MainJournalingActor[ControllerState, Event]
         simple.delete.map(SimpleItemDeleted.apply)
 
   private def repoItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
-  : Try[Checked[Seq[RepoEvent]]] =
+  : Try[Checked[Seq[VersionedEvent]]] =
     Try(
       _controllerState.repo.itemsToEvents(
         forRepo.versionId,
@@ -637,9 +637,9 @@ with MainJournalingActor[ControllerState, Event]
             .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
         match {
           case Failure(t) => Future.failed(t)
-          case Success(checkedRepoEvents) =>
-            checkedRepoEvents
-              .traverse(applyItemEvents)
+          case Success(checkedVersionedEvents) =>
+            checkedVersionedEvents
+              .traverse(persistItemEvents)
               .map(_.flatten.map((_: Completed) => ControllerCommand.Response.Accepted))
         }
 
@@ -650,9 +650,9 @@ with MainJournalingActor[ControllerState, Event]
             .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
         match {
           case Failure(t) => Future.failed(t)
-          case Success(checkedRepoEvents) =>
-            checkedRepoEvents
-              .traverse(applyItemEvents)
+          case Success(checkedVersionedEvents) =>
+            checkedVersionedEvents
+              .traverse(persistItemEvents)
               .map(_.flatten.map((_: Completed) => ControllerCommand.Response.Accepted))
         }
 
@@ -725,9 +725,9 @@ with MainJournalingActor[ControllerState, Event]
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
-  private def applyItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] = {
+  private def persistItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] = {
     // Precheck events
-    _controllerState.repo.applyEvents(events.collect { case o: RepoEvent => o }) match {
+    _controllerState.repo.applyEvents(events.collect { case o: VersionedEvent => o }) match {
       case Left(problem) =>
         // For example DuplicateVersionProblem
         Future.successful(Left(problem))
@@ -744,9 +744,9 @@ with MainJournalingActor[ControllerState, Event]
       case o: SimpleItemChanged  => logger.trace(s"${o.id} changed")
       case SimpleItemDeleted(id) => logger.trace(s"$id deleted")
       case VersionAdded(version) => logger.trace(s"Version '${version.string}' added")
-      case o: ItemAdded          => logger.trace(s"${o.path} added")
-      case o: ItemChanged        => logger.trace(s"${o.path} changed")
-      case ItemDeleted(path)     => logger.trace(s"$path deleted")
+      case o: VersionedItemAdded => logger.trace(s"${o.path} added")
+      case o: VersionedItemChanged => logger.trace(s"${o.path} changed")
+      case VersionedItemDeleted(path) => logger.trace(s"$path deleted")
     }
 
   private def handleItemEvents(stamped: Seq[Stamped[KeyedEvent[ItemEvent]]], updatedState: ControllerState): Unit = {

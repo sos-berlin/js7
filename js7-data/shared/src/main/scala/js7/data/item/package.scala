@@ -5,5 +5,5 @@ package js7.data
   */
 package object item
 {
-  type ItemId_ = VersionedItemId[_ <: ItemPath]
+  type VersionedItemId_ = VersionedItemId[_ <: ItemPath]
 }

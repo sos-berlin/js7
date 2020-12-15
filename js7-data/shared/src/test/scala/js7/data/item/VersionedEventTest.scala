@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString}
-import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -14,13 +14,13 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class RepoEventTest extends AnyFreeSpec {
+final class VersionedEventTest extends AnyFreeSpec {
 
-  import RepoEventTest.{itemEventJsonCodec, itemJsonCodec}
+  import VersionedEventTest.{itemEventJsonCodec, itemJsonCodec}
 
   "JSON" - {
     "VersionAdded" in {
-      testJson[RepoEvent](
+      testJson[VersionedEvent](
         VersionAdded(VersionId("VERSION")),
         json"""{
           "TYPE": "VersionAdded",
@@ -30,11 +30,11 @@ final class RepoEventTest extends AnyFreeSpec {
 
     val workflow = Workflow(WorkflowPath("/WORKFLOW"), Vector(Fail(None)))
 
-    "ItemAdded" in {
-      testJson[RepoEvent](
-        ItemAdded(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
+    "VersionedItemAdded" in {
+      testJson[VersionedEvent](
+        VersionedItemAdded(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
-          "TYPE": "ItemAdded",
+          "TYPE": "VersionedItemAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
@@ -46,11 +46,11 @@ final class RepoEventTest extends AnyFreeSpec {
         }""")
     }
 
-    "ItemChanged" in {
-      testJson[RepoEvent](
-        ItemChanged(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
+    "VersionedItemChanged" in {
+      testJson[VersionedEvent](
+        VersionedItemChanged(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
-          "TYPE": "ItemChanged",
+          "TYPE": "VersionedItemChanged",
           "path": "Workflow:/WORKFLOW",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
@@ -62,37 +62,37 @@ final class RepoEventTest extends AnyFreeSpec {
         }""")
     }
 
-    "ItemDeleted" in {
-      testJson[RepoEvent](
-        ItemDeleted(WorkflowPath("/TEST")),
+    "VersionedItemDeleted" in {
+      testJson[VersionedEvent](
+        VersionedItemDeleted(WorkflowPath("/TEST")),
         json"""{
-          "TYPE": "ItemDeleted",
+          "TYPE": "VersionedItemDeleted",
           "path": "Workflow:/TEST"
         }""")
     }
   }
 
-  //"ItemAdded must have a non-anonymous path but not a versionId" in {
-  //  intercept[RuntimeException] { ItemAdded(Workflow.of(Fail(None))) }
-  //  intercept[RuntimeException] { ItemAdded(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  //"VersionedItemAdded must have a non-anonymous path but not a versionId" in {
+  //  intercept[RuntimeException] { VersionedItemAdded(Workflow.of(Fail(None))) }
+  //  intercept[RuntimeException] { VersionedItemAdded(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
   //}
   //
-  //"ItemChanged must have a non-anonymous path but not a versionId" in {
-  //  intercept[RuntimeException] { ItemChanged(Workflow.of(Fail(None))) }
-  //  intercept[RuntimeException] { ItemChanged(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  //"VersionedItemChanged must have a non-anonymous path but not a versionId" in {
+  //  intercept[RuntimeException] { VersionedItemChanged(Workflow.of(Fail(None))) }
+  //  intercept[RuntimeException] { VersionedItemChanged(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
   //}
 
-  "ItemDeleted must have a non-anonymous path" in {
-    intercept[RuntimeException] { ItemDeleted(WorkflowPath.Anonymous) }
+  "VersionedItemDeleted must have a non-anonymous path" in {
+    intercept[RuntimeException] { VersionedItemDeleted(WorkflowPath.Anonymous) }
   }
 }
 
-object RepoEventTest
+object VersionedEventTest
 {
   implicit private val itemPathJsonCodec: CirceCodec[ItemPath] = ItemPath.jsonCodec(Set(WorkflowPath))
 
   implicit private val itemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
 
-  private[RepoEventTest] implicit val itemEventJsonCodec: TypedJsonCodec[RepoEvent] = RepoEvent.jsonCodec
+  private[VersionedEventTest] implicit val itemEventJsonCodec: TypedJsonCodec[VersionedEvent] = VersionedEvent.jsonCodec
 }

@@ -10,7 +10,7 @@ import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
 import js7.data.item.SimpleItem._
 
-trait SimpleItem extends InventoryItem
+trait SimpleItem
 {
   val companion: Companion
 

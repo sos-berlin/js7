@@ -509,7 +509,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "TYPE": "VersionAdded",
         "versionId": "VERSION-1"
       }, {
-        "TYPE": "ItemAdded",
+        "TYPE": "VersionedItemAdded",
         "path": "Workflow:/FOLDER/WORKFLOW-2",
         "signed": {
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
@@ -519,7 +519,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }
       }, {
-        "TYPE": "ItemAdded",
+        "TYPE": "VersionedItemAdded",
         "path": "Workflow:/WORKFLOW",
         "signed": {
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
@@ -612,7 +612,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "versionId": "VERSION-1"
         }, {
           "eventId": 1009,
-          "TYPE": "ItemAdded",
+          "TYPE": "VersionedItemAdded",
           "path": "Workflow:/WORKFLOW",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
@@ -623,7 +623,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }, {
           "eventId": 1010,
-          "TYPE": "ItemAdded",
+          "TYPE": "VersionedItemAdded",
           "path": "Workflow:/FOLDER/WORKFLOW-2",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"ExecutablePath\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",

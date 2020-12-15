@@ -9,12 +9,12 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
-import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
+import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
-import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, VersionAdded}
 import js7.data.item.RepoTest._
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -32,7 +32,7 @@ final class RepoTest extends AnyFreeSpec
     assert(emptyRepo.idTo[AItem](APath("/UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
       Left(UnknownKeyProblem("ItemPath", APath("/UNKNOWN-PATH"))))
 
-    assert(emptyRepo.applyEvent(ItemAdded(Signed(a1, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED"))))) ==
+    assert(emptyRepo.applyEvent(VersionedItemAdded(Signed(a1, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED"))))) ==
       Left(Problem("Missing initial VersionAdded event for Repo")))
 
     assert(!emptyRepo.exists(APath("/A")))
@@ -64,7 +64,7 @@ final class RepoTest extends AnyFreeSpec
     assert(testRepo.idTo[AItem](APath("/X") ~ V1) == Left(UnknownKeyProblem("ItemPath", APath("/X"))))
     assert(testRepo.idTo[AItem](APath("/X") ~ V1) == Left(UnknownKeyProblem("ItemPath", APath("/X"))))
     assert(testRepo.idTo[BItem](BPath("/Bx") ~ V1) == Left(UnknownKeyProblem("VersionedItemId", BPath("/Bx") ~ V1)))
-    assert(testRepo.idTo[BItem](BPath("/Bx") ~ V3) == Left(ItemDeletedProblem(BPath("/Bx"))))
+    assert(testRepo.idTo[BItem](BPath("/Bx") ~ V3) == Left(VersionedItemDeletedProblem(BPath("/Bx"))))
     assert(testRepo.idTo[AItem](APath("/A") ~ V1) == Right(a1))
     assert(testRepo.idTo[AItem](APath("/A") ~ V2) == Right(a2))
     assert(testRepo.idTo[AItem](APath("/A") ~ V3) == Right(a3))
@@ -79,9 +79,9 @@ final class RepoTest extends AnyFreeSpec
   "eventsFor" in {
     assert(testRepo.eventsFor(Set(APath, BPath)) == TestEvents)
     assert(testRepo.eventsFor(Set(APath)) == List(
-      VersionAdded(V1), ItemAdded(toSigned(a1)),
-      VersionAdded(V2), ItemChanged(toSigned(a2)),
-      VersionAdded(V3), ItemChanged(toSigned(a3))))
+      VersionAdded(V1), VersionedItemAdded(toSigned(a1)),
+      VersionAdded(V2), VersionedItemChanged(toSigned(a2)),
+      VersionAdded(V3), VersionedItemChanged(toSigned(a3))))
     assert(testRepo.eventsFor(Set(AgentId)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
@@ -140,7 +140,7 @@ final class RepoTest extends AnyFreeSpec
 
     "VersionedItem with matching version" in {
       assert(emptyRepo.itemsToEvents(V1, toSigned(a1) :: Nil)
-        == Right(VersionAdded(V1) :: ItemAdded(toSigned(a1)) :: Nil))
+        == Right(VersionAdded(V1) :: VersionedItemAdded(toSigned(a1)) :: Nil))
     }
 
     "Deleting unknown" in {
@@ -178,7 +178,7 @@ final class RepoTest extends AnyFreeSpec
 
     "Other" in {
       assert(emptyRepo.itemsToEvents(V1, toSigned(a1) :: toSigned(b1) :: Nil, deleted = bx2.path :: Nil)
-        == Right(VersionAdded(V1) :: ItemAdded(toSigned(a1)) :: ItemAdded(toSigned(b1)) :: Nil))
+        == Right(VersionAdded(V1) :: VersionedItemAdded(toSigned(a1)) :: VersionedItemAdded(toSigned(b1)) :: Nil))
     }
 
     "More" in {
@@ -187,7 +187,7 @@ final class RepoTest extends AnyFreeSpec
       assert(repo == Repo.fromOp(V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(b1)) :: Nil, Some(itemVerifier)))
 
       val events = repo.itemsToEvents(V2, toSigned(a2) :: toSigned(bx2) :: Nil, deleted = b1.path :: Nil).orThrow
-      assert(events == VersionAdded(V2) :: ItemDeleted(b1.path) :: ItemChanged(toSigned(a2)) :: ItemAdded(toSigned(bx2)) :: Nil)
+      assert(events == VersionAdded(V2) :: VersionedItemDeleted(b1.path) :: VersionedItemChanged(toSigned(a2)) :: VersionedItemAdded(toSigned(bx2)) :: Nil)
 
       repo = repo.applyEvents(events).orThrow
       assert(repo == Repo.fromOp(V2 :: V1 :: Nil,
@@ -201,42 +201,42 @@ final class RepoTest extends AnyFreeSpec
   "applyEvent" - {
     var repo = emptyRepo.applyEvent(VersionAdded(V1)).orThrow
 
-    "ItemChanged for unknown path" in {
-      assert(repo.applyEvent(ItemChanged(toSigned(AItem(APath("/A") ~ V1, "A")))) ==
+    "VersionedItemChanged for unknown path" in {
+      assert(repo.applyEvent(VersionedItemChanged(toSigned(AItem(APath("/A") ~ V1, "A")))) ==
         Left(UnknownKeyProblem("ItemPath", APath("/A"))))
     }
 
-    "ItemDeleted for unknown path" in {
-      assert(repo.applyEvent(ItemDeleted(APath("/A"))) ==
+    "VersionedItemDeleted for unknown path" in {
+      assert(repo.applyEvent(VersionedItemDeleted(APath("/A"))) ==
         Left(UnknownKeyProblem("ItemPath", APath("/A"))))
     }
 
-    "ItemAdded for existent path" in {
-      repo = repo.applyEvent(ItemAdded(toSigned(AItem(APath("/A") ~ V1, "A")))).orThrow
-      assert(repo.applyEvent(ItemAdded(toSigned(AItem(APath("/A") ~ V1, "A")))) ==
+    "VersionedItemAdded for existent path" in {
+      repo = repo.applyEvent(VersionedItemAdded(toSigned(AItem(APath("/A") ~ V1, "A")))).orThrow
+      assert(repo.applyEvent(VersionedItemAdded(toSigned(AItem(APath("/A") ~ V1, "A")))) ==
         Left(DuplicateKey("ItemPath", APath("/A"))))
     }
 
     "FileBaseAdded with different VersionId" in {
-      val event = ItemAdded(toSigned(AItem(APath("/B") ~ V3, "B")))
+      val event = VersionedItemAdded(toSigned(AItem(APath("/B") ~ V3, "B")))
       assert(repo.applyEvent(event) ==
         Left(EventVersionDoesNotMatchProblem(V1, event)))
     }
 
     "FileBaseChanged with different VersionId" in {
-      val event = ItemChanged(toSigned(AItem(APath("/A") ~ V3, "A")))
+      val event = VersionedItemChanged(toSigned(AItem(APath("/A") ~ V3, "A")))
       assert(repo.applyEvent(event) == Left(EventVersionDoesNotMatchProblem(V1, event)))
     }
 
-    "ItemChanged for deleted path" in {
+    "VersionedItemChanged for deleted path" in {
       repo = repo.applyEvent(VersionAdded(V2)).orThrow
-      repo = repo.applyEvent(ItemDeleted(APath("/A"))).orThrow
+      repo = repo.applyEvent(VersionedItemDeleted(APath("/A"))).orThrow
       repo = repo.applyEvent(VersionAdded(V3)).orThrow
-      assert(repo.applyEvent(ItemChanged(toSigned(AItem(APath("/A") ~ V3, "A")))) == Left(ItemDeletedProblem(APath("/A"))))
+      assert(repo.applyEvent(VersionedItemChanged(toSigned(AItem(APath("/A") ~ V3, "A")))) == Left(VersionedItemDeletedProblem(APath("/A"))))
     }
 
-    "ItemDeleted for deleted path" in {
-      assert(repo.applyEvent(ItemDeleted(APath("/A"))) == Left(ItemDeletedProblem(APath("/A"))))
+    "VersionedItemDeleted for deleted path" in {
+      assert(repo.applyEvent(VersionedItemDeleted(APath("/A"))) == Left(VersionedItemDeletedProblem(APath("/A"))))
     }
   }
 
@@ -263,11 +263,11 @@ final class RepoTest extends AnyFreeSpec
   //"diff" in {
   //  // NOT USED ?
   //  assert(Repo.diff(a1 :: b1  :: Nil, a1 :: b1  :: Nil) == Nil)
-  //  assert(Repo.diff(a1 :: b1  :: Nil,              Nil) == ItemAdded(a1.withoutVersion) :: ItemAdded(b1.withoutVersion) :: Nil)
-  //  assert(Repo.diff(a1 :: b1  :: Nil, a1 ::        Nil) == ItemAdded(b1.withoutVersion) :: Nil)
-  //  assert(Repo.diff(             Nil, a1 :: b1  :: Nil) == ItemDeleted(a1.path) :: ItemDeleted(b1.path) :: Nil)
-  //  assert(Repo.diff(a1 ::        Nil, a1 :: b1  :: Nil) == ItemDeleted(b1.path) :: Nil)
-  //  assert(Repo.diff(a1 :: by2 :: Nil, a1 :: bx2 :: Nil) == ItemDeleted(bx2.path) :: ItemAdded(by2.withoutVersion) :: Nil)
+  //  assert(Repo.diff(a1 :: b1  :: Nil,              Nil) == VersionedItemAdded(a1.withoutVersion) :: VersionedItemAdded(b1.withoutVersion) :: Nil)
+  //  assert(Repo.diff(a1 :: b1  :: Nil, a1 ::        Nil) == VersionedItemAdded(b1.withoutVersion) :: Nil)
+  //  assert(Repo.diff(             Nil, a1 :: b1  :: Nil) == VersionedItemDeleted(a1.path) :: VersionedItemDeleted(b1.path) :: Nil)
+  //  assert(Repo.diff(a1 ::        Nil, a1 :: b1  :: Nil) == VersionedItemDeleted(b1.path) :: Nil)
+  //  assert(Repo.diff(a1 :: by2 :: Nil, a1 :: bx2 :: Nil) == VersionedItemDeleted(bx2.path) :: VersionedItemAdded(by2.withoutVersion) :: Nil)
   //}
 }
 
@@ -294,9 +294,9 @@ object RepoTest
   import itemSigner.toSigned
 
   private val TestEvents =
-    VersionAdded(V1) :: ItemAdded(toSigned(a1)) ::
-    VersionAdded(V2) :: ItemChanged(toSigned(a2)) :: ItemAdded(toSigned(bx2)) :: ItemAdded(toSigned(by2)) ::
-    VersionAdded(V3) :: ItemChanged(toSigned(a3)) :: ItemDeleted(bx2.path) :: Nil
+    VersionAdded(V1) :: VersionedItemAdded(toSigned(a1)) ::
+    VersionAdded(V2) :: VersionedItemChanged(toSigned(a2)) :: VersionedItemAdded(toSigned(bx2)) :: VersionedItemAdded(toSigned(by2)) ::
+    VersionAdded(V3) :: VersionedItemChanged(toSigned(a3)) :: VersionedItemDeleted(bx2.path) :: Nil
 
   private def v(version: String) = VersionId(version)
 }

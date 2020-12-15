@@ -16,8 +16,8 @@ import js7.base.problem.ProblemCode;
 import js7.data.event.Event;
 import js7.data.event.KeyedEvent;
 import js7.data.item.ItemPath;
-import js7.data.item.RepoEvent;
 import js7.data.item.VersionId;
+import js7.data.item.VersionedEvent;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
@@ -122,7 +122,7 @@ final class JControllerProxyRepoTester
 
         // The workflow should be deleted (latest version)
         assertThat(proxy.currentState().pathToWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
-            equalTo(Either.left(ProblemCode.of("ItemDeleted"))));
+            equalTo(Either.left(ProblemCode.of("VersionedItemDeleted"))));
     }
 
     private static SignedString sign(String json) {
@@ -142,11 +142,11 @@ final class JControllerProxyRepoTester
 
     private static boolean isItemAdded(KeyedEvent<Event> keyedEvent, ItemPath path) {
         Event event = keyedEvent.event();
-        return event instanceof RepoEvent.ItemAdded && ((RepoEvent.ItemAdded)event).path().equals(path);
+        return event instanceof VersionedEvent.VersionedItemAdded && ((VersionedEvent.VersionedItemAdded)event).path().equals(path);
     }
 
     private static boolean isItemDeleted(KeyedEvent<Event> keyedEvent, ItemPath path) {
         Event event = keyedEvent.event();
-        return event instanceof RepoEvent.ItemDeleted && ((RepoEvent.ItemDeleted)event).path().equals(path);
+        return event instanceof VersionedEvent.VersionedItemDeleted && ((VersionedEvent.VersionedItemDeleted)event).path().equals(path);
     }
 }

@@ -13,7 +13,7 @@ import js7.controller.data.ControllerCommand
 import js7.controller.item.ItemCommandExecutor._
 import js7.core.command.CommandMeta
 import js7.data.crypt.VersionedItemVerifier
-import js7.data.item.{Repo, RepoEvent, VersionedItem}
+import js7.data.item.{Repo, VersionedEvent, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
 
@@ -22,11 +22,11 @@ import monix.reactive.Observable
   */
 final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedItem])
 {
-  // ReplaceRepo and UpdateRepo may detect equal objects and optimize the ItemChanged away,
+  // ReplaceRepo and UpdateRepo may detect equal objects and optimize the VersionedItemChanged away,
   // if we can make sure that the different signature (due to different VersionId) refer the same trusted signer key.
   // Signatures refering different signer keys must be kept to allow the operator to delete old signer keys.
 
-  def replaceRepoCommandToEvents(repo: Repo, replaceRepo: ControllerCommand.ReplaceRepo, meta: CommandMeta): Task[Checked[Seq[RepoEvent]]] =
+  def replaceRepoCommandToEvents(repo: Repo, replaceRepo: ControllerCommand.ReplaceRepo, meta: CommandMeta): Task[Checked[Seq[VersionedEvent]]] =
     Task(meta.user.checkPermission(UpdateItemPermission))
       .flatMapT(_ =>
         Observable.fromIterable(replaceRepo.objects)
@@ -40,7 +40,7 @@ final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
                 .filterNot(signedItemSeq.view.map(_.value.path).toSet)
                 .to(Vector)))))
 
-  def updateRepoCommandToEvents(repo: Repo, updateRepo: ControllerCommand.UpdateRepo, meta: CommandMeta): Task[Checked[Seq[RepoEvent]]] =
+  def updateRepoCommandToEvents(repo: Repo, updateRepo: ControllerCommand.UpdateRepo, meta: CommandMeta): Task[Checked[Seq[VersionedEvent]]] =
     Task(meta.user.checkPermission(UpdateItemPermission))
       .flatMapT(_ =>
         Observable.fromIterable(updateRepo.change)

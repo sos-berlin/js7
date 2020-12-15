@@ -13,9 +13,9 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
 import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.item.ItemOperation.{VersionedAddOrReplace, AddVersion}
-import js7.data.item.RepoEvent.ItemAdded
+import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrReplace}
 import js7.data.item.VersionId
+import js7.data.item.VersionedEvent.VersionedItemAdded
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Succeeded
@@ -80,7 +80,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
 
     "success" in {
       val myWorkflow = workflow withVersion versionId
-      proxy.awaitEvent[ItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow) {
+      proxy.awaitEvent[VersionedItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow) {
         api.updateItems(Observable(
           AddVersion(versionId),
           VersionedAddOrReplace(sign(myWorkflow))

@@ -66,7 +66,7 @@ extends ControllerApiWithHttp
       .map(_.map((_: Completed) => Accepted))
 
   @deprecated("Use updateItems", "2020-12-11")
-  def updateRepo(versionId: VersionId, operations: Observable[ItemOperation.UpdateRepoOperation]): Task[Checked[Completed]] =
+  def updateRepo(versionId: VersionId, operations: Observable[ItemOperation.VersionedOperation]): Task[Checked[Completed]] =
     updateItems(ItemOperation.AddVersion(versionId) +: operations)
 
   def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Completed]] =

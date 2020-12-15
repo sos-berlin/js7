@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.common.http.CirceToYaml.yamlToJson
 import js7.core.item.VersionedItemReader._
-import js7.data.item.{ItemId_, ItemPath, SourceType, VersionedItem, VersionedItemId}
+import js7.data.item.{ItemPath, SourceType, VersionedItem, VersionedItemId, VersionedItemId_}
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +23,7 @@ trait VersionedItemReader
 
   def convertFromJson(json: Json): Checked[ThisItem]
 
-  private[item] def readUntyped(id: ItemId_, byteArray: ByteArray, sourceType: SourceType): Checked[ThisItem] = {
+  private[item] def readUntyped(id: VersionedItemId_, byteArray: ByteArray, sourceType: SourceType): Checked[ThisItem] = {
     assertThat(id.path.companion eq itemPathCompanion, "VersionedItemReader readUntyped")
     val result: Checked[ThisItem] = read(id.asInstanceOf[VersionedItemId[ThisItemPath]], byteArray).applyOrElse(sourceType,
       (_: SourceType) => Problem(s"Unrecognized SourceType '$sourceType' for path '$id'"))

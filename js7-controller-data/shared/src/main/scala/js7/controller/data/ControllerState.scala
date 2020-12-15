@@ -20,7 +20,7 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.{ItemPath, Repo, RepoEvent, SimpleItem, SimpleItemEvent, SimpleItemId, VersionedItem}
+import js7.data.item.{ItemPath, Repo, SimpleItem, SimpleItemEvent, SimpleItemId, VersionedEvent, VersionedItem}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -110,7 +110,7 @@ extends JournaledState[ControllerState]
           Left(Problem("AgentRefs are not deletable (in this version)"))  // TODO
       }
 
-    case KeyedEvent(_: NoKey, event: RepoEvent) =>
+    case KeyedEvent(_: NoKey, event: VersionedEvent) =>
       for (o <- repo.applyEvent(event)) yield
         copy(repo = o)
 
@@ -253,14 +253,14 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype(deriveCodec[ControllerMetaState]),
       Subtype[AgentRefState],
       Subtype[LockState],
-      Subtype[RepoEvent],  // These events describe complete objects
+      Subtype[VersionedEvent],  // These events describe complete objects
       Subtype[Order[Order.State]])
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
       KeyedSubtype[SimpleItemEvent],
-      KeyedSubtype[RepoEvent],
+      KeyedSubtype[VersionedEvent],
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],

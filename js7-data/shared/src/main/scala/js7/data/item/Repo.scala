@@ -12,10 +12,10 @@ import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemDeletedProblem, ItemVersionDoesNotMatchProblem}
+import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.Repo.Entry
-import js7.data.item.RepoEvent.{ItemAdded, ItemAddedOrChanged, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
 
@@ -58,16 +58,16 @@ final case class Repo private(
 
   /** Returns the difference to the repo as events. */
   def itemsToEvents(versionId: VersionId, changed: Iterable[Signed[VersionedItem]], deleted: Iterable[ItemPath] = Nil)
-  : Checked[Seq[RepoEvent]] =
+  : Checked[Seq[VersionedEvent]] =
     checkItemVersions(versionId, changed)
       .flatMap { changed =>
         val addedOrChanged = changed flatMap toAddedOrChanged
         for (_ <- addedOrChanged.checkUniqueness(_.path)) yield {
-          lazy val lazyAddedSet = addedOrChanged.view.collect { case a: ItemAdded => a.path }.toSet
+          lazy val lazyAddedSet = addedOrChanged.view.collect { case a: VersionedItemAdded => a.path }.toSet
           val deletedEvents = deleted.view
             .filterNot(path => lazyAddedSet contains path)  // delete and change?
             .filter(exists)  // delete unknown?
-            .map(ItemDeleted.apply)
+            .map(VersionedItemDeleted.apply)
           (View(VersionAdded(versionId)) ++ deletedEvents ++ addedOrChanged).toVector match {
             case Vector(VersionAdded(this.versionId)) if changed.nonEmpty || deleted.nonEmpty =>
               // Ignore same version with empty difference if it is not a versionId-only UpdateRepo
@@ -103,11 +103,11 @@ final case class Repo private(
         case _ => Left(ItemVersionDoesNotMatchProblem(versionId, o.value.id))
       })
 
-  private def toAddedOrChanged(signedItem: Signed[VersionedItem]): Option[RepoEvent.ItemEvent] =
+  private def toAddedOrChanged(signedItem: Signed[VersionedItem]): Option[VersionedEvent.VersionedItemEvent] =
     pathToSigned(signedItem.value.path) match {
       case Right(`signedItem`) => None
-      case Right(_) => Some(ItemChanged(signedItem))
-      case Left(_) => Some(ItemAdded(signedItem))
+      case Right(_) => Some(VersionedItemChanged(signedItem))
+      case Left(_) => Some(VersionedItemAdded(signedItem))
     }
 
   def typedCount[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): Int =
@@ -128,7 +128,7 @@ final case class Repo private(
       item <- versionToItem.head.maybeSignedItems
     } yield item
 
-  def applyEvents(events: Seq[RepoEvent]): Checked[Repo] = {
+  def applyEvents(events: Seq[VersionedEvent]): Checked[Repo] = {
     var result = Checked(this)
     val iterator = events.iterator
     while (result.isRight && iterator.hasNext) {
@@ -137,7 +137,7 @@ final case class Repo private(
     result
   }
 
-  def applyEvent(event: RepoEvent): Checked[Repo] =
+  def applyEvent(event: VersionedEvent): Checked[Repo] =
     event match {
       case VersionAdded(version) =>
         if (versionSet contains version)
@@ -147,33 +147,33 @@ final case class Repo private(
             versions = version :: versions,
             versionSet = versionSet + version))
 
-      case event: ItemEvent =>
+      case event: VersionedItemEvent =>
         if (versions.isEmpty)
           Problem.pure(s"Missing initial VersionAdded event for Repo")
         else
           event match {
-            case event: ItemAdded =>
+            case event: VersionedItemAdded =>
               if (exists(event.path))
                 Left(DuplicateKey("ItemPath", event.path))
               else
                 addOrChange(event)
 
-            case event: ItemChanged =>
+            case event: VersionedItemChanged =>
               pathToItem(event.path)
                 .flatMap(_ => addOrChange(event))
 
-            case ItemDeleted(path) =>
+            case VersionedItemDeleted(path) =>
               for (_ <- pathToItem(event.path)) yield
                 addEntry(path, None)
           }
     }
 
-  private def addOrChange(event: ItemAddedOrChanged): Checked[Repo] = {
+  private def addOrChange(event: VersionedItemAddedOrChanged): Checked[Repo] = {
     itemVerifier match {
       case Some(verifier) =>
         verifier.verify(event.signedString).map(_.item).flatMap(item =>
           if (event.path != item.path)
-            Problem.pure(s"Error in ItemAddedOrChanged event: path=${event.path} does not equal path=${item.path}")
+            Problem.pure(s"Error in VersionedItemAddedOrChanged event: path=${event.path} does not equal path=${item.path}")
           else if (item.path.isAnonymous)
             Problem.pure(s"Adding an anonymous ${item.companion.name} is not allowed")
           else if (item.id.versionId != versionId)
@@ -219,7 +219,7 @@ final case class Repo private(
       .checked(path)
       .flatMap(_.head
         .maybeSignedItems
-        .toChecked(ItemDeletedProblem(path))
+        .toChecked(VersionedItemDeletedProblem(path))
         .map(_.value.asInstanceOf[A]))
 
   def pathToItem(path: ItemPath): Checked[VersionedItem] =
@@ -231,7 +231,7 @@ final case class Repo private(
       .checked(path)
       .flatMap(_.head
         .maybeSignedItems
-        .toChecked(ItemDeletedProblem(path)))
+        .toChecked(VersionedItemDeletedProblem(path)))
 
   /** Returns the VersionedItem to a VersionedItemId. */
   def idTo[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A]): Checked[A] =
@@ -250,7 +250,7 @@ final case class Repo private(
             fb <- findInHistory(versionToSignedItem, history.contains) toChecked UnknownKeyProblem("VersionedItemId", id)
           } yield fb
         ): Checked[Option[Signed[VersionedItem]]]
-      signedItem <- itemOption.toChecked(ItemDeletedProblem(id.path))
+      signedItem <- itemOption.toChecked(VersionedItemDeletedProblem(id.path))
     } yield signedItem.copy(signedItem.value.cast[A])
 
   lazy val estimatedEventCount: Int = {
@@ -260,14 +260,14 @@ final case class Repo private(
   }
 
   /** Converts the Repo to an event sequence, regarding only a given type. */
-  def eventsFor(is: ItemPath.AnyCompanion => Boolean): Seq[RepoEvent] =
+  def eventsFor(is: ItemPath.AnyCompanion => Boolean): Seq[VersionedEvent] =
     toEvents collect {
       case e: VersionAdded => e
-      case e: ItemEvent if is(e.path.companion) => e
+      case e: VersionedItemEvent if is(e.path.companion) => e
     }
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
-  private[item] def toEvents: Seq[RepoEvent] = {
+  private[item] def toEvents: Seq[VersionedEvent] = {
     type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[VersionedItem/*added/updated*/]]
     val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
       pathToVersionToSignedItems.toVector
@@ -283,13 +283,13 @@ final case class Repo private(
       Vector(VersionAdded(version)) ++
         versionToChanges.getOrElse(version, Nil).map {
           case Left(path) =>
-            ItemDeleted(path)
+            VersionedItemDeleted(path)
           case Right(signedItem) =>
             val entries = pathToVersionToSignedItems(signedItem.value.path)
             if (findInHistory(entries, versionSet).flatten.isDefined)
-              ItemChanged(signedItem)
+              VersionedItemChanged(signedItem)
             else
-              ItemAdded(signedItem)
+              VersionedItemAdded(signedItem)
         }
       }
       .toVector.reverse.flatten
@@ -335,13 +335,13 @@ object Repo
     }
 
     sealed trait Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: ItemId_ => A): A
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: VersionedItemId_ => A): A
     }
     final case class Changed(item: Signed[VersionedItem]) extends Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: ItemId_ => A) = whenChanged(item)
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: VersionedItemId_ => A) = whenChanged(item)
     }
-    final case class Deleted(id: ItemId_) extends Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: ItemId_ => A) = whenDeleted(id)
+    final case class Deleted(id: VersionedItemId_) extends Operation {
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: VersionedItemId_ => A) = whenDeleted(id)
     }
   }
 

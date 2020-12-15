@@ -24,9 +24,9 @@ import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
 import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.item.IntentoryItems.diffVersionedItems
 import js7.data.item.ItemOperation.SimpleAddOrReplace
-import js7.data.item.{IntentoryItems, ItemPath, VersionId, VersionedItem, VersionedItemSigner}
+import js7.data.item.VersionedItems.diffVersionedItems
+import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner, VersionedItems}
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -123,12 +123,12 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   @TestOnly
-  def testControllerDiff: Task[Checked[IntentoryItems.Diff[ItemPath, VersionedItem]]] =
+  def testControllerDiff: Task[Checked[VersionedItems.Diff[ItemPath, VersionedItem]]] =
     loginUntilReachable >> controllerDiff(readDirectory())
 
   /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[IntentoryItems.Diff[ItemPath, VersionedItem]]] =
+  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[VersionedItems.Diff[ItemPath, VersionedItem]]] =
     for {
       pair <- Task.parZip2(readLocalItem(localEntries.map(_.file)), fetchControllerItemSeq)
       (checkedLocalItemSeq, controllerItemSeq) = pair
@@ -138,8 +138,8 @@ extends HasCloser with Observing with ProvideActorSystem
   private def readLocalItem(files: Seq[Path]) =
     Task { typedSourceReader.readVersionedItems(files) }
 
-  private def itemDiff(aSeq: Seq[VersionedItem], bSeq: Seq[VersionedItem]): IntentoryItems.Diff[ItemPath, VersionedItem] =
-    IntentoryItems.Diff.fromRepoChanges(diffVersionedItems(aSeq, bSeq, ignoreVersion = true))
+  private def itemDiff(aSeq: Seq[VersionedItem], bSeq: Seq[VersionedItem]): VersionedItems.Diff[ItemPath, VersionedItem] =
+    VersionedItems.Diff.fromRepoChanges(diffVersionedItems(aSeq, bSeq, ignoreVersion = true))
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
@@ -171,7 +171,7 @@ extends HasCloser with Observing with ProvideActorSystem
           }
     }
 
-  private def execute(versionId: Option[VersionId], diff: IntentoryItems.Diff[ItemPath, VersionedItem]): Task[Checked[Completed.type]] =
+  private def execute(versionId: Option[VersionId], diff: VersionedItems.Diff[ItemPath, VersionedItem]): Task[Checked[Completed.type]] =
     if (diff.isEmpty && versionId.isEmpty)
       Task(Checked.completed)
     else {
@@ -182,14 +182,14 @@ extends HasCloser with Observing with ProvideActorSystem
           .map((_: ControllerCommand.Response) => Completed))
     }
 
-  private def logUpdate(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, VersionedItem]): Unit = {
+  private def logUpdate(versionId: VersionId, diff: VersionedItems.Diff[ItemPath, VersionedItem]): Unit = {
     logger.info(s"Version ${versionId.string}")
     for (o <- diff.deleted            .sorted) logger.info(s"Delete ${o.pretty}")
     for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
     for (o <- diff.updated.map(_.path).sorted) logger.info(s"Update ${o.pretty}")
   }
 
-  private def toUpdateRepo(versionId: VersionId, diff: IntentoryItems.Diff[ItemPath, VersionedItem]) =
+  private def toUpdateRepo(versionId: VersionId, diff: VersionedItems.Diff[ItemPath, VersionedItem]) =
     UpdateRepo(
       versionId,
       change = (diff.added ++ diff.updated).map(_ withVersion versionId) map itemSigner.sign,
@@ -201,13 +201,13 @@ extends HasCloser with Observing with ProvideActorSystem
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector
 
-  private def toItemDiff(diff: PathSeqDiff): Checked[IntentoryItems.Diff[ItemPath, VersionedItem]] = {
+  private def toItemDiff(diff: PathSeqDiff): Checked[VersionedItems.Diff[ItemPath, VersionedItem]] = {
     val checkedAdded = typedSourceReader.readVersionedItems(diff.added)
     val checkedChanged = typedSourceReader.readVersionedItems(diff.changed)
     val checkedDeleted: Checked[Vector[ItemPath]] =
       diff.deleted.toVector
         .traverse(path => ItemPaths.fileToItemPath(itemPathCompanions, conf.liveDirectory, path))
-    (checkedAdded, checkedChanged, checkedDeleted) mapN ((add, chg, del) => IntentoryItems.Diff(add, chg, del))
+    (checkedAdded, checkedChanged, checkedDeleted) mapN ((add, chg, del) => VersionedItems.Diff(add, chg, del))
   }
 
   private def toReplaceRepoCommand(versionId: VersionId, files: Seq[Path]): Checked[ReplaceRepo] =

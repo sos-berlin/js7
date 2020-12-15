@@ -26,8 +26,8 @@ import js7.data.agent.AgentId
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
-import js7.data.item.RepoEvent.{ItemAdded, ItemChanged, ItemDeleted, ItemEvent, VersionAdded}
-import js7.data.item.{IntentoryItems, Repo, SourceType, VersionId}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
+import js7.data.item.{Repo, SourceType, VersionId, VersionedItems}
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
@@ -127,7 +127,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       v1Time
 
       // `initiallyUpdateControllerConfiguration` will send this diff to the Controller
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntentoryItems.Diff(
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == VersionedItems.Diff(
         added = TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.seconds).orThrow
@@ -204,7 +204,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
 
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == IntentoryItems.Diff(added = workflow :: Nil))
+      assert(provider.testControllerDiff.await(99.seconds).orThrow == VersionedItems.Diff(added = workflow :: Nil))
       provider.updateControllerConfiguration(V4.some).await(99.seconds).orThrow
       assert(provider.testControllerDiff.await(99.seconds).orThrow.isEmpty)
     }
@@ -228,17 +228,17 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       whenObserved
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      val events = controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value)
+      val events = controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
-        .map(path => NoKey <-: ItemAdded(toSigned(TestWorkflow withId path ~ versionId))))
+        .map(path => NoKey <-: VersionedItemAdded(toSigned(TestWorkflow withId path ~ versionId))))
     }
 
     "Delete a workflow" in {
       whenObserved
       lastEventId = controller.eventWatch.lastAddedEventId
       delete(live resolve CWorkflowPath.toFile(SourceType.Json))
-      assert(controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: ItemDeleted(CWorkflowPath)))
+      assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
+        Vector(NoKey <-: VersionedItemDeleted(CWorkflowPath)))
     }
 
     "Add a workflow" in {
@@ -246,8 +246,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       lastEventId = controller.eventWatch.lastAddedEventId
       writeWorkflowFile(CWorkflowPath)
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      assert(controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: ItemAdded(toSigned(TestWorkflow withId CWorkflowPath ~ versionId))))
+      assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
+        Vector(NoKey <-: VersionedItemAdded(toSigned(TestWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Change a workflow" in {
@@ -255,8 +255,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       lastEventId = controller.eventWatch.lastAddedEventId
       live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      assert(controller.eventWatch.await[ItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: ItemChanged(toSigned(ChangedWorkflow withId CWorkflowPath ~ versionId))))
+      assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
+        Vector(NoKey <-: VersionedItemChanged(toSigned(ChangedWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Add an order generator" in {
