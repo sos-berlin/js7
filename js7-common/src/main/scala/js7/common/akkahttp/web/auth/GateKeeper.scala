@@ -160,13 +160,13 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
       seal {
         extractRequest { request =>
           allowedUser(user, request, requiredPermissions) match {
-            case Some(authorizedUser) =>
+            case Right(authorizedUser) =>
               inner(Tuple1(authorizedUser))
-            case None =>
+            case Left(problem) =>
               if (user.isAnonymous)
                 reject(credentialsMissing)  // Let a browser show its authentication dialog
               else
-                complete(Forbidden)
+                complete(Forbidden -> problem)
           }
         }
       })
@@ -176,10 +176,10 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
     * In case of loopbackIsPublic or getIsPublic,
     * the returned user gets the `configuration.publicPermissioons`.
     */
-  private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Option[U] =
+  private[auth] def allowedUser(user: U, request: HttpRequest, requiredPermissions: Set[Permission]): Checked[U] =
     ifPublic(request.method) match {
       case Some(reason) =>
-        //??? if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
+        //if (!user.isAnonymous) logger.warn(s"User '${user.id.string}' has logged in despite $reason")
         val empoweredUser = U.addPermissions(user, reason match {
           case IsPublic | LoopbackIsPublic => configuration.publicPermissions
           case GetIsPublic                 => configuration.publicGetPermissions
@@ -187,14 +187,15 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
         if (empoweredUser.grantedPermissions != user.grantedPermissions) {
           logger.debug(s"Granting user '${empoweredUser.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
         }
-        Some(empoweredUser)
+        Right(empoweredUser)
 
       case None =>
-        isPermitted(user, requiredPermissions, request.method) ? user
+        ifPermitted(user, requiredPermissions, request.method)
     }
 
   private[auth] def ifPublic(method: HttpMethod): Option[AuthorizationReason] =
-    ifPublic orElse ((getIsPublic && isGet(method)) ? GetIsPublic)
+    ifPublic.orElse(
+      (getIsPublic && isGet(method)) ? GetIsPublic)
 
   private[auth] def ifPublic: Option[AuthorizationReason] =
     if (isPublic)
@@ -204,11 +205,15 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
     else
       None
 
-  private def isPermitted(user: U, requiredPermissions: Set[Permission], method: HttpMethod): Boolean =
-    user.hasPermissions(requiredPermissions) && (
-      requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
-      user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
-      isGet(method))                                        // ... only to read
+  private def ifPermitted(user: U, requiredPermissions: Set[Permission], method: HttpMethod): Checked[U] =
+    user.checkPermissions(requiredPermissions)
+      .flatMap(_ =>
+        if (requiredPermissions.contains(ValidUserPermission) ||  // If ValidUserPermission is not required (Anonymous is allowed)...
+            user.hasPermission(ValidUserPermission) ||            // ... then allow Anonymous ... (only unempowered Anonymous does not have ValidUserPermission)
+            isGet(method))                                        // ... only to read
+          Right(user)
+        else
+          Left(Problem.pure("Anonymous is permitted HTTP GET only")))
 
   private def completeDelayed(body: => ToResponseMarshallable): Route =
     complete(Task(body).delayExecution(invalidAuthenticationDelay).runToFuture)

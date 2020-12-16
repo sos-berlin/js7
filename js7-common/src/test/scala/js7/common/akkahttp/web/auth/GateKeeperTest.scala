@@ -11,8 +11,10 @@ import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.testkit.TestDuration
 import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
+import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.generic.SecretString
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
 import js7.common.akkahttp.web.auth.GateKeeperTest._
@@ -105,94 +107,102 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
     "isPublic" in {
       // user is authorized, allowUser adds all permissions to the user
       val gateKeeper = newGateKeeper(defaultConf.copy(isPublic = true), isLoopback = false)
-      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(publicAnonymous))
-      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == Some(publicAnonymous))
-      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == Some(publicAnonymous))
-      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == Some(publicAnonymous))
-      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == Some(publicAnonymous))
-      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == Some(publicAnonymous))
-      assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(EmpoweredTestUser))
-      assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(EmpoweredTestUser))
-      assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(EmpoweredTestUser))
-      assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(EmpoweredTestUser))
-      assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(EmpoweredTestUser))
-      assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Right(publicAnonymous))
+      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == Right(publicAnonymous))
+      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == Right(publicAnonymous))
+      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == Right(publicAnonymous))
+      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == Right(publicAnonymous))
+      assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == Right(publicAnonymous))
+      assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Right(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Right(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Right(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(EmpoweredTestUser))
+      assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Right(EmpoweredTestUser))
     }
 
     "!getIsPublic" - {
       "!loopbackIsPublic" - {
         "!isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = false), isLoopback = false)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(gateKeeper.anonymousUser))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)        == None)
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == None)
+          val anon = gateKeeper.anonymousUser
+
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)               == Right(anon))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)     == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)          == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)              == onlyGetPermittedForAnonymous)
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission)    == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)         == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == missingPermission(TestUser, GetPermission))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)          == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)     == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)      == missingPermission(TestUser, GetPermission))
         }
 
         "isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = false), isLoopback = true)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(gateKeeper.anonymousUser))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)        == None)
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == None)
+          val anon = gateKeeper.anonymousUser
+
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)             == Right(anon))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)   == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)        == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)            == onlyGetPermittedForAnonymous)
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission)  == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)       == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)        == missingPermission(TestUser, GetPermission))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == missingPermission(TestUser, GetPermission))
         }
       }
 
       "loopbackIsPublic" - {
         "!isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = true), isLoopback = false)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(gateKeeper.anonymousUser))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)        == None)
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == None)
+          val anon = gateKeeper.anonymousUser
+
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)            == Right(anon))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)  == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)       == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)           == onlyGetPermittedForAnonymous)
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission) == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)      == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)            == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission)  == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)       == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)        == missingPermission(TestUser, GetPermission))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == missingPermission(TestUser, GetPermission))
         }
 
         "isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = false, loopbackIsPublic = true), isLoopback = true)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == Some(EmpoweredTestUser))
+          val anon = gateKeeper.anonymousUser
+
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)            == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)  == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)       == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)           == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission) == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)      == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == Right(EmpoweredTestUser))
         }
       }
     }
@@ -201,88 +211,98 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
       "!loopbackIsPublic" - {
         "!isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = false), isLoopback = false)
+          val anon = gateKeeper.anonymousUser
 
           // Anonymous with added permissions due isPublic or loopbackIsPublic
-          val PublicGetAnonymous = gateKeeper.anonymousUser.copy(grantedPermissions = GetPermissions)
+          val PublicGetAnonymous = anon.copy(grantedPermissions = GetPermissions)
 
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == None)
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)            == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)  == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)       == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)           == onlyGetPermittedForAnonymous)
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission) == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)      == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == missingPermission(TestUser, GetPermission))
         }
 
         "isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = false), isLoopback = true)
+          val anon = gateKeeper.anonymousUser
           // Anonymous with added permissions due isPublic or loopbackIsPublic
           val PublicGetAnonymous = gateKeeper.anonymousUser.copy(grantedPermissions = GetPermissions)
 
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == None)
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)            == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)  == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)       == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)           == onlyGetPermittedForAnonymous)
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission) == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)      == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == missingPermission(TestUser, GetPermission))
         }
       }
 
       "loopbackIsPublic" - {
         "!isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = true), isLoopback = false)
+          val anon = gateKeeper.anonymousUser
           // Anonymous with added permissions due isPublic or loopbackIsPublic
-          val PublicGetAnonymous = gateKeeper.anonymousUser.copy(grantedPermissions = GetPermissions)
+          val PublicGetAnonymous = anon.copy(grantedPermissions = GetPermissions)
 
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == Some(PublicGetAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == None)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == None)
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Some(EmpoweredGetTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Some(TestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == None)
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)            == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)  == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)       == Right(PublicGetAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)           == onlyGetPermittedForAnonymous)
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission) == missingPermission(anon, ValidUserPermission))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)      == missingPermission(anon, TestPermission))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Right(EmpoweredGetTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, TestPermission)      == Right(TestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == missingPermission(TestUser, GetPermission))
         }
 
         "isLoopback" in {
           val gateKeeper = newGateKeeper(defaultConf.copy(getIsPublic = true, loopbackIsPublic = true), isLoopback = true)
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, Set.empty)            == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, ValidUserPermission)  == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, GET, TestPermission)       == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, Set.empty)           == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, ValidUserPermission) == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(gateKeeper.anonymousUser, POST, TestPermission)      == Some(publicAnonymous))
-          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Some(EmpoweredTestUser))
-          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == Some(EmpoweredTestUser))
+          val anon = gateKeeper.anonymousUser
+
+          assert(gateKeeper.allowedUser(anon, GET, Set.empty)            == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, ValidUserPermission)  == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, GET, TestPermission)       == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, Set.empty)           == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, ValidUserPermission) == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(anon, POST, TestPermission)      == Right(publicAnonymous))
+          assert(gateKeeper.allowedUser(TestUser, GET, Set.empty)           == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, ValidUserPermission) == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, TestPermission)      == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, GET, GetPermission)       == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, Set.empty)           == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, ValidUserPermission) == Right(EmpoweredTestUser))
+          assert(gateKeeper.allowedUser(TestUser, POST, GetPermission)       == Right(EmpoweredTestUser))
         }
       }
     }
+
+    def missingPermission(user: User, permission: Permission) =
+      Left(UserDoesNotHavePermissionProblem(user.id, permission))
+
+    def onlyGetPermittedForAnonymous = Left(Problem("Anonymous is permitted HTTP GET only"))
   }
 
   private def route(conf: GateKeeper.Configuration[SimpleUser]): Route = route(newGateKeeper(conf))
