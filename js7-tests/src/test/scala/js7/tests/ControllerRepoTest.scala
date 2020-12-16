@@ -131,7 +131,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           runOrder(controller, AWorkflowPath ~ V3, OrderId("A-3"))
           runOrder(controller, BWorkflowPath ~ V2, OrderId("B-2"))
 
-          sys.props.get("ControllerRepoTest").foreach(_.split(" +") match {
+          sys.props.get("test.speed").foreach(_.split(" +") match {
             case Array(nString) =>
               val (a, b) = nString.span(_ != '*')
               val (n, itemCount) = (a.toInt, b.drop(1).toInt)

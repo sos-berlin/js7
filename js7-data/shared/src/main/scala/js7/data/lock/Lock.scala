@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.utils.Assertions.assertThat
 import js7.data.item.SimpleItem
 
-final case class Lock(id: LockId, limit: Int) extends SimpleItem
+final case class Lock(id: LockId, limit: Int = 1) extends SimpleItem
 {
   protected type Self = Lock
   val companion = Lock
