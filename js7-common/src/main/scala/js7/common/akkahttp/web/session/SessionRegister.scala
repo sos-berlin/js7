@@ -27,6 +27,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
 {
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
+  val systemUser: Task[Checked[S#User]] = systemSession.map(_.map(_.currentUser))
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
     for (sessionToken <- login(user, isEternalSession = true)) yield {

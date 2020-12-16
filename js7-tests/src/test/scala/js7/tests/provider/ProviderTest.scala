@@ -45,7 +45,7 @@ import scala.concurrent.duration._
   */
 final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  override protected def suppressAgentAndRepoInitialization = true
+  override protected def doNotAddItems = true
   protected val agentIds = agentId :: Nil
   protected val versionedItems = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head

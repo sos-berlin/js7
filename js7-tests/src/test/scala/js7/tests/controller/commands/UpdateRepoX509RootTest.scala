@@ -2,26 +2,25 @@ package js7.tests.controller.commands
 
 import java.nio.file.Files.{copy, createDirectory, createTempDirectory}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import js7.base.auth.UserId
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.generic.SecretString
-import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.base.web.HttpClient
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax.RichTask
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.crypt.x509.OpensslContext
+import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange}
 import js7.data.item.{VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509RootTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -36,6 +35,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
   private lazy val workDir = createTempDirectory("UpdateRepoX509RootTest")
   private lazy val openssl = new OpensslContext(workDir)
   private lazy val root = new openssl.Root("Root")
+  private lazy val controllerApi = controller.newControllerApi(Some(userAndPassword))
 
   override def beforeAll() = {
     createDirectory(directoryProvider.controller.configDir / "private" / "trusted-x509-keys")
@@ -55,7 +55,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
          |""".stripMargin
     super.beforeAll()
 
-    controller.httpApiDefaultLogin(Some(UserId("UpdateRepoX509RootTest") -> SecretString("TEST-PASSWORD")))
+    controller.httpApiDefaultLogin(Some(userAndPassword))
     controller.httpApi.login() await 99.s
   }
 
@@ -77,7 +77,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
         signatureFile.contentString,
         algorithm = "SHA512withRSA",
         signerCertificate = signer.certificateFile.contentString)
-      executeCommand(UpdateRepo(v2, signedString :: Nil)).orThrow
+      controllerApi.updateRepo(v2, Seq(signedString)).await(99.s).orThrow
     }
 
     "Signature does not match item (item tampered)" in {
@@ -88,7 +88,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
         GenericSignature("X509", signatureFile.contentString,
           algorithm = Some("SHA512withRSA"),
           signerCertificate = Some(signer.certificateFile.contentString)))
-      assert(executeCommand(UpdateRepo(v3, signedString :: Nil)) == Left(TamperedWithSignedMessageProblem))
+      assert(controllerApi.updateRepo(v3, Seq(signedString)).await(99.s) == Left(TamperedWithSignedMessageProblem))
     }
   }
 
@@ -104,14 +104,12 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
       GenericSignature("X509", alienSignatureFile.contentString,
         algorithm = Some("SHA512withRSA"),
         signerCertificate = Some(alienSigner.certificateFile.contentString)))
-    assert(executeCommand(UpdateRepo(v4, alienSignedString :: Nil)) == Left(MessageSignedByUnknownProblem))
+    assert(controllerApi.updateRepo(v4, Seq(alienSignedString)).await(99.s) == Left(MessageSignedByUnknownProblem))
   }
-
-  private def executeCommand(cmd: ControllerCommand): Checked[cmd.Response] =
-    HttpClient.liftProblem(controller.httpApi.executeCommand(cmd)) await 99.s
 }
 
 object UpdateRepoX509RootTest
 {
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"))
+  private val userAndPassword = UserAndPassword(UserId("UpdateRepoX509RootTest"), SecretString("TEST-PASSWORD"))
 }

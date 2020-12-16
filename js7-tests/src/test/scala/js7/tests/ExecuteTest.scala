@@ -226,7 +226,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val versionId = versionIdIterator.next()
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next() ~ versionId)
     val order = FreshOrder(orderIdIterator.next(), workflow.path, arguments = orderArguments)
-    directoryProvider.updateRepo(controller, versionId, Seq(workflow))
+    directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
     controller.runOrder(order).map(_.value)
   }

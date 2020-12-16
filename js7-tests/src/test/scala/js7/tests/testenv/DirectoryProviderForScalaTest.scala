@@ -27,7 +27,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentIds: Seq[AgentId]
   protected def agentHttps = false
   protected def agentPorts: Iterable[Int] = Nil
-  protected def suppressAgentAndRepoInitialization = false
+  protected def doNotAddItems = false
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentIds,
@@ -43,7 +43,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     signer = signer,
     verifier = verifier,
     testName = Some(getClass.getSimpleName),
-    suppressAgentAndRepoInitialization = suppressAgentAndRepoInitialization)
+    doNotAddItems = doNotAddItems)
 
   protected def agentConfig: Config = ConfigFactory.empty
 

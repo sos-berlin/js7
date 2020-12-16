@@ -46,8 +46,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override def beforeAll() = {
     super.beforeAll()
     val items = Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))
-    controllerApi.updateItems(Observable.fromIterable(items) map SimpleAddOrChange.apply)
-      .await(99.s).orThrow
+    controllerApi.updateSimpleItems(items).await(99.s).orThrow
   }
 
   "TEST" in {
@@ -255,7 +254,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val workflowPath = WorkflowPath("/WORKFLOW")
     val versionId = versionIdIterator.next()
     val workflow = WorkflowParser.parse(workflowPath ~ versionId, workflowNotation).orThrow
-    directoryProvider.updateRepo(controller, versionId, Seq(workflow))
+    directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
     workflow
   }
 }

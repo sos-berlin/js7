@@ -2,26 +2,24 @@ package js7.tests.controller.commands
 
 import java.nio.file.Files.createTempDirectory
 import js7.base.Problems.TamperedWithSignedMessageProblem
-import js7.base.auth.UserId
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString, SignerId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.web.HttpClient
 import js7.common.process.Processes.runProcess
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.{deleteDirectoryRecursively, withTemporaryDirectory}
 import js7.common.scalautil.MonixUtils.syntax.RichTask
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.crypt.x509.X509SignatureVerifier
 import js7.data.item.{VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509Test._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -42,6 +40,8 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
   private lazy val privateKeyFile = workDir / "test.key"
   private lazy val certificateFile = workDir / "test.pem"
 
+  private lazy val controllerApi = controller.newControllerApi(Some(userAndPassword))
+
   override def beforeAll() = {
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
      """js7.auth.users {
@@ -52,7 +52,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
        |}
        |""".stripMargin
     super.beforeAll()
-    controller.httpApiDefaultLogin(Some(UserId("UpdateRepoX509Test") -> SecretString("TEST-PASSWORD")))
+    controller.httpApiDefaultLogin(Some(userAndPassword))
     controller.httpApi.login() await 99.s
   }
 
@@ -86,7 +86,8 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
       val signedString = SignedString.x509WithSignedId/*Java API*/(
         itemFile.contentString,
         signatureBase64File.contentString, algorithm = "SHA512withRSA", signerId = SignerId.of("CN=SIGNER"))
-      executeCommand(UpdateRepo(v2, signedString :: Nil)).orThrow
+      controllerApi.updateRepo(v2, Seq(signedString))
+        .await(99.s).orThrow
 
       locally {
         val v3 = VersionId("3")
@@ -96,7 +97,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
         val signedStringV3 = SignedString(
           itemFile.contentString + "-TAMPERED",
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=SIGNER"))))
-        assert(executeCommand(UpdateRepo(v3, signedStringV3 :: Nil)) == Left(TamperedWithSignedMessageProblem))
+        assert(controllerApi.updateRepo(v3, Seq(signedStringV3)).await(99.s) == Left(TamperedWithSignedMessageProblem))
       }
 
       locally {
@@ -107,17 +108,14 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
         val signedStringV4 = SignedString(
           itemFile.contentString,
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=ALIEN"))))
-        assert(executeCommand(UpdateRepo(v4, signedStringV4 :: Nil)) ==
-          Left(Problem("The signature's SignerId 'CN=ALIEN' is unknown")))
+        assert(controllerApi.updateRepo(v4, Seq(signedStringV4)).await(99.s) == Left(Problem("The signature's SignerId 'CN=ALIEN' is unknown")))
       }
     }
   }
-
-  private def executeCommand(cmd: ControllerCommand): Checked[cmd.Response] =
-    HttpClient.liftProblem(controller.httpApi.executeCommand(cmd)) await 99.s
 }
 
 object UpdateRepoX509Test
 {
+  private val userAndPassword = UserAndPassword(UserId("UpdateRepoX509Test"), SecretString("TEST-PASSWORD"))
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"))
 }

@@ -93,7 +93,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       val controller = RunningController(controllerConfiguration) await 99.seconds
       controller.waitUntilReady()
 
-      controller.updateSimpleItems(Seq(agentRef)).await(99.s).orThrow
+      controller.updateSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
       val replaceRepo = ReplaceRepo(versionId, Seq(workflow) map itemSigner.sign)
       controller.executeCommandAsSystemUser(replaceRepo).await(99.s).orThrow
 

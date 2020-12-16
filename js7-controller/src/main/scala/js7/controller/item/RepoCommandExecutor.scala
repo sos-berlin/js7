@@ -3,15 +3,14 @@ package js7.controller.item
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import js7.base.auth.UpdateItemPermission
+import js7.base.auth.{SimpleUser, UpdateItemPermission}
 import js7.base.crypt.{Signed, SignedString}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.data.ControllerCommand
-import js7.controller.item.ItemCommandExecutor._
-import js7.core.command.CommandMeta
+import js7.controller.item.RepoCommandExecutor._
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.{Repo, VersionedEvent, VersionedItem}
 import monix.eval.Task
@@ -20,14 +19,14 @@ import monix.reactive.Observable
 /**
   * @author Joacim Zschimmer
   */
-final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedItem])
+final class RepoCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedItem])
 {
   // ReplaceRepo and UpdateRepo may detect equal objects and optimize the VersionedItemChanged away,
   // if we can make sure that the different signature (due to different VersionId) refer the same trusted signer key.
   // Signatures refering different signer keys must be kept to allow the operator to delete old signer keys.
 
-  def replaceRepoCommandToEvents(repo: Repo, replaceRepo: ControllerCommand.ReplaceRepo, meta: CommandMeta): Task[Checked[Seq[VersionedEvent]]] =
-    Task(meta.user.checkPermission(UpdateItemPermission))
+  def replaceRepoCommandToEvents(repo: Repo, replaceRepo: ControllerCommand.ReplaceRepo, user: SimpleUser): Task[Checked[Seq[VersionedEvent]]] =
+    Task(user.checkPermission(UpdateItemPermission))
       .flatMapT(_ =>
         Observable.fromIterable(replaceRepo.objects)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))
@@ -40,8 +39,8 @@ final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
                 .filterNot(signedItemSeq.view.map(_.value.path).toSet)
                 .to(Vector)))))
 
-  def updateRepoCommandToEvents(repo: Repo, updateRepo: ControllerCommand.UpdateRepo, meta: CommandMeta): Task[Checked[Seq[VersionedEvent]]] =
-    Task(meta.user.checkPermission(UpdateItemPermission))
+  def updateRepoCommandToEvents(repo: Repo, updateRepo: ControllerCommand.UpdateRepo, user: SimpleUser): Task[Checked[Seq[VersionedEvent]]] =
+    Task(user.checkPermission(UpdateItemPermission))
       .flatMapT(_ =>
         Observable.fromIterable(updateRepo.change)
           .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(verify(o)))
@@ -57,6 +56,6 @@ final class ItemCommandExecutor(itemVerifier: VersionedItemVerifier[VersionedIte
     }
 }
 
-object ItemCommandExecutor {
+object RepoCommandExecutor {
   private val logger = Logger(getClass)
 }

@@ -42,7 +42,7 @@ import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, Agent
 import js7.controller.data.events.ControllerEvent
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.{ControllerCommand, ControllerState}
-import js7.controller.item.{ItemCommandExecutor, VerifiedUpdateItems}
+import js7.controller.item.{RepoCommandExecutor, VerifiedUpdateItems}
 import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
@@ -102,7 +102,7 @@ with MainJournalingActor[ControllerState, Event]
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
 
-  private val repoCommandExecutor = new ItemCommandExecutor(itemVerifier)
+  private val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
   private val agentRegister = new AgentRegister
   private val orderRegister = mutable.HashMap[OrderId, OrderEntry]()
   private val recoveredJournalHeader = SetOnce[JournalHeader]
@@ -408,7 +408,7 @@ with MainJournalingActor[ControllerState, Event]
       val t = now
       val simpleItemEvents = simpleItemsToEvent(simple)
       val whenPersisted = maybeVersioned
-        .map(repoItemsToEvent)
+        .map(versionedItemsToEvent)
         .getOrElse(Success(Right(Nil)))
         match {
           case Failure(t) => Future.failed(t)
@@ -530,7 +530,7 @@ with MainJournalingActor[ControllerState, Event]
       } ++
         simple.delete.map(SimpleItemDeleted.apply)
 
-  private def repoItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
+  private def versionedItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
   : Try[Checked[Seq[VersionedEvent]]] =
     Try(
       _controllerState.repo.itemsToEvents(
@@ -632,7 +632,7 @@ with MainJournalingActor[ControllerState, Event]
 
       case cmd: ControllerCommand.ReplaceRepo =>
         Try(
-          repoCommandExecutor.replaceRepoCommandToEvents(_controllerState.repo, cmd, commandMeta)
+          repoCommandExecutor.replaceRepoCommandToEvents(_controllerState.repo, cmd, commandMeta.user)
             .runToFuture
             .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
         match {
@@ -645,7 +645,7 @@ with MainJournalingActor[ControllerState, Event]
 
       case cmd: ControllerCommand.UpdateRepo =>
         Try(
-          repoCommandExecutor.updateRepoCommandToEvents(_controllerState.repo, cmd, commandMeta)
+          repoCommandExecutor.updateRepoCommandToEvents(_controllerState.repo, cmd, commandMeta.user)
             .runToFuture
             .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
         match {

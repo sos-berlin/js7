@@ -62,7 +62,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .flatMap(new ByteArrayToLinesObservable)
                   .mapParallelUnorderedBatch()(_
                     .parseJsonAs[ItemOperation].orThrow)
-                VerifiedUpdateItems.fromOperations(operations, verify)
+                VerifiedUpdateItems.fromOperations(operations, verify, user)
                   .flatMapT { verifiedUpdateItems =>
                     val itemCount = verifiedUpdateItems.simple.items.size +
                       verifiedUpdateItems.maybeVersioned.fold(0)(_.verifiedItems.size)

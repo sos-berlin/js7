@@ -134,13 +134,26 @@ extends AutoCloseable
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
 
-  @TestOnly
-  def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Completed]] =
+  def updateSimpleItemsAsSystemUser(items: Seq[SimpleItem]): Task[Checked[Completed]] =
+    sessionRegister.systemUser
+      .flatMapT(updateSimpleItems(_, items))
+
+  def updateSimpleItems(user: SimpleUser, items: Seq[SimpleItem]): Task[Checked[Completed]] =
     VerifiedUpdateItems
       .fromOperations(
         Observable.fromIterable(items)
           .map(ItemOperation.SimpleAddOrChange.apply),
-        _ => Left(Problem.pure("No verifier")))
+        itemUpdater.versionedItemVerifier.verify,
+        user)
+      .flatMapT(itemUpdater.updateItems)
+
+  def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
+    sessionRegister.systemUser
+      .flatMapT(updateItems(_, operations))
+
+  def updateItems(user: SimpleUser, operations: Observable[ItemOperation]): Task[Checked[Completed]] =
+    VerifiedUpdateItems
+      .fromOperations(operations, itemUpdater.versionedItemVerifier.verify, user)
       .flatMapT(itemUpdater.updateItems)
 
   @TestOnly

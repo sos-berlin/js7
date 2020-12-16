@@ -3,6 +3,7 @@ package js7.proxy
 import cats.effect.Resource
 import io.circe.{Json, JsonObject}
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.crypt.SignedString
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.problem.Checked
@@ -17,7 +18,8 @@ import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.{ItemOperation, SimpleItem, VersionId}
+import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
+import js7.data.item.{ItemOperation, ItemPath, SimpleItem, VersionId, VersionedItem, VersionedItemSigner, VersionedItems}
 import js7.data.node.NodeId
 import js7.data.order.FreshOrder
 import js7.proxy.JournaledProxy.EndOfEventStreamException
@@ -26,6 +28,7 @@ import js7.proxy.data.ProxyEvent
 import js7.proxy.data.event.EventAndState
 import monix.eval.Task
 import monix.reactive.Observable
+import scala.collection.immutable
 
 final class ControllerApi(
   apiResources: Seq[Resource[Task, HttpControllerApi]],
@@ -69,7 +72,29 @@ extends ControllerApiWithHttp
   def updateRepo(versionId: VersionId, operations: Observable[ItemOperation.VersionedOperation]): Task[Checked[Completed]] =
     updateItems(ItemOperation.AddVersion(versionId) +: operations)
 
-  def updateSimpleItems(items: Seq[SimpleItem]): Task[Checked[Completed]] =
+  def updateRepo(
+    itemSigner: VersionedItemSigner[VersionedItem],
+    versionId: VersionId,
+    diff: VersionedItems.Diff[ItemPath, VersionedItem])
+  : Task[Checked[Completed]] = {
+    val addOrChange = Observable.fromIterable(diff.added ++ diff.changed)
+      .map(_ withVersion versionId)
+      .map(itemSigner.sign)
+      .map(VersionedAddOrChange.apply)
+    val delete = Observable.fromIterable(diff.deleted).map(VersionedDelete.apply)
+    updateItems(AddVersion(versionId) +: (addOrChange ++ delete))
+  }
+
+  def updateRepo(
+    versionId: VersionId,
+    signedItems: immutable.Iterable[SignedString],
+    delete: immutable.Iterable[ItemPath] = Nil)
+  : Task[Checked[Completed]] =
+    updateItems(AddVersion(versionId) +: (
+      Observable.fromIterable(signedItems).map(VersionedAddOrChange.apply) ++
+        Observable.fromIterable(delete).map(VersionedDelete.apply)))
+
+  def updateSimpleItems(items: immutable.Iterable[SimpleItem]): Task[Checked[Completed]] =
     updateItems(
       Observable.fromIterable(items) map ItemOperation.SimpleAddOrChange.apply)
 

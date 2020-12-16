@@ -38,7 +38,7 @@ final class ControllerWebServer private(
   itemApi: VersionedItemApi,
   orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
-  repoUpdater: ItemUpdater,
+  itemUpdater: ItemUpdater,
   checkedClusterState: Task[Checked[ClusterState]],
   controllerState: Task[Checked[ControllerState]],
   totalRunningSince: Deadline,
@@ -70,7 +70,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val idToAgentRefState = controllerState.map(_.map(_.idToAgentRefState))
       protected val itemApi = ControllerWebServer.this.itemApi
       protected val orderApi = ControllerWebServer.this.orderApi
-      protected val itemUpdater = ControllerWebServer.this.repoUpdater
+      protected val itemUpdater = ControllerWebServer.this.itemUpdater
 
       protected def executeCommand(command: ControllerCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
       protected def checkedClusterState = ControllerWebServer.this.checkedClusterState

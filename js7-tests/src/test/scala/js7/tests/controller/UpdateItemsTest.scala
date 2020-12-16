@@ -1,30 +1,30 @@
-package js7.tests.controller.commands
+package js7.tests.controller
 
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{UpdateItemPermission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
-import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.base.web.HttpClient
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits.RichFutures
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{RemoveOrdersWhenTerminated, ReplaceRepo, UpdateRepo}
+import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, EventSeq}
+import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.controller.commands.UpdateRepoTest._
+import js7.tests.controller.UpdateItemsTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
@@ -33,15 +33,16 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = TestAgentId :: Nil
   protected val versionedItems = Nil
+  private lazy val controllerApi = controller.newControllerApi(Some(userAndPassword))
 
   override def beforeAll() = {
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
        """js7.auth.users {
-         |  UpdateRepoTest {
+         |  UpdateItemsTest {
          |    password = "plain:TEST-PASSWORD"
          |    permissions = [ UpdateItem ]
          |  }
@@ -57,22 +58,22 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "User requires permission 'UpdateItem'" in {
-    controller.httpApi.login_(Some(UserAndPassword(UserId("without-permission"), SecretString("TEST-PASSWORD")))) await 99.s
-    assert(executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)) ==
+    val controllerApi = controller.newControllerApi(Some(UserId("without-permission") -> SecretString("TEST-PASSWORD")))
+    assert(controllerApi.updateItems(Observable(AddVersion(V1), VersionedAddOrChange(sign(workflow1)))).await(99.s) ==
       Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateItemPermission)))
 
-    controller.httpApi.login_(Some(UserAndPassword(UserId("UpdateRepoTest"), SecretString("TEST-PASSWORD")))) await 99.s
+    controller.httpApi.login_(Some(userAndPassword)) await 99.s
   }
 
   "ControllerCommand.UpdateRepo" in {
     val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
-    executeCommand(UpdateRepo(V1, sign(workflow1) :: Nil)).orThrow
+    controllerApi.updateItems(Observable(AddVersion(V1), VersionedAddOrChange(sign(workflow1)))).await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(orderIds(0), TestWorkflowPath))
 
     locally {
       val signedWorkflow2 = sign(workflow2)
-      executeCommand(UpdateRepo(V2, signedWorkflow2 :: Nil)).orThrow
-      executeCommand(UpdateRepo(V2, signedWorkflow2 :: Nil)).orThrow  /*Duplicate effect is ignored*/
+      controllerApi.updateItems(Observable(AddVersion(V2), VersionedAddOrChange(signedWorkflow2))).await(99.s).orThrow
+      controllerApi.updateItems(Observable(AddVersion(V2), VersionedAddOrChange(signedWorkflow2))).await(99.s).orThrow  /*Duplicate effect is ignored*/
     }
     controller.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
 
@@ -88,57 +89,31 @@ final class UpdateRepoTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
     controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
-    executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow
-    executeCommand(UpdateRepo(V3, delete = TestWorkflowPath :: Nil)).orThrow  /*Duplicate effect is ignored*/
+    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(TestWorkflowPath))).await(99.s).orThrow
+    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(TestWorkflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
     assert(controller.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
       Left(VersionedItemDeletedProblem(TestWorkflowPath)))
 
     withClue("Tampered with configuration: ") {
-      val updateRepo = UpdateRepo(VersionId("vTampered"), sign(workflow2).copy(string = "TAMPERED") :: Nil)
-      assert(executeCommand(updateRepo) == Left(TamperedWithSignedMessageProblem))
+      assert(controllerApi.updateItems(Observable(
+        AddVersion(VersionId("vTampered")),
+        VersionedAddOrChange(sign(workflow2).copy(string = "TAMPERED"))
+      )).await(99.s) == Left(TamperedWithSignedMessageProblem))
     }
   }
 
-  "ControllerCommand.ReplaceRepo replaces all configuration objects" in {
-    executeCommand(ReplaceRepo(V4, sign(workflow4) :: sign(otherWorkflow4) :: Nil)).orThrow
-    locally {
-      val checkedRepo = controller.itemApi.checkedRepo.await(99.s)
-      assert(checkedRepo.map(_.versions) == Right(V4 :: V3 :: V2 :: V1 :: Nil))
-      assert(checkedRepo.map(_.currentItems.toSet) ==
-        Right(Set(workflow4 withVersion V4, otherWorkflow4 withVersion V4)))
-    }
-
-    // Now replace: delete one workflow and change the other
-    executeCommand(ReplaceRepo(V5, otherWorkflow5 +: Nil/*directoryProvider.agentRefs.map(_ withVersion V5)*/ map sign)).orThrow
-    val checkedRepo = controller.itemApi.checkedRepo.await(99.s)
-    assert(checkedRepo.map(_.versions) == Right(V5 :: V4 :: V3 :: V2 :: V1 :: Nil))
-    assert(checkedRepo.map(_.currentItems.toSet) == Right(Set(otherWorkflow5 withVersion V5)))
-
-    val orderId = OrderId("⭕️")
-    controller.addOrderBlocking(FreshOrder(orderId, otherWorkflow5.path))
-    controller.eventWatch.await[OrderFinished](_.key == orderId)
-  }
-
-  "ControllerCommand.UpdateRepo with divergent VersionId is rejected" in {
+  "Divergent VersionId is rejected" in {
     // The signer signs the VersionId, too
-    assert(executeCommand(UpdateRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
-      == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
+    assert(controllerApi.updateItems(Observable(
+      AddVersion(VersionId("DIVERGE")),
+      VersionedAddOrChange(sign(otherWorkflow5))
+    )).await(99.s) == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
   }
-
-  "ControllerCommand.ReplaceRepo with divergent VersionId is rejected" in {
-    // The signer signs the VersionId, too
-    assert(executeCommand(ReplaceRepo(VersionId("DIVERGE"), sign(otherWorkflow5) :: Nil))
-      == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
-  }
-
-  private def executeCommand(cmd: ControllerCommand): Checked[cmd.Response] =
-    HttpClient.liftProblem(
-      controller.httpApi.executeCommand(cmd)
-    ).await(99.s)
 }
 
-object UpdateRepoTest
+object UpdateItemsTest
 {
+  private val userAndPassword = UserAndPassword(UserId("UpdateItemsTest"), SecretString("TEST-PASSWORD"))
   private val Tick = 2.s
   private val TestAgentId = AgentId("AGENT")
   private val TestWorkflowPath = WorkflowPath("/WORKFLOW")

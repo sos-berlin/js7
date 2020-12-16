@@ -10,4 +10,13 @@ object ControllerTestUtils
   def newControllerApi(controller: RunningController, userAndPassword: Option[UserAndPassword] = None) =
     new ControllerApi(Seq(
       admissionToApiResource(Admission(controller.localUri, userAndPassword))(controller.actorSystem)))
+
+  object syntax
+  {
+    implicit final class RichRunningController(private val controller: RunningController) extends AnyVal
+    {
+      def newControllerApi(userAndPassword: Option[UserAndPassword] = None) =
+        ControllerTestUtils.newControllerApi(controller, userAndPassword)
+    }
+  }
 }

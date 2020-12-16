@@ -1,8 +1,10 @@
 package js7.controller.item
 
+import js7.base.auth.{SimpleUser, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.crypt.VersionedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemOperation, ItemPath, SimpleItem, SimpleItemId, VersionId, VersionedItem}
@@ -25,6 +27,14 @@ object VerifiedUpdateItems
     delete: Seq[ItemPath])
 
   def fromOperations(
+    observable: Observable[ItemOperation],
+    verify: SignedString => Checked[Verified[VersionedItem]],
+    user: SimpleUser)
+  : Task[Checked[VerifiedUpdateItems]] =
+    Task(user.checkPermissions(ValidUserPermission, UpdateItemPermission))
+      .flatMapT(_ => fromOperationsOnly(observable, verify))
+
+  private def fromOperationsOnly(
     observable: Observable[ItemOperation],
     verify: SignedString => Checked[Verified[VersionedItem]])
   : Task[Checked[VerifiedUpdateItems]] = {

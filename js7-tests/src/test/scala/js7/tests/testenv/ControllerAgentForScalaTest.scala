@@ -1,13 +1,11 @@
 package js7.tests.testenv
 
 import js7.agent.RunningAgent
-import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.RunningController
-import js7.controller.data.ControllerCommand.UpdateRepo
 import js7.data.item.{ItemPath, VersionId, VersionedItem}
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
@@ -48,28 +46,24 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   private val usedVersionIds = mutable.Set[VersionId]()
 
-  final def updateRepo(change: Seq[VersionedItem]): VersionId =
-    updateRepo(change, Nil)
+  final def updateVersionedItems(change: Seq[VersionedItem]): VersionId =
+    updateVersionedItems(change, Nil)
 
-  final def updateRepo(
+  final def updateVersionedItems(
     change: Seq[VersionedItem],
     delete: Seq[ItemPath])
   : VersionId = {
     val versionId = VersionId.generate(usedVersionIds)
-    updateRepo(versionId, change, delete)
+    updateVersionedItems(versionId, change, delete)
     versionId
   }
 
-  final def updateRepo(
+  final def updateVersionedItems(
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
     delete: Seq[ItemPath] = Nil)
   : Unit = {
     usedVersionIds += versionId
-    controller.executeCommandAsSystemUser(UpdateRepo(
-      versionId,
-      change.map(_ withVersion versionId) map directoryProvider.itemSigner.sign,
-      delete)
-    ).await(99.s).orThrow
+    directoryProvider.updateVersionedItems(controller, versionId, change, delete)
   }
 }

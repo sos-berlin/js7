@@ -52,7 +52,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |      catch {}                                          // :0/catch:0/then:0/catch
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
-    val versionId = updateRepo(change = workflow :: Nil)
+    val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
@@ -98,7 +98,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |  } catch execute executable="OKAY$sh", agent="AGENT";   // :0/catch:0
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
-    val versionId = updateRepo(change = workflow :: Nil)
+    val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
@@ -182,7 +182,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |  catch if (catchCount < 4) retry else fail;
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
-    updateRepo(change = workflow :: Nil)
+    updateVersionedItems(change = workflow :: Nil)
 
     val orderId = OrderId("⭕")
     val afterEventId = eventWatch.lastAddedEventId
@@ -203,7 +203,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |  catch retry;
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
-    val versionId = updateRepo(change = workflow :: Nil)
+    val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
@@ -232,7 +232,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |  catch if (true) retry;
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("/TEST"), workflowNotation).orThrow
-    val versionId = updateRepo(change = workflow :: Nil)
+    val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),

@@ -36,7 +36,7 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
 
   "test" in {
     controller.eventWatch.await[AgentReady](_.key == aAgentId)
-    controller.updateSimpleItems(Seq(AgentRef(bAgentId, agent.localUri))).await(99.s).orThrow
+    controller.updateSimpleItemsAsSystemUser(Seq(AgentRef(bAgentId, agent.localUri))).await(99.s).orThrow
 
     val orderId = OrderId("ORDER")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))

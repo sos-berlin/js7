@@ -18,13 +18,12 @@ import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
+import js7.controller.data.ControllerCommand.ReplaceRepo
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
 import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.item.ItemOperation.SimpleAddOrChange
 import js7.data.item.VersionedItems.diffVersionedItems
 import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner, VersionedItems}
 import js7.data.workflow.WorkflowPath
@@ -54,7 +53,7 @@ extends HasCloser with Observing with ProvideActorSystem
     } yield UserAndPassword(UserId(userName), SecretString(password))
   protected val httpControllerApi = new AkkaHttpControllerApi(conf.controllerUri, userAndPassword, actorSystem = actorSystem,
     config = conf.config, keyStoreRef = conf.httpsConfig.keyStoreRef, trustStoreRefs = conf.httpsConfig.trustStoreRefs)
-  val controllerApi = new ControllerApi(Seq(AkkaHttpControllerApi.admissionToApiResource(
+  private val controllerApi = new ControllerApi(Seq(AkkaHttpControllerApi.admissionToApiResource(
     Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))
   protected def config = conf.config
 
@@ -75,10 +74,12 @@ extends HasCloser with Observing with ProvideActorSystem
 
   private def updateAgents: Task[Completed] = {
     val agentRefs = config.getObject("js7.provider.agents").asScala
+      .view
       .collect { case (name, obj: ConfigObject) =>
         AgentRef(AgentId(name), Uri(obj.toConfig.getString("uri")))
       }
-    controllerApi.updateItems(Observable.fromIterable(agentRefs) map SimpleAddOrChange)
+      .toSeq
+    controllerApi.updateSimpleItems(agentRefs)
       .map {
         case Left(problem) =>
           logger.error(problem.toString)
@@ -171,15 +172,13 @@ extends HasCloser with Observing with ProvideActorSystem
           }
     }
 
-  private def execute(versionId: Option[VersionId], diff: VersionedItems.Diff[ItemPath, VersionedItem]): Task[Checked[Completed.type]] =
+  private def execute(versionId: Option[VersionId], diff: VersionedItems.Diff[ItemPath, VersionedItem]): Task[Checked[Completed]] =
     if (diff.isEmpty && versionId.isEmpty)
       Task(Checked.completed)
     else {
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
-      HttpClient.liftProblem(
-        httpControllerApi.executeCommand(toUpdateRepo(v, diff))
-          .map((_: ControllerCommand.Response) => Completed))
+      controllerApi.updateRepo(itemSigner, v, diff)
     }
 
   private def logUpdate(versionId: VersionId, diff: VersionedItems.Diff[ItemPath, VersionedItem]): Unit = {
@@ -188,12 +187,6 @@ extends HasCloser with Observing with ProvideActorSystem
     for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
     for (o <- diff.changed.map(_.path).sorted) logger.info(s"Change ${o.pretty}")
   }
-
-  private def toUpdateRepo(versionId: VersionId, diff: VersionedItems.Diff[ItemPath, VersionedItem]) =
-    UpdateRepo(
-      versionId,
-      change = (diff.added ++ diff.changed).map(_ withVersion versionId) map itemSigner.sign,
-      delete = diff.deleted)
 
   private def fetchControllerItemSeq: Task[Seq[VersionedItem]] =
     httpControllerApi.workflows.map(_.orThrow)

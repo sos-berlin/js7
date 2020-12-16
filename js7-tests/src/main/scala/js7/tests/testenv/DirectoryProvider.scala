@@ -30,16 +30,18 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand.{ReplaceRepo, UpdateRepo}
+import js7.controller.data.ControllerCommand.ReplaceRepo
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentId, AgentRef}
+import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.job.RelativeExecutablePath
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
+import monix.reactive.Observable
 import scala.collection.immutable.Iterable
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -65,7 +67,7 @@ final class DirectoryProvider(
   verifier: SignatureVerifier = defaultVerifier,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
-  suppressAgentAndRepoInitialization: Boolean = false)
+  doNotAddItems: Boolean = false)
 extends HasCloser
 {
   coupleScribeWithSlf4j()
@@ -152,10 +154,10 @@ extends HasCloser
         RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
           httpPort = httpPort, httpsPort = httpsPort, name = name)))
     .map { runningController =>
-      if (!suppressAgentAndRepoInitialization && (agentRefs.nonEmpty || items.nonEmpty)) {
+      if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
         if (!itemHasBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
-          runningController.updateSimpleItems(agentRefs).await(99.s).orThrow
+          runningController.updateSimpleItemsAsSystemUser(agentRefs).await(99.s).orThrow
           if (items.nonEmpty) {
             // startController may be called several times. We configure only once.
             runningController.executeCommandAsSystemUser(ReplaceRepo(
@@ -191,16 +193,20 @@ extends HasCloser
   def startAgent(agentId: AgentId): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentId).agentConfiguration)
 
-  def updateRepo(
+  def updateVersionedItems(
     controller: RunningController,
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
     delete: Seq[ItemPath] = Nil)
   : Unit =
-    controller.executeCommandAsSystemUser(UpdateRepo(
-      versionId,
-      change.map(_ withVersion versionId) map itemSigner.sign,
-      delete)
+    controller.updateItemsAsSystemUser(
+      AddVersion(versionId) +:
+        (Observable.fromIterable(change)
+          .map(_ withVersion versionId)
+          .map(itemSigner.sign)
+          .map(VersionedAddOrChange.apply) ++
+          Observable.fromIterable(delete)
+            .map(VersionedDelete.apply))
     ).await(99.s).orThrow
 
   private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")
