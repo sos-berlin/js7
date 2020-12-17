@@ -137,7 +137,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
         lines += _.utf8String
       }
     httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
-      .timeoutOnSlowUpstream(200.ms)  // Check heartbeat
+      .timeoutOnSlowUpstream(500.ms)  // Check heartbeat
       .foreach {
         heartbeatLines += _.utf8String
       }
