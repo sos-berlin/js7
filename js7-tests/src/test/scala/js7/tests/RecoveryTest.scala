@@ -86,7 +86,7 @@ final class RecoveryTest extends AnyFreeSpec
           val Vector(Stamped(_, _, NoKey <-: AgentServerEvent.ControllerRegistered(ControllerId("Controller")/*see default controller.conf*/, _, _/*agentRunId*/))) =
             readAgentEvents(directoryProvider.agents(0).dataDir / "state/agent--0.journal")
 
-          logger.info("\n\n*** RESTARTING AGENTS ***\n")
+          logger.info("*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ =>
             lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
             controller.addOrderBlocking(order3)
@@ -96,7 +96,7 @@ final class RecoveryTest extends AnyFreeSpec
         for (i <- 1 to 2) withClue(s"Run #$i:") {
           val myLastEventId = lastEventId
           //sys.runtime.gc()  // For a clean memory view
-          logger.info(s"\n\n*** RESTARTING CONTROLLER AND AGENTS #$i ***\n")
+          logger.info(s"*** RESTARTING CONTROLLER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ =>
             runController(directoryProvider) { controller =>
               val orderId = controller.eventWatch.await[OrderFinished](after = myLastEventId, predicate = _.key == orders(i).id).last.value.key

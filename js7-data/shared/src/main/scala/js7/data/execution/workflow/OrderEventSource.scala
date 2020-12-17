@@ -31,13 +31,13 @@ import scala.annotation.tailrec
 final class OrderEventSource(
   idToOrder: OrderId => Checked[Order[Order.State]],
   idToWorkflow: WorkflowId => Checked[Workflow],
-  pathToLock: LockId => Checked[LockState],
+  idToLockState: LockId => Checked[LockState],
   isAgent: Boolean)
 {
   private val context = new OrderContext {
-    def idToOrder                               = OrderEventSource.this.idToOrder
-    def idToWorkflow(id: WorkflowId)            = OrderEventSource.this.idToWorkflow(id)
-    def idToLockState                         = OrderEventSource.this.pathToLock
+    def idToOrder                    = OrderEventSource.this.idToOrder
+    def idToWorkflow(id: WorkflowId) = OrderEventSource.this.idToWorkflow(id)
+    def idToLockState                = OrderEventSource.this.idToLockState
 
     def childOrderEnded(order: Order[Order.State]): Boolean =
       order.parent.flatMap(o => idToOrder(o).toOption) match {

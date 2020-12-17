@@ -132,6 +132,9 @@ object OrderEvent {
   sealed trait OrderLockEvent extends OrderActorEvent {
     def lockIds: Seq[LockId]
   }
+  object OrderLockEvent {
+    def unapply(event: OrderLockEvent) = Some(event.lockIds)
+  }
 
   sealed trait OrderFailedEvent extends OrderActorEvent with OrderLockEvent {
     def moveTo(movedTo: Position): OrderFailedEvent

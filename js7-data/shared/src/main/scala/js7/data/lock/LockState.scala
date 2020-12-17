@@ -24,10 +24,10 @@ extends Big/*acquired and queue get big with many orders*/
     keyedEvent match {
       case KeyedEvent(orderId, OrderLockAcquired(lock.id, count)) =>
         for (lockState <- toLockState(tryAcquire(orderId, count))) yield
-          queue.dequeueOption match {
-            case Some((`orderId`, tail)) => lockState.copy(queue = tail)
-            case _ => lockState
-          }
+          if (queue contains orderId)
+            lockState.copy(queue = queue.filterNot(_ == orderId)) /*TODO Slow with long order queue*/
+          else
+            lockState
 
       case KeyedEvent(orderId, OrderLockReleased(lock.id)) =>
         release(orderId)

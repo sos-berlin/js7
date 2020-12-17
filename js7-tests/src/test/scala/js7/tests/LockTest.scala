@@ -11,7 +11,7 @@ import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
-import js7.data.item.ItemOperation.SimpleAddOrChange
+import js7.data.event.EventSeq
 import js7.data.item.VersionId
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockId, LockState}
@@ -23,11 +23,11 @@ import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.proxy.ControllerApi
 import js7.tests.LockTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.waitingForFileScript
+import js7.tests.testenv.DirectoryProvider.{script, waitingForFileScript}
 import monix.execution.Scheduler.Implicits.global
-import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Queue
+import scala.util.Random
 
 final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
@@ -35,6 +35,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val versionedItems = Nil
   override protected def controllerConfig = config"""
     js7.web.server.auth.public = on
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 1ms
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -45,11 +47,14 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     super.beforeAll()
-    val items = Seq(Lock(lockId, limit = 1), Lock(lock2Name, limit = 1))
+    val items = Seq(
+      Lock(lockId, limit = 1),
+      Lock(lock2Id, limit = 1),
+      Lock(limit2LockId, limit = 2))
     controllerApi.updateSimpleItems(items).await(99.s).orThrow
   }
 
-  "TEST" in {
+  "Run some orders on a lock with limit=1" in {
     withTemporaryFile("LockTest-", ".tmp") { file =>
       val workflow = defineWorkflow(s"""
         define workflow {
@@ -63,7 +68,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       controller.addOrder(FreshOrder(a, workflow.path)).await(99.s).orThrow
       assert(controller.eventWatch.await[OrderLockAcquired](_.key == a).map(_.value).nonEmpty)
 
-      val queuedOrderIds = for (i <- 1 to 10) yield OrderId(s"🟠-${i}")
+      val queuedOrderIds = for (i <- 1 to 10) yield OrderId(s"🟠-$i")
       for (orderId <- queuedOrderIds) {
         controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
         assert(controller.eventWatch.await[OrderLockQueued](_.key == orderId).map(_.value).nonEmpty)
@@ -113,6 +118,62 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
+  "After releasing a lock of 2, two orders with count=1 each start simultaneously" in {
+    val workflow1 = defineWorkflow(WorkflowPath("/WORKFLOW-1"), s"""
+      define workflow {
+        lock (lock="${limit2LockId.string}", count=1) {
+          execute agent="AGENT", script="${script(50.ms)}", taskLimit=99
+        }
+      }""")
+    val workflow2 = defineWorkflow(WorkflowPath("/WORKFLOW-2"), s"""
+      define workflow {
+        lock (lock="${limit2LockId.string}", count=2) {
+          execute agent="AGENT", script="${script(100.ms)}", taskLimit=99
+        }
+      }""")
+    val order2Id = OrderId("🟥-TWO")
+    val aOrderId = OrderId("🟥-A")
+    val bOrderId = OrderId("🟥-B")
+    controller.addOrder(FreshOrder(order2Id, workflow2.path)).await(99.s).orThrow
+    controller.eventWatch.await[OrderLockAcquired](_.key == order2Id)
+    controller.addOrder(FreshOrder(aOrderId, workflow1.path)).await(99.s).orThrow
+    controller.addOrder(FreshOrder(bOrderId, workflow1.path)).await(99.s).orThrow
+    controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
+    controller.eventWatch.await[OrderTerminated](_.key == bOrderId)
+    val EventSeq.NonEmpty(stampedEvents) = controller.eventWatch.all[OrderLockEvent]
+    val aAquired = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLockAcquired]).get
+    val bAquired = stampedEvents.find(stamped => stamped.value.key == bOrderId && stamped.value.event.isInstanceOf[OrderLockAcquired]).get
+    val aReleased = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLockReleased]).get
+    val bReleased = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLockReleased]).get
+    assert(aAquired.eventId < bReleased.eventId, "- a acquired lock after b released")
+    assert(bAquired.eventId < aReleased.eventId, "- b acquired lock after a released")
+    assert(controller.controllerState.await(99.s).idToLockState(limit2LockId) ==
+      LockState(Lock(limit2LockId, limit = 2), Available, Queue.empty))
+  }
+
+  "Multiple orders with count=1 and count=2 finish" in {
+    val workflow1 = defineWorkflow(WorkflowPath("/WORKFLOW-1"), s"""
+      define workflow {
+        lock (lock="${limit2LockId.string}", count=1) {
+          execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
+        }
+      }""")
+    val workflow2 = defineWorkflow(WorkflowPath("/WORKFLOW-2"), s"""
+      define workflow {
+        lock (lock="${limit2LockId.string}", count=2) {
+          execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
+        }
+      }""")
+    val orders = Random.shuffle(
+      for (workflow <- Seq(workflow1, workflow2); i <- 1 to 100) yield
+        FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path))
+    for (order <- orders) controller.addOrder(order).await(99.s).orThrow
+    val terminated = for (order <- orders) yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
+    for (keyedEvent <- terminated.map(_.last.value))  assert(keyedEvent.event == OrderFinished, s"- ${keyedEvent.key}")
+    assert(controller.controllerState.await(99.s).idToLockState(limit2LockId) ==
+      LockState(Lock(limit2LockId, limit = 2), Available, Queue.empty))
+  }
+
   "Failed order" in {
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
@@ -130,8 +191,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(workflow.id),
       OrderStarted,
       OrderLockAcquired(lockId, None),
-      OrderLockAcquired(lock2Name, None),
-      OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Name, lockId))))
+      OrderLockAcquired(lock2Id, None),
+      OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Id, lockId))))
     assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
@@ -156,8 +217,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderLockAcquired(lockId, None),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
-      OrderLockAcquired(lock2Name, None),
-      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockIds = Seq(lock2Name)),
+      OrderLockAcquired(lock2Id, None),
+      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockIds = Seq(lock2Id)),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderProcessingStarted,
@@ -250,8 +311,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
   }
 
-  private def defineWorkflow(workflowNotation: String): Workflow = {
-    val workflowPath = WorkflowPath("/WORKFLOW")
+  private def defineWorkflow(workflowNotation: String): Workflow =
+    defineWorkflow(WorkflowPath("/WORKFLOW"), workflowNotation)
+
+  private def defineWorkflow(workflowPath: WorkflowPath, workflowNotation: String): Workflow = {
     val versionId = versionIdIterator.next()
     val workflow = WorkflowParser.parse(workflowPath ~ versionId, workflowNotation).orThrow
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
@@ -262,5 +325,6 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object LockTest {
   private val agentId = AgentId("AGENT")
   private val lockId = LockId("LOCK")
-  private val lock2Name = LockId("LOCK-2")
+  private val lock2Id = LockId("LOCK-2")
+  private val limit2LockId = LockId("LOCK-LIMIT-2")
 }
