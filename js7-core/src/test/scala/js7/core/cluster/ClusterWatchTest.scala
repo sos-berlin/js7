@@ -151,13 +151,13 @@ final class ClusterWatchTest extends AnyFreeSpec
       val coupled = ClusterState.Coupled(setting.copy(activeId = bId))
       assert(decoupled.applyEvents(nextEvents.map(NoKey <-: _)) == Right(coupled))
 
-      assert(watch.applyEvents(bId, nextEvents, coupled).await(99.s) == Right(Completed))
+      assert(watch.applyEvents(ClusterWatchEvents(bId, nextEvents, coupled)).await(99.s) == Right(Completed))
       assert(watch.get.await(99.s) == Right(coupled))
     }
 
     def applyEvents(from: NodeId, events: Seq[ClusterEvent]): Checked[Completed] = {
       val expectedClusterState = clusterState.applyEvents(events.map(NoKey <-: _)).orThrow
-      val response = watch.applyEvents(from, events, expectedClusterState).await(99.s)
+      val response = watch.applyEvents(ClusterWatchEvents(from, events, expectedClusterState)).await(99.s)
       for (_ <- response) {
         clusterState = expectedClusterState
       }

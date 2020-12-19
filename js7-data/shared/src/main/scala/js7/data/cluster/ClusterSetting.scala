@@ -23,6 +23,9 @@ final case class ClusterSetting private(
   def passiveId: NodeId =
     idToUri.peerOf(activeId)
 
+  def passiveUri: Uri =
+    idToUri(passiveId)
+
   /** Primary node should be first (possible for optimized short Scala Map). */
   def normalized: ClusterSetting =
     copy(idToUri =
@@ -38,6 +41,9 @@ final case class ClusterSetting private(
 
   def clusterWatchUris =
     clusterWatches.map(_.uri)
+
+  def withPassiveUri(uri: Uri): ClusterSetting =
+    copy(idToUri = idToUri + (passiveId -> uri))
 }
 
 object ClusterSetting

@@ -58,4 +58,6 @@ package object problems
   object PrimaryClusterNodeMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
 
   final case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
+
+  final case object ClusterSettingNotUpdatable extends Problem.ArgumentlessCoded
 }

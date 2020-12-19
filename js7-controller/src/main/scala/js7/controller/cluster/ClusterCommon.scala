@@ -15,7 +15,6 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.common.akkahttp.https.HttpsConfig
 import js7.common.configutils.Configs._
@@ -51,10 +50,11 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
 {
   val activationInhibitor = new ActivationInhibitor
 
-  private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
+  @volatile
+  private var _clusterWatchSynchronizer: Option[ClusterWatchSynchronizer] = None
 
   def stop: Task[Completed] =
-    _clusterWatchSynchronizer.toOption match {
+    _clusterWatchSynchronizer match {
       case None => Task.pure(Completed)
       case Some(o) =>
         Task.defer {
@@ -63,10 +63,24 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
         }
     }
 
-  def clusterWatchSynchronizer(setting: ClusterSetting): ClusterWatchSynchronizer = {
-    val result = _clusterWatchSynchronizer.getOrUpdate(
-      new ClusterWatchSynchronizer(ownId, persistence.clusterState, newClusterWatchApi(setting.clusterWatchUri), setting.timing))
+  def clusterWatchSynchronizer(setting: ClusterSetting): ClusterWatchSynchronizer =
+    _clusterWatchSynchronizer match {
+      case None =>
+        setNewClusterWatchSynchronizer(setting)
+      case Some(synchronizer) =>
+        if (synchronizer.uri != setting.clusterWatchUri) {
+          logger.debug(s"Starting new ClusterWatchSynchronizer for updated URI ${setting.clusterWatchUri}")
+          synchronizer.stop()
+          setNewClusterWatchSynchronizer(setting)
+        } else
+          synchronizer
+    }
+
+  private def setNewClusterWatchSynchronizer(setting: ClusterSetting) = {
+    val result = new ClusterWatchSynchronizer(ownId, persistence.clusterState,
+      newClusterWatchApi(setting.clusterWatchUri), setting.timing)
     assertThat(result.uri == setting.clusterWatchUri)
+    _clusterWatchSynchronizer = Some(result)
     result
   }
 
@@ -100,15 +114,14 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
     ActivationInhibitor.inhibitActivationOfPeer(clusterState.passiveUri, clusterState.timing, httpsConfig, clusterConf)
 
-  def ifClusterWatchAllowsActivation[A](clusterState: ClusterState, event: ClusterEvent,
-    clusterWatchSynchronizer: ClusterWatchSynchronizer, checkOnly: Boolean,
+  def ifClusterWatchAllowsActivation[A](clusterState: ClusterState.HasNodes, event: ClusterEvent, checkOnly: Boolean,
     body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =
     activationInhibitor.tryToActivate(
       ifInhibited = Task.pure(Right(false)),  // Ignore heartbeat loss
       activate = Task.pure(clusterState.applyEvent(event))
         .flatMapT(updatedClusterState =>
-          clusterWatchSynchronizer.clusterWatch.applyEvents(
+          clusterWatchSynchronizer(clusterState.setting).clusterWatch.applyEvents(
             ClusterWatchEvents(ownId, event :: Nil, updatedClusterState, checkOnly = checkOnly)
           ).flatMap {
             case Left(problem) =>

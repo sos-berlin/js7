@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
 import js7.controller.cluster.ClusterWatchSynchronizer._
-import js7.core.cluster.HttpClusterWatch
+import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
@@ -35,7 +35,7 @@ private final class ClusterWatchSynchronizer(
 
   def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
     lock.use(_ =>
-      clusterWatch.applyEvents(from = ownId, events, clusterState)
+      clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState))
         .flatMapT { completed =>
           clusterState match {
             case clusterState: HasNodes if clusterState.activeId == ownId =>
@@ -95,8 +95,7 @@ private final class ClusterWatchSynchronizer(
               logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
               haltJava(s"HALT due to unreachable ClusterWatch: ${t.toStringWithCauses}", restart = true)
           }
-        val previousHeartbeat = heartbeat.getAndSet(heartbeatFuture)
-        previousHeartbeat.cancel()
+        heartbeat.getAndSet(heartbeatFuture).cancel()
         Completed
       })
   }
@@ -107,7 +106,7 @@ private final class ClusterWatchSynchronizer(
 
   def stopHeartbeating: Task[Completed] =
     Task.defer {
-      val h = heartbeat.get()
+      val h = heartbeat.getAndSet(CancelableFuture.successful(Completed))
       h.cancel()
       Task.fromFuture(h).onErrorHandle(_ => Completed)
     }

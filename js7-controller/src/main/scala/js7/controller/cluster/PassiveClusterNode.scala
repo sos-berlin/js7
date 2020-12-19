@@ -54,7 +54,6 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   initialFileEventId: Option[EventId],
   recovered: Recovered[S],
   otherFailed: Boolean,
-  clusterWatchSynchonizer: ClusterWatchSynchronizer,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
@@ -292,10 +291,12 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
               case clusterState: Coupled if clusterState.passiveId == ownId =>
                 if (awaitingCoupledEvent) {
                   logger.trace(
-                    s"Ignoring observed pause of ${noHeartbeatSince.elapsed.pretty} without heartbeat because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
+                    s"Ignoring observed pause of ${noHeartbeatSince.elapsed.pretty} without heartbeat " +
+                      s"because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Observable.empty  // Ignore
                 } else {
-                  logger.warn(s"No heartbeat from the currently active cluster node '$activeId' since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
+                  logger.warn(s"No heartbeat from the currently active cluster node '$activeId' " +
+                    s"since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
                   Observable.fromTask(
                     if (isReplicatingHeadOfFile) {
                       val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
@@ -303,14 +304,15 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, clusterWatchSynchonizer, checkOnly = false,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
                         Task {
                           val fileSize = {
                             val file = recoveredJournalFile.file
                             assertThat(exists(file))
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
                               if (out.size > lastProperEventPosition) {
-                                logger.info(s"Truncating open transaction in '${file.getFileName}' file at position $lastProperEventPosition")
+                                logger.info(s"Truncating open transaction in " +
+                                  s"'${file.getFileName}' file at position $lastProperEventPosition")
                                 out.truncate(lastProperEventPosition)
                               }
                               out.write(ByteBuffer.wrap((failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8)))
@@ -336,7 +338,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, clusterWatchSynchonizer, checkOnly = false,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
                         Task {
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
@@ -464,9 +466,10 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
                         case switchedOver: ClusterSwitchedOver =>
                           // Notify ClusterWatch before starting heartbeating
-                          Observable.fromTask(
-                            clusterWatchSynchonizer.applyEvents(switchedOver :: Nil, builder.clusterState
-                          ).map(_.toUnit))
+                          Observable.fromTask(common
+                            .clusterWatchSynchronizer(builder.clusterState.asInstanceOf[ClusterState.HasNodes].setting)
+                            .applyEvents(switchedOver :: Nil, builder.clusterState)
+                            .map(_.toUnit))
 
                         case ClusterCouplingPrepared(activeId) =>
                           assertThat(activeId != ownId)

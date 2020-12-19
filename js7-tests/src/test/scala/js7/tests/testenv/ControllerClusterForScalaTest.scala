@@ -69,6 +69,15 @@ trait ControllerClusterForScalaTest
   final def withControllerAndBackup()
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
   : Unit =
+    withControllerAndBackupWithoutAgents() { (primary, backup, setting) =>
+      primary.runAgents() { _ =>
+        body(primary, backup, setting)
+      }
+    }
+
+  final def withControllerAndBackupWithoutAgents()
+    (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
+  : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentIds.size)
@@ -124,9 +133,7 @@ trait ControllerClusterForScalaTest
         primary.agentRefs.take(1).map(o => ClusterSetting.Watch(o.uri)),
         timing)
 
-      primary.runAgents() { _ =>
-        body(primary, backup, setting)
-      }
+      body(primary, backup, setting)
     }
 
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)

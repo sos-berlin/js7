@@ -247,9 +247,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[S] =
     new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
-      otherFailedOver,
-      common.clusterWatchSynchronizer(setting),
-      journalConf, clusterConf, eventIdGenerator, common)
+      otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
 
   def activeClusterNode: Checked[ActiveClusterNode[S]] =
     _activeClusterNode

@@ -3,7 +3,7 @@ package js7.data.cluster
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
@@ -99,5 +99,40 @@ final class ClusterEventTest extends AnyFreeSpec
       json"""{
         "TYPE": "ClusterActiveNodeRestarted"
       }""")
+  }
+
+  "ClusterSettingUpdated" - {
+    "passiveUri only" in {
+      testJson[ClusterEvent](ClusterSettingUpdated(passiveUri = Some(Uri("https://PASSIVE"))),
+        json"""{
+          "TYPE": "ClusterSettingUpdated",
+          "passiveUri": "https://PASSIVE"
+        }""")
+    }
+
+    "clusterWatch only" in {
+      testJson[ClusterEvent](ClusterSettingUpdated(clusterWatches = Some(Seq(ClusterSetting.Watch(Uri("https://A"))))),
+        json"""{
+          "TYPE": "ClusterSettingUpdated",
+          "clusterWatches": [
+            {
+              "uri": "https://A"
+            }
+          ]
+        }""")
+    }
+
+    "complete" in {
+      testJson[ClusterEvent](ClusterSettingUpdated(Some(Uri("https://PASSIVE")), Some(Seq(ClusterSetting.Watch(Uri("https://A"))))),
+        json"""{
+          "TYPE": "ClusterSettingUpdated",
+          "passiveUri": "https://PASSIVE",
+          "clusterWatches": [
+            {
+              "uri": "https://A"
+            }
+          ]
+        }""")
+    }
   }
 }

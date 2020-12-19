@@ -19,9 +19,14 @@ final class ClusterSettingTest extends AnyFreeSpec
     NodeId("A") -> Uri("http://A"),
     NodeId("B") -> Uri("http://B"))
   private val timing = ClusterTiming(1.s, 2.s)
+  private val clusterSetting = ClusterSetting(
+    idToUri,
+    NodeId("A"),
+    Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
+    timing)
 
   "JSON" in {
-    testJson(ClusterSetting(idToUri, NodeId("A"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing),
+    testJson(clusterSetting,
       json"""{
         "idToUri": {
           "A": "http://A",
@@ -61,5 +66,12 @@ final class ClusterSettingTest extends AnyFreeSpec
     assert(idToUri.peerOf(NodeId("A")) == NodeId("B"))
     assert(idToUri.peerOf(NodeId("B")) == NodeId("A"))
     intercept[AssertionError](idToUri.peerOf(NodeId("X")))
+  }
+
+  "withPassiveUri" in {
+    assert(clusterSetting.withPassiveUri(Uri("HTTP://UPDATED")) ==
+      clusterSetting.copy(idToUri = Map(
+        NodeId("A") -> Uri("http://A"),
+        NodeId("B") -> Uri("HTTP://UPDATED"))))
   }
 }

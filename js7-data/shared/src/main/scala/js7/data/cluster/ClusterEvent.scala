@@ -3,6 +3,8 @@ package js7.data.cluster
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
+import js7.base.utils.Assertions.assertThat
+import js7.base.web.Uri
 import js7.data.event.{JournalPosition, NoKeyEvent}
 import js7.data.node.NodeId
 
@@ -54,6 +56,13 @@ object ClusterEvent
   //case object ClusterAllNodesShutDown
   //extends ClusterEvent
 
+  final case class ClusterSettingUpdated(
+    passiveUri: Option[Uri] = None,
+    clusterWatches: Option[Seq[ClusterSetting.Watch]] = None)
+  extends ClusterEvent {
+    assertThat(passiveUri.nonEmpty || clusterWatches.nonEmpty)
+  }
+
   implicit val jsonCodec = TypedJsonCodec[ClusterEvent](
     Subtype(deriveCodec[ClusterNodesAppointed]),
     Subtype(deriveCodec[ClusterCouplingPrepared]),
@@ -62,5 +71,6 @@ object ClusterEvent
     Subtype(deriveCodec[ClusterFailedOver]),
     Subtype(deriveCodec[ClusterPassiveLost]),
     Subtype(ClusterActiveNodeShutDown),
-    Subtype(ClusterActiveNodeRestarted))
+    Subtype(ClusterActiveNodeRestarted),
+    Subtype(deriveCodec[ClusterSettingUpdated]))
 }

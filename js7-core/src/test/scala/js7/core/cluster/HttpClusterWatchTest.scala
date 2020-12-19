@@ -61,8 +61,10 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
       Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
       ClusterTiming(10.s, 20.s))
     val expectedClusterState = ClusterState.NodesAppointed(setting)
-    assert(clusterWatch.applyEvents(primaryId, ClusterNodesAppointed(setting) :: Nil, expectedClusterState).await(99.s) ==
-      Right(Completed))
+    assert(
+      clusterWatch.applyEvents(
+        ClusterWatchEvents(primaryId, ClusterNodesAppointed(setting) :: Nil, expectedClusterState)
+      ).await(99.s) == Right(Completed))
     assert(clusterWatch.get.await(99.s) == Right(expectedClusterState))
   }
 }

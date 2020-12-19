@@ -4,10 +4,10 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.base.web.Uri
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
 import js7.data.cluster.ClusterSetting.syntax._
 import js7.data.cluster.ClusterState._
-import js7.data.event.JournaledState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
@@ -24,6 +24,14 @@ extends EventDrivenState[ClusterState, ClusterEvent]
         (this, event) match {
           case (Empty, ClusterNodesAppointed(setting)) =>
             Right(NodesAppointed(setting))
+
+          case (state: CoupledOrDecoupled, ClusterSettingUpdated(maybePassiveUri, maybeClusterWatches)) =>
+            ((state, maybePassiveUri) match {
+              case (_, None) => Right(state)
+              case (state: Decoupled, Some(uri)) => Right(state.withPassiveUri(uri))
+              case _ => eventNotApplicable(keyedEvent)
+            }).map(_
+              .withClusterWatches(maybeClusterWatches getOrElse state.setting.clusterWatches))
 
           case (state: Decoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
             Right(PreparedToBeCoupled(state.setting))
@@ -53,11 +61,11 @@ extends EventDrivenState[ClusterState, ClusterEvent]
             // Passive node may recouple now
 
           case (_, keyedEvent) =>
-            Left(EventNotApplicableProblem(keyedEvent, this))
+            eventNotApplicable(keyedEvent)
         }
 
       case _ =>
-        Left(EventNotApplicableProblem(keyedEvent, this))
+        eventNotApplicable(keyedEvent)
     }
 
   def toSnapshotObservable =
@@ -98,14 +106,24 @@ object ClusterState
 
   sealed trait CoupledOrDecoupled extends HasNodes {
     this: Product =>
+
+    protected def withSetting(setting: ClusterSetting): CoupledOrDecoupled
+
+    final def withClusterWatches(w: Seq[ClusterSetting.Watch]) =
+      withSetting(setting.copy(clusterWatches = w))
   }
 
   sealed trait Decoupled extends CoupledOrDecoupled {
     this: Product =>
+
+    final def withPassiveUri(uri: Uri) =
+      withSetting(setting.withPassiveUri(uri))
   }
 
   final case class NodesAppointed(setting: ClusterSetting)
-  extends Decoupled
+  extends Decoupled {
+    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+  }
 
   /** Intermediate state only, is immediately followed by transition ClusterEvent.Coupled -> Coupled. */
   final case class PreparedToBeCoupled(setting: ClusterSetting)
@@ -114,25 +132,35 @@ object ClusterState
   /** An active node is coupled with a passive node. */
   final case class Coupled(setting: ClusterSetting)
   extends CoupledOrDecoupled
+  {
+    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+  }
 
   /** The active node has shut down while `Coupled` and will continue to be active when restarted.
       The passive node must not fail-over.
       After restart, the active node will be still active.
     */
   final case class ActiveShutDown(setting: ClusterSetting)
-  extends Decoupled
+  extends Decoupled {
+    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+  }
 
   final case class PassiveLost(setting: ClusterSetting)
-  extends Decoupled
+  extends Decoupled {
+    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+  }
 
   final case class SwitchedOver(setting: ClusterSetting)
-  extends Decoupled
+  extends Decoupled {
+    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+  }
 
   /** Decoupled after failover.
     * @param failedAt the failing node's journal must be truncated at this point. */
   final case class FailedOver(setting: ClusterSetting, failedAt: JournalPosition)
-  extends Decoupled
-  {
+  extends Decoupled {
+    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+
     override def toString = s"FailedOver($nodesString, $failedAt)"
   }
 
