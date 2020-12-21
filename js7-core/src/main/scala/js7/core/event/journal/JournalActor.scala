@@ -35,7 +35,7 @@ import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournaledState, KeyedEvent, Stamped}
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
 import scala.concurrent.{Await, Promise}
@@ -362,7 +362,7 @@ extends Actor with Stash
     val ackWritten = persistBuffer.view.take(n)
     val standardPersistSeq = ackWritten collect { case o: StandardPersist => o }
 
-    logCommitted(standardPersistSeq.iterator)
+    logCommitted(standardPersistSeq)
 
     for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
       lastAcknowledgedEventId = lastFileLengthAndEventId.value
@@ -457,14 +457,24 @@ extends Actor with Stash
     if (conf.syncOnCommit) if (conf.simulateSync.isDefined) "~sync" else "sync "
     else "flush"
 
-  private def logCommitted(persistIterator: Iterator[LoggablePersist]) =
+  private def logCommitted(persists: View[LoggablePersist]) =
     logger.whenTraceEnabled {
       val committedAt = now
-      while (persistIterator.hasNext) {
-        val persist = persistIterator.next()
-        logPersist(persist, isLastPersist = !persistIterator.hasNext, committedAt)
+      val iterator = dropLastEmptyPersists(persists).iterator
+      while (iterator.hasNext) {
+        val persist = iterator.next()
+        logPersist(persist, isLastPersist = !iterator.hasNext, committedAt)
       }
     }
+
+  private def dropLastEmptyPersists(persists: View[LoggablePersist]): View[LoggablePersist] = {
+    var i, nonEmptyLength = 0
+    for (o <- persists) {
+      i += 1
+      if (o.stampedSeq.nonEmpty) nonEmptyLength = i
+    }
+    persists take nonEmptyLength
+  }
 
   private def logPersist(persist: LoggablePersist, isLastPersist: Boolean, committedAt: Deadline) = {
     var nr = persist.eventNumber
@@ -474,21 +484,21 @@ extends Actor with Stash
       val stamped = stampedIterator.next()
       val isLast = !stampedIterator.hasNext
       val flushOrSync =
-        if (persist.isLastOfFlushedOrSynced && isLast)
+        if (isLast && persist.isLastOfFlushedOrSynced)
           syncOrFlushString
-        else if (persist.stampedSeq.lengthIs > 1 && isFirst)
+        else if (isFirst && persist.stampedSeq.lengthIs > 1)
           f"${persist.stampedSeq.length}%4d×"  // Neither flushed nor synced, and not the only event of a commit
         else
           "     "
       val a =
         if (!requireClusterAcknowledgement)
-          ""        // No cluster. Caller may continue if flushed or synced
-        else if (!isLastPersist || !isLast)
-          " ack"    // Event is part of an acknowledged event bundle
-        else
+          ""        // No cluster. Caller may continue when flushed or synced
+        else if (isLast && isLastPersist)
           " ACK"    // Last event of an acknowledged event bundle. Caller may continue
+        else
+          " ack"    // Event is part of an acknowledged event bundle
       val committed = if (isLast) "COMMITTED" else "committed"
-      val t = if (isLast) ((committedAt - persist.since).msPretty + "      ") take 7 else "       "
+      val t = if (isLast) ((committedAt - persist.since).msPretty + "     ") take 6 else "      "
       logger.trace(s"$committed #$nr $flushOrSync$a $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
       nr += 1
       isFirst = false

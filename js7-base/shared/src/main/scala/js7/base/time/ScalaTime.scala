@@ -120,14 +120,12 @@ object ScalaTime
         val a = abs(nanos)
         if (a >= 999_500_000)
           pretty
-        else if (a >= 10000000)
-          formatNumber(nanos / 1000000.0, 10, "ms")
-        else if (a >= 1000000)
-          formatNumber(nanos / 1000000.0, 100, "ms")
-        else if (a >= 100000)
-          formatNumber(nanos / 1000000.0, 1000, "ms")
-        else if (a >= 1000)
-          formatNumber(nanos / 1000000.0, 1000, "ms")
+        else if (a >= 10_000_000)
+          formatNumber(nanos / 1_000_000.0, 1, "ms")
+        else if (a >= 1_000_000)
+          formatNumber(nanos / 1_000_000.0, 10, "ms")
+        else if (a >= 10_000)
+          formatNumber(nanos / 1_000_000.0, 100, "ms")
         else
           pretty
       }
