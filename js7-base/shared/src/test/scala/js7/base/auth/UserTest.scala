@@ -10,7 +10,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class UserTest extends AnyFreeSpec
 {
   "checkPermissions" in {
-    assert(testUser(Set.empty).checkPermissions() == Right())
+    assert(testUser(Set.empty).checkPermissions() == Right(()))
     assert(testUser(Set(A)).checkPermissions() == Right(()))
     assert(testUser(Set(A)).checkPermissions(A) == Right(()))
     assert(testUser(Set(A, B)).checkPermissions(A) == Right(()))
