@@ -52,6 +52,9 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     }
 
     locally {
+      directoryProvider.runAgents() { _ =>
+        // Agent writes a snapshot, incrementing the EventId
+      }
       val lastJournalFile = listJournalFiles(agentStateDir / "controller-Controller").last.file
       val lastJournalFileContent = lastJournalFile.contentString
       val (headerLine, body) = lastJournalFileContent.splitAt(lastJournalFileContent indexOf '\n')

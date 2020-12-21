@@ -35,11 +35,19 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private lazy val controllerApi = new ControllerApi(Seq(
     admissionToApiResource(Admission(controller.localUri, None))(controller.actorSystem)))
-  private lazy val n = sys.props.get("test.speed").fold(defaultN)(_.toInt)
+  private lazy val (n, orderSize) = sys.props.get("test.speed").map(_.split(" +")) match {
+    case None => (defaultN, defaultSize)
+
+    case Some(Array(nString)) =>
+      val (a, b) = nString.span(_ != '*')
+      (a.toInt, b.drop(1).toInt)
+
+    case _ => sys.error("Invalid number of arguments in property test.speed")
+  }
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), script(10.ms))
+      a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), script(0.ms))
     }
     super.beforeAll()
   }
@@ -84,7 +92,7 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object ManyOrdersTest
 {
   private val defaultN = 10
-  private val orderSize = 4_000_000
+  private val defaultSize = 4_000_000
   private val longTimeout = 999.s
   private val agentId = AgentId("AGENT")
   private val workflow = WorkflowParser.parse(

@@ -38,7 +38,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(executablePath, script(300.ms))
+      a.writeExecutable(executablePath, script(400.ms))
       a.writeExecutable(quickExecutablePath, script(0.s))
     }
     super.beforeAll()

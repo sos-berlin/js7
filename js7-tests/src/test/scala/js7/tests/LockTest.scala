@@ -25,6 +25,7 @@ import js7.tests.LockTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, waitingForFileScript}
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Queue
 import scala.util.Random
@@ -34,9 +35,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Nil
   override protected def controllerConfig = config"""
-    js7.web.server.auth.public = on
+    js7.web.server.auth.loopback-is-public = on
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 1ms
+    js7.controller.agent-driver.event-buffer-delay = 5ms
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -167,7 +168,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orders = Random.shuffle(
       for (workflow <- Seq(workflow1, workflow2); i <- 1 to 100) yield
         FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path))
-    for (order <- orders) controller.addOrder(order).await(99.s).orThrow
+    controllerApi.addOrders(Observable.from(orders)).await(99.s).orThrow
     val terminated = for (order <- orders) yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     for (keyedEvent <- terminated.map(_.last.value))  assert(keyedEvent.event == OrderFinished, s"- ${keyedEvent.key}")
     assert(controller.controllerState.await(99.s).idToLockState(limit2LockId) ==

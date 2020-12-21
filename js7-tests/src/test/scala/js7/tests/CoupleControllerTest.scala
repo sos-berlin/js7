@@ -82,6 +82,9 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
         controller.eventWatch.await[OrderFinished](predicate = _.key == order.id)
       }
     }
+    directoryProvider.runAgents() { _ =>
+      // Agent writes a snapshot, incrementing the EventId
+    }
     // START AGENT WITH LAST JOURNAL FILE DELETED.
     // AGENT HAS AN OLDER EVENTID AS CONTROLLER HAS OBSERVED => UnknownEventIdProblem
     val journalFiles = listJournalFiles(agentStateDir / "controller-Controller").map(_.file)
