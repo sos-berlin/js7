@@ -102,7 +102,6 @@ final class OrderEventSource(
     problem.toLeft(keyedEvents)
   }
 
-
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
   // In this case, OrderFailed event must have original failures's position, not failed retry's position.

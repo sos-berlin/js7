@@ -8,6 +8,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.{Scope, ValueSearch}
 import js7.data.value.{NamedValues, NumericValue, Value}
 import js7.data.workflow.instructions.Instructions
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.reflect.ClassTag
@@ -34,6 +35,12 @@ trait OrderContext
         Left(Problem(s"An Instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
           s"is expected at position $workflowPosition, not: ${Instructions.jsonCodec.typeName(o)}"))
     }
+
+  final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
+    for {
+      workflow <- idToWorkflow(workflowPosition.workflowId)
+      job <- workflow.checkedWorkflowJob(workflowPosition.position)
+    } yield job
 
   def childOrderEnded(order: Order[Order.State]): Boolean
 

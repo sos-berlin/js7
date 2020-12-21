@@ -68,7 +68,7 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
   }
 
   "orders" in {
-    assert(api.orders.await(99.s).map(_.toSet) == Right(Set(TestOrder, SecondOrder)))
+    assert(api.orders.await(99.s).map(_.toSet) == Right(attachedOrders))
   }
 
   "workflow" in {
@@ -86,7 +86,7 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
       .use(api => Task {
         api.login() await 99.s
         assert(controller.sessionRegister.count.await(99.s) == 2)
-        assert(api.orders.await(99.s).map(_.toSet) == Right(Set(TestOrder, SecondOrder)))
+        assert(api.orders.await(99.s).map(_.toSet) == Right(attachedOrders))
       })
       .map(_ => controller.sessionRegister.count.await(99.s) == 1)
       .await(99.s)
@@ -100,4 +100,7 @@ private object AkkaHttpControllerApiTest
     Execute(WorkflowJob(AgentId("MISSING"), ExecutablePath("MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
   private val SecondOrder = Order(OrderId("SECOND-ORDER"), TestWorkflow.id, Order.Fresh.StartImmediately)
+
+  private val attachedOrders = Set(TestOrder, SecondOrder)
+    .map(_.copy(attachedState = Some(Order.Attaching(AgentId("MISSING")))))
 }

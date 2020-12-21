@@ -89,7 +89,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       assertThat(!isTerminating)
       input match {
         case Input.AttachOrder(order, _, _) if attachedOrderIds contains order.id =>
-          logger.trace(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
+          logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
           false
         case _ =>
           if (queue.contains(input)) {
@@ -155,13 +155,19 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.ReleaseEvents(untilEventId)
     }
 
+  final def onOrdersDetached(orderIds: View[OrderId]): Unit = {
+    attachedOrderIds --= orderIds
+  }
+
+  final def onOrdersAttached(orderIds: View[OrderId]): Unit = {
+    attachedOrderIds ++= orderIds
+    logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
+  }
+
   final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Queueable] =
     synchronized {
       freshlyCoupled = false
       val inputs = responses.map(_.input).toSet
-      attachedOrderIds --= inputs collect { case Input.DetachOrder(orderId) => orderId }
-      attachedOrderIds ++= inputs collect { case Input.AttachOrder(order, _, _) => order.id }
-      logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
       queue.dequeueAll(inputs)  // Including rejected commands. These command will not be repeated.
       onQueuedInputsResponded(inputs)
       responses.flatMap {

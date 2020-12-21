@@ -172,7 +172,7 @@ object OrderEvent {
   /**
     * Controller may have started to attach Order to Agent..
     */
-  final case class OrderAttachable(agentId: AgentId) extends OrderCoreEvent
+  final case class OrderAttachable(agentId: AgentId) extends OrderActorEvent
 
   type OrderDetachable = OrderDetachable.type
   /**

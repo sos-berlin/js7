@@ -37,11 +37,12 @@ import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.cluster.ActiveClusterNode
 import js7.controller.configuration.ControllerConfiguration
+import js7.controller.data.ControllerStateExecutor.{liveOrderEventHandler, liveOrderEventSource}
 import js7.controller.data.agent.AgentRefState
 import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
 import js7.controller.data.events.ControllerEvent
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.controller.data.{ControllerCommand, ControllerState}
+import js7.controller.data.{ControllerCommand, ControllerState, ControllerStateExecutor}
 import js7.controller.item.{RepoCommandExecutor, VerifiedUpdateItems}
 import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.core.command.CommandMeta
@@ -55,23 +56,22 @@ import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
 import js7.data.item.{ItemEvent, SimpleItemEvent, VersionedEvent, VersionedItem}
-import js7.data.lock.{Lock, LockId}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderLockEvent, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
+import js7.data.lock.Lock
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
+import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
@@ -101,6 +101,8 @@ with MainJournalingActor[ControllerState, Event]
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
+  private val orderEventSource = liveOrderEventSource(() => _controllerState)
+  private val orderEventHandler = liveOrderEventHandler(() => _controllerState)
 
   private val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
   private val agentRegister = new AgentRegister
@@ -109,38 +111,6 @@ with MainJournalingActor[ControllerState, Event]
   private val removeOrderDelay = config.getDuration("js7.order.remove-delay").toFiniteDuration
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
   private var journalTerminated = false
-
-  /** Next orders to be processed. */
-  private object orderQueue {
-    private val queue = mutable.Queue[OrderId]()
-    private var notified = false
-
-    def enqueue(orderIds: Iterable[OrderId]): Unit =
-      if (orderIds.nonEmpty) {
-        for (orderId <- orderIds) {
-          if (!queue.contains(orderId)) {
-            queue += orderId
-          }
-        }
-        notifiy()
-      }
-
-    def continue(): Unit = {
-      notified = false
-      for (orderId <- queue.removeHeadOption()) {
-        proceedWithOrder(orderId)
-        if (!queue.isEmpty) notifiy()
-      }
-    }
-
-    private def notifiy(): Unit =
-      if (!notified) {
-        self ! Internal.ContinueWithNextOrders
-        notified = true
-      }
-
-    override def toString = queue.map(_.string).mkString(", ")  // For debugging
-  }
 
   private object shutdown {
     var delayUntil = now
@@ -213,6 +183,33 @@ with MainJournalingActor[ControllerState, Event]
       }
   }
   import shutdown.shuttingDown
+
+  /** Next orders to be processed. */
+  private object orderQueue {
+    private val queue = new VectorBuilder[OrderId]
+    private var notified = false
+
+    def enqueue(orderIds: Iterable[OrderId]): Unit =
+      if (!shuttingDown && switchover.isEmpty && orderIds.nonEmpty) {
+        queue ++= orderIds
+        notifiy()
+      }
+
+    def readAll(): Seq[OrderId] = {
+      notified = false
+      val orderIds = queue.result().distinct
+      queue.clear()
+      orderIds
+    }
+
+    private def notifiy(): Unit =
+      if (!notified) {
+        self ! Internal.ContinueWithNextOrderEvents
+        notified = true
+      }
+
+    override def toString = queue.result().map(_.string).mkString(", ")  // For debugging
+  }
 
   @volatile
   private var switchover: Option[Switchover] = None
@@ -346,15 +343,14 @@ with MainJournalingActor[ControllerState, Event]
       }
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
-      // Any ordering when continuing orders???
-      for (orderId <- _controllerState.idToOrder.keys) {
-        orderRegister += orderId -> new OrderEntry(scheduler.now)
-      }
-      orderQueue.enqueue(_controllerState.idToOrder.keys)
+      orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now))
 
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${_controllerState.idToOrder.size} Orders, ${_controllerState.repo.typedCount[Workflow]} Workflows and ${_controllerState.idToAgentRefState.size} AgentRefs recovered")
       }
+      // Any ordering when continuing orders???
+      proceedWithOrders(_controllerState.idToOrder.keys)
+      orderQueue.enqueue(_controllerState.idToOrder.keys)
 
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
       // This is to handle race-condition: An Agent may have already completed an order.
@@ -398,8 +394,12 @@ with MainJournalingActor[ControllerState, Event]
   }
 
   private def ready: Receive = {
-    case Internal.ContinueWithNextOrders =>
-      orderQueue.continue()
+    case Internal.ContinueWithNextOrderEvents =>
+      val orderIds = orderQueue.readAll()
+      val keyedEvents = nextOrderEvents(orderIds)
+      if (keyedEvents.nonEmpty) {
+        persistTransaction(keyedEvents)(handleEvents)
+      }
 
     case Command.Execute(command, meta) =>
       val sender = this.sender()
@@ -445,7 +445,7 @@ with MainJournalingActor[ControllerState, Event]
         stampedAgentEvents.view.flatMap {
           case Stamped(_, timestamp, keyedEvent) =>
             keyedEvent match {
-              case KeyedEvent(_, _: OrderCancelMarked | _: OrderSuspendMarked | _: OrderResumeMarked | OrderDetached) =>
+              case KeyedEvent(_, _: OrderCancelMarked | _: OrderSuspendMarked | _: OrderResumeMarked) =>
                 // We (the Controller) have emitted the same event
                 None
 
@@ -465,33 +465,30 @@ with MainJournalingActor[ControllerState, Event]
             }
         }.toVector
 
-      committedPromise.completeWith(
-        if (timestampedEvents.isEmpty)
-          // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
-          // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
-          // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
-          Future.successful(None)
-        else {
-          val agentEventId = stampedAgentEvents.last.eventId
-          timestampedEvents :+= Timestamped(agentId <-: AgentEventsObserved(agentEventId))
+      if (timestampedEvents.isEmpty) {
+        // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
+        // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
+        // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
+        committedPromise.success(None)
+      } else {
+        val agentEventId = stampedAgentEvents.last.eventId
+        timestampedEvents :+= Timestamped(agentId <-: AgentEventsObserved(agentEventId))
+
+        committedPromise.completeWith(
           persistTransactionTimestamped(timestampedEvents, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
             (stampedEvents, updatedState) =>
-              handleOrderEvents(
+              handleEvents(
                 stampedEvents.collect {
                   case stamped @ Stamped(_, _, KeyedEvent(_: OrderId, _: OrderEvent)) =>
                     stamped.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
                 },
                 updatedState)
               Some(agentEventId)
-          }
-        })
+          })
 
-    case AgentDriver.Output.OrdersDetached(orderIds) =>
-      val unknown = orderIds -- _controllerState.idToOrder.keySet
-      if (unknown.nonEmpty) {
-        logger.error(s"Response to AgentCommand.DetachOrder from Agent for unknown orders: "+ unknown.mkString(", "))
+        persistMultiple(subsequentEvents(timestampedEvents.map(_.keyedEvent)))(
+          handleEvents)
       }
-      persistMultipleAsync((orderIds -- unknown).map(_ <-: OrderDetached))(handleOrderEvents)
 
     case AgentDriver.Output.OrdersMarked(orderToMark) =>
       val unknown = orderToMark -- _controllerState.idToOrder.keySet
@@ -506,7 +503,8 @@ with MainJournalingActor[ControllerState, Event]
       shutdown.onSnapshotTaken()
 
     case Internal.OrderIsDue(orderId) =>
-      proceedWithOrder(orderId)
+      proceedWithOrders(orderId :: Nil)
+      orderQueue.enqueue(orderId :: Nil)
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = now + config.getDuration("js7.web.server.delay-shutdown").toFiniteDuration
@@ -595,16 +593,16 @@ with MainJournalingActor[ControllerState, Event]
             ControllerCommand.AddOrders.Response(eventId)))
 
       case ControllerCommand.CancelOrders(orderIds, mode) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).cancel(_, mode))
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.cancel(_, mode))
 
       case ControllerCommand.SuspendOrders(orderIds, mode) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).suspend(_, mode))
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.suspend(_, mode))
 
       case ControllerCommand.ResumeOrder(orderId, position, historyOutcomes) =>
-        executeOrderMarkCommands(Vector(orderId))(orderEventSource(_controllerState).resume(_, position, historyOutcomes))
+        executeOrderMarkCommands(Vector(orderId))(orderEventSource.resume(_, position, historyOutcomes))
 
       case ControllerCommand.ResumeOrders(orderIds) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource(_controllerState).resume(_, None, None))
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, None))
 
       case ControllerCommand.RemoveOrdersWhenTerminated(orderIds) =>
         orderIds.toVector
@@ -622,7 +620,7 @@ with MainJournalingActor[ControllerState, Event]
                 else
                   OrderRemoveMarked)))
           .traverse(keyedEvents =>
-            persistTransaction(keyedEvents)(handleOrderEvents)
+            persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
               .map(_ => ControllerCommand.Response.Accepted))
 
       case ControllerCommand.ReleaseEvents(untilEventId) =>
@@ -730,8 +728,8 @@ with MainJournalingActor[ControllerState, Event]
             .traverse(order => toEvent(order.id).map(_.map(order.id <-: _)))
             .map(_.flatten)
             .traverse(keyedEvents =>
-                // Event may be inserted between events coming from Agent
-                persistTransaction(keyedEvents)(handleOrderEvents))
+              // Event may be inserted between events coming from Agent
+              persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents))
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
@@ -743,7 +741,7 @@ with MainJournalingActor[ControllerState, Event]
         Future.successful(Left(problem))
 
       case Right(_) =>
-        persistTransaction(events.map(KeyedEvent(_)))(handleItemEvents)
+        persistTransactionAndSubsequentEvents(events.map(KeyedEvent(_)))(handleEvents)
           .map(_ => Right(Completed))
     }
   }
@@ -758,27 +756,6 @@ with MainJournalingActor[ControllerState, Event]
       case o: VersionedItemChanged => logger.trace(s"${o.path} changed")
       case VersionedItemDeleted(path) => logger.trace(s"$path deleted")
     }
-
-  private def handleItemEvents(stamped: Seq[Stamped[KeyedEvent[ItemEvent]]], updatedState: ControllerState): Unit = {
-    _controllerState = updatedState
-    stamped.map(_.value.event) foreach { event =>
-      logEvent(event)
-      event match {
-        case SimpleItemAdded(agentRef: AgentRef) =>
-          val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
-          entry.actor ! AgentDriver.Input.StartFetchingEvents
-
-        case SimpleItemChanged(agentRef: AgentRef) =>
-          agentRegister.update(agentRef)
-          agentRegister(agentRef.id).reconnect()
-
-        case SimpleItemChanged(lock: Lock) =>
-          orderQueue.enqueue(lockQueuedOrders(lock.id :: Nil))
-
-        case _ =>
-      }
-    }
-  }
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
@@ -812,8 +789,8 @@ with MainJournalingActor[ControllerState, Event]
         _controllerState.repo.pathTo[Workflow](freshOrder.workflowPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(workflow) =>
-            persist/*Async?*/(freshOrder.toOrderAdded(workflow.id.versionId)) { (stamped, updatedState) =>
-              handleOrderEvent(stamped, updatedState)
+            persistTransactionAndSubsequentEvents(freshOrder.toOrderAdded(workflow.id.versionId) :: Nil) { (stamped, updatedState) =>
+              handleEvents(stamped, updatedState)
               Right(true)
             }
             .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
@@ -831,41 +808,62 @@ with MainJournalingActor[ControllerState, Event]
             val events = for ((order, workflow) <- ordersAndWorkflows) yield
               order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
             persistTransaction(events) { (stamped, updatedState) =>
-              handleOrderEvents(stamped, updatedState)
+              handleEvents(stamped, updatedState)
+              // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
+              orderQueue.enqueue(freshOrders.view.map(_.id))
               updatedState.eventId
             }
           }
     }
 
-  private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]], updatedState: ControllerState): Unit = {
-    val updatedOrderIds = handleOrderEventOnly(stamped)
-    _controllerState = updatedState
-    orderQueue.enqueue(updatedOrderIds)
-  }
+  private def persistTransactionAndSubsequentEvents[A](keyedEvents: Seq[KeyedEvent[Event]])
+    (callback: (Seq[Stamped[KeyedEvent[Event]]], ControllerState) => A)
+  : Future[A] =
+    persistTransaction(keyedEvents ++ subsequentEvents(keyedEvents))(callback)
 
-  private def handleOrderEvents(stampedEvents: Seq[Stamped[KeyedEvent[OrderEvent]]], updatedState: ControllerState): Unit = {
+  private def subsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[OrderCoreEvent]] =
+    delayOrderRemoved(
+      new ControllerStateExecutor(_controllerState)
+        .applyEventsAndReturnSubsequentEvents(keyedEvents))
+
+  private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] =
+    delayOrderRemoved(
+      new ControllerStateExecutor(_controllerState).nextOrderEvents(orderIds))
+
+  private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
     val orderIds = mutable.Buffer[OrderId]()
     for (stamped <- stampedEvents) {
-      val updatedOrderIds = handleOrderEventOnly(stamped)
-      _controllerState = _controllerState.applyStampedEvents(stamped :: Nil).orThrow
+      val keyedEvent = stamped.value
+      keyedEvent match {
+        case KeyedEvent(orderId: OrderId, _: OrderEvent) =>
+          orderIds += orderId
+          orderIds ++= handleOrderEvent(keyedEvent.asInstanceOf[KeyedEvent[OrderEvent]])
 
-      val lockIds = stamped.value.event match {
-        case OrderLockEvent(lockIds) => lockIds
-        case _ => Nil
+        case (KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
+          logEvent(event)
+          event match {
+            case SimpleItemAdded(agentRef: AgentRef) =>
+              val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+              entry.actor ! AgentDriver.Input.StartFetchingEvents
+
+            case SimpleItemChanged(agentRef: AgentRef) =>
+              agentRegister.update(agentRef)
+              agentRegister(agentRef.id).reconnect()
+
+            case _ =>
+          }
+
+        case _ =>
       }
-      orderIds ++= updatedOrderIds ++ lockQueuedOrders(lockIds)
+      _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
     }
     _controllerState = updatedState  // Reduce memory usage (they are equal)
-    orderQueue.enqueue(orderIds.distinct)
+    //proceedWithOrdersAndContinue(orderIds.distinct)
+    proceedWithOrders(orderIds.distinct)
   }
 
-  private def lockQueuedOrders(lockIds: Seq[LockId]): Seq[OrderId] =
-    lockIds
-      .flatMap(_controllerState.idToLockState.get)
-      .flatMap(_.firstQueuedOrderId)
-
-  private def handleOrderEventOnly(stamped: Stamped[KeyedEvent[OrderEvent]]): Seq[OrderId] = {
-    val KeyedEvent(orderId, event) = stamped.value
+  private def handleOrderEvent(keyedEvent: KeyedEvent[OrderEvent]): Seq[OrderId] = {
+    val KeyedEvent(orderId, event) = keyedEvent
 
     updateOrderEntry(orderId, event)
 
@@ -880,7 +878,7 @@ with MainJournalingActor[ControllerState, Event]
             Nil
 
           case Some(order) =>
-            val checkedFollowUps = orderEventHandler(_controllerState).handleEvent(orderId <-: event)
+            val checkedFollowUps = orderEventHandler.handleEvent(orderId <-: event)
             val dependentOrderIds = mutable.Buffer.empty[OrderId]
             for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
               followUps foreach {
@@ -919,28 +917,31 @@ with MainJournalingActor[ControllerState, Event]
     }
   }
 
-  private def proceedWithOrder(orderId: OrderId): Unit =
+  private def proceedWithOrders(orderIds: Iterable[OrderId]): Unit =
     if (!shuttingDown && switchover.isEmpty) {
-      for (order <- _controllerState.idToOrder.get(orderId)) {
-        for (mark <- order.mark collect { case o: OrderMark => o }) {
-          if (order.isAttached && !orderMarkTransferredToAgent(order.id).contains(mark)) {
-            // On Recovery, MarkOrder is sent again, because orderEntry.agentOrderMark is lost
-            for ((_, _, agentEntry) <- checkedWorkflowJobAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
-              // CommandQueue filters multiple equal MarkOrder because we may send multiple due to asynchronous excecution
-              agentEntry.actor ! AgentDriver.Input.MarkOrder(order.id, mark)
-            }
+      orderIds foreach proceedWithOrder
+    }
+
+  private def proceedWithOrder(orderId: OrderId): Unit =
+    for (order <- _controllerState.idToOrder.get(orderId)) {
+      for (mark <- order.mark collect { case o: OrderMark => o }) {
+        if (order.isAttached && !orderMarkTransferredToAgent(order.id).contains(mark)) {
+          // On Recovery, MarkOrder is sent again, because orderEntry.agentOrderMark is lost
+          for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
+            // CommandQueue filters multiple equal MarkOrder because we may send multiple due to asynchronous excecution
+            agentEntry.actor ! AgentDriver.Input.MarkOrder(order.id, mark)
           }
         }
-        order.attachedState match {
-          case None |
-               Some(_: Order.Attaching) => proceedWithOrderOnController(order)
-          case Some(_: Order.Attached)  =>
-          case Some(_: Order.Detaching) => detachOrderFromAgent(order.id)
-        }
+      }
+      order.attachedState match {
+        case None |
+             Some(_: Order.Attaching) => proceedWithOrderOnController(order)
+        case Some(_: Order.Attached)  =>
+        case Some(_: Order.Detaching) => detachOrderFromAgent(order.id)
       }
     }
 
-  private def proceedWithOrderOnController(order: Order[Order.State]): Unit = {
+  private def proceedWithOrderOnController(order: Order[Order.State]): Unit =
     order.state match {
       case _: Order.IsFreshOrReady if order.isProcessable =>
         val freshOrReady = order.castState[Order.IsFreshOrReady]
@@ -950,58 +951,42 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case _: Order.Offering =>
-        for (awaitingOrderId <- orderEventHandler(_controllerState).offeredToAwaitingOrder(order.id);
+        for (awaitingOrderId <- orderEventHandler.offeredToAwaitingOrder(order.id);
              awaitingOrder <- _controllerState.idToOrder.checked(awaitingOrderId).onProblem(p => logger.warn(p.toString));
              _ <- awaitingOrder.checkedState[Order.Awaiting].onProblem(p => logger.error(p.toString)))  // TODO OrderBroken on error?
         {
-          proceedWithOrderOnController(awaitingOrder)
+          //not implemented —— proceedWithOrderOnController(awaitingOrder)
         }
 
       case _ =>
     }
 
-    val keyedEvents = orderEventSource(_controllerState).nextEvents(order.id)
-    keyedEvents foreach {
-      case KeyedEvent(orderId, OrderBroken(problem)) =>
-        logger.error(s"Order '${orderId.string}' is broken: $problem")
-      case _ =>
-    }
-    val nonDelayedKeyedEvents = keyedEvents.flatMap(keyedEvent =>
-      orderEventDelay(keyedEvent) match {
-        case Some(delay) =>
-          orderRegister(order.id).timer := scheduler.scheduleOnce(delay) {
-            self ! Internal.OrderIsDue(order.id)
+  private def delayOrderRemoved[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
+    if (removeOrderDelay <= 0.s)
+      keyedEvents
+    else
+      keyedEvents.filter {
+        case KeyedEvent(orderId: OrderId, OrderRemoved) =>
+          orderRegister.get(orderId).fold(false) { orderEntry =>
+            val delay = orderEntry.lastUpdatedAt + removeOrderDelay - now
+            (delay <= 0.s) || {
+              orderRegister(orderId).timer := scheduler.scheduleOnce(delay) {
+                self ! Internal.OrderIsDue(orderId)
+              }
+              false
+            }
+            // When recovering, proceedWithOrderOnController may emit the same event multiple times,
+            // for example OrderJoined for each parent and child order.
+            // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
           }
-          None
-        case _ =>
-          // When recovering, proceedWithOrderOnController may emit the same event multiple times,
-          // for example OrderJoined for each parent and child order.
-          // These events are collected and with actor message Internal.AfterProceedEventsAdded reduced to one.
-          Some(keyedEvent)
-      })
-    persistTransaction(nonDelayedKeyedEvents)(handleOrderEvents)
-  }
-
-  private def orderEventDelay(keyedEvent: KeyedEvent[OrderCoreEvent]): Option[FiniteDuration] =
-    keyedEvent match {
-      case orderId <-: OrderRemoved =>
-        if (removeOrderDelay <= 0.s)
-          None
-        else
-          for {
-            orderEntry <- orderRegister.get(orderId)
-            delay <- Some(orderEntry.lastUpdatedAt + removeOrderDelay - now).filter(_ > 0.s)
-          } yield delay
-      case _ => None
-    }
+        case _ => true
+      }
 
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
-    for ((signedWorkflow, job, agentEntry) <- checkedWorkflowJobAndAgentEntry(order)
+    for ((signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order)
       .onProblem(p => logger.error(p withPrefix "tryAttachOrderToAgent:"))
     ) {  // TODO OrderBroken on error?
-      if (order.isDetached && order.mark.isEmpty)
-        persist(order.id <-: OrderAttachable(agentEntry.agentId))(handleOrderEvent)
-      else if (order.isAttaching) {
+      if (order.isAttaching) {
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
           orderEntry.triedToAttached = true
@@ -1010,12 +995,12 @@ with MainJournalingActor[ControllerState, Event]
       }
     }
 
-  private def checkedWorkflowJobAndAgentEntry(order: Order[Order.State]): Checked[(Signed[Workflow], WorkflowJob, AgentEntry)] =
+  private def checkedWorkflowAndAgentEntry(order: Order[Order.State]): Checked[(Signed[Workflow], AgentEntry)] =
     for {
       signedWorkflow <- _controllerState.repo.idToSigned[Workflow](order.workflowId)
       job <- signedWorkflow.value.checkedWorkflowJob(order.position)
       agentEntry <- agentRegister.checked(job.agentId)
-    } yield (signedWorkflow, job, agentEntry)
+    } yield (signedWorkflow, agentEntry)
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     for (orderEntry <- orderRegister.get(orderId)) {
@@ -1062,18 +1047,6 @@ with MainJournalingActor[ControllerState, Event]
         .runToFuture
     }
 
-  private def orderEventSource(controllerState: ControllerState) =
-    new OrderEventSource(
-      controllerState.idToOrder.checked,
-      controllerState.repo.idTo[Workflow],
-      controllerState.idToLockState.checked,
-      isAgent = false)
-
-  private def orderEventHandler(controllerState: ControllerState) =
-    new OrderEventHandler(
-      controllerState.repo.idTo[Workflow],
-      controllerState.idToOrder.checked)
-
   private def orderMarkTransferredToAgent(orderId: OrderId): Option[OrderMark] =
     orderRegister.get(orderId).flatMap(_.agentOrderMark)
 
@@ -1103,7 +1076,7 @@ private[controller] object ControllerOrderKeeper
   }
 
   private object Internal {
-    case object ContinueWithNextOrders extends DeadLetterSuppression
+    case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
     final case class Activated(recovered: Try[Recovered[ControllerState]])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression

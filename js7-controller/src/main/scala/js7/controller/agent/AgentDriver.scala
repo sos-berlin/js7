@@ -33,7 +33,8 @@ import js7.controller.data.events.AgentRefStateEvent
 import js7.controller.data.events.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredController}
 import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
 import js7.data.agent.{AgentId, AgentRunId}
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.workflow.Workflow
 import monix.eval.Task
@@ -42,6 +43,7 @@ import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
@@ -274,6 +276,13 @@ with ReceiveLoggingActor.WithStash
       val lastEventId = stampedEvents.last.eventId
       lastFetchedEventId = lastEventId
 
+      commandQueue.onOrdersAttached(reducedStampedEvents.view.collect {
+        case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
+      })
+      commandQueue.onOrdersDetached(reducedStampedEvents.view.collect {
+        case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
+      })
+
       promiseFuture[Option[EventId]] { p =>
         context.parent ! Output.EventsFromAgent(reducedStampedEvents, p)
       } onComplete {
@@ -329,11 +338,6 @@ with ReceiveLoggingActor.WithStash
       lastCouplingFailed = None
       val succeededInputs = commandQueue.handleBatchSucceeded(responses)
 
-      val detachedOrderIds = succeededInputs collect { case Input.DetachOrder(orderId) => orderId }
-      if (detachedOrderIds.nonEmpty) {
-        context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
-      }
-
       val markedOrders = succeededInputs.view.collect { case o: Input.MarkOrder => o.orderId -> o.mark }.toMap
       if (markedOrders.nonEmpty) {
         context.parent ! Output.OrdersMarked(markedOrders)
@@ -374,18 +378,25 @@ with ReceiveLoggingActor.WithStash
     }
 
   protected def observeAndConsumeEvents: Task[Completed] =
-    eventFetcher.observe(client, after = lastFetchedEventId)
-      //.map { a => logEvent(a); a }
-      .bufferTimedAndCounted(
-        conf.eventBufferDelay max conf.commitDelay,
-        maxCount = conf.eventBufferSize)  // ticks
-      .filter(_.nonEmpty)   // Ignore empty ticks
-      .mapEval(stampedEvents =>
-        promiseTask[Completed] { promise =>
-          self ! Internal.FetchedEvents(stampedEvents, promise)
-        })
-      .completedL
-      .map(_ => Completed)
+    Task.defer {
+      val delay = conf.eventBufferDelay max conf.commitDelay
+      eventFetcher.observe(client, after = lastFetchedEventId)
+        //.map { a => logEvent(a); a }
+        .pipe(obs =>
+          if (delay <= Duration.Zero)
+            obs.map(_ :: Nil)
+          else obs
+            .bufferTimedAndCounted(
+              conf.eventBufferDelay max conf.commitDelay,
+              maxCount = conf.eventBufferSize)  // ticks
+            .filter(_.nonEmpty))   // Ignore empty ticks
+        .mapEval(stampedEvents =>
+          promiseTask[Completed] { promise =>
+            self ! Internal.FetchedEvents(stampedEvents, promise)
+          })
+        .completedL
+        .map(_ => Completed)
+    }
 
   private def registerAsControllerIfNeeded: Task[Checked[Completed]] =
     Task.defer {
@@ -482,7 +493,6 @@ private[controller] object AgentDriver
 
   object Output {
     final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Option[EventId]])
-    final case class OrdersDetached(orderIds: Set[OrderId])
     final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
   }
 
