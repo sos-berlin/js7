@@ -48,10 +48,11 @@ final class AgentMain
     logger.warn("Trying to shut down JS7 Agent Server due to Java shutdown")
     import agent.scheduler
     agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
-      .onErrorRecover { case t: Throwable =>
-        logger.error(s"onJavaShutdown: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      .runAsyncUncancelable {
+        case Left(throwable) => logger.error(s"onJavaShutdown: ${throwable.toStringWithCauses}",
+          throwable.nullIfNoStackTrace)
+        case Right(_) =>
       }
-      .runAsyncAndForget
     agent.terminated.awaitInfinite
     agent.close()
   }
