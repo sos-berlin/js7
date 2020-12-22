@@ -16,7 +16,6 @@ import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.data.ControllerCommand.{ReleaseEvents, TakeSnapshot}
 import js7.controller.data.events.ControllerEvent
 import js7.core.command.CommandMeta
-import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
@@ -25,6 +24,7 @@ import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.ReleaseEventsTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest

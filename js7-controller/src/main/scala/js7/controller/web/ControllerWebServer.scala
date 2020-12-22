@@ -15,7 +15,6 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.configutils.Configs._
-import js7.common.event.EventWatch
 import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
@@ -24,6 +23,7 @@ import js7.controller.item.ItemUpdater
 import js7.core.command.CommandMeta
 import js7.core.item.VersionedItemApi
 import js7.data.cluster.ClusterState
+import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future

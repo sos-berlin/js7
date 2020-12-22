@@ -21,23 +21,21 @@ import js7.base.problem.Checked._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkautils.{Akkas, SupervisorStrategies}
-import js7.common.event.EventIdGenerator
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.core.common.ActorRegister
 import js7.core.crypt.generic.GenericSignatureVerifier
-import js7.core.event.StampedKeyedEventBus
-import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
-import js7.core.event.journal.watch.JournalEventWatch
-import js7.core.event.journal.{JournalActor, MainJournalingActor}
-import js7.core.event.state.JournaledStatePersistence
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, KeyedEvent, Stamped}
+import js7.journal.data.JournalMeta
+import js7.journal.recover.{JournaledStateRecoverer, Recovered}
+import js7.journal.state.JournaledStatePersistence
+import js7.journal.watch.JournalEventWatch
+import js7.journal.{EventIdGenerator, JournalActor, MainJournalingActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}

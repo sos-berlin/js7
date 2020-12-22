@@ -24,7 +24,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.common.utils.Tests.isTest
 import js7.core.configuration.CommonConfiguration
-import js7.core.event.journal.JournalConf
+import js7.journal.configuration.JournalConf
 import js7.taskserver.task.process.ProcessKillScriptProvider
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._

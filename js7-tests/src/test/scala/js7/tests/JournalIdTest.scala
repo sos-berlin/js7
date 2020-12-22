@@ -7,7 +7,6 @@ import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
-import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentId
 import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
@@ -17,6 +16,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.JournalIdTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest

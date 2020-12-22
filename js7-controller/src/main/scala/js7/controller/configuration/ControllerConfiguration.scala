@@ -20,9 +20,9 @@ import js7.common.utils.Tests.isTest
 import js7.controller.cluster.ClusterConf
 import js7.controller.data.ControllerState
 import js7.core.configuration.CommonConfiguration
-import js7.core.event.journal.JournalConf
-import js7.core.event.journal.data.JournalMeta
 import js7.data.controller.ControllerId
+import js7.journal.configuration.JournalConf
+import js7.journal.data.JournalMeta
 import scala.jdk.CollectionConverters._
 
 /**

@@ -1,7 +1,7 @@
 package js7.controller.cluster
 
-import js7.core.event.journal.recover.Recovered
 import js7.data.event.JournaledState
+import js7.journal.recover.Recovered
 
 sealed trait ClusterFollowUp[S <: JournaledState[S]]
 

@@ -18,7 +18,6 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
-import js7.core.event.journal.{JournalActor, JournalConf, KeyedJournalingActor}
 import js7.data.command.CancelMode
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent._
@@ -27,6 +26,8 @@ import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.journal.configuration.JournalConf
+import js7.journal.{JournalActor, KeyedJournalingActor}
 import js7.taskserver.task.process.StdChannels
 import monix.execution.Scheduler
 import scala.concurrent.Future

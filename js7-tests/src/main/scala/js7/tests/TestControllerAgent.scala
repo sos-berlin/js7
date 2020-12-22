@@ -27,7 +27,6 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.utils.JavaShutdownHook
-import js7.core.event.StampedKeyedEventBus
 import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.RelativeExecutablePath
@@ -38,6 +37,7 @@ import js7.data.value.expression.Expression.{Equal, LastReturnCode, NumericConst
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.journal.StampedKeyedEventBus
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global

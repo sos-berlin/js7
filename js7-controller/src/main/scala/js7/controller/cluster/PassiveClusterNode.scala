@@ -23,17 +23,13 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces._
 import js7.base.web.HttpClient
-import js7.common.event.{EventIdGenerator, PositionAnd}
 import js7.common.http.RecouplingStreamReader
+import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Logger
 import js7.controller.client.HttpControllerApi
 import js7.controller.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.controller.cluster.ObservablePauseDetector.RichPauseObservable
 import js7.controller.cluster.PassiveClusterNode._
-import js7.core.event.journal.JournalConf
-import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.files.JournalFiles._
-import js7.core.event.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
@@ -42,6 +38,11 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.node.NodeId
+import js7.journal.EventIdGenerator
+import js7.journal.configuration.JournalConf
+import js7.journal.data.JournalMeta
+import js7.journal.files.JournalFiles._
+import js7.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

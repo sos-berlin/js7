@@ -11,10 +11,10 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.cluster.ClusterConf
 import js7.controller.configuration.ControllerConfiguration.DefaultConfig
-import js7.core.event.journal.JournalConf
 import js7.data.cluster.ClusterTiming
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
+import js7.journal.configuration.JournalConf
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 

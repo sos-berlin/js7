@@ -18,7 +18,6 @@ import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.ConcurrentRequestLimiter
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
-import js7.common.event.EventWatch
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger
@@ -29,6 +28,7 @@ import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute._
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.event.EventId
+import js7.journal.watch.EventWatch
 import monix.eval.Task
 
 trait SnapshotRoute extends ControllerRouteProvider

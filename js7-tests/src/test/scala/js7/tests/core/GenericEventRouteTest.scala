@@ -13,7 +13,6 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.{Akkas, ProvideActorSystem}
 import js7.common.configutils.Configs._
-import js7.common.event.collector.EventCollector
 import js7.common.http.AkkaHttpClient
 import js7.common.http.Uris.{encodePath, encodeQuery}
 import js7.common.scalautil.Futures.implicits._
@@ -21,11 +20,12 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.data.ControllerState
-import js7.core.event.GenericEventRoute
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
+import js7.journal.watch.collector.EventCollector
+import js7.journal.web.GenericEventRoute
 import js7.tests.core.GenericEventRouteTest._
 import monix.eval.Task
 import monix.execution.Scheduler

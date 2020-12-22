@@ -17,6 +17,7 @@ import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
+import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
@@ -25,7 +26,6 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.event.{EventIdGenerator, StrictEventWatch}
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -45,12 +45,7 @@ import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.crypt.generic.GenericSignatureVerifier
-import js7.core.event.StampedKeyedEventBus
-import js7.core.event.journal.JournalActor
-import js7.core.event.journal.JournalActor.Output
-import js7.core.event.journal.recover.Recovered
-import js7.core.event.state.JournaledStatePersistence
-import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, JobSchedulerIsShuttingDownProblem}
+import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem}
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier
@@ -58,6 +53,11 @@ import js7.data.event.{EventId, EventRequest, Stamped}
 import js7.data.item.{ItemOperation, SimpleItem, VersionedItem}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, OrderEvent}
+import js7.journal.JournalActor.Output
+import js7.journal.recover.Recovered
+import js7.journal.state.JournaledStatePersistence
+import js7.journal.watch.StrictEventWatch
+import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -342,7 +342,7 @@ object RunningController
       //    case Some(orderKeeperTry) =>
       //      orderKeeperTry match {
       //        case Failure(t) => Task.raiseError(t)
-      //        case Success(Left(_)) => Task.raiseError(JobSchedulerIsShuttingDownProblem.throwable)
+      //        case Success(Left(_)) => Task.raiseError(ShuttingDownProblem.throwable)
       //        case Success(Right(actor)) => Task.pure(actor)
       //      }
       //  }
@@ -481,7 +481,7 @@ object RunningController
             case Some(Failure(t)) =>
               Task.raiseError(t)
             case Some(Success(None)) =>   // ControllerOrderKeeper does not start
-              Task.pure(Left(JobSchedulerIsShuttingDownProblem))
+              Task.pure(Left(ShuttingDownProblem))
             case Some(Success(Some(actor))) =>
               Task.deferFuture(
                 (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
@@ -505,7 +505,7 @@ object RunningController
           case Some(Failure(t)) =>
             Task.raiseError(t)
           case Some(Success(None)) =>   // ControllerOrderKeeper does not start
-            Task.pure(Left(JobSchedulerIsShuttingDownProblem))
+            Task.pure(Left(ShuttingDownProblem))
           case Some(Success(Some(actor))) =>
             Task.deferFuture(
               (actor ? ControllerOrderKeeper.Command.VerifiedUpdateItemsCmd(verifiedUpdateItems))

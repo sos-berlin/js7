@@ -13,11 +13,11 @@ import js7.common.guice.GuiceImplicits._
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
 import js7.data.problems.UnknownEventIdProblem
+import js7.journal.files.JournalFiles.listJournalFiles
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 

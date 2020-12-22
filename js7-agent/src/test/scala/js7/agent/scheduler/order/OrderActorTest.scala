@@ -18,17 +18,12 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
-import js7.common.event.EventIdGenerator
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.utils.ByteUnits.toKBGB
 import js7.common.utils.Exceptions.repeatUntilNoException
-import js7.core.event.StampedKeyedEventBus
-import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.watch.JournalEventWatch
-import js7.core.event.journal.{JournalActor, JournalConf}
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, KeyedEvent, Stamped}
 import js7.data.item.VersionId
@@ -40,6 +35,10 @@ import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.journal.configuration.JournalConf
+import js7.journal.data.JournalMeta
+import js7.journal.watch.JournalEventWatch
+import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import js7.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global

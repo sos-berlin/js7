@@ -31,12 +31,12 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerState
 import js7.controller.data.events.AgentRefStateEvent
 import js7.controller.data.events.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredController}
-import js7.core.event.journal.{JournalActor, KeyedJournalingActor}
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.workflow.Workflow
+import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.eval.Task
 import monix.execution.atomic.{AtomicInt, AtomicLong}
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}

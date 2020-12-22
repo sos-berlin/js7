@@ -18,13 +18,13 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.data.ControllerCommand.ShutDown
 import js7.controller.{ControllerTermination, RunningController}
-import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentId
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.item.VersionedItem
 import js7.data.job.RelativeExecutablePath
 import js7.data.node.NodeId
+import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task

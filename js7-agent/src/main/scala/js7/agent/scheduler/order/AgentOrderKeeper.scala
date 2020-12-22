@@ -30,9 +30,6 @@ import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
 import js7.common.scalautil.Logger.ops._
 import js7.common.utils.Exceptions.wrapException
-import js7.core.event.journal.recover.Recovered
-import js7.core.event.journal.{JournalActor, MainJournalingActor}
-import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
@@ -50,6 +47,9 @@ import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.journal.recover.Recovered
+import js7.journal.state.JournaledStatePersistence
+import js7.journal.{JournalActor, MainJournalingActor}
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._

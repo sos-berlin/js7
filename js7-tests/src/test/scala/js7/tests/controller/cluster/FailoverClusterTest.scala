@@ -10,7 +10,6 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand.{ClusterSwitchOver, ShutDown}
-import js7.core.event.journal.files.JournalFiles.JournalMetaOps
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.event.KeyedEvent.NoKey
@@ -18,6 +17,7 @@ import js7.data.event._
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.controller.cluster.ControllerClusterTester._
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global

@@ -2,8 +2,8 @@ package js7.controller
 
 import com.typesafe.config.Config
 import js7.controller.data.ControllerState
-import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
+import js7.journal.data.JournalMeta
+import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 

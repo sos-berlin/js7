@@ -14,7 +14,6 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder
 import js7.controller.cluster.ClusterCommon.ClusterWatchAgreedToActivation
 import js7.controller.data.ControllerCommand.{ClusterAppointNodes, ShutDown}
-import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.core.problems.{BackupClusterNodeNotAppointed, ClusterSettingNotUpdatable}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSettingUpdated}
 import js7.data.cluster.ClusterSetting
@@ -22,6 +21,7 @@ import js7.data.cluster.ClusterState.Coupled
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.cluster.ControllerClusterTester._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

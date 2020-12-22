@@ -14,22 +14,23 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.akkahttp.https.HttpsConfig
-import js7.common.event.{EventIdGenerator, RealEventWatch}
 import js7.common.scalautil.Logger
 import js7.controller.cluster.Cluster._
 import js7.controller.cluster.ClusterCommon.truncateFile
-import js7.core.event.journal.JournalConf
-import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.files.JournalFiles
-import js7.core.event.journal.files.JournalFiles.JournalMetaOps
-import js7.core.event.journal.recover.{JournaledStateRecoverer, Recovered}
-import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournaledState}
+import js7.journal.EventIdGenerator
+import js7.journal.configuration.JournalConf
+import js7.journal.data.JournalMeta
+import js7.journal.files.JournalFiles
+import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.recover.{JournaledStateRecoverer, Recovered}
+import js7.journal.state.JournaledStatePersistence
+import js7.journal.watch.RealEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise

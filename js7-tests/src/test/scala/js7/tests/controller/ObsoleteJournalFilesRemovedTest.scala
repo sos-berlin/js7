@@ -8,13 +8,13 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.events.ControllerEvent
-import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.agent.AgentId
 import js7.data.job.RelativeExecutablePath
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.ObsoleteJournalFilesRemovedTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest

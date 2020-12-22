@@ -153,6 +153,7 @@ lazy val js7 = (project in file("."))
     `js7-data`.jvm,
     `js7-docker`,
     `js7-install`,
+    `js7-journal`,
     `js7-controller`,
     `js7-controller-client`.jvm,
     `js7-controller-data`.jvm,
@@ -430,7 +431,7 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
         lmaxDisruptor % "test"
     })
 
-lazy val `js7-core` = project.dependsOn(`js7-common`, `js7-tester`.jvm % "test")
+lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
@@ -451,6 +452,22 @@ lazy val `js7-core` = project.dependsOn(`js7-common`, `js7-tester`.jvm % "test")
       IO.write(versionFile, BuildUtils.longVersion.value + "\n")
       Seq(versionFile)
     }.taskValue)
+
+lazy val `js7-journal` = project.dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      akkaHttp ++
+      akkaHttpTestkit % "test" ++
+      guice ++
+      diffx ++
+      scalaTest % "test" ++
+      scalaCheck % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
 
 lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-common`, `js7-data`.jvm, `js7-taskserver`, `js7-agent-client` % "test", `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)

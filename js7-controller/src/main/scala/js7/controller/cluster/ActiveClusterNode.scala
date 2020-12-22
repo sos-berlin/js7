@@ -13,7 +13,6 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.HttpsConfig
-import js7.common.event.RealEventWatch
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
@@ -21,9 +20,6 @@ import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.cluster.ActiveClusterNode._
 import js7.controller.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.controller.cluster.ObservablePauseDetector._
-import js7.core.event.journal.JournalActor
-import js7.core.event.journal.recover.Recovered
-import js7.core.event.state.JournaledStatePersistence
 import js7.core.problems.{ClusterCommandInapplicableProblem, ClusterNodesAlreadyAppointed, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
@@ -32,6 +28,10 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterSt
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournaledState, KeyedEvent, Stamped}
 import js7.data.node.NodeId
+import js7.journal.JournalActor
+import js7.journal.recover.Recovered
+import js7.journal.state.JournaledStatePersistence
+import js7.journal.watch.RealEventWatch
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable

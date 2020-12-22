@@ -12,19 +12,19 @@ import js7.base.problem.Checked.Ops
 import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas
-import js7.common.event.collector.EventCollector
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.ServerOperatingSystem.operatingSystem
-import js7.core.event.ActorEventCollector
 import js7.data.agent.AgentId
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.workflow.test.TestSetting._
+import js7.journal.test.ActorEventCollector
+import js7.journal.watch.collector.EventCollector
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

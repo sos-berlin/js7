@@ -9,6 +9,7 @@ import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas
 import js7.common.configutils.Configs._
+import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
@@ -16,7 +17,6 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.UntilNoneIterator
 import js7.controller.RunningController
 import js7.controller.data.events.ControllerEvent
-import js7.core.common.jsonseq.InputStreamJsonSeqReader
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey

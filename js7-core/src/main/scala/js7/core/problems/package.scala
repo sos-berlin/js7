@@ -13,18 +13,10 @@ import scala.concurrent.duration.FiniteDuration
   */
 package object problems
 {
-  final case class JsonSeqFileClosedProblem(file: String) extends Problem.Coded {
-    def arguments = Map("file" -> file)
-  }
-
   final case class ReverseReleaseEventsProblem(requestedUntilEventId: EventId, currentUntilEventId: EventId) extends Problem.Coded {
     def arguments = Map(
       "requestedUntilEventId" -> requestedUntilEventId.toString,
       "currentUntilEventId" -> currentUntilEventId.toString)
-  }
-
-  final case object JobSchedulerIsShuttingDownProblem extends Problem.ArgumentlessCoded {
-    override val httpStatusCode = ServiceUnavailable.intValue/*503*/
   }
 
   final case object ClusterNodeIsNotYetReadyProblem extends Problem.ArgumentlessCoded {

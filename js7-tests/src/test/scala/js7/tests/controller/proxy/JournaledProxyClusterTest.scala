@@ -12,7 +12,6 @@ import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient
-import js7.common.event.StrictEventWatch
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
@@ -30,6 +29,7 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
+import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.proxy.data.ProxyEvent
 import js7.proxy.data.event.ProxyStarted

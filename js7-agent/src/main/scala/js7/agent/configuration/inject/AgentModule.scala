@@ -12,10 +12,10 @@ import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.event.EventIdGenerator
 import js7.common.scalautil.IOExecutor
 import js7.common.system.ThreadPools
 import js7.core.cluster.ClusterWatchRegister
+import js7.journal.EventIdGenerator
 import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
 

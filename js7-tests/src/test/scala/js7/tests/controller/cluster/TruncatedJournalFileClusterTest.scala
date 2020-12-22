@@ -5,10 +5,10 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.core.event.journal.files.JournalFiles.listJournalFiles
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.order.{FreshOrder, OrderId}
+import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.cluster.ControllerClusterTester._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global

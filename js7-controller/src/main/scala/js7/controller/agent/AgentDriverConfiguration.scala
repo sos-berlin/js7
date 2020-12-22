@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import js7.base.problem.Checked
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.common.time.JavaTimeConverters._
-import js7.core.event.journal.JournalConf
+import js7.journal.configuration.JournalConf
 import scala.concurrent.duration._
 
 final case class AgentDriverConfiguration(

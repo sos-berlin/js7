@@ -16,7 +16,6 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.ControllerState
 import js7.controller.data.events.ControllerEvent.ControllerReady
-import js7.core.event.journal.files.JournalFiles
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentId
 import js7.data.event.{EventId, KeyedEvent, Stamped}
@@ -26,6 +25,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowParser
 import js7.data.workflow.position.Position
+import js7.journal.files.JournalFiles
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext

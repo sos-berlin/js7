@@ -47,8 +47,6 @@ import js7.controller.item.{RepoCommandExecutor, VerifiedUpdateItems}
 import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
-import js7.core.event.journal.recover.Recovered
-import js7.core.event.journal.{JournalActor, MainJournalingActor}
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.{AgentId, AgentRef, AgentRunId}
@@ -68,6 +66,8 @@ import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
+import js7.journal.recover.Recovered
+import js7.journal.{JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable

@@ -13,7 +13,6 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.event.collector.{EventCollector, EventDirectives}
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceJsonSupport._
 import js7.common.http.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
@@ -24,6 +23,8 @@ import js7.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
+import js7.journal.watch.collector.EventCollector
+import js7.journal.web.EventDirectives
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

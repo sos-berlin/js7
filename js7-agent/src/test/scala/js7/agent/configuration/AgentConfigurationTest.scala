@@ -13,7 +13,7 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils._
 import js7.common.scalautil.FileUtils.syntax._
-import js7.core.event.journal.JournalConf
+import js7.journal.configuration.JournalConf
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 

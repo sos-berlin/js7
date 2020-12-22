@@ -14,14 +14,15 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
-import js7.common.event.{EventWatch, PositionAnd}
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
+import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.JournalRoute._
 import js7.data.event.{EventId, JournalSeparators}
+import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration

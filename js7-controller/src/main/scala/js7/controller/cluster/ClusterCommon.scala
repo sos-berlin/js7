@@ -25,12 +25,12 @@ import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.InternalClusterCommand
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
-import js7.core.event.state.JournaledStatePersistence
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.JournaledState
 import js7.data.node.NodeId
+import js7.journal.state.JournaledStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.reflect.runtime.universe._

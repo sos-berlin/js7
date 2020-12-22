@@ -17,9 +17,9 @@ import js7.base.problem.Checked
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Closer, HasCloser}
-import js7.common.event.collector.EventCollector
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.core.event.ActorEventCollector
+import js7.journal.test.ActorEventCollector
+import js7.journal.watch.collector.EventCollector
 import scala.concurrent.{Future, Promise}
 
 /**

@@ -23,7 +23,6 @@ import js7.base.time.Timestamp
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
-import js7.common.event.EventIdClock
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceToYaml.yamlToJson
@@ -44,6 +43,7 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.test.TestSetting.TestAgentId
+import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest._
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}

@@ -10,8 +10,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
-import js7.common.event.PositionAnd
 import js7.common.http.AkkaHttpClient
+import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -19,10 +19,6 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.data.ControllerState
 import js7.controller.web.controller.api.test.RouteTester
-import js7.core.event.journal.data.JournalMeta
-import js7.core.event.journal.files.JournalFiles._
-import js7.core.event.journal.watch.JournalEventWatch
-import js7.core.event.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.event.KeyedEvent.NoKey
@@ -30,6 +26,10 @@ import js7.data.event.{EventId, JournalHeader, JournalId, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
+import js7.journal.data.JournalMeta
+import js7.journal.files.JournalFiles._
+import js7.journal.watch.JournalEventWatch
+import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
 import org.scalatest.freespec.AnyFreeSpec
