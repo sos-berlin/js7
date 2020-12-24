@@ -1,7 +1,6 @@
-package js7.controller.cluster
+package js7.cluster
 
 import akka.actor.ActorSystem
-import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
@@ -16,13 +15,10 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
+import js7.cluster.ClusterCommon._
 import js7.common.akkahttp.https.HttpsConfig
 import js7.common.configutils.Configs._
 import js7.common.scalautil.Logger
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.controller.cluster.ClusterCommon._
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.InternalClusterCommand
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes}
@@ -39,7 +35,7 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
   controllerId: ControllerId,
   ownId: NodeId,
   persistence: JournaledStatePersistence[S],
-  clusterConf: ClusterConf,
+  val clusterContext: ClusterContext,
   httpsConfig: HttpsConfig,
   config: Config,
   testEventPublisher: EventPublisher[Any])
@@ -94,10 +90,11 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
 
   def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
-    controllerApi(uri, name = name)
+    clusterContext.clusterNodeApi(uri, name = name)
+      .evalTap(_.loginUntilReachable())
       .use(_
-        .executeCommand(InternalClusterCommand(command)))
-        .map((_: ControllerCommand.Response) => ())
+        .executeClusterCommand(command))
+        .map((_: ClusterCommand.Response) => ())
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
         logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
         logger.debug(throwable.toString, throwable)
@@ -106,13 +103,8 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
       }
   }
 
-  def controllerApi(uri: Uri, name: String): Resource[Task, HttpControllerApi] =
-    AkkaHttpControllerApi.resource(uri, clusterConf.userAndPassword, httpsConfig, name = name)
-      .map(identity[HttpControllerApi])
-      .evalTap(_.loginUntilReachable())
-
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
-    ActivationInhibitor.inhibitActivationOfPeer(clusterState.passiveUri, clusterState.timing, httpsConfig, clusterConf)
+    ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterContext)
 
   def ifClusterWatchAllowsActivation[A](clusterState: ClusterState.HasNodes, event: ClusterEvent, checkOnly: Boolean,
     body: Task[Checked[Boolean]])

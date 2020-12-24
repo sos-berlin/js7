@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import akka.pattern.AskTimeoutException
 import js7.base.generic.Completed
@@ -6,9 +6,9 @@ import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked
 import js7.base.utils.LockResource
 import js7.base.utils.ScalaUtils.syntax._
+import js7.cluster.ClusterWatchSynchronizer._
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
-import js7.controller.cluster.ClusterWatchSynchronizer._
 import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
@@ -64,17 +64,20 @@ private final class ClusterWatchSynchronizer(
   private def startHeartbeatingWhileLocked(clusterState: HasNodes): Task[Completed] =
   {
     def sendHeartbeats: Task[Nothing] =
-      Observable.intervalAtFixedRate(timing.heartbeat, timing.heartbeat)
-        .whileBusyBuffer(DropNew(bufferSize = 2))
-        .flatMap(_ => Observable.fromTask(
-          doAHeartbeat
-            .onErrorHandleWith { t =>
-              logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
-                if (t.isInstanceOf[AskTimeoutException]) null else t.nullIfNoStackTrace)
-              Task.raiseError(t)
-            }))
-        .completedL
-        .flatMap(_ => Task.raiseError(new AssertionError("sendHeartbeats terminated unexpectedly")))
+      Task.defer {
+        logger.debug(s"Heartbeat starts with $clusterState")
+        Observable.intervalAtFixedRate(timing.heartbeat, timing.heartbeat)
+          .whileBusyBuffer(DropNew(bufferSize = 2))
+          .flatMap(_ => Observable.fromTask(
+            doAHeartbeat
+              .onErrorHandleWith { t =>
+                logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
+                  if (t.isInstanceOf[AskTimeoutException]) null else t.nullIfNoStackTrace)
+                Task.raiseError(t)
+              }))
+          .completedL
+          .flatMap(_ => Task.raiseError(new AssertionError("sendHeartbeats terminated unexpectedly")))
+      }
 
     def doAHeartbeat: Task[Unit] =
       doACheckedHeartbeat(clusterState).map {
@@ -82,7 +85,7 @@ private final class ClusterWatchSynchronizer(
         case Right(Completed) =>
       }
 
-    doAHeartbeat.flatMap(_ =>
+    doAHeartbeat >>
       Task {
         val heartbeatFuture = sendHeartbeats
           .onCancelRaiseError(new CancelledException)
@@ -90,6 +93,7 @@ private final class ClusterWatchSynchronizer(
           .runToFuture
           .andThen {
             case Success(Completed) =>
+              logger.debug("Heartbeat stopped")
             case Failure(t) =>
               logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
               logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
@@ -97,7 +101,7 @@ private final class ClusterWatchSynchronizer(
           }
         heartbeat.getAndSet(heartbeatFuture).cancel()
         Completed
-      })
+      }
   }
 
   private def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =

@@ -25,6 +25,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, SetOnce}
+import js7.cluster.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem}
+import js7.cluster.{ActiveClusterNode, Cluster, ClusterFollowUp}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.FileUtils.syntax._
@@ -34,7 +36,6 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController._
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.controller.cluster.{ActiveClusterNode, Cluster, ClusterFollowUp}
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
@@ -45,7 +46,6 @@ import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.crypt.generic.GenericSignatureVerifier
-import js7.core.problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem}
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier
@@ -288,17 +288,22 @@ object RunningController
         .closeWithCloser
       val recovered = Await.result(whenRecovered, Duration.Inf)
         .closeWithCloser
-      val cluster = new Cluster(
-        journalMeta,
-        persistence,
-        recovered.eventWatch,
-        controllerConfiguration.controllerId,
-        controllerConfiguration.journalConf,
-        controllerConfiguration.clusterConf,
-        controllerConfiguration.httpsConfig,
-        controllerConfiguration.config,
-        injector.instance[EventIdGenerator],
-        testEventBus)
+      val cluster = {
+        import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
+        new Cluster(
+          journalMeta,
+          persistence,
+          recovered.eventWatch,
+          (uri, name) => AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem)
+            /*.evalTap(_.loginUntilReachable())*/,
+          controllerId,
+          journalConf,
+          clusterConf,
+          httpsConfig,
+          config,
+          injector.instance[EventIdGenerator],
+          testEventBus)
+      }
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
       // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None

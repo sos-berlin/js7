@@ -62,6 +62,22 @@ final class ClusterSettingTest extends AnyFreeSpec
     intercept[ProblemException](ClusterSetting(idToUri, NodeId("X"), Nil, timing))
   }
 
+  "activeId" in {
+    assert(clusterSetting.activeId == NodeId("A"))
+  }
+
+  "activeUri" in {
+    assert(clusterSetting.activeUri == Uri("http://A"))
+  }
+
+  "passiveId" in {
+    assert(clusterSetting.passiveId == NodeId("B"))
+  }
+
+  "passiveUri" in {
+    assert(clusterSetting.passiveUri == Uri("http://B"))
+  }
+
   "peerOf" in {
     assert(idToUri.peerOf(NodeId("A")) == NodeId("B"))
     assert(idToUri.peerOf(NodeId("B")) == NodeId("A"))

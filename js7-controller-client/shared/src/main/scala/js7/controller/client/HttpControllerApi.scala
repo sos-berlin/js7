@@ -12,10 +12,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
-import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
+import js7.controller.data.ControllerCommand.{InternalClusterCommand, RemoveOrdersWhenTerminated}
 import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.agent.AgentRef
-import js7.data.cluster.{ClusterNodeState, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
@@ -28,7 +28,7 @@ import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 
 trait HttpControllerApi
-extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
+extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
 {
   type State = ControllerState
 
@@ -57,6 +57,10 @@ extends EventApi with HttpSessionApi with HasIsIgnorableStackTrace
 
   final def get[B: Decoder](uriTail: String): Task[B] =
     httpClient.get[B](baseUri /? uriTail)
+
+  final def executeClusterCommand(command: ClusterCommand): Task[command.Response] =
+    executeCommand(InternalClusterCommand(command))
+      .map(_.response.asInstanceOf[command.Response])
 
   final def executeCommand(command: ControllerCommand): Task[command.Response] =
     httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)
@@ -158,7 +162,7 @@ object HttpControllerApi
     uri: Uri,
     userAndPassword: Option[UserAndPassword],
     httpClient: HttpClient,
-    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
+    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
   : Resource[Task, HttpControllerApi] =
     Resource.make(
       acquire = Task(new HttpControllerApi.Standard(uri, userAndPassword, httpClient, loginDelays))
@@ -174,6 +178,6 @@ object HttpControllerApi
     val baseUri: Uri,
     protected val userAndPassword: Option[UserAndPassword],
     val httpClient: HttpClient,
-    override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays)
+    override protected val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
   extends HttpControllerApi
 }

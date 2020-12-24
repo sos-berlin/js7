@@ -20,6 +20,9 @@ final case class ClusterSetting private(
 {
   checkedUnit(idToUri, activeId, clusterWatches).orThrow
 
+  def activeUri: Uri =
+    idToUri(activeId)
+
   def passiveId: NodeId =
     idToUri.peerOf(activeId)
 

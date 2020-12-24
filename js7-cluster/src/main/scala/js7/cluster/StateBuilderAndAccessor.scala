@@ -1,8 +1,8 @@
-package js7.controller.cluster
+package js7.cluster
 
 import js7.base.utils.ScalaUtils.syntax._
+import js7.cluster.StateBuilderAndAccessor._
 import js7.common.scalautil.Logger
-import js7.controller.cluster.StateBuilderAndAccessor._
 import js7.data.event.{JournaledState, JournaledStateBuilder}
 import monix.catnap.MVar
 import monix.eval.Task

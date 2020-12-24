@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import akka.actor.ActorSystem
 import akka.pattern.ask
@@ -12,19 +12,17 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
-import js7.common.akkahttp.https.HttpsConfig
+import js7.cluster.ActiveClusterNode._
+import js7.cluster.ClusterCommon.clusterEventAndStateToString
+import js7.cluster.ObservablePauseDetector._
+import js7.cluster.Problems.{ClusterCommandInapplicableProblem, ClusterNodesAlreadyAppointed, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.controller.cluster.ActiveClusterNode._
-import js7.controller.cluster.ClusterCommon.clusterEventAndStateToString
-import js7.controller.cluster.ObservablePauseDetector._
-import js7.core.problems.{ClusterCommandInapplicableProblem, ClusterNodesAlreadyAppointed, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournaledState, KeyedEvent, Stamped}
 import js7.data.node.NodeId
@@ -44,7 +42,6 @@ import scala.util.{Failure, Success}
 final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   ownId: NodeId,
   initialClusterState: ClusterState,
-  httpsConfig: HttpsConfig,
   persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
   common: ClusterCommon[S],
@@ -348,7 +345,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
     if (fetchingAcks.getAndSet(true)) {
       logger.debug("fetchAndHandleAcknowledgedEventIds: already fetchingAcks")
     } else {
-      def msg = s"observeEventIds(${initialState.passiveUri}, userAndPassword=${clusterConf.userAndPassword})"
+      def msg = s"observeEventIds(${initialState.passiveUri}, peersUserAndPassword=${clusterConf.peersUserAndPassword})"
       val future: CancelableFuture[Checked[Completed]] =
         fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, initialState.timing)
           .flatMap {
@@ -423,7 +420,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
     } >>
       Observable
         .fromResource(
-          AkkaHttpControllerApi.resource(passiveUri, clusterConf.userAndPassword, httpsConfig, name = "acknowledgements")(actorSystem))
+          common.clusterContext.clusterNodeApi(passiveUri, "acknowledgements"))
         .flatMap(api =>
           observeEventIds(api, timing)
             //.map { eventId => logger.trace(s"$eventId acknowledged"); eventId }
@@ -461,9 +458,9 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         .guaranteeCase(exitCase => Task(
           logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
 
-  private def observeEventIds(api: HttpControllerApi, timing: ClusterTiming): Observable[EventId] =
+  private def observeEventIds(api: ClusterNodeApi, timing: ClusterTiming): Observable[EventId] =
     RecouplingStreamReader
-      .observe[EventId, EventId, HttpControllerApi](
+      .observe[EventId, EventId, ClusterNodeApi](
         toIndex = identity,
         api,
         clusterConf.recouplingStreamReader,

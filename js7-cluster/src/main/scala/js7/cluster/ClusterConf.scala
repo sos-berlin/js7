@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import cats.instances.either._
 import cats.syntax.traverse._
@@ -18,7 +18,7 @@ final case class ClusterConf(
   ownId: NodeId,
   isBackup: Boolean,
   maybeClusterSetting: Option[ClusterSetting],
-  userAndPassword: Option[UserAndPassword],
+  peersUserAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   timing: ClusterTiming,
   testHeartbeatLossPropertyKey: Option[String] = None)

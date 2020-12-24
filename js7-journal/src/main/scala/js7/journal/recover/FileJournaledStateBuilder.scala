@@ -21,7 +21,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
   newBuilder: () => JournaledStateBuilder[S])
 {
   def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])(implicit S: JournaledState.Companion[S]) =
-    this(journalFileForInfo, expectedJournalId, S.newBuilder)
+    this(journalFileForInfo, expectedJournalId, S.newBuilder _)
 
   private val builder = newBuilder()
   private var _progress: JournalProgress = JournalProgress.Initial

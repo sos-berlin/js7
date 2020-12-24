@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import com.softwaremill.diffx
 import io.circe.syntax._
@@ -23,17 +23,16 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces._
 import js7.base.web.HttpClient
+import js7.cluster.ClusterCommon.clusterEventAndStateToString
+import js7.cluster.ObservablePauseDetector.RichPauseObservable
+import js7.cluster.PassiveClusterNode._
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Logger
-import js7.controller.client.HttpControllerApi
-import js7.controller.cluster.ClusterCommon.clusterEventAndStateToString
-import js7.controller.cluster.ObservablePauseDetector.RichPauseObservable
-import js7.controller.cluster.PassiveClusterNode._
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
@@ -151,8 +150,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
   : Task[Checked[(ClusterState, ClusterFollowUp[S])]] =
-    common.controllerApi(activeUri, "journal")
-      .use(activeControllerApi =>
+    common.clusterContext.clusterNodeApi(activeUri, "active journal")
+      .use(activeNodeApi =>
         Task.tailRecM(
           (recovered.recoveredJournalFile match {
             case None =>
@@ -163,7 +162,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
           }): Continuation.Replicatable
         )(continuation =>
           Task.deferAction(implicit scheduler =>
-            replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeControllerApi)
+            replicateJournalFile(continuation, () => stateBuilderAndAccessor.newStateBuilder(), activeNodeApi)
           ) // TODO Herzschlag auch beim Wechsel zur nächsten Journaldatei prüfen
             .map {
               case Left(problem) =>
@@ -184,7 +183,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   private def replicateJournalFile(
     continuation: Continuation.Replicatable,
     newStateBuilder: () => JournaledStateBuilder[S],
-    activeControllerApi: HttpControllerApi)
+    activeNodeApi: ClusterNodeApi)
     (implicit s: Scheduler)
   : Task[Checked[Continuation.Replicatable]] =
     Task.defer {
@@ -229,11 +228,11 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
         case _ =>
       }
 
-      val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteArray], HttpControllerApi](
+      val recouplingStreamReader = new RecouplingStreamReader[Long/*file position*/, PositionAnd[ByteArray], ClusterNodeApi](
         toIndex = _.position,
         clusterConf.recouplingStreamReader)
       {
-        protected def getObservable(api: HttpControllerApi, after: EventId) =
+        protected def getObservable(api: ClusterNodeApi, after: EventId) =
           HttpClient.liftProblem(
             api.journalObservable(
               fileEventId = continuation.fileEventId,
@@ -255,14 +254,14 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
       }
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
-      recouplingStreamReader.observe(activeControllerApi, after = continuation.fileLength)
+      recouplingStreamReader.observe(activeNodeApi, after = continuation.fileLength)
         // TODO Aktiver kann JournalIsNotYetReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
         //  observe könnte selbst Ausfall des Aktiven anzeigen, gdw er nicht erreichbar ist
         //  (zB Login klappt nicht, isTemporaryUnreachable).
         //  observe überwacht selbst die Herzschläge, und verbindet sich bei Ausfall erneut.
         //  Dann entfällt hier die Herzschlagüberwachung.
         .doOnError(t => Task {
-          logger.debug(s"observeJournalFile($activeControllerApi, fileEventId=${continuation.fileEventId}, " +
+          logger.debug(s"observeJournalFile($activeNodeApi, fileEventId=${continuation.fileEventId}, " +
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
         })
         // detectPauses here ???

@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline

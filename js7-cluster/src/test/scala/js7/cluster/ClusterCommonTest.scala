@@ -1,10 +1,10 @@
-package js7.controller.cluster
+package js7.cluster
 
 import java.nio.file.Files.{delete, size}
 import java.nio.file.Paths
+import js7.cluster.ClusterCommon.truncateFile
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
-import js7.controller.cluster.ClusterCommon._
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

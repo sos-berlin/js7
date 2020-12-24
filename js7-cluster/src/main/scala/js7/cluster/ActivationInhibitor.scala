@@ -1,19 +1,15 @@
-package js7.controller.cluster
+package js7.cluster
 
 import akka.actor.ActorSystem
 import cats.effect.ExitCase
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.base.web.Uri
-import js7.common.akkahttp.https.HttpsConfig
+import js7.cluster.ActivationInhibitor._
 import js7.common.scalautil.Logger
-import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.cluster.ActivationInhibitor._
-import js7.controller.data.ControllerCommand.InternalClusterCommand
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
+import js7.data.cluster.ClusterSetting
 import js7.data.cluster.ClusterState.FailedOver
-import js7.data.cluster.ClusterTiming
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
@@ -100,17 +96,15 @@ private[cluster] object ActivationInhibitor
 {
   private val logger = Logger(getClass)
 
-  def inhibitActivationOfPeer(uri: Uri, timing: ClusterTiming, httpsConfig: HttpsConfig, clusterConf: ClusterConf)
+  def inhibitActivationOfPassiveNode(setting: ClusterSetting, clusterX: ClusterContext)
     (implicit actorSystem: ActorSystem): Task[Option[FailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
-      AkkaHttpControllerApi.resource(uri, clusterConf.userAndPassword, httpsConfig, name = "ClusterInhibitActivation")
-        .use(otherNode =>
-          otherNode.loginUntilReachable() >>
-            otherNode.executeCommand(
-              InternalClusterCommand(
-                ClusterInhibitActivation(2 * timing.heartbeat/*???*/))
-            ).map(_.response.asInstanceOf[ClusterInhibitActivation.Response].failedOver))
+      clusterX.clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")
+        .evalTap(_.loginUntilReachable())
+        .use(_
+          .executeClusterCommand(ClusterInhibitActivation(2 * setting.timing.heartbeat/*???*/))
+          .map(_.failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen. Stacktrace unterdrücken wenn isNotIgnorableStackTrace
           val msg = "While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses
@@ -119,7 +113,7 @@ private[cluster] object ActivationInhibitor
           retry(()).delayExecution(retryDelay)
         }
     }.map { maybeFailedOver =>
-      logger.debug(s"$uri ClusterInhibitActivation returned failedOver=$maybeFailedOver")
+      logger.debug(s"${setting.passiveUri} ClusterInhibitActivation returned failedOver=$maybeFailedOver")
       maybeFailedOver
     }
 

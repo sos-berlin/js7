@@ -154,6 +154,7 @@ lazy val js7 = (project in file("."))
     `js7-docker`,
     `js7-install`,
     `js7-journal`,
+    `js7-cluster`,
     `js7-controller`,
     `js7-controller-client`.jvm,
     `js7-controller-data`.jvm,
@@ -347,7 +348,7 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .jsSettings(
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
-lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-controller-client`.jvm, `js7-core`, `js7-common`, `js7-agent-client`, `js7-tester`.jvm % "test")
+lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-controller-client`.jvm, `js7-core`, `js7-cluster`, `js7-common`, `js7-agent-client`, `js7-tester`.jvm % "test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
@@ -442,8 +443,7 @@ lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester
       diffx ++
       akkaHttpTestkit % "test" ++
       scalaTest % "test" ++
-      scalaCheck % "test" ++
-      log4j % "test" ++
+      scalaCheck % "test" ++ log4j % "test" ++
       lmaxDisruptor % "test"
   }
   .settings(
@@ -462,6 +462,19 @@ lazy val `js7-journal` = project.dependsOn(`js7-common-http`.jvm, `js7-common`, 
       akkaHttp ++
       akkaHttpTestkit % "test" ++
       guice ++
+      diffx ++
+      scalaTest % "test" ++
+      scalaCheck % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
+lazy val `js7-cluster` = project.dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
       diffx ++
       scalaTest % "test" ++
       scalaCheck % "test" ++

@@ -26,6 +26,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.cluster.ActiveClusterNode
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.configutils.Configs.ConvertibleConfig
@@ -35,7 +36,6 @@ import js7.common.scalautil.Logger.ops._
 import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
-import js7.controller.cluster.ActiveClusterNode
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerStateExecutor.{liveOrderEventHandler, liveOrderEventSource}
 import js7.controller.data.agent.AgentRefState

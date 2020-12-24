@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString

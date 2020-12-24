@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import akka.actor.ActorSystem
 import akka.util.Timeout
@@ -13,11 +13,11 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
+import js7.cluster.Cluster._
+import js7.cluster.ClusterCommon.truncateFile
+import js7.cluster.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.common.akkahttp.https.HttpsConfig
 import js7.common.scalautil.Logger
-import js7.controller.cluster.Cluster._
-import js7.controller.cluster.ClusterCommon.truncateFile
-import js7.core.problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
@@ -40,6 +40,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
+  clusterContext: ClusterContext,
   controllerId: ControllerId,
   journalConf: JournalConf,
   val clusterConf: ClusterConf,
@@ -55,7 +56,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 {
   import clusterConf.ownId
 
-  private val common = new ClusterCommon(controllerId, ownId, persistence, clusterConf, httpsConfig, config, testEventPublisher)
+  private val common = new ClusterCommon(controllerId, ownId, persistence, clusterContext, httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
   @volatile
   private var _activeClusterNode: Checked[ActiveClusterNode[S]] = Left(Problem.pure("This cluster node is not active"))
@@ -84,8 +85,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     currentPassiveReplicatedState ->
       followUp.flatMapT {
         case (clusterState, followUp: ClusterFollowUp.BecomeActive[S]) =>
-          val activeClusterNode = new ActiveClusterNode[S](ownId, clusterState, httpsConfig,
-            persistence, eventWatch, common, clusterConf)
+          val activeClusterNode = new ActiveClusterNode[S](ownId, clusterState, persistence, eventWatch, common, clusterConf)
           activeClusterNode.start(followUp.recovered)
             .map(_.map { (_: Completed) =>
               _activeClusterNode = Right(activeClusterNode)

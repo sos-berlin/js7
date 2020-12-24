@@ -1,4 +1,4 @@
-package js7.controller.cluster
+package js7.cluster
 
 import js7.data.event.JournaledState
 import js7.journal.recover.Recovered
