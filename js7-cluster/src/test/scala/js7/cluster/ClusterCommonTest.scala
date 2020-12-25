@@ -2,7 +2,6 @@ package js7.cluster
 
 import java.nio.file.Files.{delete, size}
 import java.nio.file.Paths
-import js7.cluster.ClusterCommon.truncateFile
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryFile
 import org.scalatest.freespec.AnyFreeSpec
@@ -19,7 +18,7 @@ final class ClusterCommonTest extends AnyFreeSpec
       file := a + b
       assert(size(file) > a.length)
 
-      truncateFile(file, a.length)
+      ClusterCommon.truncateFile(file, a.length)
       assert(size(file) == a.length)
       assert(file.contentString == a)
       val truncated = Paths.get(file.toString + "~TRUNCATED-AFTER-FAILOVER")

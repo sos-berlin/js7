@@ -56,7 +56,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 {
   import clusterConf.ownId
 
-  private val common = new ClusterCommon(controllerId, ownId, persistence, clusterContext, httpsConfig, config, testEventPublisher)
+  private val common = new ClusterCommon(controllerId, ownId, persistence.clusterState,
+    clusterContext, httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
   @volatile
   private var _activeClusterNode: Checked[ActiveClusterNode[S]] = Left(Problem.pure("This cluster node is not active"))

@@ -57,7 +57,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   journalConf: JournalConf,
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
-  common: ClusterCommon[S])
+  common: ClusterCommon)
   (implicit S: JournaledState.Companion[S])
 {
   import setting.{activeId, idToUri}

@@ -3,7 +3,7 @@ package js7.cluster
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.ByteBuffer
-import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
+import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
 import js7.base.auth.UserAndPassword
@@ -24,23 +24,19 @@ import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
-import js7.data.event.JournaledState
 import js7.data.node.NodeId
-import js7.journal.state.JournaledStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.reflect.runtime.universe._
 
-private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
+private[cluster] final class ClusterCommon(
   controllerId: ControllerId,
   ownId: NodeId,
-  persistence: JournaledStatePersistence[S],
+  currentClusterState: Task[ClusterState],
   val clusterContext: ClusterContext,
   httpsConfig: HttpsConfig,
   config: Config,
   testEventPublisher: EventPublisher[Any])
   (implicit
-    S: JournaledState.Companion[S],
     scheduler: Scheduler,
     actorSystem: ActorSystem)
 {
@@ -73,7 +69,7 @@ private[cluster] final class ClusterCommon[S <: JournaledState[S]: TypeTag](
     }
 
   private def setNewClusterWatchSynchronizer(setting: ClusterSetting) = {
-    val result = new ClusterWatchSynchronizer(ownId, persistence.clusterState,
+    val result = new ClusterWatchSynchronizer(ownId, currentClusterState,
       newClusterWatchApi(setting.clusterWatchUri), setting.timing)
     assertThat(result.uri == setting.clusterWatchUri)
     _clusterWatchSynchronizer = Some(result)
@@ -144,20 +140,19 @@ private[js7] object ClusterCommon
         buffer.flip()
         if (!buffer.hasRemaining || buffer.get() != '\n')
           sys.error(s"Invalid failed-over position=$position in '${file.getFileName} journal file")
-        copy(f, out, buffer)
+
+        // Safe the truncated part for debugging
+        var eof = false
+        while(!eof) {
+          if (buffer.hasRemaining) out.write(buffer)
+          buffer.clear()
+          eof = f.read(buffer) <= 0
+          buffer.flip()
+        }
+
         f.truncate(position)
       }
     }
-
-  private def copy(in: ScatteringByteChannel, out: GatheringByteChannel, buffer: ByteBuffer): Unit = {
-    var eof = false
-    while(!eof) {
-      if (buffer.hasRemaining) out.write(buffer)
-      buffer.clear()
-      eof = in.read(buffer) <= 0
-      buffer.flip()
-    }
-  }
 
   def clusterEventAndStateToString(event: ClusterEvent, state: ClusterState): String =
     s"ClusterEvent: $event --> $state"

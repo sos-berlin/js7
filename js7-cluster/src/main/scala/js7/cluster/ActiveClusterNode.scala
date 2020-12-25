@@ -44,7 +44,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   initialClusterState: ClusterState,
   persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
-  common: ClusterCommon[S],
+  common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit
     S: JournaledState.Companion[S],
