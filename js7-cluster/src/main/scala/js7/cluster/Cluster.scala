@@ -58,7 +58,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private val common = new ClusterCommon(controllerId, ownId, persistence.clusterState,
     clusterContext, httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
-  @volatile private var _activeClusterNode: Checked[ActiveClusterNode[S]] = Left(Problem.pure("This cluster node is not active now"))
+  @volatile private var _activeClusterNode: Checked[ActiveClusterNode[S]] =
+    Left(Problem.pure("This cluster node is not active now"))
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
 
   def stop: Task[Completed] =

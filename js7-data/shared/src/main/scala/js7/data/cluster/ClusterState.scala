@@ -18,6 +18,8 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 {
   def isNonEmptyActive(id: NodeId): Boolean
 
+  def isEmptyOrActive(id: NodeId): Boolean
+
   final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     keyedEvent match {
       case KeyedEvent(_: NoKey, event) =>
@@ -76,12 +78,12 @@ object ClusterState
 {
   private type Id = NodeId
 
-
   /** Cluster has not been initialized.
     * Like ClusterSole but own URI is unknown. Non-permanent state, not stored. */
   case object Empty extends ClusterState
   {
     def isNonEmptyActive(id: Id) = false
+    def isEmptyOrActive(id: Id) = true
   }
 
   sealed trait HasNodes extends ClusterState
@@ -94,6 +96,7 @@ object ClusterState
     def timing = setting.timing
 
     final def isNonEmptyActive(id: Id) = id == activeId
+    final def isEmptyOrActive(id: Id) = id == activeId
     final def passiveId = idToUri.peerOf(activeId)
     final def passiveUri = idToUri(passiveId)
 

@@ -50,7 +50,6 @@ import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.{AgentId, AgentRef, AgentRunId}
-import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
@@ -270,7 +269,7 @@ with MainJournalingActor[ControllerState, Event]
   private def assertActiveClusterState(recovered: Recovered[ControllerState]): Unit =
     for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
       import controllerConfiguration.clusterConf.ownId
-      if (clusterState != ClusterState.Empty && !clusterState.isNonEmptyActive(ownId))
+      if (!clusterState.isEmptyOrActive(ownId))
         throw new IllegalStateException(
           s"Controller has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
     }

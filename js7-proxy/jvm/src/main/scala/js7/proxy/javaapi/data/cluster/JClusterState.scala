@@ -51,6 +51,9 @@ object JClusterState extends JJsonable.Companion[JClusterState]
     final def isNonEmptyActive(id: NodeId) =
       asScala.isNonEmptyActive(id)
 
+    final def isEmptyOrActive(id: NodeId) =
+      asScala.isEmptyOrActive(id)
+
     final def passiveId: NodeId =
       asScala.passiveId
 
