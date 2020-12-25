@@ -5,7 +5,7 @@ import akka.util.Timeout
 import com.softwaremill.diffx
 import com.typesafe.config.Config
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.problem.{Checked, Problem}
@@ -20,14 +20,13 @@ import js7.common.akkahttp.https.HttpsConfig
 import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
-import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.controller.ControllerId
-import js7.data.event.{EventId, JournaledState}
+import js7.data.event.{EventId, JournalPosition, JournaledState}
 import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
-import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.RealEventWatch
@@ -59,8 +58,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private val common = new ClusterCommon(controllerId, ownId, persistence.clusterState,
     clusterContext, httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
-  @volatile
-  private var _activeClusterNode: Checked[ActiveClusterNode[S]] = Left(Problem.pure("This cluster node is not active"))
+  @volatile private var _activeClusterNode: Checked[ActiveClusterNode[S]] = Left(Problem.pure("This cluster node is not active now"))
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
 
   def stop: Task[Completed] =
@@ -80,143 +78,80 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     */
   def start(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
     if (recovered.clusterState != Empty) logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
-
-    val (currentPassiveReplicatedState, followUp) = startCluster(recovered)
-
-    currentPassiveReplicatedState ->
-      followUp.flatMapT {
-        case (clusterState, followUp: ClusterFollowUp.BecomeActive[S]) =>
-          val activeClusterNode = new ActiveClusterNode[S](ownId, clusterState, persistence, eventWatch, common, clusterConf)
-          activeClusterNode.start(followUp.recovered)
-            .map(_.map { (_: Completed) =>
-              _activeClusterNode = Right(activeClusterNode)
-              followUp
-            })
-        }
+    val (currentPassiveReplicatedState, followUp) = startNode(recovered)
+    val startActiveFollowUp = followUp.flatMapT {
+      case followUp: ClusterFollowUp.BecomeActive[S] =>
+        val activeClusterNode = new ActiveClusterNode(ownId, followUp.recovered.clusterState,
+          persistence, eventWatch, common, clusterConf)
+        activeClusterNode.start(followUp.recovered)
+          .map(_.map { (_: Completed) =>
+            _activeClusterNode = Right(activeClusterNode)
+            followUp
+          })
+      }
+    currentPassiveReplicatedState -> startActiveFollowUp
   }
 
-  private def startCluster(recovered: Recovered[S])
-  : (Task[Option[Checked[S]]], Task[Checked[(ClusterState, ClusterFollowUp[S])]]) =
+  private def startNode(recovered: Recovered[S])
+  : (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) =
     recovered.clusterState match {
       case Empty =>
         if (clusterConf.isPrimary) {
-          logger.debug(s"Active primary cluster node '$ownId', still with no backup node appointed")
+          logger.debug(s"Active primary cluster node '${ownId.string}', still with no backup node appointed")
           Task.pure(None) ->
             (activationInhibitor.startActive >>
-              Task.pure(Right(recovered.clusterState -> ClusterFollowUp.BecomeActive(recovered))))
+              Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))
         } else if (recovered.eventId != EventId.BeforeFirst)
           Task.pure(Some(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))) ->
             Task.pure(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))
         else
-          startBackupNodeWithEmptyClusterState(recovered)
+          startAsBackupNodeWithEmptyClusterState(recovered)
 
-      case clusterState: HasNodes if clusterState.activeId == ownId =>
-        startActiveNodeWithBackup(recovered)
-
-      case clusterState: HasNodes if clusterState.passiveId == ownId =>
-        logger.info(
-          if (clusterState.isInstanceOf[Coupled])
-            s"Remaining a passive cluster node following the active node '${clusterState.activeId}'"
-          else
-            s"Remaining a passive cluster node trying to follow the active node '${clusterState.activeId}'")
-        val passive = newPassiveClusterNode(clusterState.setting, recovered)
-        passive.state.map(s => Some(Right(s))) ->
-          passive.run(recovered.state)
-
-      case _ =>
-        Task.pure(None) ->
-          Task.pure(Left(Problem.pure(s"Unexpected clusterState=${recovered.clusterState} (id=$ownId)")))
+      case clusterState: HasNodes =>
+        if (ownId == clusterState.activeId)
+          startAsActiveNodeWithBackup(recovered)
+        else if (ownId == clusterState.passiveId)
+          startAsPassiveNode(recovered, clusterState)
+        else
+          Task.pure(None) ->
+            Task.pure(Left(Problem.pure(s"Own cluster node id '${ownId.string} " +
+              s"does not match clusterState=${recovered.clusterState}")))
     }
 
-  private def startBackupNodeWithEmptyClusterState(recovered: Recovered[S])
-  : (Task[Option[Checked[S]]], Task[Checked[(ClusterState, ClusterFollowUp[S])]]) = {
+  private def startAsBackupNodeWithEmptyClusterState(recovered: Recovered[S])
+  : (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
     logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
     val startedPromise = Promise[ClusterStartBackupNode]()
     expectingStartBackupCommand := startedPromise
     val passiveClusterNode = Task.deferFuture(startedPromise.future)
-      .map(cmd => newPassiveClusterNode(cmd.setting, recovered,
-        initialFileEventId = Some(cmd.fileEventId)))
+      .map(cmd => newPassiveClusterNode(recovered, cmd.setting, initialFileEventId = Some(cmd.fileEventId)))
       .memoize
-    Task.defer(
+    val passiveState = Task.defer {
       if (startedPromise.future.isCompleted)
         passiveClusterNode.flatMap(_.state.map(s => Some(Right(s))))
       else
         Task.pure(Some(Left(BackupClusterNodeNotAppointed)))
-    ) ->
-      passiveClusterNode.flatMap(passive =>
-        activationInhibitor.startPassive >>
-          passive.run(recovered.state))
+    }
+    val followUp = passiveClusterNode.flatMap(passive =>
+      activationInhibitor.startPassive >>
+        passive.run(recovered.state))
+    passiveState -> followUp
   }
 
-  private def startActiveNodeWithBackup(recovered: Recovered[S])
-  : (Task[Option[Checked[S]]], Task[Checked[(ClusterState, ClusterFollowUp[S])]]) = {
+  private def startAsActiveNodeWithBackup(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
     recovered.clusterState match {
       case recoveredClusterState: Coupled =>
         import recoveredClusterState.passiveId
-        logger.info(s"This cluster node '$ownId' was active and coupled before restart - asking '$passiveId' about its state")
+        logger.info(s"This cluster node '$ownId' was active and coupled before restart - " +
+          s"asking '${passiveId.string}' node about its state")
         val failedOver = common.inhibitActivationOfPeer(recoveredClusterState).map {
-          case None =>
-            // The other node has not failed-over
-            logger.info(s"The other cluster node '$passiveId' is up and still passive, so this node remains the active cluster node")
+          case None/*Other node has not failed-over*/ =>
+            logger.info(s"The other '${passiveId.string}' cluster node is up and still passive, " +
+              "so this node remains the active cluster node")
             None
 
           case Some(otherFailedOver) =>
-            import otherFailedOver.failedAt
-            logger.warn(s"The other cluster node '${otherFailedOver.activeId}' failed-over and became active while this node was absent")
-            assertThat(otherFailedOver.idToUri == recoveredClusterState.idToUri &&
-                       otherFailedOver.activeId == recoveredClusterState.passiveId)
-            // This restarted, previously failed cluster node may have written one chunk of events more than
-            // the passive node, maybe even an extra snapshot in a new journal file.
-            // These extra events are not acknowledged. So we truncate the journal.
-            var truncated = false
-            val journalFiles = JournalFiles.listJournalFiles(journalMeta.fileBase) takeRight 2
-            val journalFile =
-              if (journalFiles.last.afterEventId == failedAt.fileEventId)
-                journalFiles.last
-              else if (journalFiles.lengthIs == 2 &&
-                journalFiles.head.afterEventId == failedAt.fileEventId &&
-                journalFiles.last.afterEventId > failedAt.fileEventId)
-              {
-                truncated = true
-                val deleteFile = journalFiles.last.file
-                logger.info(s"Removing journal file written after failover: ${deleteFile.getFileName}")
-                Files.move(deleteFile, Paths.get(s"$deleteFile~DELETED-AFTER-FAILOVER"), REPLACE_EXISTING)  // Keep the file for debugging
-                journalMeta.updateSymbolicLink(journalFiles.head.file)
-                journalFiles.head
-              } else
-                sys.error(s"Failed-over node's ClusterState does not match local journal files:" +
-                  s" $otherFailedOver <-> ${journalFiles.map(_.file.getFileName).mkString(", ")}")
-            assertThat(journalFile.afterEventId == failedAt.fileEventId)
-            //FIXME JournalEventWatch darf noch nicht über den abgeschnittenen Teil benachrichtigt worden sein!
-            //assertThat(recoveredJournalFile.journalPosition == failedAt,
-            //  s"${recoveredJournalFile.journalPosition} != $failedAt")
-            val file = journalFile.file
-            val fileSize = Files.size(file)
-            if (fileSize != failedAt.position) {
-              if (fileSize < failedAt.position)
-                sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
-              logger.info(s"Truncating journal file at failover position ${failedAt.position} (${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
-              truncated = true
-              truncateFile(file, failedAt.position)
-            }
-            var trunkRecovered = recovered
-            if (truncated) {
-              // TODO Recovering may be omitted because the new active node has written a snapshot immediately after failover
-              // May take a long time !!!
-              logger.info("Recovering again from properly truncated journal file")
-              trunkRecovered = JournaledStateRecoverer.recover[S](journalMeta, config /*, runningSince=???*/)
-              val truncatedRecoveredJournalFile = trunkRecovered.recoveredJournalFile
-                .getOrElse(sys.error(s"Unrecoverable journal file '${file.getFileName}''"))
-              assertThat(truncatedRecoveredJournalFile.state.clusterState == recoveredClusterState)
-              assertThat(truncatedRecoveredJournalFile.journalPosition == failedAt,
-                s"${truncatedRecoveredJournalFile.journalPosition} != $failedAt")
-              //TODO Missing test: recovered.close()
-            }
-            Some(recoveredClusterState ->
-              newPassiveClusterNode(otherFailedOver.setting, trunkRecovered, otherFailedOver = true))
-
-          case otherState =>
-            sys.error(s"The other node is in invalid failedOver=$otherState")  // ???
+            Some(startPassiveAfterFailover(recovered, recoveredClusterState, otherFailedOver))
         }.memoize
 
         failedOver.flatMap {
@@ -225,24 +160,74 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
         } ->
           failedOver.flatMap {
             case None =>
-              Task.pure(Right(recoveredClusterState -> ClusterFollowUp.BecomeActive(recovered)))
-            case Some((otherClusterState/*unused???*/, passiveClusterNode)) =>
-              assertThat(otherClusterState == recovered.clusterState)
-              passiveClusterNode.run(recovered.state)
+              Task.pure(Right(ClusterFollowUp.BecomeActive(recovered)))
+            case Some((ourRecovered, passiveClusterNode)) =>
+              passiveClusterNode.run(ourRecovered.state)
           }
 
       case _ =>
         logger.info("Remaining the active cluster node, not coupled with passive node")
-        //proceed(recoveredClusterState, recovered.eventId)
         Task.pure(None) ->
           (activationInhibitor.startActive >>
-            Task.pure(Right(recovered.clusterState -> ClusterFollowUp.BecomeActive(recovered))))
+            Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))
     }
   }
 
+  def startPassiveAfterFailover(recovered: Recovered[S], coupled: Coupled, otherFailedOver: FailedOver)
+  : (Recovered[S], PassiveClusterNode[S]) = {
+    logger.warn(s"The other '${otherFailedOver.activeId.string}' cluster node failed-over and " +
+      s"became active while this node was absent")
+    assertThat(otherFailedOver.idToUri == coupled.idToUri &&
+               otherFailedOver.activeId == coupled.passiveId)
+    // This restarted, previously failed active cluster node may have written one chunk of events more than
+    // the passive node, maybe even an extra snapshot in a new journal file.
+    // These extra events are not acknowledged. So we truncate our journal.
+    val ourRecovered = truncateJournalAndRecoverAgain(otherFailedOver) match {
+      case None => recovered
+      case Some(truncatedRecovered) =>
+        assertThat(truncatedRecovered.state.clusterState == coupled)
+        assertThat(!recovered.eventWatch.whenStarted.isCompleted)
+        recovered.close()  // Should do nothing, because recovered.eventWatch has not been started
+        truncatedRecovered
+    }
+    ourRecovered -> newPassiveClusterNode(ourRecovered, otherFailedOver.setting, otherFailedOver = true)
+  }
+
+  private def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =
+    for (file <- truncateJournal(journalMeta.fileBase, otherFailedOver.failedAt))
+      yield recoverFromTruncated(file, otherFailedOver.failedAt)
+
+  private def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
+    // TODO May recovering be omitted when the truncated parts was incomplete ?
+    logger.info("Recovering again from properly truncated journal file")
+
+    // May take a long time !!!
+    val recovered = JournaledStateRecoverer.recover[S](journalMeta, config)
+
+    // Assertions
+    val recoveredJournalFile = recovered.recoveredJournalFile
+      .getOrElse(sys.error(s"Unrecoverable journal file: ${file.getFileName}"))
+    assertThat(recoveredJournalFile.file == file)
+    assertThat(recoveredJournalFile.journalPosition == failedAt,
+      s"${recoveredJournalFile.journalPosition} != $failedAt")
+
+    recovered
+  }
+
+  private def startAsPassiveNode(recovered: Recovered[S], clusterState: HasNodes) = {
+    logger.info(
+      if (clusterState.isInstanceOf[Coupled])
+        s"Remaining a passive cluster node following the active node '${clusterState.activeId}'"
+      else
+        s"Remaining a passive cluster node trying to follow the active node '${clusterState.activeId}'")
+    val passive = newPassiveClusterNode(recovered, clusterState.setting)
+    passive.state.map(s => Some(Right(s))) ->
+      passive.run(recovered.state)
+  }
+
   private def newPassiveClusterNode(
-    setting: ClusterSetting,
     recovered: Recovered[S],
+    setting: ClusterSetting,
     otherFailedOver: Boolean = false,
     initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[S] =
@@ -304,4 +289,39 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 object Cluster
 {
   private val logger = Logger(getClass)
+
+  private[cluster] def truncateJournal(journalFileBase: Path, failedAt: JournalPosition): Option[Path] = {
+    var truncated = false
+    val lastTwoJournalFiles = JournalFiles.listJournalFiles(journalFileBase) takeRight 2
+    val journalFile =
+      if (lastTwoJournalFiles.last.afterEventId == failedAt.fileEventId)
+        lastTwoJournalFiles.last
+      else if (lastTwoJournalFiles.lengthIs == 2 &&
+        lastTwoJournalFiles.head.afterEventId == failedAt.fileEventId &&
+        lastTwoJournalFiles.last.afterEventId > failedAt.fileEventId)
+      {
+        truncated = true
+        val deleteFile = lastTwoJournalFiles.last.file
+        logger.info(s"Removing journal file written after failover: ${deleteFile.getFileName}")
+        // Keep the file for debugging
+        Files.move(deleteFile, Paths.get(s"$deleteFile~DELETED-AFTER-FAILOVER"), REPLACE_EXISTING)
+        JournalFiles.updateSymbolicLink(journalFileBase, lastTwoJournalFiles.head.file)
+        lastTwoJournalFiles.head
+      } else
+        sys.error(s"Failed-over node's JournalPosition does not match local journal files:" +
+          s" $failedAt <-> ${lastTwoJournalFiles.map(_.file.getFileName).mkString(", ")}")
+    assertThat(journalFile.afterEventId == failedAt.fileEventId)
+
+    val file = journalFile.file
+    val fileSize = Files.size(file)
+    if (fileSize != failedAt.position) {
+      if (fileSize < failedAt.position)
+        sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
+      logger.info(s"Truncating journal file at failover position ${failedAt.position} " +
+        s"(${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
+      truncated = true
+      truncateFile(file, failedAt.position)
+    }
+    truncated ? file
+  }
 }

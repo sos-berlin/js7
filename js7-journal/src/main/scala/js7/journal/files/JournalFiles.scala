@@ -5,6 +5,7 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.{Files, Path, Paths}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.EventId
 import js7.journal.data.JournalMeta
@@ -46,5 +47,12 @@ object JournalFiles
       Try { if (exists(symLink, NOFOLLOW_LINKS)) delete(symLink) }
       Try { createSymbolicLink(symLink, toFile.getFileName) }
     }
+  }
+
+  def updateSymbolicLink(fileBase: Path, toFile: Path): Unit = {
+    assertThat(toFile.toString startsWith fileBase.toString)
+    val symLink = Paths.get(s"$fileBase-journal")  // We preserve the suffix ".journal" for the real journal files
+    Try { if (exists(symLink, NOFOLLOW_LINKS)) delete(symLink) }
+    Try { createSymbolicLink(symLink, toFile.getFileName) }
   }
 }

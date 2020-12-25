@@ -52,7 +52,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   journalMeta: JournalMeta,
   /** For backup initialization, only when ClusterState.Empty. */
   initialFileEventId: Option[EventId],
-  recovered: Recovered[S],
+  recovered: Recovered[S]/*TODO The maybe big JournaledState at start sticks here*/,
   otherFailed: Boolean,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
@@ -80,7 +80,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
     * Runs the passive node until activated or terminated.
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
-  def run(recoveredState: S): Task[Checked[(ClusterState, ClusterFollowUp[S])]] =
+  def run(recoveredState: S): Task[Checked[ClusterFollowUp[S]]] =
     Task.deferAction { implicit s =>
       val recoveredClusterState = recoveredState.clusterState
       logger.debug(s"recoveredClusterState=$recoveredClusterState")
@@ -149,7 +149,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
     common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
-  : Task[Checked[(ClusterState, ClusterFollowUp[S])]] =
+  : Task[Checked[ClusterFollowUp[S]]] =
     common.clusterContext.clusterNodeApi(activeUri, "active journal")
       .use(activeNodeApi =>
         Task.tailRecM(
@@ -170,11 +170,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
               case Right(continuation) if shouldActivate(continuation.clusterState) =>
                 logger.info(s"Activating because ClusterState has become ${continuation.clusterState}")
-                Right(Right((
-                  continuation.clusterState,
-                  ClusterFollowUp.BecomeActive(
-                    recovered.copy[S](
-                      recoveredJournalFile = continuation.maybeRecoveredJournalFile)))))
+                Right(Right(ClusterFollowUp.BecomeActive(
+                  recovered.copy[S](
+                    recoveredJournalFile = continuation.maybeRecoveredJournalFile))))
 
               case Right(continuation) =>
                 Left(continuation)
