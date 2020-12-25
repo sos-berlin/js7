@@ -85,23 +85,24 @@ private final class ClusterWatchSynchronizer(
         case Right(Completed) =>
       }
 
-    doAHeartbeat >>
-      Task {
-        val heartbeatFuture = sendHeartbeats
-          .onCancelRaiseError(new CancelledException)
-          .onErrorRecover { case _: CancelledException => Completed }
-          .runToFuture
-          .andThen {
-            case Success(Completed) =>
-              logger.debug("Heartbeat stopped")
-            case Failure(t) =>
-              logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
-              logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
-              haltJava(s"HALT due to unreachable ClusterWatch: ${t.toStringWithCauses}", restart = true)
-          }
-        heartbeat.getAndSet(heartbeatFuture).cancel()
-        Completed
-      }
+    def start = Task {
+      val heartbeatFuture = sendHeartbeats
+        .onCancelRaiseError(new CancelledException)
+        .onErrorRecover { case _: CancelledException => Completed }
+        .runToFuture
+        .andThen {
+          case Success(Completed) =>
+            logger.debug("Heartbeat stopped")
+          case Failure(t) =>
+            logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
+            logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
+            haltJava(s"HALT due to unreachable ClusterWatch: ${t.toStringWithCauses}", restart = true)
+        }
+      heartbeat := heartbeatFuture
+      Completed
+    }
+
+    stopHeartbeating >> doAHeartbeat >> start
   }
 
   private def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =

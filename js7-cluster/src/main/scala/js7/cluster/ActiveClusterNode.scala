@@ -316,7 +316,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
                 common.tryEndlesslyToSendCommand(
                   state.passiveUri,
                   ClusterStartBackupNode(state.setting.copy(activeId = ownId), fileEventId = eventWatch.lastFileTornEventId)
-                ) .onErrorRecover { case t: Throwable =>
+                ).onErrorRecover { case t: Throwable =>
                   logger.warn(s"Sending Cluster command to other node failed: $t", t)
                 }
               ).runToFuture
@@ -330,6 +330,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         case state: HasNodes =>
           if (_clusterWatchSynchronizer.exists(_.clusterWatch.baseUri != state.setting.clusterWatchUri)) {
             logger.info(s"Changing ClusterWatch URI to ${state.setting.clusterWatchUri}")
+            for (o <- _clusterWatchSynchronizer) o.stop()
             _clusterWatchSynchronizer = Some(common.clusterWatchSynchronizer(state.setting))
           }
       }
