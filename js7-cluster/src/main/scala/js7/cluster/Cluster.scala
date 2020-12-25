@@ -71,7 +71,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   /**
     * Returns a pair of `Task`s
-    * - `(Task[None], _)` no replicated state available, because it's an active node or the backup has not yet appointed.
+    * - `(Task[None], _)` no replicated state available, because it's an active node or the backup node has not yet been appointed.
     * - `(Task[Some[Checked[S]]], _)` with the current replicated state if this node has started as a passive node.
     * - `(_, Task[Checked[ClusterFollowUp]]` when this node should be activated
     * @return A pair of `Task`s with maybe the current `S` of this passive node (if so)
@@ -157,8 +157,6 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
           case None =>
             // The other node has not failed-over
             logger.info(s"The other cluster node '$passiveId' is up and still passive, so this node remains the active cluster node")
-            //remainingActiveAfterRestart = true
-            //proceedCoupled(recoveredClusterState, recovered.eventId)
             None
 
           case Some(otherFailedOver) =>
@@ -262,7 +260,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
               if (!clusterConf.isBackup)
                 Left(ClusterNodeIsNotBackupProblem)
               else
-                Left(Problem("Cluster node is not ready to accept a backup node configuration"))
+                Left(Problem.pure("Cluster node is not ready to accept a backup node configuration"))
             case Some(promise) =>
               if (command.setting.passiveId != ownId)
                 Left(Problem.pure(s"$command sent to wrong node '$ownId'"))
@@ -275,27 +273,27 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
           }
         }
 
-      case _: ClusterCommand.ClusterPrepareCoupling |
-           _: ClusterCommand.ClusterCouple |
-           _: ClusterCommand.ClusterRecouple =>
-        Task.pure(activeClusterNode)
-          .flatMapT(_.executeCommand(command))
-
       case ClusterCommand.ClusterInhibitActivation(duration) =>
         activationInhibitor.inhibitActivation(duration)
-          .flatMapT {
-            case /*inhibited=*/true => Task.pure(Right(ClusterInhibitActivation.Response(None)))
-            case /*inhibited=*/false =>
+          .flatMapT(inhibited =>
+            if (inhibited)
+              Task.pure(Right(ClusterInhibitActivation.Response(None)))
+            else
               // Could not inhibit, so this node is already active
               persistence.currentState/*TODO Possible Deadlock?*/.map(_.clusterState).map {
                 case failedOver: FailedOver =>
                   logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
                   Right(ClusterInhibitActivation.Response(Some(failedOver)))
                 case clusterState =>
-                  Left(Problem.pure(
-                    s"ClusterInhibitActivation command failed because node is already active but not failed-over: $clusterState"))
-              }
-          }
+                  Left(Problem.pure("ClusterInhibitActivation command failed " +
+                    s"because node is already active but not failed-over: $clusterState"))
+              })
+
+      case _: ClusterCommand.ClusterPrepareCoupling |
+           _: ClusterCommand.ClusterCouple |
+           _: ClusterCommand.ClusterRecouple =>
+        Task.pure(activeClusterNode)
+          .flatMapT(_.executeCommand(command))
     }
 
   def isActive: Task[Boolean] =

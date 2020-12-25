@@ -106,8 +106,10 @@ private[cluster] object ActivationInhibitor
           .executeClusterCommand(ClusterInhibitActivation(2 * setting.timing.heartbeat/*???*/))
           .map(_.failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          // TODO Code mit loginUntilReachable usw. zusammenfassen. Stacktrace unterdrücken wenn isNotIgnorableStackTrace
-          val msg = "While trying to reach the other cluster node due to restart: " + throwable.toStringWithCauses
+          // TODO Code mit loginUntilReachable usw. zusammenfassen.
+          //  Stacktrace unterdrücken wenn isNotIgnorableStackTrace
+          val msg = "While trying to reach the other cluster node due to restart: " +
+            throwable.toStringWithCauses
           logger.warn(msg)
           for (t <- throwable.ifNoStackTrace) logger.debug(msg, t)
           retry(()).delayExecution(retryDelay)
