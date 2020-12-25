@@ -59,7 +59,7 @@ import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
-import monix.execution.Scheduler
+import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
@@ -284,44 +284,9 @@ object RunningController
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
       itemVerifier
-      val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf)
-        .closeWithCloser
       val recovered = Await.result(whenRecovered, Duration.Inf)
         .closeWithCloser
-      val cluster = {
-        import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
-        new Cluster(
-          journalMeta,
-          persistence,
-          recovered.eventWatch,
-          (uri, name) => AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem)
-            /*.evalTap(_.loginUntilReachable())*/,
-          controllerId,
-          journalConf,
-          clusterConf,
-          httpsConfig,
-          config,
-          injector.instance[EventIdGenerator],
-          testEventBus)
-      }
-
-      // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
-      // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
-      val (replicatedState, clusterFollowUpTask) = startCluster(cluster, recovered)
-      val controllerState = Task.defer {
-        if (persistence.isStarted)
-          persistence.currentState map Right.apply
-        else
-          replicatedState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem).flatten)
-      }
-      val clusterFollowUpFuture = clusterFollowUpTask
-        .flatTap {
-          case Right(ClusterFollowUp.BecomeActive(recovered)) =>
-            Task { persistence.start(recovered.state) }
-          case _ => Task.unit
-        }
-        .executeWithOptions(_.enableAutoCancelableRunLoops)
-        .runToFuture
+      val (cluster, clusterFollowUpFuture, controllerState) = startCluster(recovered, journalActor, testEventBus)
       val (orderKeeperStarted, orderKeeperTerminated) = {
         val started = clusterFollowUpFuture.map(_.flatMap(
           startControllerOrderKeeper(journalActor, cluster.activeClusterNode.orThrow/*TODO*/, _, testEventBus)))
@@ -386,32 +351,60 @@ object RunningController
       }
     }
 
-    private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
-      val sessionTokenFile = controllerConfiguration.stateDirectory / "session-token"
-      blocking {
-        sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-          .runToFuture await controllerConfiguration.akkaAskTimeout.duration
-      }
-      closer onClose { deleteIfExists(sessionTokenFile) }
-    }
-
-    /** @return Task(None) when cancelled. */
     private def startCluster(
-      cluster: Cluster[ControllerState],
-      recovered: Recovered[ControllerState])
-    : (Task[Option[Checked[ControllerState]]], Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]]) =
-    {
+      recovered: Recovered[ControllerState],
+      journalActor: ActorRef @@ JournalActor.type,
+      testEventBus: StandardEventBus[Any])
+    : (Cluster[ControllerState],
+      CancelableFuture[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]],
+      Task[Either[Problem, ControllerState]])
+    = {
+      val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf)
+        .closeWithCloser
+      val cluster = {
+        import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
+        new Cluster(
+          journalMeta,
+          persistence,
+          recovered.eventWatch,
+          (uri, name) => AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
+          controllerId,
+          journalConf,
+          clusterConf,
+          httpsConfig,
+          config,
+          injector.instance[EventIdGenerator],
+          testEventBus)
+      }
+
+      // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
+      // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
       class StartingClusterCancelledException extends NoStackTrace
-      val (currentPassiveReplicatedState, followUpTask) = cluster.start(recovered)
-      currentPassiveReplicatedState ->
-        followUpTask
-          .doOnCancel(Task { logger.debug("Cancel Cluster") })
-          .onCancelRaiseError(new StartingClusterCancelledException)
-          .map(_.orThrow)
-          .map(Right.apply)
-          .onErrorRecoverWith {
-            case _: StartingClusterCancelledException => Task { Left(clusterStartupTermination) }
-          }
+      val (replicatedState, followUpTask) = cluster.start(recovered)
+      val clusterFollowUpTask = followUpTask
+        .doOnCancel(Task { logger.debug("Cancel Cluster") })
+        .onCancelRaiseError(new StartingClusterCancelledException)
+        .map(_.orThrow)
+        .map(Right.apply)
+        .onErrorRecoverWith {
+          case _: StartingClusterCancelledException => Task { Left(clusterStartupTermination) }
+        }
+      val controllerState = Task.defer {
+        if (persistence.isStarted)
+          persistence.currentState map Right.apply
+        else
+          replicatedState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem).flatten)
+      }
+      val clusterFollowUpFuture = clusterFollowUpTask
+        .flatTap {
+          case Right(ClusterFollowUp.BecomeActive(recovered)) =>
+            Task { persistence.start(recovered.state) }
+          case _ => Task.unit
+        }
+        .executeWithOptions(_.enableAutoCancelableRunLoops)
+        .runToFuture
+
+      (cluster, clusterFollowUpFuture, controllerState)
     }
 
     private def startControllerOrderKeeper(
@@ -436,6 +429,15 @@ object RunningController
             .andThen { case _ => closer.close() }  // Close automatically after termination
           Right(OrderKeeperStarted(tag[ControllerOrderKeeper](actor), termination))
       }
+    }
+
+    private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
+      val sessionTokenFile = controllerConfiguration.stateDirectory / "session-token"
+      blocking {
+        sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+          .runToFuture await controllerConfiguration.akkaAskTimeout.duration
+      }
+      closer onClose { deleteIfExists(sessionTokenFile) }
     }
   }
 
