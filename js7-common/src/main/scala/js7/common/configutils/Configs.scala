@@ -13,7 +13,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.utils.JavaResource
-import scala.collection.immutable.VectorBuilder
 import scala.jdk.CollectionConverters._
 
 /**
@@ -41,44 +40,47 @@ object Configs
       ConfigFactory.empty
     }
 
-  def loadResource(resource: JavaResource, internal: Boolean = false) = {
+  def loadResource(resource: JavaResource) = {
     logger.trace(s"Reading configuration JavaResource $resource")
     var options = Required.setClassLoader(resource.classLoader)
-    if (internal) options = options.setOriginDescription(InternalOriginDescription)
+    options = options.setOriginDescription(InternalOriginDescription)
     ConfigFactory.parseResourcesAnySyntax(resource.path, options)
   }
 
   def logConfig(config: Config): Unit =
-    for (line <- renderConfig(config)) logger.debug(line)
-
-  def renderConfig(config: Config): Seq[String] = {
-    val builder = new VectorBuilder[String]
-    val sb = new StringBuilder
-    for (entry <- config.entrySet.asScala.view
-      .filter(_.getValue.origin.description.replaceFirst(": [0-9]+(-[0-9]+)?", "") != InternalOriginDescription)
-      .toVector
-      .sortBy(_.getKey))
-    {
-      sb.clear()
-      sb ++= renderKeyValue(entry.getKey, entry.getValue)
-      if (!entry.getValue.origin.description.startsWith(SecretOriginDescription)) {
-        sb ++= " ("
-        sb ++= entry.getValue.origin.description
-        sb += ')'
-      }
-      builder += sb.toString
+    for (entry <- config.entrySet.asScala.view.toVector.sortBy(_.getKey)) {
+      def line = renderValue(entry.getKey, entry.getValue)
+      if (isInternal(entry.getValue))
+        logger.trace(line)
+      else
+        logger.debug(line)
     }
-    builder.result()
-  }
 
-  private def renderKeyValue(key: String, value: ConfigValue): String = {
-    val v =
-      if (key.endsWith("password") || value.origin.description.startsWith(SecretOriginDescription))
+  private[configutils] def renderValue(key: String, value: ConfigValue): String = {
+    val sb = new StringBuilder(128)
+    sb ++= key
+    sb += '='
+    val secret = isSecret(value)
+    sb ++=
+      (if (secret || key.endsWith("password"))
         "(secret)"
       else
-        value.render(concise.setJson(false))
-    s"$key=$v"
+        value.render(concise))
+    if (!secret && !isInternal(value)) {
+      sb ++= " ("
+      sb ++= value.origin.description
+      sb += ')'
+    }
+    sb.toString
   }
+
+  private val descriptionRegEx = ": [0-9]+(-[0-9]+)?".r
+
+  private def isInternal(value: ConfigValue) =
+    descriptionRegEx.replaceFirstIn(value.origin.description, "") == InternalOriginDescription
+
+  private def isSecret(value: ConfigValue) =
+    value.origin.description.startsWith(SecretOriginDescription)
 
   implicit final class ConvertibleConfig(private val underlying: Config) extends ConvertiblePartialFunction[String, String]
   {

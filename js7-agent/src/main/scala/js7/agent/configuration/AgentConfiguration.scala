@@ -117,8 +117,7 @@ object AgentConfiguration
   private[configuration] val DefaultName = if (isTest) "Agent" else "JS7"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("js7/agent/configuration/agent.conf"),
-    internal = true
+    JavaResource("js7/agent/configuration/agent.conf")
   ).withFallback(JobSchedulerConfiguration.defaultConfig)
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {

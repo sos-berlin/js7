@@ -8,6 +8,5 @@ object JobSchedulerConfiguration
 {
   val defaultConfig: Config =
     Configs.loadResource(
-      JavaResource("js7/common/configuration/js7.conf"),
-      internal = true)
+      JavaResource("js7/common/configuration/js7.conf"))
 }

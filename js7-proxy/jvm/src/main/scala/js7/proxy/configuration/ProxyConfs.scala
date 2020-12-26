@@ -8,7 +8,7 @@ import js7.common.utils.JavaResource
 
 object ProxyConfs
 {
-  val defaultConfig = Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"), internal = true)
+  val defaultConfig = Configs.loadResource(JavaResource("js7/proxy/configuration/proxy.conf"))
     .withFallback(JobSchedulerConfiguration.defaultConfig)
   lazy val default = fromConfig(defaultConfig)
 

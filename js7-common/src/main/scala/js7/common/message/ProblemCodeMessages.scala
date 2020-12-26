@@ -12,7 +12,7 @@ import scala.util.Try
 object ProblemCodeMessages
 {
   private val resource = JavaResource("js7/common/message/messages-en.conf")
-  private val config = Configs.loadResource(resource, internal = true)
+  private val config = Configs.loadResource(resource)
 
   private[message] val problemCodeToPattern: ProblemCode => Option[String] =
     code => Try(config.getString(code.string)).toOption

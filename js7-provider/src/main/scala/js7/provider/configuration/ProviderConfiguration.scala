@@ -31,7 +31,7 @@ final case class ProviderConfiguration(
 
 object ProviderConfiguration
 {
-  private lazy val DefaultConfigResource = JavaResource("js7/provider/configuration/provider.conf")
+  private val DefaultConfigResource = JavaResource("js7/provider/configuration/provider.conf")
 
   def fromCommandLine(args: Seq[String], addConfig: Config = ConfigFactory.empty): ProviderConfiguration =
     CommandLineArguments.parse(args) { a =>
@@ -44,7 +44,7 @@ object ProviderConfiguration
         .withFallback(parseConfigIfExists(configDir / "private" / "private.conf", secret = true))
         .withFallback(parseConfigIfExists(configDir / "provider.conf", secret = false))
         .withFallback(JobSchedulerConfiguration.defaultConfig)
-        .withFallback(Configs.loadResource(DefaultConfigResource, internal = true))
+        .withFallback(Configs.loadResource(DefaultConfigResource))
         .resolve
       new ProviderConfiguration(
         configDirectory = configDir,

@@ -60,7 +60,7 @@ final class ConfigsTest extends AnyFreeSpec
     assert(TestConfig.ifPath("MISSING") (path => TestConfig.getString(path)) == None)
   }
 
-  "renderConfig" in {
+  "renderValue" in {
     withTemporaryDirectory("ConfigsTest") { dir =>
       val file = dir / "test.conf"
       val hidden = dir / "hidden.conf"
@@ -68,7 +68,8 @@ final class ConfigsTest extends AnyFreeSpec
       hidden := "SECRET-KEY = SECRET-VALUE"
       val config = parseConfigIfExists(dir / "test.conf", secret = false)
         .withFallback(parseConfigIfExists(dir / "hidden.conf", secret = true))
-      assert(renderConfig(config) == s"KEY=VALUE ($file: 1)" :: "SECRET-KEY=(secret)" :: Nil)
+      assert(renderValue("KEY", config.getValue("KEY")) == s"""KEY="VALUE" ($file: 1)""")
+      assert(renderValue("SECRET-KEY", config.getValue("SECRET-KEY")) == "SECRET-KEY=(secret)")
     }
   }
 
