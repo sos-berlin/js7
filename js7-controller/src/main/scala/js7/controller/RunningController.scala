@@ -26,7 +26,7 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, SetOnce}
 import js7.cluster.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem}
-import js7.cluster.{ActiveClusterNode, Cluster, ClusterFollowUp}
+import js7.cluster.{Cluster, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.FileUtils.syntax._
@@ -289,7 +289,7 @@ object RunningController
       val (cluster, clusterFollowUpFuture, controllerState) = startCluster(recovered, journalActor, testEventBus)
       val (orderKeeperStarted, orderKeeperTerminated) = {
         val started = clusterFollowUpFuture.map(_.flatMap(
-          startControllerOrderKeeper(journalActor, cluster.activeClusterNode.orThrow/*TODO*/, _, testEventBus)))
+          startControllerOrderKeeper(journalActor, cluster.workingClusterNode.orThrow/*TODO*/, _, testEventBus)))
         (started.map(_.map(_.actor)),
           started.flatMap {
             case Left(termination) =>
@@ -409,7 +409,7 @@ object RunningController
 
     private def startControllerOrderKeeper(
       journalActor: ActorRef @@ JournalActor.type,
-      activeClusterNode: ActiveClusterNode[ControllerState],
+      workingClusterNode: WorkingClusterNode[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])
     : Either[ControllerTermination.Terminate, OrderKeeperStarted] = {
@@ -419,7 +419,7 @@ object RunningController
           val terminationPromise = Promise[ControllerTermination]()
           val actor = actorSystem.actorOf(
             Props {
-              new ControllerOrderKeeper(terminationPromise, journalActor, activeClusterNode, controllerConfiguration,
+              new ControllerOrderKeeper(terminationPromise, journalActor, workingClusterNode, controllerConfiguration,
                 itemVerifier, testEventPublisher)
             },
             "ControllerOrderKeeper")
@@ -473,7 +473,7 @@ object RunningController
                 }))
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches) =>
-          Task.pure(cluster.activeClusterNode)
+          Task.pure(cluster.workingClusterNode)
             .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 

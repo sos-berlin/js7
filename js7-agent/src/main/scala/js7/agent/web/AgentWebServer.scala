@@ -32,7 +32,7 @@ final class AgentWebServer(
 extends AkkaWebServer with AkkaWebServer.HasUri
 {
   protected val bindings = conf.webServerBindings
-  private val apiOnce = new SetOnce[CommandMeta => DirectAgentApi]("api")
+  private val apiOnce = SetOnce[CommandMeta => DirectAgentApi]("api")
 
   def start(api: CommandMeta => DirectAgentApi): Future[Completed] = {
     this.apiOnce := api

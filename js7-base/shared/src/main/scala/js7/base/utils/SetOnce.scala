@@ -12,7 +12,7 @@ import scala.util.Success
  *
  * @author Joacim Zschimmer
  */
-class SetOnce[A](label: String)
+class SetOnce[A](label: String, notYetSetProblem: Problem)
 {
   protected[this] val promise = Promise[A]()
 
@@ -79,7 +79,7 @@ class SetOnce[A](label: String)
 
   final def checked: Checked[A] =
     promise.future.value match {
-      case None => Left(Problem(s"SetOnce[$label] promise has not been kept so far"))
+      case None => Left(notYetSetProblem)
       case Some(o) => Right(o.get)
     }
 }
@@ -88,18 +88,26 @@ object SetOnce
 {
   import scala.language.implicitConversions
 
-  def apply[A](implicit A: TypeTag[A]) = new SetOnce[A](A.tpe.toString)
+  def apply[A](implicit A: TypeTag[A]): SetOnce[A] =
+    SetOnce[A](A.tpe.toString)
 
-  def apply[A](name: String) = new SetOnce[A](name)
+  def apply[A](problem: Problem)(implicit A: TypeTag[A]): SetOnce[A] =
+    SetOnce[A](A.tpe.toString, problem)
+
+  def apply[A](label: String): SetOnce[A] =
+    SetOnce[A](label, Problem(s"SetOnce[$label] promise has not been kept so far"))
+
+  def apply[A](label: String, problem: Problem): SetOnce[A] =
+    new SetOnce[A](label, problem)
 
   def fromOption[A](option: Option[A])(implicit A: TypeTag[A]) = {
-    val setOnce = new SetOnce[A](A.tpe.toString)
+    val setOnce = SetOnce[A](A.tpe.toString)
     option foreach setOnce.:=
     setOnce
   }
 
   def fromOption[A](option: Option[A], label: String) = {
-    val setOnce = new SetOnce[A](label)
+    val setOnce = SetOnce[A](label)
     option foreach setOnce.:=
     setOnce
   }

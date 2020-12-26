@@ -15,19 +15,18 @@ import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode._
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.ObservablePauseDetector._
-import js7.cluster.Problems.{ClusterCommandInapplicableProblem, ClusterNodesAlreadyAppointed, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
+import js7.cluster.Problems.{ClusterCommandInapplicableProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournaledState, KeyedEvent, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
-import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.RealEventWatch
 import monix.eval.Task
@@ -40,8 +39,7 @@ import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
 
 final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
-  ownId: NodeId,
-  initialClusterState: ClusterState,
+  initialClusterState: ClusterState.HasNodes,
   persistence: JournaledStatePersistence[S],
   eventWatch: RealEventWatch,
   common: ClusterCommon,
@@ -60,32 +58,26 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private val sendingClusterStartBackupNode = SerialCancelable()
   @volatile private var switchoverAcknowledged = false
   @volatile private var stopRequested = false
-  @volatile private var _clusterWatchSynchronizer: Option[ClusterWatchSynchronizer] = None
+  @volatile private var clusterWatchSynchronizer = common.clusterWatchSynchronizer(initialClusterState.setting)
 
-  def start(recovered: Recovered[S]): Task[Checked[Completed]] =
+  import clusterConf.ownId
+
+  def start: Task[Checked[Completed]] =
     Task.defer {
-      (recovered.clusterState match {
-        case ClusterState.Empty =>
-          Task.pure(Right(Completed))
-
-        case clusterState: HasNodes =>
-          logger.info("Asking ClusterWatch")
-          assertThat(clusterState.activeId == ownId)
-          startHeartbeating(clusterState)
-            .map(_.map { completed =>
-              logger.info("ClusterWatch agreed to restart as the active cluster node")
-              completed
-            })
-      }).map(_.map { completed =>
-        proceed(recovered.clusterState)
-        completed
-      })
+      logger.info("Asking ClusterWatch")
+      assertThat(initialClusterState.activeId == ownId)
+      clusterWatchSynchronizer.startHeartbeating(initialClusterState)
+        .map(_.map { completed =>
+          logger.info("ClusterWatch agreed to restart as the active cluster node")
+          proceed(initialClusterState)
+          completed
+        })
     }
 
   def close(): Unit = {
     logger.debug("close")
     stopRequested = true
-    for (o <- _clusterWatchSynchronizer) o.stop()
+    clusterWatchSynchronizer.stop()
     fetchingAcksCancelable.cancel()
   }
 
@@ -107,52 +99,9 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       }
     }
 
-  def afterJounalingStarted: Task[Checked[Completed]] =
+  private[cluster] def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
     Task.defer {
-      logger.trace("afterJounalingStarted")
-      automaticallyAppointConfiguredBackupNode
-        .flatMapT(_ => onRestartActiveNode)
-    }
-
-  private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
-    Task.defer {
-      clusterConf.maybeClusterSetting match {
-        case None => Task.pure(Right(Completed))
-        case Some(setting) =>
-          persistence.clusterState/*TODO lock*/.flatMap {
-            case _: ClusterState.HasNodes => Task.pure(Right(Completed))
-            case ClusterState.Empty =>
-              appointNodes(setting)
-                .onErrorHandle(t => Left(Problem.fromThrowable(t)))  // We want only to log the exception
-                .map {
-                  case Left(ClusterNodesAlreadyAppointed) =>
-                    Right(Completed)
-
-                  case Left(problem) =>
-                    Left(problem.withPrefix(
-                      "Configured cluster node appointment failed, maybe due to failed access to ClusterWatch:"))
-
-                  case Right(completed) =>
-                    Right(completed)
-                }
-          }
-      }
-    }
-
-  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
-  : Task[Checked[Completed]] =
-    Task.pure(ClusterSetting.checked(idToUri, activeId, clusterWatches, clusterConf.timing))
-      .flatMapT(appointNodes)
-
-  private def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
-    Task.defer {
-      if (_clusterWatchSynchronizer.isEmpty) {
-        setClusterWatchSynchronizer(setting)
-      }
       persist() {
-        case Empty =>
-          Right(Some(ClusterNodesAppointed(setting)))
-
         case clusterState: CoupledOrDecoupled =>
           val currentSetting = clusterState.setting
           val updated = currentSetting.withPassiveUri(setting.passiveUri)
@@ -170,7 +119,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
               (setting.clusterWatches != currentSetting.clusterWatches) ?
                 setting.clusterWatches)))
 
-        case _: HasNodes =>
+        case _ =>
           Left(ClusterSettingNotUpdatable)
       }.map(_.map {
         case (stampedEvents, state: HasNodes) if stampedEvents.nonEmpty =>
@@ -181,9 +130,9 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       })
     }
 
-  private def onRestartActiveNode: Task[Checked[Completed]] =
+  private[cluster] def onRestartActiveNode: Task[Checked[Completed]] =
     persist() {
-      case state: ActiveShutDown =>
+      case _: ActiveShutDown =>
         Right(Some(ClusterActiveNodeRestarted))
       case _ =>
         Right(None)
@@ -311,10 +260,10 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         }
 
       case state: HasNodes =>
-        if (_clusterWatchSynchronizer.forall(_.clusterWatch.baseUri != state.setting.clusterWatchUri)) {
+        if (clusterWatchSynchronizer.clusterWatch.baseUri != state.setting.clusterWatchUri) {
           logger.info(s"Changing ClusterWatch URI to ${state.setting.clusterWatchUri}")
-          for (o <- _clusterWatchSynchronizer) o.stop()
-          _clusterWatchSynchronizer = Some(common.clusterWatchSynchronizer(state.setting))
+          clusterWatchSynchronizer.stop()
+          clusterWatchSynchronizer = common.clusterWatchSynchronizer(state.setting)
         }
     }
 
@@ -468,7 +417,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   private def persist(suppressClusterWatch: Boolean = false)(toEvents: ClusterState => Checked[Option[ClusterEvent]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
-    stopHeartbeating >>
+    clusterWatchSynchronizer.stopHeartbeating >>
       persistence.persistTransaction[ClusterEvent](NoKey) { state =>
         toEvents(state.clusterState).flatMap {
           case Some(event) if !state.clusterState.isEmptyOrActive(ownId) =>
@@ -505,21 +454,15 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       logger.info(clusterEventAndStateToString(stamped.value.event, clusterState))
     }
 
-  private def setClusterWatchSynchronizer(setting: ClusterSetting): ClusterWatchSynchronizer = {
-    val x = common.clusterWatchSynchronizer(setting)
-    _clusterWatchSynchronizer = Some(x)
-    x
-  }
-
   private def stopHeartbeatingButRestartOnError[A](task: Task[Checked[A]]): Task[Checked[A]] =
-    stopHeartbeating >>
+    clusterWatchSynchronizer.stopHeartbeating >>
       task
         .flatMap {
-          case x @ Left(_) => startHeartbeating.map(_ => x)
+          case x @ Left(_) => clusterWatchSynchronizer.startHeartbeating.map(_ => x)
           case x @ Right(_) => Task.pure(x)
         }
         .onErrorHandleWith { throwable =>
-          startHeartbeating
+          clusterWatchSynchronizer.startHeartbeating
             .onErrorHandleWith(t => Task.defer {
               logger.debug("stopHeartbeatingButRestartOnError: " + throwable.toStringWithCauses)
               t.addSuppressed(throwable)
@@ -527,20 +470,6 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
             })
             .flatMap(_ => Task.raiseError(throwable))
         }
-
-  private def startHeartbeating: Task[Completed] =
-    clusterWatchSynchronizer.startHeartbeating
-
-  private def startHeartbeating(clusterState: HasNodes): Task[Checked[Completed]] = {
-    setClusterWatchSynchronizer(clusterState.setting)
-    clusterWatchSynchronizer.startHeartbeating(clusterState)
-  }
-
-  private def stopHeartbeating: Task[Completed] =
-    _clusterWatchSynchronizer.fold(Task.pure(Completed))(_.stopHeartbeating)
-
-  private def clusterWatchSynchronizer: ClusterWatchSynchronizer =
-    _clusterWatchSynchronizer.getOrElse(throw new IllegalStateException("ClusterWatchSynchronizer has not been set"))
 }
 
 object ActiveClusterNode {

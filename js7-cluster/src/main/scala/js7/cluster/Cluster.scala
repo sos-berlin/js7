@@ -58,14 +58,14 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private val common = new ClusterCommon(controllerId, ownId, persistence.clusterState,
     clusterContext, httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
-  @volatile private var _activeClusterNode: Checked[ActiveClusterNode[S]] =
-    Left(Problem.pure("This cluster node is not active now"))
+  private val _workingClusterNode = SetOnce[WorkingClusterNode[S]](
+    Problem.pure("This cluster node is not active"))
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
 
   def stop: Task[Completed] =
     Task.defer {
       logger.debug("stop")
-      for (o <- _activeClusterNode) o.close()
+      for (o <- _workingClusterNode) o.close()
       common.stop
     }
 
@@ -80,17 +80,14 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   def start(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
     if (recovered.clusterState != Empty) logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
     val (currentPassiveReplicatedState, followUp) = startNode(recovered)
-    val startActiveFollowUp = followUp.flatMapT {
+    val workingFollowUp = followUp.flatMapT {
       case followUp: ClusterFollowUp.BecomeActive[S] =>
-        val activeClusterNode = new ActiveClusterNode(ownId, followUp.recovered.clusterState,
-          persistence, eventWatch, common, clusterConf)
-        activeClusterNode.start(followUp.recovered)
-          .map(_.map { (_: Completed) =>
-            _activeClusterNode = Right(activeClusterNode)
-            followUp
-          })
+        val workingClusterNode = new WorkingClusterNode(persistence, eventWatch, common, clusterConf)
+        _workingClusterNode := workingClusterNode
+        workingClusterNode.startIfNonEmpty(followUp.recovered.clusterState)
+          .map(_.map((_: Completed) => followUp))
       }
-    currentPassiveReplicatedState -> startActiveFollowUp
+    currentPassiveReplicatedState -> workingFollowUp
   }
 
   private def startNode(recovered: Recovered[S])
@@ -235,8 +232,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
 
-  def activeClusterNode: Checked[ActiveClusterNode[S]] =
-    _activeClusterNode
+  def workingClusterNode: Checked[WorkingClusterNode[S]] =
+    _workingClusterNode.checked
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {
@@ -279,12 +276,12 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
       case _: ClusterCommand.ClusterPrepareCoupling |
            _: ClusterCommand.ClusterCouple |
            _: ClusterCommand.ClusterRecouple =>
-        Task.pure(activeClusterNode)
+        Task.pure(_workingClusterNode.checked)
           .flatMapT(_.executeCommand(command))
     }
 
   def isActive: Task[Boolean] =
-    Task.pure(_activeClusterNode.isRight)
+    Task.pure(_workingClusterNode.isDefined)
 }
 
 object Cluster
