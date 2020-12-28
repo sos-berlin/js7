@@ -59,7 +59,7 @@ import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
-import monix.execution.{CancelableFuture, Scheduler}
+import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
@@ -286,47 +286,52 @@ object RunningController
       itemVerifier
       val recovered = Await.result(whenRecovered, Duration.Inf)
         .closeWithCloser
-      val (cluster, clusterFollowUpFuture, controllerState) = startCluster(recovered, journalActor, testEventBus)
-      val (orderKeeperStarted, orderKeeperTerminated) = {
-        val started = clusterFollowUpFuture.map(_.flatMap(
+      val (cluster, controllerState, clusterFollowUp) = startCluster(recovered, journalActor, testEventBus)
+      val clusterFollowUpFuture = clusterFollowUp.executeWithOptions(_.enableAutoCancelableRunLoops).runToFuture
+      val (orderKeeperActor, orderKeeperTerminated) = {
+        val orderKeeperStarted = clusterFollowUpFuture.map(_.flatMap(
           startControllerOrderKeeper(journalActor, cluster.workingClusterNode.orThrow/*TODO*/, _, testEventBus)))
-        (started.map(_.map(_.actor)),
-          started.flatMap {
-            case Left(termination) =>
-              Future.successful(termination)
-            case Right(o) =>
-              o.termination andThen { case tried =>
-                for (t <- tried.failed) {
-                  logger.error(s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)  // Support diagnosis
-                }
-                clusterFollowUpFuture.cancel()
+        val actorTask: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
+          Task.defer {
+            controllerState.map(_.map(_.clusterState)).flatMapT { clusterState =>
+              import controllerConfiguration.clusterConf.{isBackup, ownId}
+              if (!clusterState.isActive(ownId, isBackup = isBackup))
+                Task.pure(Left(ClusterNodeIsNotActiveProblem))
+              else
+                Task.fromFuture(orderKeeperStarted)
+                  .map {
+                    case Left(_) => Left(ShuttingDownProblem)
+                    case Right(o) => Right(o.actor)
+                  }
+            }
+          }
+
+        val terminated = orderKeeperStarted.flatMap {
+          case Left(termination) =>
+            Future.successful(termination)
+          case Right(o) =>
+            o.termination andThen { case tried =>
+              for (t <- tried.failed) {
+                logger.error(s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)  // Support diagnosis
               }
-          })
+              clusterFollowUpFuture.cancel()
+            }
+        }
+        (actorTask, terminated)
       }
-      for (t <- orderKeeperStarted.failed) logger.debug("orderKeeperStarted => " + t.toStringWithCauses, t)
-      orderKeeperStarted.failed foreach whenReady.tryFailure
+      for (t <- orderKeeperActor.failed) logger.debug("orderKeeperActor => " + t.toStringWithCauses, t)
+      orderKeeperActor.failed foreach whenReady.tryFailure
       orderKeeperTerminated.failed foreach whenReady.tryFailure
-      //val orderKeeperTask = Task.defer {
-      //  orderKeeperStarted.value match {
-      //    case None => Task.raiseError(ControllerIsNotYetReadyProblem.throwable)
-      //    case Some(orderKeeperTry) =>
-      //      orderKeeperTry match {
-      //        case Failure(t) => Task.raiseError(t)
-      //        case Success(Left(_)) => Task.raiseError(ShuttingDownProblem.throwable)
-      //        case Success(Right(actor)) => Task.pure(actor)
-      //      }
-      //  }
-      //}
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(cluster,
           onShutDownBeforeClusterActivated = termination =>
-            Task.defer {
+            Task {
               clusterStartupTermination = termination
               clusterFollowUpFuture.cancel()
-              cluster.stop
+              Completed
             },
-          orderKeeperStarted.map(_.toOption)))
-      val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperStarted.map(_.toOption))
+          orderKeeperActor))
+      val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperActor)
       val itemApi = new DirectItemApi(controllerState)
       val orderApi = new MainOrderApi(controllerState)
 
@@ -356,8 +361,8 @@ object RunningController
       journalActor: ActorRef @@ JournalActor.type,
       testEventBus: StandardEventBus[Any])
     : (Cluster[ControllerState],
-      CancelableFuture[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]],
-      Task[Either[Problem, ControllerState]])
+      Task[Either[Problem, ControllerState]],
+      Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]])
     = {
       val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf)
         .closeWithCloser
@@ -389,22 +394,18 @@ object RunningController
         .onErrorRecoverWith {
           case _: StartingClusterCancelledException => Task { Left(clusterStartupTermination) }
         }
+        .flatTap {
+          case Right(ClusterFollowUp.BecomeActive(recovered)) =>
+            Task { persistence.start(recovered.state) }
+          case _ => Task.unit
+        }
       val controllerState = Task.defer {
         if (persistence.isStarted)
           persistence.currentState map Right.apply
         else
           replicatedState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem).flatten)
       }
-      val clusterFollowUpFuture = clusterFollowUpTask
-        .flatTap {
-          case Right(ClusterFollowUp.BecomeActive(recovered)) =>
-            Task { persistence.start(recovered.state) }
-          case _ => Task.unit
-        }
-        .executeWithOptions(_.enableAutoCancelableRunLoops)
-        .runToFuture
-
-      (cluster, clusterFollowUpFuture, controllerState)
+      (cluster, controllerState, clusterFollowUpTask)
     }
 
     private def startControllerOrderKeeper(
@@ -444,33 +445,25 @@ object RunningController
   private class MyCommandExecutor(
     cluster: Cluster[ControllerState],
     onShutDownBeforeClusterActivated: ControllerTermination.Terminate => Task[Completed],
-    orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
+    orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends CommandExecutor[ControllerCommand]
   {
     def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       (command match {
         case command: ControllerCommand.ShutDown =>
-          cluster.isActive.flatMap(isActive =>
-            if (!isActive)
-              if (command.clusterAction.isEmpty)
-                onShutDownBeforeClusterActivated(ControllerTermination.Terminate(restart = command.restart))
-                  .map(_ => Right(ControllerCommand.Response.Accepted))
-              else
-                Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
-            else
-              Task.deferFutureAction(implicit s =>
-                orderKeeperStarted flatMap {
-                  case None =>  // ControllerOrderKeeper does not start
-                    Future.successful(
-                      if (command.clusterAction.nonEmpty)
-                        Left(PassiveClusterNodeShutdownNotAllowedProblem)
-                      else
-                        Right(ControllerCommand.Response.Accepted))
-                  case Some(actor) =>
+          if (command.clusterAction.nonEmpty && !cluster.isWorkingNode)
+            Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
+          else
+            onShutDownBeforeClusterActivated(ControllerTermination.Terminate(restart = command.restart)) >>
+              orderKeeperActor.flatMap {
+                case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) => Task.pure(Right(ControllerCommand.Response.Accepted))
+                case Left(problem) => Task.pure(Left(problem))
+                case Right(actor) =>
+                  Task.deferFutureAction(implicit s =>
                     (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
-                      .mapTo[Checked[command.Response]]
-                }))
+                      .mapTo[Checked[ControllerCommand.Response]])
+              }
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches) =>
           Task.pure(cluster.workingClusterNode)
@@ -482,42 +475,25 @@ object RunningController
             .map(_.map(ControllerCommand.InternalClusterCommand.Response.apply))
 
         case _ =>
-          orderKeeperStarted.value match {
-            case None =>  // Cluster node is still waiting for activation
-              Task.pure(Left(ClusterNodeIsNotActiveProblem))
-            case Some(Failure(t)) =>
-              Task.raiseError(t)
-            case Some(Success(None)) =>   // ControllerOrderKeeper does not start
-              Task.pure(Left(ShuttingDownProblem))
-            case Some(Success(Some(actor))) =>
-              Task.deferFuture(
-                (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
-                  .mapTo[Checked[command.Response]])
-          }
+          orderKeeperActor.flatMapT(actor =>
+            Task.deferFutureAction(implicit s =>
+              (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
+                .mapTo[Checked[ControllerCommand.Response]]))
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
   }
 
   private class MyItemUpdater(
     val versionedItemVerifier: VersionedItemVerifier[VersionedItem],
-    orderKeeperStarted: Future[Option[ActorRef @@ ControllerOrderKeeper]])
+    orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends ItemUpdater
   {
     def updateItems(verifiedUpdateItems: VerifiedUpdateItems) =
-      Task.defer(
-        // TODO Duplicate code
-        orderKeeperStarted.value match {
-          case None =>  // Cluster node is still waiting for activation
-            Task.pure(Left(ClusterNodeIsNotActiveProblem))
-          case Some(Failure(t)) =>
-            Task.raiseError(t)
-          case Some(Success(None)) =>   // ControllerOrderKeeper does not start
-            Task.pure(Left(ShuttingDownProblem))
-          case Some(Success(Some(actor))) =>
-            Task.deferFuture(
-              (actor ? ControllerOrderKeeper.Command.VerifiedUpdateItemsCmd(verifiedUpdateItems))
-                .mapTo[Checked[Completed]])
-        })
+      orderKeeperActor
+        .flatMapT(actor =>
+          Task.deferFuture(
+            (actor ? ControllerOrderKeeper.Command.VerifiedUpdateItemsCmd(verifiedUpdateItems))
+              .mapTo[Checked[Completed]]))
   }
 
   private case class OrderKeeperStarted(actor: ActorRef @@ ControllerOrderKeeper, termination: Future[ControllerTermination])

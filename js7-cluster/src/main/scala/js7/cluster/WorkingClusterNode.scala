@@ -136,4 +136,6 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
       case None => Task.pure(Right(Completed))
       case Some(o) => o.shutDownThisNode
     }
+
+  def isActive = _activeClusterNode.isDefined
 }

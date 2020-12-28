@@ -16,6 +16,9 @@ import monix.reactive.Observable
 sealed trait ClusterState
 extends EventDrivenState[ClusterState, ClusterEvent]
 {
+  final def isActive(nodeId: NodeId, isBackup: Boolean) =
+    this == Empty && !isBackup || isNonEmptyActive(nodeId)
+
   def isNonEmptyActive(id: NodeId): Boolean
 
   def isEmptyOrActive(id: NodeId): Boolean
@@ -105,6 +108,9 @@ object ClusterState
         .mkString(", ")
 
     override def toString = s"$productPrefix($nodesString)"
+  }
+  object HasNodes {
+    def unapply(clusterState: ClusterState.HasNodes) = Some(clusterState.setting)
   }
 
   sealed trait CoupledOrDecoupled extends HasNodes {

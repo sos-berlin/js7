@@ -58,8 +58,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private val common = new ClusterCommon(controllerId, ownId, persistence.clusterState,
     clusterContext, httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
-  private val _workingClusterNode = SetOnce[WorkingClusterNode[S]](
-    Problem.pure("This cluster node is not active"))
+  @volatile private var _passiveOrWorkingNode: Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]] = None
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
 
   def stop: Task[Completed] =
@@ -83,7 +82,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     val workingFollowUp = followUp.flatMapT {
       case followUp: ClusterFollowUp.BecomeActive[S] =>
         val workingClusterNode = new WorkingClusterNode(persistence, eventWatch, common, clusterConf)
-        _workingClusterNode := workingClusterNode
+        assertThat(!_passiveOrWorkingNode.exists(_.isRight))
+        _passiveOrWorkingNode = Some(Right(workingClusterNode))
         workingClusterNode.startIfNonEmpty(followUp.recovered.clusterState)
           .map(_.map((_: Completed) => followUp))
       }
@@ -233,7 +233,9 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
-    _workingClusterNode.checked
+    _passiveOrWorkingNode
+      .flatMap(_.toOption)
+      .toRight(Problem.pure("This cluster node is not active"))
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {
@@ -276,12 +278,16 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
       case _: ClusterCommand.ClusterPrepareCoupling |
            _: ClusterCommand.ClusterCouple |
            _: ClusterCommand.ClusterRecouple =>
-        Task.pure(_workingClusterNode.checked)
+        Task.pure(workingClusterNode)
           .flatMapT(_.executeCommand(command))
     }
 
-  def isActive: Task[Boolean] =
-    Task.pure(_workingClusterNode.isDefined)
+  //def isPassive =
+  //  _passiveOrWorkingNode.exists(_.isLeft)
+
+  /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
+  def isWorkingNode: Boolean =
+    _passiveOrWorkingNode.exists(_.isRight)
 }
 
 object Cluster
