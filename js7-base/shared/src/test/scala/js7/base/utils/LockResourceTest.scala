@@ -15,7 +15,7 @@ final class LockResourceTest extends AsyncFreeSpec
   private val initial = 1
 
   "LockResource" in {
-    doTest(LockResource())
+    doTest(LockResource("TEST"))
       .runToFuture
       .map(o => assert(o == Vector.fill(n)(initial)))
   }

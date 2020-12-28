@@ -155,7 +155,9 @@ extends Actor with Stash
   private def ready: Receive = receiveGet orElse {
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, since, callersItem) =>
       if (switchedOver) {
-        logger.warn(s"Event ignored while active cluster node is switching over: ${timestamped.headOption.map(_.keyedEvent)}")
+        for (o <- timestamped) {
+          logger.debug(s"Event ignored while active cluster node is switching over: ${o.keyedEvent.toString.truncateWithEllipsis(200)}")
+        }
         // We ignore the event and do not notify the caller,
         // because it would crash and disturb the process of switching-over.
         // (so AgentDriver with AgentReady event)
@@ -272,7 +274,7 @@ extends Actor with Stash
           .takeWhile(_.since.elapsed >= conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue))
         val n = persistBuffer.view.map(_.eventCount).sum
         if (n > 0) {
-          logger.warn(s"Waiting since ${waitingForAcknowledgeSince.elapsed.pretty}" +
+          logger.warn(s"Waiting for ${waitingForAcknowledgeSince.elapsed.pretty}" +
             " for acknowledgement from passive cluster node" +
             s" for $n events (in ${persistBuffer.size} persists), last is " +
             notAckSeq.flatMap(_.stampedSeq).lastOption.fold("(unknown)")(_.toString.truncateWithEllipsis(200)) +

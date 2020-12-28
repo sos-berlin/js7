@@ -2,7 +2,7 @@
 set -e
 
 for i in {1..999999}; do
-  echo -e "\n\n-------------------- $i -------------------\n"
+  echo -e "\n\n———————————————————— $i ———————————————————\n"
   rm -f target/build.log
-  ./sbt-batch -Dsbt.log.noformat=false "$@"
+  time ./sbt-batch -Dsbt.log.noformat=false "$@"
 done
