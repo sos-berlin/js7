@@ -193,7 +193,7 @@ with ReceiveLoggingActor.WithStash
   protected def key = agentId  // Only one version is active at any time
 
   private def newAgentClient(uri: Uri): AgentClient =
-    AgentClient(uri, agentUserAndPassword,
+    AgentClient(uri, agentUserAndPassword, label = agentId.toString,
       controllerConfiguration.keyStoreRefOption, controllerConfiguration.trustStoreRefs)(context.system)
 
   def receive = {

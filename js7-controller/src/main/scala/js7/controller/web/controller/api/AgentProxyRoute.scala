@@ -55,19 +55,20 @@ trait AgentProxyRoute extends ControllerRouteProvider
       .asAkka.copy(
         path = AkkaUri.Path((agentUri.asAkka.path ?/ "agent" / "api").toString),
         rawQueryString = request.uri.rawQueryString)
-    forwardTo(agentRef.uri, uri, request.headers)
+    forwardTo(agentRef, uri, request.headers)
   }
 
-  private def forwardTo(agentUri: Uri, forwardUri: AkkaUri, headers: Seq[HttpHeader]): Task[HttpResponse] = {
+  private def forwardTo(agentRef: AgentRef, forwardUri: AkkaUri, headers: Seq[HttpHeader]): Task[HttpResponse] = {
     val agentClient = AgentClient(  // TODO Reuse AgentClient of AgentDriver
-      agentUri,
+      agentRef.uri,
       userAndPassword = None,
+      label = agentRef.id.toString,
       controllerConfiguration.keyStoreRefOption,
       controllerConfiguration.trustStoreRefs)
     implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
     agentClient
-      .sendReceive(HttpRequest(GET,  forwardUri, headers = headers filter { h => isForwardableHeaderClass(h.getClass) }))
-      .map(response => response.withHeaders(response.headers filterNot { h => IsIgnoredAgentHeader(h.getClass) }))
+      .sendReceive(HttpRequest(GET,  forwardUri, headers = headers.filter(h => isForwardableHeaderClass(h.getClass))))
+      .map(response => response.withHeaders(response.headers.filterNot(h => IsIgnoredAgentHeader(h.getClass))))
       .guarantee(Task(agentClient.close()))
   }
 }

@@ -244,13 +244,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                     entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Cancelled in AkkaHttpClient")))
               }
             } .guaranteeCase(exitCase => Task.defer {
-                logger.trace(s"$responseLogPrefix => $exitCase")
                 val r = responseFuture
                 responseFuture = null  // Release memory
                 exitCase match {
                   case ExitCase.Canceled =>
                     // TODO Cancelling does not cancel the ongoing Akka operation. Akka does not free the connection.
                     cancelled = true
+                    logger.debug(s"$responseLogPrefix => $exitCase")
                     r match {
                       case null => Task.unit
                       case r => discardResponse(responseLogPrefix, r)
@@ -362,7 +362,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     case _ => true
   }
 
-  override def toString = s"$baseUri${if (name.isEmpty) "" else s" »$name«"}"
+  override def toString = s"$baseUri${name.nonEmpty ?? s" »$name«"}"
 }
 
 object AkkaHttpClient

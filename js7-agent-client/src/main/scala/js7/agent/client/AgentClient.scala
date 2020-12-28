@@ -77,13 +77,11 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
     liftProblem(
       get[TearableEventSeq[Seq, KeyedEvent[Event]]](agentUris.controllersEvents(request)))
   }
-
-  override def toString = baseUri.toString
 }
 
 object AgentClient
 {
-  def apply(agentUri: Uri, userAndPassword: Option[UserAndPassword],
+  def apply(agentUri: Uri, userAndPassword: Option[UserAndPassword], label: String = "Agent",
     keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRefs: => Seq[TrustStoreRef] = Nil)
     (implicit actorSystem: ActorSystem)
   : AgentClient = {
@@ -94,7 +92,7 @@ object AgentClient
     new AgentClient {
       protected val actorSystem = a
       val baseUri = agentUri
-      protected val name = "Agent"
+      protected val name = label
       protected def keyStoreRef = k
       protected def trustStoreRefs = t
       protected def userAndPassword = up
