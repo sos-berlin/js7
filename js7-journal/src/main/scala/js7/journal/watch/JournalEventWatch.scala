@@ -44,7 +44,7 @@ with RealEventWatch
 with JournalingObserver
 {
   private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")
-  private val releaseEventsDelay = config.getDuration("js7.journal.release-events-delay").toFiniteDuration
+  private val releaseEventsDelay = config.getDuration("js7.journal.release-events-delay").toFiniteDuration max 0.s
   // Read journal file names from directory while constructing
   private val journalId = SetOnce[JournalId]
   @volatile
