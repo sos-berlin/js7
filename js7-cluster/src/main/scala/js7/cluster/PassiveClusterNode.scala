@@ -279,7 +279,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
               .flatMap(Observable.fromIterable)
         }
         .filter(testHeartbeatSuppressor) // for testing
-        .detectPauses(setting.timing.heartbeat + setting.timing.heartbeatTimeout)
+        .detectPauses(setting.timing.longHeartbeatTimeout)
         .flatMap[Checked[Unit]] {
           case Left(noHeartbeatSince) =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {

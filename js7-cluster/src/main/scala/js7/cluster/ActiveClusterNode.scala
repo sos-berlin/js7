@@ -371,7 +371,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         .flatMap(api =>
           observeEventIds(api, timing)
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
-            .detectPauses(timing.heartbeat + timing.heartbeatTimeout)
+            .detectPauses(timing.longHeartbeatTimeout)
             .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
             .mapEval {
               case Left(noHeartbeatSince) =>

@@ -11,7 +11,9 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
 {
-  checkedUnit(heartbeat, heartbeatTimeout).orThrow
+  checkedUnit(heartbeat, longHeartbeatTimeout).orThrow
+
+  def longHeartbeatTimeout = heartbeat + heartbeatTimeout
 
   def heartbeatValidDuration = heartbeat + heartbeatTimeout / 2
 
