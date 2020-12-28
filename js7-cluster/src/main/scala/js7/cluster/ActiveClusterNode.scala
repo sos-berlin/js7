@@ -457,9 +457,9 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private def stopHeartbeatingButRestartOnError[A](task: Task[Checked[A]]): Task[Checked[A]] =
     clusterWatchSynchronizer.stopHeartbeating >>
       task
-        .flatMap {
-          case x @ Left(_) => clusterWatchSynchronizer.startHeartbeating.map(_ => x)
-          case x @ Right(_) => Task.pure(x)
+        .flatTap {
+          case Left(_) => clusterWatchSynchronizer.startHeartbeating
+          case Right(_) => Task.unit
         }
         .onErrorHandleWith { throwable =>
           clusterWatchSynchronizer.startHeartbeating

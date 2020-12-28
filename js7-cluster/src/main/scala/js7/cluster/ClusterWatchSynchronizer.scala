@@ -28,25 +28,27 @@ private final class ClusterWatchSynchronizer(
   (implicit scheduler: Scheduler)
 {
   private val heartbeat = AtomicAny[CancelableFuture[Completed]](CancelableFuture.successful(Completed))
-  private val lock = LockResource()
+  private val lock = LockResource("ClusterWatchSynchronizer")
 
   def stop(): Unit =
     heartbeat.get().cancel()
 
-  def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
+  def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState, checkOnly: Boolean = false)
+  : Task[Checked[Completed]] =
     lock.use(_ =>
-      clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState))
-        .flatMapT { completed =>
-          clusterState match {
-            case clusterState: HasNodes if clusterState.activeId == ownId =>
-              startHeartbeatingWhileLocked(clusterState)
-                .map(Right(_))
-            case _ =>
-              // The ClusterSwitchedOver event will be written to the journal after applyEvents.
-              // So persistence.clusterState will reflect the outdated ClusterState for a short while.
-              Task.pure(Right(completed))
-          }
-        })
+      stopHeartbeatingWhileLocked >>
+        clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState, checkOnly = checkOnly))
+          .flatMapT { completed =>
+            clusterState match {
+              case clusterState: HasNodes if clusterState.activeId == ownId && !checkOnly =>
+                startHeartbeatingWhileLocked(clusterState)
+                  .map(Right(_))
+              case _ =>
+                // The ClusterSwitchedOver event will be written to the journal after applyEvents.
+                // So persistence.clusterState will reflect the outdated ClusterState for a short while.
+                Task.pure(Right(completed))
+            }
+          })
 
   def startHeartbeating: Task[Completed] =
     lock.use(_ => currentClusterState.flatMap {
@@ -63,36 +65,17 @@ private final class ClusterWatchSynchronizer(
 
   private def startHeartbeatingWhileLocked(clusterState: HasNodes): Task[Completed] =
   {
-    def sendHeartbeats: Task[Nothing] =
-      Task.defer {
-        logger.debug(s"Heartbeat starts with $clusterState")
-        Observable.intervalAtFixedRate(timing.heartbeat, timing.heartbeat)
-          .whileBusyBuffer(DropNew(bufferSize = 2))
-          .flatMap(_ => Observable.fromTask(
-            doAHeartbeat
-              .onErrorHandleWith { t =>
-                logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
-                  if (t.isInstanceOf[AskTimeoutException]) null else t.nullIfNoStackTrace)
-                Task.raiseError(t)
-              }))
-          .completedL
-          .flatMap(_ => Task.raiseError(new AssertionError("sendHeartbeats terminated unexpectedly")))
-      }
-
-    def doAHeartbeat: Task[Unit] =
-      doACheckedHeartbeat(clusterState).map {
-        case Left(problem) => haltJava(s"HALT because ClusterWatch reported: $problem", restart = true)
-        case Right(Completed) =>
-      }
+    val nr = heartbeatSessionNr.next()
 
     def start = Task {
+      logger.debug(s"Heartbeat ($nr) starts with $clusterState")
       val heartbeatFuture = sendHeartbeats
-        .onCancelRaiseError(new CancelledException)
-        .onErrorRecover { case _: CancelledException => Completed }
+        .onCancelRaiseError(new CanceledException)
+        .onErrorRecover { case _: CanceledException => Completed }
         .runToFuture
         .andThen {
           case Success(Completed) =>
-            logger.debug("Heartbeat stopped")
+            logger.debug(s"Heartbeat ($nr) stopped")
           case Failure(t) =>
             logger.warn(s"Error when sending heartbeat to ClusterWatch: ${t.toStringWithCauses}")
             logger.debug(s"Error when sending heartbeat to ClusterWatch: $t", t)
@@ -102,7 +85,29 @@ private final class ClusterWatchSynchronizer(
       Completed
     }
 
-    stopHeartbeating >> doAHeartbeat >> start
+    def sendHeartbeats: Task[Nothing] =
+      Observable.intervalAtFixedRate(timing.heartbeat, timing.heartbeat)
+        .whileBusyBuffer(DropNew(bufferSize = 2))
+        .flatMap(_ => Observable.fromTask(
+          doAHeartbeat
+            .onErrorHandleWith { t =>
+              logger.warn(s"sendHeartbeats: ${t.toStringWithCauses}",
+                if (t.isInstanceOf[AskTimeoutException]) null else t.nullIfNoStackTrace)
+              Task.raiseError(t)
+            }))
+        .completedL
+        .flatMap(_ => Task.raiseError(new AssertionError("sendHeartbeats terminated unexpectedly")))
+
+    def doAHeartbeat: Task[Completed] =
+      Task.defer {
+        logger.trace(s"Heartbeat ($nr)")
+        doACheckedHeartbeat(clusterState) map {
+          case Left(problem) => haltJava(s"HALT because ClusterWatch reported: $problem", restart = true)
+          case Right(Completed) => Completed
+        }
+      }
+
+    stopHeartbeatingWhileLocked >> doAHeartbeat >> start
   }
 
   private def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
@@ -110,6 +115,9 @@ private final class ClusterWatchSynchronizer(
       .materializeIntoChecked
 
   def stopHeartbeating: Task[Completed] =
+    lock.use(_ => stopHeartbeatingWhileLocked)
+
+  private def stopHeartbeatingWhileLocked: Task[Completed] =
     Task.defer {
       val h = heartbeat.getAndSet(CancelableFuture.successful(Completed))
       h.cancel()
@@ -122,6 +130,7 @@ private final class ClusterWatchSynchronizer(
 object ClusterWatchSynchronizer
 {
   private val logger = Logger(getClass)
+  private val heartbeatSessionNr = Iterator.from(1)
 
-  private final class CancelledException extends Exception
+  private final class CanceledException extends Exception
 }

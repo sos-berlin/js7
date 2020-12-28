@@ -58,7 +58,7 @@ extends ClusterWatchApi
                   ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState))
               }
             case Right(clusterState) =>
-              if (isStillWithinHeartbeat(current) && clusterState != reportedClusterState)
+              if (isLastHeartbeatStillValid(current) && clusterState != reportedClusterState)
                 logger.error(s"Node '$from': " +
                   ClusterWatchEventMismatchProblem(events, clusterState, reportedClusterState = reportedClusterState))
           }
@@ -74,10 +74,13 @@ extends ClusterWatchApi
       else
         current match {
           case Some(state @ State(clusterState: HasNodes, _))
-            if isStillWithinHeartbeat(state) && reportedClusterState != clusterState =>
-              val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
-              logger.error(s"Node '$from': $problem")
-              Left(problem)
+            if isLastHeartbeatStillValid(state) && reportedClusterState != clusterState =>
+            // May occur also when active node terminates after
+            // emitting a ClusterEvent and before applyEvents to ClusterWatch,
+            // and the active node is restarted within the heartbeatValidDuration !!!
+            val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
+            logger.error(s"Node '$from': $problem")
+            Left(problem)
           case _ =>
             Right(reportedClusterState)
         }
@@ -107,7 +110,7 @@ extends ClusterWatchApi
   private def mustBeStillActive(from: NodeId, state: Option[State], logLine: => String): Checked[Completed.type] =
     state match {
       case Some(state @ State(clusterState: HasNodes, lastHeartbeat))
-      if isStillWithinHeartbeat(state) && !clusterState.isNonEmptyActive(from) =>
+      if isLastHeartbeatStillValid(state) && !clusterState.isNonEmptyActive(from) =>
         val problem = ClusterWatchInactiveNodeProblem(from, clusterState, lastHeartbeat.elapsed, logLine)
         val msg = s"Node '$from': $problem"
         logger.error(msg)
@@ -116,7 +119,7 @@ extends ClusterWatchApi
         Right(Completed)
     }
 
-  private def isStillWithinHeartbeat(state: State) =
+  private def isLastHeartbeatStillValid(state: State) =
     state match {
       case State(clusterState: HasNodes, lastHeartbeat) =>
         (lastHeartbeat + clusterState.timing.heartbeatValidDuration).hasTimeLeft

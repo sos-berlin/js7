@@ -106,25 +106,25 @@ private[cluster] final class ClusterCommon(
     body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =
     activationInhibitor.tryToActivate(
-      ifInhibited = Task.pure(Right(false)),  // Ignore heartbeat loss
+      ifInhibited = Task.pure(Right(false)),
       activate = Task.pure(clusterState.applyEvent(event))
         .flatMapT(updatedClusterState =>
-          clusterWatchSynchronizer(clusterState.setting).clusterWatch.applyEvents(
-            ClusterWatchEvents(ownId, event :: Nil, updatedClusterState, checkOnly = checkOnly)
-          ).flatMap {
-            case Left(problem) =>
-              if (problem is ClusterWatchInactiveNodeProblem) {
-                logger.warn(s"ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
-                testEventPublisher.publish(ClusterWatchDisagreedToActivation)
-                Task.pure(Right(false))  // Ignore heartbeat loss
-              } else
-                Task.pure(Left(problem))
+          clusterWatchSynchronizer(clusterState.setting)
+            .applyEvents(event :: Nil, updatedClusterState, checkOnly = checkOnly)
+            .flatMap {
+              case Left(problem) =>
+                if (problem is ClusterWatchInactiveNodeProblem) {
+                  logger.warn(s"ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
+                  testEventPublisher.publish(ClusterWatchDisagreedToActivation)
+                  Task.pure(Right(false))  // Ignore heartbeat loss
+                } else
+                  Task.pure(Left(problem))
 
-            case Right(Completed) =>
-              logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
-              testEventPublisher.publish(ClusterWatchAgreedToActivation)
-              body
-          }))
+              case Right(Completed) =>
+                logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
+                testEventPublisher.publish(ClusterWatchAgreedToActivation)
+                body
+            }))
 }
 
 private[js7] object ClusterCommon
