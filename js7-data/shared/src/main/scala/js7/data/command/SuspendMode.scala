@@ -7,14 +7,14 @@ final case class SuspendMode(kill: Option[CancelMode.Kill] = None)
 
 object SuspendMode
 {
-  val default = new SuspendMode()
+  val standard = new SuspendMode()
   val kill = new SuspendMode(Some(CancelMode.Kill()))
   val killImmediately = new SuspendMode(Some(CancelMode.Kill(immediately = true)))
 
   def apply(kill: Option[CancelMode.Kill] = None): SuspendMode =
     kill match {
       case None =>
-        default
+        standard
 
       case Some(CancelMode.Kill(false, None)) =>
         SuspendMode.kill

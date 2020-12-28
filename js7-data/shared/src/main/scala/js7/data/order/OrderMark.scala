@@ -12,7 +12,7 @@ object OrderMark
   final case class Cancelling(mode: CancelMode)
   extends OrderMark
 
-  final case class Suspending(mode: SuspendMode = SuspendMode.default)
+  final case class Suspending(mode: SuspendMode = SuspendMode.standard)
   extends OrderMark
 
   case class Resuming(

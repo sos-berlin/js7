@@ -217,7 +217,7 @@ object OrderEvent {
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent with OrderTerminated
 
-  final case class OrderSuspendMarked(mode: SuspendMode = SuspendMode.default)
+  final case class OrderSuspendMarked(mode: SuspendMode = SuspendMode.standard)
   extends OrderKillMarked {
     def kill = mode.kill
   }
