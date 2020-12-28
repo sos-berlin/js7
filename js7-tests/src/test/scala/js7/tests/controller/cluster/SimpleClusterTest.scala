@@ -5,8 +5,10 @@ import cats.syntax.traverse._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.time.ScalaTime._
+import js7.cluster.Problems.ClusterNodeIsNotActiveProblem
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.controller.data.ControllerCommand
 import js7.data.cluster.ClusterEvent
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderFinished
@@ -25,6 +27,12 @@ final class SimpleClusterTest extends ControllerClusterTester
       val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
       val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
+
+      assert(primaryController.executeCommandForTest(ControllerCommand.NoOperation()) ==
+        Right(ControllerCommand.Response.Accepted))
+      // Passive cluster node rejects command for active cluster node
+      assert(backupController.executeCommandForTest(ControllerCommand.NoOperation()) ==
+        Left(ClusterNodeIsNotActiveProblem))
 
       assert(
         intercept[ProblemException] {
