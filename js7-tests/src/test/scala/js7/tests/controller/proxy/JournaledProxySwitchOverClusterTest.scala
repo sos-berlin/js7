@@ -60,8 +60,8 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
 
         backupController.terminate().await(99.s)
         backupController.close()
-        //backupController.waitUntilReady()
         val backupController2 = backup.startController(httpPort = Some(new URI(backupController.localUri.toString).getPort)) await 99.s
+        backupController2.waitUntilReady()
         runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
         backupController2.terminate(suppressSnapshot = true).await(99.s)
       } finally

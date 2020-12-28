@@ -40,6 +40,7 @@ final class ReplicatingClusterTest extends ControllerClusterTester
 
       simulateKillActiveNode(primaryController) await 99.s
       backupController.terminate() await 99.s
+      // Test may fail here if computer is slow, and backup controller failed over before termination !!!
       assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
       // RESTART

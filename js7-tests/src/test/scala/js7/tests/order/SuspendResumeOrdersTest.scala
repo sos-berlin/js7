@@ -34,12 +34,14 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 {
   protected val agentIds = agentId :: Nil
   protected val versionedItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: tryWorkflow :: Nil
-  override def controllerConfig = config"js7.journal.remove-obsolete-files = false" withFallback super.controllerConfig
+  override def controllerConfig = config"""
+    js7.journal.remove-obsolete-files = false
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 10ms"""
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(executablePath, script(400.ms))
-      a.writeExecutable(quickExecutablePath, script(0.s))
+      a.writeExecutable(executablePath, script(400.ms))  // TODO Do not depend on time and speed-up test
     }
     super.beforeAll()
   }
@@ -153,9 +155,11 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   "Suspend and resume orders between two jobs" in {
     val orders = Seq(FreshOrder(OrderId("🔴"), twoJobsWorkflow.path), FreshOrder(OrderId("♦️"), twoJobsWorkflow.path))
     for (order <- orders) controller.addOrderBlocking(order)
-    for (order <- orders) controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    for (order <- orders) {
+      controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+      controller.executeCommandAsSystemUser(SuspendOrders(order.id :: Nil)).await(99.s).orThrow
+    }
 
-    controller.executeCommandAsSystemUser(SuspendOrders(orders.map(_.id))).await(99.s).orThrow
     for (order <- orders) controller.eventWatch.await[OrderSuspended](_.key == order.id)
     for (order <- orders) {
       assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -373,7 +377,6 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 object SuspendResumeOrdersTest
 {
   private val executablePath = RelativeExecutablePath("executable.cmd")
-  private val quickExecutablePath = RelativeExecutablePath("quick.cmd")
   private val agentId = AgentId("AGENT")
   private val versionId = VersionId("INITIAL")
 

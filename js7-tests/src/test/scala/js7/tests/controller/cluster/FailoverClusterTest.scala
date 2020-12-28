@@ -31,8 +31,8 @@ final class FailoverClusterTest extends ControllerClusterTester
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
       primaryController.eventWatch.await[ClusterCoupled]()
 
-      val t = now
-      val sleepWhileFailing = 10.s  // Failover takes some seconds anyway
+      val since = now
+      val sleepWhileFailing = clusterTiming.longHeartbeatTimeout + 1.s
       val orderId = OrderId("💥")
       primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
         "SLEEP" -> StringValue(sleepWhileFailing.toSeconds.toString))))
@@ -42,7 +42,8 @@ final class FailoverClusterTest extends ControllerClusterTester
       primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
         .await(99.s).orThrow
       primaryController.terminated await 99.s
-      assert(now < t + sleepWhileFailing, "The shell script should run while Controller fails")
+      assert(since.elapsed < sleepWhileFailing, "The shell script should run while Controller fails")
+      scribe.info("Controller shut down with backup fail-over while script is running")
 
       val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
         backupController.eventWatch.await[ClusterFailedOver](_.key == NoKey).head

@@ -53,6 +53,8 @@ trait ControllerClusterForScalaTest
   protected lazy val primaryControllerPort = findFreeTcpPort()
   protected lazy val backupControllerPort = findFreeTcpPort()
 
+  protected val clusterTiming = ClusterTiming(1.s, 5.s)
+
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
   protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
@@ -81,7 +83,6 @@ trait ControllerClusterForScalaTest
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentIds.size)
-      val timing = ClusterTiming(1.s, 5.s)
       val primary = new DirectoryProvider(agentIds, versionedItems, testName = Some(s"$testName-Primary"),
         controllerConfig = combineArgs(
           primaryControllerConfig,
@@ -92,8 +93,8 @@ trait ControllerClusterForScalaTest
             }"""),
 
           config"""
-            js7.journal.cluster.heartbeat = ${timing.heartbeat.toSeconds}s
-            js7.journal.cluster.heartbeat-timeout = ${timing.heartbeatTimeout.toSeconds}s
+            js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat.toSeconds}s
+            js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout.toSeconds}s
             js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.release-events-delay = 0s
@@ -131,7 +132,7 @@ trait ControllerClusterForScalaTest
           backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
         activeId = primaryId,
         primary.agentRefs.take(1).map(o => ClusterSetting.Watch(o.uri)),
-        timing)
+        clusterTiming)
 
       body(primary, backup, setting)
     }

@@ -19,7 +19,7 @@ import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerCommand
-import js7.controller.data.events.AgentRefStateEvent.{AgentReady, AgentRegisteredController}
+import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentRegisteredController}
 import js7.data.agent.AgentId
 import js7.data.event.JournalSeparators
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
@@ -118,7 +118,8 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   }
 
   "Timeout" in {
-    val eventId = controller.eventWatch.await[AgentRegisteredController](timeout = 9.s).last.eventId
+    var eventId = controller.eventWatch.await[AgentRegisteredController](timeout = 9.s).last.eventId
+    eventId = controller.eventWatch.await[AgentEventsObserved](timeout = 9.s, after = eventId).last.eventId
     val lines = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/journal?timeout=0&markEOF=true&after=$eventId"))
       .await(99.s)
       .map(_.utf8String)
