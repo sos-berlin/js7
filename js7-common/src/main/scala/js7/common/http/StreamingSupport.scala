@@ -19,14 +19,14 @@ object StreamingSupport
 {
   private val logger = Logger("js7.common.http.StreamingSupport")  // TODO Use Logger adapter (unreachable in module common)
 
-  implicit final class AkkaObservable[A](private val underlying: Observable[A]) extends AnyVal
+  implicit final class AkkaObservable[A](private val observable: Observable[A]) extends AnyVal
   {
     def toAkkaSourceForHttpResponse(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =
       logAkkaStreamErrorToWebLogAndIgnore(toAkkaSource)
 
     def toAkkaSource(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =
       Source.fromPublisher(
-        underlying
+        observable
           .guaranteeCase {
             case ExitCase.Completed => Task.unit
             case exitCase => Task { logger.trace(s"Observable[${A.tpe}] toAkkaSource: $exitCase") }
@@ -50,10 +50,11 @@ object StreamingSupport
       Source.empty
     })
 
-  implicit final class ObservableAkkaSource[Out, Mat](private val underlying: Source[Out, Mat]) extends AnyVal {
-    def toObservable(implicit materializer: Materializer): Observable[Out] =
-      Observable.fromReactivePublisher(
-        underlying.runWith(Sink.asPublisher(fanout = false)))
+  implicit final class ObservableAkkaSource[Out, Mat](private val source: Source[Out, Mat]) extends AnyVal
+  {
+    def toObservable(implicit m: Materializer): Observable[Out] =
+      Observable
+        .fromReactivePublisher(source.runWith(Sink.asPublisher(fanout = false)))
         .guaranteeCase {
           case ExitCase.Completed => Task.unit
           case exitCase => Task { logger.trace(s"toObservable: $exitCase") }

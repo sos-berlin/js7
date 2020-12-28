@@ -82,7 +82,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
           updatedBackupSetting.activeId, updatedBackupSetting.clusterWatches)
         assert(primaryController.executeCommandForTest(clusterAppointNodes) == Left(ClusterSettingNotUpdatable))
 
-        // CHANGE BACKUP URI WHEN PASSIVE IS LOSt
+        // CHANGE BACKUP URI WHEN PASSIVE IS LOST
         val eventId = primaryController.eventWatch.lastAddedEventId
         backupController.terminate() await 99.s
         primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
@@ -99,6 +99,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
 
         locally {
           // CHANGE CLUSTER WATCH
+
           // Terminate ClusterWatch
           agents.map(_.terminate()).await(99.s)
 

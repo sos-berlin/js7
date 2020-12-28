@@ -269,7 +269,8 @@ final class OrderEventSource(
           case Some(_: OrderMark.Suspending)  =>  // Already marked
             Right(None)
           case None | Some(_: OrderMark.Resuming) =>
-            Right((!order.isSuspended || order.isResuming) ? trySuspend(order).getOrElse(OrderSuspendMarked(mode)))
+            Right((!order.isSuspended || order.isResuming) ?
+              trySuspend(order).getOrElse(OrderSuspendMarked(mode)))
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =

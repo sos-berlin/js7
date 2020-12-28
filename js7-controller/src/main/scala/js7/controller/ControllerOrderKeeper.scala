@@ -857,7 +857,6 @@ with MainJournalingActor[ControllerState, Event]
       _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
     }
     _controllerState = updatedState  // Reduce memory usage (they are equal)
-    //proceedWithOrdersAndContinue(orderIds.distinct)
     proceedWithOrders(orderIds.distinct)
   }
 
@@ -989,7 +988,7 @@ with MainJournalingActor[ControllerState, Event]
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
           orderEntry.triedToAttached = true
-          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, signedWorkflow)  // OutOfMemoryError when Agent is unreachable !!!
+          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, signedWorkflow)
         }
       }
     }

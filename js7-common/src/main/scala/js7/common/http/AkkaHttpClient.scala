@@ -98,11 +98,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         .mapParallelOrderedBatch()(_
           .parseJsonAs[A].orThrow))
 
-  final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteArray]] =
+  final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]])
+  : Task[Observable[ByteArray]] =
     get_[HttpResponse](uri, StreamingJsonHeaders)
       .map(_.entity.withoutSizeLimit.dataBytes.toObservable)
       .pipeIf(logger.underlying.isDebugEnabled)(_.logTiming(_.size, (d, s, _) =>
-        if (d >= 1.s && s > 10_000_000) logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
+        if (d >= 1.s && s > 10_000_000)
+          logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
         .map(_.toByteArray)
         .flatMap(new ByteArrayToLinesObservable))
