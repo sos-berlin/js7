@@ -24,19 +24,21 @@ import scala.language.reflectiveCalls
   */
 final class MonixBaseTest extends AsyncFreeSpec
 {
-  "maybeTimeout Duration.Inf" in {
-    Task(3).delayExecution(200.ms)
-      .maybeTimeout(Duration.Inf)
-      .map(o => assert(o == 3))
-      .runToFuture
-  }
+  "maybeTimeout" - {
+    "Duration.Inf" in {
+      Task(3).delayExecution(200.ms)
+        .maybeTimeout(Duration.Inf)
+        .map(o => assert(o == 3))
+        .runToFuture
+    }
 
-  "maybeTimeout FiniteDuration" in {
-    Task(3).delayExecution(99.s)
-      .maybeTimeout(0.s)
-      .map(_ => assert(false))
-      .onErrorHandle(t => assert(t.isInstanceOf[TimeoutException]))
-      .runToFuture
+    "FiniteDuration" in {
+      Task(3).delayExecution(99.s)
+        .maybeTimeout(0.s)
+        .map(_ => assert(false))
+        .onErrorHandle(t => assert(t.isInstanceOf[TimeoutException]))
+        .runToFuture
+    }
   }
 
   "orTimeout" in {
@@ -46,28 +48,112 @@ final class MonixBaseTest extends AsyncFreeSpec
       .runToFuture
   }
 
-  "materializeIntoChecked Right(value)" in {
-    Task.pure(Checked(1))
-      .materializeIntoChecked
-      .runToFuture
-      .map(o =>
-        assert(o == Checked(1)))
+  "whenItTakesLonger" - {
+    "Single duration" - {
+      "Once" in {
+        val scheduler = TestScheduler()
+        var called = 0
+        val future = Task.sleep(10.s).whenItTakesLonger(3.s)(called += 1).runToFuture(scheduler)
+        scheduler.tick(2.s)
+        assert(called == 0)
+        scheduler.tick(1.s)
+        assert(called == 1)
+        scheduler.tick(4.s)
+        assert(!future.isCompleted)
+        scheduler.tick(3.s)
+        assert(future.isCompleted)
+      }
+
+      "Zero duration is ignoried" in {
+        val scheduler = TestScheduler()
+        var called = 0
+        val future = Task.sleep(10.s).whenItTakesLonger(0.s)(called += 1).runToFuture(scheduler)
+        for (_ <- 1 to 10) scheduler.tick(1.s)
+        assert(called == 0)
+        assert(future.isCompleted)
+      }
+    }
+
+    "Duration sequence" - {
+      "Repeatedly" in {
+        val scheduler = TestScheduler()
+        var called = Vector.empty[FiniteDuration]
+        val future = Task.sleep(20.s).whenItTakesLonger(Seq(3.s, 5.s))(called :+= _).runToFuture(scheduler)
+        scheduler.tick(2.s)
+        assert(called == Seq())
+        scheduler.tick(1.s)
+        assert(called == Seq(3.s))
+        scheduler.tick(4.s)
+        assert(called == Seq(3.s))
+        scheduler.tick(1.s)
+        assert(called == Seq(3.s, 8.s))
+        for (_ <- 1 to 12) scheduler.tick(1.s)
+        assert(called == Seq(3.s, 8.s, 13.s, 18.s))
+        assert(future.isCompleted)
+      }
+
+      "Empty sequence" in {
+        val scheduler = TestScheduler()
+        var called = false
+        val future = Task.sleep(10.s).whenItTakesLonger(Nil)(_ => called = true).runToFuture(scheduler)
+        for (_ <- 1 to 10) scheduler.tick(1.s)
+        assert(!called)
+        assert(future.isCompleted)
+      }
+
+      "Zero duration as first element" in {
+        val scheduler = TestScheduler()
+        var called = 0
+        val future = Task.sleep(10.s).whenItTakesLonger(Seq(0.s, 1.s))(_ => called += 1).runToFuture(scheduler)
+        for (_ <- 1 to 10) scheduler.tick(1.s)
+        assert(called == 0)
+        assert(future.isCompleted)
+      }
+
+      "Zero duration" in {
+        val scheduler = TestScheduler()
+        var called = 0
+        val future = Task.sleep(10.s).whenItTakesLonger(Seq(1.s, 0.s, 1.s))(_ => called += 1).runToFuture(scheduler)
+        for (_ <- 1 to 10) scheduler.tick(1.s)
+        assert(called == 1)
+        assert(future.isCompleted)
+      }
+
+      "Negative duration" in {
+        val scheduler = TestScheduler()
+        var called = 0
+        val future = Task.sleep(10.s).whenItTakesLonger(Seq(1.s, -1.s, 1.s))(_ => called += 1).runToFuture(scheduler)
+        for (_ <- 1 to 10) scheduler.tick(1.s)
+        assert(called == 1)
+        assert(future.isCompleted)
+      }
+    }
   }
 
-  "materializeIntoChecked Left(problem)" in {
-    Task.pure(Left(Problem("PROBLEM")): Checked[Int])
-      .materializeIntoChecked
-      .runToFuture
-      .map(o =>
-        assert(o == Left(Problem("PROBLEM"))))
-  }
+  "materializeIntoChecked" - {
+    "Right(value)" in {
+      Task.pure(Checked(1))
+        .materializeIntoChecked
+        .runToFuture
+        .map(o =>
+          assert(o == Checked(1)))
+    }
 
-  "materializeIntoChecked exception" in {
-    Task(sys.error("ERROR"): Checked[Int])
-      .materializeIntoChecked
-      .runToFuture
-      .map(o =>
-        assert(o == Checked.catchNonFatal(sys.error("ERROR"))))
+    "Left(problem)" in {
+      Task.pure(Left(Problem("PROBLEM")): Checked[Int])
+        .materializeIntoChecked
+        .runToFuture
+        .map(o =>
+          assert(o == Left(Problem("PROBLEM"))))
+    }
+
+    "exception" in {
+      Task(sys.error("ERROR"): Checked[Int])
+        .materializeIntoChecked
+        .runToFuture
+        .map(o =>
+          assert(o == Checked.catchNonFatal(sys.error("ERROR"))))
+    }
   }
 
   "closeableIteratorToObservable" in {

@@ -9,7 +9,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
-import monix.execution.cancelables.MultiAssignCancelable
+import monix.execution.cancelables.{MultiAssignCancelable, SerialCancelable}
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.annotation.unchecked.uncheckedVariance
@@ -33,23 +33,63 @@ object MonixBase
       def True = TrueTask
     }
 
-    implicit class RichMonixTask[A](private val underlying: Task[A]) extends AnyVal
+    implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal
     {
       def maybeTimeout(duration: Duration): Task[A] =
         duration match {
-          case d: FiniteDuration => underlying.timeout(d)
-          case _ => underlying
+          case d: FiniteDuration => task.timeout(d)
+          case _ => task
         }
 
       def orTimeout(timeout: Duration, onTimeout: => Task[A]): Task[A] =
         timeout match {
           case d: FiniteDuration =>
-            underlying.timeout(d)
+            task.timeout(d)
               .onErrorRecoverWith { case _: TimeoutException =>
                 onTimeout
               }
-          case _ => underlying
+          case _ => task
         }
+
+      /** When `this` takes longer than `duration` then call `thenDo` once. */
+      def whenItTakesLonger(duration: FiniteDuration)(thenDo: => Unit): Task[A] =
+        if (duration <= 0.s)
+          task
+        else
+          Task.deferAction { implicit scheduler =>
+            val schedule = scheduler.scheduleOnce(duration)(thenDo)
+            task.guarantee(Task(schedule.cancel()))
+          }
+
+      /** As long as `this` has not completed, call `thenDo` after each of `durations` .
+        * @param durations if empty then `thenDo` will not be called.
+        *                  The last entry is repeated until `this` completes.
+        *                  A zero or negative duration terminates calling of `thenDo`.
+        * @param thenDo A function which gets the elapsed time since start as argument. */
+      def whenItTakesLonger(durations: IterableOnce[FiniteDuration])(thenDo: (FiniteDuration) => Unit): Task[A] =
+        if (durations.iterator.isEmpty)
+          task
+        else
+          Task.deferAction { implicit scheduler =>
+            val since = scheduler.now
+            val schedule = SerialCancelable()
+            val durationIterator = durations.iterator
+            @volatile var duration = 0.s
+            def setTimer(): Unit = {
+              for (d <- durationIterator.nextOption()) {
+                duration = d
+              }
+              if (duration <= 0.s)
+                schedule := Cancelable.empty
+              else
+                schedule := scheduler.scheduleOnce(duration) {
+                  thenDo(since.elapsed)
+                  setTimer()
+                }
+            }
+            setTimer()
+            task.guarantee(Task(schedule.cancel()))
+          }
     }
 
     implicit class RichMonixObservableCompanion(private val underlying: Observable.type) extends AnyVal
@@ -235,6 +275,8 @@ object MonixBase
     }
   }
 
+  import syntax._
+
   def durationOfTask[A](task: Task[A]): Task[(A, FiniteDuration)] =
     Task.deferAction { implicit s =>
       val t = now
@@ -253,15 +295,11 @@ object MonixBase
 
         case None =>
           logger.debug(s"Waiting for Future '$name' ...")
-          val since = now
           Task.deferAction { implicit s =>
-            val logWaiting = Observable.intervalAtFixedRate(10.s, 10.s/*TODO*/)
-              .doOnNext(_ => Task(logger.info(s"Still waiting for '$name' since ${since.elapsed.pretty} ...")))
-            .headL
-            .runToFuture
             Task.fromFuture(future)
+              .whenItTakesLonger(Seq(3.s, 7.s, 10.s)/*TODO*/)(duration =>
+                logger.info(s"Still waiting for '$name' for ${duration.pretty} ..."))
               .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
-              .guarantee(Task(logWaiting.cancel()))
           }
       }
     }
