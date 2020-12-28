@@ -95,6 +95,7 @@ extends AutoCloseable
   implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
+  private lazy val controllerConfiguration = injector.instance[ControllerConfiguration]
 
   @TestOnly
   lazy val actorSystem = injector.instance[ActorSystem]
@@ -204,7 +205,8 @@ extends AutoCloseable
   lazy val httpApi: HttpControllerApi = {
     if (_httpApi.isEmpty) {
       httpApiUserAndPassword.trySet(None)
-      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.get, actorSystem = actorSystem, config = config)
+      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.get,
+        actorSystem = actorSystem, config = config, name = controllerConfiguration.name)
     }
     _httpApi.get
   }
@@ -397,7 +399,8 @@ object RunningController
         .flatTap {
           case Right(ClusterFollowUp.BecomeActive(recovered)) =>
             Task { persistence.start(recovered.state) }
-          case _ => Task.unit
+          case _ =>
+            cluster.stop
         }
       val controllerState = Task.defer {
         if (persistence.isStarted)

@@ -29,7 +29,7 @@ import js7.cluster.PassiveClusterNode._
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Logger
-import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPrepareCoupling, ClusterRecouple}
+import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
@@ -72,6 +72,17 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   private var dontActivateBecauseOtherFailedOver = otherFailed
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
+
+  def onShutDown: Task[Unit] =
+    common.clusterContext.clusterNodeApi(setting.activeUri, "ClusterPassiveDown")
+      .use(api =>
+        (api.login(onlyIfNotLoggedIn = true) >>
+          api.executeClusterCommand(ClusterPassiveDown(setting.activeId, setting.passiveId)).as(())
+        ).onErrorHandle(throwable => Task {
+          logger.debug(s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
+            throwable.nullIfNoStackTrace)
+        })
+      )
 
   def state: Task[S] =
     stateBuilderAndAccessor.state

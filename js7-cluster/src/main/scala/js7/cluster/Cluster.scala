@@ -63,9 +63,13 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   def stop: Task[Completed] =
     Task.defer {
-      logger.debug("stop")
-      for (o <- _workingClusterNode) o.close()
-      common.stop
+      logger.info("Stop cluster node")  // TODO Log only when not ClusterState.Empty
+      (_passiveOrWorkingNode match {
+        case Some(Left(passiveClusterNode)) => passiveClusterNode.onShutDown
+        case Some(Right(workingClusterNode)) => Task(workingClusterNode.close())
+        case _ => Task.unit
+      }) >>
+        common.stop
     }
 
   /**
@@ -228,9 +232,13 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     setting: ClusterSetting,
     otherFailedOver: Boolean = false,
     initialFileEventId: Option[EventId] = None)
-  : PassiveClusterNode[S] =
-    new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
+  : PassiveClusterNode[S] = {
+    assertThat(!_passiveOrWorkingNode.exists(_.isLeft))
+    val node = new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
       otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
+    _passiveOrWorkingNode = Some(Left(node))
+    node
+  }
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     _passiveOrWorkingNode
@@ -277,7 +285,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
       case _: ClusterCommand.ClusterPrepareCoupling |
            _: ClusterCommand.ClusterCouple |
-           _: ClusterCommand.ClusterRecouple =>
+           _: ClusterCommand.ClusterRecouple |
+           _: ClusterCommand.ClusterPassiveDown =>
         Task.pure(workingClusterNode)
           .flatMapT(_.executeCommand(command))
     }

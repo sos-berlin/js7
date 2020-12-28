@@ -207,6 +207,16 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
                 Right(None)
             }.map(_.map(_ => ClusterCommand.Response.Accepted)))
 
+      case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
+        requireOwnNodeId(command, activeId)(
+          persist() {
+            case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+              Right(Some(ClusterPassiveLost(passiveId)))
+
+            case _ =>
+              Right(None)
+          }.map(_.map(_ => ClusterCommand.Response.Accepted)))
+
       case _: ClusterCommand.ClusterInhibitActivation =>
         throw new NotImplementedError
     }
@@ -454,7 +464,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       logger.info(clusterEventAndStateToString(stamped.value.event, clusterState))
     }
 
-  private def stopHeartbeatingButRestartOnError[A](task: Task[Checked[A]]): Task[Checked[A]] =
+  private def stopHeartbeatingButRestartOnError[A](task: => Task[Checked[A]]): Task[Checked[A]] =
     clusterWatchSynchronizer.stopHeartbeating >>
       task
         .flatTap {

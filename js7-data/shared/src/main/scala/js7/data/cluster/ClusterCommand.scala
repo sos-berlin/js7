@@ -42,6 +42,13 @@ object ClusterCommand
     override def toString = s"ClusterRecouple(activeId=$activeId passiveId=$passiveId)"
   }
 
+  final case class ClusterPassiveDown(activeId: NodeId, passiveId: NodeId)
+  extends ClusterCommand {
+    type Response = Response.Accepted
+    assertThat(activeId != passiveId)
+    override def toString = s"ClusterPassiveDown(activeId=$activeId passiveId=$passiveId)"
+  }
+
   final case class ClusterInhibitActivation(duration: FiniteDuration)
   extends ClusterCommand {
     type Response = ClusterInhibitActivation.Response
@@ -69,6 +76,7 @@ object ClusterCommand
     Subtype(deriveCodec[ClusterPrepareCoupling]),
     Subtype(deriveCodec[ClusterCouple]),
     Subtype(deriveCodec[ClusterRecouple]),
+    Subtype(deriveCodec[ClusterPassiveDown]),
     Subtype(deriveCodec[ClusterInhibitActivation]))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
