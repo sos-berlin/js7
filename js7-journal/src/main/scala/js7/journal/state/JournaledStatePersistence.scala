@@ -109,6 +109,18 @@ extends AutoCloseable
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
 }
 
-object JournaledStatePersistence {
+object JournaledStatePersistence
+{
   private val logger = Logger(getClass)
+
+  def start[S <: JournaledState[S]](
+    initialState: S,
+    journalActor: ActorRef @@ JournalActor.type,
+    journalConf: JournalConf)
+    (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
+  = {
+    val persistence = new JournaledStatePersistence[S](journalActor, journalConf)
+    persistence.start(initialState)
+    persistence
+  }
 }
