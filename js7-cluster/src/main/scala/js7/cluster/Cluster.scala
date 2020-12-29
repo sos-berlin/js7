@@ -63,7 +63,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   def stop: Task[Completed] =
     Task.defer {
-      logger.info("Stop cluster node")  // TODO Log only when not ClusterState.Empty
+      if (isActive || isPassive) logger.info("Stop cluster node")
+      else logger.debug("Stop cluster node")
       (_passiveOrWorkingNode match {
         case Some(Left(passiveClusterNode)) => passiveClusterNode.onShutDown
         case Some(Right(workingClusterNode)) => Task(workingClusterNode.close())
@@ -291,12 +292,13 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
           .flatMapT(_.executeCommand(command))
     }
 
-  //def isPassive =
-  //  _passiveOrWorkingNode.exists(_.isLeft)
-
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
-  def isWorkingNode: Boolean =
-    _passiveOrWorkingNode.exists(_.isRight)
+  def isWorkingNode = _passiveOrWorkingNode.exists(_.isRight)
+
+  /** Is active with a backup node. */
+  def isActive = _passiveOrWorkingNode.exists(_.exists(_.isActive))
+
+  def isPassive = _passiveOrWorkingNode.exists(_.isLeft)
 }
 
 object Cluster
