@@ -143,6 +143,7 @@ trait ControllerClusterForScalaTest
     backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         primaryController.eventWatch.await[ClusterCoupled]()
+        backupController.eventWatch.await[ClusterCoupled]()
         body(primaryController, backupController)
       }
     }

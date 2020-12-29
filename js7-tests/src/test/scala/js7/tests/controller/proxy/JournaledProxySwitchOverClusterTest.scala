@@ -23,6 +23,7 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
 {
   "JournaledProxy accesses a switching Cluster" in {
     runControllerAndBackup() { (_, primaryController, backup, backupController, _) =>
+      primaryController.waitUntilReady()
       val admissions = List(
         Admission(primaryController.localUri, Some(primaryUserAndPassword)),
         Admission(backupController.localUri, Some(backupUserAndPassword)))

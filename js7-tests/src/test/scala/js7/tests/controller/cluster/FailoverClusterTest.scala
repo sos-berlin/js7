@@ -4,6 +4,7 @@ import java.nio.file.Files.size
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
@@ -25,6 +26,11 @@ import scala.concurrent.duration.Deadline.now
 
 final class FailoverClusterTest extends ControllerClusterTester
 {
+  override protected def primaryControllerConfig =
+    // Short timeout because something blocks web server shutdown occasionally
+    config"""js7.web.server.shutdown-timeout = 0.5s"""
+      .withFallback(super.primaryControllerConfig)
+
   "Failover and recouple" in {
     withControllerAndBackup() { (primary, backup, clusterSetting) =>
       var primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
@@ -42,8 +48,8 @@ final class FailoverClusterTest extends ControllerClusterTester
       primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
         .await(99.s).orThrow
       primaryController.terminated await 99.s
-      assert(since.elapsed < sleepWhileFailing, "The shell script should run while Controller fails")
-      scribe.info("Controller shut down with backup fail-over while script is running")
+      scribe.info("💥 Controller shut down with backup fail-over while script is running 💥")
+      assert(since.elapsed < sleepWhileFailing, "— The Controller should have terminated while the shell script runs")
 
       val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
         backupController.eventWatch.await[ClusterFailedOver](_.key == NoKey).head

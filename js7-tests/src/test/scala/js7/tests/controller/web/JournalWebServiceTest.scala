@@ -8,6 +8,7 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -35,8 +36,8 @@ import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
+import scala.util.{Failure, Success}
 
 final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
@@ -142,12 +143,20 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
       .foreach {
         heartbeatLines += _.utf8String
       }
+      .onComplete {
+        case Failure(t) => scribe.error(t.toStringWithCauses)
+        case Success(()) =>
+      }
 
     val orderId = OrderId("🔵")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     controller.eventWatch.await[OrderFinished](_.key == orderId)
-    waitForCondition(9.s, 10.ms) { lines.exists(_ contains "OrderFinished") } shouldBe true
-    waitForCondition(9.s, 10.ms) { heartbeatLines.exists(_ contains "OrderFinished") } shouldBe true
+    waitForCondition(9.s, 10.ms) { lines.exists(_ contains "OrderFinished") }
+    assert(lines.exists(_ contains "OrderFinished"))
+
+    waitForCondition(9.s, 10.ms) { heartbeatLines.exists(_ contains "OrderFinished") }
+    scribe.info(s"### $heartbeatLines")
+    assert(heartbeatLines.exists(_ contains "OrderFinished"))
 
     assert(heartbeatLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
     assert(heartbeatLines.filterNot(_ == JournalSeparators.HeartbeatMarker.utf8String) == lines)

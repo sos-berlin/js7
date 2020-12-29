@@ -11,6 +11,7 @@ import js7.base.utils.ScalaUtils._
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.data.ControllerCommand.TakeSnapshot
@@ -44,6 +45,7 @@ import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
@@ -86,7 +88,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
         while (!finished && rounds <= 100) {
           rounds += 1
           var proxyStartedReceived = false
-          JournaledProxy.observable[ControllerState](apiResources, Some(lastState.eventId), _ => (), ProxyConf.default)
+          try JournaledProxy.observable[ControllerState](apiResources, Some(lastState.eventId), _ => (), ProxyConf.default)
             .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
             .takeWhileInclusive {
               case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
@@ -117,6 +119,11 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             })
             .completedL
             .await(99.s)
+          catch {
+            case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded/*???*/ =>
+              logger.error(s"$t - ignored")
+            case t => throw t
+          }
           assert(proxyStartedReceived)
         }
         assert(rounds > 2)
@@ -209,6 +216,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
 
 object ProxyHistoryTest
 {
+  private val logger = Logger(getClass)
   private val AAgentId = AgentId("AGENT-A")
   private val BAgentId = AgentId("AGENT-B")
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""

@@ -50,6 +50,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 
   "JournaledProxy[ControllerState]" in {
     runControllerAndBackup() { (_, primaryController, _, backupController, _) =>
+      primaryController.waitUntilReady()
       val controllerApiResources = List(
         AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy-Primary"),
         AkkaHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword), name = "JournaledProxy-Backup"))
@@ -69,7 +70,8 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
   }
 
   "JControllerProxy with Flux" in {
-    runControllerAndBackup() { (_, _, _, _, _) =>
+    runControllerAndBackup() { (_, primaryController, _, _, _) =>
+      primaryController.waitUntilReady()
       val admissions = List(JAdmission.of(s"http://127.0.0.1:$primaryControllerPort", primaryCredentials)).asJava
       val tester = new JControllerFluxTester(admissions, JHttpsConfig.empty)
       tester.test()
@@ -87,6 +89,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     val n = calculateNumberOf[VersionedItem](200_000, workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
     logger.info(s"Adding $n Workflows")
     runControllerAndBackup() { (primary, primaryController, _, _, _) =>
+      primaryController.waitUntilReady()
       val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
       val api = new ControllerApi(controllerApiResource :: Nil)
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"/WORKFLOW-$i"))
@@ -124,6 +127,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     val n = calculateNumberOf(500_000, Stamped(0L, bigOrder.toOrderAdded(workflow.id.versionId): KeyedEvent[OrderEvent]))
     logger.info(s"Adding $n big orders")
     runControllerAndBackup() { (_, primaryController, _, _, _) =>
+      primaryController.waitUntilReady()
       val api = new ControllerApi(List(
         AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")))
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
@@ -156,6 +160,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     logger.info(s"Adding $n orders")
     val orders = Observable.range(0, n).map(_ => bigOrder)
     runControllerAndBackup() { (_, primaryController, _, _, _) =>
+      primaryController.waitUntilReady()
       logger.info(s"Adding $n invalid orders à ${bigOrder.length} bytes ${toKBGB(n * bigOrder.length)}")
       val httpClient = new AkkaHttpClient.Standard(primaryController.localUri, HttpControllerApi.UriPrefixPath, actorSystem,
         name = "JournaledProxy")

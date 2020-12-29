@@ -1,5 +1,8 @@
 package js7.tests.order
 
+import com.google.common.io.MoreFiles.touch
+import java.nio.file.Files
+import java.nio.file.Files.{deleteIfExists, exists}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.process.ProcessSignal.SIGTERM
@@ -8,6 +11,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.data.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.controller.data.events.AgentRefStateEvent.AgentReady
 import js7.data.Problems.UnknownOrderProblem
@@ -15,7 +19,7 @@ import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
 import js7.data.value.{BooleanValue, NamedValues}
@@ -26,7 +30,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.order.SuspendResumeOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.DirectoryProvider.waitingForFileScript
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -39,16 +43,24 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""
 
+  private lazy val triggerFile = Files.createTempFile("SuspendResumeOrdersTest-", ".tmp")
+
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(executablePath, script(400.ms))  // TODO Do not depend on time and speed-up test
+      a.writeExecutable(executablePath, waitingForFileScript(triggerFile, delete = true))
     }
     super.beforeAll()
+    controller.eventWatch.await[AgentReady]()
+  }
+
+  override def afterAll() = {
+    deleteIfExists(triggerFile)
+    super.afterAll()
   }
 
   "Suspend and resume a fresh order" in {
-    controller.eventWatch.await[AgentReady]()
-    val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 2.s))
+    deleteIfExists(triggerFile)
+    val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 1.s))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderAttached](_.key == order.id)
 
@@ -65,6 +77,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderSuspended))
     val lastEventId = controller.eventWatch.lastAddedEventId
 
+    touch(triggerFile)
     controller.executeCommandAsSystemUser(ResumeOrders(Set(order.id))).await(99.s).orThrow
 
     // ResumeOrders command expected a suspended or suspending order
@@ -77,7 +90,6 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
-      OrderStdoutWritten("TEST ☘\n"),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -91,6 +103,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    touch(triggerFile)
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
@@ -115,6 +128,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   }
 
   "Suspend with kill" in {
+    deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🟥"), singleJobWorkflow.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -122,6 +136,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     val suspendOrders = SuspendOrders(Set(order.id), SuspendMode(Some(CancelMode.Kill())))
     controller.executeCommandAsSystemUser(suspendOrders).await(99.s).orThrow
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
+    touch(triggerFile)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(singleJobWorkflow.id, order.scheduledFor),
       OrderAttachable(agentId),
@@ -144,7 +159,6 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderProcessingStarted,
-      OrderStdoutWritten("TEST ☘\n"),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -153,15 +167,15 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   }
 
   "Suspend and resume orders between two jobs" in {
-    val orders = Seq(FreshOrder(OrderId("🔴"), twoJobsWorkflow.path), FreshOrder(OrderId("♦️"), twoJobsWorkflow.path))
-    for (order <- orders) controller.addOrderBlocking(order)
-    for (order <- orders) {
-      controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-      controller.executeCommandAsSystemUser(SuspendOrders(order.id :: Nil)).await(99.s).orThrow
-    }
+    deleteIfExists(triggerFile)
+    val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.path)
+    controller.addOrderBlocking(order)
 
-    for (order <- orders) controller.eventWatch.await[OrderSuspended](_.key == order.id)
-    for (order <- orders) {
+    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    controller.executeCommandAsSystemUser(SuspendOrders(order.id :: Nil)).await(99.s).orThrow
+    touch(triggerFile)
+
+    controller.eventWatch.await[OrderSuspended](_.key == order.id)
       assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
         OrderAttachable(agentId),
@@ -174,41 +188,51 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderDetachable,
         OrderDetached,
         OrderSuspended))
-    }
 
     val lastEventId = controller.eventWatch.lastAddedEventId
-    controller.executeCommandAsSystemUser(ResumeOrders(orders.map(_.id))).await(99.s).orThrow
-    for (order <- orders) controller.eventWatch.await[OrderFinished](_.key == order.id)
-    for (order <- orders) {
-      assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
-        .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-          OrderResumed(None),
-          OrderAttachable(agentId),
-          OrderAttached(agentId),
-          OrderProcessingStarted,
-          OrderProcessed(Outcome.succeededRC0),
-          OrderMoved(Position(2)),
-          OrderDetachable,
-          OrderDetached,
-          OrderFinished))
-      }
+    touch(triggerFile)
+    controller.executeCommandAsSystemUser(ResumeOrders(Seq(order.id))).await(99.s).orThrow
+    controller.eventWatch.await[OrderFinished](_.key == order.id)
+    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
+      .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+        OrderResumed(None),
+        OrderAttachable(agentId),
+        OrderAttached(agentId),
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.succeededRC0),
+        OrderMoved(Position(2)),
+        OrderDetachable,
+        OrderDetached,
+        OrderFinished))
   }
 
   "An order being cancelled is not suspendible nor resumable" in {
+    deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔷"), twoJobsWorkflow.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.s).orThrow
     assert(controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
+    touch(triggerFile)
+    controller.eventWatch.await[OrderCancelled](_.key == order.id)
   }
 
-  "Suspend a forked order - child orders are not suspended" in {
+  "Suspending a forked order does not suspend child orders" in {
+    deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("FORK"), forkWorkflow.path)
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
 
+    controller.eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
     controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    touch(triggerFile)
+    controller.eventWatch.await[OrderProcessed](_.key == (order.id | "🥕"))
+
+    //controller.eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
+    //touch(bTriggerFile)
+    //waitForCondition(10.s, 10.ms) { !exists(triggerFile) }
+    //assert(!exists(triggerFile))
+    controller.eventWatch.await[OrderJoined](_.key == order.id)
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
 
     assert(controller.eventWatch
@@ -225,9 +249,6 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderId("FORK") <-: OrderSuspendMarked(),
         OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderId("FORK|🥕") <-: OrderProcessingStarted,
-        OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
-        OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 2),
         OrderId("FORK|🥕") <-: OrderDetachable,
         OrderId("FORK|🥕") <-: OrderDetached,
         OrderId("FORK") <-: OrderJoined(Outcome.succeeded),
@@ -241,6 +262,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   }
 
   "Suspend multiple orders with Batch" in {
+    deleteIfExists(triggerFile)
     val orders = for (i <- 1 to 3) yield
       FreshOrder(OrderId(i.toString), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.s))
     for (o <- orders) controller.addOrderBlocking(o)
@@ -251,12 +273,17 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   }
 
   "Resume a still suspending order" in {
+    deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔹"), twoJobsWorkflow.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
     controller.executeCommandAsSystemUser(ResumeOrders(Set(order.id))).await(99.s).orThrow
+    controller.eventWatch.await[OrderResumeMarked](_.key == order.id)
+    touch(triggerFile)
+    controller.eventWatch.await[OrderProcessed](_.key == order.id)
+    touch(triggerFile)
     controller.eventWatch.await[OrderFinished](_.key == order.id)
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -286,6 +313,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   }
 
   "Resume with position a still suspending order is inhibited" in {
+    deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔵"), twoJobsWorkflow.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -294,6 +322,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(controller.executeCommandAsSystemUser(ResumeOrder(order.id, Some(Position(0)))).await(99.s) ==
       Left(CannotResumeOrderProblem))
 
+    touch(triggerFile)
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
@@ -313,10 +342,12 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   }
 
   "Resume with invalid position is rejected" in {
+    deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("INVALID-POSITION"), tryWorkflow.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    touch(triggerFile)
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(
       controller.executeCommandAsSystemUser(ResumeOrder(order.id, Some(Position(99)))).await(99.s) ==
@@ -328,11 +359,14 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
   }
 
   "Resume with changed position and changed historic outcomes" in {
+    deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("🔶"), tryWorkflow.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     controller.executeCommandAsSystemUser(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    controller.eventWatch.await[OrderSuspendMarked](_.key == order.id)
+    touch(triggerFile)
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -379,28 +413,28 @@ object SuspendResumeOrdersTest
   private val executablePath = RelativeExecutablePath("executable.cmd")
   private val agentId = AgentId("AGENT")
   private val versionId = VersionId("INITIAL")
+  private val executeJob = Execute(WorkflowJob(agentId, executablePath, taskLimit = 100))
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, executablePath)))
+    executeJob)
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("/TWO") ~ versionId,
-    Execute(WorkflowJob(agentId, executablePath, taskLimit = 10)),
-    Execute(WorkflowJob(agentId, executablePath, taskLimit = 10)))
+    executeJob,
+    executeJob)
 
   private val forkWorkflow = Workflow.of(
     WorkflowPath("/FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
-        Execute(WorkflowJob(agentId, executablePath)),
-        Execute(WorkflowJob(agentId, executablePath)))),
-    Execute(WorkflowJob(agentId, executablePath)))
+      executeJob)),
+    executeJob)
 
   private val tryWorkflow = Workflow.of(
     WorkflowPath("/TRY") ~ versionId,
-    Execute(WorkflowJob(agentId, executablePath)),
-    Execute(WorkflowJob(agentId, executablePath)),
+    executeJob,
+    executeJob,
     TryInstruction(
       Workflow.of(
         Fail()),

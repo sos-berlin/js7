@@ -209,8 +209,13 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     }
 
     "Fetch EventIds with heartbeat" in {
-      assert(getDecodedLinesObservable[EventId](Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=0.5")).take(3) ==
-        180 :: 180/*heartbeat*/ :: 180/*heartbeat*/ :: Nil)
+      val uri = Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=1")
+      val events = Observable.fromTask(api.getDecodedLinesObservable[EventId](uri))
+        .flatten
+        .take(3)
+        .toListL
+        .await(99.s)
+      assert(events == Seq(180, 180/*heartbeat*/, 180/*heartbeat*/))
     }
 
     "whenShuttingDown completes observable" in {

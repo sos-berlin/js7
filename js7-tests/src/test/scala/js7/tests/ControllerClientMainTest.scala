@@ -64,7 +64,8 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
     //assert(output.head contains "Connection refused")
   }
 
-  "ShutDown" in {
+  "ShutDown responds with Accepted" in {
+    // May fail on slow computer if web server terminates before responding !!!
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: ShutDown }"""
     ControllerClientMain.run(

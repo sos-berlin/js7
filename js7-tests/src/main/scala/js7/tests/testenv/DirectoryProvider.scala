@@ -359,13 +359,14 @@ object DirectoryProvider
           |  timeout /t 1 >nul
           |  goto LOOP
           |:FOUND
-          |""" + (delete ?? s"del $file")
+          |""" + (delete ?? s"del $file\n")
     else
        s"""#!/usr/bin/env bash
           |set -e
           |while [ ! -e '$file' ]; do
           |  sleep 0.1
-          |done""".stripMargin + (delete ?? s" && rm '$file'")
+          |done
+          |""".stripMargin + (delete ?? s"rm '$file'\n")
 
   private def writeTrustedSignatureKeys(verifier: SignatureVerifier, configDir: Path, confFilename: String): Unit = {
     val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
