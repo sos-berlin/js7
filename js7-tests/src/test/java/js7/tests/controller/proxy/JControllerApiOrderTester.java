@@ -45,18 +45,4 @@ class JControllerApiOrderTester
         await(api.cancelOrders(singleton(OrderId.of("TEST-CANCEL")), JCancelMode.freshOrStarted()));
         cancelled.get(99, SECONDS);
     }
-
-    void testCancelOrderViaHttpPost() {
-        boolean added = await(api.addOrder(JFreshOrder.of(
-            OrderId.of("TEST-CANCEL-HTTP"),
-            workflowPath,
-            Optional.of(Instant.parse("2100-01-01T00:00:00Z")),
-            newHashMap())));
-        assertThat(added, equalTo(true));
-
-        String response = await(api
-            .httpPostJson("/controller/api/command", "{'TYPE': 'CancelOrders', 'orderIds': [ 'TEST-CANCEL-HTTP' ]}"
-                .replace('\'', '"')));
-        assertThat(response, equalTo("{\"TYPE\":\"Accepted\"}"));
-    }
 }

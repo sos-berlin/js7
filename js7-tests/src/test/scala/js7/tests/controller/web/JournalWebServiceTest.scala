@@ -8,7 +8,6 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -33,11 +32,11 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.web.JournalWebServiceTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.util.{Failure, Success}
 
 final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
@@ -55,7 +54,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents(0).writeExecutable(executablePath, script(1.s))
+    directoryProvider.agents(0).writeExecutable(executablePath, script(2.s))
   }
 
   override protected val controllerConfig = config"""
@@ -138,24 +137,22 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
       .foreach {
         lines += _.utf8String
       }
-    httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
-      .timeoutOnSlowUpstream(500.ms)  // Check heartbeat
-      .foreach {
-        heartbeatLines += _.utf8String
-      }
-      .onComplete {
-        case Failure(t) => scribe.error(t.toStringWithCauses)
-        case Success(()) =>
+    val observeWithHeartbeat = httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
+      .timeoutOnSlowUpstream(1.s)  // Check heartbeat
+      .doOnError(t => Task(scribe.error(t.toString)))
+      .foreach { bytes =>
+        heartbeatLines += bytes.utf8String
+        scribe.debug(s"observeWithHeartbeat: ${bytes.utf8String.trim}")
       }
 
     val orderId = OrderId("🔵")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     controller.eventWatch.await[OrderFinished](_.key == orderId)
     waitForCondition(9.s, 10.ms) { lines.exists(_ contains "OrderFinished") }
+    for (o <- observeWithHeartbeat.value; t <- o.failed) throw t
     assert(lines.exists(_ contains "OrderFinished"))
 
     waitForCondition(9.s, 10.ms) { heartbeatLines.exists(_ contains "OrderFinished") }
-    scribe.info(s"### $heartbeatLines")
     assert(heartbeatLines.exists(_ contains "OrderFinished"))
 
     assert(heartbeatLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)

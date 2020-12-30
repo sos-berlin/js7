@@ -68,12 +68,16 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
     // May fail on slow computer if web server terminates before responding !!!
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: ShutDown }"""
-    ControllerClientMain.run(
-      s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
-        s"https://localhost:$httpsPort" ::
-        commandYaml :: Nil,
-      output += _)
-    assert(output == List("TYPE: Accepted"))
+    try {
+      ControllerClientMain.run(
+        s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
+          s"https://localhost:$httpsPort" ::
+          commandYaml :: Nil,
+        output += _)
+      assert(output == List("TYPE: Accepted"))
+    } catch {
+      case t: akka.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
+    }
     controller.terminated await 99.s
   }
 }

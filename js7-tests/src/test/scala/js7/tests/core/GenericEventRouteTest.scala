@@ -228,8 +228,8 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
       shuttingDown.success(Deadline.now)
       observableCompleted await 99.s
 
-      eventWatch.addStamped(ExtraEvent)
-      observableCompleted.await(1.s)
+      //? eventWatch.addStamped(ExtraEvent)
+      //? observableCompleted.await(1.s)
     }
   }
 

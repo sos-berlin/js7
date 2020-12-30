@@ -38,7 +38,6 @@ class JControllerProxyTester
 
         JControllerApiOrderTester apiOrderTester = new JControllerApiOrderTester(api);
         apiOrderTester.testCancelOrder();
-        apiOrderTester.testCancelOrderViaHttpPost();
 
         try (JControllerProxyEventBusOrderTester orderTester = new JControllerProxyEventBusOrderTester(proxy)) {
             orderTester.testRunOrders();

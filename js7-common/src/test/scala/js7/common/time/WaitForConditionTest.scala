@@ -4,13 +4,13 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.common.scalautil.Logger
 import js7.common.time.WaitForCondition._
-import js7.common.time.WaitForConditionExclusiveTest._
+import js7.common.time.WaitForConditionTest._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
-final class WaitForConditionExclusiveTest extends AnyFreeSpec
+final class WaitForConditionTest extends AnyFreeSpec
 {
   "Warm-up" in {
     for (_ <- 1 to 2) realTimeIterator(Seq(now + 10.ms)).next() // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
@@ -81,7 +81,7 @@ final class WaitForConditionExclusiveTest extends AnyFreeSpec
   }
 }
 
-private object WaitForConditionExclusiveTest
+private object WaitForConditionTest
 {
   private val logger = Logger(getClass)
 
