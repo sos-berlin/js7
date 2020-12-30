@@ -4,7 +4,6 @@ import akka.pattern.AskTimeoutException
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked
-import js7.base.utils.LockResource
 import js7.base.utils.ScalaUtils.syntax._
 import js7.cluster.ClusterWatchSynchronizer._
 import js7.common.scalautil.Logger
@@ -28,42 +27,39 @@ private final class ClusterWatchSynchronizer(
   (implicit scheduler: Scheduler)
 {
   private val heartbeat = AtomicAny[CancelableFuture[Completed]](CancelableFuture.successful(Completed))
-  private val lock = LockResource("ClusterWatchSynchronizer")
 
   def stop(): Unit =
     heartbeat.get().cancel()
 
   def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState, checkOnly: Boolean = false)
   : Task[Checked[Completed]] =
-    lock.use(_ =>
-      stopHeartbeatingWhileLocked >>
-        clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState, checkOnly = checkOnly))
-          .flatMapT { completed =>
-            clusterState match {
-              case clusterState: HasNodes if clusterState.activeId == ownId && !checkOnly =>
-                startHeartbeatingWhileLocked(clusterState)
-                  .map(Right(_))
-              case _ =>
-                // The ClusterSwitchedOver event will be written to the journal after applyEvents.
-                // So persistence.clusterState will reflect the outdated ClusterState for a short while.
-                Task.pure(Right(completed))
-            }
-          })
+    stopHeartbeating >>
+      clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState, checkOnly = checkOnly))
+        .flatMapT { completed =>
+          clusterState match {
+            case clusterState: HasNodes if clusterState.activeId == ownId && !checkOnly =>
+              continueHeartbeating(clusterState)
+                .map(Right(_))
+            case _ =>
+              // The ClusterSwitchedOver event will be written to the journal after applyEvents.
+              // So persistence.clusterState will reflect the outdated ClusterState for a short while.
+              Task.pure(Right(completed))
+          }
+        }
 
   def startHeartbeating: Task[Completed] =
-    lock.use(_ => currentClusterState.flatMap {
-      case clusterState: HasNodes => startHeartbeatingWhileLocked(clusterState)
+    currentClusterState.flatMap {
+      case clusterState: HasNodes => continueHeartbeating(clusterState)
       case _ => Task.pure(Completed)
-    })
+    }
 
   def startHeartbeating(clusterState: HasNodes): Task[Checked[Completed]] =
-    lock.use(_ =>
-      doACheckedHeartbeat(clusterState)
-        .flatMapT(_ =>
-          startHeartbeatingWhileLocked(clusterState)
-            .map(Right.apply)))
+    doACheckedHeartbeat(clusterState)
+      .flatMapT(_ =>
+        continueHeartbeating(clusterState)
+          .map(Right.apply))
 
-  private def startHeartbeatingWhileLocked(clusterState: HasNodes): Task[Completed] =
+  private def continueHeartbeating(clusterState: HasNodes): Task[Completed] =
   {
     val nr = heartbeatSessionNr.next()
 
@@ -107,7 +103,7 @@ private final class ClusterWatchSynchronizer(
         }
       }
 
-    stopHeartbeatingWhileLocked >> doAHeartbeat >> start
+    stopHeartbeating >> doAHeartbeat >> start
   }
 
   private def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
@@ -115,9 +111,6 @@ private final class ClusterWatchSynchronizer(
       .materializeIntoChecked
 
   def stopHeartbeating: Task[Completed] =
-    lock.use(_ => stopHeartbeatingWhileLocked)
-
-  private def stopHeartbeatingWhileLocked: Task[Completed] =
     Task.defer {
       val h = heartbeat.getAndSet(CancelableFuture.successful(Completed))
       h.cancel()

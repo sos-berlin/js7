@@ -20,7 +20,7 @@ import js7.common.akkahttp.https.HttpsConfig
 import js7.common.configutils.Configs._
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
-import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
+import js7.core.cluster.HttpClusterWatch
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState}
 import js7.data.controller.ControllerId
