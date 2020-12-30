@@ -7,5 +7,5 @@ if [ "$OSTYPE" = "cygwin" ]; then
 else
   # See also files .sbtopts and .javaopts
   export JAVA_OPTS="-Dsbt.log.noformat=true $JAVA_OPTS"
-  exec sbt -batch -J-Xmx2500M "$@"
+  exec sbt -batch "$@"
 fi

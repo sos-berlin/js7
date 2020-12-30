@@ -21,6 +21,7 @@ import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.JournalRoute._
+import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.{EventId, JournalSeparators}
 import js7.journal.watch.EventWatch
 import monix.eval.Task
@@ -105,7 +106,6 @@ object JournalRoute
   private val logger = Logger(getClass)
   private val JournalContentType = `application/x-ndjson`
   private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteArray
-  private val HeartbeatMarker = JournalSeparators.HeartbeatMarker.toByteArray
 
   private def parseReturnAckParameter(returnType: String): Checked[Boolean] =
     returnType match {

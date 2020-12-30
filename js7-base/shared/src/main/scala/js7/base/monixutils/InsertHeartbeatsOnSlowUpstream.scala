@@ -1,4 +1,4 @@
-// Copy of Monix EchoRepeatedOperator to output a constant value instead of the last event
+// Copy of Monix EchoObservable.scala to output a constant value instead of the last event
 /*
  * Copyright (c) 2014-2020 by The Monix Project Developers.
  * See the project homepage at: https://monix.io

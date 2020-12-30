@@ -20,6 +20,7 @@ import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.log.LogLevel.syntax._
+import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -40,6 +41,8 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite =>
+
+  coupleScribeWithSlf4j()
 
   protected implicit val askTimeout = Timeout(99.seconds)
   protected lazy val directory = createTempDirectory("JournalTest-")
