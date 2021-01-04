@@ -8,7 +8,6 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.utils.AutoClosing._
-import js7.base.utils.InputStreams.inputStreamToByteArrayLimited
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import scala.collection.mutable
@@ -70,7 +69,7 @@ object Https
     val sizeLimit = 10_000_000
     val keyStore =
       try {
-        val content = inputStreamToByteArrayLimited(in, sizeLimit)
+        val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
             .getOrElse(throw new RuntimeException(s"Certificate store must have more than $sizeLimit bytes: $sourcePath"))
         if (content startsWith PemHeader)
           pemToKeyStore(content.toInputStream,

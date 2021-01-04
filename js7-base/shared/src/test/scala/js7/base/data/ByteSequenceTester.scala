@@ -1,14 +1,13 @@
 package js7.base.data
 
 import cats.syntax.monoid._
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.ReadOnlyBufferException
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.data.ByteSequence.ops._
 import js7.base.data.ByteSequenceTester._
 import js7.base.problem.Problem
 import js7.base.utils.IOUtils
-import js7.base.utils.InputStreams.inputStreamToByteArray
 import js7.base.utils.SyncResource.syntax.RichResource
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
@@ -226,10 +225,38 @@ extends AnyFreeSpec
     }
   }
 
+  "fromInputStreamUnlimited" in {
+    for (size <- Iterator(0, 1, 10000, 100001)) {
+      val byteSeq = ByteSequence[ByteSeq].random(size)
+      assert(ByteSeq.fromInputStreamUnlimited(new ByteArrayInputStream(byteSeq.toArray)) == byteSeq)
+    }
+  }
+
+  "fromInputStreamLimited" in {
+    val byteSeq = ByteSequence[ByteSeq].random(101)
+    def newInputStream = new ByteArrayInputStream(byteSeq.toArray)
+    assert(ByteSeq.fromInputStreamLimited(newInputStream, 99) == Left(byteSeq.take(99)))
+    assert(ByteSeq.fromInputStreamLimited(newInputStream, 100) == Left(byteSeq.take(100)))
+    assert(ByteSeq.fromInputStreamLimited(newInputStream, 101) == Right(byteSeq))
+    assert(ByteSeq.fromInputStreamLimited(newInputStream, 102) == Right(byteSeq))
+  }
+
+  "fromInputStreamLimited at inputStreamBufferSize" in {
+    for (diff <- -2 to 2) {
+      val size = 2 * ByteArray.inputStreamBufferSize + diff
+      val byteSeq = ByteSequence[ByteSeq].random(size)
+      def newInputStream = new ByteArrayInputStream(byteSeq.toArray)
+      assert(ByteSeq.fromInputStreamLimited(newInputStream, size - 2) == Left(byteSeq.take(size - 2)))
+      assert(ByteSeq.fromInputStreamLimited(newInputStream, size - 1) == Left(byteSeq.take(size - 1)))
+      assert(ByteSeq.fromInputStreamLimited(newInputStream, size + 1) == Right(byteSeq))
+      assert(ByteSeq.fromInputStreamLimited(newInputStream, size + 2) == Right(byteSeq))
+    }
+  }
+
   "toInputStream" in {
     for (size <- Iterator(0, 1, 10000, 100001)) {
       val byteSeq = ByteSequence[ByteSeq].random(size)
-      assert(ByteSeq.fromByteArray(inputStreamToByteArray(byteSeq.toInputStream)) == byteSeq)
+      assert(ByteSeq.fromInputStreamUnlimited(byteSeq.toInputStream) == byteSeq)
     }
   }
 

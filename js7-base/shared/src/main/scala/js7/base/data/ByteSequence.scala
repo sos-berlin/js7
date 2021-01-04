@@ -60,6 +60,16 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
       Left(Problem(s"Invalid MIME base64 encoding: " + e.getMessage))
     }
 
+  def fromInputStreamUnlimited(in: InputStream): ByteSeq =
+    fromInputStreamLimited(in, Int.MaxValue)
+      .getOrElse(throw new RuntimeException("fromInputStreamUnlimited")/*do not happen*/)
+
+  def fromInputStreamLimited(in: InputStream, limit: Int): Either[ByteSeq, ByteSeq] =
+    ByteArray.fromInputStreamLimited(in, limit) match {
+      case Left(byteArray) => Left(fromByteArray(byteArray))
+      case Right(byteArray) => Right(fromByteArray(byteArray))
+    }
+
   def random(size: Int): ByteSeq = {
     val bytes = new Array[Byte](size)
     Random.nextBytes(bytes)

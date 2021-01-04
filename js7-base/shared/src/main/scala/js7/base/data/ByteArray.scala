@@ -157,4 +157,31 @@ object ByteArray extends ByteSequence[ByteArray]
 
   override def writeToStream(byteArray: ByteArray, out: OutputStream) =
     byteArray.writeToStream(out)
+
+  private[data] val inputStreamBufferSize = 32*1024
+
+  override def fromInputStreamLimited(in: InputStream, limit: Int): Either[ByteArray, ByteArray] = {
+    var buffer = mutable.Buffer[ByteArray]()
+    var totalLength = 0
+    var eof = false
+    var overflow = false
+    val limit1 = limit min Int.MaxValue - 1 // Avoids overflow when adding 1
+    while (!eof && !overflow && totalLength <= limit) {
+      val size1 = inputStreamBufferSize min limit1 - totalLength + 1
+      val bytes = new Array[Byte](size1)
+      val readLength = in.read(bytes, 0, size1)
+      eof = readLength <= 0
+      if (!eof) {
+        overflow = totalLength + readLength > limit
+        val length = readLength min limit - totalLength
+        if (length == bytes.length) {
+          buffer += ByteArray.unsafeWrap(bytes)
+        } else
+          buffer += ByteArray.fromArray(bytes, 0, length)
+        totalLength += length
+      }
+    }
+    val result = ByteArray.combineAll(buffer)
+    if (overflow) Left(result) else Right(result)
+  }
 }
