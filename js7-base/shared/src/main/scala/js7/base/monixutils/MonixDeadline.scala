@@ -57,7 +57,7 @@ extends Ordered[MonixDeadline]
    * Check `System.nanoTime` for your platform.
    */
   def hasTimeLeft: Boolean =
-    !isOverdue
+    (nanos - nowNanos) > 0
 
   /**
    * Determine whether the deadline lies in the past at the point where this method is called.

@@ -12,6 +12,12 @@ final class MonixDeadlineTest extends AnyFreeSpec
 {
   private implicit val scheduler = TestScheduler()
 
+  "Zero MonixDeadline" in {
+    implicit val scheduler = TestScheduler()
+    assert(!now.hasTimeLeft)
+    assert(now.hasElapsed)
+  }
+
   "Late MonixDeadline" in {
     implicit val scheduler = TestScheduler()
     val late = now
