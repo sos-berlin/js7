@@ -430,6 +430,7 @@ with ReceiveLoggingActor.WithStash
 
   private def stopIfTerminated() =
     if (commandQueue.isTerminated) {
+      case object Stop
       logger.debug("Stop")
       currentFetchedFuture.foreach(_.cancel())
       releaseEventsCancelable.foreach(_.cancel())
@@ -437,9 +438,9 @@ with ReceiveLoggingActor.WithStash
         .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
         .flatMap(_ => closeClient)
         .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
-        .foreach(_ => self ! Internal.Stop)
+        .foreach(_ => self ! Stop)
       become("stopping") {
-        case Internal.Stop => context.stop(self)
+        case Stop => context.stop(self)
       }
     }
 
@@ -509,7 +510,6 @@ private[controller] object AgentDriver
     final case class ReleaseEvents(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
     final case object ReleaseEventsNow extends DeadLetterSuppression
     final case object UriChanged extends DeadLetterSuppression
-    final case object Stop
   }
 
   private case object CancelledMarker extends Exception with NoStackTrace

@@ -2,6 +2,7 @@
 set -e
 
 cd "${0%/*}"
+rm -f target/build.log
 if [ "$OSTYPE" = "cygwin" ]; then
   exec cmd /c sbt-batch.cmd "$@"
 else

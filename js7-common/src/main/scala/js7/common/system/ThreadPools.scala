@@ -15,8 +15,8 @@ import js7.common.utils.ByteUnits.toKiBGiB
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
 import scala.concurrent.duration.Duration
-import scala.util.control.NonFatal
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
