@@ -65,7 +65,7 @@ final class WorkflowParserTest extends AnyFreeSpec
          |          agent = "AGENT",
          |          arguments = { "A": "aaa", "B": "bbb", "I": -123 },
          |          taskLimit = 3,
-         |          sigkillAfter = 30;
+         |          sigkillDelay = 30;
          |}""".stripMargin,
       Workflow.of(
         Execute.Anonymous(
@@ -76,7 +76,7 @@ final class WorkflowParserTest extends AnyFreeSpec
               "B" -> StringValue("bbb"),
               "I" -> NumericValue(-123)),
             taskLimit = 3,
-            sigkillAfter = Some(30.s)),
+            sigkillDelay = Some(30.s)),
           sourcePos(20, 198)),
         ImplicitEnd(sourcePos(200, 201))))
   }

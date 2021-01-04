@@ -396,7 +396,7 @@ with Stash {
       if (job.agentId == ownAgentId) {
         val jobActor = watch(actorOf(
           JobActor.props(JobActor.Conf(jobKey, job, newTaskRunner, temporaryDirectory = conf.temporaryDirectory,
-            executablesDirectory = conf.executableDirectory, sigkillProcessesAfter = job.sigkillAfter getOrElse conf.sigkillProcessesAfter,
+            executablesDirectory = conf.executableDirectory, sigkillProcessesAfter = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay,
             scriptInjectionAllowed = conf.scriptInjectionAllowed))
           /*TODO name actor?*/))
         jobRegister.insert(jobKey, jobActor)

@@ -88,9 +88,9 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         WorkflowPath.NoId,
         Vector(
           Execute.Anonymous(WorkflowJob(AgentId("AGENT"), ExecutablePath("my-script"), Map("KEY" -> StringValue("VALUE")),
-            ReturnCodeMeaning.NoFailure, taskLimit = 3, sigkillAfter = Some(10.s))))),
+            ReturnCodeMeaning.NoFailure, taskLimit = 3, sigkillDelay = Some(10.s))))),
       """define workflow {
-        |  execute agent="AGENT", taskLimit=3, arguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillAfter=10, executable="my-script";
+        |  execute agent="AGENT", taskLimit=3, arguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillDelay=10, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -248,4 +248,3 @@ final class WorkflowPrinterTest extends AnyFreeSpec
     assert(result == expected)
   }
 }
-

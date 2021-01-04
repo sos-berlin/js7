@@ -40,7 +40,7 @@ final class WorkflowJobTest extends AnyFreeSpec
           Map("NAME" -> StringValue("VALUE"), "NUMBER" -> NumericValue(7)),
           ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))),
           taskLimit = 3,
-          sigkillAfter = Some(10.s)),
+          sigkillDelay = Some(10.s)),
         json"""{
           "agentId": "AGENT",
           "executable": {
@@ -55,7 +55,7 @@ final class WorkflowJobTest extends AnyFreeSpec
             "success": [ 0, 1 ]
           },
           "taskLimit": 3,
-          "sigkillAfter": 10
+          "sigkillDelay": 10
         }""")
     }
   }

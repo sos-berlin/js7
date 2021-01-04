@@ -59,8 +59,8 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
         sb += ']'
     }
-    for (o <- job.sigkillAfter) {
-      sb.append(", sigkillAfter=")
+    for (o <- job.sigkillDelay) {
+      sb.append(", sigkillDelay=")
       sb.append(o.toBigDecimalSeconds)  // TODO Use floating point
     }
     job.executable match {

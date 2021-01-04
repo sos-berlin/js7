@@ -39,7 +39,7 @@ final case class AgentConfiguration(
   logDirectory: Path,
   jobWorkingDirectory: Path = WorkingDirectory,
   /** Unused. */jobJavaOptions: Seq[String],
-  sigkillProcessesAfter: FiniteDuration,
+  defaultJobSigkillDelay: FiniteDuration,
   killScript: Option[ProcessKillScript],
   implicit val akkaAskTimeout: Timeout,
   journalConf: JournalConf,
@@ -138,7 +138,7 @@ object AgentConfiguration
       webServerPorts = Nil,
       logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
       jobJavaOptions = config.stringSeq("js7.job.execution.java.options"),
-      sigkillProcessesAfter = config.getDuration("js7.job.execution.sigkill-after").toFiniteDuration,
+      defaultJobSigkillDelay = config.getDuration("js7.job.execution.sigkill-delay").toFiniteDuration,
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),

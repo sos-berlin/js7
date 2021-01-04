@@ -35,7 +35,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
         logDirectory = data / "logs",
         jobWorkingDirectory = WorkingDirectory,
         jobJavaOptions = Nil,
-        sigkillProcessesAfter = 60.s,
+        defaultJobSigkillDelay = 15.s,
         killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
         akkaAskTimeout = 1.hour,
         JournalConf.fromConfig(DefaultConfig),

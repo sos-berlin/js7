@@ -105,7 +105,7 @@ object WorkflowParser
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int) |
-          keyValue("sigkillAfter", int))
+          keyValue("sigkillDelay", int))
         agentId <- kv[AgentId]("agent")
         env <- kv.oneOfOr[ObjectExpression](Set("env"), ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
@@ -123,10 +123,10 @@ object WorkflowParser
         arguments <- kv[NamedValues]("arguments", NamedValues.empty)
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
-        sigkillAfter <- kv.get[Int]("sigkillAfter").map(_.map(_.s))
+        sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
       } yield
         WorkflowJob(agentId, executable, arguments, returnCodeMeaning, taskLimit = taskLimit,
-          sigkillAfter = sigkillAfter))
+          sigkillDelay = sigkillDelay))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
       (Index ~ keyword("execute") ~ w ~ anonymousWorkflowJob ~ hardEnd)

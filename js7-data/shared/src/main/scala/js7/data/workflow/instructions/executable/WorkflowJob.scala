@@ -24,7 +24,7 @@ final case class WorkflowJob private(
   defaultArguments: NamedValues,
   returnCodeMeaning: ReturnCodeMeaning,
   taskLimit: Int,
-  sigkillAfter: Option[FiniteDuration])
+  sigkillDelay: Option[FiniteDuration])
 {
   def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
     Outcome.Completed(
@@ -59,9 +59,9 @@ object WorkflowJob
     defaultArguments: NamedValues = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
-    sigkillAfter: Option[FiniteDuration] = None)
+    sigkillDelay: Option[FiniteDuration] = None)
   : WorkflowJob =
-    checked(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter).orThrow
+    checked(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillDelay).orThrow
 
   def checked(
     agentId: AgentId,
@@ -69,9 +69,9 @@ object WorkflowJob
     defaultArguments: NamedValues = Map.empty,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
-    sigkillAfter: Option[FiniteDuration] = None)
+    sigkillDelay: Option[FiniteDuration] = None)
   : Checked[WorkflowJob] =
-    Right(new WorkflowJob(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillAfter))
+    Right(new WorkflowJob(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillDelay))
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -93,7 +93,7 @@ object WorkflowJob
       workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" -> workflowJob.defaultArguments.asJson) :::
       (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" -> workflowJob.returnCodeMeaning.asJson)) :::
       ("taskLimit" -> workflowJob.taskLimit.asJson) ::
-      ("sigkillAfter" -> workflowJob.sigkillAfter.asJson) ::
+      ("sigkillDelay" -> workflowJob.sigkillDelay.asJson) ::
       Nil)
 
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
@@ -104,7 +104,7 @@ object WorkflowJob
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
-      sigkillProcessesAfter <- cursor.get[Option[FiniteDuration]]("sigkillAfter")
+      sigkillProcessesAfter <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
       job <- checked(agentId, executable, arguments, rc, taskLimit, sigkillProcessesAfter)
         .toDecoderResult(cursor.history)
     } yield job

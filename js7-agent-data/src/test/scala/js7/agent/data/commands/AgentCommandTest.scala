@@ -147,7 +147,7 @@ final class AgentCommandTest extends AnyFreeSpec
         }""")
     }
 
-    "JSON without sigkillAfter" in {
+    "JSON without sigkillDelay" in {
       check(AgentCommand.ShutDown(processSignal = Some(SIGTERM)),
         json"""{
           "TYPE": "ShutDown",
