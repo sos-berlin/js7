@@ -11,11 +11,9 @@ import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.ConcurrentRequestLimiter
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
@@ -23,7 +21,6 @@ import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerState
-import js7.controller.problems.HistoricSnapshotServiceBusyProblem
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute._
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
@@ -40,11 +37,6 @@ trait SnapshotRoute extends ControllerRouteProvider
   private implicit def implicitScheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
-
-  // Rebuilding state may take a long time, so we allow only one per time.
-  // The client may impatiently abort and retry, overloading the server with multiple useless requests.
-  private lazy val concurrentRequestsLimiter =
-    new ConcurrentRequestLimiter(limit = 1, HistoricSnapshotServiceBusyProblem, timeout = 1.s, queueSize = 1)
 
   final lazy val snapshotRoute: Route =
     get {
@@ -65,23 +57,22 @@ trait SnapshotRoute extends ControllerRouteProvider
           snapshotToHttpEntity(state))
 
   private def historicSnapshot(eventId: EventId): Route =
-    concurrentRequestsLimiter(
-      complete {
-        val checked = eventWatch.rawSnapshotAfter(after = eventId) match {
-          case None =>
-            Left(SnapshotForUnknownEventIdProblem(eventId))
+    complete {
+      val checked = eventWatch.rawSnapshotAfter(after = eventId) match {
+        case None =>
+          Left(SnapshotForUnknownEventIdProblem(eventId))
 
-          case Some(observable) =>
-            Right(HttpEntity(
-              `application/x-ndjson`,
-              observable
-                .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                  Task { logger.debug("whenShuttingDown completed") })
-                .map(_.toByteString)
-                .toAkkaSourceForHttpResponse))
-        }
-        checked
-      })
+        case Some(observable) =>
+          Right(HttpEntity(
+            `application/x-ndjson`,
+            observable
+              .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                Task { logger.debug("whenShuttingDown completed") })
+              .map(_.toByteString)
+              .toAkkaSourceForHttpResponse))
+      }
+      checked
+    }
 
   private def snapshotToHttpEntity(state: ControllerState): HttpEntity.Chunked =
     HttpEntity(
