@@ -17,6 +17,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.common.time.WaitForCondition.waitForCondition
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
@@ -64,6 +65,11 @@ final class AgentActorTest extends AnyFreeSpec
           eventWatch.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
 
+        waitForCondition(10.s, 10.ms) {
+          // orderRegister is updated lately, so we may wait a moment
+          val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
+          !orders.exists(_.isAttached/*should be _.isDetaching*/)
+        }
         val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
         assert(orders.toSet ==
           orderIds.map(orderId => Order(

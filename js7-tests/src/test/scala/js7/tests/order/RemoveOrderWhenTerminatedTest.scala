@@ -8,7 +8,7 @@ import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.RelativeExecutablePath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderStarted, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -40,14 +40,13 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id))).await(99.seconds).orThrow
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(quickWorkflow.id, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderRemoveMarked,
-      OrderStdoutWritten("TEST ☘\n"),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -62,14 +61,13 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id))).await(99.seconds).orThrow
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(slowWorkflow.id, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderRemoveMarked,
-      OrderStdoutWritten("TEST ☘\n"),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,

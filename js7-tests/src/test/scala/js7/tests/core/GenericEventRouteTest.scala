@@ -17,6 +17,7 @@ import js7.common.configutils.Configs._
 import js7.common.http.AkkaHttpClient
 import js7.common.http.Uris.{encodePath, encodeQuery}
 import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -222,13 +223,16 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
     "whenShuttingDown completes observable" in {
       val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
-        .foreach { _ => }
+        .completedL.runToFuture
       sleep(10.ms)
       assert(!observableCompleted.isCompleted)
 
       // ShutDown service
       shuttingDown.success(Deadline.now)
-      observableCompleted await 99.s
+      try observableCompleted await 99.s
+      catch { case akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+        logger.error("NoMoreElementsNeeded - IGNORED")
+      }
 
       eventCollector.addStamped(ExtraEvent)
       observableCompleted.await(1.s)
@@ -254,6 +258,8 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
 object GenericEventRouteTest
 {
+  private val logger = Logger(getClass)
+
   private val TestEvents = for (i <- 1 to 18) yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") ~ "VERSION", None, Map.empty))

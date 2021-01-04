@@ -83,7 +83,9 @@ final class OrderAgentTest extends AnyFreeSpec
           assert(processedOrder == toExpectedOrder(order))
           agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual Right(AgentCommand.Response.Accepted)
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
-          agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
+
+          try agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
+          catch { case t: akka.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" => }
         }
       }
     }

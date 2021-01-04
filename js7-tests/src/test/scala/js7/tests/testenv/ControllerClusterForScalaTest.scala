@@ -53,7 +53,7 @@ trait ControllerClusterForScalaTest
   protected lazy val primaryControllerPort = findFreeTcpPort()
   protected lazy val backupControllerPort = findFreeTcpPort()
 
-  protected val clusterTiming = ClusterTiming(1.s, 5.s)
+  protected val clusterTiming = ClusterTiming(1.s, 3.s)
 
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()

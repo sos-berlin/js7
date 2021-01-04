@@ -43,17 +43,15 @@ import shapeless.tag
 /**
   * @author Joacim Zschimmer
   */
-final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
+final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 
   private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
-  protected def config = TestConfig
   protected lazy val directory = createTempDirectory("JournaledStatePersistenceTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
 
   override def afterAll() = {
-    close()
     deleteDirectoryRecursively(directory)
     scheduler.shutdown()
     super.afterAll()
@@ -132,7 +130,8 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
     }
   }
 
-  private class RunningPersistence {
+  private class RunningPersistence extends ProvideActorSystem {
+    protected def config = TestConfig
     private var journaledStatePersistence: JournaledStatePersistence[TestState] = null
     private lazy val journalStopped = Promise[JournalActor.Stopped]()
 
@@ -161,6 +160,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
       }
       journalActor ! JournalActor.Input.Terminate
       journalStopped.future await 99.s
+      close()
     }
   }
 }

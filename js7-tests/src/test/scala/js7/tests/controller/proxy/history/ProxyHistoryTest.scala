@@ -81,7 +81,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
         var releaseEventsEventId = EventId.BeforeFirst
         var lastAddedEventId = EventId.BeforeFirst
         primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
-        var lastState = ControllerState.empty
+        @volatile var lastState = ControllerState.empty
         @volatile var finished = false
         var completedRounds = 0
         while (!finished && completedRounds <= 100) {
@@ -121,10 +121,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             assert(proxyStartedReceived)
             completedRounds += 1  // Don't count NoMoreElementsNeeded
           }
-          catch {
-            case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded/*???*/ =>
-              logger.error(s"$t - ignored")
-            case t => throw t
+          catch { case akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded/*???*/ =>
+            logger.error("NoMoreElementsNeeded - IGNORED")
           }
         }
         assert(completedRounds > 2)
