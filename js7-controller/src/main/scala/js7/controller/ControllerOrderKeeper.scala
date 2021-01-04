@@ -30,7 +30,6 @@ import js7.cluster.WorkingClusterNode
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.configutils.Configs.ConvertibleConfig
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.Logger.ops._
 import js7.common.time.JavaTimeConverters.AsScalaDuration
@@ -43,21 +42,20 @@ import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, Agent
 import js7.controller.data.events.ControllerEvent
 import js7.controller.data.events.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.controller.data.{ControllerCommand, ControllerState, ControllerStateExecutor}
-import js7.controller.item.{RepoCommandExecutor, VerifiedUpdateItems}
+import js7.controller.item.VerifiedUpdateItems
 import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.{AgentId, AgentRef, AgentRunId}
-import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
-import js7.data.item.{ItemEvent, SimpleItemEvent, VersionedEvent, VersionedItem}
+import js7.data.item.{ItemEvent, SimpleItemEvent, VersionedEvent}
 import js7.data.lock.Lock
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
@@ -85,7 +83,6 @@ final class ControllerOrderKeeper(
   protected val journalActor: ActorRef @@ JournalActor.type,
   clusterNode: WorkingClusterNode[ControllerState],
   controllerConfiguration: ControllerConfiguration,
-  itemVerifier: VersionedItemVerifier[VersionedItem],
   testEventPublisher: EventPublisher[Any])
   (implicit protected val scheduler: Scheduler)
 extends Stash
@@ -103,7 +100,6 @@ with MainJournalingActor[ControllerState, Event]
   private val orderEventSource = liveOrderEventSource(() => _controllerState)
   private val orderEventHandler = liveOrderEventHandler(() => _controllerState)
 
-  private val repoCommandExecutor = new RepoCommandExecutor(itemVerifier)
   private val agentRegister = new AgentRegister
   private val orderRegister = mutable.HashMap[OrderId, OrderEntry]()
   private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
@@ -642,32 +638,6 @@ with MainJournalingActor[ControllerState, Event]
             }
         }
 
-      case cmd: ControllerCommand.ReplaceRepo =>
-        Try(
-          repoCommandExecutor.replaceRepoCommandToEvents(_controllerState.repo, cmd, commandMeta.user)
-            .runToFuture
-            .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
-        match {
-          case Failure(t) => Future.failed(t)
-          case Success(checkedVersionedEvents) =>
-            checkedVersionedEvents
-              .traverse(persistItemEvents)
-              .map(_.flatten.map((_: Completed) => ControllerCommand.Response.Accepted))
-        }
-
-      case cmd: ControllerCommand.UpdateRepo =>
-        Try(
-          repoCommandExecutor.updateRepoCommandToEvents(_controllerState.repo, cmd, commandMeta.user)
-            .runToFuture
-            .awaitInfinite/*blocking!!! - wait for parallel execution and continue in same actor thread*/)
-        match {
-          case Failure(t) => Future.failed(t)
-          case Success(checkedVersionedEvents) =>
-            checkedVersionedEvents
-              .traverse(persistItemEvents)
-              .map(_.flatten.map((_: Completed) => ControllerCommand.Response.Accepted))
-        }
-
       case ControllerCommand.NoOperation(maybeDuration) =>
         // NoOperation completes only after ControllerOrderKeeper has become ready (can be used to await readiness)
         Task.pure(Right(ControllerCommand.Response.Accepted))
@@ -1042,7 +1012,7 @@ with MainJournalingActor[ControllerState, Event]
         }.dematerialize
         .guaranteeCase { exitCase =>
           Task {
-            logger.debug(s"Switchover => $exitCase")
+            logger.debug(s"SwitchOver => $exitCase")
             so.close()
           }
         }

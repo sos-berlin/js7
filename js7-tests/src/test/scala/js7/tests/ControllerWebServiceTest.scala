@@ -38,17 +38,21 @@ import js7.controller.data.events.ControllerEvent.ControllerReady
 import js7.controller.data.{ControllerMetaState, ControllerState}
 import js7.data.agent.AgentId
 import js7.data.event.{<-:, Event, KeyedEvent}
-import js7.data.job.RelativeExecutablePath
+import js7.data.item.{ItemOperation, VersionId}
+import js7.data.job.{ExecutablePath, RelativeExecutablePath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.test.TestSetting.TestAgentId
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest._
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
@@ -146,84 +150,17 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   }
 
   "Add workflows" in {
-    val workflowJson = json"""
-      {
-        "TYPE": "Workflow",
-        "path": "/WORKFLOW",
-        "versionId": "VERSION-1",
-        "instructions": [
-          {
-            "TYPE": "Execute.Anonymous",
-            "job": {
-              "agentId": "AGENT",
-              "executable": {
-                "TYPE": "ExecutablePath",
-                "path": "A$sh"
-              },
-              "taskLimit": 1
-            }
-          }
-        ]
-      }""".compactPrint
-
-    val workflow2Json = json"""
-      {
-        "TYPE": "Workflow",
-        "path": "/FOLDER/WORKFLOW-2",
-        "versionId": "VERSION-1",
-        "instructions": [
-          {
-            "TYPE": "Execute.Anonymous",
-            "job": {
-              "agentId": "AGENT",
-              "executable": {
-                "TYPE": "ExecutablePath",
-                "path": "B$sh"
-              },
-              "taskLimit": 1
-            }
-          }, {
-            "TYPE": "Execute.Anonymous",
-            "job": {
-              "agentId": "AGENT",
-              "executable": {
-                "TYPE": "ExecutablePath",
-                "path": "MISSING$sh"
-              },
-              "taskLimit": 1
-            }
-          }
-        ]
-      }""".compactPrint
-
-    val cmd = json"""
-      {
-        "TYPE": "UpdateRepo",
-        "versionId": "VERSION-1",
-        "change": [
-          {
-            "string": "$workflowJson",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
-            }
-          }, {
-            "string": "$workflow2Json",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
-            }
-          }
-        ],
-        "delete": []
-      }"""
-
-    val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
-    val response = httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/command"), cmd, headers) await 99.s
-    assert(response == json"""
-      {
-        "TYPE": "Accepted"
-      }""")
+    controller.updateItemsAsSystemUser(
+      ItemOperation.AddVersion(VersionId("VERSION-1")) +:
+        Observable(
+          Workflow.of(WorkflowPath("/WORKFLOW") ~ "VERSION-1",
+            Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath(s"A$sh")))),
+          Workflow.of(WorkflowPath("/FOLDER/WORKFLOW-2") ~ "VERSION-1",
+            Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath(s"B$sh"))),
+            Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath(s"MISSING$sh"))))
+        ).map(directoryProvider.itemSigner.sign)
+          .map(ItemOperation.VersionedAddOrChange.apply)
+    ).await(99.s).orThrow
   }
 
   "/controller/api/workflow" - {

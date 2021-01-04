@@ -13,7 +13,6 @@ import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.proxy.ControllerApi
@@ -24,7 +23,7 @@ import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.controller.{JControllerCommand, JControllerState, JEventAndControllerState}
-import js7.proxy.javaapi.data.item.{JUpdateItemOperation, JUpdateRepoOperation}
+import js7.proxy.javaapi.data.item.JUpdateItemOperation
 import js7.proxy.javaapi.data.order.{JFreshOrder, JHistoricOutcome}
 import js7.proxy.javaapi.data.workflow.position.JPosition
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
@@ -90,52 +89,6 @@ final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit
   @Nonnull
   def updateAgentRefs(@Nonnull agentRefs: java.util.List[JAgentRef]): CompletableFuture[VEither[Problem, Void]] =
     asScala.updateAgentRefs(agentRefs.asScala.map(_.asScala).toVector)
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
-
-  /** Update the Repo, i.e. add, change or deleteItem versioned items.
-    *
-    * Each `JUpdateRepoOperation` adds/replaces or deletes an item.
-    *
-    * '''To add or replace an item:'''
-    * {{{
-    * JUpdateRepoOperations.addOrReplace(
-    *   SignedString.of(
-    *     jsonString,
-    *     "PGP"/*for example*/,
-    *     signatureString)
-    * }}}
-    * `SignedString.of` requires three arguments:
-    *   - `jsonString` is the JSON-encoded `VersionedItem`, i.e. a Workflow or an AgentId.
-    *     The item must include its id with `path` and `versionId`.
-    *     The `versionId` must be the same as the first argument for `updateRepo`.
-    *   - "PGP" or any supported signature type.
-    *   - `signatureString` is the the signature of the UTF-8 encoded `jsonString`.
-    *     {{{
-    * signatureString = sign(jsonString.getBytes(UTF_8))
-    *     }}}
-    *
-    * '''To deleteItem an item:'''
-    * {{{
-    * JUpdateRepoOperations.addOrReplace(ItemPath)
-    * }}}
-    *
-    * `ItemPath` may be a [[js7.data.workflow.WorkflowPath]] or a [[js7.data.agent.AgentId]]
-    * (both have a Java-compatible static factory method `of`).
-    *
-    * @param versionId `VersionId` of this new version
-    * @param operations Stream of JUpdateRepoOperations
-    *
-    */
-  @Deprecated
-  @deprecated("Use updateItems")
-  @Nonnull
-  def updateRepo(
-    @Nonnull versionId: VersionId,
-    @Nonnull operations: Flux[JUpdateRepoOperation])
-  : CompletableFuture[VEither[Problem, Void]] =
-    asScala.updateRepo(requireNonNull(versionId), operations.asObservable.map(_.asScala))
       .map(_.toVoidVavr)
       .runToFuture
       .asJava

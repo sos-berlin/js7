@@ -5,7 +5,6 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.crypt.SignedString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import js7.base.utils.Big
@@ -17,7 +16,6 @@ import js7.controller.data.ControllerState.simpleItemJsonCodec
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
 import js7.data.event.EventId
-import js7.data.item.{ItemPath, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderId}
 import js7.data.workflow.position.Position
@@ -187,25 +185,6 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class UpdateRepo(
-    versionId: VersionId,
-    change: Seq[SignedString] = Nil,
-    delete: Seq[ItemPath] = Nil)
-  extends ControllerCommand with Big {
-    type Response = Response.Accepted
-
-    def isEmpty = change.isEmpty && delete.isEmpty
-
-    override def toString = s"UpdateRepo($versionId change=${change.size}× delete=${delete.size}×)"
-  }
-
-  final case class ReplaceRepo(versionId: VersionId, objects: Seq[SignedString])
-  extends ControllerCommand with Big {
-    type Response = Response.Accepted
-
-    override def toString = s"ReplaceRepo($versionId, ${objects.size} objects)"
-  }
-
   final case class ClusterAppointNodes(
     idToUri: Map[NodeId, Uri],
     activeId: NodeId,
@@ -249,8 +228,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],
     Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
-    Subtype(deriveCodec[ReplaceRepo]),
-    Subtype(deriveCodec[UpdateRepo]),
     Subtype(deriveCodec[NoOperation]),
     Subtype(EmitTestEvent),
     Subtype[EmergencyStop],

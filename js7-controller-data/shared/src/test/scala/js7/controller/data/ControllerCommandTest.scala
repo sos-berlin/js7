@@ -1,7 +1,6 @@
 package js7.controller.data
 
 import js7.base.circeutils.CirceUtils._
-import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
@@ -133,62 +132,6 @@ final class ControllerCommandTest extends AnyFreeSpec
       json"""{
         "TYPE": "RemoveOrdersWhenTerminated",
         "orderIds": [ "A", "B" ]
-      }""")
-  }
-
-  "ReplaceRepo" in {
-    testJson[ControllerCommand](ReplaceRepo(
-      VersionId("1"),
-      objects = SignedString(
-        string = """{"TYPE": "Workflow", ...}""",
-        GenericSignature(
-          "PGP",
-          """|-----BEGIN PGP SIGNATURE-----
-             |
-             |...
-             |-----END PGP SIGNATURE-----
-             |""".stripMargin)) :: Nil),
-      json"""{
-        "TYPE": "ReplaceRepo",
-        "versionId": "1",
-        "objects": [
-          {
-            "string": "{\"TYPE\": \"Workflow\", ...}",
-            "signature": {
-              "TYPE": "PGP",
-              "signatureString": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
-            }
-          }
-        ]
-      }""")
-  }
-
-  "UpdateRepo" in {
-    testJson[ControllerCommand](UpdateRepo(
-      VersionId("1"),
-      change = SignedString(
-        string = """{"TYPE": "Workflow", ...}""",
-        GenericSignature(
-          "PGP",
-           """-----BEGIN PGP SIGNATURE-----
-            |
-            |...
-            |-----END PGP SIGNATURE-----
-            |""".stripMargin)) :: Nil,
-      delete = WorkflowPath("/WORKFLOW-A") :: Nil),
-      json"""{
-        "TYPE": "UpdateRepo",
-        "versionId": "1",
-        "change": [
-          {
-            "string": "{\"TYPE\": \"Workflow\", ...}",
-            "signature": {
-              "TYPE": "PGP",
-              "signatureString": "-----BEGIN PGP SIGNATURE-----\n\n...\n-----END PGP SIGNATURE-----\n"
-            }
-          }
-        ],
-        "delete": [ "Workflow:/WORKFLOW-A" ]
       }""")
   }
 

@@ -9,7 +9,7 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.HasCloser
-import js7.base.web.{HttpClient, Uri}
+import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
@@ -17,8 +17,6 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.common.time.JavaTimeConverters._
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.ReplaceRepo
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.workflow.WorkflowReader
 import js7.core.crypt.generic.MessageSigners
@@ -87,23 +85,6 @@ extends HasCloser with Observing with ProvideActorSystem
         case Right(completed) => completed
       }
   }
-
-  // We don't use ReplaceRepo because it changes every existing object only because of changed signature.
-  private def replaceControllerConfiguration(versionId: Option[VersionId]): Task[Checked[Completed]] =
-    for {
-      _ <- loginUntilReachable
-      currentEntries = readDirectory()
-      checkedCommand = toReplaceRepoCommand(versionId getOrElse newVersionId(), currentEntries.map(_.file))
-      response <- checkedCommand
-        .traverse(o => HttpClient.liftProblem(
-          httpControllerApi.executeCommand(o).map((_: ControllerCommand.Response) => Completed)))
-        .map(_.flatten)
-    } yield {
-      if (response.isRight) {
-        lastEntries := currentEntries
-      }
-      response
-    }
 
   /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
@@ -202,10 +183,6 @@ extends HasCloser with Observing with ProvideActorSystem
         .traverse(path => ItemPaths.fileToItemPath(itemPathCompanions, conf.liveDirectory, path))
     (checkedAdded, checkedChanged, checkedDeleted) mapN ((add, chg, del) => VersionedItems.Diff(add, chg, del))
   }
-
-  private def toReplaceRepoCommand(versionId: VersionId, files: Seq[Path]): Checked[ReplaceRepo] =
-    typedSourceReader.readVersionedItems(files)
-      .map(items => ReplaceRepo(versionId, items.map(x => itemSigner.sign(x withVersion versionId))))
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
     firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.seconds)

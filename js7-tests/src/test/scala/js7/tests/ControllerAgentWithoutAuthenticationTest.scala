@@ -16,11 +16,10 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand.ReplaceRepo
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.item.{VersionId, VersionedItemSigner}
+import js7.data.item.{ItemOperation, VersionId, VersionedItemSigner}
 import js7.data.job.ExecutablePath
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -29,6 +28,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ControllerAgentWithoutAuthenticationTest._
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
@@ -93,9 +93,11 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       val controller = RunningController(controllerConfiguration) await 99.seconds
       controller.waitUntilReady()
 
-      controller.updateSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
-      val replaceRepo = ReplaceRepo(versionId, Seq(workflow) map itemSigner.sign)
-      controller.executeCommandAsSystemUser(replaceRepo).await(99.s).orThrow
+      controller.updateItemsAsSystemUser(Observable(
+        ItemOperation.SimpleAddOrChange(agentRef),
+        ItemOperation.AddVersion(versionId),
+        ItemOperation.VersionedAddOrChange(itemSigner.sign(workflow)))
+      ).await(99.s).orThrow
 
       body(controller, agentPort)
 

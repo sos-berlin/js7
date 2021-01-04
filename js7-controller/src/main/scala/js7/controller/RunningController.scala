@@ -424,7 +424,7 @@ object RunningController
           val actor = actorSystem.actorOf(
             Props {
               new ControllerOrderKeeper(terminationPromise, journalActor, workingClusterNode, controllerConfiguration,
-                itemVerifier, testEventPublisher)
+                testEventPublisher)
             },
             "ControllerOrderKeeper")
           actor ! ControllerOrderKeeper.Input.Start(recovered)

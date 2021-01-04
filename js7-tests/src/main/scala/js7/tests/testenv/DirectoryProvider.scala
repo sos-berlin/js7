@@ -30,12 +30,11 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand.ReplaceRepo
 import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
-import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner}
+import js7.data.item.{ItemOperation, ItemPath, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.job.RelativeExecutablePath
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -160,10 +159,14 @@ extends HasCloser
           runningController.updateSimpleItemsAsSystemUser(agentRefs).await(99.s).orThrow
           if (items.nonEmpty) {
             // startController may be called several times. We configure only once.
-            runningController.executeCommandAsSystemUser(ReplaceRepo(
-              Vinitial,
-              items.map(_ withVersion Vinitial) map itemSigner.sign)
-            ).await(99.s).orThrow
+            runningController
+              .updateItemsAsSystemUser(
+                ItemOperation.AddVersion(Vinitial) +:
+                  Observable.fromIterable(items)
+                    .map(_ withVersion Vinitial)
+                    .map(itemSigner.sign)
+                    .map(ItemOperation.VersionedAddOrChange.apply))
+              .await(99.s).orThrow
           }
         }
       }

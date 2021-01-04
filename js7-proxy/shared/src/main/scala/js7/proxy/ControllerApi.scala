@@ -68,10 +68,6 @@ extends ControllerApiWithHttp
       .map(ItemOperation.SimpleAddOrChange.apply))
       .map(_.map((_: Completed) => Accepted))
 
-  @deprecated("Use updateItems", "2020-12-11")
-  def updateRepo(versionId: VersionId, operations: Observable[ItemOperation.VersionedOperation]): Task[Checked[Completed]] =
-    updateItems(ItemOperation.AddVersion(versionId) +: operations)
-
   def updateRepo(
     itemSigner: VersionedItemSigner[VersionedItem],
     versionId: VersionId,
@@ -99,20 +95,15 @@ extends ControllerApiWithHttp
       Observable.fromIterable(items) map ItemOperation.SimpleAddOrChange.apply)
 
   def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
-    apiResource.use(api =>
-      api.retryUntilReachable()(
-        HttpClient.liftProblem(
-          api.postObservable[ItemOperation, JsonObject](
-            "controller/api/item",
-            operations
-          ).map(_ => Completed))))
+    untilReachable(_
+      .postObservable[ItemOperation, JsonObject](
+        "controller/api/item",
+        operations)
+    ).map(_.map((_: JsonObject) => Completed))
 
   def addOrders(orders: Observable[FreshOrder]): Task[Checked[AddOrders.Response]] =
-    apiResource.use(api =>
-      api.retryUntilReachable()(
-        HttpClient.liftProblem(
-          api.postObservable[FreshOrder, Json]("controller/api/order", orders)
-        ).map(_.flatMap(_.checkedAs[AddOrders.Response]))))
+    untilReachable(_.postObservable[FreshOrder, Json]("controller/api/order", orders))
+      .map(_.flatMap(_.checkedAs[AddOrders.Response]))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
@@ -124,18 +115,17 @@ extends ControllerApiWithHttp
       .mapt((_: ControllerCommand.Response.Accepted) => Completed)
 
   def executeCommand(command: ControllerCommand): Task[Checked[command.Response]] =
-    apiResource.use(api =>
-      api.retryUntilReachable()(
-        HttpClient.liftProblem(
-          api.executeCommand(command))))
+    untilReachable(_.executeCommand(command))
 
   def journalInfo: Task[Checked[JournalInfo]] =
-    apiResource.use(api =>
-      api.retryUntilReachable()(
-        api.journalInfo))
+    untilReachable(_.journalInfo)
 
   def controllerState: Task[Checked[ControllerState]] =
+    untilReachable(_.snapshot())
+
+  private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
     apiResource.use(api =>
-      api.retryUntilReachable()(
-        api.snapshot()))
+      HttpClient.liftProblem(
+        api.retryUntilReachable()(
+          body(api))))
 }
