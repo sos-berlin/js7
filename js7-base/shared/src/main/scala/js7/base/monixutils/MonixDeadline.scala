@@ -89,7 +89,7 @@ object MonixDeadline
    * then comparing it to multiple deadlines (using subtraction).
    */
   def now(implicit s: Scheduler): MonixDeadline =
-    MonixDeadline(nowNanos)
+    MonixDeadline(nowNanos(s))
 
   private def nowNanos(implicit scheduler: Scheduler): Long =
     scheduler.clockMonotonic(NANOSECONDS)

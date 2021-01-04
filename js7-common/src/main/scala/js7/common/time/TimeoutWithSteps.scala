@@ -1,5 +1,6 @@
 package js7.common.time
 
+import js7.base.monixutils.MonixDeadline
 import js7.common.time.TimeoutWithSteps._
 import scala.concurrent.duration._
 
@@ -9,7 +10,7 @@ final case class TimeoutWithSteps(timeout: FiniteDuration, step: FiniteDuration)
 
   /** Liefert einen Iterator mit den Zeitpunkten startInstant, startInstant + step, ..., startInstant + timeout.
     */
-  def toDeadlineIterator(start: Deadline): Iterator[Deadline] =
+  def toDeadlineIterator(start: MonixDeadline): Iterator[MonixDeadline] =
     deadlineIterator(start, timeout, step)
 }
 
@@ -17,7 +18,7 @@ object TimeoutWithSteps
 {
   /** Liefert einen Iterator mit den Zeitpunkten startInstant, startInstant + step, ..., startInstant + timeout.
   */
-  def deadlineIterator(start: Deadline, timeout: FiniteDuration, step: FiniteDuration): Iterator[Deadline] =
+  def deadlineIterator(start: MonixDeadline, timeout: FiniteDuration, step: FiniteDuration): Iterator[MonixDeadline] =
     (0L to timeout.toMillis - 1 by step.toMillis).iterator.map(o => start + o.millis) ++
       Iterator(start + timeout)
 }
