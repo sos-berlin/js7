@@ -213,6 +213,9 @@ final case class Order[+S <: Order.State](
           check(parent.isEmpty && isMarkable,
             copy(mark = Some(OrderMark.Cancelling(mode))))
 
+        case OrderCancelMarkedOnAgent =>
+          Right(this)
+
         case OrderCancelled =>
           check(isCancelable && isDetached,
             copy(
@@ -222,6 +225,9 @@ final case class Order[+S <: Order.State](
         case OrderSuspendMarked(kill) =>
           check(isMarkable,
             copy(mark = Some(OrderMark.Suspending(kill))))
+
+        case OrderSuspendMarkedOnAgent =>
+          Right(this)
 
         case OrderSuspended =>
           check(isSuspendible && (isDetached || isSuspended/*already Suspended, to clean Resuming mark*/),

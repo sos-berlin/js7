@@ -233,13 +233,14 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   val itemPathCompanions = Set[ItemPath.AnyCompanion](
     WorkflowPath)
 
-  object generic {
+  trait GenericImplicits {
     implicit val simpleItemIdJsonCodec: CirceCodec[SimpleItemId] =
       SimpleItemId.jsonCodec(simpleItemIdCompanions)
 
     implicit val itemPathJsonCodec: CirceCodec[ItemPath] =
       ItemPath.jsonCodec(itemPathCompanions)
   }
+  val generic = new GenericImplicits {}
 
   implicit val versionedItemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))

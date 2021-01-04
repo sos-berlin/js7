@@ -214,6 +214,10 @@ object OrderEvent {
     }
   }
 
+  type OrderCancelMarkedOnAgent = OrderCancelMarkedOnAgent.type
+  /** No other use than notifying an external user. */
+  case object OrderCancelMarkedOnAgent extends OrderActorEvent
+
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent with OrderTerminated
 
@@ -221,6 +225,10 @@ object OrderEvent {
   extends OrderKillMarked {
     def kill = mode.kill
   }
+
+  type OrderSuspendMarkedOnAgent = OrderSuspendMarkedOnAgent.type
+  /** No other use than notifying an external user. */
+  case object OrderSuspendMarkedOnAgent extends OrderActorEvent
 
   type OrderSuspended = OrderSuspended.type
   case object OrderSuspended extends OrderActorEvent
@@ -269,6 +277,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
     Subtype(deriveCodec[OrderSuspendMarked]),
+    Subtype(OrderSuspendMarkedOnAgent),
     Subtype(OrderSuspended),
     Subtype(deriveCodec[OrderResumeMarked]),
     Subtype(deriveCodec[OrderResumed]),
@@ -276,6 +285,7 @@ object OrderEvent {
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveCodec[OrderCancelMarked]),
+    Subtype(OrderCancelMarkedOnAgent),
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderAttached]),
     Subtype(deriveCodec[OrderAttachable]),

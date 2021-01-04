@@ -12,7 +12,7 @@ import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.lock.LockId
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
@@ -273,8 +273,10 @@ final class OrderTest extends AnyFreeSpec
       OrderFinished,
 
       OrderCancelMarked(CancelMode.FreshOnly),
+      OrderCancelMarkedOnAgent,
       OrderCancelled,
       OrderSuspendMarked(),
+      OrderSuspendMarkedOnAgent,
       OrderSuspended,
       OrderResumeMarked(),
       OrderResumed(),
@@ -313,7 +315,7 @@ final class OrderTest extends AnyFreeSpec
       def unapply(order: Order[Order.State]) = Some(order.isSuspendingWithKill)
     }
 
-    "Fresh" - {
+    "Fresh" in {
       checkAllEvents(Order(orderId, workflowId, Fresh()),
         removeMarkable[Fresh] orElse
         markable[Fresh] orElse
@@ -333,7 +335,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Ready" - {
+    "Ready" in {
       checkAllEvents(Order(orderId, workflowId, Ready),
         removeMarkable[Ready] orElse
         markable[Ready] orElse
@@ -362,7 +364,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "WaitingForLock" - {
+    "WaitingForLock" in {
       checkAllEvents(Order(orderId, workflowId, WaitingForLock),
         removeMarkable[WaitingForLock] orElse
         markable[WaitingForLock] orElse
@@ -373,7 +375,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Processing" - {
+    "Processing" in {
       checkAllEvents(Order(orderId, workflowId, Processing),
         removeMarkable[Processing] orElse
         markable[Processing] orElse
@@ -384,7 +386,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Processed" - {
+    "Processed" in {
       checkAllEvents(Order(orderId, workflowId, Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
         removeMarkable[Processed] orElse
@@ -401,7 +403,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "ProcessingKilled" - {
+    "ProcessingKilled" in {
       checkAllEvents(Order(orderId, workflowId, ProcessingKilled,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
         removeMarkable[ProcessingKilled] orElse
@@ -414,7 +416,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "FailedWhileFresh" - {
+    "FailedWhileFresh" in {
       checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
         removeMarkable[FailedWhileFresh] orElse
@@ -427,7 +429,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Failed" - {
+    "Failed" in {
       checkAllEvents(Order(orderId, workflowId, Failed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.failed) :: Nil),
         removeMarkable[Failed] orElse
@@ -439,7 +441,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "FailedInFork" - {
+    "FailedInFork" in {
       checkAllEvents(Order(orderId, workflowId, FailedInFork,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
         markable[FailedInFork] orElse
@@ -448,7 +450,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "DelayedAfterError" - {
+    "DelayedAfterError" in {
       checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
         removeMarkable[DelayedAfterError] orElse
         markable[DelayedAfterError] orElse
@@ -460,7 +462,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Broken" - {
+    "Broken" in {
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
         removeMarkable[Broken] orElse
         markable[Broken] orElse
@@ -473,7 +475,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Forked" - {
+    "Forked" in {
       checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId | "CHILD") :: Nil)),
         removeMarkable[Forked] orElse
         markable[Forked] orElse
@@ -486,7 +488,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Offering" - {
+    "Offering" in {
       checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))),
         removeMarkable[Offering] orElse
         markable[Offering] orElse
@@ -496,7 +498,7 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Awaiting" - {
+    "Awaiting" in {
       checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))),
         removeMarkable[Awaiting] orElse
         markable[Awaiting] orElse
@@ -507,13 +509,13 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "Cancelled" - {
+    "Cancelled" in {
       checkAllEvents(Order(orderId, workflowId, Cancelled), {
         case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
       })
     }
 
-    "Finished" - {
+    "Finished" in {
       checkAllEvents(Order(orderId, workflowId, Finished), {
         case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
       })
@@ -593,28 +595,31 @@ final class OrderTest extends AnyFreeSpec
 
     /** Checks each event in `allEvents`. */
     def checkAllEvents(templateOrder: Order[State], toPredicate: ToPredicate)(implicit pos: source.Position): Unit =
-      for (event <- allEvents) s"$event" - {
-        for (m <- Seq[Option[OrderMark]](NoMark, Cancelling, Suspending, SuspendingWithKill, Resuming)) s"$m" in {
-          for (isSuspended <- Seq(false, true)) {
-            for (a <- Seq(IsDetached, IsAttaching, IsAttached, IsDetaching)) /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/ {
-              val mString = m.fold("no mark")(_.getClass.simpleScalaName)
-              val aString = a.fold("detached")(_.getClass.simpleScalaName)
-              val order = templateOrder.copy(attachedState = a, mark = m, isSuspended = isSuspended)
-              val updated = order.applyEvent(event)
-              val maybeState = updated.map(_.state)
-              val maybePredicate = toPredicate.lift((event, order, a))
-              (maybeState, maybePredicate) match {
-                case (Right(state), Some(predicate)) =>
-                  assert(predicate(state), s"- for  ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
-                case (Right(state), None) =>
-                  fail(s"Missing test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
-                case (Left(problem), Some(_)) =>
-                  fail(s"Non-matching test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> ?  $problem\n  $order")
-                case (Left(_), None) =>
+      allEvents foreach {
+        case OrderCancelMarkedOnAgent =>
+        case OrderSuspendMarkedOnAgent =>
+        case event =>
+          for (m <- Seq[Option[OrderMark]](NoMark, Cancelling, Suspending, SuspendingWithKill, Resuming)) {
+            for (isSuspended <- Seq(false, true)) {
+              for (a <- Seq(IsDetached, IsAttaching, IsAttached, IsDetaching)) /*SLOW (too many tests): s"${a getOrElse "Controller"}" -*/ {
+                val mString = m.fold("no mark")(_.getClass.simpleScalaName)
+                val aString = a.fold("detached")(_.getClass.simpleScalaName)
+                val order = templateOrder.copy(attachedState = a, mark = m, isSuspended = isSuspended)
+                val updated = order.applyEvent(event)
+                val maybeState = updated.map(_.state)
+                val maybePredicate = toPredicate.lift((event, order, a))
+                (maybeState, maybePredicate) match {
+                  case (Right(state), Some(predicate)) =>
+                    assert(predicate(state), s"- for  ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
+                  case (Right(state), None) =>
+                    fail(s"Missing test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
+                  case (Left(problem), Some(_)) =>
+                    fail(s"Non-matching test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> ?  $problem\n  $order")
+                  case (Left(_), None) =>
+                }
               }
             }
           }
-        }
       }
   }
 

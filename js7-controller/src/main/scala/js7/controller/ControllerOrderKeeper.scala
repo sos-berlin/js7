@@ -53,13 +53,13 @@ import js7.data.agent.{AgentId, AgentRef, AgentRunId}
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
+import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
 import js7.data.item.{ItemEvent, SimpleItemEvent, VersionedEvent, VersionedItem}
 import js7.data.lock.Lock
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
@@ -444,9 +444,14 @@ with MainJournalingActor[ControllerState, Event]
         stampedAgentEvents.view.flatMap {
           case Stamped(_, timestamp, keyedEvent) =>
             keyedEvent match {
-              case KeyedEvent(_, _: OrderCancelMarked | _: OrderSuspendMarked | _: OrderResumeMarked) =>
-                // We (the Controller) have emitted the same event
-                None
+              case KeyedEvent(orderId: OrderId, _: OrderCancelMarked) =>
+                Some(Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestamp)))
+
+              case KeyedEvent(orderId: OrderId, _: OrderSuspendMarked) =>
+                Some(Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestamp)))
+
+              case KeyedEvent(_, _: OrderResumeMarked) =>
+                None /*Agent does not emit OrderResumeMarked*/
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                 val ownEvent = event match {
