@@ -5,7 +5,7 @@ import io.circe.{Decoder, DecodingFailure, Encoder, Json}
 /**
   * @author Joacim Zschimmer
   */
-sealed abstract class ProcessSignal(val value: Int)
+sealed abstract class ProcessSignal(val number: Int)
 
 object ProcessSignal
 {

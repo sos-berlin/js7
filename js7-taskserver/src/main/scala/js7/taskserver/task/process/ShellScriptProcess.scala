@@ -1,17 +1,20 @@
 package js7.taskserver.task.process
 
 import java.io.{InputStream, InputStreamReader, Reader, Writer}
+import js7.base.system.OperatingSystem.isUnix
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.process.Processes._
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.promiseFuture
-import js7.common.scalautil.IOExecutor
 import js7.common.scalautil.IOExecutor.ioFuture
+import js7.common.scalautil.{IOExecutor, Logger}
 import js7.data.job.{CommandLine, ReturnCode}
 import js7.taskserver.task.process.RichProcess._
 import scala.annotation.tailrec
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
+import scala.util.{Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -29,6 +32,8 @@ extends RichProcess(processConfiguration, process, argumentsForLogging)
 
 object ShellScriptProcess
 {
+  private val logger = Logger(getClass)
+
   def startShellScript(
     processConfiguration: ProcessConfiguration,
     name: String = "shell-script",
@@ -64,19 +69,29 @@ object ShellScriptProcess
     for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
     processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
     val process = processBuilder.startRobustly()
-    def copy(in: InputStream, w: Writer) = copyChunks(new InputStreamReader(in, conf.encoding), stdChannels.charBufferSize, w)
-    val stdoutClosed = ioFuture {
-      copy(process.getInputStream, stdChannels.stdoutWriter)
-    }
-    val stderrClosed = ioFuture {
-      copy(process.getErrorStream, stdChannels.stderrWriter)
-    }
+
+    def startCopy(in: InputStream, w: Writer): Future[Try[Unit]] =
+      ioFuture {
+        Try {
+          Success(copyChunks(new InputStreamReader(in, conf.encoding), stdChannels.charBufferSize, w))
+        }
+      }
+
+    val stdoutClosed = startCopy(process.getInputStream, stdChannels.stdoutWriter)
+    val stderrClosed = startCopy(process.getErrorStream, stdChannels.stderrWriter)
 
     new ShellScriptProcess(conf, process, commandLine, argumentsForLogging = commandLine.toString :: Nil) {
       override def terminated = for {
-        _ <- stdoutClosed
-        _ <- stderrClosed
+        outTried <- stdoutClosed
+        errTried <- stderrClosed
         returnCode <- super.terminated
+        returnCode <-
+          if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
+            for (t <- outTried.failed) logger.warn(t.toStringWithCauses)
+            for (t <- errTried.failed) logger.warn(t.toStringWithCauses)
+            Future.successful(returnCode)
+          } else
+            Future.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
       } yield returnCode
     }
   }

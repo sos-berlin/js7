@@ -107,7 +107,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
         val rc = shellProcess.terminated await 99.s
         assert(rc == (
           if (isWindows) ReturnCode(1/* This is Java destroy()*/)
-          else if (isSolaris) ReturnCode(SIGKILL.value)  // Solaris: No difference between exit 9 and kill !!!
+          else if (isSolaris) ReturnCode(SIGKILL.number)  // Solaris: No difference between exit 9 and kill !!!
           else ReturnCode(SIGKILL)))
         shellProcess.close()
 

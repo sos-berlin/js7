@@ -92,7 +92,7 @@ private object ProcessKillScriptTest {
     (if (isWindows) JavaResource("js7/taskserver/task/process/scripts/windows/test.cmd")
                else JavaResource("js7/taskserver/task/process/scripts/unix/test.sh"))
     .asUTF8String
-  private val SIGKILLexitValue = if (isWindows) 1 else if (isSolaris) SIGKILL.value else 128 + SIGKILL.value
+  private val SIGKILLexitValue = if (isWindows) 1 else if (isSolaris) SIGKILL.number else 128 + SIGKILL.number
 
   private def logProcessTree(): Unit = {
     if (isUnix && !isMac) {

@@ -33,11 +33,12 @@ import scala.util.control.NonFatal
   */
 class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process, argumentsForLogging: Seq[String])
   (implicit iox: IOExecutor, ec: ExecutionContext)
-extends HasCloser with ClosedFuture {
-
+extends HasCloser with ClosedFuture
+{
   val startedAt = Timestamp.now
   private val runningSince = now
   val pidOption: Option[Pid] = processToPidOption(process)
+  @volatile var _killed = false
   private val logger = Logger.withPrefix[this.type](toString)
   /**
    * UTF-8 encoded stdin.
@@ -61,6 +62,7 @@ extends HasCloser with ClosedFuture {
 
   final def sendProcessSignal(signal: ProcessSignal): Unit =
     if (process.isAlive) {
+      _killed = true
       signal match {
         case SIGTERM =>
           if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
@@ -103,12 +105,16 @@ extends HasCloser with ClosedFuture {
     }
   }
 
+  final def isKilled = _killed
+
   @TestOnly
   private[task] final def isAlive = process.isAlive
 
-  final def stdin: OutputStream = process.getOutputStream
+  final def stdin: OutputStream =
+    process.getOutputStream
 
-  override def toString = Some(processToString(process, pidOption)) ++ processConfiguration.agentTaskIdOption mkString " "
+  override def toString =
+    Some(processToString(process, pidOption)) ++ processConfiguration.agentTaskIdOption mkString " "
 }
 
 object RichProcess {
