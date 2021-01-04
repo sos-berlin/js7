@@ -5,6 +5,7 @@ import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
@@ -20,11 +21,11 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.data.ControllerState
-import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.journal.watch.collector.EventCollector
+import js7.journal.watch.SimpleEventCollector
 import js7.journal.web.GenericEventRoute
 import js7.tests.core.GenericEventRouteTest._
 import monix.eval.Task
@@ -82,7 +83,8 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
   private val shuttingDown = Promise[Deadline]()
   protected val whenShuttingDown = shuttingDown.future
 
-  protected val eventWatch = new EventCollector.ForTest()  // TODO Use real JournalEventWatch
+  private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
+  import eventCollector.eventWatch
 
   private lazy val route = pathSegments("event")(
     new GenericEventRouteProvider {
@@ -135,7 +137,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
     }
 
     "Sporadic events" in {
-      eventWatch.addStamped(TestEvents(0))
+      eventCollector.addStamped(TestEvents(0))
 
       val observed = mutable.Buffer[Stamped[KeyedEvent[Event]]]()
       val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
@@ -143,7 +145,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
       waitForCondition(9.s, 1.ms) { observed.size == 1 }
       assert(observed(0) == TestEvents(0))
 
-      eventWatch.addStamped(TestEvents(1))
+      eventCollector.addStamped(TestEvents(1))
       waitForCondition(9.s, 1.ms) { observed.size == 2 }
       assert(observed(1) == TestEvents(1))
 
@@ -152,7 +154,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
     "Fetch events with repeated GET requests" - {  // Similar to EventRouteTest
       "(Add more events)" in {
-        TestEvents.drop(2) foreach eventWatch.addStamped
+        TestEvents.drop(2) foreach eventCollector.addStamped
       }
 
       "/event?limit=3&after=30 continue" in {
@@ -228,8 +230,8 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
       shuttingDown.success(Deadline.now)
       observableCompleted await 99.s
 
-      //? eventWatch.addStamped(ExtraEvent)
-      //? observableCompleted.await(1.s)
+      eventCollector.addStamped(ExtraEvent)
+      observableCompleted.await(1.s)
     }
   }
 

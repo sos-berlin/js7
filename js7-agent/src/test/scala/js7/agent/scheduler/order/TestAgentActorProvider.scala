@@ -1,9 +1,8 @@
 package js7.agent.scheduler.order
 
-import akka.actor.{ActorRef, Props}
-import com.google.inject.{AbstractModule, Guice, Provides}
+import akka.actor.{ActorRef, ActorSystem, Props}
+import com.google.inject.Guice
 import java.nio.file.Path
-import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.configuration.inject.AgentModule
@@ -18,18 +17,17 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Closer, HasCloser}
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.journal.test.ActorEventCollector
-import js7.journal.watch.collector.EventCollector
 import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
   */
-private class TestAgentActorProvider extends HasCloser {
+private class TestAgentActorProvider extends HasCloser
+{
   private val directoryProvider = TestAgentDirectoryProvider().closeWithCloser
   lazy val agentDirectory = directoryProvider.agentDirectory
 
-  lazy val (eventCollector, agentActor, _) = start(agentDirectory)
+  lazy val agentActor = start(agentDirectory)
 
   def startAgent() = agentActor
 
@@ -48,22 +46,16 @@ object TestAgentActorProvider {
   def provide[A](body: TestAgentActorProvider => A): A =
     autoClosing(new TestAgentActorProvider)(body)
 
-  private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef, Future[AgentTermination.Terminate]) = {
+  private def start(configAndData: Path)(implicit closer: Closer): ActorRef = {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData)
     val actorSystem = newAgentActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
 
-    val eventCollector = injector.createChildInjector(new AbstractModule {
-      override def configure() = bind(classOf[EventCollector.Configuration]) toInstance
-        new EventCollector.Configuration(queueSize = 100000)
-
-      @Provides @Singleton
-      def eventCollector(factory: ActorEventCollector.Factory): EventCollector =
-        factory.apply()
-    }).instance[EventCollector]
+    // Initialize Akka here to solve a classloader problem when Akka reads its reference.conf
+    injector.instance[ActorSystem]
 
     val terminatePromise = Promise[AgentTermination.Terminate]()
     val agentActor = actorSystem.actorOf(Props { injector.instance[AgentActor.Factory].apply(terminatePromise) }, "AgentActor")
-    (eventCollector, agentActor, terminatePromise.future)
+    agentActor
   }
 }

@@ -23,7 +23,7 @@ import js7.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.journal.watch.collector.EventCollector
+import js7.journal.watch.SimpleEventCollector
 import js7.journal.web.EventDirectives
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -40,11 +40,20 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected val eventWatch = new EventCollector.ForTest()
-
-  TestEvents foreach eventWatch.addStamped
+  private lazy val eventCollector = SimpleEventCollector[OrderEvent]()
+  protected def eventWatch = eventCollector.eventWatch
 
   private val route = pathSegments("event")(eventRoute)
+
+  override def beforeAll() = {
+    super.beforeAll()
+    TestEvents foreach eventCollector.addStamped
+  }
+
+  override def afterAll() = {
+    eventCollector.close()
+    super.afterAll()
+  }
 
   for (uri <- List(
     "/event?return=OrderEvent&timeout=60&after=0",
@@ -169,7 +178,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       val stamped = Stamped(EventId(190), OrderId("190") <-: OrderFinished)
       val runningSince = now
       scheduler.scheduleOnce(100.millis) {
-        eventWatch.addStamped(stamped)
+        eventCollector.addStamped(stamped)
       }
       val stampedSeq = getEvents("/event?timeout=30&after=180")
       assert(stampedSeq == stamped :: Nil)
@@ -180,7 +189,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       val stamped = Stamped(EventId(200), OrderId("200") <-: OrderFinished)
       val runningSince = now
       scheduler.scheduleOnce(100.millis) {
-        eventWatch.addStamped(stamped)
+        eventCollector.addStamped(stamped)
       }
       val stampedSeq = getEvents("/event?delay=0&timeout=30&after=190")
       assert(stampedSeq == stamped :: Nil)
@@ -191,7 +200,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       val stamped = Stamped(EventId(210), OrderId("210") <-: OrderFinished)
       val runningSince = now
       scheduler.scheduleOnce(100.millis) {
-        eventWatch.addStamped(stamped)
+        eventCollector.addStamped(stamped)
       }
       val stampedSeq = getEvents("/event?delay=0.2&timeout=30&after=200")
       assert(stampedSeq == stamped :: Nil)

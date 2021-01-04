@@ -169,24 +169,23 @@ object AgentConfiguration
 
   private def defaultLogDirectory(data: Path) = data / "logs"
 
-  object forTest {
-    private val TaskServerLog4jResource = JavaResource("js7/taskserver/configuration/log4j2.xml")
+  private val TaskServerLog4jResource = JavaResource("js7/taskserver/configuration/log4j2.xml")
 
-    def apply(
-      configAndData: Path,
-      config: Config = ConfigFactory.empty,
-      httpPort: Option[Int] = Some(findFreeTcpPort()),
-      httpsPort: Option[Int] = None) =
-      fromDirectories(
-        configDirectory = configAndData / "config",
-        dataDirectory = configAndData / "data",
-        config)
-      .copy(
-        webServerPorts  =
-          httpPort.map(port => WebServerPort.localhost(port)) ++:
-          httpsPort.map(port => WebServerPort.Https(new InetSocketAddress("127.0.0.1", port))).toList,
-        jobJavaOptions =
-          s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
-            sys.props.get("agent.job.javaOptions").toList)
-  }
+  def forTest(
+    configAndData: Path,
+    config: Config = ConfigFactory.empty,
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    httpsPort: Option[Int] = None)
+  : AgentConfiguration =
+    fromDirectories(
+      configDirectory = configAndData / "config",
+      dataDirectory = configAndData / "data",
+      config)
+    .copy(
+      webServerPorts  =
+        httpPort.map(port => WebServerPort.localhost(port)) ++:
+        httpsPort.map(port => WebServerPort.Https(new InetSocketAddress("127.0.0.1", port))).toList,
+      jobJavaOptions =
+        s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}" ::
+          sys.props.get("agent.job.javaOptions").toList)
 }

@@ -7,6 +7,8 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachOrder, CoupleController, DetachOrder, GetOrders, RegisterAsController}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
+import js7.base.auth.UserId
+import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
@@ -16,11 +18,13 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
+import js7.journal.watch.EventWatch
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -34,7 +38,7 @@ final class AgentActorTest extends AnyFreeSpec
   for (n <- List(10) ++ (sys.props.contains("test.speed") ? 1000 /*needs taskLimit=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {
       TestAgentActorProvider.provide { provider =>
-        import provider.{agentDirectory, eventCollector, executeCommand}
+        import provider.{agentDirectory, executeCommand}
         for (executablePath <- TestExecutablePaths) {
           val file = executablePath.toFile(agentDirectory / "config" / "executables")
           file.writeExecutable(TestScript)
@@ -42,6 +46,8 @@ final class AgentActorTest extends AnyFreeSpec
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
         val agentRunId = executeCommand(RegisterAsController(agentId))
           .await(99.s).orThrow.asInstanceOf[RegisterAsController.Response].agentRunId
+        val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch(ControllerId.fromUserId(UserId.Anonymous)))(Timeout(88.s))
+          .mapTo[Checked[EventWatch]].await(99.s).orThrow
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
         orderIds.map(orderId =>
@@ -55,7 +61,7 @@ final class AgentActorTest extends AnyFreeSpec
         assert(executeCommand(CoupleController(agentId, agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleController.Response(orderIds.toSet)))
         for (orderId <- orderIds)
-          eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
+          eventWatch.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
 
         val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
@@ -73,7 +79,7 @@ final class AgentActorTest extends AnyFreeSpec
 
         (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
         for (orderId <- orderIds)
-          eventCollector.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
+          eventWatch.whenKeyedEvent[OrderEvent.OrderDetached](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         executeCommand(AgentCommand.ShutDown()) await 99.s
       }
     }
