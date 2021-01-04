@@ -103,7 +103,7 @@ trait JournaledProxy[S <: JournaledState[S]]
       else
         Observable(
           observable.dropWhile(_.stampedEvent.eventId < eventId),
-          Observable.timerRepeated(proxyConf.mirrorSyncPolling, proxyConf.mirrorSyncPolling, ())
+          Observable.timerRepeated(proxyConf.syncPolling, proxyConf.syncPolling, ())
         ) .merge
           .dropWhile(_ => currentState.eventId < eventId)
           .headL

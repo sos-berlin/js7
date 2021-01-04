@@ -4,7 +4,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class ProxyConf(
   tornOlder: Option[FiniteDuration],
-  mirrorSyncPolling: FiniteDuration)
+  syncPolling: FiniteDuration)
 
 object ProxyConf
 {

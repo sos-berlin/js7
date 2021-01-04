@@ -6,5 +6,5 @@ object ProxyConfs
 {
   lazy val default = ProxyConf(
     tornOlder = Some(10.s),
-    mirrorSyncPolling = 100.ms)
+    syncPolling = 100.ms)
 }
