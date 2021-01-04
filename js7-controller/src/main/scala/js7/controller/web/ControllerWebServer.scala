@@ -22,7 +22,6 @@ import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.item.ItemUpdater
 import js7.core.command.CommandMeta
 import js7.core.item.VersionedItemApi
-import js7.data.cluster.ClusterState
 import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -39,7 +38,6 @@ final class ControllerWebServer private(
   orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
   itemUpdater: ItemUpdater,
-  checkedClusterState: Task[Checked[ClusterState]],
   controllerState: Task[Checked[ControllerState]],
   totalRunningSince: Deadline,
   sessionRegister: SessionRegister[SimpleSession],
@@ -73,7 +71,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val itemUpdater = ControllerWebServer.this.itemUpdater
 
       protected def executeCommand(command: ControllerCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
-      protected def checkedClusterState = ControllerWebServer.this.checkedClusterState
+      protected def checkedClusterState = ControllerWebServer.this.controllerState.map(_.map(_.clusterState))
       protected def clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
       protected def controllerState = ControllerWebServer.this.controllerState
       protected def totalRunningSince = ControllerWebServer.this.totalRunningSince
@@ -101,7 +99,6 @@ object ControllerWebServer
     def apply(itemApi: VersionedItemApi, orderApi: OrderApi,
       commandExecutor: ControllerCommandExecutor,
       repoUpdater: ItemUpdater,
-      clusterState: Task[Checked[ClusterState]],
       controllerState: Task[Checked[ControllerState]],
       totalRunningSince: Deadline,
       eventWatch: EventWatch)
@@ -109,7 +106,7 @@ object ControllerWebServer
       new ControllerWebServer(
         controllerConfiguration, gateKeeperConfiguration,
         itemApi, orderApi, commandExecutor, repoUpdater,
-        clusterState, controllerState, totalRunningSince,
+        controllerState, totalRunningSince,
         sessionRegister, eventWatch, config, injector,
         actorSystem, scheduler)
       .closeWithCloser(closer)

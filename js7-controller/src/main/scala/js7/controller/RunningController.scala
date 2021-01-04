@@ -339,7 +339,6 @@ object RunningController
 
       val webServer = injector.instance[ControllerWebServer.Factory]
         .apply(itemApi, orderApi, commandExecutor, itemUpdater,
-          controllerState.map(_.map(_.clusterState)),  // ??? cluster.currentClusterState,
           controllerState,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
           recovered.eventWatch
