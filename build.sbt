@@ -89,7 +89,7 @@ ThisBuild / scalacOptions ++= Seq(
 
 // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
-  (if (testParallelization > 1) "-oNCLPQF" :: Nil else Nil) ::: List("-W", "30", "30"): _*)
+  (if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30"): _*)
 
 val _dummy_ = {
   sys.props("TEST") = "true"

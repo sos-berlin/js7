@@ -37,7 +37,6 @@ extends AutoCloseable
     val byteArray = jsonReader.read().map(_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty")
     JournalHeader.checkedHeader(byteArray, journalFile, expectedJournalId).orThrow
   }
-  logger.debug(journalHeader.toString)
 
   val tornEventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount

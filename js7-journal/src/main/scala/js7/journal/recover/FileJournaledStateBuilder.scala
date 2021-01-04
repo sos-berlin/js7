@@ -56,6 +56,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
       case Initial =>
         journalRecord match {
           case journalHeader: JournalHeader =>
+            logger.debug(journalHeader.toString)
             JournalHeader.checkedHeader(journalHeader, journalFileForInfo, expectedJournalId)
               .orThrow
             builder.addSnapshotObject(journalHeader)

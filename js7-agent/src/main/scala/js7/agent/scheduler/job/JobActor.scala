@@ -251,7 +251,7 @@ extends Actor with Stash
   private def killOrder(orderId: OrderId, signal: ProcessSignal): Unit =
     for (run <- orderToRun.get(orderId)) {
       import run.taskRunner
-      logger.warn(s"Kill $signal ${taskRunner.asBaseAgentTask.id} processing $orderId")
+      logger.info(s"Kill $signal ${taskRunner.asBaseAgentTask.id} processing $orderId")
       run.isKilled = true
       taskRunner.kill(signal)
     }

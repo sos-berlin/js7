@@ -1,7 +1,7 @@
 package js7.base.time
 
 import cats.Show
-import io.circe
+import io.circe.{Decoder, Encoder, Json}
 import js7.base.time.GenericTimestamp._
 import scala.concurrent.duration._
 
@@ -60,20 +60,20 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 object GenericTimestamp {
   trait Companion[A <: GenericTimestamp[A]] {
     final val Epoch = ofEpochMilli(0)
-    final val StringTimestampJsonEncoder: circe.Encoder[A] =
-      o => circe.Json.fromString(o.toIsoString)
+    final val StringTimestampJsonEncoder: Encoder[A] =
+      o => Json.fromString(o.toIsoString)
 
-    final val NumericTimestampJsonEncoder: circe.Encoder[A] =
-      o => circe.Json.fromLong(o.toEpochMilli)
+    final val NumericTimestampJsonEncoder: Encoder[A] =
+      o => Json.fromLong(o.toEpochMilli)
 
-    implicit final val jsonEncoder: circe.Encoder[A] = NumericTimestampJsonEncoder
+    implicit final val jsonEncoder: Encoder[A] = NumericTimestampJsonEncoder
 
-    implicit final val jsonDecoder: circe.Decoder[A] =
+    implicit final val jsonDecoder: Decoder[A] =
       cursor =>
-        if (cursor.value.isNumber)
-          cursor.as[Long] map ofEpochMilli
-        else
+        if (cursor.value.isString)
           cursor.as[String] map parse
+        else
+          cursor.as[Long] map ofEpochMilli
 
     def apply(string: String): A =
       parse(string)

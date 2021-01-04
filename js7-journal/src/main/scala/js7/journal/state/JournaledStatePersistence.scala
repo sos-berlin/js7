@@ -3,6 +3,7 @@ package js7.journal.state
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import js7.base.monixutils.MonixBase.deferFutureAndLog
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
@@ -98,9 +99,9 @@ extends AutoCloseable
   def currentState: Task[S] =
     waitUntilStarted >>
     Task.deferFuture {
-      logger.debug(s"JournalActor.Input.GetJournaledState")
       (journalActor ? JournalActor.Input.GetJournaledState).mapTo[JournaledState[S]]
-    }.map(_.asInstanceOf[S])
+    } .map(_.asInstanceOf[S])
+      .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
 
   def waitUntilStarted: Task[Unit] =
     deferFutureAndLog(actorOnce.future, s"$toString.waitUntilStarted")

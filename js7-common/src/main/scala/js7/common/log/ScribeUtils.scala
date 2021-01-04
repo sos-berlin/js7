@@ -60,6 +60,9 @@ object ScribeUtils
     }
   }
 
+  // ".$anon" or "$$anon$1"  or .<...> in Scala class name
+  private val ClassNameGarbage = """([.$]\$|\.<).*""".r
+
   private def classToLoggerName(className: String) =
-    className.replaceFirst("""([.$]\$|\.<).*""", "")   // Cut off ".$anon" or "$$anon$1"  or .<...>
+    ClassNameGarbage.replaceFirstIn(className, "")
 }

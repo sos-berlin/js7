@@ -231,7 +231,7 @@ with ReceiveLoggingActor.WithStash
       this.noJournal = emergency
       // Wait until all pending Agent commands are responded, and do not accept further commands
       if (!isTerminating) {
-        logger.debug("Terminate")
+        logger.debug(s"Terminate emergency=$emergency")
         isTerminating = true
         currentFetchedFuture foreach (_.cancel())
         commandQueue.terminate()
@@ -512,5 +512,5 @@ private[controller] object AgentDriver
     final case object Stop
   }
 
-  private object CancelledMarker extends Exception with NoStackTrace
+  private case object CancelledMarker extends Exception with NoStackTrace
 }
