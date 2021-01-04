@@ -155,7 +155,7 @@ object JournaledProxy
             Observable
               .fromTask(
                 durationOfTask(
-                  maybeState.fold(api.snapshot(eventId = fromEventId))(s => Task.pure(Right(s)))))
+                  maybeState.fold(api.checkedSnapshot(eventId = fromEventId))(s => Task.pure(Right(s)))))
               .map(o => o._1.orThrow/*TODO What happens then?*/ -> o._2)
               .flatMap { case (state, stateFetchDuration) =>
                 var lastState = state
@@ -301,7 +301,8 @@ object JournaledProxy
             val apisWithClusterNodeStateFutures = apis.map { api =>
               api ->
                 api.retryUntilReachable(onCouplingErrorThenContinue(api))(
-                  api.clusterNodeState
+                  HttpClient.liftProblem(
+                    api.clusterNodeState)
                 ) .materializeIntoChecked
                   .onCancelRaiseError(CancelledException)
                   .runToFuture

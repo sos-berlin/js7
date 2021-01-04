@@ -3,12 +3,10 @@ package js7.data.session
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixObservableTask}
-import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.JournaledState
 import monix.eval.Task
@@ -78,18 +76,17 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
     sessionTokenRef.get()
 
   protected final def snapshotAs[S <: JournaledState[S]](uri: Uri)(implicit S: JournaledState.Companion[S])
-  : Task[Checked[S]] =
+  : Task[S] =
     Task.defer {
       val startedAt = now
-      liftProblem(
-        httpClient.getRawLinesObservable(uri)
-          .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
-            scribe.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
-          .map(_
-            .mapParallelOrderedBatch()(_
-              .parseJsonAs(S.snapshotObjectJsonCodec).orThrow))
-          .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
-            scribe.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
-          .flatMap(S.fromObservable))
+      httpClient.getRawLinesObservable(uri)
+        .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
+          scribe.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
+        .map(_
+          .mapParallelOrderedBatch()(_
+            .parseJsonAs(S.snapshotObjectJsonCodec).orThrow))
+        .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
+          scribe.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
+        .flatMap(S.fromObservable)
     }
 }

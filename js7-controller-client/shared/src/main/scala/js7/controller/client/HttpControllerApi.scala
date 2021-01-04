@@ -73,9 +73,8 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
     liftProblem(
       httpClient.get[ClusterState](uris.clusterState))
 
-  final def clusterNodeState: Task[Checked[ClusterNodeState]] =
-    liftProblem(
-      httpClient.get[ClusterNodeState](uris.clusterNodeState))
+  final def clusterNodeState: Task[ClusterNodeState] =
+    httpClient.get[ClusterNodeState](uris.clusterNodeState)
 
   final def addOrder(order: FreshOrder): Task[Boolean] = {
     val uri = uris.order.add
@@ -134,9 +133,8 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
     journalObservable(fileEventId, position, timeout = Some(timeout), markEOF = markEOF, returnAck = true)
       .map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
-  final def journalInfo: Task[Checked[JournalInfo]] =
-    liftProblem(
-      httpClient.get[JournalInfo](uris.api("/journalInfo")))
+  final def journalInfo: Task[JournalInfo] =
+      httpClient.get[JournalInfo](uris.api("/journalInfo"))
 
   final def workflows: Task[Checked[Seq[Workflow]]] =
     liftProblem(
@@ -148,7 +146,7 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
 
   override def toString = s"HttpControllerApi($baseUri)"
 
-  final def snapshot(eventId: Option[EventId] = None): Task[Checked[ControllerState]] =
+  final def snapshot(eventId: Option[EventId] = None): Task[ControllerState] =
     snapshotAs[ControllerState](uris.snapshot.list(eventId))
 }
 
