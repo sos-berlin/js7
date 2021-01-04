@@ -53,7 +53,11 @@ final class MonixBaseTest extends AsyncFreeSpec
       "Once" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s).whenItTakesLonger(3.s)(called += 1).runToFuture(scheduler)
+        val future = Task.sleep(10.s)
+          .whenItTakesLonger(3.s)(Task {
+            called += 1
+          })
+          .runToFuture(scheduler)
         scheduler.tick(2.s)
         assert(called == 0)
         scheduler.tick(1.s)
@@ -67,8 +71,12 @@ final class MonixBaseTest extends AsyncFreeSpec
       "Zero duration is ignoried" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s).whenItTakesLonger(0.s)(called += 1).runToFuture(scheduler)
-        for (_ <- 1 to 10) scheduler.tick(1.s)
+        val future = Task.sleep(10.s)
+          .whenItTakesLonger(0.s)(Task {
+            called += 1
+          })
+          .runToFuture(scheduler)
+        scheduler.tick(10.s)
         assert(called == 0)
         assert(future.isCompleted)
       }
@@ -78,7 +86,11 @@ final class MonixBaseTest extends AsyncFreeSpec
       "Repeatedly" in {
         val scheduler = TestScheduler()
         var called = Vector.empty[FiniteDuration]
-        val future = Task.sleep(20.s).whenItTakesLonger(Seq(3.s, 5.s))(called :+= _).runToFuture(scheduler)
+        val future = Task.sleep(20.s)
+          .whenItTakesLonger(Iterator(3.s, 5.s))(duration => Task {
+            called :+= duration
+          })
+          .runToFuture(scheduler)
         scheduler.tick(2.s)
         assert(called == Seq())
         scheduler.tick(1.s)
@@ -87,7 +99,7 @@ final class MonixBaseTest extends AsyncFreeSpec
         assert(called == Seq(3.s))
         scheduler.tick(1.s)
         assert(called == Seq(3.s, 8.s))
-        for (_ <- 1 to 12) scheduler.tick(1.s)
+        scheduler.tick(12.s)
         assert(called == Seq(3.s, 8.s, 13.s, 18.s))
         assert(future.isCompleted)
       }
@@ -95,8 +107,12 @@ final class MonixBaseTest extends AsyncFreeSpec
       "Empty sequence" in {
         val scheduler = TestScheduler()
         var called = false
-        val future = Task.sleep(10.s).whenItTakesLonger(Nil)(_ => called = true).runToFuture(scheduler)
-        for (_ <- 1 to 10) scheduler.tick(1.s)
+        val future = Task.sleep(10.s)
+          .whenItTakesLonger(Nil)(_ => Task {
+            called = true
+          })
+          .runToFuture(scheduler)
+        scheduler.tick(10.s)
         assert(!called)
         assert(future.isCompleted)
       }
@@ -104,8 +120,12 @@ final class MonixBaseTest extends AsyncFreeSpec
       "Zero duration as first element" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s).whenItTakesLonger(Seq(0.s, 1.s))(_ => called += 1).runToFuture(scheduler)
-        for (_ <- 1 to 10) scheduler.tick(1.s)
+        val future = Task.sleep(10.s)
+          .whenItTakesLonger(Iterator(0.s, 1.s))(_ => Task {
+            called += 1
+          })
+          .runToFuture(scheduler)
+        scheduler.tick(10.s)
         assert(called == 0)
         assert(future.isCompleted)
       }
@@ -113,8 +133,12 @@ final class MonixBaseTest extends AsyncFreeSpec
       "Zero duration" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s).whenItTakesLonger(Seq(1.s, 0.s, 1.s))(_ => called += 1).runToFuture(scheduler)
-        for (_ <- 1 to 10) scheduler.tick(1.s)
+        val future = Task.sleep(10.s)
+          .whenItTakesLonger(Iterator(1.s, 0.s, 1.s))(_ => Task {
+            called += 1
+          })
+          .runToFuture(scheduler)
+        scheduler.tick(10.s)
         assert(called == 1)
         assert(future.isCompleted)
       }
@@ -122,10 +146,39 @@ final class MonixBaseTest extends AsyncFreeSpec
       "Negative duration" in {
         val scheduler = TestScheduler()
         var called = 0
-        val future = Task.sleep(10.s).whenItTakesLonger(Seq(1.s, -1.s, 1.s))(_ => called += 1).runToFuture(scheduler)
-        for (_ <- 1 to 10) scheduler.tick(1.s)
+        val future = Task.sleep(10.s)
+          .whenItTakesLonger(Iterator(1.s, -1.s, 1.s))(_ => Task {
+            called += 1
+          })
+          .runToFuture(scheduler)
+        scheduler.tick(7.s)
         assert(called == 1)
+        assert(!future.isCompleted)
+
+        scheduler.tick(3.s)
         assert(future.isCompleted)
+
+        scheduler.tick(1.s)
+        assert(called == 1)
+      }
+
+      "Cancel" in {
+        val scheduler = TestScheduler()
+        var called = 0
+        val future = Task.sleep(10.s)
+          .whenItTakesLonger(Iterator(1.s))(_ => Task {
+            called += 1
+          })
+          .runToFuture(scheduler)
+        scheduler.tick(1.s)
+        assert(called == 1)
+
+        scheduler.tick(1.s)
+        assert(called == 2)
+
+        future.cancel()
+        scheduler.tick(1.s)
+        assert(called == 2)
       }
     }
   }
@@ -201,7 +254,7 @@ final class MonixBaseTest extends AsyncFreeSpec
       assert(called)
     }
 
-    "scheduleAtFixedRates" in {
+    "scheduleAtFixedRate" in {
       val scheduler = TestScheduler()
       val i = AtomicInt(0)
       val cancelable = scheduler.scheduleAtFixedRates(Array(2.s, 3.s, 4.s)) { i += 1 }

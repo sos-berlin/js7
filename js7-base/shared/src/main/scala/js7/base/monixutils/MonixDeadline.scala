@@ -3,6 +3,7 @@ package js7.base.monixutils
 import js7.base.monixutils.MonixDeadline._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Duration, FiniteDuration, NANOSECONDS}
 
@@ -83,6 +84,11 @@ extends Ordered[MonixDeadline]
 
 object MonixDeadline
 {
+  def monotonicClock: Task[MonixDeadline] =
+    Task.deferAction { scheduler =>
+      Task.pure(MonixDeadline.now(scheduler))
+    }
+
   /**
    * Construct a deadline due exactly at the point where this method is called. Useful for then
    * advancing it to obtain a future deadline, or for sampling the current time exactly once and
@@ -106,10 +112,10 @@ object MonixDeadline
 
   object syntax
   {
-    implicit final class DeadlineSchedule(private val underlying: Scheduler) extends AnyVal
+    implicit final class DeadlineSchedule(private val scheduler: Scheduler) extends AnyVal
     {
       def now: MonixDeadline =
-        MonixDeadline.now(underlying)
+        MonixDeadline.now(scheduler)
     }
   }
 }

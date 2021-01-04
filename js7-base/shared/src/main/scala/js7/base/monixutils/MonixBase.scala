@@ -1,6 +1,7 @@
 package js7.base.monixutils
 
 import cats.effect.{ExitCase, Resource}
+import js7.base.monixutils.MonixDeadline.monotonicClock
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
@@ -9,7 +10,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
-import monix.execution.cancelables.{MultiAssignCancelable, SerialCancelable}
+import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.annotation.unchecked.uncheckedVariance
@@ -24,6 +25,7 @@ object MonixBase
   private val FalseTask = Task.pure(false)
   private val TrueTask = Task.pure(true)
   val DefaultBatchSize = 200
+  val DefaultWorryDurations = Seq(3.s, 7.s, 10.s)
   private val logger = scribe.Logger(getClass.scalaName)
 
   object syntax
@@ -51,45 +53,46 @@ object MonixBase
           case _ => task
         }
 
+      def logWhenItTakesLonger(what: String): Task[A] =
+        task.whenItTakesLonger()(duration => Task {
+          def msg = s"Still waiting for $what for ${duration.pretty} ..."
+          if (duration < 10.s) scribe.debug(msg)
+          else scribe.info(msg)
+        })
+
       /** When `this` takes longer than `duration` then call `thenDo` once. */
-      def whenItTakesLonger(duration: FiniteDuration)(thenDo: => Unit): Task[A] =
-        if (duration <= 0.s)
+      def whenItTakesLonger(duration: FiniteDuration)(thenDo: Task[Unit]): Task[A] =
+        if (duration <= Duration.Zero)
           task
         else
-          Task.deferAction { implicit scheduler =>
-            val schedule = scheduler.scheduleOnce(duration)(thenDo)
-            task.guarantee(Task(schedule.cancel()))
-          }
+          whenItTakesLonger(duration :: Duration.Zero :: Nil)(_ => thenDo)
 
       /** As long as `this` has not completed, call `thenDo` after each of `durations` .
         * @param durations if empty then `thenDo` will not be called.
         *                  The last entry is repeated until `this` completes.
         *                  A zero or negative duration terminates calling of `thenDo`.
         * @param thenDo A function which gets the elapsed time since start as argument. */
-      def whenItTakesLonger(durations: IterableOnce[FiniteDuration])(thenDo: (FiniteDuration) => Unit): Task[A] =
-        if (durations.iterator.isEmpty)
+      def whenItTakesLonger(durations: IterableOnce[FiniteDuration] = DefaultWorryDurations)
+        (thenDo: FiniteDuration => Task[Unit])
+      : Task[A] = {
+        val durationIterator = durations.iterator
+        if (durationIterator.isEmpty)
           task
         else
-          Task.deferAction { implicit scheduler =>
-            val since = scheduler.now
-            val schedule = SerialCancelable()
-            val durationIterator = durations.iterator
-            @volatile var duration = 0.s
-            def setTimer(): Unit = {
-              for (d <- durationIterator.nextOption()) {
-                duration = d
+          monotonicClock.flatMap(since =>
+            Task
+              .tailRecM(Duration.Zero) { lastDuration =>
+                val d = durationIterator.nextOption() getOrElse lastDuration
+                if (d > Duration.Zero)
+                  Task.sleep(d)
+                    .flatMap(_ => thenDo(since.elapsed))
+                    .map(_ => Left(d))
+                else
+                  Task.pure(Right(()))
               }
-              if (duration <= 0.s)
-                schedule := Cancelable.empty
-              else
-                schedule := scheduler.scheduleOnce(duration) {
-                  thenDo(since.elapsed)
-                  setTimer()
-                }
-            }
-            setTimer()
-            task.guarantee(Task(schedule.cancel()))
-          }
+              .start
+              .bracket(_ => task)(_.cancel))
+      }
     }
 
     implicit class RichMonixObservableCompanion(private val underlying: Observable.type) extends AnyVal
@@ -252,7 +255,7 @@ object MonixBase
       }
 
       def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable = {
-        val cancelable = MultiAssignCancelable()
+        val cancelable = SerialCancelable()
         val iterator = durations.iterator
         def loop(last: MonixDeadline): Unit = {
           val nextDuration = iterator.next()
@@ -297,8 +300,9 @@ object MonixBase
           logger.debug(s"Waiting for Future '$name' ...")
           Task.deferAction { implicit s =>
             Task.fromFuture(future)
-              .whenItTakesLonger(Seq(3.s, 7.s, 10.s)/*TODO*/)(duration =>
-                logger.info(s"Still waiting for '$name' for ${duration.pretty} ..."))
+              .whenItTakesLonger(DefaultWorryDurations)(duration => Task {
+                logger.info(s"Still waiting for '$name' for ${duration.pretty} ...")
+              })
               .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
           }
       }

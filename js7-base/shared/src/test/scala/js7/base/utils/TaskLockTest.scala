@@ -15,7 +15,7 @@ final class TaskLockTest extends AsyncFreeSpec
   private val initial = 1
 
   "TaskLock" in {
-    doTest(TaskLock("TEST", warnTimeouts = Nil).resource)
+    doTest(TaskLock("TEST", logWorryDurations = Nil).resource)
       .map(o => assert(o == Vector.fill(n)(initial)))
       .runToFuture
   }

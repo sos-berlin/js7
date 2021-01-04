@@ -1,16 +1,34 @@
 package js7.base.monixutils
 
-import js7.base.monixutils.MonixDeadline.now
+import js7.base.monixutils.MonixDeadline.{monotonicClock, now}
 import js7.base.time.ScalaTime._
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.freespec.AsyncFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class MonixDeadlineTest extends AnyFreeSpec
+final class MonixDeadlineTest extends AsyncFreeSpec
 {
   private implicit val scheduler = TestScheduler()
+
+  "now" in {
+    implicit val scheduler = TestScheduler()
+    assert(now.nanos == 0)
+    scheduler.tick(1.s)
+    assert(now.nanos == 1_000_000_000)
+  }
+
+  "monotonicClock" in {
+    val scheduler = TestScheduler()
+    monotonicClock.flatMap { deadline0 =>
+      scheduler.tick(1.s)
+      monotonicClock.map { deadline1 =>
+        assert(deadline0.nanos == 0 && deadline1.nanos == 1_000_000_000)
+      }
+    }
+    .runToFuture(scheduler)
+  }
 
   "Zero MonixDeadline" in {
     implicit val scheduler = TestScheduler()

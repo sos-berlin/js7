@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import cats.effect.Resource
+import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.time.ScalaTime._
 import monix.catnap.MVar
@@ -15,12 +16,10 @@ final class TaskLock private(val resource: Resource[Task, Unit])
 
 object TaskLock
 {
-  private val defaultWarnTimeouts = Seq(3.s, 7.s, 10.s)
+  def apply(name: String, logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations) =
+    new TaskLock(resource(name, logWorryDurations))
 
-  def apply(name: String, warnTimeouts: IterableOnce[FiniteDuration] = defaultWarnTimeouts) =
-    new TaskLock(resource(name, warnTimeouts))
-
-  def resource(name: String, warnTimeouts: IterableOnce[FiniteDuration] = defaultWarnTimeouts)
+  def resource(name: String, warnTimeouts: IterableOnce[FiniteDuration] = DefaultWorryDurations)
   : Resource[Task, Unit] = {
     val lock = MVar[Task].of(()).memoize
 
@@ -31,8 +30,9 @@ object TaskLock
             case None =>
               scribe.debug(s"Waiting for '$name' lock")
               mvar.take
-                .whenItTakesLonger(warnTimeouts)(duration =>
-                  scribe.info(s"Still waiting for '$name' lock for ${duration.pretty} ..."))
+                .whenItTakesLonger(warnTimeouts)(duration => Task {
+                  scribe.info(s"Still waiting for '$name' lock for ${duration.pretty} ...")
+                })
             case Some(()) =>
               scribe.trace(s"Lock '$name' acquired")
               Task.unit
