@@ -34,7 +34,7 @@ import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.akkautils.JsonObservableForAkka.syntax._
 import js7.common.http.AkkaHttpClient._
-import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decodeResponse, encodeGzip}
+import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decompressResponse, encodeGzip}
 import js7.common.http.CirceJsonSupport._
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.StreamingSupport._
@@ -262,7 +262,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             else
               logger.trace(s"$responseLogPrefix => ${response.status}")
           })
-          .map(decodeResponse)/*decompress*/
+          .map(decompressResponse)
       })
 
   private def discardResponse(logPrefix: => String, responseFuture: Future[HttpResponse]): Task[Unit] =

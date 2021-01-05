@@ -21,7 +21,7 @@ object AkkaHttpUtils
     Gzip.encodeMessage(request.withHeaders(`Accept-Encoding`(gzip) :: request.headers.toList))
 
   /** Decompresses a `HttpResponse` according to `Content-Encoding`. */
-  def decodeResponse(response: HttpResponse): HttpResponse =
+  def decompressResponse(response: HttpResponse): HttpResponse =
     httpEncodingToCodec(response.encoding).decodeMessage(response)
 
   private def httpEncodingToCodec(encoding: HttpEncoding): Coder  =
