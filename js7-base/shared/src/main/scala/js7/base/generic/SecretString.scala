@@ -24,7 +24,7 @@ final case class SecretString(string: String)
 
   def nonEmpty = string.nonEmpty
 
-  override def toString = "SecretString"
+  override def toString = "Secret"
 
   /**
     * Special implementation to defend agains timing attacks.

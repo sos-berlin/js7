@@ -27,13 +27,19 @@ trait SessionApi
     body
 
   final def logoutOrTimeout(timeout: FiniteDuration): Task[Completed] =
-    logout()
-      .timeout(timeout)
-      .onErrorRecover { case t =>
-        scribe.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
-        clearSession()
-        Completed
-      }
+    Task.defer {
+      scribe.trace(s"$toString: logoutOrTimeout($timeout)")
+      logout()
+        .timeout(timeout)
+        .onErrorRecover { case t =>
+          scribe.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
+          clearSession()
+          Completed
+        }
+        .guaranteeCase(exitCase => Task {
+          scribe.trace(s"$toString: logoutOrTimeout($timeout) => $exitCase")
+        })
+  }
 }
 
 object SessionApi

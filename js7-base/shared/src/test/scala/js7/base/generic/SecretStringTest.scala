@@ -51,8 +51,8 @@ final class SecretStringTest extends AnyFreeSpec
 
   "toString does not disclose the secret" in {
     val secret = SecretString("TEST-SECRET")
-    assert(secret.toString == "SecretString")
-    assert(s"$secret" == "SecretString")
+    assert(secret.toString == "Secret")
+    assert(s"$secret" == "Secret")
   }
 
   "Timing ==" in {

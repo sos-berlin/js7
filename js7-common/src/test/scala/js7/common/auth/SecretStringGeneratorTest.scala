@@ -36,7 +36,7 @@ final class SecretStringGeneratorTest extends AnyFreeSpec {
   }
 
   "SecretString.toString does not show secret" in {
-    assert(SecretString("secret").toString == "SecretString")
+    assert(SecretString("secret").toString == "Secret")
   }
 }
 
