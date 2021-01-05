@@ -25,7 +25,7 @@ import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
 import js7.proxy.data.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.Observable
@@ -137,6 +137,7 @@ object JournaledProxy
   private type Api[S <: JournaledState[S]] = EventApi { type State = S }
 
   private val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 55.s, delay = 1.s)
+  private val scribe = _root_.scribe.Logger(getClass.scalaName)
 
   def observable[S <: JournaledState[S]](
     apiResources: Seq[Resource[Task, Api[S]]],
@@ -236,15 +237,15 @@ object JournaledProxy
 
     def getObservable(api: Api[S], after: EventId) = {
       import S.keyedEventJsonCodec
-      HttpClient.liftProblem(
-        api.eventObservable(
+      HttpClient.liftProblem(api
+        .eventObservable(
           EventRequest.singleClass[Event](after = after, delay = 1.s,
             tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
             timeout = Some(55.s/*TODO*/)))
-      .doOnFinish {
-        case None => Task { addToTornOlder = Duration.Zero }
-        case _ => Task.unit
-      })
+        .doOnFinish {
+          case None => Task { addToTornOlder = Duration.Zero }
+          case _ => Task.unit
+        })
     }
 
     override def onCoupled(api: Api[S], after: EventId) =
@@ -269,8 +270,8 @@ object JournaledProxy
     def stopRequested = false
   }
 
-  /** Selects the API for the active node's, waiting until one is active.
-    * The return EventApi is logged-in.
+  /** Selects the API for the active node, waiting until one is active.
+    * The returned EventApi is logged-in.
     * @param onCouplingError Boolean return value is ignored, will always continue trying
     * @return (EventApi, None) iff apis.size == 1
     *         (EventApi, Some(NodeId)) iff apis.size > 1
@@ -281,14 +282,15 @@ object JournaledProxy
   : Resource[Task, Api] =
     apiResources.toVector.sequence.flatMap(apis =>
       Resource.liftF(
-        selectActiveNodeApiOnly(apis, onCouplingError)))
+        selectActiveNodeApiOnly(
+          apis,
+          (api: EventApi) =>
+            throwable => onCouplingError(api)(throwable).map(_ => true/*continue*/))))
 
   private def selectActiveNodeApiOnly[Api <: EventApi](
     apis: Seq[Api],
-    onCouplingError: EventApi => Throwable => Task[Unit])
+    onCouplingErrorThenContinue: Api => Throwable => Task[Boolean])
   : Task[Api] = {
-    def onCouplingErrorThenContinue(api: EventApi)(t: Throwable): Task[Boolean] =
-      onCouplingError(api)(t).map(_ => true)
     apis match {
       case Seq(api) =>
         api.loginUntilReachable(onError = onCouplingErrorThenContinue(api), onlyIfNotLoggedIn = true)
@@ -296,50 +298,43 @@ object JournaledProxy
 
       case _ =>
         Task.tailRecM(())(_ =>
-          Task.deferAction { implicit s =>
-            // Query nodes in parallel
-            val apisWithClusterNodeStateFutures = apis.map { api =>
-              api ->
-                api.retryUntilReachable(onCouplingErrorThenContinue(api))(
-                  HttpClient.liftProblem(
-                    api.clusterNodeState)
-                ) .materializeIntoChecked
-                  .onCancelRaiseError(CancelledException)
-                  .runToFuture
-            }
-            Observable
-              .fromIterable(apisWithClusterNodeStateFutures map { case (api, future) =>
-                Observable.fromFuture(future).map(api -> _)
-              })
-              .merge[(Api, Checked[ClusterNodeState])]
-              .takeWhileInclusive(o => !o._2.forall(_.isActive))
-              .toListL
-              .map { list =>
-                val maybeActive = list.lastOption collect {
-                  case (api, Right(clusterNodeState)) if clusterNodeState.isActive =>
-                    api -> clusterNodeState
-                }
-                list.collect { case (api, Left(problem)) => api -> problem }
-                  match {
-                    case Nil =>
-                      if (maybeActive.isEmpty) scribe.warn("No cluster node seems to be active")
-                    case apiProblems =>
-                      for ((api, problem) <- apiProblems)
-                        scribe.warn(s"Cluster node '${api.baseUri}' is not accessible: $problem")
+          apis
+            .map(api =>
+              fetchClusterNodeState(api, onCouplingErrorThenContinue(api))
+                .materializeIntoChecked  /*don't let the whole operation fail*/
+                .start
+                .map(ApiWithFiber(api, _)))
+            .toVector.sequence
+            .flatMap(apisWithClusterNodeStateFibers =>
+              Observable.fromIterable(apisWithClusterNodeStateFibers)
+                .map(o => Observable.fromTask(o.fiber.join).map(ApiWithNodeState(o.api, _)))
+                .merge /*query nodes in parallel and continue with first response first*/
+                .takeWhileInclusive(o => !o.clusterNodeState.forall(_.isActive))
+                .toListL
+                .flatMap { list =>
+                  val maybeActive = list.lastOption collect {
+                    case ApiWithNodeState(api, Right(nodeState)) if nodeState.isActive =>
+                      api -> nodeState
                   }
-                for ((api, future) <- apisWithClusterNodeStateFutures if list.forall(_._1  ne api)) {
-                  scribe.debug(s"Cancel discarded request to '$api'")
-                  future.cancel()
+                  logProblems(list, maybeActive)
+                  apisWithClusterNodeStateFibers
+                    .collect { case o if list.forall(_.api ne o.api) =>
+                      scribe.debug(s"Cancel discarded request to '${o.api}'")
+                      o.fiber.cancel
+                    }
+                    .sequence
+                    .map(_ => maybeActive.toRight(()/*Left: repeat tailRecM loop*/))
                 }
-                maybeActive.toRight(()/*Left: repeat tailRecM loop*/)
-              }
-              .guaranteeCase(exitCase => Task {
-                if (exitCase != ExitCase.Completed) {
-                  scribe.debug(exitCase.toString)
-                  for (o <- apisWithClusterNodeStateFutures) o._2.cancel()
-                }
-              })
-          })
+                .guaranteeCase {
+                  case ExitCase.Completed => Task.unit
+                  case exitCase =>
+                    scribe.debug(exitCase.toString)
+                    apisWithClusterNodeStateFibers
+                      .map(_.fiber.cancel)
+                      .sequence
+                      .map(_ => ())
+                })
+        )
         .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
           scribe.warn(throwable.toStringWithCauses)
           if (throwable.getStackTrace.nonEmpty) scribe.debug(throwable.toString, throwable)
@@ -347,13 +342,31 @@ object JournaledProxy
       }
       .map { case (api, clusterNodeState) =>
         val x = if (clusterNodeState.isActive) "active" else "maybe passive"
-        scribe.info(s"Coupling with $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
+        scribe.info(s"Selected $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
         api
       }
     }
   }
 
-  private case object CancelledException extends NoStackTrace
+  private case class ApiWithFiber[Api <: EventApi](api: Api, fiber: Fiber[Checked[ClusterNodeState]])
+  private case class ApiWithNodeState[Api <: EventApi](api: Api, clusterNodeState: Checked[ClusterNodeState])
+
+  private def fetchClusterNodeState[Api <: EventApi](
+    api: Api,
+    onError: Throwable => Task[Boolean])
+  : Task[Checked[ClusterNodeState]] =
+    HttpClient
+      .liftProblem(
+        api.retryUntilReachable(onError)(
+          api.clusterNodeState))
+
+  private def logProblems[Api <: EventApi](list: List[ApiWithNodeState[Api]], maybeActive: Option[(Api, ClusterNodeState)]) = {
+    list.collect { case ApiWithNodeState(api, Left(problem)) => api -> problem }
+      .foreach { case (api, problem) => scribe.warn(
+        s"Cluster node '${api.baseUri}' is not accessible: $problem")
+    }
+    if (maybeActive.isEmpty) scribe.warn("No cluster node seems to be active")
+  }
 
   private case class InternalProblemException(val problem: Problem) extends NoStackTrace {
     override def toString = problem.toString
