@@ -2,6 +2,7 @@ package js7.controller.web.controller.api.test
 
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.base.auth.SimpleUser
+import js7.base.time.ScalaTime._
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
@@ -23,8 +24,8 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
   ProblemCodeMessages.initialize()
 
   /** For RouteTest responseAs[]. */
-  private implicit val routeTestDuration: Duration = 9.seconds
-  private implicit val routeTestTimeout = RouteTestTimeout(9.seconds)
+  private implicit val routeTestDuration: Duration = 9.s
+  private implicit val routeTestTimeout = RouteTestTimeout(9.s)
 
   protected final lazy val gateKeeper = new GateKeeper(
     WebServerBinding.Http,

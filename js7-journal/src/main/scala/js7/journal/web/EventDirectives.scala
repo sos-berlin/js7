@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Directive1, Route, ValidationRejection}
 import cats.syntax.option._
 import com.google.common.base.Splitter
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.common.akkahttp.StandardMarshallers._
 import js7.data.event._
@@ -17,10 +18,10 @@ import scala.reflect.ClassTag
   */
 object EventDirectives
 {
-  val DefaultTimeout = 0.seconds
-  val DefaultDelay = 500.milliseconds
-  val MinimumDelay = 100.milliseconds
-  private val AkkaTimeoutTolerance = 1.seconds  // To let event reader timeout before Akka
+  val DefaultTimeout = 0.s
+  val DefaultDelay = 500.ms
+  val MinimumDelay = 100.ms
+  private val AkkaTimeoutTolerance = 1.s  // To let event reader timeout before Akka
   private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[EventRequest[E]] =

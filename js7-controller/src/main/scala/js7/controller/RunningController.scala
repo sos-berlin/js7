@@ -124,7 +124,7 @@ extends AutoCloseable
       }
 
   def executeCommandForTest(command: ControllerCommand): Checked[command.Response] =
-    executeCommandAsSystemUser(command) await 99.seconds
+    executeCommandAsSystemUser(command) await 99.s
 
   def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
     for {

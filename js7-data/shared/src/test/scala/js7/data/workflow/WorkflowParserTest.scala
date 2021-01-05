@@ -17,7 +17,6 @@ import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, F
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.tester.DiffxAssertions.assertEqual
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
 
 /**
@@ -341,7 +340,7 @@ final class WorkflowParserTest extends AnyFreeSpec
   "offer" in {
     checkWithSourcePos("""define workflow { offer orderId = "OFFERED", timeout = 60; }""",
       Workflow(WorkflowPath.NoId, Vector(
-        Offer(OrderId("OFFERED"), 60.seconds, sourcePos(18, 57)),
+        Offer(OrderId("OFFERED"), 60.s, sourcePos(18, 57)),
         ImplicitEnd(sourcePos(59, 60)))))
   }
 
@@ -391,7 +390,7 @@ final class WorkflowParserTest extends AnyFreeSpec
               Fail(sourcePos = sourcePos(77, 81))),
             Workflow.of(
               Retry(sourcePos(99, 104))),
-            Some(Vector(1.second, 2.seconds, 3.seconds)),
+            Some(Vector(1.s, 2.s, 3.s)),
             maxTries = Some(3),
             sourcePos = sourcePos(37, 76)),
           ImplicitEnd(sourcePos(114, 115)))))

@@ -1,5 +1,6 @@
 package js7.journal.watch
 
+import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch.Every
@@ -67,7 +68,7 @@ final class StrictEventWatch(val underlying: EventWatch)
   def await[E <: Event: ClassTag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = tornEventId,
-    timeout: FiniteDuration = 99.seconds)
+    timeout: FiniteDuration = 99.s)
     (implicit s: Scheduler, E: TypeTag[E])
   : Vector[Stamped[KeyedEvent[E]]]
   = underlying.await(predicate, after, timeout)

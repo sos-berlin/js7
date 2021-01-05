@@ -1,5 +1,6 @@
 package js7.data.event
 
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.EventRequest._
@@ -42,7 +43,7 @@ final case class EventRequest[E <: Event](
     */
   @tailrec
   def repeat[A](fetchEvents: EventRequest[E] => Future[TearableEventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
-    val waitTimeout = timeout.map(_ + 10.seconds)
+    val waitTimeout = timeout.map(_ + 10.s)
     Await.result(fetchEvents(this), waitTimeout getOrElse Duration.Inf) match {
       case EventSeq.NonEmpty(stampeds) =>
         stampeds.collect(collect) match {

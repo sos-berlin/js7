@@ -36,7 +36,6 @@ import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
 
@@ -154,7 +153,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
     }
 
     def stop() = {
-      (journalActor ? JournalActor.Input.TakeSnapshot)(99.seconds) await 99.seconds
+      (journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
       if (journaledStatePersistence != null) {
         journaledStatePersistence.close()
       }

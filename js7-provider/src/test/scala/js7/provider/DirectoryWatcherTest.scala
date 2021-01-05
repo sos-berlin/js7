@@ -19,7 +19,7 @@ import scala.concurrent.duration._
   */
 final class DirectoryWatcherTest extends AnyFreeSpec with BeforeAndAfterAll
 {
-  private val timeout = if (isMac) 100.milliseconds else 5.minutes
+  private val timeout = if (isMac) 100.ms else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatcherTest-")
   private lazy val directoryWatcher = new DirectoryWatcher(dir, timeout)
   private lazy val observable = directoryWatcher.singleUseObservable
@@ -68,18 +68,18 @@ final class DirectoryWatcherTest extends AnyFreeSpec with BeforeAndAfterAll
 
   private def testUpdate(body: => Unit): Unit = {
     val n = counter
-    sleep(10.milliseconds)
+    sleep(10.ms)
     assert(counter == n)
     body
     waitForCondition(99.s, 10.ms)(counter > n)
     assert(counter > n)
-    sleep(10.milliseconds)
+    sleep(10.ms)
   }
 
   "cancel" in {
     assert(!directoryWatcher.isClosed && !observableFuture.isCompleted)
     observableFuture.cancel()
-    observableFuture await 99.seconds
+    observableFuture await 99.s
     assert(directoryWatcher.isClosed)
   }
 }

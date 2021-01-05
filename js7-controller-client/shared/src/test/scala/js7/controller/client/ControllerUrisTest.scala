@@ -1,5 +1,6 @@
 package js7.controller.client
 
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.event.EventRequest
@@ -30,7 +31,7 @@ final class ControllerUrisTest extends AnyFreeSpec
       Uri("http://example.com/controller/api/event?return=OrderEvent&delay=0&timeout=1.23&limit=333&after=7"))
 
     // return EventId only
-    assert(controllerUris.eventIds(timeout = Some(1.seconds)) ==
+    assert(controllerUris.eventIds(timeout = Some(1.s)) ==
       Uri("http://example.com/controller/api/event?onlyAcks=true&timeout=1"))
   }
 
@@ -39,9 +40,9 @@ final class ControllerUrisTest extends AnyFreeSpec
   }
 
   "journal" in {
-    assert(controllerUris.journal(fileEventId = 100, position = 111, timeout = Some(50.seconds)) ==
+    assert(controllerUris.journal(fileEventId = 100, position = 111, timeout = Some(50.s)) ==
       Uri("http://example.com/controller/api/journal?timeout=50&file=100&position=111"))
-    assert(controllerUris.journal(fileEventId = 100, position = 111, heartbeat = Some(22.seconds), markEOF = true, returnAck = true) ==
+    assert(controllerUris.journal(fileEventId = 100, position = 111, heartbeat = Some(22.s), markEOF = true, returnAck = true) ==
       Uri("http://example.com/controller/api/journal?return=ack&heartbeat=22&markEOF=true&file=100&position=111"))
   }
 

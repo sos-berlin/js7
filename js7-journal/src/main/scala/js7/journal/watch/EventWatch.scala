@@ -2,6 +2,7 @@ package js7.journal.watch
 
 import js7.base.data.ByteArray
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
 import js7.common.jsonseq.PositionAnd
@@ -79,7 +80,7 @@ trait EventWatch
   def await[E <: Event: ClassTag: TypeTag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
-    timeout: FiniteDuration = 99.seconds)
+    timeout: FiniteDuration = 99.s)
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E]]]
 

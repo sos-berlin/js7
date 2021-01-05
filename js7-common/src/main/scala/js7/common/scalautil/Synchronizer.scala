@@ -34,7 +34,7 @@ final class Synchronizer(what: String)
 }
 
 object Synchronizer {
-  private val LogAfter = 100.milliseconds
+  private val LogAfter = 100.ms
   private val logger = Logger(getClass)
 
   private def ignoreException(body: => Unit) =

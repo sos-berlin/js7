@@ -95,7 +95,7 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
     assert(sessionRegister.count.await(99.seconds) == 2)
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isRight)
 
-    testScheduler.tick(TestSessionTimeout + 1.second)
+    testScheduler.tick(TestSessionTimeout + 1.s)
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isLeft)
     assert(sessionRegister.session(eternal, Right(Anonymous)).await(99.seconds).isRight)
     assert(sessionRegister.count.await(99.seconds) == 1)

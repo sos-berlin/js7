@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{NotFound, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
-import js7.common.configutils.Configs._
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
@@ -14,6 +13,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
+import js7.common.configutils.Configs._
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.FileUtils.implicits._
 import js7.common.scalautil.FileUtils.syntax._
@@ -37,7 +37,7 @@ final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
     .withFallback(super.config)
 
   implicit protected def scheduler = Scheduler.global
-  private implicit val routeTestTimeout = RouteTestTimeout(9.seconds)
+  private implicit val routeTestTimeout = RouteTestTimeout(9.s)
 
   private var _currentLogFile: Path = null
 

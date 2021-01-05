@@ -1,6 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.OrderContext
@@ -31,12 +32,12 @@ final class RetryExecutorTest extends AnyFreeSpec
   }
 
   "Delay" in {
-    val delays = 0.second :: 1.second :: 2.seconds :: 11.5.seconds :: Nil
+    val delays = 0.s :: 1.s :: 2.s :: 11.5.seconds :: Nil
     assert(toEvents(tryPosition / "catch+0" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+1" % 0, None))))
-    assert(toEvents(tryPosition / "catch+1" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+2" % 0, Some(now + 1.second)))))
-    assert(toEvents(tryPosition / "catch+2" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+3" % 0, Some(now + 2.seconds)))))
-    assert(toEvents(tryPosition / "catch+3" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+4" % 0, Some(now + 12.seconds)))))
-    assert(toEvents(tryPosition / "catch+4" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+5" % 0, Some(now + 12.seconds)))))
+    assert(toEvents(tryPosition / "catch+1" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+2" % 0, Some(now + 1.s)))))
+    assert(toEvents(tryPosition / "catch+2" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+3" % 0, Some(now + 2.s)))))
+    assert(toEvents(tryPosition / "catch+3" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+4" % 0, Some(now + 12.s)))))
+    assert(toEvents(tryPosition / "catch+4" % 0, delays) == Right(Seq(orderId <-: OrderRetrying(tryPosition / "try+5" % 0, Some(now + 12.s)))))
   }
 }
 

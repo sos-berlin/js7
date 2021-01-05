@@ -3,6 +3,7 @@ package js7.journal.configuration
 import com.typesafe.config.Config
 import js7.base.auth.UserId
 import js7.base.convert.As.StringAsByteCountWithDecimalPrefix
+import js7.base.time.ScalaTime._
 import js7.common.configutils.Configs._
 import js7.common.scalautil.Logger
 import js7.common.time.JavaTimeConverters._
@@ -38,7 +39,7 @@ object JournalConf
     new JournalConf(
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("js7.journal.simulate-sync").map(_.toFiniteDuration),
-      delay = (if (syncOnCommit) syncDelay max delay else delay) min 1.second,
+      delay = (if (syncOnCommit) syncDelay max delay else delay) min 1.s,
       coalesceEventLimit = config.as[Int]("js7.journal.coalesce-event-limit"),  // TODO Limit byte count to avoid OutOfMemoryError?
       snapshotPeriod = config.getDuration("js7.journal.snapshot.period").toFiniteDuration,
       snapshotSizeLimit = config.as("js7.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),

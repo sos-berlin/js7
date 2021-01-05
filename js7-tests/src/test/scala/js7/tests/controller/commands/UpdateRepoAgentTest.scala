@@ -47,21 +47,21 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
       provider.agentToTree(agentId).writeExecutable(RelativeExecutablePath("SCRIPT.cmd"), ":")
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
-      val agent1 = provider.startAgents().await(99.seconds).head
+      val agent1 = provider.startAgents().await(99.s).head
       var agent2: RunningAgent = null
       provider.runController() { controller =>
-        controller.httpApi.login_(Some(UserAndPassword(UserId("UpdateRepoAgentTest"), SecretString("TEST-PASSWORD")))) await 99.seconds
+        controller.httpApi.login_(Some(UserAndPassword(UserId("UpdateRepoAgentTest"), SecretString("TEST-PASSWORD")))) await 99.s
         runOrder(controller, OrderId("🔺"))
-        agent1.terminate() await 99.seconds
+        agent1.terminate() await 99.s
 
         for (i <- 1 to 3) {
-          if (agent2 != null) agent2.terminate() await 99.seconds
+          if (agent2 != null) agent2.terminate() await 99.s
           // Start a new Agent with same state but a (hopefully) different HTTP port
           val port = findFreeTcpPort()
           agent2 = RunningAgent.startForTest(AgentConfiguration.forTest(
             provider.agents.head.directory,
             httpPort = Some(port))
-          ).await(99.seconds)
+          ).await(99.s)
 
           controller.updateSimpleItemsAsSystemUser(Seq(AgentRef(agentId, uri = agent2.localUri))).await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
@@ -73,7 +73,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
         runOrder(controller, OrderId("⭕"))
       }
 
-      agent2.terminate() await 99.seconds
+      agent2.terminate() await 99.s
     }
   }
 

@@ -35,14 +35,13 @@ import monix.execution.{CancelableFuture, Scheduler}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRoute
 {
-  private implicit val timeout = 99.seconds
+  private implicit val timeout = 99.s
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global

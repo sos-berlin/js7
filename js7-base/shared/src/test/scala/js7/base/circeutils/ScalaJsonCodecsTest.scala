@@ -2,6 +2,7 @@ package js7.base.circeutils
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.time.ScalaTime._
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
@@ -25,7 +26,7 @@ final class ScalaJsonCodecsTest extends AnyFreeSpec
     }
 
     "negative" in {
-      testJson(-1234.milliseconds, json"-1.234")
+      testJson(-1234.ms, json"-1.234")
     }
 
     "Long.MaxValue" in {

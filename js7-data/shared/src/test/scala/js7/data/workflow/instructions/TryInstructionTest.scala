@@ -1,6 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
 import js7.data.job.ExecutablePath
 import js7.data.source.SourcePos
@@ -66,7 +67,7 @@ final class TryInstructionTest extends AnyFreeSpec
         TryInstruction(
           tryWorkflow = Workflow.of(Fail(None)),
           catchWorkflow = Workflow.of(Retry()),
-          retryDelays = Some(Vector(100.milliseconds, 1.minute)),
+          retryDelays = Some(Vector(100.ms, 1.minute)),
           maxTries = Some(10),
           Some(SourcePos(1, 2))),
         json"""{
@@ -94,7 +95,7 @@ final class TryInstructionTest extends AnyFreeSpec
         TryInstruction.checked(
           Workflow.empty,
           Workflow.empty,
-          Some(1.second :: Nil))
+          Some(1.s :: Nil))
         == Left(TryInstruction.MissingRetryProblem))
     }
 
@@ -109,7 +110,7 @@ final class TryInstructionTest extends AnyFreeSpec
                   TryInstruction(
                     Workflow.of(Retry()),  // This retry belongs to the outer catch-block
                     Workflow.empty)))))),
-        Some(1.second :: Nil))
+        Some(1.s :: Nil))
       assert(try_.isRetry)
     }
 
@@ -123,7 +124,7 @@ final class TryInstructionTest extends AnyFreeSpec
               If(BooleanConstant(true),
                 Workflow.empty,
                 Some(Workflow.of(Retry()))))))),
-        Some(1.second :: Nil))
+        Some(1.s :: Nil))
       assert(try_.isRetry)
     }
 
@@ -137,7 +138,7 @@ final class TryInstructionTest extends AnyFreeSpec
               If(BooleanConstant(true),
                 Workflow.empty,
                 Some(Workflow.of(Retry()))))))),
-        Some(1.second :: Nil))
+        Some(1.s :: Nil))
       assert(try_.isRetry)
     }
   }
@@ -173,15 +174,15 @@ final class TryInstructionTest extends AnyFreeSpec
 
   "retryCount" in {
     def t(delays: Option[Seq[FiniteDuration]]) = TryInstruction(Workflow.empty, Workflow.empty, delays.map(_.toVector))
-    assert(t(None).retryDelay(1) == 0.seconds)
-    assert(t(None).retryDelay(2) == 0.seconds)
-    assert(t(Some(Nil)).retryDelay(1) == 0.seconds)
-    assert(t(Some(Nil)).retryDelay(2) == 0.seconds)
-    assert(t(Some(Nil)).retryDelay(3) == 0.seconds)
-    assert(t(Some(1.second :: Nil)).retryDelay(1) == 1.seconds)
-    assert(t(Some(1.second :: Nil)).retryDelay(2) == 1.seconds)
-    assert(t(Some(1.second :: 2.seconds :: Nil)).retryDelay(1) == 1.seconds)
-    assert(t(Some(1.second :: 2.seconds :: Nil)).retryDelay(2) == 2.seconds)
-    assert(t(Some(1.second :: 2.seconds :: Nil)).retryDelay(3) == 2.seconds)
+    assert(t(None).retryDelay(1) == 0.s)
+    assert(t(None).retryDelay(2) == 0.s)
+    assert(t(Some(Nil)).retryDelay(1) == 0.s)
+    assert(t(Some(Nil)).retryDelay(2) == 0.s)
+    assert(t(Some(Nil)).retryDelay(3) == 0.s)
+    assert(t(Some(1.s :: Nil)).retryDelay(1) == 1.s)
+    assert(t(Some(1.s :: Nil)).retryDelay(2) == 1.s)
+    assert(t(Some(1.s :: 2.s :: Nil)).retryDelay(1) == 1.s)
+    assert(t(Some(1.s :: 2.s :: Nil)).retryDelay(2) == 2.s)
+    assert(t(Some(1.s :: 2.s :: Nil)).retryDelay(3) == 2.s)
   }
 }

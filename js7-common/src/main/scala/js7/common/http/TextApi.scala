@@ -3,13 +3,13 @@ package js7.common.http
 import io.circe.Json
 import js7.base.auth.SessionToken
 import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
 import js7.common.http.CirceToYaml._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 /**
@@ -35,14 +35,14 @@ trait TextApi
 
   def getApi(uri: String): Unit = {
     val u = if (uri == "?") "" else uri
-    val whenResponded = httpClient.get[Json](apiUri(u), 60.seconds).runToFuture
+    val whenResponded = httpClient.get[Json](apiUri(u), 60.s).runToFuture
     val response = awaitResult(whenResponded)
     printer.doPrint(response)
   }
 
   def requireIsResponding(): Unit =
     try {
-      val whenResponded = httpClient.get[Json](apiUri(""), 60.seconds).runToFuture
+      val whenResponded = httpClient.get[Json](apiUri(""), 60.s).runToFuture
       awaitResult(whenResponded)
       print(s"$serverName is responding")
     } catch {
@@ -60,7 +60,7 @@ trait TextApi
     }
 
   private def awaitResult[A](future: Future[A]): A =
-    try Await.result(future, 65.seconds)  // TODO Use standard Futures method await when available in subproject 'base'
+    try Await.result(future, 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
     catch {
       case t: Throwable =>
         t.appendCurrentStackTrace

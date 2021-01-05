@@ -11,7 +11,6 @@ import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer, ReturnCodeMeaning}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -200,7 +199,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
   "offer" in {
     check(
       Workflow(WorkflowPath.NoId, Vector(
-        Offer(OrderId("OFFERED"), 60.seconds))),
+        Offer(OrderId("OFFERED"), 60.s))),
       """define workflow {
         |  offer orderId="OFFERED", timeout=60;
         |}

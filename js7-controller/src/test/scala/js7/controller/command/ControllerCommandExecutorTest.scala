@@ -2,6 +2,7 @@ package js7.controller.command
 
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand
 import js7.controller.data.ControllerCommand.{Batch, CancelOrders, NoOperation, ReleaseEvents, Response}
@@ -11,7 +12,6 @@ import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 import scala.language.reflectiveCalls
 
 /**
@@ -40,16 +40,16 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
   private val commandExecutor = new ControllerCommandExecutor(otherCommandExecutor)
 
   "NoOperation" in {
-    assert(commandExecutor.executeCommand(NoOperation(), meta).await(99.seconds) == Right(Response.Accepted))
+    assert(commandExecutor.executeCommand(NoOperation(), meta).await(99.s) == Right(Response.Accepted))
   }
 
   "CancelOrders" in {
-    assert(commandExecutor.executeCommand(cancelOrder, meta).await(99.seconds) == Right(Response.Accepted))
+    assert(commandExecutor.executeCommand(cancelOrder, meta).await(99.s) == Right(Response.Accepted))
     assert(otherCommandExecutor.cancelled == 1)
   }
 
   "Batch" in {
-    assert(commandExecutor.executeCommand(Batch(NoOperation() :: ReleaseEvents(999L) :: cancelOrder :: Nil), meta).await(99.seconds) ==
+    assert(commandExecutor.executeCommand(Batch(NoOperation() :: ReleaseEvents(999L) :: cancelOrder :: Nil), meta).await(99.s) ==
       Right(Batch.Response(Right(Response.Accepted) :: Left(Problem("COMMAND NOT IMPLEMENTED")) :: Right(Response.Accepted) :: Nil)))
     assert(otherCommandExecutor.cancelled == 2)
   }

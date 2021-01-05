@@ -358,7 +358,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
-        assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
+        assert(response.utf8StringFuture.await(99.s).parseJsonCheckedAs[Problem]
           == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters |")))
         assert(response.header[Location].isEmpty)
       }
@@ -390,7 +390,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.header[Location].isEmpty)
-        assert(response.utf8StringFuture.await(99.seconds).parseJsonCheckedAs[Problem]
+        assert(response.utf8StringFuture.await(99.s).parseJsonCheckedAs[Problem]
           == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters |")))
       }
     }
@@ -758,7 +758,7 @@ object ControllerWebServiceTest
   }
 
   private def writeAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit = {
-    agent.writeExecutable(RelativeExecutablePath(s"A$sh"), operatingSystem.sleepingShellScript(1.second))  // Allow some time to check web service before order finishes
-    agent.writeExecutable(RelativeExecutablePath(s"B$sh"), operatingSystem.sleepingShellScript(0.seconds))
+    agent.writeExecutable(RelativeExecutablePath(s"A$sh"), operatingSystem.sleepingShellScript(1.s))  // Allow some time to check web service before order finishes
+    agent.writeExecutable(RelativeExecutablePath(s"B$sh"), operatingSystem.sleepingShellScript(0.s))
   }
 }

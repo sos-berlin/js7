@@ -30,7 +30,6 @@ import js7.tests.ControllerAgentWithoutAuthenticationTest._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -89,8 +88,8 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
         "--http-port=" + controllerPort :: Nil))
 
       val agentRef = AgentRef(agentId, Uri(s"http://127.0.0.1:$agentPort"))
-      val agent = RunningAgent(agentConfiguration) await 99.seconds
-      val controller = RunningController(controllerConfiguration) await 99.seconds
+      val agent = RunningAgent(agentConfiguration) await 99.s
+      val controller = RunningController(controllerConfiguration) await 99.s
       controller.waitUntilReady()
 
       controller.updateItemsAsSystemUser(Observable(

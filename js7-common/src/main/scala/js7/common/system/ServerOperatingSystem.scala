@@ -7,6 +7,7 @@ import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
+import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import scala.concurrent.duration._
 import scala.io.Source.fromInputStream
@@ -67,7 +68,7 @@ object ServerOperatingSystem {
     def cpuModel = sys.env.get("PROCESSOR_IDENTIFIER")
 
     def sleepingShellScript(duration: FiniteDuration) =
-      s"@ping -n ${(duration + 999.milliseconds).toSeconds + 1} 127.0.0.1 >nul"
+      s"@ping -n ${(duration + 999.ms).toSeconds + 1} 127.0.0.1 >nul"
   }
 
   final class Unix private[system] extends ServerOperatingSystem {
@@ -133,7 +134,7 @@ object ServerOperatingSystem {
         } .toOption.flatten
 
     def sleepingShellScript(duration: FiniteDuration) =
-      s"sleep ${(duration + 999.milliseconds).toSeconds}\n"
+      s"sleep ${(duration + 999.ms).toSeconds}\n"
   }
 
   def concatFileAndPathChain(f: File, pathChain: String): String = {

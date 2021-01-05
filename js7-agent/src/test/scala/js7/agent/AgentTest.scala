@@ -28,7 +28,6 @@ import js7.data.workflow.test.TestSetting.TestAgentId
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -37,7 +36,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
 {
   "state/http-uri" in {
     assert((agentConfiguration.stateDirectory / "http-uri").contentString == s"${agent.localUri}/agent")
-    agent.terminate() await 99.seconds
+    agent.terminate() await 99.s
   }
 
   "Job working directory" - {
@@ -62,7 +61,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentId, itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
-            val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.seconds)
+            val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.s)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.outcome == Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "WORKDIR" -> StringValue(workingDirectory.toString))))
             agent.terminate() await 99.s

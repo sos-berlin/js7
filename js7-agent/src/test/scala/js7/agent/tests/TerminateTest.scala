@@ -25,7 +25,6 @@ import js7.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -85,5 +84,5 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 object TerminateTest
 {
   private val agentId = AgentId("AGENT")
-  private val AScript = operatingSystem.sleepingShellScript(10.seconds)
+  private val AScript = operatingSystem.sleepingShellScript(10.s)
 }

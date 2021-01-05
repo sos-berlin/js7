@@ -36,7 +36,7 @@ import scala.concurrent.duration._
   */
 final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
 {
-  private implicit val timeout = 99.seconds
+  private implicit val timeout = 99.s
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
@@ -159,7 +159,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
     "/event?limit=3&after=150 skip some events" in {
       val runningSince = now
       val stampedSeq = getEvents("/event?delay=99&limit=3&after=150")
-      assert(runningSince.elapsed < 1.second/*Sometimes, 1s is too short???*/)  // Events must have been returned immediately
+      assert(runningSince.elapsed < 1.s/*Sometimes, 1s is too short???*/)  // Events must have been returned immediately
       assert(stampedSeq.head.eventId == 160)
       assert(stampedSeq.last.eventId == 180)
     }

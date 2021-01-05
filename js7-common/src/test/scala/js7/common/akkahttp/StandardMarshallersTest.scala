@@ -19,7 +19,6 @@ import js7.common.scalautil.Futures.implicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -35,7 +34,7 @@ final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
     val response = Marshal(Problem("PROBLEM")).toResponseFor(HttpRequest()) await 99.s
     assert(response.status == BadRequest)
     assert(response.entity.contentType == `text/plain(UTF-8)`)
-    assert(response.entity.toStrict(99.seconds).await(99.s).data == ByteString("PROBLEM\n"))
+    assert(response.entity.toStrict(99.s).await(99.s).data == ByteString("PROBLEM\n"))
   }
 
   "ToEntityMarshaller[Problem], application/json" in {
@@ -49,7 +48,7 @@ final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
   "problemToEntityMarshaller" in {
     val entity = Marshal(Problem("PROBLEM")).to[MessageEntity] await 99.s
     assert(entity.contentType == `text/plain(UTF-8)`)
-    assert(entity.toStrict(99.seconds).await(99.s).data.utf8String == "PROBLEM\n")
+    assert(entity.toStrict(99.s).await(99.s).data.utf8String == "PROBLEM\n")
   }
 
   "checkedToResponseMarshaller" - {
@@ -60,14 +59,14 @@ final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
       val response = Marshal(Right(A(7)): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == OK)
       assert(response.entity.contentType == ContentTypes.`application/json`)
-      assert(response.entity.toStrict(99.seconds).await(99.s).data.utf8String.parseJsonOrThrow == json"""{ "number": 7 }""")
+      assert(response.entity.toStrict(99.s).await(99.s).data.utf8String.parseJsonOrThrow == json"""{ "number": 7 }""")
     }
 
     "Invalid" in {
       val response = Marshal(Left(Problem("PROBLEM")): Checked[A]).to[HttpResponse] await 99.s
       assert(response.status == BadRequest)
       assert(response.entity.contentType == `text/plain(UTF-8)`)
-      assert(response.entity.toStrict(99.seconds).await(99.s).data == ByteString("PROBLEM\n"))
+      assert(response.entity.toStrict(99.s).await(99.s).data == ByteString("PROBLEM\n"))
     }
   }
 }

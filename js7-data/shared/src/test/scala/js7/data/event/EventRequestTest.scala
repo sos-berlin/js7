@@ -1,5 +1,6 @@
 package js7.data.event
 
+import js7.base.time.ScalaTime._
 import js7.data.event.EventRequestTest._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
@@ -10,7 +11,7 @@ import scala.concurrent.duration._
 final class EventRequestTest extends AnyFreeSpec {
 
   "toQueryParameters" in {
-    assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Some(123.seconds), delay = 500.milliseconds, limit = 999, tornOlder = Some(10.seconds))
+    assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Some(123.s), delay = 500.ms, limit = 999, tornOlder = Some(10.s))
       .toQueryParameters ==
         Vector(
           "return" -> "AEvent",

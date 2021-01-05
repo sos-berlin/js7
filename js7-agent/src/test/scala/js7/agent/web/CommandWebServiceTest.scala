@@ -13,6 +13,7 @@ import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.CirceUtils.implicits._
 import js7.base.process.ProcessSignal.SIGTERM
+import js7.base.time.ScalaTime._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
 import js7.core.command.CommandMeta
@@ -21,7 +22,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -43,7 +43,7 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
   protected def commandOverview = Task.pure(CommandHandlerOverview(currentCommandCount = 111, totalCommandCount = 222))
 
   protected def commandDetailed = Task.pure(CommandHandlerDetailed(List(
-    CommandRunOverview(InternalCommandId(333), 1.hour, TestCommand))))
+    CommandRunOverview(InternalCommandId(333), 1.h, TestCommand))))
 
   private val route =
     pathSegments("agent/api/command") {
@@ -53,9 +53,9 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
   "ShutDown" in {
     val json = json"""{ "TYPE": "ShutDown" }"""
     postJsonCommand(json) ~> check {
-      if (status != OK) fail(s"$status - ${responseEntity.toStrict(99.seconds).value}")
+      if (status != OK) fail(s"$status - ${responseEntity.toStrict(99.s).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
-      assert(responseEntity.toStrict(99.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
+      assert(responseEntity.toStrict(99.s).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{ "TYPE": "Accepted" }""")
     }
   }
@@ -64,9 +64,9 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
     // When Agent is shutting down, the command may be okay and the Controller should repeat the command later
     // Not valid for commands packaged in AgentCommand.Batch
     postJsonCommand((TestCommandWhileShuttingDown: AgentCommand).asJson) ~> check {
-      if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(99.seconds).value}")
+      if (status != ServiceUnavailable) fail(s"$status - ${responseEntity.toStrict(99.s).value}")
       assert(responseAs[AgentCommand.Response.Accepted] == AgentCommand.Response.Accepted)
-      assert(responseEntity.toStrict(99.seconds).value.get.get.data.utf8String.parseJsonOrThrow ==
+      assert(responseEntity.toStrict(99.s).value.get.get.data.utf8String.parseJsonOrThrow ==
         json"""{
           "TYPE": "Problem",
           "code": "AgentIsShuttingDown",

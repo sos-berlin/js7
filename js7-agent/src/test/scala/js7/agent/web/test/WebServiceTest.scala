@@ -7,6 +7,7 @@ import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.web.common.AgentRouteProvider
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
+import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -17,7 +18,6 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -41,11 +41,11 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected val config = config"js7.web.server.services.streaming-post-size-limit-factor = 50%"
     .withFallback(WebLogDirectives.TestConfig)
 
-  implicit val routeTestTimeout = RouteTestTimeout(5.seconds)
+  implicit val routeTestTimeout = RouteTestTimeout(5.s)
 
   protected lazy val testSessionHeader: HttpHeader = {
     val token = sessionRegister.login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), None)
-      .await(99.seconds)
+      .await(99.s)
     RawHeader(SessionToken.HeaderName, token.secret.string)
   }
 

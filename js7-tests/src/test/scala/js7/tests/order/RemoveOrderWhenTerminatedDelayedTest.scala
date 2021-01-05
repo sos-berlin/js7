@@ -18,7 +18,6 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
@@ -36,7 +35,7 @@ final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with Contro
     val order = FreshOrder(OrderId("🔴"), workflow.id.path)
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderStarted](_.key == order.id)
-    controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id))).await(99.seconds).orThrow
+    controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     val finished = controller.eventWatch.await[OrderFinished](_.key == order.id).head
     val removed = controller.eventWatch.await[OrderRemoved](_.key == order.id).head
     assert(removed.timestamp - finished.timestamp > 500.ms)

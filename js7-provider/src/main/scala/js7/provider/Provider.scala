@@ -8,6 +8,7 @@ import js7.base.convert.As._
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
@@ -185,7 +186,7 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
-    firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.seconds)
+    firstRetryLoginDurations.iterator ++ Iterator.continually(firstRetryLoginDurations.lastOption getOrElse 10.s)
 }
 
 object Provider

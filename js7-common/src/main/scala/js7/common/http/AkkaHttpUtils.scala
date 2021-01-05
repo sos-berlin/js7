@@ -7,6 +7,7 @@ import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-En
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri => AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
+import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -55,7 +56,7 @@ object AkkaHttpUtils
       * May return a very big String.
       */
     def utf8StringFuture(implicit mat: Materializer, ec: ExecutionContext): Future[String] =
-      underlying.entity.utf8StringFuture(99.seconds)
+      underlying.entity.utf8StringFuture(99.s)
 
     /**
       * Returns the HttpResponse content as a `Future[ByteString]`.

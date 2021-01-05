@@ -191,9 +191,9 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val EventSeq.NonEmpty(stamped) = eventWatch.when(EventRequest.singleClass[OrderProcessingStarted](after = afterEventId)).await(9.seconds)
     logger.debug(0.to(2).map(i => (stamped(i+1).timestamp - stamped(i).timestamp).pretty).mkString(" "))
-    assert(stamped(1).timestamp - stamped(0).timestamp > 2.second)     // First retry after a second
-    assert(stamped(2).timestamp - stamped(1).timestamp < 1.5.second)   // Following retries immediately (0 seconds)
-    assert(stamped(3).timestamp - stamped(2).timestamp < 1.5.second)
+    assert(stamped(1).timestamp - stamped(0).timestamp > 2.s)     // First retry after a second
+    assert(stamped(2).timestamp - stamped(1).timestamp < 1.5.seconds)   // Following retries immediately (0 seconds)
+    assert(stamped(3).timestamp - stamped(2).timestamp < 1.5.seconds)
   }
 
   "maxTries=3, special handling of 'catch retry'" in {

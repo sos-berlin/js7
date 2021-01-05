@@ -127,12 +127,12 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       v1Time
 
       // `initiallyUpdateControllerConfiguration` will send this diff to the Controller
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == VersionedItems.Diff(
+      assert(provider.testControllerDiff.await(99.s).orThrow == VersionedItems.Diff(
         added = TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
-      provider.initiallyUpdateControllerConfiguration(V1.some).await(99.seconds).orThrow
-      //assert(controller.controllerState.map(_.idToAgentRefState.values).await(99.seconds) == Seq(agentRef))
-      assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
+      provider.initiallyUpdateControllerConfiguration(V1.some).await(99.s).orThrow
+      //assert(controller.controllerState.map(_.idToAgentRefState.values).await(99.s) == Seq(agentRef))
+      assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
           Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         AWorkflowPath -> List(
@@ -140,11 +140,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         BWorkflowPath -> List(
           Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))))))
 
-      assert(provider.testControllerDiff.await(99.seconds).orThrow.isEmpty)
+      assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
 
     "Duplicate VersionId" in {
-      assert(provider.updateControllerConfiguration(V1.some).await(99.seconds) == Left(DuplicateKey("VersionId", VersionId("1"))))
+      assert(provider.updateControllerConfiguration(V1.some).await(99.s) == Left(DuplicateKey("VersionId", VersionId("1"))))
     }
 
     "An unknown and some invalid files" in {
@@ -155,7 +155,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       (live / "NO-JSON.workflow.json") := "INVALID JSON"
       (live / "ERROR-1.workflow.json") := json"""{ "something": "different" }"""
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
-      assert(provider.updateControllerConfiguration(V2.some).await(99.seconds) ==
+      assert(provider.updateControllerConfiguration(V2.some).await(99.s) ==
         Left(Problem.Combined(Set(
           ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
           VersionedItemReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
@@ -168,8 +168,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       delete(live / "NO-JSON.workflow.json")
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
-      provider.updateControllerConfiguration(V2.some).await(99.seconds).orThrow
-      assert(controller.itemApi.checkedRepo.await(99.seconds).map(_.pathToVersionToSignedItems) == Right(Map(
+      provider.updateControllerConfiguration(V2.some).await(99.s).orThrow
+      assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
           Entry(V2, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
           Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
@@ -181,7 +181,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
-      provider.updateControllerConfiguration(V3.some).await(99.seconds).orThrow
+      provider.updateControllerConfiguration(V3.some).await(99.s).orThrow
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
       assert(checkedRepo.map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
@@ -204,9 +204,9 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
 
-      assert(provider.testControllerDiff.await(99.seconds).orThrow == VersionedItems.Diff(added = workflow :: Nil))
-      provider.updateControllerConfiguration(V4.some).await(99.seconds).orThrow
-      assert(provider.testControllerDiff.await(99.seconds).orThrow.isEmpty)
+      assert(provider.testControllerDiff.await(99.s).orThrow == VersionedItems.Diff(added = workflow :: Nil))
+      provider.updateControllerConfiguration(V4.some).await(99.s).orThrow
+      assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
 
     "closeTask" in {
@@ -294,13 +294,13 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(!whenObserved.isCompleted)
       whenObserved.cancel()
       intercept[CancellationException] {  // Due to onCancelTriggerError
-        whenObserved await 99.seconds
+        whenObserved await 99.s
       }
     }
   }
 
   private def checkedRepo: Checked[Repo] =
-    controller.itemApi.checkedRepo.await(99.seconds)
+    controller.itemApi.checkedRepo.await(99.s)
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
     live.resolve(workflowPath.toFile(SourceType.Json)) := TestWorkflowJson

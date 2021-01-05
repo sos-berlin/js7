@@ -110,7 +110,7 @@ object TestControllerAgent
             } .closeWithCloser
 
             val startTime = Timestamp.now
-            Scheduler.global.scheduleWithFixedDelay(0.seconds, conf.period) {
+            Scheduler.global.scheduleWithFixedDelay(0.s, conf.period) {
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
                 controller.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, Some(at)))
@@ -124,7 +124,7 @@ object TestControllerAgent
               new Actor {
                 controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
                 controller.injector.instance[StampedKeyedEventBus].subscribe(self, OrderEvent.OrderFinished.getClass)
-                context.system.scheduler.scheduleWithFixedDelay(0.seconds, 1.second, self, "PRINT")
+                context.system.scheduler.scheduleWithFixedDelay(0.s, 1.s, self, "PRINT")
                 val stopwatch = new Stopwatch
                 var added, finished, printedFinished = 0
                 var lastDuration: Option[FiniteDuration] = None
@@ -201,7 +201,7 @@ object TestControllerAgent
     require(agentCount >= 1)
     require(workflowLength >= 1)
     require(tasksPerJob >= 1)
-    require(period > 0.s)
+    require(period.isPositive)
     require(orderGeneratorCount >= 1)
 
     val agentIds: Seq[AgentId] = for (i <- 1 to agentCount) yield AgentId(s"AGENT-$i")

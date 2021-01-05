@@ -38,7 +38,7 @@ sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
 extends AnyFreeSpec with SessionRouteTester
 {
   protected final implicit def scheduler = Scheduler.global
-  private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)
+  private implicit val routeTestTimeout = RouteTestTimeout(10.s)
 
   override protected[session] val specificLoginRequiredProblem = Problem.pure("specificLoginRequired")
 
@@ -76,11 +76,11 @@ extends AnyFreeSpec with SessionRouteTester
         }
         val runningSince = now
         val whenLoggedIn = api.loginUntilReachable(
-          Iterator.continually(10.milliseconds),
+          Iterator.continually(10.ms),
           onError = onError
         ).runToFuture
         // Akka delays 100ms, 200ms, 400ms: "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
-        waitForCondition(99.seconds, 10.milliseconds)(count >= 3)
+        waitForCondition(99.s, 10.ms)(count >= 3)
         assert(count >= 3)
         server.start() await 99.s
         val exception = intercept[AkkaHttpClient.HttpException] {
@@ -95,7 +95,7 @@ extends AnyFreeSpec with SessionRouteTester
     "authorized" in {
       withSessionApi(Some(AUserAndPassword)) { api =>
         import api.implicitSessionToken
-        api.loginUntilReachable(Iterator.continually(10.milliseconds), _ => Task.pure(true)) await 99.s
+        api.loginUntilReachable(Iterator.continually(10.ms), _ => Task.pure(true)) await 99.s
         requireAuthorizedAccess(api)
         api.logout() await 99.s
         requireAccessIsUnauthorizedOrPublic(api)

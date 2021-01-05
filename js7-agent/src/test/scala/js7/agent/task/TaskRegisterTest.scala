@@ -28,7 +28,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
 import scala.io
 
 /**
@@ -36,7 +35,7 @@ import scala.io
   */
 final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
-  private implicit val timeout = Timeout(99.seconds)
+  private implicit val timeout = Timeout(99.s)
   private implicit lazy val actorSystem = newAgentActorSystem("TaskRegisterTest",
     config"akka.scheduler.tick-duration = 100ms")  // Our default of 1s slows down this test
   TestAgentDirectoryProvider

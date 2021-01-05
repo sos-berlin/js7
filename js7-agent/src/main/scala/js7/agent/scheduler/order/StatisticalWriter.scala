@@ -43,5 +43,5 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer
 }
 
 object StatisticalWriter {
-  private val RelevantBlockedNanos = 1.second.toNanos
+  private val RelevantBlockedNanos = 1.s.toNanos
 }

@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.OrderContext
@@ -40,13 +41,13 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
               case (_, delay) =>
                 (order.id <-: OrderRetrying(
                   movedTo = branchPath % 0,
-                  delayedUntil = (delay > Duration.Zero) ? nextTimestamp(delay))
+                  delayedUntil = (delay.isPositive) ? nextTimestamp(delay))
                 ):: Nil
               })
 
   private def nextTimestamp(delay: FiniteDuration) =
     clock() + delay match {
-      case at if delay >= 10.seconds => at.roundToNextSecond
+      case at if delay >= 10.s => at.roundToNextSecond
       case at => at
     }
 }

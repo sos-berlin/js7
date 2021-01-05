@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.problem.Checked.Ops
+import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent}
@@ -15,7 +16,6 @@ import js7.tests.FailUncatchableTest._
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 
@@ -177,7 +177,7 @@ final class FailUncatchableTest extends AnyFreeSpec
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("test.cmd"), "exit 3")
-      directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("sleep.cmd"), DirectoryProvider.script(100.milliseconds))
+      directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         controller.eventWatch.await[E](_.key == orderId)

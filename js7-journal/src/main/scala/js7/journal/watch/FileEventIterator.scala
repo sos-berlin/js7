@@ -13,7 +13,6 @@ import js7.journal.recover.JournalReader
 import js7.journal.watch.FileEventIterator._
 import scala.concurrent.blocking
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -103,7 +102,7 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
       val duration = runningSince.elapsed
       def msg = s"$skipped events (${toKBGB(position - startPosition)}) skipped since ${duration.pretty}" +
         s" while searching ${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)} in journal, "
-      if (!debugIssued && (position - startPosition >= 100*1000*1000 || duration > 10.seconds)) {
+      if (!debugIssued && (position - startPosition >= 100*1000*1000 || duration > 10.s)) {
         logger.debug(msg)
         debugIssued = true
       }
@@ -122,5 +121,5 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
 
 object FileEventIterator {
   private val WarnSkippedSize = 100*1000*100
-  private val WarnDuration = 30.seconds
+  private val WarnDuration = 30.s
 }
