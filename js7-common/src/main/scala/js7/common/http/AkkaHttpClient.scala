@@ -2,18 +2,18 @@ package js7.common.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.model.StatusCodes.GatewayTimeout
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
-import akka.http.scaladsl.model.headers.{Accept, CustomHeader, RawHeader, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, StatusCodes, Uri => AkkaUri}
+import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
+import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
 import akka.util.ByteString
-import cats.effect.{ExitCase, Resource}
+import cats.effect.ExitCase
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
@@ -40,16 +40,14 @@ import js7.common.http.JsonStreamingSupport.{StreamingJsonHeaders, `application/
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import monix.eval.Task
-import monix.execution.Cancelable
 import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
-import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -217,68 +215,54 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def sendReceive(request: HttpRequest, logData: => Option[String] = None)
     (implicit sessionTokenTask: Task[Option[SessionToken]])
   : Task[HttpResponse] =
-    sessionTokenTask.flatMap(sessionToken =>
-      Task.defer {
-        withCheckedAgentUri(request) { request =>
-          val number = requestCounter.incrementAndGet()
-          val headers = sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string))
-          val req = request.withHeaders(headers ++: request.headers ++: standardHeaders)
-            .pipeIf(useCompression)(encodeGzip)
-          var since = now
-          def responseLogPrefix = s"$toString: #$number ${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
-          loggingTimerResource(responseLogPrefix).use { _ =>
-            @volatile var cancelled = false
-            var responseFuture: Future[HttpResponse] = null
-            Task.deferFutureAction { implicit s =>
-              logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
-              since = now
-              if (closed) {
-                logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
-              }
-              val httpsContext = if (request.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext
-              responseFuture = http.singleRequest(req, httpsContext)
-              responseFuture.recover {
-                case t if cancelled =>
-                  logger.debug(s"$responseLogPrefix => Error after cancel: ${t.toStringWithCauses}")
-                  // Fake response to avoid completing Future with a Failure, which is logged by thread's reportFailure
-                  // TODO Akka's max-open-requests may be exceeded when new requests are opened
-                  //  while many cancelled request are still not completed by Akka until some Akka (connection) timeout.
-                  //  Anyway, the caller's code should be fault-tolerant.
-                  HttpResponse(
-                    StatusCodes.GatewayTimeout,
-                    entity = HttpEntity.Strict(`text/plain(UTF-8)`, ByteString("Cancelled in AkkaHttpClient")))
-              }
-            } .guaranteeCase(exitCase => Task.defer {
-                val r = responseFuture
-                responseFuture = null  // Release memory
-                exitCase match {
-                  case ExitCase.Canceled =>
-                    // TODO Cancelling does not cancel the ongoing Akka operation. Akka does not free the connection.
-                    cancelled = true
-                    logger.debug(s"$responseLogPrefix => $exitCase")
-                    r match {
-                      case null => Task.unit
-                      case r => discardResponse(responseLogPrefix, r)
-                    }
-                  case _ =>
-                    Task.unit
-                }
-              })
-              .materialize.map { tried =>
-                tried match {
-                  case Failure(t) =>
-                    logger.debug(s"$responseLogPrefix => failed with ${t.toStringWithCauses}")
-                  case Success(response) if response.status.isFailure =>
-                    logger.debug(s"$responseLogPrefix => failed with HTTP ${response.status}")
-                  case _ =>
-                }
-                tried
-              }
-              .dematerialize
-              .map(decodeResponse)/*decompress*/
-              .map(_.addHeader(InternalHeader(number)))
+    withCheckedAgentUri(request)(request =>
+      sessionTokenTask.flatMap { sessionToken =>
+        if (closed) logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
+        val number = requestCounter.incrementAndGet()
+        val req = request.withHeaders(
+          sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string)) ++: request.headers ++: standardHeaders
+        ).pipeIf(useCompression)(encodeGzip)
+        @volatile var canceled = false
+        val promise = Promise[HttpResponse]()
+        var responseFuture: Future[HttpResponse] = null
+        val since = now
+        def responseLogPrefix = s"$toString: #$number ${sessionToken.fold("-")(_.short)} " +
+          s"${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
+        Task
+          .deferFuture {
+            logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
+            responseFuture = http.singleRequest(
+              req,
+              if (req.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext)
+            promise.completeWith(responseFuture)
+            promise.future
           }
-        }
+          .guaranteeCase {
+            case ExitCase.Canceled if responseFuture != null =>
+              logger.debug(s"$responseLogPrefix => canceled")
+              canceled = true
+              // Complete the future to complete Task.deferFuture above (???)
+              promise.trySuccess(HttpResponse(GatewayTimeout, entity = "Canceled in AkkaHttpClient"))
+              // TODO Akka's max-open-requests may be exceeded when new requests are opened
+              //  while many canceled request are still not completed by Akka
+              //  until some Akka (idle connection) timeout.
+              //  Anyway, the caller's code should be fault-tolerant.
+              discardResponse(responseLogPrefix, responseFuture)
+            case ExitCase.Error(t) =>
+              Task(logger.debug(s"$responseLogPrefix => failed with ${t.toStringWithCauses}"))
+            case _ => Task.unit
+          }
+          .whenItTakesLonger()(_ => Task {
+            logger.debug(s"$responseLogPrefix => Still waiting for response" +
+              (canceled ?? " (canceled)") + (closed ?? " (closed)"))
+          })
+          .tapEval(response => Task {
+            if (response.status.isFailure)
+              logger.debug(s"$responseLogPrefix => failed with HTTP ${response.status}")
+            else
+              logger.trace(s"$responseLogPrefix => ${response.status}")
+          })
+          .map(decodeResponse)/*decompress*/
       })
 
   private def discardResponse(logPrefix: => String, responseFuture: Future[HttpResponse]): Task[Unit] =
@@ -288,20 +272,6 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         response.discardEntityBytes()
       }
       .onErrorHandle(_ => ())  // Do not log lost exceptions
-
-  private val emptyLoggingTimerResource = Resource.make(Task.pure(Cancelable.empty))(_ => Task.unit)
-
-  private def loggingTimerResource[A](logPrefix: => String): Resource[Task, Cancelable] =
-    if (logger.underlying.isDebugEnabled)
-      Resource.make(
-        Task.deferAction(scheduler => Task {
-          scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-            logger.debug(s"$logPrefix => Still waiting for response" + (closed ?? " (after having been closed)"))
-          }
-        })
-      )(timer => Task { timer.cancel() })
-    else
-      emptyLoggingTimerResource
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse): Task[A] =
     Task.deferFuture(
@@ -322,8 +292,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
     toCheckedAgentUri(request.uri.asUri) match {
-      case Right(uri) => body(request.withUri(uri.asAkka))
       case Left(problem) => Task.raiseError(problem.throwable)
+      case Right(uri) => body(request.withUri(uri.asAkka))
     }
 
   private[http] final def toCheckedAgentUri(uri: Uri): Checked[Uri] =
@@ -430,11 +400,8 @@ object AkkaHttpClient
     override def getMessage =
       s"$prefixString => ${problem getOrElse shortDataString}"
 
-    private def prefixString = {
-      //val number = httpResponse.header[InternalHeader].fold("")(o => s" #${o.value}")
-      //s"HTTP ${httpResponse.status}:$number ${method.value} $uri"
+    private def prefixString =
       s"HTTP ${httpResponse.status}: ${method.value} $uri"
-    }
 
     private def shortDataString = dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)
 
@@ -448,12 +415,5 @@ object AkkaHttpClient
         }
       else
         None
-  }
-
-  private final case class InternalHeader(number: Long) extends CustomHeader {
-    val name = "X-JS7-Internal-Header"
-    val value = number.toString
-    def renderInRequests = false
-    def renderInResponses = false
   }
 }
