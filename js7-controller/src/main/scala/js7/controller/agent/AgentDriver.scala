@@ -384,7 +384,7 @@ with ReceiveLoggingActor.WithStash
         //.map { a => logEvent(a); a }
         .pipe(obs =>
           if (delay <= Duration.Zero)
-            obs.map(_ :: Nil)
+            obs.bufferIntrospective(conf.eventBufferSize)
           else obs
             .bufferTimedAndCounted(
               conf.eventBufferDelay max conf.commitDelay,
