@@ -45,16 +45,9 @@ addCommandAlias("clean-pack"     , "; clean-all; compile-only; pack")
 addCommandAlias("build"          , "; compile-all; test-all; pack")
 addCommandAlias("build-fast"     , "; test-all; pack")
 addCommandAlias("build-only"     , "; compile-only; pack")
-addCommandAlias("compile-all"    , "; Test/compile; ForkedTest/compile")
+addCommandAlias("compile-all"    , "; Test/compile")
 addCommandAlias("compile-only"   , "; compile")
-addCommandAlias("test-all",
-  if (testParallelization > 1)
-    "; StandardTest:test" +
-    "; ForkedTest:test" +
-    "; set Global/concurrentRestrictions += Tags.exclusive(Tags.Test)"   //Tags.limit(Tags.Test, max = 1)"   // Slow: Tags.limitAll(1)
-  else
-    "; test" +
-    "; ForkedTest:test")
+addCommandAlias("test-all"       , "test")
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
@@ -86,6 +79,8 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked",
   "-deprecation",
   "-feature")
+
+Global / concurrentRestrictions += Tags.limit(Tags.Test, max = testParallelization)
 
 // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
@@ -129,6 +124,8 @@ val commonSettings = Seq(
       }
   },
   sources in (Compile, doc) := Nil, // No ScalaDoc
+  Test / testOptions := Seq(scalaTestArguments),
+  Test / logBuffered := false,  // Recommended for ScalaTest
   test in publishM2 := {},
   // Publish
   publishArtifact in (Compile, packageDoc) := false,
@@ -218,7 +215,6 @@ lazy val `js7-docker` = project
 lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .settings(commonSettings)
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -235,7 +231,6 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(`js7-tester` % "test")
   .settings(commonSettings)
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -290,7 +285,6 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(`js7-base`, `js7-tester` % "test")
   .settings(commonSettings)
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -304,7 +298,6 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
 
 lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test->test", `js7-data`.jvm, `js7-tester`.jvm % "test")
   .settings(commonSettings)
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -330,7 +323,6 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(`js7-data`, `js7-base`, `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(`js7-common`))
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -350,7 +342,6 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
 lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-controller-client`.jvm, `js7-core`, `js7-cluster`, `js7-common`, `js7-agent-client`, `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
     mappings in (Compile, packageDoc) := Seq.empty)
@@ -365,7 +356,6 @@ lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-co
   }
 
 lazy val `js7-provider` = project.dependsOn(`js7-proxy`.jvm, `js7-controller`, `js7-controller-client`.jvm, `js7-core`, `js7-common`, `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
     mappings in (Compile, packageDoc) := Seq.empty)
@@ -382,7 +372,6 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(`js7-controller-client`, `js7-tester` % "test")
   //.jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(
     libraryDependencies ++= {
       import Dependencies._
@@ -405,7 +394,6 @@ lazy val `js7-controller-data` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(`js7-data`, `js7-tester` % "test")
   .settings(commonSettings)
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(
     libraryDependencies += {
       import Dependencies._
@@ -418,7 +406,6 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(`js7-controller-data`, `js7-common-http`, `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(
     libraryDependencies += {
       import Dependencies._
@@ -434,7 +421,6 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
     })
 
 lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -455,7 +441,6 @@ lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester
     }.taskValue)
 
 lazy val `js7-journal` = project.dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -471,7 +456,6 @@ lazy val `js7-journal` = project.dependsOn(`js7-common-http`.jvm, `js7-common`, 
   }
 
 lazy val `js7-cluster` = project.dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -484,7 +468,6 @@ lazy val `js7-cluster` = project.dependsOn(`js7-core`, `js7-common-http`.jvm, `j
   }
 
 lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-common`, `js7-data`.jvm, `js7-taskserver`, `js7-agent-client` % "test", `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -505,7 +488,6 @@ lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-comm
   }
 
 lazy val `js7-agent-client` = project.dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`, `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Client")
   .settings {
@@ -521,7 +503,6 @@ lazy val `js7-agent-client` = project.dependsOn(`js7-data`.jvm, `js7-common-http
   }
 
 lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Value Classes")
   .settings {
@@ -542,7 +523,6 @@ lazy val `js7-taskserver` = project
     `js7-common`,
     `js7-data`.jvm,
     `js7-tester`.jvm % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -559,7 +539,6 @@ lazy val `js7-taskserver` = project
 lazy val `js7-tests` = project
   .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
     `js7-core` % "test->test", `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test")
-  .configs(StandardTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,
     skip in publish := true,
@@ -575,27 +554,5 @@ lazy val `js7-tests` = project
       log4j % "test" ++
       lmaxDisruptor % "test"
   }
-
-Global / concurrentRestrictions += Tags.limit(Tags.Test, max = testParallelization)
-
-lazy val StandardTest  = config("StandardTest" ) extend Test
-lazy val ForkedTest    = config("ForkedTest"   ) extend Test
-lazy val testSettings =
-  inConfig(StandardTest )(Defaults.testTasks) ++
-  inConfig(ForkedTest   )(Defaults.testTasks) ++
-  Seq(
-    Test          / testOptions := Seq(scalaTestArguments, Tests.Filter(name => !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
-    StandardTest  / testOptions := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
-    ForkedTest / fork := true,
-    ForkedTest / testOptions := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
-    ForkedTest / javaOptions ++= Seq("-Xmx100m", "-Xms20m"),
-    ForkedTest / javaOptions += s"-Dlog4j.configurationFile=$rootDirectory/project/log4j2.xml",  // Does not work !!! "ERROR StatusLogger No Log4j 2 configuration file found"
-    ForkedTest / testForkedParallel := testParallelization > 1,
-    Test          / logBuffered := false,  // Recommended for ScalaTest
-    StandardTest  / logBuffered := false,
-    ForkedTest    / logBuffered := false)
-
-def isStandardTest(name: String): Boolean = !isForkedTest(name)
-def isForkedTest(name: String): Boolean = name endsWith "ForkedTest"
 
 def doNotInstallJar(path: String) = false

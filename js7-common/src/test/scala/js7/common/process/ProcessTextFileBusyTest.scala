@@ -7,7 +7,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.common.process.Processes._
-import js7.common.process.ProcessesForkedTest._
+import js7.common.process.ProcessTextFileBusyTest._
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Futures.implicits.RichFutures
 import js7.common.scalautil.Logger
@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
-final class ProcessesForkedTest extends AnyFreeSpec {
+final class ProcessTextFileBusyTest extends AnyFreeSpec {
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors
@@ -51,7 +51,7 @@ final class ProcessesForkedTest extends AnyFreeSpec {
   }
 }
 
-object ProcessesForkedTest {
+object ProcessTextFileBusyTest {
   private val logger = Logger(getClass)
 
   private def tryDelete(path: Path): Unit = {

@@ -21,13 +21,15 @@ final class ProcessesTest extends AnyFreeSpec {
 
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {
-      val process = new ProcessBuilder(directShellCommandArguments("rem").asJava).start()
+      val process = new ProcessBuilder(directShellCommandArguments("rem").asJava)
+        .startRobustly()
       assert(processToPidOption(process).isEmpty)
       process.waitFor()
     } else {
       val args = directShellCommandArguments("echo $$")
       assert(args == List("/bin/sh", "-c", "echo $$"))
-      val process = new ProcessBuilder(args.asJava).redirectInput(PIPE).start()
+      val process = new ProcessBuilder(args.asJava).redirectInput(PIPE)
+        .startRobustly()
       val echoLine = scala.io.Source.fromInputStream(process.getInputStream).getLines().next()
       assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
@@ -46,7 +48,9 @@ final class ProcessesTest extends AnyFreeSpec {
       assert(exists(file))
       assert(!(file.toString contains "--"))
       file := ShellScript
-      val process = new ProcessBuilder(toShellCommandArguments(file, Args).asJava).redirectOutput(PIPE).start()
+      val process = new ProcessBuilder(toShellCommandArguments(file, Args).asJava)
+        .redirectOutput(PIPE)
+        .startRobustly()
       val echoLines = scala.io.Source.fromInputStream(process.getInputStream).getLines().toList
       val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
       assert(normalizedFirstEcho == file.toString)
