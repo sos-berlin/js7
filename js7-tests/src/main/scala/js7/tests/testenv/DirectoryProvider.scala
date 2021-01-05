@@ -123,20 +123,20 @@ extends HasCloser
     (body: RunningController => A)
   : A = {
     val runningController = startController(httpPort = httpPort, config = config) await 99.s
-    try {
-      if (!dontWaitUntilReady) {
-        runningController.waitUntilReady()
+    val result =
+      try {
+        if (!dontWaitUntilReady) {
+          runningController.waitUntilReady()
+        }
+        body(runningController)
+      } catch { case NonFatal(t) =>
+        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+        try runningController.terminate() await 99.s
+        catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+        throw t
       }
-      val a = body(runningController)
-      runningController.terminate() await 99.s
-      a
-    }
-    catch { case NonFatal(t) =>
-      logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
-      try runningController.terminate() await 99.s
-      catch { case NonFatal(tt) if tt ne t => t.addSuppressed(tt) }
-      throw t
-    }
+    runningController.terminate() await 99.s
+    result
   }
 
   def startController(
@@ -179,15 +179,16 @@ extends HasCloser
 
   def runAgents[A]()(body: IndexedSeq[RunningAgent] => A): A =
     multipleAutoClosing(agents.map(_.agentConfiguration) map RunningAgent.startForTest await 99.s) { agents =>
-      val a =
+      val result =
         try body(agents)
         catch { case NonFatal(t) =>
+          logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
           try agents.map(_.terminate()) await 99.s
-          catch { case NonFatal(t2) => t.addSuppressed(t2) }
+          catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t
         }
       agents.map(_.terminate()) await 99.s
-      a
+      result
     }
 
   def startAgents(): Future[Seq[RunningAgent]] =
