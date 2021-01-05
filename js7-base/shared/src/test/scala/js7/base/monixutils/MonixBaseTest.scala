@@ -369,7 +369,7 @@ final class MonixBaseTest extends AsyncFreeSpec
           exitCase = e
         })
         .completedL
-        .map(_ => assert(duration > 0.s && count == 2 * n && exitCase == ExitCase.Completed))
+        .map(_ => assert(duration.isPositive && count == 2 * n && exitCase == ExitCase.Completed))
         .runToFuture
     }
 

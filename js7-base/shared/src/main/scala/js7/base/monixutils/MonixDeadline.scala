@@ -78,7 +78,7 @@ extends Ordered[MonixDeadline]
   /** Not immutable, may return each nanosecond a different string. */
   override def toString = {
     val t = elapsed
-    ((t > 0.s) ?? "+") + t.toCoarsest.toString
+    (t.isPositive ?? "+") + t.toCoarsest.toString
   }
 }
 

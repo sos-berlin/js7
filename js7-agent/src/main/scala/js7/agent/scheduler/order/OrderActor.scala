@@ -14,6 +14,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
@@ -31,7 +32,7 @@ import js7.journal.{JournalActor, KeyedJournalingActor}
 import js7.taskserver.task.process.StdChannels
 import monix.execution.Scheduler
 import scala.concurrent.Future
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
 import shapeless.tag.@@
 
 /**
@@ -259,7 +260,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Accepted] =
-    if (stdoutCommitDelay == Duration.Zero)  // slow
+    if (stdoutCommitDelay.isZero)  // slow
       persist(OrderStdWritten(t)(chunk)) { (_, _) =>
         Accepted
       }

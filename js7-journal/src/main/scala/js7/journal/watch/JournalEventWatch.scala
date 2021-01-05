@@ -8,7 +8,7 @@ import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
@@ -137,7 +137,7 @@ with JournalingObserver
 
   def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit = {
     val delay = (EventId.toTimestamp(untilEventId) + releaseEventsDelay) - Timestamp.now
-    if (delay <= 0.s) {
+    if (!delay.isPositive) {
       releaseEventsNow(untilEventId)
     } else {
       logger.debug(s"releaseEvents($untilEventId), delay ${delay.pretty}")

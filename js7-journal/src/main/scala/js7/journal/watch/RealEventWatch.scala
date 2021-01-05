@@ -58,7 +58,7 @@ trait RealEventWatch extends EventWatch
 
             case EventSeq.Empty(lastEventId) =>
               val remaining = deadline.map(_.timeLeft)
-              (remaining.forall(_ > Duration.Zero) ? Observable.empty,
+              (remaining.forall(_.isPositive) ? Observable.empty,
                 () => request.copy[E](after = lastEventId, timeout = deadline.map(_.timeLeftOrZero)))
 
             case EventSeq.NonEmpty(events) =>
@@ -97,7 +97,7 @@ trait RealEventWatch extends EventWatch
             case false =>
               logger.debug("committedEventIdSync.whenAvailable returned false")
               val remaining = deadline.map(_.timeLeft)
-              (remaining.forall(_ > Duration.Zero) ? Observable.empty,
+              (remaining.forall(_.isPositive) ? Observable.empty,
                 () => after -> deadline.map(_.timeLeftOrZero))
             case true =>
               val lastEventId = lastAddedEventId
@@ -249,7 +249,7 @@ trait RealEventWatch extends EventWatch
   def await[E <: Event: ClassTag: TypeTag](predicate: KeyedEvent[E] => Boolean, after: EventId, timeout: FiniteDuration)
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E]]] =
-    when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate) await timeout + 1.seconds match {
+    when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate) await timeout + 1.s match {
       case EventSeq.NonEmpty(events) =>
         try events.toVector
         finally events.close()

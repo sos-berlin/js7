@@ -383,7 +383,7 @@ with ReceiveLoggingActor.WithStash
       eventFetcher.observe(client, after = lastFetchedEventId)
         //.map { a => logEvent(a); a }
         .pipe(obs =>
-          if (delay <= Duration.Zero)
+          if (!delay.isPositive)
             obs.bufferIntrospective(conf.eventBufferSize)
           else obs
             .bufferTimedAndCounted(

@@ -8,6 +8,7 @@ import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.JavaJsonCodecs._
+import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.tester.CirceJsonTester.testJson
@@ -42,7 +43,7 @@ final class JavaJsonCodecsTest extends AnyFreeSpec {
         val t = System.nanoTime
         for (i <- 1 to n) Instant.ofEpochMilli(millis + i).asJson.as[Instant].orThrow
         val duration = (System.nanoTime - t).nanoseconds
-        info(s"Instant as $what: ${if (duration > 0.seconds) 1000*n / duration.toMillis else "∞"} conversions/s")
+        info(s"Instant as $what: ${if (duration.isPositive) 1000*n / duration.toMillis else "∞"} conversions/s")
       }
     }
 

@@ -62,7 +62,7 @@ object MonixBase
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       def whenItTakesLonger(duration: FiniteDuration)(thenDo: Task[Unit]): Task[A] =
-        if (duration <= Duration.Zero)
+        if (!duration.isPositive)
           task
         else
           whenItTakesLonger(duration :: Duration.Zero :: Nil)(_ => thenDo)
@@ -83,7 +83,7 @@ object MonixBase
             Task
               .tailRecM(Duration.Zero) { lastDuration =>
                 val d = durationIterator.nextOption() getOrElse lastDuration
-                if (d > Duration.Zero)
+                if (d.isPositive)
                   Task.sleep(d)
                     .flatMap(_ => thenDo(since.elapsed))
                     .map(_ => Left(d))

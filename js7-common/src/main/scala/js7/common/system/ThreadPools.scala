@@ -14,7 +14,6 @@ import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.common.utils.ByteUnits.toKiBGiB
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
-import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -70,7 +69,7 @@ object ThreadPools
     closer.onClose {
       logger.debug("shutdown")
       scheduler.shutdown()
-      if (shutdownTimeout > Duration.Zero) {
+      if (shutdownTimeout.isPositive) {
         logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) ...")
         if (!scheduler.awaitTermination(shutdownTimeout)) {
           logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) timed out" +

@@ -517,7 +517,7 @@ with MainJournalingActor[ControllerState, Event]
       agentRegister(a).actorTerminated = true
       if (switchover.isDefined && journalTerminated && agentRegister.runningActorCount == 0) {
         val delay = shutdown.delayUntil.timeLeft
-        if (delay > 0.s) {
+        if (delay.isPositive) {
           logger.debug(s"Sleep ${delay.pretty} after ShutDown command")
           sleep(delay)
         }
@@ -935,14 +935,14 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def delayOrderRemoved[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
-    if (removeOrderDelay <= 0.s)
+    if (!removeOrderDelay.isPositive)
       keyedEvents
     else
       keyedEvents.filter {
         case KeyedEvent(orderId: OrderId, OrderRemoved) =>
           orderRegister.get(orderId).fold(false) { orderEntry =>
             val delay = orderEntry.lastUpdatedAt + removeOrderDelay - now
-            (delay <= 0.s) || {
+            !delay.isPositive || {
               orderRegister(orderId).timer := scheduler.scheduleOnce(delay) {
                 self ! Internal.OrderIsDue(orderId)
               }

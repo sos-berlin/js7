@@ -289,7 +289,7 @@ extends Actor with Stash
     val deadline = now + delay
     if (commitDeadline == null || deadline < commitDeadline) {
       commitDeadline = deadline
-      if (delay <= Duration.Zero) {
+      if (!delay.isPositive) {
         self.forward(Internal.Commit)
       } else {
         val sender = context.sender()

@@ -32,7 +32,7 @@ private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, p
    */
   def waitForNextChange(until: Deadline): Boolean = {
     val remaining = until.timeLeft
-    remaining <= Duration.Zero || {
+    !remaining.isPositive || {
       lazy val logPrefix = s"Watching directory $directory"
       logger.trace(s"$logPrefix for ${remaining.pretty} ...")
       val watchKey = blocking {

@@ -27,7 +27,7 @@ object ClusterTiming
       new ClusterTiming(heartbeat, heartbeatTimeout)
 
   private def checkedUnit(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration) =
-    if (heartbeat <= 0.s || heartbeatTimeout <= 0.s)
+    if (!heartbeat.isPositive || !heartbeatTimeout.isPositive)
       Left(Problem.pure("Invalid cluster timing values"))
     else
       Right(())

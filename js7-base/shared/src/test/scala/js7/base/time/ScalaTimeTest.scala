@@ -268,6 +268,26 @@ final class ScalaTimeTest extends AnyFreeSpec
   }
 
   "FiniteDuration" - {
+    "isZero" in {
+      assert(Duration.Zero.isZero)
+      assert(new FiniteDuration(0, NANOSECONDS).isZero)
+      assert(!1.s.isZero)
+    }
+
+    "isPositive" in {
+      assert(!Duration.Zero.isPositive)
+      assert(!new FiniteDuration(0, NANOSECONDS).isPositive)
+      assert(1.s.isPositive)
+      assert(!(-1).s.isPositive)
+    }
+
+    "isNegative" in {
+      assert(!Duration.Zero.isNegative)
+      assert(!new FiniteDuration(0, NANOSECONDS).isNegative)
+      assert((-1).s.isNegative)
+      assert(!1.s.isNegative)
+    }
+
     "withMillis" in {
       assert(1.s.withMillis(0) == 1.s)
       assert(-1.s.withMillis(0) == -1.s)
