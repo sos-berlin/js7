@@ -108,6 +108,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .map(_
         .map(_.toByteArray)
         .flatMap(new ByteArrayToLinesObservable))
+      .onErrorRecover {
+        case akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+          logger.debug("Return NoMoreElementsNeeded exception as empty Observable")
+          Observable.empty
+      }
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A] =

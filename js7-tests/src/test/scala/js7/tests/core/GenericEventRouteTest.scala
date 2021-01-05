@@ -229,11 +229,7 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
       // ShutDown service
       shuttingDown.success(Deadline.now)
-      try observableCompleted await 99.s
-      catch { case akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
-        logger.error("NoMoreElementsNeeded - IGNORED")
-      }
-
+      observableCompleted await 99.s
       eventCollector.addStamped(ExtraEvent)
       observableCompleted.await(1.s)
     }
