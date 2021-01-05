@@ -46,7 +46,7 @@ extends Actor {
     case Command.Login(_user: User, tokenOption, isEternalSession) =>
       val user = _user.asInstanceOf[S#User]
       for (t <- tokenOption) delete(t, reason = "second login")
-      val token = SessionToken(SecretStringGenerator.newSecretString())
+      val token = SessionToken.generateFromSecretString(SecretStringGenerator.newSecretString())
       assertThat(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
       val session = newSession(SessionInit(numberIterator.next(), token, user))
       if (!isEternalSession) {

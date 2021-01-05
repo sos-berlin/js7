@@ -8,7 +8,8 @@ import akka.http.scaladsl.server.Directives._
 import com.typesafe.config.Config
 import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
-import js7.base.auth.UserId
+import js7.base.auth.{SessionToken, UserId}
+import js7.base.generic.SecretString
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
@@ -79,6 +80,11 @@ trait WebLogDirectives extends ExceptionHandling
     //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
     //sb.append(' ')
     //sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
+
+    sb.append(' ')
+    sb.append(request.headers
+      .find(_.lowercaseName().compareToIgnoreCase(SessionToken.HeaderName) == 0)
+      .fold("-")(o => SessionToken(SecretString(o.value)).short))
     sb.append(' ')
     sb.append(userId.fold("-")(_.string))
     sb.append(' ')
