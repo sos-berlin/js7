@@ -32,5 +32,5 @@ object APath extends ItemPath.Companion[APath]
     SourceType.Json -> ".a.json",
     SourceType.Txt -> ".a.txt")
 
-  def unchecked(string: String) = new APath(string)
+  protected[item] def unchecked(string: String) = new APath(string)
 }

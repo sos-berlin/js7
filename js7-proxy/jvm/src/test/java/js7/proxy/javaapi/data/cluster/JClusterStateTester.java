@@ -13,8 +13,8 @@ import static org.hamcrest.Matchers.equalTo;
 public class JClusterStateTester
 {
     private static final Map<NodeId, Uri> idToUri = new HashMap<NodeId, Uri>() {{
-        put(NodeId.unchecked("PRIMARY"), Uri.unchecked("https://PRIMARY"));
-        put(NodeId.unchecked("BACKUP"), Uri.unchecked("https://BACKUP"));
+        put(NodeId.of("PRIMARY"), Uri.of("https://PRIMARY"));
+        put(NodeId.of("BACKUP"), Uri.of("https://BACKUP"));
     }};
 
     private JClusterStateTester() {}

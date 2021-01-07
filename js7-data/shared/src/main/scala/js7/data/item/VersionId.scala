@@ -23,7 +23,7 @@ final case class VersionId(string: String) extends GenericString
 
 object VersionId extends GenericString.NonEmpty[VersionId]
 {
-  val Anonymous = VersionId.unchecked("⊥")
+  val Anonymous: VersionId = unchecked("⊥")
 
   def generate(isKnown: VersionId => Boolean = _ => false): VersionId = {
     val ts = Timestamp.now.toIsoString
@@ -47,7 +47,7 @@ object VersionId extends GenericString.NonEmpty[VersionId]
   override implicit val jsonDecoder: Decoder[VersionId] =
     c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
 
-  def unchecked(string: String) = new VersionId(string)
+  protected[item] def unchecked(string: String) = new VersionId(string)
 
   override def checked(string: String): Checked[VersionId] =
     for {

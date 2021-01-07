@@ -98,7 +98,8 @@ object Fork
       def toBranchId = BranchId.fork(string)
     }
     object Id extends GenericString.Checked_[Id] {
-      implicit def unchecked(string: String) = new Id(string)
+      def unchecked(string: String) = new Id(string)
+      implicit def fromString(string: String) = apply(string)
     }
 
     implicit val jsonCodec = deriveCodec[Branch]

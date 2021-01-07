@@ -16,7 +16,7 @@ final case class InternalCommandId private(number: Long) extends GenericString
 
 object InternalCommandId extends GenericString.Checked_[InternalCommandId]
 {
-  def unchecked(o: String) = InternalCommandId(o.toLong)
+  protected def unchecked(o: String) = InternalCommandId(o.toLong)
 
   override def checked(o: String) =
     Try(o.toLong) match {

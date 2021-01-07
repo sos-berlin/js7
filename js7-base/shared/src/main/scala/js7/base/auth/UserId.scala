@@ -17,7 +17,7 @@ object UserId extends GenericString.Checked_[UserId]
 {
   val Anonymous = UserId("Anonymous")
 
-  def unchecked(string: String) = new UserId(string)
+  protected def unchecked(string: String) = new UserId(string)
 
   override def checked(string: String) =
     if (string.isEmpty)

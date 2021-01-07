@@ -75,7 +75,7 @@ object WorkflowJob
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
-    val Anonymous = Name.unchecked("")
+    val Anonymous: Name = unchecked("")
     override val name = "WorkflowJob.Name"
 
     protected def unchecked(string: String) = new Name(string)

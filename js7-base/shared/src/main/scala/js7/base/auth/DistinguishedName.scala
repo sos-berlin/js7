@@ -23,10 +23,7 @@ final class DistinguishedName(private val x500Principal: X500Principal)
 
 object DistinguishedName
 {
-  def apply(string: String) = unchecked(string)
-
-  def unchecked(string: String): DistinguishedName =
-    checked(string).orThrow
+  def apply(string: String) = checked(string).orThrow
 
   def checked(string: String): Checked[DistinguishedName] =
     if (string.trim.isEmpty)
@@ -39,5 +36,5 @@ object DistinguishedName
       }
 
   implicit val GenericStringAsString: As[String, DistinguishedName] =
-    As(unchecked)
+    As(apply)
 }

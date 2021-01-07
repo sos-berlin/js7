@@ -13,7 +13,7 @@ final case class ControllerId private(string: String) extends GenericString
 
 object ControllerId extends GenericString.Checked_[ControllerId]
 {
-  def unchecked(string: String) = new ControllerId(string)
+  protected def unchecked(string: String) = new ControllerId(string)
 
   override def checked(o: String) = UserId.checked(o).flatMap(u => super.checked(u.string))
 

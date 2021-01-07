@@ -12,7 +12,7 @@ final case class Label private(string: String) extends GenericString {
 
 object Label extends GenericString.Checked_[Label]
 {
-  def unchecked(string: String) = new Label(string)
+  protected def unchecked(string: String) = new Label(string)
 
   implicit def fromString(label: String): Label = super.apply(label)
 }

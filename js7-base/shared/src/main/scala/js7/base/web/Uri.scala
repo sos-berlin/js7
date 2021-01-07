@@ -22,8 +22,8 @@ final case class Uri(string: String) extends GenericString
 
 object Uri extends GenericString.NonEmpty[Uri]
 {
-  def unchecked(string: String) = new Uri(string)
+  protected def unchecked(string: String) = new Uri(string)
 
   @javaApi
-  def of(validUri: String) = unchecked(validUri)
+  def of(validUri: String) = apply(validUri)
 }

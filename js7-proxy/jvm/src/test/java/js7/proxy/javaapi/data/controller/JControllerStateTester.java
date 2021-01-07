@@ -53,10 +53,10 @@ final class JControllerStateTester
         JClusterState.Coupled clusterState = (JClusterState.Coupled)controllerState.clusterState();
         assertThat(clusterState.idToUri(), equalTo(
                 new HashMap<NodeId, Uri>(){{
-                    put(NodeId.unchecked("A"), Uri.unchecked("http://A"));
-                    put(NodeId.unchecked("B"), Uri.unchecked("http://B"));
+                    put(NodeId.of("A"), Uri.of("http://A"));
+                    put(NodeId.of("B"), Uri.of("http://B"));
                 }}));
-        assertThat(clusterState.activeId(), equalTo(NodeId.unchecked("A")));
+        assertThat(clusterState.activeId(), equalTo(NodeId.of("A")));
     }
 
     void testWorkflows() {
