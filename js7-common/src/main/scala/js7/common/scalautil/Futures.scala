@@ -61,6 +61,17 @@ object Futures {
     promise.future
   }
 
+  object syntax {
+    implicit final class RichFuture[A](private val future: Future[A]) extends AnyVal
+    {
+      def onFailure(pf: PartialFunction[Throwable, Unit])(implicit ec: ExecutionContext): Unit =
+        future onComplete {
+          case Failure(throwable) => pf.applyOrElse(throwable, (_: Throwable) => ())
+          case Success(_) =>
+        }
+    }
+  }
+
   object implicits
   {
     implicit final class SuccessFuture[A](private val delegate: Future[A]) extends AnyVal {
@@ -111,7 +122,8 @@ object Futures {
       }
     }
 
-    implicit final class RichFutures[A, M[X] <: IterableOnce[X]](private val delegate: M[Future[A]]) extends AnyVal {
+    implicit final class RichFutures[A, M[X] <: IterableOnce[X]](private val future: M[Future[A]]) extends AnyVal
+    {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
@@ -122,10 +134,10 @@ object Futures {
         }
 
       def await(duration: FiniteDuration)(implicit ec: ExecutionContext, cbf: BuildFrom[M[Future[A]], A, M[A]], MA: TypeTag[M[A]]): M[A] =
-        Future.sequence(delegate)(cbf, ec) await duration
+        Future.sequence(future)(cbf, ec) await duration
 
       def awaitInfinite(implicit ec: ExecutionContext, cbf: BuildFrom[M[Future[A]], A, M[A]]): M[A] =
-        Future.sequence(delegate)(cbf, ec).awaitInfinite
+        Future.sequence(future)(cbf, ec).awaitInfinite
     }
 
     implicit final class SuccessPromise[A](private val delegate: Promise[A]) extends AnyVal {

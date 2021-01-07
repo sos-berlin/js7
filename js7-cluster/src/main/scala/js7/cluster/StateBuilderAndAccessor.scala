@@ -2,12 +2,12 @@ package js7.cluster
 
 import js7.base.utils.ScalaUtils.syntax._
 import js7.cluster.StateBuilderAndAccessor._
+import js7.common.scalautil.Futures.syntax.RichFuture
 import js7.common.scalautil.Logger
 import js7.data.event.{JournaledState, JournaledStateBuilder}
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.util.{Failure, Success}
 
 private final class StateBuilderAndAccessor[S <: JournaledState[S]](
   initialState: S)
@@ -24,10 +24,9 @@ private final class StateBuilderAndAccessor[S <: JournaledState[S]](
         _ <- mVar.take
         _ <- mVar.put(s)
       } yield ()
-    ).runToFuture  // Asynchronous ???
-      .onComplete {
-        case Success(()) =>
-        case Failure(t) => logger.error(s"PassiveClusterNode StateBuilderAndAccessor failed: ${t.toStringWithCauses}")
+    ).runToFuture/*asynchronous ???*/
+      .onFailure { case t =>
+        logger.error(s"PassiveClusterNode StateBuilderAndAccessor failed: ${t.toStringWithCauses}")
       }
     builder
   }
