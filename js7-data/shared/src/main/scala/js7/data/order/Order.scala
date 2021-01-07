@@ -381,7 +381,8 @@ final case class Order[+S <: Order.State](
       case o => o
     }
 
-  def isSuspendingOrSuspended = isSuspending || isSuspended
+  def isMarked =
+    mark.isDefined
 
   def isSuspendible =
     (isState[IsFreshOrReady] /*|| isState[DelayedAfterError]*/ || isState[ProcessingKilled] && isSuspendingWithKill) &&
@@ -404,7 +405,7 @@ final case class Order[+S <: Order.State](
       (isDetached || isAttached)
 
   def isProcessable =
-    isState[IsFreshOrReady] && !isSuspendingOrSuspended
+    isState[IsFreshOrReady] && !isSuspended && !isMarked
 }
 
 object Order
