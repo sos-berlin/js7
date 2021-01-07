@@ -118,7 +118,14 @@ final class RecoveryTest extends AnyFreeSpec
 
   private def runController(directoryProvider: DirectoryProvider)(body: RunningController => Unit): Unit =
     directoryProvider.runController() { controller =>
-      body(controller)
+      // TODO Duplicate code in DirectoryProvider
+      try body(controller)
+      catch { case NonFatal(t) =>
+        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+        try controller.terminate(suppressSnapshot = true) await 99.s
+        catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+        throw t
+      }
       logger.info("🔥🔥🔥 TERMINATE CONTROLLER 🔥🔥🔥")
       // Kill Controller ActorSystem
       Akkas.terminateAndWait(controller.actorSystem, 99.s)
@@ -126,7 +133,14 @@ final class RecoveryTest extends AnyFreeSpec
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
     multipleAutoClosing(directoryProvider.agents.map(_.agentConfiguration) map RunningAgent.startForTest await 10.s) { agents =>
-      body(agents)
+      // TODO Duplicate code in DirectoryProvider
+      try body(agents)
+      catch { case NonFatal(t) =>
+        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+        try agents.map(_.terminate()) await 99.s
+        catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+        throw t
+      }
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
       // Kill Agents ActorSystems
       for (agent <- agents) Akkas.terminateAndWait(agent.actorSystem, 99.s)
