@@ -72,10 +72,10 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
     assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == SimpleUser.TestAnonymous)
 
     // Late authentication: change session's user from SimpleUser.Anonymous to AUser
-    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.TestAnonymous))))
+    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
     assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser/*changed*/)
 
-    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(1, sessionToken, loginUser = SimpleUser.TestAnonymous))))
+    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
     assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
     assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
 

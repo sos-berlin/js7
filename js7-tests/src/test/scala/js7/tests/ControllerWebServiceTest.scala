@@ -165,13 +165,13 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   "/controller/api/workflow" - {
     testGet("controller/api/workflow",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""{
         "count": 2
       }""")
 
     testGet("controller/api/workflow/",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""[
         "/FOLDER/WORKFLOW-2",
         "/WORKFLOW"
@@ -180,7 +180,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     testGets("controller/api/workflow/FOLDER/WORKFLOW-2"::
              "controller/api/workflow//FOLDER/WORKFLOW-2"::
              "controller/api/workflow/%2FFOLDER%2FWORKFLOW-2":: Nil,
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""{
         "path": "/FOLDER/WORKFLOW-2",
         "versionId": "VERSION-1",
@@ -212,20 +212,20 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   "/controller/api/agent" - {
     //testGet("controller/api/agent",
-    //  RawHeader("X-JS7-Session", sessionToken) :: Nil,
+    //  RawHeader("x-js7-session", sessionToken) :: Nil,
     //  json"""{
     //    "count": 2
     //  }""")
 
     testGet("controller/api/agent/",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""[
         "AGENT",
         "AGENT-A"
       ]""")
 
     testGet("controller/api/agent/?return=AgentRef",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""[
           {
             "id": "AGENT",
@@ -237,7 +237,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         ]""")
 
     testGet("controller/api/agent/AGENT-A?return=AgentRef",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""{
         "id": "AGENT-A",
         "uri": "$agent2Uri"
@@ -247,13 +247,13 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   "/controller/api/agent-proxy" - {
     //"/controller/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
     //  // Pass-through AgentRef. Slashes but the first in AgentId must be coded as %2F.
-    //  val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+    //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
     //  val overview = httpClient.get[AgentOverview](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A"), Duration.Inf, headers) await 99.s
     //  assert(overview.version == BuildInfo.prettyVersion)
     //}
 
     "/controller/api/agent-proxy/UNKNOWN returns 400" in {
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+      val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       val e = intercept[HttpException] {
         httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/UNKNOWN"), headers) await 99.s
       }
@@ -262,7 +262,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     }
 
     //"/controller/api/agent-proxy/FOLDER%2FAGENT-A/NOT-FOUND returns 404" in {
-    //  val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+    //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
     //  assert(
     //    intercept[HttpException] {
     //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/task"), headers) await 99.s
@@ -270,7 +270,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     //}
     //
     //"/controller/api/agent-proxy/FOLDER%2FAGENT-A/timer" in {
-    //  val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+    //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
     //  assert(
     //    intercept[HttpException] {
     //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/timer"), headers) await 99.s
@@ -286,7 +286,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       }"""
 
       "Order with missing workflow is rejected (single order)" in {
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Nil
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orderWithMissingWorkflow, headers) await 99.s
         }
@@ -296,7 +296,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       }
 
       "Order with missing workflow is rejected (order array)" in {
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Nil
         val orders = Json.fromValues(orderWithMissingWorkflow :: Nil)
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
@@ -307,25 +307,25 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       }
 
       "Invalid OrderId is rejected (single order)" in {
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Nil
         val order = json"""{ "id": "ORDER|ID", "workflowPath": "/MISSING" }"""
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "OrderId must not contain reserved characters |")
-        assert(exception.problem == Some(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters |")))
+        assert(exception.dataAsString contains "OrderId must not contain reserved characters: |")
+        assert(exception.problem == Some(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters: |")))
       }
 
       "Invalid OrderId is rejected (order array)" in {
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Nil
         val orders = Json.fromValues(json"""{ "id": "ORDER|ID", "workflowPath": "/MISSING" }""":: Nil)
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "OrderId must not contain reserved characters |")
-        assert(exception.problem == Some(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters |")))
+        assert(exception.dataAsString contains "OrderId must not contain reserved characters: |")
+        assert(exception.problem == Some(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters: |")))
       }
 
       val order = json"""{
@@ -334,7 +334,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       }"""
 
       "First" in {
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 201/*Created*/)
         assert(response.header[Location] == Some(Location(AkkaUri(s"$uri/controller/api/order/ORDER-ID"))))
@@ -342,7 +342,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       }
 
       "Duplicate" in {
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 409/*Conflict*/)
         assert(response.header[Location] == Some(Location(AkkaUri(s"$uri/controller/api/order/ORDER-ID"))))
@@ -355,11 +355,11 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "workflowPath": "/WORKFLOW"
         }"""
 
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.utf8StringFuture.await(99.s).parseJsonCheckedAs[Problem]
-          == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters |")))
+          == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters: |")))
         assert(response.header[Location].isEmpty)
       }
 
@@ -371,7 +371,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               "workflowPath": "/WORKFLOW"
             }
           ]"""
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         assert(response.status == OK)  // Duplicates are silently ignored
         assert(response.header[Location].isEmpty)
@@ -386,27 +386,27 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
               "workflowPath": "/WORKFLOW"
             }
           ]"""
-        val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
+        val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.header[Location].isEmpty)
         assert(response.utf8StringFuture.await(99.s).parseJsonCheckedAs[Problem]
-          == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters |")))
+          == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters: |")))
       }
     }
 
     testGet("controller/api/order",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""{
         "count": 1
       }""")
 
     testGet("controller/api/order/",
-      RawHeader("X-JS7-Session", sessionToken) :: Nil,
+      RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""[ "ORDER-ID" ]""")
 
     "controller/api/order/?return=Order" in {
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Accept(`application/json`) :: Nil
+      val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
       val response = httpClient.get[Json](Uri(s"$uri/controller/api/order/?return=Order"), headers) await 99.s
       val orders = response.asArray.get
       assert(orders.length == 1)
@@ -414,7 +414,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     }
 
     "controller/api/order/ORDER-ID" in {
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+      val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       val order = httpClient.get[Json](Uri(s"$uri/controller/api/order/ORDER-ID"), headers) await 99.s
       assert(order.fieldOrThrow("id") == Json.fromString("ORDER-ID"))  // May fail when OrderFinished
     }
@@ -494,7 +494,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   }
 
   "/controller/api/event (only JSON)" in {
-    val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+    val headers = RawHeader("x-js7-session", sessionToken) :: Nil
     val eventsJson = httpClient.get[Json](Uri(s"$uri/controller/api/event?after=0"), headers) await 99.s
     val keyedEvents: Seq[KeyedEvent[Event]] =
       eventsJson.asObject.get("stamped").get.asArray.get.map(_.as(ControllerState.keyedEventJsonCodec).orThrow)
@@ -690,7 +690,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             }
           ]
         }"""
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+      val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       testJson(
         httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/command"), cmd, headers) await 99.s,
         json"""{
@@ -712,7 +712,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
     "ShutDown" in {
       val cmd = json"""{ "TYPE": "ShutDown" }"""
-      val headers = RawHeader("X-JS7-Session", sessionToken) :: Nil
+      val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       testJson(
         httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/command"), cmd, headers) await 99.s,
         json"""{

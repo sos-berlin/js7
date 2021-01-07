@@ -6,7 +6,6 @@ import js7.base.auth.{SessionToken, User}
   * @author Joacim Zschimmer
   */
 final case class SessionInit[U <: User](
-  sessionNumber: Long,
   sessionToken: SessionToken,
   /** If isAnonymous, the Session's user may change later due to late authentication. */
   loginUser: U)

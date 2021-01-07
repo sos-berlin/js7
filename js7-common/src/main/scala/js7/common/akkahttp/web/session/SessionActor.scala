@@ -29,15 +29,17 @@ extends Actor {
   private val sessionTimeout = config.getDuration("js7.auth.session.timeout").toFiniteDuration
   private val cleanupInterval = sessionTimeout / 4
   private val tokenToSession = mutable.Map[SessionToken, S]()
-  private val numberIterator = Iterator.from(1)
   private var nextCleanup: Cancelable = null
 
   override def postStop(): Unit = {
-    val sessions = tokenToSession.values.map(_.currentUser.id.string).groupMapReduce(identity)(_ => 1)(_ + _).map {
-      case (userId, 1) => userId
-      case (userId, n) => s"$n×$userId"
-    }
-    logger.debug(s"postStop: ${tokenToSession.size} open sessions: ${sessions mkString ", "}")
+    val openSessionsString = tokenToSession.values
+      .groupBy(_.currentUser.id)
+      .view.mapValues(_.toVector.sortBy(_.sessionNumber))
+      .toVector.sortBy(_._1)
+      .view
+      .map { case (u, s) => u.string + " " + s.map(_.sessionToken.short).mkString(" ") }
+      .mkString(", ")
+    logger.debug(s"postStop: ${tokenToSession.size} open sessions: $openSessionsString")
     if (nextCleanup != null) nextCleanup.cancel()
     super.postStop()
   }
@@ -48,7 +50,7 @@ extends Actor {
       for (t <- tokenOption) delete(t, reason = "second login")
       val token = SessionToken.generateFromSecretString(SecretStringGenerator.newSecretString())
       assertThat(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
-      val session = newSession(SessionInit(numberIterator.next(), token, user))
+      val session = newSession(SessionInit(token, user))
       if (!isEternalSession) {
         session.touch(sessionTimeout)
       }

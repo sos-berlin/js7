@@ -12,7 +12,7 @@ trait Session extends HasTimeout
 
   protected[session] def sessionInit: SessionInit[User]
 
-  final def sessionNumber = sessionInit.sessionNumber
+  final def sessionNumber = sessionToken.number
 
   final def sessionToken = sessionInit.sessionToken
 
