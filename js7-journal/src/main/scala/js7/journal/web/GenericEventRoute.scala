@@ -1,6 +1,7 @@
 package js7.journal.web
 
 import akka.NotUsed
+import akka.actor.ActorRefFactory
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.marshalling.sse.EventStreamMarshalling._
@@ -43,20 +44,18 @@ import js7.journal.web.GenericEventRoute._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
 import scala.util.chaining._
-import scala.util.control.NonFatal
+import scala.util.control.{NoStackTrace, NonFatal}
 
 /**
   * @author Joacim Zschimmer
   */
 trait GenericEventRoute extends RouteProvider
 {
-  protected def whenShuttingDown: Future[Deadline]
-
+  implicit protected def actorRefFactory: ActorRefFactory
   private implicit def implicitScheduler: Scheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
@@ -117,7 +116,7 @@ trait GenericEventRoute extends RouteProvider
                       } ~
                       oneShot(eventWatch)
                     }
-                })
+                  })
             }
           }
         }
@@ -162,17 +161,15 @@ trait GenericEventRoute extends RouteProvider
       val runningSince = now
       val initialRequest = request.copy[Event](
         limit = 1 min request.limit)
-      completeTask(
-        // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-        eventWatch.when(initialRequest, predicate) map {
+      // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
+      val future = eventWatch.when(initialRequest, predicate)
+        .map {
           case TearableEventSeq.Torn(eventId) =>
             ToResponseMarshallable(
               BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
 
           case EventSeq.Empty(_) =>
-            implicit val x = jsonSeqMarshaller[Unit]
-            observableToMarshallable(
-              Observable.empty[Unit])
+            emptyResponseMarshallable
 
           case EventSeq.NonEmpty(closeableIterator) =>
             val head = autoClosing(closeableIterator)(_.next())
@@ -185,7 +182,21 @@ trait GenericEventRoute extends RouteProvider
                 eventWatch)
               implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
               observableToMarshallable(head +: tail)
-        })
+        }
+        .onCancelRaiseError(CanceledException)
+        .onErrorRecover {
+          case CanceledException => emptyResponseMarshallable
+        }
+        .runToFuture
+        .cancelOnCompletionOf(whenShuttingDownCompletion)
+      onSuccess(future)(complete(_))
+    }
+
+    private def emptyResponseMarshallable(implicit streamingSupport: JsonEntityStreamingSupport)
+    : ToResponseMarshallable = {
+      implicit val x = jsonSeqMarshaller[Unit]
+      observableToMarshallable(
+        Observable.empty[Unit])
     }
 
     private def eventIdRoute(maybeHeartbeat: Option[FiniteDuration], eventWatch: EventWatch)
@@ -266,4 +277,6 @@ object GenericEventRoute
       case e: NumberFormatException =>
         throw new HttpStatusCodeException(BadRequest, Problem.pure(s"Invalid header Last-Event-Id: $e"))
     }
+
+  private object CanceledException extends Exception with NoStackTrace
 }

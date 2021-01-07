@@ -1,5 +1,6 @@
 package js7.common.akkahttp
 
+import akka.actor.ActorRefFactory
 import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `public`, immutableDirective}
@@ -13,7 +14,7 @@ import js7.base.utils.Collections.implicits._
 import js7.data.item.ItemPath
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -56,11 +57,15 @@ object StandardDirectives
   def lazyRoute(lazyRoute: => Route): Route =
     ctx => Future.successful(lazyRoute(ctx)).flatten
 
-  def routeTask(routeTask: Task[Route])(implicit s: Scheduler): Route =
-    routeFuture(routeTask.runToFuture)
+  def routeTask(routeTask: Task[Route])(implicit s: Scheduler, arf: ActorRefFactory): Route = {
+    val future = routeTask.runToFuture
+    routeFuture(future)
+  }
 
-  def routeFuture(routeFuture: Future[Route])(implicit ec: ExecutionContext): Route =
+  def routeFuture(routeFuture: Future[Route])(implicit arf: ActorRefFactory): Route = {
+    import arf.dispatcher /*Use Akka's dispatcher for Routes*/
     ctx => routeFuture.flatMap(_(ctx))
+  }
 
   private val removeEtag: Directive0 =
     mapResponse(r => r.withHeaders(r.headers filter {

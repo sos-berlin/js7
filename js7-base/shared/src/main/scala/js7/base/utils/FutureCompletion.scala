@@ -3,6 +3,7 @@ package js7.base.utils
 import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
+import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
@@ -39,7 +40,7 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
     Resource.fromAutoCloseable(Task(add()))
       .map(_.future)
 
-  def add(): Entry = {
+  private[utils] def add(): Entry = {
     val entry = new Entry
     val wasCompleted = numberToEntry.synchronized {
       if (completed.isEmpty) {
@@ -83,7 +84,7 @@ object FutureCompletion
 {
   object syntax
   {
-    implicit final class TakeUntilObservable[A](private val observable: Observable[A]) extends AnyVal
+    implicit final class FutureCompletionObservable[A](private val observable: Observable[A]) extends AnyVal
     {
       def takeUntilCompleted[B](futureCompletion: FutureCompletion[B]) =
         futureCompletion.observable flatMap observable.takeUntil
@@ -91,6 +92,21 @@ object FutureCompletion
       def takeUntilCompletedAndDo[B](futureCompletion: FutureCompletion[B])(onCompleted: B => Task[Unit]) =
         futureCompletion.observable
           .flatMap(trigger => observable.takeUntil(trigger.doOnNext(onCompleted)))
+    }
+
+    implicit final class FutureCompletionFuture[A](private val future: CancelableFuture[A]) extends AnyVal
+    {
+      def cancelOnCompletionOf[B](futureCompletion: FutureCompletion[B])(implicit s: Scheduler)
+      : CancelableFuture[A] = {
+        val entry = futureCompletion.add()
+        entry.future.onComplete { _ =>
+          future.cancel()
+        }
+        future.transform { tried =>
+          entry.close()
+          tried
+        }
+      }
     }
   }
 }

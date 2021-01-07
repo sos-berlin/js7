@@ -58,7 +58,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected val nodeId                  = controllerConfiguration.clusterConf.ownId
       protected val injector                = ControllerWebServer.this.injector
       protected val actorSystem             = ControllerWebServer.this.actorSystem
-      protected implicit def actorRefFactory = ControllerWebServer.this.actorSystem
+      protected def actorRefFactory         = ControllerWebServer.this.actorSystem
       protected implicit val scheduler      = ControllerWebServer.this.scheduler
       protected val config                  = ControllerWebServer.this.config
       protected val gateKeeper              = new GateKeeper(binding.scheme, gateKeeperConfiguration,

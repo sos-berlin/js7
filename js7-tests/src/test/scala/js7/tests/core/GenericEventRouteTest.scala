@@ -22,7 +22,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.data.ControllerState
-import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -40,10 +40,11 @@ import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
 
-final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
+final class GenericEventRouteTest extends AnyFreeSpec  with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
 {
   protected type Session = SimpleSession
 
+  protected def actorRefFactory = actorSystem
   protected implicit def scheduler = Scheduler.global
   protected val config = config"""
     js7 {
@@ -221,25 +222,51 @@ final class GenericEventRouteTest extends AnyFreeSpec with BeforeAndAfterAll wit
       assert(events == Seq(180, 180/*heartbeat*/, 180/*heartbeat*/))
     }
 
-    "whenShuttingDown completes observable" in {
-      val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
-        .completedL.runToFuture
-      sleep(10.ms)
-      assert(!observableCompleted.isCompleted)
+    "cancel AkkaHttpClient request" in {
+      // This test lets the following test block !!!
+      for (i <- 1 to 16/*below Akka's max-open-requests*/) {
+        logger.debug(s"#$i")
+        val future = getEvents(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(9.s)))
+          .runToFuture
+        sleep(10.ms)
+        assert(!future.isCompleted)
+        future.cancel()
+      }
+    }
 
-      // ShutDown service
-      shuttingDown.success(Deadline.now)
-      observableCompleted await 99.s
-      eventCollector.addStamped(ExtraEvent)
-      observableCompleted.await(1.s)
+    "whenShuttingDown" - {
+      "completes a running observable" in {
+        val whenRunning = Promise[Unit]()
+        val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
+          .doOnStart(_ => Task {
+            whenRunning.success(())
+          })
+          .completedL.runToFuture
+        whenRunning.future await 9.s
+        assert(!observableCompleted.isCompleted)
+
+        // Shut down service
+        shuttingDown.success(now)
+        observableCompleted await 99.s
+      }
+
+      "completes a observable request, before observable started" in {
+        val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
+          .completedL.runToFuture
+        // Previous test has already shut down the service
+        observableCompleted await 99.s
+      }
     }
   }
 
-  private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] = {
+  private def getEventObservable(eventRequest: EventRequest[Event]): Observable[Stamped[KeyedEvent[Event]]] =
+    getEvents(eventRequest).await(99.s)
+
+  private def getEvents(eventRequest: EventRequest[Event]): Task[Observable[Stamped[KeyedEvent[Event]]]] = {
     import ControllerState.keyedEventJsonCodec
     api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
       Uri("/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters))
-    ).await(99.s)
+    )
   }
 
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =

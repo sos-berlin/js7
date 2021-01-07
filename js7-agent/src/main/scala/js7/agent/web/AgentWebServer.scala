@@ -66,6 +66,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def akkaAskTimeout = conf.akkaAskTimeout
       protected def config = AgentWebServer.this.conf.config
       protected def actorSystem = AgentWebServer.this.actorSystem
+      protected def actorRefFactory = AgentWebServer.this.actorSystem
 
       def webServerRoute = completeRoute
 
