@@ -35,7 +35,7 @@ import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
-import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
+import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.Workflows.ExecutableWorkflow
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
@@ -170,62 +170,74 @@ with Stash {
 
   def receive = {
     case Internal.Recover(recovered) =>
-      recover(recovered)
-      become("Recovering")(recovering)
+      val state = recovered.state
+      journalState = state.journalState
+      for (workflow <- state.idToWorkflow.values)
+        wrapException(s"Error when recovering ${workflow.path}") {
+          workflowRegister.recover(workflow)
+          startJobActors(workflow)
+        }
+      for (recoveredOrder <- state.idToOrder.values)
+        wrapException(s"Error when recovering ${recoveredOrder.id}") {
+          val order = workflowRegister.reuseMemory(recoveredOrder)
+          val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
+          val actor = newOrderActor(order, workflow)
+          orderRegister.recover(order, workflow, actor)
+          actor ! OrderActor.Input.Recover(order)
+        }
+      persistence.start(state)
+      recovered.startJournalAndFinishRecovery(journalActor)
+      become("Recovering")(recovering(state.idToOrder.size))
       unstashAll()
+
     case _ => stash()
   }
 
-  private def recover(recovered: Recovered[AgentState]): Unit = {
-    val state = recovered.state
-    journalState = state.journalState
-    for (workflow <- state.idToWorkflow.values)
-      wrapException(s"Error when recovering ${workflow.path}") {
-        workflowRegister.recover(workflow)
-        startJobActors(workflow)
-      }
-    for (recoveredOrder <- state.idToOrder.values)
-      wrapException(s"Error when recovering ${recoveredOrder.id}") {
-        val order = workflowRegister.reuseMemory(recoveredOrder)
-        val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
-        val actor = newOrderActor(order, workflow)
-        orderRegister.recover(order, workflow, actor)
-        actor ! OrderActor.Input.Recover(order)
-      }
-    persistence.start(state)
-    recovered.startJournalAndFinishRecovery(journalActor)
-    become("Recovering")(recovering)
-  }
+  private def recovering(recoveredOrderCount: Int): Receive = {
+    var remainingOrders = recoveredOrderCount
+    var _journalHeader: Option[JournalHeader] = None
 
-  private def recovering: Receive = {
-    case OrderActor.Output.RecoveryFinished(order) =>
-      orderRegister(order.id).order = order
-      proceedWithOrder(order.id)
-
-    case Recovered.Output.JournalIsReady(journalHeader) =>
-      logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-      if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
-        // Automatically add Controller's UserId to list of users allowed to release events,
-        // to avoid deletion of journal files due to an empty list, before controller has read the events.
-        // The controller has to send ReleaseEvents commands to release obsolete journal files.
-        persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)) {
-          case (Stamped(_,_, _ <-: event), journaledState) =>
-            journalState = journalState.applyEvent(event)
-        }
-      }
-      persist(AgentReadyForController(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
-        become("ready")(ready)
-        unstashAll()
-        logger.info("Ready")
+    def continue() =
+      _journalHeader match {
+        case Some(journalHeader) if remainingOrders == 0 =>
+          if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
+            // Automatically add Controller's UserId to list of users allowed to release events,
+            // to avoid deletion of journal files due to an empty list, before controller has read the events.
+            // The controller has to send ReleaseEvents commands to release obsolete journal files.
+            persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)) {
+              case (Stamped(_,_, _ <-: event), journaledState) =>
+                journalState = journalState.applyEvent(event)
+            }
+          }
+          persist(AgentReadyForController(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
+            become("ready")(ready)
+            unstashAll()
+            logger.info("Ready")
+          }
+        case _ =>
       }
 
-    case _: AgentCommand.ShutDown =>
-      logger.info("Command 'ShutDown' terminates Agent while recovering")
-      context.stop(self)
-      sender() ! AgentCommand.Response.Accepted
+    val receive: Receive = {
+      case OrderActor.Output.RecoveryFinished(order) =>
+        orderRegister(order.id).order = order
+        proceedWithOrder(order.id)
+        remainingOrders -= 1
+        continue()
 
-    case _ =>
-      stash()
+      case Recovered.Output.JournalIsReady(journalHeader) =>
+        logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
+        _journalHeader = Some(journalHeader)
+        continue()
+
+      case _: AgentCommand.ShutDown =>
+        logger.info("Command 'ShutDown' terminates Agent while recovering")
+        context.stop(self)
+        sender() ! AgentCommand.Response.Accepted
+
+      case _ =>
+        stash()
+    }
+    receive
   }
 
   private def ready: Receive = {
