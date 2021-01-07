@@ -60,10 +60,10 @@ object AkkaHttpServerUtils
     accept(mediaTypes.toSet + mediaType)
 
   def accept(mediaTypes: Set[MediaType]): Directive0 =
-    mapInnerRoute { route =>
+    mapInnerRoute { inner =>
       headerValueByType(Accept) {
         case Accept(requestedMediaTypes) if requestedMediaTypes exists { o => mediaTypes exists o.matches } =>
-          route
+          inner
         case _ =>
           reject(UnacceptedResponseContentTypeRejection(mediaTypes collect {
             case m: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(m)
@@ -76,29 +76,25 @@ object AkkaHttpServerUtils
     * Passes x iff argument is Some(x).
     */
   def passSome[A](option: Option[A]): Directive1[A] =
-    Directive(inner =>
-      option match {
-        case Some(o) => inner(Tuple1(o))
-        case None => reject
-      })
+    option match {
+      case Some(o) => Directive(inner => inner(Tuple1(o)))
+      case None => reject
+    }
 
   def passRight[R](either: Either[String, R]): Directive1[R] =
-    Directive(inner =>
-      either match {
-        case Right(r) => inner(Tuple1(r))
-        case Left(message) => reject(ValidationRejection(message))
-      })
+    either match {
+      case Right(r) => Directive(inner =>inner(Tuple1(r)))
+      case Left(message) => reject(ValidationRejection(message))
+    }
 
   /**
     * Passes x iff argument is true.
     */
   def passIf(condition: Boolean): Directive0 =
-    mapInnerRoute { inner =>
-      if (condition)
-        inner
-      else
-        reject
-    }
+    if (condition)
+      pass
+    else
+      reject
 
   def addHeader(header: HttpHeader): Directive0 =
     mapRequest(o => o.withHeaders(o.headers :+ header))
@@ -150,10 +146,10 @@ object AkkaHttpServerUtils
 */
 
   def emptyParameterMap(parameterMap: Map[String, String]) =
-    mapInnerRoute { route =>
-      if (parameterMap.isEmpty) route
-      else reject(ValidationRejection(s"Invalid parameters: ${parameterMap.keys mkString ", "}"))
-    }
+    if (parameterMap.isEmpty)
+      pass
+    else
+      reject(ValidationRejection(s"Invalid parameters: ${parameterMap.keys mkString ", "}"))
 
   //implicit def asFromStringOptionDeserializer[A](implicit stringAsA: As[String, A]) =
   //  simpleFromStringOptionDeserializer(stringAsA.apply)
