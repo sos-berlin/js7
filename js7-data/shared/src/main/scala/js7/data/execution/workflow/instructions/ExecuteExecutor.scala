@@ -14,10 +14,10 @@ object ExecuteExecutor extends EventInstructionExecutor
   type Instr = Execute
 
   def toEvents(instruction: Execute, order: Order[Order.State], context: OrderContext) =
-    if (order.isProcessable && order.isDetached && order.mark.isEmpty) {
+    if (order.isProcessable && order.isDetached)
       for (job <- context.workflowJob(order.workflowPosition)) yield
         (order.id <-: OrderAttachable(job.agentId)) :: Nil
-    } else
+    else
     // Order.Ready: Execution has to be started by the caller
     //order.ifState[Order.Fresh].map(order =>
     //  order.id <-: OrderStarted)
