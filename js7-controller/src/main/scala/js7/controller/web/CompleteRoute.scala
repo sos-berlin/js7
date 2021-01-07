@@ -24,7 +24,7 @@ trait CompleteRoute extends ServiceProviderRoute with ControllerRoute with WebLo
 
   final lazy val completeRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      webLog(userId = None) {
+      webLog {
         forbidCSRF {
           route
         }

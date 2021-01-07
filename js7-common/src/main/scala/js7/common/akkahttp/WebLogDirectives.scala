@@ -8,8 +8,7 @@ import akka.http.scaladsl.server.Directives._
 import com.typesafe.config.Config
 import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
-import js7.base.auth.{SessionToken, UserId}
-import js7.base.generic.SecretString
+import js7.base.auth.SessionToken
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
@@ -30,63 +29,71 @@ trait WebLogDirectives extends ExceptionHandling
 
   private lazy val logLevel = LogLevel(config.getString("js7.web.server.log.level"))
   private lazy val errorLogLevel = LogLevel(config.getString("js7.web.server.log.error-level"))
-  private lazy val internalServerErrrorLevel = LogLevel(config.getString("js7.web.server.log.500-level"))
+  private lazy val internalServerErrorLevel = LogLevel(config.getString("js7.web.server.log.500-level"))
+  private lazy val logRequest = actorSystem.settings.config.getBoolean("js7.web.server.log.request")
   private lazy val logResponse = actorSystem.settings.config.getBoolean("js7.web.server.log.response")
-  private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
+  private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-attribute")
 
-  protected def webLog(userId: Option[UserId]): Directive0 =
+  protected def webLog: Directive0 =
     mapInnerRoute { inner =>
-      webLogOnly(userId) {
+      webLogOnly {
         seal {
           inner
         }
       }
     }
 
-  private def webLogOnly(userId: Option[UserId]): Directive0 =
-    extractRequest flatMap { request =>
-      if (logResponse) {
-        val start = nanoTime
-        mapResponse { response =>
-          log(request, Some(response), statusToLogLevel(response.status),
-            userId, nanoTime - start, hasRemoteAddress = hasRemoteAddress)
-          response
+  private def webLogOnly: Directive0 =
+    if (!logRequest && !logResponse)
+      pass
+    else
+      extractRequest flatMap { request =>
+        if (logRequest || webLogger.underlying.isTraceEnabled) {
+          log(request, None, if (logRequest) logLevel else LogLevel.Trace,
+            nanos = 0, hasRemoteAddress = hasRemoteAddress)
         }
-      } else {
-          log(request, None, logLevel, userId, nanos = Long.MinValue, hasRemoteAddress = hasRemoteAddress)
+        if (logResponse) {
+          val start = nanoTime
+          mapResponse { response =>
+            log(request, Some(response), statusToLogLevel(response.status),
+              nanoTime - start, hasRemoteAddress = hasRemoteAddress)
+            response
+          }
+        } else
           pass
-        }
-    }
+      }
 
   private def log(request: HttpRequest, response: Option[HttpResponse], logLevel: LogLevel,
-    userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean): Unit
+    nanos: Long, hasRemoteAddress: Boolean): Unit
   =
     webLogger.log(
       logLevel,
-      requestResponseToLine(request, response, userId, nanos, hasRemoteAddress = hasRemoteAddress))
+      requestResponseToLine(request, response, nanos, hasRemoteAddress = hasRemoteAddress))
 
   private def statusToLogLevel(statusCode: StatusCode): LogLevel =
     statusCode match {
       case status if status.intValue < 400 => logLevel
-      case status if status.intValue == 500 => internalServerErrrorLevel
+      case status if status.intValue == 500 => internalServerErrorLevel
       case _ => errorLogLevel
     }
 
   private def requestResponseToLine(request: HttpRequest, responseOption: Option[HttpResponse],
-    userId: Option[UserId], nanos: Long, hasRemoteAddress: Boolean)
+    nanos: Long, hasRemoteAddress: Boolean)
   = {
     val sb = new StringBuilder(200)
-    for (response <- responseOption) sb.append(response.status.intValue)
+
+    responseOption match {
+      case Some(response) => sb.append(response.status.intValue)
+      case _ => sb.append("in ")
+    }
     //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
     //sb.append(' ')
     //sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
 
     sb.append(' ')
     sb.append(request.headers
-      .find(_.lowercaseName().compareToIgnoreCase(SessionToken.HeaderName) == 0)
-      .fold("-")(o => SessionToken(SecretString(o.value)).short))
-    sb.append(' ')
-    sb.append(userId.fold("-")(_.string))
+      .find(_.lowercaseName == SessionToken.HeaderName)
+      .fold("-")(h => SessionToken.stringToShort(h.value)))
     sb.append(' ')
     sb.append(request.method.value)
     sb.append(' ')

@@ -20,7 +20,7 @@ with ApiRoute
 
   final lazy val completeRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
-      webLog(userId = None) {
+      webLog {
         seal {
           forbidCSRF {
             agentRoute
