@@ -107,7 +107,7 @@ extends ClusterWatchApi
           }
       })
 
-  private def mustBeStillActive(from: NodeId, state: Option[State], logLine: => String): Checked[Completed.type] =
+  private def mustBeStillActive(from: NodeId, state: Option[State], logLine: => String): Checked[Completed] =
     state match {
       case Some(state @ State(clusterState: HasNodes, lastHeartbeat))
       if isLastHeartbeatStillValid(state) && !clusterState.isNonEmptyActive(from) =>
