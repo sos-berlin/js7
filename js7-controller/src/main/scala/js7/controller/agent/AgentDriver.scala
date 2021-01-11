@@ -178,7 +178,7 @@ with ReceiveLoggingActor.WithStash
       self ! Internal.BatchSucceeded(queuedInputResponses)
 
     protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
-      if (problem == DecoupledProblem) {  // Avoid loop
+      if (problem == DecoupledProblem/*avoid loop*/ || isTerminating) {
         self ! Internal.BatchFailed(inputs, problem)
       } else
         (eventFetcher.invalidateCoupledApi >>
@@ -234,8 +234,8 @@ with ReceiveLoggingActor.WithStash
       if (!isTerminating) {
         logger.debug(s"Terminate emergency=$emergency")
         isTerminating = true
-        currentFetchedFuture foreach (_.cancel())
         commandQueue.terminate()
+        currentFetchedFuture foreach (_.cancel())
         eventFetcherTerminated.completeWith(
           eventFetcher.terminate.runToFuture)  // Rejects current commands waiting for coupling
         stopIfTerminated()
@@ -247,7 +247,6 @@ with ReceiveLoggingActor.WithStash
         currentFetchedFuture = Some(
           observeAndConsumeEvents
             .onCancelRaiseError(CancelledMarker)
-            .executeWithOptions(_.enableAutoCancelableRunLoops)
             .runToFuture
             .andThen {
               case tried =>
