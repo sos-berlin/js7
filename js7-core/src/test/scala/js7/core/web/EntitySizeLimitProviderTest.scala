@@ -10,10 +10,12 @@ import scala.language.reflectiveCalls
 final class EntitySizeLimitProviderTest extends AnyFreeSpec
 {
   "entitySizeLimit" in {
+    val maxMemory_ = 1000L
     val provider = new EntitySizeLimitProvider {
+      override protected val maxMemory = maxMemory_
       protected def config = config"js7.web.server.services.streaming-post-size-limit-factor = 25%"
       def entitySizeLimit_ = entitySizeLimit
     }
-    assert(provider.entitySizeLimit_ == sys.runtime.maxMemory / 4)
+    assert(provider.entitySizeLimit_ == maxMemory_ / 4)
   }
 }
