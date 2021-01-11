@@ -68,7 +68,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
-      OrderAdded(TestWorkflow.id, None, order.arguments),
+      OrderAdded(TestWorkflow.id, order.arguments),
       OrderStarted,
       expectedBroken,
       OrderCancelled))
@@ -85,12 +85,12 @@ object ForkTest {
     WorkflowPath("/DUPLICATE") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(AAgentId, ExecutablePath("SLOW.cmd")))))
-  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map("KEY" -> StringValue("VALUE")))
+  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, Map("KEY" -> StringValue("VALUE")))
   private val XOrderId = OrderId(s"🔺|🥕")
   private val YOrderId = OrderId(s"🔺|🍋")
 
   private val ExpectedEvents = Vector(
-    TestOrder.id <-: OrderAdded(TestWorkflow.id, None, Map("KEY" -> StringValue("VALUE"))),
+    TestOrder.id <-: OrderAdded(TestWorkflow.id, Map("KEY" -> StringValue("VALUE"))),
 
     TestOrder.id <-: OrderStarted,
     TestOrder.id <-: OrderForked(Vector(

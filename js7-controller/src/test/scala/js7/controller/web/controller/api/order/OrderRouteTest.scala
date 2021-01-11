@@ -102,8 +102,9 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   }
 
   "POST new order" in {
-    val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")),
-      Map("KEY" -> StringValue("VALUE")))
+    val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("/WORKFLOW"),
+      Map("KEY" -> StringValue("VALUE")),
+      Some(Timestamp.parse("2017-03-07T12:00:00Z")))
     Post(s"/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == Created)  // New order
       assert(response.header[Location] contains Location("http://example.com/controller/api/order/ORDER-%F0%9F%94%B5"))

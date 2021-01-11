@@ -101,7 +101,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
     }
 
     "Written but not flushed" in {
-      eventWriter.writeEvent(Stamped(1000L, OrderId("1") <-: OrderAdded(WorkflowPath("/TEST") ~ "VERSION", None, Map.empty)))
+      eventWriter.writeEvent(Stamped(1000L, OrderId("1") <-: OrderAdded(WorkflowPath("/TEST") ~ "VERSION")))
       sleep(100.ms)
       assert(observed.isEmpty)
     }

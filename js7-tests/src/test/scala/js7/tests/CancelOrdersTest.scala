@@ -46,7 +46,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOnly)).await(99.seconds).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
-      OrderAdded(singleJobWorkflow.id, order.scheduledFor),
+      OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderCancelMarked(CancelMode.FreshOnly),
@@ -140,7 +140,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition], immediately: Boolean): Unit =
     testCancel(order, workflowPosition, immediately = immediately,
       mode => Vector(
-        OrderAdded(order.workflowPath ~ versionId, None),
+        OrderAdded(order.workflowPath ~ versionId, order.arguments),
         OrderAttachable(agentId),
         OrderAttached(agentId),
         OrderStarted,

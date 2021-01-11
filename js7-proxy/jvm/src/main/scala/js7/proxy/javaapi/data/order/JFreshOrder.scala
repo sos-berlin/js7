@@ -35,7 +35,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath)
   : JFreshOrder =
-    JFreshOrder(FreshOrder(id, workflowPath, None, Map.empty))
+    JFreshOrder(FreshOrder(id, workflowPath))
 
   @Nonnull
   @throws[RuntimeException]("on invalid syntax")
@@ -46,8 +46,8 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     @Nonnull arguments: java.util.Map[String, Value] = java.util.Collections.emptyMap())
   : JFreshOrder =
     JFreshOrder(FreshOrder(id, workflowPath,
-      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
-      arguments.asScala.toMap))
+      arguments.asScala.toMap,
+      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli))))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JFreshOrder] =

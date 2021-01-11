@@ -40,7 +40,7 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(quickWorkflow.id, order.scheduledFor),
+      OrderAdded(quickWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,
@@ -61,7 +61,7 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(slowWorkflow.id, order.scheduledFor),
+      OrderAdded(slowWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,

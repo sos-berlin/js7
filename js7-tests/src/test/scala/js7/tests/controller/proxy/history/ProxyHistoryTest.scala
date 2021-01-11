@@ -133,7 +133,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
 
         assert(keyedEvents.groupMap(_.key)(_.event).view.mapValues(_.toList).to(mutable.SortedMap) == mutable.SortedMap(
           OrderId("🔺") -> List(
-            OrderAdded(TestWorkflowId.asScala, None, Map("KEY" -> StringValue("VALUE"))),
+            OrderAdded(TestWorkflowId.asScala, Map("KEY" -> StringValue("VALUE"))),
             OrderAttachable(AAgentId),
             OrderAttached(AAgentId),
             OrderStarted,

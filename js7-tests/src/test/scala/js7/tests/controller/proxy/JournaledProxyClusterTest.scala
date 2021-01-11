@@ -122,8 +122,9 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
   }
 
   "addOrders" in {
-    val bigOrder = FreshOrder(OrderId("ORDER"), workflow.path, Some(Timestamp("2100-01-01T00:00:00Z")),
-      arguments = Map("A" -> StringValue("*" * 800)))
+    val bigOrder = FreshOrder(OrderId("ORDER"), workflow.path,
+      Map("A" -> StringValue("*" * 800)),
+      Some(Timestamp("2100-01-01T00:00:00Z")))
     val n = calculateNumberOf(500_000, Stamped(0L, bigOrder.toOrderAdded(workflow.id.versionId): KeyedEvent[OrderEvent]))
     logger.info(s"Adding $n big orders")
     runControllerAndBackup() { (_, primaryController, _, _, _) =>

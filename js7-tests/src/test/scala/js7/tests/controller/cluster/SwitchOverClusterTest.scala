@@ -86,7 +86,8 @@ final class SwitchOverClusterTest extends ControllerClusterTester
   private def addOrders(orderId: Seq[OrderId])(implicit controller: RunningController): Unit = {
     controller.httpApi.login(onlyIfNotLoggedIn = true).await(timeout)
     orderId.grouped(1000)
-      .map(_.map(FreshOrder(_, TestWorkflow.path, Some(Timestamp("3000-01-01T00:00:00Z")))))
+      .map(_.map(FreshOrder(_, TestWorkflow.path,
+        scheduledFor = Some(Timestamp("3000-01-01T00:00:00Z")))))
       .foreach { orders =>
         controller.httpApi.addOrders(orders).await(timeout)
       }

@@ -15,19 +15,20 @@ final class FreshOrderTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), scheduledFor = None, Map.empty),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW")),
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW"
       }""")
 
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("2017-03-07T12:00:00Z")),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"),
         Map(
           "boolean" -> BooleanValue.True,
           "number" -> NumericValue(BigDecimal("-111222333444555666777888999000111222333444555666777888999000.123")),
           "string" -> StringValue("STRING"),
-          "list" -> ListValue(Seq(BooleanValue.True, NumericValue(123), StringValue("string"))))),
+          "list" -> ListValue(Seq(BooleanValue.True, NumericValue(123), StringValue("string")))),
+        Some(Timestamp.parse("2017-03-07T12:00:00Z"))),
       json"""{
         "id": "ORDER-ID",
         "workflowPath": "/WORKFLOW",
@@ -43,6 +44,6 @@ final class FreshOrderTest extends AnyFreeSpec
 
   "checked" in {
     assert(FreshOrder.checked(OrderId("INVALID|ID"), WorkflowPath("/WORKFLOW")) ==
-      Left(Problem("OrderId must not contain reserved characters |")))
+      Left(Problem("OrderId must not contain reserved characters: |")))
   }
 }

@@ -673,7 +673,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   "Commands" - {
     "(add order)" in {
-      controller.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"), Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
+      controller.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"),
+        scheduledFor = Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
     }
 
     "CancelOrders" in {

@@ -95,7 +95,7 @@ object ExpressionsTest {
       OrderAdded(TestWorkflow.id),
       OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("No such named value: ARG"))))),
     OrderId("⭕️") -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map("ARG" -> StringValue("ARG-VALUE"))),
+      OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"))),
       OrderMoved(Position(0) / Then % 0),
       OrderAttachable(TestAgentId),
       OrderAttached(TestAgentId),
@@ -106,7 +106,7 @@ object ExpressionsTest {
       OrderDetached,
       OrderFailed(Position(0) / Then % 0, Some(Outcome.Disrupted(Problem("No such named value: ARG2"))))),
     OrderId("🔺") -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map(
+      OrderAdded(TestWorkflow.id, Map(
         "ARG" -> StringValue("ARG-VALUE"),
         "ARG2" -> StringValue("ARG2-VALUE"),
         "RETURN_CODE" -> StringValue("1"))),

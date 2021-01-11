@@ -66,7 +66,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Seq(
-      OrderAdded(singleJobWorkflow.id, order.scheduledFor),
+      OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderSuspendMarked(),
@@ -107,7 +107,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     touch(triggerFile)
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(singleJobWorkflow.id, order.scheduledFor),
+      OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,
@@ -150,7 +150,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       }
 
     assert(events == Seq(
-      OrderAdded(singleJobWorkflow.id, order.scheduledFor),
+      OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,
@@ -192,7 +192,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
       assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-        OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
+        OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
         OrderAttachable(agentId),
         OrderAttached(agentId),
         OrderStarted,
@@ -258,7 +258,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       .filter(_.key.string startsWith "FORK")
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Seq(
-        OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.scheduledFor),
+        OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
         OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
         OrderId("FORK|🥕") <-: OrderAttachable(agentId),
@@ -309,7 +309,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderFinished](_.key == order.id)
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
+      OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,
@@ -350,7 +350,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     touch(triggerFile)
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(twoJobsWorkflow.id, order.scheduledFor),
+      OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,
@@ -402,7 +402,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-      OrderAdded(tryWorkflow.id, order.scheduledFor),
+      OrderAdded(tryWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentId),
       OrderAttached(agentId),
       OrderStarted,

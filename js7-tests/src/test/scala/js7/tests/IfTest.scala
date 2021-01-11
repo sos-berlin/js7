@@ -84,7 +84,7 @@ object IfTest {
 
   private val ExpectedEvents = Map(
     ReturnCode(0) -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("0"))),
+      OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("0"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentId),
       OrderAttached(TestAgentId),
@@ -102,7 +102,7 @@ object IfTest {
       OrderDetached,
       OrderFinished),
     ReturnCode(1) -> Vector(
-      OrderAdded(TestWorkflow.id, None, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("1"))),
+      OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("1"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentId),
       OrderAttached(TestAgentId),
@@ -120,7 +120,7 @@ object IfTest {
       OrderDetached,
       OrderFinished),
     ReturnCode(2) ->  Vector(
-      OrderAdded(TestWorkflow.id, None, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("2"))),
+      OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("2"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
       OrderAttachable(TestAgentId),
       OrderAttached(TestAgentId),

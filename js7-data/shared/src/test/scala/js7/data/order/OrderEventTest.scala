@@ -25,13 +25,19 @@ import scala.concurrent.duration._
 final class OrderEventTest extends AnyFreeSpec
 {
   "OrderAdded" in {
-    check(OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION", None, Map("VAR" -> StringValue("VALUE"))), json"""
+    check(
+      OrderAdded(
+        WorkflowPath("/WORKFLOW") ~ "VERSION",
+        Map("VAR" -> StringValue("VALUE")),
+        Some(Timestamp("2021-01-01T00:00:00Z"))),
+      json"""
       {
         "TYPE": "OrderAdded",
         "workflowId": {
           "path": "/WORKFLOW",
           "versionId": "VERSION"
         },
+        "scheduledFor": 1609459200000,
         "arguments": {
           "VAR": "VALUE"
         }

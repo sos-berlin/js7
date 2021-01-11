@@ -23,8 +23,8 @@ final class ScheduledOrderGeneratorKeeper(scheduledOrderGenerators: Iterable[Sch
       FreshOrder(
         toOrderId(orderGenerator.path, instant.toTimestamp),
         orderGenerator.workflowPath,
-        Some(instant.toTimestamp),
-        orderGenerator.arguments))
+        orderGenerator.arguments,
+        Some(instant.toTimestamp)))
     .toVector.sortBy(_.scheduledFor)
 }
 

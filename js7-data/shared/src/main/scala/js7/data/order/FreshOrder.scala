@@ -21,13 +21,13 @@ import org.jetbrains.annotations.TestOnly
 final case class FreshOrder private(
   id: OrderId,
   workflowPath: WorkflowPath,
-  scheduledFor: Option[Timestamp] = None,
-  arguments: NamedValues = Map.empty)
+  arguments: NamedValues = Map.empty,
+  scheduledFor: Option[Timestamp] = None)
 {
   workflowPath.requireNonAnonymous()
 
   def toOrderAdded(versionId: VersionId): KeyedEvent[OrderAdded] =
-    id <-: OrderAdded(workflowPath ~ versionId, scheduledFor, arguments)
+    id <-: OrderAdded(workflowPath ~ versionId, arguments, scheduledFor)
 }
 
 object FreshOrder
@@ -35,31 +35,31 @@ object FreshOrder
   def apply(
     id: OrderId,
     workflowPath: WorkflowPath,
-    scheduledFor: Option[Timestamp] = None,
-    arguments: NamedValues = Map.empty)
+    arguments: NamedValues = Map.empty,
+    scheduledFor: Option[Timestamp] = None)
   : FreshOrder =
-    checked(id, workflowPath, scheduledFor, arguments).orThrow
+    checked(id, workflowPath, arguments, scheduledFor).orThrow
 
   @TestOnly
   def unchecked(
     id: OrderId,
     workflowPath: WorkflowPath,
-    scheduledFor: Option[Timestamp] = None,
-    arguments: NamedValues = Map.empty)
+    arguments: NamedValues = Map.empty,
+    scheduledFor: Option[Timestamp] = None)
   : FreshOrder =
-    new FreshOrder(id, workflowPath, scheduledFor, arguments)
+    new FreshOrder(id, workflowPath, arguments, scheduledFor)
 
   def checked(
     id: OrderId,
     workflowPath: WorkflowPath,
-    scheduledFor: Option[Timestamp] = None,
-    arguments: NamedValues = Map.empty)
+    arguments: NamedValues = Map.empty,
+    scheduledFor: Option[Timestamp] = None)
   : Checked[FreshOrder] =
     for (checkedId <- id.checkedNameSyntax)
-      yield new FreshOrder(checkedId, workflowPath, scheduledFor, arguments)
+      yield new FreshOrder(checkedId, workflowPath, arguments, scheduledFor)
 
   def fromOrder(order: Order[Order.Fresh]): FreshOrder =
-    new FreshOrder(order.id, order.workflowId.path, order.state.scheduledFor, order.arguments)
+    new FreshOrder(order.id, order.workflowId.path, order.arguments, order.state.scheduledFor)
 
   implicit val jsonEncoder: Encoder.AsObject[FreshOrder] =
     o => JsonObject(
@@ -74,6 +74,6 @@ object FreshOrder
       workflowPath <- c.get[WorkflowPath]("workflowPath")
       scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
       arguments <- c.getOrElse[NamedValues]("arguments")(NamedValues.empty)
-      order <- checked(id, workflowPath, scheduledFor, arguments).toDecoderResult(c.history)
+      order <- checked(id, workflowPath, arguments, scheduledFor).toDecoderResult(c.history)
     } yield order
 }

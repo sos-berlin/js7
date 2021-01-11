@@ -276,5 +276,5 @@ object EventRouteTest
 {
   private val TestEvents = for (i <- 1 to 18) yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
-      OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") ~ "VERSION", None, Map.empty))
+      OrderId(i.toString) <-: OrderAdded(WorkflowPath("/test") ~ "VERSION"))
 }

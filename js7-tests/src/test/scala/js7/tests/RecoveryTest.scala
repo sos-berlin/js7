@@ -183,7 +183,7 @@ private object RecoveryTest {
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(
-    OrderAdded(TestWorkflow.id, None, Map.empty),
+    OrderAdded(TestWorkflow.id),
     OrderAttachable(AgentIds(0)),
     OrderAttached(AgentIds(0)),
     OrderStarted,

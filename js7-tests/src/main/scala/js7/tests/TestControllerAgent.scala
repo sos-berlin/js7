@@ -113,7 +113,7 @@ object TestControllerAgent
             Scheduler.global.scheduleWithFixedDelay(0.s, conf.period) {
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
-                controller.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, Some(at)))
+                controller.addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, scheduledFor = Some(at)))
                   .onErrorRecover { case t: Throwable =>
                     logger.error(s"addOrder failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                   }

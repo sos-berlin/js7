@@ -30,7 +30,7 @@ object OrderEvent {
   sealed trait OrderActorEvent extends OrderCoreEvent
   sealed trait OrderTerminated extends OrderEvent
 
-  final case class OrderAdded(workflowId: WorkflowId, scheduledFor: Option[Timestamp] = None, arguments: NamedValues = Map.empty)
+  final case class OrderAdded(workflowId: WorkflowId, arguments: NamedValues = Map.empty, scheduledFor: Option[Timestamp] = None)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
   }
@@ -46,7 +46,7 @@ object OrderEvent {
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
-      } yield OrderAdded(workflowId, scheduledFor, arguments)
+      } yield OrderAdded(workflowId, arguments, scheduledFor)
   }
 
   /** Agent-only event. */

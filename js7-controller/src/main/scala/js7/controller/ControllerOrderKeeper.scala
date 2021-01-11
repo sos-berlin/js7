@@ -780,7 +780,7 @@ with MainJournalingActor[ControllerState, Event]
           .traverse(o => _controllerState.repo.pathTo[Workflow](o.workflowPath).map(o.->))
           .traverse { ordersAndWorkflows =>
             val events = for ((order, workflow) <- ordersAndWorkflows) yield
-              order.id <-: OrderAdded(workflow.id/*reuse*/, order.scheduledFor, order.arguments)
+              order.id <-: OrderAdded(workflow.id/*reuse*/, order.arguments, order.scheduledFor)
             persistTransaction(events) { (stamped, updatedState) =>
               handleEvents(stamped, updatedState)
               // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
