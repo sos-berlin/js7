@@ -110,25 +110,27 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def startable: Receive =
     receiveEvent() orElse {
       case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) =>
-        assertThat(stdouterr == null)
-        stdouterr = new StdouterrToEvent(context, conf.stdouterrToEventConf, writeStdouterr)
-        val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
-        val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
-        become("processing")(processing(jobKey, workflowJob, jobActor,
-          () => (stdoutWriter.isRelevant || stderrWriter.isRelevant) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
-        context.watch(jobActor)
-        val orderStarted = order.isState[Order.Fresh] thenList OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
-        persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
-          update(events, updatedState)
-          jobActor ! JobActor.Command.ProcessOrder(
-            jobKey,
-            order.castState[Order.Processing],
-            workflow,
-            defaultArguments,
-            new StdChannels(
-              charBufferSize = charBufferSize,
-              stdoutWriter = stdoutWriter,
-              stderrWriter = stderrWriter))
+        if (order.isProcessable) {
+          assertThat(stdouterr == null)
+          stdouterr = new StdouterrToEvent(context, conf.stdouterrToEventConf, writeStdouterr)
+          val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
+          val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
+          become("processing")(processing(jobKey, workflowJob, jobActor,
+            () => (stdoutWriter.isRelevant || stderrWriter.isRelevant) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
+          context.watch(jobActor)
+          val orderStarted = order.isState[Order.Fresh] thenList OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
+          persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
+            update(events, updatedState)
+            jobActor ! JobActor.Command.ProcessOrder(
+              jobKey,
+              order.castState[Order.Processing],
+              workflow,
+              defaultArguments,
+              new StdChannels(
+                charBufferSize = charBufferSize,
+                stdoutWriter = stdoutWriter,
+                stderrWriter = stderrWriter))
+          }
         }
 
       case _: Input.Terminate =>
