@@ -269,6 +269,17 @@ final class MonixBaseTest extends AsyncFreeSpec
   }
 
   "Task" - {
+    "unless" in {
+      val list = List(1, 2, 3)
+      val task =
+        for {
+          unlessTrue <- Task(list) unless true
+          unlessFalse <- Task(list) unless false
+        } yield
+          assert(unlessTrue == Nil && unlessFalse == list)
+      task.runToFuture
+    }
+
     "durationOfTask" in {
       durationOfTask(Task.pure(7).delayResult(10.ms))
         .map(o =>

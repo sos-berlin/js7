@@ -1,5 +1,6 @@
 package js7.base.monixutils
 
+import cats.Monoid
 import cats.effect.{ExitCase, Resource}
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixDeadline.monotonicClock
@@ -40,6 +41,12 @@ object MonixBase
 
     implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal
     {
+      def unless(condition: Boolean)(implicit A: Monoid[A]): Task[A] =
+        if (condition)
+          Task.pure(A.empty)
+        else
+          task
+
       def maybeTimeout(duration: Duration): Task[A] =
         duration match {
           case d: FiniteDuration => task.timeout(d)
