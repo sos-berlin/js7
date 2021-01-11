@@ -56,7 +56,7 @@ object X509Signer extends DocumentSigner.Companion
 
   private val privateKeyPem = Pem("PRIVATE KEY")
 
-  def forTest(): (X509Signer, X509SignatureVerifier) =
+  lazy val forTest: (X509Signer, X509SignatureVerifier) =
     withTemporaryDirectory("X509Signer") { dir =>
       val privateKeyFile = dir / "private-key"
       val certificateFile = dir / "certificate.pem"
@@ -72,4 +72,3 @@ object X509Signer extends DocumentSigner.Companion
       signer -> verifier
     }
 }
-

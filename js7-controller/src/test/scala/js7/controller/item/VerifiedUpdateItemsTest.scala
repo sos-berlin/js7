@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class VerifiedUpdateItemsTest extends AnyFreeSpec
 {
-  private lazy val (signer, signatureVerifier) = X509Signer.forTest()
+  private lazy val (signer, signatureVerifier) = X509Signer.forTest
   private lazy val itemVerifier = new VersionedItemVerifier[VersionedItem](signatureVerifier, versionedItemJsonCodec)
   private lazy val itemSigner = new VersionedItemSigner[VersionedItem](signer, versionedItemJsonCodec)
   private val v1 = VersionId("1")

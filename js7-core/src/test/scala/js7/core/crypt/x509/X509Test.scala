@@ -30,7 +30,7 @@ final class X509Test extends AnyFreeSpec
   coupleScribeWithSlf4j()
 
   "Sign progammatically and verify" in {
-    val (signer, verifier) = X509Signer.forTest()
+    val (signer, verifier) = X509Signer.forTest
     val document = "TEXT EXAMPLE"
     val signature = signer.signString(document)
     val signerIds = verifier.verify(SignedString(document, signature.toGenericSignature)).orThrow
