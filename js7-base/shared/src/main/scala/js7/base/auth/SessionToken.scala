@@ -2,7 +2,6 @@ package js7.base.auth
 
 import js7.base.auth.SessionToken._
 import js7.base.generic.SecretString
-import js7.base.utils.Assertions.assertThat
 import monix.execution.atomic.AtomicInt
 import scala.util.control.NonFatal
 
