@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -e
+
+bin/kill-and-restart-controller-monkey &
+controllerKillMonkey=$!
+
+bin/kill-and-restart-agent-1-monkey &
+agentKillMonkey=$!
+
+trap "kill -- -$$ >/dev/null || kill $controllerKillMonkey $agentKillMonkey" EXIT
+wait
