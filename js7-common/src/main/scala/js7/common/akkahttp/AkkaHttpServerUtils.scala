@@ -2,20 +2,14 @@ package js7.common.akkahttp
 
 import akka.http.scaladsl.marshalling.ToResponseMarshaller
 import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.model.{HttpEntity, HttpHeader, MediaType, Uri}
+import akka.http.scaladsl.model.{HttpHeader, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
-import akka.http.scaladsl.server.RouteResult.Complete
-import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, PathMatcher, PathMatcher0, Route, RouteResult, UnacceptedResponseContentTypeRejection, ValidationRejection}
+import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
-import akka.stream.scaladsl.Flow
-import akka.util.ByteString
-import akka.{Done, NotUsed}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.annotation.tailrec
-import scala.concurrent.ExecutionContext
-import scala.util.{Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -33,28 +27,30 @@ object AkkaHttpServerUtils
   }
 
   // Test via ConcurrentRequestsLimiterTest
-  def whenResponseTerminated(onTerminated: Try[RouteResult] => Unit)(implicit ec: ExecutionContext): Directive0 =
-    mapInnerRoute {
-      _ andThen {
-        _ transform {
-          case Success(complete @ Complete(response)) =>
-            Success(Complete(
-              response mapEntity {
-                case entity if entity.isKnownEmpty || entity.isInstanceOf[HttpEntity.Strict] =>
-                  onTerminated(Success(complete))
-                  entity
-                case entity =>
-                  entity.transformDataBytes(Flow[ByteString].watchTermination() { case (NotUsed, whenTerminated) =>
-                    whenTerminated.map((_: Done) => complete).onComplete(onTerminated)
-                    NotUsed
-                  })
-              }))
-          case o =>
-            onTerminated(o)
-            o
-        }
-      }
-    }
+  //def whenResponseTerminated(onTerminated: Try[RouteResult] => Unit)(implicit arf: ActorRefFactory): Directive0 = {
+  //  import arf.dispatcher /*use Akka's ExecutionContext*/
+  //  mapInnerRoute {
+  //    _ andThen {
+  //      _ transform {
+  //        case Success(complete @ Complete(response)) =>
+  //          Success(Complete(
+  //            response mapEntity {
+  //              case entity if entity.isKnownEmpty || entity.isInstanceOf[HttpEntity.Strict] =>
+  //                onTerminated(Success(complete))
+  //                entity
+  //              case entity =>
+  //                entity.transformDataBytes(Flow[ByteString].watchTermination() { case (NotUsed, whenTerminated) =>
+  //                  whenTerminated.map((_: Done) => complete).onComplete(onTerminated)
+  //                  NotUsed
+  //                })
+  //            }))
+  //        case o =>
+  //          onTerminated(o)
+  //          o
+  //      }
+  //    }
+  //  }
+  //}
 
   def accept(mediaType: MediaType, mediaTypes: MediaType*): Directive0 =
     accept(mediaTypes.toSet + mediaType)
