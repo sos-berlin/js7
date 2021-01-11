@@ -63,7 +63,7 @@ extends HasCloser with Observing with ProvideActorSystem
   private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
 
   def closeTask: Task[Completed] =
-    httpControllerApi.logout()
+    httpControllerApi.logoutOrTimeout(10.s)
       .guarantee(Task(httpControllerApi.close()))
       .memoize
 
