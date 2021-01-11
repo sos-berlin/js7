@@ -8,6 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
 import scala.jdk.CollectionConverters._
+import scala.language.implicitConversions
 import scala.util.control.NonFatal
 
 sealed trait Value
@@ -72,6 +73,11 @@ object Value
         .map(o => ObjectValue(o.toMap))
     else
       Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
+  }
+
+  object conversions {
+    implicit def implicitNumericValue(number: Int): Value = NumericValue(number)
+    implicit def implicitStringValue(string: String): Value = StringValue(string)
   }
 }
 
