@@ -116,7 +116,7 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
     if (_activeClusterNode.trySet(activeClusterNode))
       activeClusterNode.start
     else
-      Task.pure(Left(Problem("Duplicate appointNodes")))
+      Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
   }
 
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =
@@ -138,4 +138,9 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
     }
 
   def isActive = _activeClusterNode.isDefined
+}
+
+object WorkingClusterNode
+{
+  private val logger = Logger(getClass)
 }

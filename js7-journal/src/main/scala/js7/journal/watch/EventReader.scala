@@ -98,10 +98,10 @@ extends AutoCloseable
     @volatile private var eof = false
     private var _next: Stamped[KeyedEvent[Event]] = null
 
-    // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee
+    // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee or bracket
     def close() =
       for (it <- Option(iteratorAtomic.getAndSet(null))) {
-        logger.debug(s"EventIterator(after=$after) closed")
+        logger.trace(s"EventIterator(after=$after) closed")
         iteratorPool.returnIterator(it)
         if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
           logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")

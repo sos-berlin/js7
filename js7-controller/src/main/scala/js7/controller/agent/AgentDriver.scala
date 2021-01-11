@@ -24,6 +24,7 @@ import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.http.{AkkaHttpClient, RecouplingStreamReader}
 import js7.common.scalautil.Futures.promiseFuture
+import js7.common.scalautil.Futures.syntax.RichFuture
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.promiseTask
 import js7.controller.agent.AgentDriver._
@@ -188,7 +189,9 @@ with ReceiveLoggingActor.WithStash
           Task {
             self ! Internal.BatchFailed(inputs, problem)
           }
-        ).runToFuture
+        ).runToFuture.onFailure { case t =>
+          logger.error("asyncOnBatchFailed: " + t.toStringWithCauses, t.nullIfNoStackTrace)
+        }
   }
 
   protected def key = agentId  // Only one version is active at any time
@@ -212,11 +215,9 @@ with ReceiveLoggingActor.WithStash
         changingUri = Some(uri)
         (cancelObservationAndAwaitTermination >>
           eventFetcher.decouple
-        ).runToFuture
-          .onComplete {
-            case Success(_) =>
-            case Failure(t) => logger.error(t.toStringWithCauses)
-          }
+        ).runToFuture.onFailure { case t =>
+          logger.error("ChangeUri: " + t.toStringWithCauses, t.nullIfNoStackTrace)
+        }
       }
 
     case Internal.UriChanged =>
@@ -232,7 +233,7 @@ with ReceiveLoggingActor.WithStash
       this.noJournal = emergency
       // Wait until all pending Agent commands are responded, and do not accept further commands
       if (!isTerminating) {
-        logger.debug(s"Terminate emergency=$emergency")
+        logger.debug(s"Terminate " + (emergency ?? "emergency"))
         isTerminating = true
         commandQueue.terminate()
         currentFetchedFuture foreach (_.cancel())
@@ -359,8 +360,8 @@ with ReceiveLoggingActor.WithStash
         case _ =>
           logger.warn(s"Command batch failed: $problem")
       }
-      delayCommandExecutionAfterErrorUntil = now + conf.commandErrorDelay
       logger.trace(s"delayCommandExecutionAfterErrorUntil=${Timestamp.ofDeadline(delayCommandExecutionAfterErrorUntil)}")
+      delayCommandExecutionAfterErrorUntil = now + conf.commandErrorDelay
       commandQueue.handleBatchFailed(inputs)
       stopIfTerminated()
   }
@@ -430,8 +431,8 @@ with ReceiveLoggingActor.WithStash
 
   private def stopIfTerminated() =
     if (commandQueue.isTerminated) {
-      case object Stop
       logger.debug("Stop")
+      case object Stop
       currentFetchedFuture.foreach(_.cancel())
       releaseEventsCancelable.foreach(_.cancel())
       Task.fromFuture(eventFetcherTerminated.future)

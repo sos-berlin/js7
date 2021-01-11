@@ -44,7 +44,7 @@ extends SignatureVerifier
       case Left(signerId) =>
         DistinguishedName.checked(signerId.string).flatMap(dn =>
           signerDNToTrustedCertificate.rightOr(dn,
-            Problem(s"The signature's SignerId '${signerId.string}' is unknown"))
+            Problem(s"The signature's SignerId is unknown: ${signerId.string}"))
         ).flatMap(trustedCertificate =>
             verifySignature(document, signature, trustedCertificate)
               .map(_ :: Nil))

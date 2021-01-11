@@ -60,7 +60,6 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
             JournalHeader.checkedHeader(journalHeader, journalFileForInfo, expectedJournalId)
               .orThrow
             builder.addSnapshotObject(journalHeader)
-            logger.debug(journalHeader.toString)
             _progress = AfterHeader
 
           case _ => throw new IllegalArgumentException(

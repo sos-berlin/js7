@@ -37,7 +37,7 @@ final class SimpleClusterTest extends ControllerClusterTester
       assert(
         intercept[ProblemException] {
           primaryController.eventWatch.underlying.observeEventIds(timeout = Some(0.s)).completedL await 99.s
-        }.problem == Problem("Active node does not provide event acknowledgements (two active cluster nodes?)"))
+        }.problem == Problem("This active cluster node does not provide event acknowledgements (two active cluster nodes?)"))
 
       backupController.eventWatch.underlying.observeEventIds(timeout = Some(0.s)).completedL await 99.s
 

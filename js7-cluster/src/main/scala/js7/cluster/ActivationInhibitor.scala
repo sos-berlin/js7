@@ -48,7 +48,9 @@ private[cluster] final class ActivationInhibitor
             }
 
         case Inhibited =>
-          mvar.put(Inhibited) >> ifInhibited
+          mvar.put(Inhibited) >>
+            Task { logger.info("Activation inhibited") } >>
+            ifInhibited
       })
 
   /** Tries to inhibit activation for `duration`.

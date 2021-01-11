@@ -405,6 +405,9 @@ object RunningController
             Task { persistence.start(recovered.state) }
           case _ =>
             cluster.stop
+              .onErrorHandle(t => Task {
+                logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+              })
         }
       val controllerState = Task.defer {
         if (persistence.isStarted)
@@ -420,8 +423,7 @@ object RunningController
       workingClusterNode: WorkingClusterNode[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])
-    : Either[ControllerTermination.Terminate, OrderKeeperStarted] = {
-      logger.debug(s"startControllerOrderKeeper(clusterFollowUp=${followUp.getClass.simpleScalaName})")
+    : Either[ControllerTermination.Terminate, OrderKeeperStarted] =
       followUp match {
         case ClusterFollowUp.BecomeActive(recovered: Recovered[ControllerState @unchecked]) =>
           val terminationPromise = Promise[ControllerTermination]()
@@ -437,7 +439,6 @@ object RunningController
             .andThen { case _ => closer.close() }  // Close automatically after termination
           Right(OrderKeeperStarted(tag[ControllerOrderKeeper](actor), termination))
       }
-    }
 
     private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
       val sessionTokenFile = controllerConfiguration.stateDirectory / "session-token"

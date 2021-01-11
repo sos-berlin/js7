@@ -21,11 +21,13 @@ private class DeadLetterActor(output: (LogLevel, () => String) => Unit) extends 
 
     case o: DeadLetter =>
       callOutput(messageToLogLevel(o.message),
-        s"DeadLetter from ${o.sender.path.pretty} to ${o.recipient.path.pretty}: ${o.message.getClass.scalaName} ${o.message}")
+        s"DeadLetter from ${o.sender.path.pretty} to ${o.recipient.path.pretty}: " +
+          s"${o.message.getClass.scalaName} ${o.message.toString.truncateWithEllipsis(1000, showLength = true)}")
 
     case o: UnhandledMessage =>
       callOutput(messageToLogLevel(o.message),
-        s"UnhandledMessage from ${o.sender.path.pretty} to ${o.recipient.path.pretty}: ${o.message.getClass.scalaName} ${o.message}")
+        s"UnhandledMessage from ${o.sender.path.pretty} to ${o.recipient.path.pretty}: " +
+          s"${o.message.getClass.scalaName} ${o.message.toString.truncateWithEllipsis(1000, showLength = true)}")
   }
 
   private def callOutput(logLevel: LogLevel, string: => String) =

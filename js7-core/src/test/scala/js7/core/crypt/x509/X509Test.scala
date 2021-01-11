@@ -92,7 +92,7 @@ final class X509Test extends AnyFreeSpec
       assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, signer.signerId)) ==
         Left(TamperedWithSignedMessageProblem))
       assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId)) ==
-        Left(Problem("The signature's SignerId 'CN=ALIEN-SIGNER' is unknown")))
+        Left(Problem("The signature's SignerId is unknown: CN=ALIEN-SIGNER")))
 
       val root2 = new openssl.Root("Root-2")
       assert(verify(root2.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==

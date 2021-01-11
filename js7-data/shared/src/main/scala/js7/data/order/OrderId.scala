@@ -35,7 +35,7 @@ final case class OrderId private(string: String) extends GenericString
     if (string.isEmpty)
       Left(Problem("OrderId must not be empty"))
     else if (string.exists(ReservedCharacters))
-      Left(Problem("OrderId must not contain reserved characters " + ReservedCharacters.mkString(", ")))
+      Left(Problem("OrderId must not contain reserved characters: " + ReservedCharacters.mkString(", ")))
     else
       Right(this)
     //firstProblem(string.stripPrefix("/").split('/').iterator map nameValidator.checked) match {

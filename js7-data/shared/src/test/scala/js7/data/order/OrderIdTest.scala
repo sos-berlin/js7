@@ -11,7 +11,7 @@ final class OrderIdTest extends AnyFreeSpec {
 
   "officialSyntaxChecked" in {
     assert(OrderId.checked("") == Left(EmptyStringProblem("OrderId")))
-    assert(OrderId("a|b").checkedNameSyntax == Left(Problem("OrderId must not contain reserved characters |")))
+    assert(OrderId("a|b").checkedNameSyntax == Left(Problem("OrderId must not contain reserved characters: |")))
 
     assert(OrderId("a/b").checkedNameSyntax == Right(OrderId("a/b")))
     assert(OrderId("a@b").checkedNameSyntax == Right(OrderId("a@b")))

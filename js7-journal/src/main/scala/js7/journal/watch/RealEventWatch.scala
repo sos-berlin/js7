@@ -107,7 +107,7 @@ trait RealEventWatch extends EventWatch
           .flatMap { x =>
             if (isActiveNode)
               Task.raiseError(
-                Problem.pure("Active node does not provide event acknowledgements (two active cluster nodes?)")
+                Problem.pure("This active cluster node does not provide event acknowledgements (two active cluster nodes?)")
                   .throwable)
             else
               Task.pure(x)

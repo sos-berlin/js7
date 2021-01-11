@@ -10,8 +10,13 @@ import scala.concurrent.duration.FiniteDuration
 
 final class TaskLock private(val resource: Resource[Task, Unit])
 {
-  def lock[A](task: Task[A]): Task[A] =
-    resource.use(_ => task)
+  def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] = {
+    resource.use(_ => Task.defer {
+      scribe.trace(src.value + " locked")
+      task.tapEval(_ =>
+        Task { scribe.trace(src + " released") })
+    })
+  }
 }
 
 object TaskLock

@@ -108,7 +108,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
         val signedStringV4 = SignedString(
           itemFile.contentString,
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=ALIEN"))))
-        assert(controllerApi.updateRepo(v4, Seq(signedStringV4)).await(99.s) == Left(Problem("The signature's SignerId 'CN=ALIEN' is unknown")))
+        assert(controllerApi.updateRepo(v4, Seq(signedStringV4)).await(99.s) == Left(Problem("The signature's SignerId is unknown: CN=ALIEN")))
       }
     }
   }

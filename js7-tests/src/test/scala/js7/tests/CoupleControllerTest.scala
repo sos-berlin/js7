@@ -149,7 +149,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
 private object CoupleControllerTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentId("AGENT-111")
+  private val agentId = AgentId("AGENT")
   private val TestExecutablePath = RelativeExecutablePath("TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",

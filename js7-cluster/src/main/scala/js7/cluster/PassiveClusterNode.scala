@@ -124,10 +124,10 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
             common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeId = activeId, passiveId = ownId))
         })
         .runAsyncUncancelable {
-          case Left(throwable) => logger.error("While notifying the active cluster node about this passive node's restart:" +
+          case Left(throwable) => logger.error("While notifying the active cluster node about restart of this passive node:" +
             s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
           case Right(()) =>
-            logger.debug("Notified active cluster node about this passive node's restart")
+            logger.debug("Notified active cluster node about restart of this passive node")
         }
       replicateJournalFiles(recoveredClusterState)
         .guarantee(Task {
@@ -312,6 +312,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
                         Task {
+                          logger.warn("Failover")
                           val fileSize = {
                             val file = recoveredJournalFile.file
                             assertThat(exists(file))
@@ -346,6 +347,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
                         Task {
+                          logger.warn("Failover")
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
                           if (out.size > lastProperEventPosition) {

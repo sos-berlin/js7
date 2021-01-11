@@ -214,7 +214,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
         val since = now
         journalingTimer := scheduler.scheduleAtFixedRates(journalConf.persistWarnDurations) {
           // Under load it may be normal to be busy for some time ???
-          logger.warn(s"“$toString” is still busy with persisting for ${since.elapsed.pretty} ($stashingCount persist operations in progress)")
+          logger.warn(s"“$toString” is still persisting for ${since.elapsed.pretty} ($stashingCount persist operations in progress)")
         }
       }
     }

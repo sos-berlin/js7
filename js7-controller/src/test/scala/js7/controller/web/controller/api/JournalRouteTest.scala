@@ -166,8 +166,10 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
       val file4size = size(file4)
       eventWatch = new JournalEventWatch(journalMeta, config)
       eventWatch.onJournalingStarted(file4, journalId, PositionAnd(file4size, 4000L), PositionAnd(file4size, 4000L), isActiveNode = true)
-      val bad = HttpClient.liftProblem(client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack")))
-      assert(bad.await(99.s) == Left(Problem("Active node does not provide event acknowledgements (two active cluster nodes?)")))
+      val bad = HttpClient.liftProblem(client.getRawLinesObservable(Uri(
+        s"$uri/journal?timeout=0&markEOF=true&file=4000&position=$file4size&return=ack")))
+      assert(bad.await(99.s) == Left(Problem(
+        "Acknowledgements cannot be requested from an active cluster node (two active cluster nodes?)")))
 
       eventWatch.close()
     }

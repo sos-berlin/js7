@@ -279,7 +279,7 @@ with JournalingObserver
       case Some(o: CurrentEventReader) if onlyAcks && o.isActiveNode =>
         // Guard against double cluster node activation:
         // The passive node acknowledgement request is rejected.
-        Left(Problem.pure("Active node does not provide event acknowledgements (two active cluster nodes?)"))
+        Left(Problem.pure("Acknowledgements cannot be requested from an active cluster node (two active cluster nodes?)"))
       case Some(o) =>
         Right(o.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
     }))
