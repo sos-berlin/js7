@@ -10,7 +10,6 @@ import js7.agent.client.AgentClient
 import js7.base.auth.{SessionToken, ValidUserPermission}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.http.AkkaHttpUtils.RichAkkaUri

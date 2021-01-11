@@ -266,7 +266,7 @@ final class OrderEventSource(
         order.mark match {
           case Some(_: OrderMark.Cancelling) =>
             Left(CannotSuspendOrderProblem)
-          case Some(_: OrderMark.Suspending)  =>  // Already marked
+          case Some(_: OrderMark.Suspending) =>  // Already marked
             Right(None)
           case None | Some(_: OrderMark.Resuming) =>
             Right((!order.isSuspended || order.isResuming) ?

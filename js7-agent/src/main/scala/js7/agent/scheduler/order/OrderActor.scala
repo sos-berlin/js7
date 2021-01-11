@@ -291,8 +291,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         order
 
       case event: OrderCoreEvent if order != null =>
-        order.applyEvent(event).orThrow  // 🔥 ProblemException, snapshot will be lost!
-        // Vielleicht anschließend: order.forceUpdate(OrderBroken(problem)) ?
+        order.applyEvent(event).orThrow/*!!!*/
 
       case _ =>
         sys.error(s"Unexpected event for '$orderId': $event")

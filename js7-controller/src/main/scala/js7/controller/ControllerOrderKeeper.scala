@@ -51,7 +51,7 @@ import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.{AgentId, AgentRef, AgentRunId}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
@@ -475,7 +475,7 @@ with MainJournalingActor[ControllerState, Event]
         timestampedEvents :+= Timestamped(agentId <-: AgentEventsObserved(agentEventId))
 
         committedPromise.completeWith(
-          persistTransactionTimestamped(timestampedEvents, async = true, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+          persistTransactionTimestamped(timestampedEvents, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
             (stampedEvents, updatedState) =>
               handleEvents(
                 stampedEvents.collect {
@@ -897,7 +897,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithOrder(orderId: OrderId): Unit =
     for (order <- _controllerState.idToOrder.get(orderId)) {
-      for (mark <- order.mark collect { case o: OrderMark => o }) {
+      for (mark <- order.mark) {
         if (order.isAttached && !orderMarkTransferredToAgent(order.id).contains(mark)) {
           // On Recovery, MarkOrder is sent again, because orderEntry.agentOrderMark is lost
           for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
@@ -1000,25 +1000,25 @@ with MainJournalingActor[ControllerState, Event]
   : Future[Checked[ControllerCommand.Response.Accepted.type]] =
     if (switchover.isDefined)
       Future.successful(Left(Problem("Already switching over")))
-    else {
-      val so = new Switchover(restart = restart)
-      switchover = Some(so)
-      so.start()
-        .materialize.flatTap {
-          case Success(Right(_)) => Task.unit  // this.switchover is left postStop
-          case _ => Task {
-            switchover = None  // Asynchronous!
-          }
-        }.dematerialize
-        .guaranteeCase { exitCase =>
+    else
+      Task {
+        new Switchover(restart = restart)
+      } .bracketCase { so =>
+          switchover = Some(so)
+          so.start()
+            .materialize.flatTap {
+              case Success(Right(_)) => Task.unit  // this.switchover is left for postStop
+              case _ => Task {
+                switchover = None  // Asynchronous!
+              }
+            }.dematerialize
+        } ((so, exitCase) =>
           Task {
             logger.debug(s"SwitchOver => $exitCase")
             so.close()
-          }
-        }
+          })
         .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
         .runToFuture
-    }
 
   private def orderMarkTransferredToAgent(orderId: OrderId): Option[OrderMark] =
     orderRegister.get(orderId).flatMap(_.agentOrderMark)

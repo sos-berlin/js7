@@ -13,7 +13,6 @@ import js7.data.cluster.ClusterState
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.JournalActor
 import js7.journal.configuration.JournalConf
-import js7.journal.state.JournaledStatePersistence._
 import js7.journal.state.StateJournalingActor.{PersistFunction, StateToEvents}
 import monix.eval.Task
 import monix.execution.Scheduler

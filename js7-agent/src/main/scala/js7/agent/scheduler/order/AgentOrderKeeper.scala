@@ -542,7 +542,6 @@ with Stash {
       case _ => NamedValues.empty
     }
     //assertThat(job.jobPath == jobEntry.jobPath)
-    jobEntry.waitingForOrder = false
     orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor, defaultArguments)
   }
 
