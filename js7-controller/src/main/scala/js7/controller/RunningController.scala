@@ -273,7 +273,7 @@ object RunningController
     @volatile private var clusterStartupTermination = ControllerTermination.Terminate()
 
     private[RunningController] def start(): Future[RunningController] = {
-      val whenRecovered = Future {  // May take minutes !!!
+      val whenRecovered = Future {  // May take several seconds !!!
         ControllerJournalRecoverer.recover(journalMeta, controllerConfiguration.config)
       }
       val testEventBus = injector.instance[StandardEventBus[Any]]
@@ -281,18 +281,21 @@ object RunningController
       whenReady.completeWith(
         testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
       // Start-up some stuff while recovering
+      itemVerifier
       val journalActor = tag[JournalActor.type](actorSystem.actorOf(
         JournalActor.props[ControllerState](journalMeta, controllerConfiguration.journalConf,
           injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
         "Journal"))
-      itemVerifier
       val recovered = Await.result(whenRecovered, Duration.Inf)
         .closeWithCloser
       val (cluster, controllerState, clusterFollowUp) = startCluster(recovered, journalActor, testEventBus)
-      val clusterFollowUpFuture = clusterFollowUp.executeWithOptions(_.enableAutoCancelableRunLoops).runToFuture
+
+      val clusterFollowUpFuture = clusterFollowUp.runToFuture
+
       val (orderKeeperActor, orderKeeperTerminated) = {
         val orderKeeperStarted = clusterFollowUpFuture.map(_.flatMap(
           startControllerOrderKeeper(journalActor, cluster.workingClusterNode.orThrow/*TODO*/, _, testEventBus)))
+
         val actorTask: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
           Task.defer {
             controllerState.map(_.map(_.clusterState)).flatMapT { clusterState =>
@@ -319,8 +322,10 @@ object RunningController
               clusterFollowUpFuture.cancel()
             }
         }
+
         (actorTask, terminated)
       }
+
       for (t <- orderKeeperActor.failed) logger.debug("orderKeeperActor => " + t.toStringWithCauses, t)
       orderKeeperActor.failed foreach whenReady.tryFailure
       orderKeeperTerminated.failed foreach whenReady.tryFailure
@@ -362,7 +367,7 @@ object RunningController
       journalActor: ActorRef @@ JournalActor.type,
       testEventBus: StandardEventBus[Any])
     : (Cluster[ControllerState],
-      Task[Either[Problem, ControllerState]],
+      Task[Checked[ControllerState]],
       Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]])
     = {
       val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf)
@@ -498,5 +503,7 @@ object RunningController
               .mapTo[Checked[Completed]]))
   }
 
-  private case class OrderKeeperStarted(actor: ActorRef @@ ControllerOrderKeeper, termination: Future[ControllerTermination])
+  private case class OrderKeeperStarted(
+    actor: ActorRef @@ ControllerOrderKeeper,
+    termination: Future[ControllerTermination])
 }
