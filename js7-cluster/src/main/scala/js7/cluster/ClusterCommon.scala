@@ -9,6 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.auth.UserAndPassword
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.{Completed, SecretString}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
@@ -46,8 +47,8 @@ private[cluster] final class ClusterCommon(
   private var _clusterWatchSynchronizer: Option[ClusterWatchSynchronizer] = None
 
   def stop: Task[Completed] =
-    _clusterWatchSynchronizer match {
-      case None => Task.pure(Completed)
+    _clusterWatchSynchronizer.get match {
+      case None => Task.completed
       case Some(o) =>
         Task.defer {
           o.stop()

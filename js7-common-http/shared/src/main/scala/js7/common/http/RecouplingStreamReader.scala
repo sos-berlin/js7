@@ -3,6 +3,7 @@ package js7.common.http
 import cats.syntax.flatMap._
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
@@ -52,10 +53,10 @@ abstract class RecouplingStreamReader[
     }
 
   protected def onCoupled(api: Api, after: I): Task[Completed] =
-    Task.pure(Completed)
+    Task.completed
 
   protected def onDecoupled: Task[Completed] =
-    Task.pure(Completed)
+    Task.completed
 
   protected def eof(index: I) = false
 
@@ -115,7 +116,7 @@ abstract class RecouplingStreamReader[
   final def decouple: Task[Completed] =
     coupledApiVar.tryTake
       .flatMap {
-        case None => Task.pure(Completed)
+        case None => Task.completed
         case Some(api) =>
           onDecoupled >>
             api.logoutOrTimeout(idleTimeout)
@@ -224,7 +225,7 @@ abstract class RecouplingStreamReader[
 
     private def coupleIfNeeded(after: I): Task[Completed] =
       coupledApiVar.tryRead.flatMap {
-        case Some(_) => Task.pure(Completed)
+        case Some(_) => Task.completed
         case None => tryEndlesslyToCouple(after)
       }
 

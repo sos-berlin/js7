@@ -10,6 +10,7 @@ import js7.agent.data.event.AgentControllerEvent
 import js7.base.auth.UserAndPassword
 import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
@@ -367,7 +368,7 @@ with ReceiveLoggingActor.WithStash
 
   private def cancelObservationAndAwaitTermination: Task[Completed] =
     currentFetchedFuture match {
-      case None => Task.pure(Completed)
+      case None => Task.completed
       case Some(fetchedFuture) =>
         fetchedFuture.cancel()
         Task.fromFuture(fetchedFuture)

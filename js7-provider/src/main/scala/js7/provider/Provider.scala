@@ -6,6 +6,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.convert.As._
 import js7.base.generic.{Completed, SecretString}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -145,7 +146,7 @@ extends HasCloser with Observing with ProvideActorSystem
   protected lazy val loginUntilReachable: Task[Completed] =
     Task.defer {
       if (httpControllerApi.hasSession)
-        Task.pure(Completed)
+        Task.completed
       else
         httpControllerApi.loginUntilReachable(retryLoginDurations)
           .map { completed =>

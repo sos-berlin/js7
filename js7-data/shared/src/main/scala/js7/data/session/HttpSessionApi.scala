@@ -2,7 +2,7 @@ package js7.data.session
 
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixObservableTask}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
@@ -27,7 +27,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
   final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false): Task[Completed] =
     Task.defer {
       if (onlyIfNotLoggedIn && hasSession)
-        Task.pure(Completed)
+        Task.completed
       else {
         val cmd = Login(userAndPassword)
         Task { scribe.debug(s"$toString: $cmd") } >>
@@ -48,7 +48,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
   final def logout(): Task[Completed] =
     Task.defer {
       sessionTokenRef.get() match {
-        case None => Task.pure(Completed)
+        case None => Task.completed
         case sometoken @ Some(sessionToken) =>
           val cmd = Logout(sessionToken)
           Task { scribe.debug(s"$toString: $cmd ${userAndPassword.fold("")(_.userId.string)}") } >>

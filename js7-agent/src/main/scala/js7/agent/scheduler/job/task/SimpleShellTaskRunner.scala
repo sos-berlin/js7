@@ -9,6 +9,7 @@ import js7.agent.scheduler.job.ShellReturnValuesProvider
 import js7.agent.scheduler.job.task.SimpleShellTaskRunner._
 import js7.agent.task.BaseAgentTask
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.process.ProcessSignal
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -63,7 +64,7 @@ extends TaskRunner
           Task.fromFuture(richProcess.terminated)
             .map((_: ReturnCode) => ())
         case None =>
-          Task.pure(Completed)
+          Task.unit
       }
     }
 

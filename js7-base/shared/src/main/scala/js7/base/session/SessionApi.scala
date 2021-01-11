@@ -2,6 +2,7 @@ package js7.base.session
 
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi._
 import js7.base.time.ScalaTime._
@@ -47,10 +48,10 @@ object SessionApi
   trait NoSession extends SessionApi
   {
     final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false) =
-      Task.pure(Completed)
+      Task.completed
 
     final def logout() =
-      Task.pure(Completed)
+      Task.completed
 
     final def clearSession() = {}
   }
@@ -69,7 +70,7 @@ object SessionApi
     : Task[Completed] =
       Task.defer {
         if (onlyIfNotLoggedIn && hasSession)
-          Task.pure(Completed)
+          Task.completed
         else
           login_(userAndPassword)
             .onErrorRestartLoop(()) { (throwable, _, retry) =>

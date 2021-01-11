@@ -1,6 +1,7 @@
 package js7.base.monixutils
 
 import cats.effect.{ExitCase, Resource}
+import js7.base.generic.Completed
 import js7.base.monixutils.MonixDeadline.monotonicClock
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
@@ -24,6 +25,7 @@ object MonixBase
 {
   private val FalseTask = Task.pure(false)
   private val TrueTask = Task.pure(true)
+  private val CompletedTask = Task.pure(Completed)
   val DefaultBatchSize = 200
   val DefaultWorryDurations = Seq(3.s, 7.s, 10.s)
   private val logger = scribe.Logger(getClass.scalaName)
@@ -33,6 +35,7 @@ object MonixBase
     implicit class RichTaskCompanion(private val underlying: Task.type) extends AnyVal {
       def False = FalseTask
       def True = TrueTask
+      def completed = CompletedTask
     }
 
     implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal
