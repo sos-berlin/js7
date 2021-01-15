@@ -2,7 +2,8 @@
 set -e
 
 data="/var/opt/js7/agent/data"
-dumpFile="$data/logs"
+dumpFile="$data/logs/agent.hprof"
+rm -f "$dumpFile"
 
 jmap "-dump:live,format=b,file=$dumpFile" "$(cat $data/state/pid)"
-echo "$dumpFile"
+ls -l "$dumpFile"

@@ -2,7 +2,8 @@
 set -e
 
 data="/var/opt/js7/controller/data"
-dumpFile="$data/logs"
+dumpFile="$data/logs/controller.hprof"
+rm -f "$dumpFile"
 
 jmap "-dump:live,format=b,file=$dumpFile" "$(cat $data/state/pid)"
-echo "$dumpFile"
+ls -l "$dumpFile"
