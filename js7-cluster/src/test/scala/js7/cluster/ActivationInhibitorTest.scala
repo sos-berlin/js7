@@ -110,7 +110,7 @@ final class ActivationInhibitorTest extends AnyFreeSpec
       val whenInhibited = inhibitor.inhibitActivation(2.s).runToFuture
       scheduler.tick()
       assert(whenInhibited.value == Some(Success(Right(true))))
-      assert(state == Some(Inhibited))
+      assert(state == Some(Inhibited(1)))
 
       val b = succeedingActivation(inhibitor).runToFuture
       scheduler.tick()
@@ -118,7 +118,7 @@ final class ActivationInhibitorTest extends AnyFreeSpec
     }
 
     "while inhibition is in effect" in {
-      assert(state == Some(Inhibited))
+      assert(state == Some(Inhibited(1)))
       scheduler.tick(2.s)
       assert(state == Some(Passive))
     }
@@ -172,14 +172,13 @@ final class ActivationInhibitorTest extends AnyFreeSpec
     assert(aInhibited.value == Some(Success(Right(true))))
 
     scheduler.tick(1.s)
-    assert(state == Some(Inhibited))
+    assert(state == Some(Inhibited(1)))
     val bInhibited = inhibitor.inhibitActivation(2.s).runToFuture
     assert(bInhibited.value == Some(Success(Right(true))))
-    assert(state == Some(Inhibited))
+    assert(state == Some(Inhibited(2)))
 
-    // Second inhibitActivation renews inhibation timeout
     scheduler.tick(1.s)
-    assert(state == Some(Inhibited))
+    assert(state == Some(Inhibited(1)))
 
     scheduler.tick(1.s)
     assert(state == Some(Passive))

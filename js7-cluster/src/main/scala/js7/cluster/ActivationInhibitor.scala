@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import cats.effect.ExitCase
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.cluster.ActivationInhibitor._
 import js7.common.scalautil.Logger
@@ -12,14 +13,12 @@ import js7.data.cluster.ClusterSetting
 import js7.data.cluster.ClusterState.FailedOver
 import monix.catnap.MVar
 import monix.eval.Task
-import monix.execution.cancelables.SerialCancelable
 import scala.concurrent.duration.FiniteDuration
 
 /** Inhibits activation of cluster node for the specified duration. */
 private[cluster] final class ActivationInhibitor
 {
   private val stateMvarTask = MVar[Task].of[State](Initial).memoize
-  private val inhibitionTimer = SerialCancelable()
 
   def startActive: Task[Unit] =
     startAs(Active)
@@ -47,8 +46,8 @@ private[cluster] final class ActivationInhibitor
               case _ => mvar.put(Passive)
             }
 
-        case Inhibited =>
-          mvar.put(Inhibited) >>
+        case o: Inhibited =>
+          mvar.put(o) >>
             Task { logger.info("Activation inhibited") } >>
             ifInhibited
       })
@@ -60,8 +59,18 @@ private[cluster] final class ActivationInhibitor
     stateMvarTask.flatMap(mvar =>
       mvar.take
         .flatMap {
-          case Initial | Passive | Inhibited =>
-            mvar.put(Inhibited)
+          case state @ (Initial | Passive | _: Inhibited) =>
+            val depth = state match {
+              case Inhibited(n) => n + 1
+              case _ => 1
+            }
+            mvar
+              .put(Inhibited(depth))
+              .flatMap(_ => setInhibitionTimer(duration))
+              .map(_ => Right(true))
+
+          case Inhibited(n) =>
+            mvar.put(Inhibited(n + 1))
               .flatMap(_ => setInhibitionTimer(duration))
               .map(_ => Right(true))
 
@@ -73,10 +82,11 @@ private[cluster] final class ActivationInhibitor
   private def setInhibitionTimer(duration: FiniteDuration): Task[Unit] =
     Task.deferAction { implicit scheduler =>
       Task {
-        inhibitionTimer := scheduler.scheduleOnce(duration) {
+        scheduler.scheduleOnce(duration) {
           stateMvarTask.flatMap(mvar =>
             mvar.take.flatMap {
-              case Inhibited => mvar.put(Passive)
+              case Inhibited(1) => mvar.put(Passive)
+              case Inhibited(n) => mvar.put(Inhibited(n - 1))
               case state => Task {
                 // Must not happen
                 logger.error(
@@ -126,6 +136,8 @@ private[cluster] object ActivationInhibitor
   private[cluster] sealed trait State
   private[cluster] case object Initial extends State
   private[cluster] case object Passive extends State
-  private[cluster] case object Inhibited extends State
+  private[cluster] case class Inhibited(depth: Int) extends State {
+    assertThat(depth >= 1)
+  }
   private[cluster] case object Active extends State
 }
