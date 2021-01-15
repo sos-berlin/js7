@@ -91,7 +91,7 @@ extends ClusterWatchApi
   : Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
-        logger.trace(s"Node '$from': $operationString, after ${current.fold("—")(_.lastHeartbeat.elapsed.pretty)}")
+        logger.trace(s"Node '$from': $operationString${current.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
         (if (fromMustBeActive) mustBeStillActive(from, current, operationString)
          else Right(Completed)
         ) .flatMap(_ => body(current)) match {

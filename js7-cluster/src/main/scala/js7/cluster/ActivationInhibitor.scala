@@ -79,11 +79,13 @@ private[cluster] final class ActivationInhibitor
               case Inhibited => mvar.put(Passive)
               case state => Task {
                 // Must not happen
-                logger.error(s"ActivationInhibitor.inhibitActivation timeout: expected Inhibit state but got '$state'")
+                logger.error(
+                  s"inhibitActivation timeout after ${duration.pretty}: expected Inhibited but got '$state'")
               }
             })
             .runAsyncUncancelable {
-              case Left(throwable) => logger.error(s"setInhibitionTimer: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+              case Left(throwable) => logger.error(
+                s"setInhibitionTimer: ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
               case Right(()) =>
             }
         }

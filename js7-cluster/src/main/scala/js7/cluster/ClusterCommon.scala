@@ -6,6 +6,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
+import java.util.ConcurrentModificationException
 import js7.base.auth.UserAndPassword
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.{Completed, SecretString}
@@ -22,59 +23,74 @@ import js7.common.configutils.Configs._
 import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
-import js7.data.cluster.ClusterState.{FailedOver, HasNodes}
-import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterSetting, ClusterState}
+import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.eval.Task
-import monix.execution.Scheduler
+import monix.execution.atomic.AtomicAny
 
 private[cluster] final class ClusterCommon(
   controllerId: ControllerId,
   ownId: NodeId,
-  currentClusterState: Task[ClusterState],
   val clusterContext: ClusterContext,
   httpsConfig: HttpsConfig,
   config: Config,
   testEventPublisher: EventPublisher[Any])
-  (implicit
-    scheduler: Scheduler,
-    actorSystem: ActorSystem)
+  (implicit actorSystem: ActorSystem)
 {
   val activationInhibitor = new ActivationInhibitor
 
-  @volatile
-  private var _clusterWatchSynchronizer: Option[ClusterWatchSynchronizer] = None
+  private val _clusterWatchSynchronizer = AtomicAny[Option[ClusterWatchSynchronizer]](None)
 
   def stop: Task[Completed] =
     _clusterWatchSynchronizer.get match {
       case None => Task.completed
       case Some(o) =>
         Task.defer {
-          o.stop()
-          o.clusterWatch.logout().onErrorHandle(_ => Completed)
+          o.stopHeartbeating >>
+            o.clusterWatch.logout().onErrorHandle(_ => Completed)
         }
     }
 
-  def clusterWatchSynchronizer(setting: ClusterSetting): ClusterWatchSynchronizer =
-    _clusterWatchSynchronizer match {
+  def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] = {
+    import clusterState.setting
+    _clusterWatchSynchronizer.get match {
       case None =>
-        setNewClusterWatchSynchronizer(setting)
-      case Some(synchronizer) =>
+        val result = initialClusterWatchSynchronizer(clusterState)
+        Task.pure(result)
+      case some @ Some(synchronizer) =>
         if (synchronizer.uri != setting.clusterWatchUri) {
           logger.debug(s"Starting new ClusterWatchSynchronizer for updated URI ${setting.clusterWatchUri}")
-          synchronizer.stop()
-          setNewClusterWatchSynchronizer(setting)
+          if (!_clusterWatchSynchronizer.compareAndSet(some, None))
+            throw new ConcurrentModificationException("clusterWatchSynchronizer")
+          synchronizer.stopHeartbeating.map(_ =>
+            initialClusterWatchSynchronizer(clusterState))
         } else
-          synchronizer
+          Task.pure(synchronizer)
     }
+  }
 
-  private def setNewClusterWatchSynchronizer(setting: ClusterSetting) = {
-    val result = new ClusterWatchSynchronizer(ownId, currentClusterState,
-      newClusterWatchApi(setting.clusterWatchUri), setting.timing)
-    assertThat(result.uri == setting.clusterWatchUri)
-    _clusterWatchSynchronizer = Some(result)
-    result
+  def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes): ClusterWatchSynchronizer = {
+    import clusterState.setting
+    _clusterWatchSynchronizer.get match {
+      case Some(o) =>
+        // Only after ClusterFailedOver or ClusterSwitchedOver,
+        // because PassiveClusterNode has already started the ClusterWatchSynchronizer
+        assertThat(clusterState.isInstanceOf[FailedOver] ||
+          clusterState.isInstanceOf[SwitchedOver])
+        o
+
+      case None =>
+        val result = new ClusterWatchSynchronizer(ownId,
+          newClusterWatchApi(setting.clusterWatchUri),
+          setting.timing)
+        assertThat(result.uri == setting.clusterWatchUri)
+
+        if (_clusterWatchSynchronizer.getAndSet(Some(result)).isDefined)
+          throw new IllegalStateException("initialClusterWatchSynchronizer")
+        result
+    }
   }
 
   private def newClusterWatchApi(uri: Uri): HttpClusterWatch =
@@ -110,8 +126,8 @@ private[cluster] final class ClusterCommon(
       ifInhibited = Task.pure(Right(false)),
       activate = Task.pure(clusterState.applyEvent(event))
         .flatMapT(updatedClusterState =>
-          clusterWatchSynchronizer(clusterState.setting)
-            .applyEvents(event :: Nil, updatedClusterState, checkOnly = checkOnly)
+          clusterWatchSynchronizer(clusterState)
+            .flatMap(_.applyEvents(event :: Nil, updatedClusterState, checkOnly = checkOnly))
             .flatMap {
               case Left(problem) =>
                 if (problem is ClusterWatchInactiveNodeProblem) {

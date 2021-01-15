@@ -55,8 +55,8 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
 {
   import clusterConf.ownId
 
-  private val common = new ClusterCommon(controllerId, ownId, persistence.clusterState,
-    clusterContext, httpsConfig, config, testEventPublisher)
+  private val common = new ClusterCommon(controllerId, ownId, clusterContext,
+    httpsConfig, config, testEventPublisher)
   import common.activationInhibitor
   @volatile private var _passiveOrWorkingNode: Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]] = None
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
@@ -67,7 +67,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
       else logger.debug("Stop cluster node")
       (_passiveOrWorkingNode match {
         case Some(Left(passiveClusterNode)) => passiveClusterNode.onShutDown
-        case Some(Right(workingClusterNode)) => Task(workingClusterNode.close())
+        case Some(Right(workingClusterNode)) => workingClusterNode.stop
         case _ => Task.unit
       }) >>
         common.stop

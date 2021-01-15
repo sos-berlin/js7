@@ -4,11 +4,15 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import com.softwaremill.diffx
 import js7.base.generic.Completed
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichThrowable}
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.Problems.ClusterNodesAlreadyAppointed
+import js7.cluster.WorkingClusterNode._
+import js7.common.scalautil.Futures.syntax._
+import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
@@ -48,7 +52,14 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
     }
 
   def close(): Unit =
-    for (o <- _activeClusterNode) o.close()
+    for (o <- _activeClusterNode) {
+      o.stop.runToFuture.onFailure { case t =>
+        logger.warn(s"WorkingClusterNode.stop => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      }
+    }
+
+  def stop: Task[Completed] =
+    _activeClusterNode.fold(Task.completed)(_.stop)
 
   def beforeJournalingStarts: Task[Checked[Completed]] =
     _activeClusterNode.toOption match {
