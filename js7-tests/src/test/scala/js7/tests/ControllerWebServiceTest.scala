@@ -55,7 +55,6 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -730,7 +729,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     suburi - {
       "JSON" in {
         testJson(
-          manipulateResponse(httpClient.get[Json](Uri(s"$uri/$suburi"), Duration.Inf, headers) await 99.s),
+          manipulateResponse(httpClient.get[Json](Uri(s"$uri/$suburi"), headers) await 99.s),
           expected)
       }
 

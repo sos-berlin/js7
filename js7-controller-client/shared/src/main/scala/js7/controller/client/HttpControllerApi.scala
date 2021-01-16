@@ -8,7 +8,6 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
-import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
@@ -101,9 +100,7 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
   final def events[E <: Event: ClassTag](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
   : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
-    httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
-      uris.events[E](request),
-      timeout = request.timeout.map(_ + ToleratedEventDelay) getOrElse Duration.Inf)
+    httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](uris.events[E](request))
 
   final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])
@@ -154,7 +151,6 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
 object HttpControllerApi
 {
   val UriPrefixPath = "/controller"
-  private val ToleratedEventDelay = 30.s
 
   /** Logs out when the resource is being released. */
   def resource(

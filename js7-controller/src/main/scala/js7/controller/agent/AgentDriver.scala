@@ -22,7 +22,7 @@ import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.configutils.Configs.ConvertibleConfig
-import js7.common.http.{AkkaHttpClient, RecouplingStreamReader}
+import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Futures.syntax.RichFuture
 import js7.common.scalautil.Logger
@@ -113,7 +113,7 @@ with ReceiveLoggingActor.WithStash
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
       Task.defer {
-        val agentCouplingFailed = AgentCouplingFailed(AkkaHttpClient.toPrettyProblem(problem))
+        val agentCouplingFailed = AgentCouplingFailed(problem)
         if (lastCouplingFailed contains agentCouplingFailed) {
           logger.debug(s"Coupling failed: $problem")
           Task.pure(true)

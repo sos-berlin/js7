@@ -61,7 +61,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
     }
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] = {
-    implicit def implicitSessionToken = if (suppressSessionToken) Task.pure(None) else Task(sessionToken)
+    implicit def implicitSessionToken = if (suppressSessionToken) Task.pure(None) else Task { sessionToken }
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
       .map(_.asInstanceOf[command.Response])
   }

@@ -8,7 +8,6 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Duration
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
 
@@ -23,7 +22,7 @@ trait HttpClient
 
   def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteArray]]
 
-  def get[A: Decoder](uri: Uri, timeout: Duration = Duration.Inf)(implicit s: Task[Option[SessionToken]]): Task[A]
+  def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A]
 
   def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B]
 
@@ -54,6 +53,9 @@ object HttpClient
     task.materialize.map {
       case Failure(HttpException.HasProblem(problem)) =>
         Success(Left(problem))
+      case Failure(t: HttpException) if t.getMessage != null =>
+        Success(Left(Problem.pure(
+          t.getMessage + (if (t.getCause == null) "" else ", caused by " + t.getCause))))
       case Failure(t) =>
         Failure(t.appendCurrentStackTrace)
       case Success(a) =>

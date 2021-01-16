@@ -2,7 +2,7 @@ package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCode
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
-import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValueByName, pass, respondWithHeader}
+import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import js7.base.auth.{Permission, SessionToken, UserId}
 import js7.base.generic.SecretString
@@ -13,6 +13,7 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.RouteProvider._
 import js7.common.akkahttp.web.session.{Session => Session_}
+import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.scalautil.Logger
 import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task
@@ -94,11 +95,8 @@ trait RouteProvider extends ExceptionHandling
     }
 
   protected final val sessionTokenOption: Directive[Tuple1[Option[SessionToken]]] =
-    new Directive[Tuple1[Option[SessionToken]]] {
-      def tapply(inner: Tuple1[Option[SessionToken]] => Route) =
-        optionalHeaderValueByName(SessionToken.HeaderName) { option =>
-          inner(Tuple1(option.map(string => SessionToken(SecretString(string)))))
-        }
+    optionalHeaderValuePF {
+      case `x-js7-session`(secret) => SessionToken(SecretString(secret))
     }
 
   protected final def completeUnauthenticatedLogin(statusCode: StatusCode, problem: Problem): Route =

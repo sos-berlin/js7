@@ -5,7 +5,7 @@ import js7.base.web.HttpClient.liftProblem
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
-import scala.util.Failure
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -20,6 +20,7 @@ final class HttpClientTest extends AsyncFreeSpec
   private val withoutProblem = new HttpClient.HttpException() {
     def statusInt = 400
     val problem = None
+    override def getMessage = "WITHOUT PROBLEM"
   }
 
   "HasProblem" in {
@@ -38,8 +39,25 @@ final class HttpClientTest extends AsyncFreeSpec
       assert(checkedProblem == Left(problem))
   }
 
-  "liftProblem withoutProblem" in {
+  "liftProblem HttpException without Problem" in {
     for (tried <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture) yield
-      assert(tried == Failure(withoutProblem))
+      assert(tried == Success(Left(Problem(withoutProblem.getMessage))))
+  }
+
+  "liftProblem with HttpException without Problem but getMessage is null" in {
+    // This is not expected. A HttpException should have a message.
+    val exception = new HttpClient.HttpException() {
+      def statusInt = 400
+      val problem = None
+      override def getMessage = null/*default when no message is given*/
+    }
+    for (tried <- liftProblem(Task.raiseError[Int](exception)).materialize.runToFuture) yield
+      assert(tried == Failure(exception))
+  }
+
+  "liftProblem with unknown Exception" in {
+    val other = new Exception("OTHER")
+    for (tried <- liftProblem(Task.raiseError[Int](other)).materialize.runToFuture) yield
+      assert(tried == Failure(other))
   }
 }

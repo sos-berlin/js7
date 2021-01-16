@@ -12,6 +12,7 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.RouteProviderTest._
 import js7.common.auth.IdToUser
 import js7.common.configutils.Configs._
+import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.http.CirceJsonSupport._
 import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler
@@ -89,18 +90,18 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
     }
 
     "Unknown session header is rejected" in {
-      Get("/sessionOption") ~> addHeader(SessionToken.HeaderName, "UNKNOWN") ~> route ~> check {
+      Get("/sessionOption") ~> addHeader(`x-js7-session`.name, "UNKNOWN") ~> route ~> check {
         assert(status == Forbidden)
       }
     }
 
     "Known SessionToken" in {
       sessionToken = sessionRegister.login(TestUser).await(99.seconds)
-      Get("/sessionOption") ~> addHeader(SessionToken.HeaderName, sessionToken.secret.string) ~> route ~> check {
+      Get("/sessionOption") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check {
         assert(status == OK)
         assert(responseAs[String] == "userId=TEST-USER")
       }
-      Get("/authorizedUser") ~> addHeader(SessionToken.HeaderName, sessionToken.secret.string) ~> route ~> check {
+      Get("/authorizedUser") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check {
         assert(status == OK)
         assert(responseAs[String] == "authorizedUser=TEST-USER")
       }

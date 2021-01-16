@@ -14,7 +14,6 @@ final case class SessionToken(secret: SecretString)
     numberOf(secret.string)
 
   override def toString = short
-    //s"SessionToken(${if (number == NoNumber) "?" else number.toString})"
 
   def short: String =
     numberToShort(number)
@@ -22,9 +21,10 @@ final case class SessionToken(secret: SecretString)
 
 object SessionToken
 {
-  val HeaderName = "x-js7-session" /*must be lower case*/
-  private val nextNumber = AtomicInt(9)
+  val PrefixChar = "▶"
+  private val nextNumber = AtomicInt(0)
   private val NoNumber = 0L
+  private val NoNumberShort = s"$PrefixChar?"
 
   def generateFromSecretString(secretString: SecretString): SessionToken = {
     val nr = nextNumber.incrementAndGet()
@@ -43,5 +43,5 @@ object SessionToken
     }
 
   private def numberToShort(number: Long): String =
-    if (number == NoNumber) "▶?" else s"▶$number"
+    if (number == NoNumber) NoNumberShort else s"$PrefixChar$number"
 }

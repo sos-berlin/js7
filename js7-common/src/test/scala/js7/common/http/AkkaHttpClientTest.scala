@@ -22,7 +22,7 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.http.AkkaHttpClient.HttpException
+import js7.common.http.AkkaHttpClient.{HttpException, toPrettyProblem}
 import js7.common.http.AkkaHttpClientTest._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -30,9 +30,9 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Await
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Await, TimeoutException}
 
 /**
   * @author Joacim Zschimmer
@@ -189,7 +189,8 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
         HttpResponse(BadRequest, entity = HttpEntity(`application/json`, jsonString.getBytes(UTF_8))),
         jsonString)
       assert(e.problem.isEmpty)
-      assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
+      assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
+      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
     }
 
     "HttpException with string response" in {
@@ -198,13 +199,21 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
         Uri("/URI"),
         HttpResponse(BadRequest, `Content-Type`(`text/plain(UTF-8)`) :: Nil),
         "{}")
-      assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
+      assert(e.getMessage == "HTTP 400 Bad Request: POST /URI => {}")
+      assert(liftProblem(Task.raiseError(e)).runSyncUnsafe(99.seconds) == Left(Problem(e.getMessage)))
     }
 
     "Other exception" in {
       val e = new Exception
       assert(liftProblem(Task.raiseError(e)).failed.runSyncUnsafe(99.seconds) eq e)
     }
+  }
+
+  "toPrettyProblem" in {
+    val t = new akka.stream.ConnectionException(
+      "Tcp command [Connect(agent-1/<unresolved>:4443,None,List(),Some(10 seconds),true)] failed because of java.net.ConnectException: Connection refused")
+      .initCause(new java.net.SocketException("Connection refused"))
+    assert(toPrettyProblem(Problem.fromThrowable(t)) == Problem("TCP Connect agent-1:4443: Connection refused"))
   }
 
   "Connection refused, try two times" - {
@@ -218,7 +227,6 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected def keyStoreRef = None
       protected def trustStoreRefs = Nil
     }
-    var duration: FiniteDuration = null
     implicit val sessionToken = Task.pure(none[SessionToken])
 
     "First call" in {
@@ -226,22 +234,17 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
         val since = now
         val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture
         val a = Await.ready(whenGot, 99.s - 1.s)
-        duration = since.elapsed
         assert(a.value.get.isFailure)
-        whenGot.cancel()
       }
     }
 
-    "Second call lets akka-http block for a very long time" in {
-      // Akka 2.6.5 blocks on next call after connection failure (why?),
-      // so our responseTimeout kicks in.
-      // TODO Replace by http4s ?
+    "Second call lets akka-http not block for a very long time" in {
+      // Akka 2.6.5 or our AkkaHttpClient blocked on next call after connection failure.
+      // This does not occur anymore!
       autoClosing(newHttpClient()) { httpClient =>
         val whenGot = httpClient.get_(Uri(s"$uri/PREFIX/TEST")).runToFuture
-        intercept[TimeoutException] {
-          Await.ready(whenGot, duration + 1.s)
-        }
-        whenGot.cancel()
+        val a = Await.ready(whenGot, 99.s - 1.s)
+        assert(a.value.get.isFailure)
       }
     }
   }

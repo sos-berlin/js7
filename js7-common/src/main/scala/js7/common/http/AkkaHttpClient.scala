@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.GatewayTimeout
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
-import akka.http.scaladsl.model.headers.{Accept, RawHeader, `Cache-Control`}
+import akka.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
 import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri => AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
@@ -20,6 +20,7 @@ import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.implicits._
 import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
+import js7.base.generic.SecretString
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -43,11 +44,12 @@ import monix.eval.Task
 import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
+import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
+import scala.util.Success
 
 /**
   * @author Joacim Zschimmer
@@ -114,28 +116,18 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A] =
-    get[A](uri, Duration.Inf, Nil)
-
-  /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri, timeout: Duration)(implicit s: Task[Option[SessionToken]]): Task[A] =
-    get[A](uri, timeout, Nil)
+    get[A](uri, Nil)
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri, headers: List[HttpHeader])
     (implicit s: Task[Option[SessionToken]])
   : Task[A] =
-    get[A](uri, Duration.Inf, headers)
-
-  /** HTTP Get with Accept: application/json. */
-  final def get[A: Decoder](uri: Uri, timeout: Duration, headers: List[HttpHeader])
-    (implicit s: Task[Option[SessionToken]])
-  : Task[A] =
-    get_[A](uri, headers ::: Accept(`application/json`) :: Nil)
+    get_[A](uri, AcceptJson ::: headers)
 
   final def get_[A: FromResponseUnmarshaller](uri: Uri, headers: List[HttpHeader] = Nil)
     (implicit s: Task[Option[SessionToken]])
   : Task[A] =
-    sendReceive(HttpRequest(GET, AkkaUri(uri.string), headers ::: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
+    sendReceive(HttpRequest(GET, AkkaUri(uri.string), `Cache-Control`(`no-cache`, `no-store`) :: headers))
       .flatMap(unmarshal[A](GET, uri))
 
   final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B] =
@@ -177,7 +169,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   private def post2[A: Encoder, B: Decoder](uri: Uri, data: A, headers: List[HttpHeader])
     (implicit s: Task[Option[SessionToken]])
   : Task[B] =
-    post_[A](uri, data, headers ::: Accept(`application/json`) :: Nil)
+    post_[A](uri, data, AcceptJson ::: headers)
       .flatMap(unmarshal[B](POST, uri))
 
   final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
@@ -219,68 +211,79 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       sessionTokenTask.flatMap { sessionToken =>
         if (closed) logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
         val number = requestCounter.incrementAndGet()
-        val req = request.withHeaders(
-          sessionToken.map(token => RawHeader(SessionToken.HeaderName, token.secret.string)) ++: request.headers ++: standardHeaders
-        ).pipeIf(useCompression)(encodeGzip)
+        val req = request
+          .withHeaders(
+            sessionToken.map(token => `x-js7-session`(token)).toList :::
+            `x-js7-request-id`(s"#$number") :: request.headers.toList ::: standardHeaders)
+          .pipeIf(useCompression)(encodeGzip)
         @volatile var canceled = false
-        val promise = Promise[HttpResponse]()
         var responseFuture: Future[HttpResponse] = null
         val since = now
-        def responseLogPrefix = s"$toString: #$number ${sessionToken.fold("-")(_.short)} " +
-          s"${requestToString(req, logData, isResponse = true)} ${since.elapsed.pretty}"
+        lazy val logPrefix = s"$toString: ${sessionToken.fold(SessionToken.PrefixChar)(_.short)}#$number"
+        lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
+        def responseLogPrefix = responseLog0 + since.elapsed.pretty
+        logger.trace(s"$logPrefix: ${requestToString(req, logData)}")
         Task
-          .deferFuture {
-            logger.trace(s"$toString: #$number ${requestToString(req, logData)}")
-            responseFuture = http.singleRequest(
-              req,
+          .deferFutureAction { scheduler =>
+            responseFuture = http.singleRequest(req,
               if (req.uri.scheme == "https") httpsConnectionContext else http.defaultClientHttpsContext)
-            promise.completeWith(responseFuture)
-            promise.future
+            responseFuture
+              .recover { case t if canceled =>
+                logger.trace(s"$logPrefix: Ignored after cancel: ${t.toStringWithCauses}")
+                // Task guarantee below may report a failure after cancel
+                // via thread pools's reportFailure. To avoid this, we convert the failure
+                // to a dummy successful response, which will get lost immediately.
+                HttpResponse(GatewayTimeout, entity = "CANCELED")
+              }(scheduler)
           }
           .guaranteeCase {
-            case ExitCase.Canceled if responseFuture != null =>
-              logger.debug(s"$responseLogPrefix => canceled")
+            case ExitCase.Canceled => Task {
               canceled = true
-              // Complete the future to complete Task.deferFuture above (???)
-              promise.trySuccess(HttpResponse(GatewayTimeout, entity = "Canceled in AkkaHttpClient"))
-              // TODO Akka's max-open-requests may be exceeded when new requests are opened
-              //  while many canceled request are still not completed by Akka
-              //  until some Akka (idle connection) timeout.
-              //  Anyway, the caller's code should be fault-tolerant.
-              discardResponse(responseLogPrefix, responseFuture)
-            case ExitCase.Error(t) =>
-              Task(logger.debug(s"$responseLogPrefix => failed with ${t.toStringWithCauses}"))
-            case _ => Task.unit
+              logger.debug(s"$responseLogPrefix => canceled")
+              if (responseFuture != null) {
+                // TODO Akka's max-open-requests may be exceeded when new requests are opened
+                //  while many canceled requests are still not completed by Akka
+                //  until the server has reponded or some Akka (idle connection) timeout.
+                //  Anyway, the caller's code should be fault-tolerant.
+                // TODO Maybe manage own connection pool? Or switch to http4s?
+                executeOn(materializer.executionContext) { implicit ec =>
+                  responseFuture
+                    .map(_
+                      .discardEntityBytes().future.andThen { case tried =>
+                        logger.debug(s"$responseLogPrefix discardResponse => " +
+                          tried.fold(_.toStringWithCauses, _ => "ok"))
+                      })
+                    .recover { case _ => () }
+                }
+              }
+            }
+
+            case ExitCase.Error(throwable) => Task.defer {
+              logger.debug(s"$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+              Task.raiseError(toPrettyProblem(throwable).throwable)
+            }
+
+            case ExitCase.Completed => Task.unit
           }
-          .whenItTakesLonger()(_ => Task {
-            logger.debug(s"$responseLogPrefix => Still waiting for response" +
-              (canceled ?? " (canceled)") + (closed ?? " (closed)"))
-          })
-          .tapEval(response => Task {
-            if (response.status.isFailure)
-              logger.debug(s"$responseLogPrefix => failed with HTTP ${response.status}")
-            else
-              logger.trace(s"$responseLogPrefix => ${response.status}")
-          })
           .map(decompressResponse)
+          .pipeIf(logger.underlying.isDebugEnabled)(
+            _.whenItTakesLonger()(_ => Task {
+              logger.debug(s"$responseLogPrefix => Still waiting for response" + (closed ?? " (closed)"))
+            })
+            .tapEval(response => Task {
+              logger.debug(s"$responseLogPrefix => ${response.status}${response.status.isFailure ?? " (failure)"}")
+            }))
       })
 
-  private def discardResponse(logPrefix: => String, responseFuture: Future[HttpResponse]): Task[Unit] =
-    Task.fromFuture(responseFuture)
-      .map[Unit] { response =>
-        logger.debug(s"$logPrefix: discardEntityBytes()")
-        response.discardEntityBytes()
-      }
-      .onErrorHandle(_ => ())  // Do not log lost exceptions
-
-  private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse): Task[A] =
-    Task.deferFuture(
+  private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
+    Task.deferFuture[A](
       executeOn(materializer.executionContext) { implicit ec =>
         if (httpResponse.status.isSuccess)
           Unmarshal(httpResponse).to[A]
             .recover { case t =>
               if (!materializer.isShutdown) {
-                logger.debug(s"$toString: Error when unmarshalling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
+                logger.debug(
+                  s"$toString: Error when unmarshalling response of ${method.name} $uri: ${t.toStringWithCauses}", t)
               }
               throw t
             }
@@ -318,7 +321,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       Left(Problem(s"URI '$uri' does not match $baseUri$uriPrefixPath"))
   }
 
-  private def requestToString(request: HttpRequest, logData: => Option[String], isResponse: Boolean = false): String = {
+  private def requestToString(request: HttpRequest, logData: => Option[String], isResponse: Boolean = false) = {
     val b = new StringBuilder(300)
     b.append(request.method.value.pipeIf(isResponse)(_.toLowerCase(Locale.ROOT)))
     b.append(' ')
@@ -342,11 +345,35 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
 object AkkaHttpClient
 {
+  final case class `x-js7-session`(sessionToken: SessionToken)
+  extends ModeledCustomHeader[`x-js7-session`] {
+    val companion = `x-js7-session`
+    def value = sessionToken.secret.string
+    val renderInRequests = true
+    val renderInResponses = false
+  }
+  object `x-js7-session` extends ModeledCustomHeaderCompanion[`x-js7-session`] {
+    val name = "x-js7-session"
+    def parse(value: String) = Success(new `x-js7-session`(SessionToken(SecretString(value))))
+  }
+
+  final case class `x-js7-request-id`(value: String)
+  extends ModeledCustomHeader[`x-js7-request-id`] {
+    val companion = `x-js7-request-id`
+    val renderInRequests = true
+    val renderInResponses = false
+  }
+  object `x-js7-request-id` extends ModeledCustomHeaderCompanion[`x-js7-request-id`] {
+    val name = "x-js7-request-id"
+    def parse(value: String) = Success(new `x-js7-request-id`(value))
+  }
+
   private val ErrorMessageLengthMaximum = 10000
   private val HttpErrorContentSizeMaximum = ErrorMessageLengthMaximum + 100
   private val FailureTimeout = 10.seconds
   private val logger = Logger(getClass)
   private val LF = ByteString("\n")
+  private val AcceptJson = Accept(`application/json`) :: Nil
   private val requestCounter = AtomicLong(0)
 
   final class Standard(
@@ -362,30 +389,55 @@ object AkkaHttpClient
 
   private val connectionWasClosedUnexpectedly = Problem.pure("Connection was closed unexpectedly")
 
-  def toPrettyProblem(problem: Problem): Problem = {
-    val pretty = problem match {
-      case Problem.IsThrowable(akka.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _))) =>
-        if (summary contains "connection was closed unexpectedly") connectionWasClosedUnexpectedly
+  private val AkkaTcpCommandRegex = """Tcp command \[([A-Za-z]+)\(([^,)]+).*""".r
+
+  def toPrettyProblem(problem: Problem): Problem =
+    problem.throwableOption.fold(problem) { throwable =>
+      val pretty = toPrettyProblem(throwable)
+      pretty.throwableOption match {
+        case Some(t) if t eq throwable =>
+          problem
+        case _ =>
+          logger.debug(s"toPrettyProblem($problem) => $pretty")
+          pretty
+      }
+    }
+
+  def toPrettyProblem(throwable: Throwable): Problem = {
+    def default = Problem.fromThrowable(throwable)
+    throwable match {
+      case akka.http.scaladsl.model.EntityStreamException(ErrorInfo(summary, _)) =>
+        if (summary contains "connection was closed unexpectedly")
+          connectionWasClosedUnexpectedly
         else Problem.pure(summary)
 
-      case Problem.IsThrowable(t)
-        if t.getClass.getName endsWith "UnexpectedConnectionClosureException" =>
+      case t if t.getClass.getName endsWith "UnexpectedConnectionClosureException" =>
         connectionWasClosedUnexpectedly
 
-      case Problem.IsThrowable(t: akka.stream.StreamTcpException) =>
-        t.getCause match {
-          case t: java.net.SocketException => Problem(t.getMessage)
-          case t: java.net.UnknownHostException => Problem(t.toString stripPrefix "java.net.")
-          case _ => problem
+      case t: akka.stream.StreamTcpException =>
+        t.getMessage match {
+          case AkkaTcpCommandRegex(command, host_) =>
+            val host = host_.replace("/<unresolved>", "")
+            val prefix = s"TCP $command $host"
+            t.getCause match {
+              case t: java.net.SocketException =>
+                Problem(prefix + ": " + t.getMessage)
+              case t: java.net.UnknownHostException =>
+                Problem(prefix + ": " + t.toString stripPrefix "java.net.")
+              case _ => default
+            }
+          case _ => default
         }
 
-      case _ => problem
+      case _ => default
     }
-    if (pretty ne problem) logger.debug(s"toPrettyProblem($problem) => $pretty")
-    pretty
   }
 
-  final class HttpException private[http](method: HttpMethod, val uri: Uri, httpResponse: HttpResponse, val dataAsString: String)
+  final class HttpException private[http](
+    method: HttpMethod,
+    val uri: Uri,
+    httpResponse: HttpResponse,
+    val dataAsString: String)
   extends HttpClient.HttpException
   {
     def statusInt = status.intValue

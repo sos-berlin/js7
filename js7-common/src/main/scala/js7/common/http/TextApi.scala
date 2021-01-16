@@ -35,14 +35,14 @@ trait TextApi
 
   def getApi(uri: String): Unit = {
     val u = if (uri == "?") "" else uri
-    val whenResponded = httpClient.get[Json](apiUri(u), 60.s).runToFuture
+    val whenResponded = httpClient.get[Json](apiUri(u)).runToFuture
     val response = awaitResult(whenResponded)
     printer.doPrint(response)
   }
 
   def requireIsResponding(): Unit =
     try {
-      val whenResponded = httpClient.get[Json](apiUri(""), 60.s).runToFuture
+      val whenResponded = httpClient.get[Json](apiUri("")).runToFuture
       awaitResult(whenResponded)
       print(s"$serverName is responding")
     } catch {
