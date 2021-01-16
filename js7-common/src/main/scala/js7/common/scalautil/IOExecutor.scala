@@ -17,18 +17,17 @@ import scala.util.control.NonFatal
   * For `ioFuture` which starts a blocking (I/O) `Future` in a (normally unlimited) thread pool.
   * @author Joacim Zschimmer
   */
-final class IOExecutor(_executionContext: ExecutionContext) extends Executor
+final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
 {
-  def this(threadPool: ThreadPoolExecutor) = this(
-    ExecutionContext.fromExecutor(
-      threadPool,
-      t => logger.error(t.toStringWithCauses, t)))
+  private val myExecutionContext = ExecutionContext.fromExecutor(
+    threadPool,
+    t => logger.error(t.toStringWithCauses, t))
 
   def this(keepAlive: FiniteDuration, name: String) = this(newThreadPoolExecutor(keepAlive, name = name))
 
-  def execute(runnable: Runnable) = _executionContext.execute(runnable)
+  def execute(runnable: Runnable) = myExecutionContext.execute(runnable)
 
-  implicit def executionContext: ExecutionContext = _executionContext
+  implicit def executionContext: ExecutionContext = myExecutionContext
 }
 
 object IOExecutor
@@ -51,12 +50,13 @@ object IOExecutor
       if (maximum.isEmpty) new SynchronousQueue[Runnable] else new LinkedBlockingQueue[Runnable],
       myThreadFactory(name)) //with NamedRunnable.RenamesThread
 
-  private def myThreadFactory(name: String): ThreadFactory = runnable => {
-    val thread = new Thread(runnable)
-    thread.setName(s"$name I/O ${thread.getId}")
-    thread.setDaemon(true)  // Do it like Monix and Akka
-    thread
-  }
+  private def myThreadFactory(name: String): ThreadFactory =
+    runnable => {
+      val thread = new Thread(runnable)
+      thread.setName(s"$name I/O ${thread.getId}")
+      thread.setDaemon(true)  // Do it like Monix and Akka
+      thread
+    }
 
   def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =
     try

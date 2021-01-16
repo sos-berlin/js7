@@ -267,14 +267,16 @@ with MainJournalingActor[ControllerState, Event]
       import controllerConfiguration.clusterConf.ownId
       if (!clusterState.isEmptyOrActive(ownId))
         throw new IllegalStateException(
-          s"Controller has recovered from Journal but is not the active node in ClusterState: id=$ownId, failedOver=$clusterState")
+          s"Controller has recovered from Journal but is not the active node in ClusterState: " +
+            s"id=$ownId, failedOver=$clusterState")
     }
 
   private def recover(recovered: Recovered[ControllerState]): Unit = {
     for (controllerState <- recovered.recoveredState) {
       if (controllerState.controllerMetaState.controllerId != controllerConfiguration.controllerId)
-        throw Problem(s"Recovered controllerId='${controllerState.controllerMetaState.controllerId}' differs from configured controllerId='${controllerConfiguration.controllerId}'")
-          .throwable
+        throw Problem(s"Recovered controllerId='${controllerState.controllerMetaState.controllerId}' " +
+          s"differs from configured controllerId='${controllerConfiguration.controllerId}'"
+        ).throwable
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       for (agentRef <- controllerState.idToAgentRefState.values.map(_.agentRef)) {
@@ -324,24 +326,32 @@ with MainJournalingActor[ControllerState, Event]
     case Recovered.Output.JournalIsReady(journalHeader) =>
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
-      persistMultiple(
-        (!_controllerState.controllerMetaState.isDefined ?
-          (NoKey <-: ControllerEvent.ControllerInitialized(controllerConfiguration.controllerId, journalHeader.startedAt))
-        ) ++ Some(NoKey <-: ControllerEvent.ControllerReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime))
-      ) { (_, updatedControllerState) =>
-        _controllerState = updatedControllerState
-        clusterNode.afterJounalingStarted
-          .materializeIntoChecked
-          .runToFuture
-          .map(Internal.Ready.apply)
-          .pipeTo(self)
+      locally {
+        val maybeControllerInitialized = !_controllerState.controllerMetaState.isDefined ?
+          (NoKey <-: ControllerEvent.ControllerInitialized(
+            controllerConfiguration.controllerId,
+            journalHeader.startedAt))
+        val controllerReady = NoKey <-: ControllerEvent.ControllerReady(
+          ZoneId.systemDefault.getId,
+          totalRunningTime = journalHeader.totalRunningTime)
+
+        persistMultiple(maybeControllerInitialized ++ Some(controllerReady)) { (_, updatedState) =>
+          _controllerState = updatedState
+          clusterNode.afterJounalingStarted
+            .materializeIntoChecked
+            .runToFuture
+            .map(Internal.Ready.apply)
+            .pipeTo(self)
+        }
       }
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
       orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now))
 
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
-        logger.info(s"${_controllerState.idToOrder.size} Orders, ${_controllerState.repo.typedCount[Workflow]} Workflows and ${_controllerState.idToAgentRefState.size} AgentRefs recovered")
+        logger.info(s"${_controllerState.idToOrder.size} Orders, " +
+          s"${_controllerState.repo.typedCount[Workflow]} Workflows and " +
+          s"${_controllerState.idToAgentRefState.size} AgentRefs recovered")
       }
       // Any ordering when continuing orders???
       proceedWithOrders(_controllerState.idToOrder.keys)

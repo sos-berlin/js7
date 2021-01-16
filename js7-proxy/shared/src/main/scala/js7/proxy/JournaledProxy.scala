@@ -32,6 +32,7 @@ import monix.reactive.Observable
 import monix.reactive.observables.ConnectableObservable
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Future, Promise}
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 
@@ -165,21 +166,8 @@ object JournaledProxy
                     lastState = o.state
                     o
                   }
-                  .pipeIf(fromEventId.isDefined) { obs =>
-                    // The returned snapshot probably is for an older EventId
-                    // (because it may be the original journal file snapshot).
-                    // So drop all events until the requested one and
-                    // replace the first event ProxyStarted (which we may have dropped)
-                    val from = fromEventId.get
-                    obs.dropWhile(_.stampedEvent.eventId < from)
-                      .map {
-                        case es if es.stampedEvent.eventId == from &&
-                                   es.stampedEvent.value.event != ProxyStarted =>
-                          es.copy(
-                            stampedEvent = es.stampedEvent.copy(value = NoKey <-: ProxyStarted),
-                            previousState = es.state)
-                        case o => o
-                      }}
+                  .pipe(obs => fromEventId.fold(obs)(
+                    dropEventsUntilRequestedEventIdAndReinsertProxyStarted(obs, _)))
                   .map(Right.apply)
                   .onErrorRecoverWith {
                     case t if fromEventId.isEmpty || !isTorn(t) =>
@@ -195,7 +183,7 @@ object JournaledProxy
                             EventId.toString(state.eventId))
                           Some(lastState)
                         }
-                      // TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
+                      // FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
                       Observable.pure(Left(continueWithState))
                         .delayExecution(1.s/*TODO*/)
                   }
@@ -204,7 +192,8 @@ object JournaledProxy
     def isTorn(t: Throwable) =
       fromEventId.isEmpty && checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
-    def observeWithState(api: Api[S], state: S, stateFetchDuration: FiniteDuration): Observable[EventAndState[Event, S]] = {
+    def observeWithState(api: Api[S], state: S, stateFetchDuration: FiniteDuration)
+    : Observable[EventAndState[Event, S]] = {
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
         tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten)
@@ -226,12 +215,35 @@ object JournaledProxy
       .tapEach(o => scribe.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
   }
 
+
+  /** Drop all events until the requested one and
+    * replace the first event by ProxyStarted.
+    * The original ProxyStarted event may have been dropped.
+    * Do this when returned snapshot is for an older EventId
+    * (because it may be the original journal file snapshot).
+    */
+  private def dropEventsUntilRequestedEventIdAndReinsertProxyStarted[S <: JournaledState[S]](
+    obs: Observable[EventAndState[Event, S]],
+    fromEventId: EventId)
+  : Observable[EventAndState[Event, S]] =
+    // TODO Optimize this with JournaledStateBuilder ?
+    obs.dropWhile(_.stampedEvent.eventId < fromEventId)
+      .map {
+        case es if es.stampedEvent.eventId == fromEventId &&
+                   es.stampedEvent.value.event != ProxyStarted =>
+          es.copy(
+            stampedEvent = es.stampedEvent.copy(value = NoKey <-: ProxyStarted),
+            previousState = es.state)
+        case o => o
+      }
+
   private class MyRecouplingStreamReader[S <: JournaledState[S]](
     onProxyEvent: ProxyEvent => Unit,
     stateFetchDuration: FiniteDuration,
     tornOlder: Option[FiniteDuration])
     (implicit S: JournaledState.Companion[S])
-  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], Api[S]](_.eventId, recouplingStreamReaderConf)
+  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], Api[S]](
+    _.eventId, recouplingStreamReaderConf)
   {
     private var addToTornOlder = stateFetchDuration
 
@@ -348,8 +360,13 @@ object JournaledProxy
     }
   }
 
-  private case class ApiWithFiber[Api <: EventApi](api: Api, fiber: Fiber[Checked[ClusterNodeState]])
-  private case class ApiWithNodeState[Api <: EventApi](api: Api, clusterNodeState: Checked[ClusterNodeState])
+  private case class ApiWithFiber[Api <: EventApi](
+    api: Api,
+    fiber: Fiber[Checked[ClusterNodeState]])
+
+  private case class ApiWithNodeState[Api <: EventApi](
+    api: Api,
+    clusterNodeState: Checked[ClusterNodeState])
 
   private def fetchClusterNodeState[Api <: EventApi](
     api: Api,
@@ -360,7 +377,10 @@ object JournaledProxy
         api.retryUntilReachable(onError)(
           api.clusterNodeState))
 
-  private def logProblems[Api <: EventApi](list: List[ApiWithNodeState[Api]], maybeActive: Option[(Api, ClusterNodeState)]) = {
+  private def logProblems[Api <: EventApi](
+    list: List[ApiWithNodeState[Api]],
+    maybeActive: Option[(Api, ClusterNodeState)])
+  : Unit = {
     list.collect { case ApiWithNodeState(api, Left(problem)) => api -> problem }
       .foreach { case (api, problem) => scribe.warn(
         s"Cluster node '${api.baseUri}' is not accessible: $problem")

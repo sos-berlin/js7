@@ -232,17 +232,18 @@ abstract class RecouplingStreamReader[
     private def tryEndlesslyToCouple(after: I): Task[Completed] =
       Task.tailRecM(())(_ => Task.defer(
         if (isStopped)
-          Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped") with NoStackTrace)
+          Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
+            with NoStackTrace)
         else
-          (for {
-            otherCoupledClient <- coupledApiVar.tryRead
-            _ <- otherCoupledClient.fold(Task.unit)(_ =>
-              Task.raiseError(new IllegalStateException("Coupling while already coupled")))
-            _ <- Task { recouplingPause.onCouple() }
-            _ <- api.login(onlyIfNotLoggedIn = true).timeout(idleTimeout)
-            checkedCompleted <- couple(index = lastIndex)
-          } yield checkedCompleted)
-            .materialize.map(o => Checked.flattenTryChecked(o))  // materializeIntoChecked
+          ( for {
+              otherCoupledClient <- coupledApiVar.tryRead
+              _ <- otherCoupledClient.fold(Task.unit)(_ =>
+                Task.raiseError(new IllegalStateException("Coupling while already coupled")))
+              _ <- Task { recouplingPause.onCouple() }
+              _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
+              checkedCompleted <- couple(index = lastIndex)
+            } yield checkedCompleted
+          ) .materializeIntoChecked
             .flatMap {
               case Left(problem) =>
                 if (isStopped)
@@ -256,7 +257,6 @@ abstract class RecouplingStreamReader[
                         pauseBeforeRecoupling.map(_ => Left(()))
                       else
                         Task.raiseError(problem.throwable)
-                        //Task.pure(Right(Completed))
                   } yield either
 
               case Right(Completed) =>

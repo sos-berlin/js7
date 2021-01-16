@@ -28,6 +28,7 @@ import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline
 import scala.concurrent.{Future, Promise, TimeoutException}
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
 
 /**
@@ -79,29 +80,32 @@ trait AkkaWebServer extends AutoCloseable
         clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
   }
 
-  private def bind(binding: WebServerBinding, httpsConnectionContext: Option[HttpsConnectionContext] = None): Task[Http.ServerBinding] = {
-    val whenTerminating = Promise[Deadline]()
-    val boundRoute = newRoute(binding, whenTerminating.future)
-    Task.deferFutureAction { implicit s =>
-      var serverBuilder = akkaHttp.newServerAt(interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort)
-      for (o <- httpsConnectionContext) serverBuilder = serverBuilder.enableHttps(o)
-      val serverBinding = serverBuilder
+  private def bind(binding: WebServerBinding, httpsConnectionContext: Option[HttpsConnectionContext] = None): Task[Http.ServerBinding] =
+    Task.defer {
+      val whenTerminating = Promise[Deadline]()
+      val boundRoute = newRoute(binding, whenTerminating.future)
+      val serverBuilder = akkaHttp
+        .newServerAt(
+          interface = binding.address.getAddress.getHostAddress,
+          port = binding.address.getPort)
+        .pipe(o => httpsConnectionContext.fold(o)(o.enableHttps))
         .withSettings(
           ServerSettings(actorSystem)
             .withParserSettings(
               ParserSettings(actorSystem)
                 .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)
-                .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize)))
-        .bind(boundRoute.webServerRoute)
-      whenTerminating.completeWith(serverBinding.flatMap(_.whenTerminationSignalIssued))
-      serverBinding
-    } .map { serverBinding =>
-        logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
-          ((binding.scheme == WebServerBinding.Https && httpsClientAuthRequired) ?? ", client certificate required") +
-          boundRoute.boundMessageSuffix)
-        serverBinding
-      }
-  }
+                .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize/*js7.conf ???*/)))
+      Task.deferFutureAction { implicit s =>
+        val whenBound = serverBuilder.bind(boundRoute.webServerRoute)
+        whenTerminating.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
+        whenBound
+      } .map { serverBinding =>
+          logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
+            ((binding.scheme == WebServerBinding.Https && httpsClientAuthRequired) ?? ", client certificate required") +
+            boundRoute.boundMessageSuffix)
+          serverBinding
+        }
+    }
 
   def close() =
     for (scheduler <- scheduler) {

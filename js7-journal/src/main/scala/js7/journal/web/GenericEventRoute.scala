@@ -55,7 +55,7 @@ import scala.util.control.{NoStackTrace, NonFatal}
   */
 trait GenericEventRoute extends RouteProvider
 {
-  implicit protected def actorRefFactory: ActorRefFactory
+  protected implicit def actorRefFactory: ActorRefFactory
   private implicit def implicitScheduler: Scheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)

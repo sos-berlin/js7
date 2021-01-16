@@ -8,7 +8,6 @@ import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.encodeAsActorName
-import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterState
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.JournalActor
@@ -111,8 +110,6 @@ extends AutoCloseable
 
 object JournaledStatePersistence
 {
-  private val logger = Logger(getClass)
-
   def start[S <: JournaledState[S]](
     initialState: S,
     journalActor: ActorRef @@ JournalActor.type,
