@@ -38,13 +38,11 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
   protected final lazy val sessionRegister =
     SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
 
-  override def testConfig =
-    config"""
-      js7.web.client.compression = off
-      akka.http.host-connection-pool.response-entity-subscription-timeout = 10s
-    """.withFallback(super.testConfig)
+  override final def testConfig = config
 
   protected def config = config"""
+    akka.http.host-connection-pool.response-entity-subscription-timeout = 10s
+    js7.web.client.compression = off
     js7.web.server.verbose-error-messages = on
     js7.web.server.services.event.streaming.delay = 20ms
     js7.web.server.services.event.streaming.chunk-timeout = 1h
