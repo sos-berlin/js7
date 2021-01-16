@@ -2,7 +2,8 @@ package js7.common.akkahttp
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCode}
+import akka.http.scaladsl.model.headers.{Referer, `User-Agent`}
+import akka.http.scaladsl.model.{AttributeKeys, HttpEntity, HttpHeader, HttpRequest, HttpResponse, StatusCode}
 import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.Directives._
 import com.typesafe.config.Config
@@ -14,10 +15,12 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.WebLogDirectives._
 import js7.common.configutils.Configs._
+import js7.common.http.AkkaHttpClient.{`x-js7-request-id`, `x-js7-session`}
 import js7.common.log.LogLevel
 import js7.common.log.LogLevel.syntax._
 import js7.common.scalautil.Logger
 import scala.concurrent.duration._
+import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
@@ -77,53 +80,71 @@ trait WebLogDirectives extends ExceptionHandling
       case _ => errorLogLevel
     }
 
-  private def requestResponseToLine(request: HttpRequest, responseOption: Option[HttpResponse],
+  private def requestResponseToLine(request: HttpRequest, maybeResponse: Option[HttpResponse],
     nanos: Long, hasRemoteAddress: Boolean)
   = {
-    val sb = new StringBuilder(200)
+    val sb = new StringBuilder(256)
 
-    responseOption match {
+    def appendHeader[A >: Null <: HttpHeader: ClassTag](): Unit = {
+      request.header[A] match {
+        case None => sb.append(" -")
+        case Some(h) => appendQuotedString(sb, h.value)
+      }
+    }
+
+    maybeResponse match {
       case Some(response) => sb.append(response.status.intValue)
       case _ => sb.append("in ")
     }
+    sb.append(' ')
+    // Let SessionToken and request number look like in AkkaHttpClient
+    sb.append(request.headers
+      .collectFirst {
+        case `x-js7-session`(secret) => SessionToken.stringToShort(secret)
+      }
+      .getOrElse(SessionToken.PrefixChar))
+    sb.append(request.headers.collectFirst { case `x-js7-request-id`(id) => id } getOrElse "#")
+    sb.append(' ')
+    sb.append(request.attribute(AttributeKeys.remoteAddress).flatMap(_.toIP)
+      .fold("-")(_.ip.getHostAddress))
     //val remoteAddress = (hasRemoteAddress option (request.header[`Remote-Address`] map { _.address })).flatten getOrElse RemoteAddress.Unknown
     //sb.append(' ')
     //sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
-
-    sb.append(' ')
-    sb.append(request.headers
-      .find(_.lowercaseName == SessionToken.HeaderName)
-      .fold("-")(h => SessionToken.stringToShort(h.value)))
     sb.append(' ')
     sb.append(request.method.value)
     sb.append(' ')
     sb.append(request.uri)
-    sb.append(' ')
-    for (response <- responseOption) {
-      if (response.status.isFailure)
-        response.entity match {  // Try to extract error message
-          case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
-            val string = entity.data.utf8String
-            val truncated = string.take(1001).dropLastWhile(_ == '\n').map(c => if (c.isControl) '·' else c)
-            appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
+    maybeResponse match {
+      case None =>
+        appendHeader[Referer]()
+        appendHeader[`User-Agent`]()
 
-          case entity @ HttpEntity.Strict(`application/json`, _) =>
-            parseJson(entity.data.utf8String).flatMap(_.as[Problem]) match {
-              case Left(_) => appendQuotedString(sb, response.status.reason)
-              case Right(problem) => appendQuotedString(sb, problem.toString)
-            }
+      case Some(response) =>
+        if (response.status.isFailure)
+          response.entity match {  // Try to extract error message
+            case entity @ HttpEntity.Strict(`text/plain(UTF-8)`, _) =>
+              val string = entity.data.utf8String
+              val truncated = string.take(1001).dropLastWhile(_ == '\n').map(c => if (c.isControl) '·' else c)
+              appendQuotedString(sb, truncated + ((truncated.length < string.length) ?? "..."))
 
+            case entity @ HttpEntity.Strict(`application/json`, _) =>
+              parseJson(entity.data.utf8String).flatMap(_.as[Problem]) match {
+                case Left(_) => appendQuotedString(sb, response.status.reason)
+                case Right(problem) => appendQuotedString(sb, problem.toString)
+              }
+
+            case _ =>
+              appendQuotedString(sb, response.status.reason)
+          }
+        else response.entity match {
+          case entity: HttpEntity.Strict =>
+            sb.append(' ')
+            sb.append(entity.data.length)
           case _ =>
-            appendQuotedString(sb, response.status.reason)
+            sb.append(" STREAM")
         }
-      else response.entity match {
-        case entity: HttpEntity.Strict =>
-          sb.append(entity.data.length)
-        case _ =>
-          sb.append("STREAM")
-      }
-      sb.append(' ')
-      sb.append(nanos.nanoseconds.pretty)
+        sb.append(' ')
+        sb.append(nanos.nanoseconds.pretty)
     }
     sb.toString
   }
@@ -142,10 +163,15 @@ object WebLogDirectives
     js7.web.server.shutdown-timeout = 10s"""
 
   private def appendQuotedString(sb: StringBuilder, string: String) = {
-    sb.append('"')
-    string foreach {
-      case '"' => sb.append('\\').append('"')
-      case ch => sb.append(ch)
+    sb.ensureCapacity(3 + string.length)
+    sb.append(" \"")
+    if (!string.contains('"')) {
+      sb.append(string)
+    } else {
+      string foreach {
+        case '"' => sb.append('\\').append('"')
+        case ch => sb.append(ch)
+      }
     }
     sb.append('"')
   }
