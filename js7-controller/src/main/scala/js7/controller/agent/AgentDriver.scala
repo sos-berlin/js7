@@ -109,7 +109,8 @@ with ReceiveLoggingActor.WithStash
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>
-        api.controllersEventObservable(EventRequest[Event](EventClasses, after = after, timeout = Some(idleTimeout)))
+        api.controllersEventObservable(EventRequest[Event](EventClasses, after = after,
+          timeout = Some(requestTimeout)))
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
       Task.defer {
@@ -448,7 +449,7 @@ with ReceiveLoggingActor.WithStash
   private def closeClient: Task[Completed] =
     eventFetcher.invalidateCoupledApi
       .materialize
-      .flatMap(_ => client.logoutOrTimeout(10.s/*TODO*/))
+      .flatMap(_ => client.tryLogout)
       .guarantee(Task {
         client.close()
       })

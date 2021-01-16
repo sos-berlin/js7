@@ -60,10 +60,12 @@ abstract class RecouplingStreamReader[
 
   protected def eof(index: I) = false
 
-  protected def idleTimeout = conf.timeout
-
   // TODO Genügt nicht `terminate` ?
   protected def stopRequested: Boolean
+
+  protected def requestTimeout = conf.timeout
+
+  private def idleTimeout = requestTimeout + 2.s/*let service timeout kick in first*/
 
   private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get()
 
@@ -119,7 +121,7 @@ abstract class RecouplingStreamReader[
         case None => Task.completed
         case Some(api) =>
           onDecoupled >>
-            api.logoutOrTimeout(idleTimeout)
+            api.tryLogout
       }
 
   final def invalidateCoupledApi: Task[Completed] =
@@ -211,15 +213,16 @@ abstract class RecouplingStreamReader[
         sinceLastTry = now
       } >>
         getObservable(api, after = after)
-          .timeout(idleTimeout)
+          //.timeout(idleTimeout)
           .onErrorRecoverWith { case t: TimeoutException =>
             scribe.debug(s"$api: ${t.toString}")
             Task.pure(Right(Observable.empty))
           }
           .map(_.map(
-            _.timeoutOnSlowUpstream(idleTimeout + 1.s/*Let server time-out an idle stream first*/)
+            _.timeoutOnSlowUpstream(idleTimeout)
               .onErrorRecoverWith { case t: UpstreamTimeoutException =>
                 scribe.debug(s"$api: ${t.toString}")
+                // This should let Akka close the TCP connection to abort the stream
                 Observable.empty
               }))
 
@@ -250,7 +253,8 @@ abstract class RecouplingStreamReader[
                   Task.pure(Left(()))  // Fail in next iteration
                 else
                   for {
-                    _ <- api.logoutOrTimeout(idleTimeout)
+                    _ <- api.tryLogout
+                    // FIXME akka.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Akka
                     continue <- onCouplingFailed(api, problem)
                     either <-
                       if (continue)

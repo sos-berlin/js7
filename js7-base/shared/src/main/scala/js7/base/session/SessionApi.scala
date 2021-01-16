@@ -27,18 +27,17 @@ trait SessionApi
   def retryUntilReachable[A](onError: Throwable => Task[Boolean] = onErrorDoNothing)(body: => Task[A]): Task[A] =
     body
 
-  final def logoutOrTimeout(timeout: FiniteDuration): Task[Completed] =
+  final def tryLogout: Task[Completed] =
     Task.defer {
-      scribe.trace(s"$toString: logoutOrTimeout($timeout)")
+      scribe.trace(s"$toString: tryLogout")
       logout()
-        .timeout(timeout)
         .onErrorRecover { case t =>
           scribe.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
           clearSession()
           Completed
         }
         .guaranteeCase(exitCase => Task {
-          scribe.trace(s"$toString: logoutOrTimeout($timeout) => $exitCase")
+          scribe.trace(s"$toString: tryLogout => $exitCase")
         })
   }
 }
