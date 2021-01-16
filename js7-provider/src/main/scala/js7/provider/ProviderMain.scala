@@ -11,9 +11,10 @@ import js7.common.scalautil.Logger
 import js7.common.system.startup.JavaMain.{runMain, withShutdownHooks}
 import js7.common.system.startup.StartUp.logStartUp
 import js7.provider.configuration.ProviderConfiguration
+import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -31,21 +32,21 @@ object ProviderMain
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logStartUp(configDir = Some(conf.configDirectory))
       logConfig(conf.config)
-      val terminated = Provider.observe(conf)
+      val stop = Promise[Unit]()
+      val terminated = Provider.observe(Task.fromFuture(stop.future), conf)
         .orThrow
-        .onCancelTriggerError
         .completedL
         .runToFuture
-      withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(terminated)) {
+      withShutdownHooks(conf.config, "ProviderMain", () => onJavaShutdown(stop, terminated)) {
         awaitTermination(terminated)
       }
     }
   }
 
-  private def onJavaShutdown(cancelable: CancelableFuture[Unit]): Unit = {
+  private def onJavaShutdown(stop: Promise[Unit], future: CancelableFuture[Unit]): Unit = {
     logger.warn("Trying to terminate Provider due to Java shutdown")
-    cancelable.cancel()
-    awaitTermination(cancelable)
+    stop.trySuccess(())
+    awaitTermination(future)
   }
 
   private def awaitTermination(future: Future[Unit]): Unit = {

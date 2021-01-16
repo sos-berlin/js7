@@ -1,5 +1,6 @@
 package js7.provider
 
+import cats.effect.Resource
 import cats.implicits._
 import com.typesafe.config.{ConfigObject, ConfigUtil}
 import java.nio.file.{Path, Paths}
@@ -63,14 +64,16 @@ extends HasCloser with Observing with ProvideActorSystem
   private val newVersionId = new VersionIdGenerator
   private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
 
-  def closeTask: Task[Completed] =
-    httpControllerApi.logoutOrTimeout(10.s)
-      .guarantee(Task(httpControllerApi.close()))
-      .memoize
-
-  protected val relogin: Task[Completed] =
-    httpControllerApi.logout().onErrorHandle(_ => ()) >>
-      loginUntilReachable
+  def stop: Task[Completed] =
+    Task.defer {
+      logger.debug("stop")
+      httpControllerApi.tryLogout
+        .guarantee(Task {
+          httpControllerApi.close()
+          close()
+        })
+        .memoize
+    }
 
   private def updateAgents: Task[Completed] = {
     val agentRefs = config.getObject("js7.provider.agents").asScala
@@ -209,10 +212,9 @@ object Provider
     Right(new Provider(itemSigner, conf))
   }
 
-  def observe(conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Completed]] =
+  def observe(stop: Task[Unit], conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Completed]] =
     for (provider <- Provider(conf)) yield
       Observable.fromTask(provider.updateAgents)
-        .flatMap(_ =>
-          provider.observe
-            .guarantee(provider.closeTask.map((_: Completed) => ())))
+        .flatMap(_ => provider.observe(stop))
+        .guarantee(provider.stop.map((_: Completed) => ()))
 }

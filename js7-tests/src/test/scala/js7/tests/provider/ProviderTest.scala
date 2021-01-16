@@ -35,8 +35,10 @@ import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
@@ -213,14 +215,16 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
 
-    "closeTask" in {
-      provider.closeTask await 99.s
+    "stop" in {
+      provider.stop await 99.s
       provider.close()
     }
   }
 
   "observe" - {
-    lazy val whenObserved = Provider.observe(providerConfiguration).orThrow
+    val stop = Promise[Unit]()
+    lazy val whenObserved = Provider.observe(Task.fromFuture(stop.future), providerConfiguration)
+      .orThrow
       .onCancelTriggerError
       .foreach { _ => }
     var lastEventId = EventId.BeforeFirst
@@ -293,13 +297,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)  // TIMEOUT
     }
 
-    "Cancel" in {
+    "stop" in {
       assert(!whenObserved.isCompleted)
       assert(!whenObserved.isCompleted)
-      whenObserved.cancel()
-      intercept[CancellationException] {  // Due to onCancelTriggerError
-        whenObserved await 99.s
-      }
+      stop.success(())
+      whenObserved await 99.s
     }
   }
 

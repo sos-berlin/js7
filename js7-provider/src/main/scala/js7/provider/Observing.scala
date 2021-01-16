@@ -24,10 +24,11 @@ private[provider] trait Observing extends OrderProvider {
   private val watchDuration     = conf.config.getDuration("js7.provider.directory-watch.poll-interval").toFiniteDuration
   private val errorWaitDuration = conf.config.getDuration("js7.provider.directory-watch.error-delay").toFiniteDuration
 
-  def observe(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] = {
+  def observe(stop: Task[Unit])(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] = {
     val observables = observeLive ::
       exists(conf.orderGeneratorsDirectory).thenList(observeOrderGenerators)
     Observable.combineLatestList(observables: _*)
+      .takeUntilEval(stop)
       .map((_: Seq[Completed]) => Completed)
   }
 

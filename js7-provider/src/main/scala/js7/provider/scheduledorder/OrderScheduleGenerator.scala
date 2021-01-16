@@ -11,6 +11,7 @@ import js7.provider.scheduledorder.OrderScheduleGenerator._
 import js7.provider.scheduledorder.oldruntime.InstantInterval
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
+import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.util.{Failure, Success}
 
@@ -23,20 +24,23 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed]
   private val addEarlier = config.getDuration("js7.provider.add-orders-earlier").toFiniteDuration
   @volatile private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(Nil)
   @volatile private var generatedUntil = Timestamp.now.roundToNextSecond
-  @volatile private var timer: Cancelable = Cancelable.empty
+  @volatile private var timer = Cancelable.empty
   private val started = AtomicBoolean(false)
   @volatile private var closed = false
+  @volatile private var addOrdersCancelable = SerialCancelable()
 
   def close() = {
     closed = true
     timer.cancel()
+    addOrdersCancelable.cancel()
   }
 
   def replaceGenerators(generators: Seq[ScheduledOrderGenerator]): Unit =
     scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(generators)
 
   def start()(implicit scheduler: Scheduler): Unit = {
-    if (started.getAndSet(true)) throw new IllegalStateException("OrderScheduleGenerator has already been started")
+    if (started.getAndSet(true)) throw new IllegalStateException(
+      "OrderScheduleGenerator has already been started")
     generate()
   }
 
@@ -45,7 +49,10 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed]
     logger.debug(s"Generating orders for time interval $interval")
     val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
     if (!closed) {
-      addOrders(orders).runToFuture onComplete {
+      if (orders.isEmpty) logger.debug("No orders generated in this time interval")
+      val future = addOrders(orders).runToFuture
+      addOrdersCancelable := future
+      future onComplete {
         case Success(Completed) =>
           continue()
         case Failure(t) =>
