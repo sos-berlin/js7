@@ -57,9 +57,9 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private lazy val providerDirectory = directoryProvider.directory / "provider"
   private lazy val live = providerDirectory / "config/live"
   private lazy val orderGeneratorsDir = providerDirectory / "config/order-generators"
-  private lazy val providerConfiguration = ProviderConfiguration.fromCommandLine(
-    "--config-directory=" + providerDirectory / "config" ::
-    "--controller-uri=" + controller.localUri :: Nil,
+  private lazy val providerConfiguration = ProviderConfiguration.fromCommandLine(Seq(
+    "--config-directory=" + providerDirectory / "config",
+    "--controller-uri=" + controller.localUri),
     testConfig)
   private lazy val provider = Provider(providerConfiguration).orThrow
   private lazy val v1Time = now
@@ -71,13 +71,13 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     providerDirectory / "config" / "provider.conf" :=
       s"""js7.provider.add-orders-every = 0.1s
-        |js7.provider.add-orders-earlier = 0.1s
-        |js7.provider.agents {
-        |  ${agentRef.id.string} {
-        |    uri = "${agentRef.uri}"
-        |  }
-        |}
-        |""".stripMargin
+         |js7.provider.add-orders-earlier = 0.1s
+         |js7.provider.agents {
+         |  ${agentRef.id.string} {
+         |    uri = "${agentRef.uri}"
+         |  }
+         |}
+         |""".stripMargin
     providerDirectory / "config" / "private" / "private-silly-keys.txt" := privateKey
     providerDirectory / "config" / "private" / "private.conf" :=
       s"""js7.provider.sign-with = Silly
@@ -144,7 +144,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Duplicate VersionId" in {
-      assert(provider.updateControllerConfiguration(V1.some).await(99.s) == Left(DuplicateKey("VersionId", VersionId("1"))))
+      assert(provider.updateControllerConfiguration(V1.some).await(99.s) ==
+        Left(DuplicateKey("VersionId", VersionId("1"))))
     }
 
     "An unknown and some invalid files" in {
@@ -158,9 +159,12 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(provider.updateControllerConfiguration(V2.some).await(99.s) ==
         Left(Problem.Combined(Set(
           ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
-          VersionedItemReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json, Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
-          VersionedItemReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),
-          VersionedItemReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json, Problem("JSON DecodingFailure at .instructions: C[A]"))))))
+          VersionedItemReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json,
+            Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
+          VersionedItemReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json,
+            Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),
+          VersionedItemReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json,
+            Problem("JSON DecodingFailure at .instructions: C[A]"))))))
     }
 
     "Delete invalid files" in {
@@ -204,7 +208,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
 
-      assert(provider.testControllerDiff.await(99.s).orThrow == VersionedItems.Diff(added = workflow :: Nil))
+      assert(provider.testControllerDiff.await(99.s).orThrow == VersionedItems.Diff(added = Seq(workflow)))
       provider.updateControllerConfiguration(V4.some).await(99.s).orThrow
       assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
