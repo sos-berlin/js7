@@ -52,8 +52,10 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
     super.beforeAll()
   }
 
-  override def afterAll() =
+  override def afterAll() = {
     controller.terminate() await longTimeout
+    super.afterAll()
+  }
 
   s"Add $n orders à ${toKBGB(orderSize)} and make a snapshot" in {
     val t = new Stopwatch
