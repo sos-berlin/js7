@@ -265,7 +265,9 @@ with JournalingObserver
   : Task[Checked[Observable[PositionAnd[ByteArray]]]] = {
     (nextEventReaderPromise match {
       case Some((`fileEventId`, promise)) =>
-        logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
+        if (!promise.isCompleted) {
+          logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
+        }
         Task.fromFuture(promise.future) map Right.apply
       case _ =>
         Task(

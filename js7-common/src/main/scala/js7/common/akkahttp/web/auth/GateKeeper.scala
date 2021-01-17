@@ -185,7 +185,8 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
           case GetIsPublic                 => configuration.publicGetPermissions
         })
         if (empoweredUser.grantedPermissions != user.grantedPermissions) {
-          logger.debug(s"Granting user '${empoweredUser.id.string}' all rights for ${request.method.value} ${request.uri.path} due to $reason")
+          logger.debug(s"Due to $reason, user '${empoweredUser.id.string}' has all permissions for " +
+            s"${request.method.value} ${request.uri.path}")
         }
         Right(empoweredUser)
 

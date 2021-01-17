@@ -200,7 +200,7 @@ trait ConvertingLogger extends Slf4jLogger
 object ConvertingLogger
 {
   final class Prefixed(prefix: String, protected val delegate: Slf4jLogger) extends ConvertingLogger {
-    protected val fullPrefix = s"»$prefix« "
+    protected val fullPrefix = s"($prefix) "
     //protected val fullPrefix = s"“$prefix” "
     private val escapedPrefix = fullPrefix.replace("{}", "\\{}")
 

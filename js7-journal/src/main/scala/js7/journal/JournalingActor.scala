@@ -107,7 +107,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     promiseFuture[A] { promise =>
       start(async = async, timestamped.headOption.fold("empty")(_.keyedEvent.event.getClass.simpleScalaName))
       if (TraceLog && logger.underlying.isTraceEnabled)
-        for (t <- timestamped) logger.trace(s"“$toString” Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
+        for (t <- timestamped) logger.trace(s"»$toString« Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = false, transaction = transaction,
           delay = delay, alreadyDelayed = alreadyDelayed, since = now,
@@ -117,7 +117,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
               try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]], journaledState))
               catch { case NonFatal(t) =>
                 // TODO Ein Fehler sollte zum Abbruch führen? Aber dann?
-                logger.error(s"“$toString” ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
+                logger.error(s"»$toString« ${t.toStringWithCauses}\n" + s"persistKeyedEvents(${timestamped.map(_.keyedEvent)})", t)
                 throw t
                 //Failure(t)
               }))))
@@ -171,11 +171,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       (stampedSeq, item) match {
         case (_, eventsCallback: EventsCallback[S]) =>
           if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stampedSeq)
-            logger.trace(s"“$toString” Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
+            logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
           eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
 
         case (Nil, Deferred(_, callback)) =>
-          if (TraceLog) logger.trace(s"“$toString” Stored (no event)$stashingCountRemaining")
+          if (TraceLog) logger.trace(s"»$toString« Stored (no event)$stashingCountRemaining")
           callback(Right(Accepted))
 
         case _ => sys.error(s"JournalActor.Output.Stored(${stampedSeq.length}×) message does not match item '$item'")
@@ -188,7 +188,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       }
       item match {
         case Deferred(_, callback) =>
-          if (TraceLog) logger.trace(s"“$toString” Stored (events are written, not flushed)$stashingCountRemaining")
+          if (TraceLog) logger.trace(s"»$toString« Stored (events are written, not flushed)$stashingCountRemaining")
           callback(Right(Accepted))
 
         case _ => sys.error(s"JournalActor.Output.Accepted message does not match item '$item'")
@@ -196,11 +196,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
     case JournalActor.Output.StoreFailure(problem, item) =>
       // Let the calling Actor crash ???
-      logger.warn(s"“$toString” Event could not be stored: $problem")
+      logger.warn(s"»$toString« Event could not be stored: $problem")
       throw problem.throwable.appendCurrentStackTrace
 
     case msg if stashingCount > 0 =>
-      if (TraceLog) logger.trace(s"“$toString” Still waiting for event commit: stash $msg")
+      if (TraceLog) logger.trace(s"»$toString« Still waiting for event commit: stash $msg")
       super.stash()
   }
 
@@ -214,7 +214,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
         val since = now
         journalingTimer := scheduler.scheduleAtFixedRates(journalConf.persistWarnDurations) {
           // Under load it may be normal to be busy for some time ???
-          logger.warn(s"“$toString” is still persisting for ${since.elapsed.pretty} ($stashingCount persist operations in progress)")
+          logger.warn(s"»$toString« is still persisting for ${since.elapsed.pretty} ($stashingCount persist operations in progress)")
         }
       }
     }
@@ -223,7 +223,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private def endStashing(stamped: Seq[Stamped[AnyKeyedEvent]]): Unit = {
     if (stashingCount == 0) {
       val msg = s"Journal Stored message received (duplicate? stash in callback?) but stashingCount=$stashingCount: $stamped"
-      logger.error(s"“$toString” $msg")
+      logger.error(s"»$toString« $msg")
       throw new RuntimeException(msg)
     }
     stashingCount -= 1
@@ -231,7 +231,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       journalingTimer := Cancelable.empty
       unstashAll()
       persistStatistics.endStashing()
-      logger.trace(s"“$toString” unbecome")
+      logger.trace(s"»$toString« unbecome")
       context.unbecome()
     }
   }
@@ -284,7 +284,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     def endStashing(): Unit = {
       val duration = persistStartedAt.elapsed
       if (duration >= BigStoreThreshold) {
-        logger.debug(s"“${JournalingActor.this.toString}” Long persist completed ($persistCount×, $firstName ...) - " +
+        logger.debug(s"»${JournalingActor.this.toString}« Long persist completed ($persistCount×, $firstName ...) - " +
           itemsPerSecondString(duration, eventCount, "events"))
       }
     }

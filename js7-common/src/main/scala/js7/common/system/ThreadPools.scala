@@ -12,6 +12,7 @@ import js7.common.system.startup.Halt.haltJava
 import js7.common.system.startup.StartUp.printlnWithClockIgnoringException
 import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.common.utils.ByteUnits.toKiBGiB
+import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.ExecutorScheduler
 import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
 import scala.jdk.CollectionConverters._
@@ -57,27 +58,39 @@ object ThreadPools
     }
   }
 
+  private val nextNumber = AtomicInt(0)
+
   def newStandardScheduler(name: String, config: Config, closer: Closer): ExecutorScheduler = {
+    val nr = nextNumber.incrementAndGet()
+    val myName = if (nr == 1) name else s"$name-#$nr"
     val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
-    val scheduler = ExecutorScheduler.forkJoinDynamic(name,
-      parallelism = config.as("js7.thread-pools.standard.parallelism")(ThreadCount),
-      maxThreads = config.as("js7.thread-pools.standard.maximum")(ThreadCount),
+    val parallelism = config.as("js7.thread-pools.standard.parallelism")(ThreadCount)
+    val maxThreads = config.as("js7.thread-pools.standard.maximum")(ThreadCount)
+    logger.debug(s"newStandardScheduler $myName parallelism=$parallelism maxThreads=$maxThreads")
+
+    val scheduler = ExecutorScheduler.forkJoinDynamic(myName,
+      parallelism = parallelism,
+      maxThreads = maxThreads,
       daemonic = true,
       reporter = uncaughtExceptionReporter,
       ExecutionModel.Default)
 
     closer.onClose {
-      logger.debug("shutdown")
+      logger.debug(s"Shutdown $myName thread pool'")
       scheduler.shutdown()
       if (shutdownTimeout.isPositive) {
         logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) ...")
         if (!scheduler.awaitTermination(shutdownTimeout)) {
-          logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) timed out" +
+          logger.whenDebugEnabled {
+            logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) timed out")
             Thread.getAllStackTraces.asScala
-              .filter(_._1.getName startsWith name)
+              .filter(_._1.getName startsWith myName)
               .toSeq.sortBy(_._1.getId)
-              .map { case (thread, stacktrace) => s"\nThread #${ thread.getId } ${thread.getName}:" + stacktrace.map(o => s"\n  $o").mkString }
-              .mkString)
+              .foreach { case (thread, stacktrace) =>
+                logger.debug(s"Thread #${thread.getId} ${thread.getName} ⏎" +
+                  stacktrace.map(o => s"\n  $o").mkString)
+              }
+          }
         } else {
           logger.debug(s"awaitTermination() finished")
         }

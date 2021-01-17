@@ -23,7 +23,7 @@ private[journal] final class SnapshotStatisticsCounter extends StatisticsCounter
     else s"$snapshots snapshot objects" //+ (if (syncs > 0) s", $syncs syncs" else "")
 
   def debugString: Option[String] =
-    (snapshots > 0 && stopwatch.duration >= 1.s) ? timingString
+    (snapshots > 0 && stopwatch.duration >= 3.s) ? timingString
 
   protected def timingString = {
     val duration = stopwatch.duration

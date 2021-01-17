@@ -36,7 +36,7 @@ extends JournalWriter(after = after, append = false)
     val elapsed = runningSince.elapsed
     logger.debug(s"Snapshot finished - " + itemsPerSecondString(elapsed, snapshotCount, "objects") + " · " +
       bytesPerSecondString(elapsed, fileLength))
-    for (o <- statistics.debugString) logger.debug(o)
+    for (o <- statistics.debugString) logger.info(o)
   }
 
   def beginSnapshotSection(): Unit = {

@@ -95,8 +95,9 @@ trait RealEventWatch extends EventWatch
         committedEventIdSync.whenAvailable(after, deadline)
           .map {
             case false =>
-              logger.debug("committedEventIdSync.whenAvailable returned false")
               val remaining = deadline.map(_.timeLeft)
+              logger.debug("committedEventIdSync.whenAvailable returned false, " +
+                remaining.fold("")(o => ", remaining=" + o.pretty))
               (remaining.forall(_.isPositive) ? Observable.empty,
                 () => after -> deadline.map(_.timeLeftOrZero))
             case true =>

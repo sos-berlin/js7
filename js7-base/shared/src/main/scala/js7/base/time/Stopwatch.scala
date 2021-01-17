@@ -80,13 +80,13 @@ object Stopwatch
       if (n == 0)
         s"0$gapOps"
       else
-        s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty}) $perSecondString$gapOps/s"
+        s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty}), $perSecondString$gapOps/s"
 
     def toShortString =
       if (n == 0)
         s"0$gapOps"
       else
-        s"${duration.pretty}/$n$gapOps $perSecondString$gapOps/s"
+        s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
   }
   object Result {
     implicit def resultToString(result: Result) = result.toString

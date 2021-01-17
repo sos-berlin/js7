@@ -14,7 +14,7 @@ final class TaskLock private(val resource: Resource[Task, Unit])
     resource.use(_ => Task.defer {
       scribe.trace(src.value + " locked")
       task.tapEval(_ =>
-        Task { scribe.trace(src + " released") })
+        Task { scribe.trace(src.value + " released") })
     })
   }
 }

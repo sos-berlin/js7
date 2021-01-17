@@ -37,8 +37,8 @@ extends Actor {
       .view.mapValues(_.toVector.sortBy(_.sessionNumber))
       .toVector.sortBy(_._1)
       .view
-      .map { case (u, s) => u.string + " " + s.map(_.sessionToken.short).mkString(" ") }
-      .mkString(", ")
+      .map { case (u, s) => s.map(_.sessionToken.short).mkString(" ") + ":" + u.string }
+      .mkString(" ")
     logger.debug(s"postStop: ${tokenToSession.size} open sessions: $openSessionsString")
     if (nextCleanup != null) nextCleanup.cancel()
     super.postStop()
