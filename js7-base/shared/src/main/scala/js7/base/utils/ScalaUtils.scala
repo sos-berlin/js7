@@ -24,6 +24,9 @@ object ScalaUtils
   {
     implicit final class RichEitherF[F[_], L, R](private val underlying: F[Either[L, R]]) extends AnyVal
     {
+      def rightAs[R1](newRight: => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
+        F.map(underlying)(_.map(_ => newRight))
+
       def mapt[R1](f: R => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
         F.map(underlying)(_.map(f))
 
@@ -277,12 +280,8 @@ object ScalaUtils
 
     implicit final class RichEither[L, R](private val underlying: Either[L, R]) extends AnyVal
     {
-      // Will be no longer needed with Scala 2.13 !!!
-      def orElse[L1 >: L, R1 >: R](or: => Either[L1, R1]): Either[L1, R1] =
-        underlying match {
-          case Left(_) => or
-          case Right(o) => Right(o)
-        }
+      def rightAs[R1](newRight: => R1): Either[L, R1] =
+        underlying.map(_ => newRight)
     }
 
     implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {

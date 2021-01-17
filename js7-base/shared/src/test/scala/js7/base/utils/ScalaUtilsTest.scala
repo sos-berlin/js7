@@ -22,6 +22,12 @@ final class ScalaUtilsTest extends AnyFreeSpec
     type E = Either[String, Int]
     type O = Option[E]
 
+    "rightAs" in {
+      assert((None: O).rightAs(true) == None)
+      assert((Some(Left("A")): O).rightAs(true) == Some(Left("A")))
+      assert((Some(Right(7)): O).rightAs(true) == Some(Right(true)))
+    }
+
     "mapt" in {
       assert((None: O).mapt(_ => ignored) == None)
       assert((Some(Left("A")): O).mapt(_ => ignored) == Some(Left("A")))
@@ -317,54 +323,62 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
   }
 
-  "Either orElse" in {
-    assert((Left(1): Either[Int, Boolean]).orElse(Left("WINNER")) == Left("WINNER"))
-    assert((Left(1): Either[Int, Boolean]).orElse(Right("WINNER")) == Right("WINNER"))
-    assert((Right(true): Either[Int, Boolean]).orElse(Left("LOOSER")) == Right(true))
-    assert((Right(true): Either[Int, Boolean]).orElse(Right("LOOSER")) == Right(true))
-  }
-
-  "Either.toFuture" in {
-    assert(Right[Throwable, Int](7).toFuture.value.get.get == 7)
-    val t = new IllegalArgumentException
-    assert(Left[Throwable, Int](t).toFuture.failed.value.get.get eq t)
-  }
-
-  "Either.toThrowableChecked" in {
-    assert(Right[Throwable, Int](7).toThrowableChecked == Right(7))
-    val t = new IllegalArgumentException
-    assert(Left[Throwable, Int](t).toThrowableChecked.swap.getOrElse(null).throwable eq t)
-  }
-
-  "Either.toMessageOnlyChecked" in {
-    assert(Right[Throwable, Int](7).toMessageOnlyChecked == Right(7))
-    val t = new IllegalArgumentException("EXCEPTION")
-    assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).throwable ne t)
-    assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).toString == "EXCEPTION")
-  }
-
-  "Either.orThrow" in {
-    assert(Right[Throwable, Int](7).orThrow == 7)
-    val t = new IllegalArgumentException
-    intercept[IllegalArgumentException] {
-      (Left[Throwable, Int](t): Either[Throwable, Int]).orThrow
-    } should be theSameInstanceAs (t)
-  }
-
-  "Either.withStackTrace" - {
-    "with stacktrace provided" in {
-      assert(Right[Throwable, Int](7).withStackTrace == Right[Throwable, Int](7))
-      val t = new IllegalArgumentException
-      assert(t.getStackTrace.nonEmpty)
-      val Left(t2) = Left[Throwable, Int](t).withStackTrace
-      assert(t2 eq t)
+  "Either" - {
+    "rightAs" in {
+      type O = Either[String, Int]
+      assert((Left("LEFT"): O).rightAs(true) == Left("LEFT"))
+      assert((Right(7): O).rightAs(true) == Right(true))
     }
 
-    "without stacktrace provided" in {
-      val u = new IllegalArgumentException with NoStackTrace
-      assert(u.getStackTrace.isEmpty)
-      (Left[Throwable, Int](u).withStackTrace: @unchecked) match {
-        case Left(uu: IllegalStateException) => assert(uu.getStackTrace.nonEmpty)
+    "orElse" in {
+      assert((Left(1): Either[Int, Boolean]).orElse(Left("WINNER")) == Left("WINNER"))
+      assert((Left(1): Either[Int, Boolean]).orElse(Right("WINNER")) == Right("WINNER"))
+      assert((Right(true): Either[Int, Boolean]).orElse(Left("LOOSER")) == Right(true))
+      assert((Right(true): Either[Int, Boolean]).orElse(Right("LOOSER")) == Right(true))
+    }
+
+    "toFuture" in {
+      assert(Right[Throwable, Int](7).toFuture.value.get.get == 7)
+      val t = new IllegalArgumentException
+      assert(Left[Throwable, Int](t).toFuture.failed.value.get.get eq t)
+    }
+
+    "toThrowableChecked" in {
+      assert(Right[Throwable, Int](7).toThrowableChecked == Right(7))
+      val t = new IllegalArgumentException
+      assert(Left[Throwable, Int](t).toThrowableChecked.swap.getOrElse(null).throwable eq t)
+    }
+
+    "toMessageOnlyChecked" in {
+      assert(Right[Throwable, Int](7).toMessageOnlyChecked == Right(7))
+      val t = new IllegalArgumentException("EXCEPTION")
+      assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).throwable ne t)
+      assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).toString == "EXCEPTION")
+    }
+
+    "orThrow" in {
+      assert(Right[Throwable, Int](7).orThrow == 7)
+      val t = new IllegalArgumentException
+      intercept[IllegalArgumentException] {
+        (Left[Throwable, Int](t): Either[Throwable, Int]).orThrow
+      } should be theSameInstanceAs (t)
+    }
+
+    "withStackTrace" - {
+      "with stacktrace provided" in {
+        assert(Right[Throwable, Int](7).withStackTrace == Right[Throwable, Int](7))
+        val t = new IllegalArgumentException
+        assert(t.getStackTrace.nonEmpty)
+        val Left(t2) = Left[Throwable, Int](t).withStackTrace
+        assert(t2 eq t)
+      }
+
+      "without stacktrace provided" in {
+        val u = new IllegalArgumentException with NoStackTrace
+        assert(u.getStackTrace.isEmpty)
+        (Left[Throwable, Int](u).withStackTrace: @unchecked) match {
+          case Left(uu: IllegalStateException) => assert(uu.getStackTrace.nonEmpty)
+        }
       }
     }
   }
