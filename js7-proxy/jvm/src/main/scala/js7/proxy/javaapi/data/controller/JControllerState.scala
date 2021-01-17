@@ -10,7 +10,8 @@ import js7.controller.data.ControllerState
 import js7.data.agent.AgentId
 import js7.data.lock.LockId
 import js7.data.order.{Order, OrderId}
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.WorkflowPath
+import js7.proxy.javaapi.data.JRepo
 import js7.proxy.javaapi.data.agent.{JAgentRef, JAgentRefState}
 import js7.proxy.javaapi.data.cluster.JClusterState
 import js7.proxy.javaapi.data.common.JJournaledState
@@ -37,15 +38,15 @@ extends JJournaledState[JControllerState, ControllerState]
 
   @Nonnull
   def idToWorkflow(@Nonnull workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
-    asScala.repo.idTo[Workflow](workflowId.asScala)
-      .map(JWorkflow.apply)
-      .toVavr
+    repo.idToWorkflow(workflowId)
 
   @Nonnull
   def pathToWorkflow(@Nonnull workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
-    asScala.repo.pathTo[Workflow](workflowPath)
-      .map(JWorkflow.apply)
-      .toVavr
+    repo.pathToWorkflow(workflowPath)
+
+  @Nonnull
+  def repo: JRepo =
+    new JRepo(asScala.repo)
 
   /** Looks up an AgentRef VersionedItem in the current version. */
   @Nonnull
