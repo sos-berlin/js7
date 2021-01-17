@@ -1,18 +1,28 @@
 package js7.common.process
 
+import cats.instances.future._
+import cats.instances.vector._
+import cats.syntax.traverse._
 import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
 import java.nio.file.Paths
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
+import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
 import js7.common.process.Processes._
 import js7.common.process.ProcessesTest._
-import js7.common.scalautil.FileUtils.autoDeleting
-import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.{autoDeleting, withTemporaryFile}
+import js7.common.scalautil.Futures.implicits._
 import js7.common.system.FileUtils._
 import js7.data.system.Stdout
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 /**
  * @author Joacim Zschimmer
@@ -81,12 +91,39 @@ final class ProcessesTest extends AnyFreeSpec {
     assert(r == expected)
   }
 
+  "Many empty shell script processes" in {
+    for (n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption)) {
+      withTemporaryFile("ProcessesTest-", ".sh") { file =>
+        file.writeExecutable(":")
+        val since = now
+        (1 to n).toVector
+          .traverse(_ => Future {
+            runProcess(s"""'$file'""")
+          })
+          .await(99.s)
+        info(Stopwatch.perSecondString(since.elapsed, n, "processes"))
+      }
+    }
+  }
+
+  "Many processes" in {
+    for (n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption)) {
+        val since = now
+        (1 to n).toVector
+          .traverse(_ => Future {
+            runProcess("sleep 0")
+          })
+          .await(99.s)
+        info(Stopwatch.perSecondString(since.elapsed, n, "processes"))
+    }
+  }
   //"runProcess" in {
   //  assert(runProcess("echo HELLO").trim == "HELLO")
   //}
 }
 
-private object ProcessesTest {
+private object ProcessesTest
+{
   // Different character combinations should not be changed (interpreted) by the operating systems shell script invoker.
   private val Args =
     if (isWindows)

@@ -122,11 +122,13 @@ object Processes
       * @see https://change.sos-berlin.com/browse/JS-1581
       * @see https://bugs.openjdk.java.net/browse/JDK-8068370
       */
-    def startRobustly(durations: Iterator[FiniteDuration] = RobustlyStartProcess.DefaultDurations.iterator): Process =
+    def startRobustly(durations: Iterator[FiniteDuration] = RobustlyStartProcess.DefaultDurations.iterator)
+    : Process =
       try delegate.start()
       catch {
         case TextFileBusyIOException(e) if durations.hasNext =>
           logger.warn(s"Retrying process start after error: $e")
+          // TODO make startRobustly asynchronoous
           sleep(durations.next())
           startRobustly(durations)
       }
