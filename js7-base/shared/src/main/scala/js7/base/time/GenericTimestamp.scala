@@ -41,6 +41,8 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   final def roundToNextSecond: A = copy((toEpochMilli + 999)/ 1000 * 1000)
 
+  final def secondsOnly: A = copy(toEpochMilli / 1000 * 1000)
+
   def roundTo(duration: FiniteDuration): A = this + duration / 2 roundDownTo duration
 
   def roundDownTo(duration: FiniteDuration): A = {
