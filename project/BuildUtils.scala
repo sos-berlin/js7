@@ -33,10 +33,11 @@ object BuildUtils
     factor
   }
 
-  private val isUncommitted = Def.setting(git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/)
+  private val isUncommitted =
+    Def.setting(git.gitUncommittedChanges.value || git.gitHeadCommit.value.isEmpty/*no Git?*/)
 
   private val commitHash: Def.Initialize[Option[String]] =
-    Def.setting(git.gitHeadCommit.value.filter(_.nonEmpty) orElse sys.env.get("GIT_COMMIT"))
+    Def.setting(git.gitHeadCommit.value.filter(_.nonEmpty).orElse(sys.env.get("GIT_COMMIT"/*Jenkins?*/)))
 
   val longVersion: Def.Initialize[String] =
     Def.setting(
@@ -45,7 +46,8 @@ object BuildUtils
         version.value + "-UNCOMMITTED"
       else if (version.value endsWith "-SNAPSHOT") {
         // "2.0.0-SNAPSHOT-2019-01-14T1200-9abcdef"
-        version.value + "-" + committedAt.value.getOrElse("?") + git.gitHeadCommit.value.fold("")(o => "-" + o.take(CommitHashLength))
+        version.value + "-" + committedAt.value.getOrElse("?") +
+          git.gitHeadCommit.value.fold("")(o => "-" + o.take(CommitHashLength))
       } else
         // "2.0.0-M1"
         version.value)
@@ -91,14 +93,20 @@ object BuildUtils
     "commitId" -> git.gitHeadCommit.value,
     "commitMessage" -> git.gitHeadMessage.value))
 
-  private val instantFormatter = new DateTimeFormatterBuilder().append(ISO_LOCAL_DATE_TIME).appendPattern("XX").toFormatter
+  private val instantFormatter = new DateTimeFormatterBuilder()
+    .append(ISO_LOCAL_DATE_TIME)
+    .appendPattern("XX")
+    .toFormatter
 
   /** Parses 2019-01-14T12:00:00Z and 2019-01-14T13:00:00+01:00. */
-  private def parseInstant(s: String) = OffsetDateTime.parse(s, instantFormatter).toInstant
+  private def parseInstant(s: String) =
+    OffsetDateTime.parse(s, instantFormatter).toInstant
 
-  implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
+  implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] =
+    o :: Nil
 
-  implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID]) extends AnyVal {
+  implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID])
+  extends AnyVal {
     def %(configurations: String) = delegate.map(_ % configurations)
   }
 

@@ -388,7 +388,7 @@ object JournaledProxy
     if (maybeActive.isEmpty) scribe.warn("No cluster node seems to be active")
   }
 
-  private case class InternalProblemException(val problem: Problem) extends NoStackTrace {
+  private case class InternalProblemException(problem: Problem) extends NoStackTrace {
     override def toString = problem.toString
   }
 
