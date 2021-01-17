@@ -23,7 +23,18 @@ final class OrderIdTest extends AnyFreeSpec {
   "allParents" in {
     assert(OrderId("A").allParents == Nil)
     assert(OrderId("A|B").allParents == Seq(OrderId("A")))
-    assert(OrderId("A|B").allParents == Seq(OrderId("A")))
+    assert(OrderId("A|B|C").allParents == Seq(OrderId("A"), OrderId("A|B")))
     assert(OrderId("A|BBB|C|D").allParents == Seq(OrderId("A"), OrderId("A|BBB"), OrderId("A|BBB|C")))
+  }
+
+  "root" in {
+    assert(OrderId("A").root == OrderId("A"))
+    assert(OrderId("A|B").root == OrderId("A"))
+    assert(OrderId("A|B|C").root == OrderId("A"))
+  }
+
+  "isRoot" in {
+    assert(OrderId("A").isRoot)
+    assert(!OrderId("A|B").isRoot)
   }
 }

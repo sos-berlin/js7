@@ -31,6 +31,15 @@ final case class OrderId private(string: String) extends GenericString
       .map(OrderId.apply)
       .toVector
 
+  def root: OrderId =
+    string indexOf ChildSeparator match {
+      case -1 => this
+      case n => OrderId(string take n)
+    }
+
+  def isRoot: Boolean =
+    string.indexOf(ChildSeparator) == -1
+
   def checkedNameSyntax: Checked[this.type] =
     if (string.isEmpty)
       Left(Problem("OrderId must not be empty"))
