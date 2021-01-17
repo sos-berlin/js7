@@ -1,6 +1,6 @@
 package js7.agent.scheduler.job
 
-import java.nio.file.Files.createTempFile
+import java.nio.file.Files.{createTempFile, deleteIfExists}
 import java.nio.file.Path
 import js7.agent.configuration.AgentConfiguration.FileEncoding
 import js7.agent.scheduler.job.ShellReturnValuesProvider._
@@ -13,10 +13,23 @@ import js7.data.value.{NamedValues, StringValue}
   */
 final class ShellReturnValuesProvider(temporaryDirectory: Path)
 {
-  val file: Path = createTempFile(temporaryDirectory, "returnValues-", ".tmp")
+  private var fileExists = false
+
+  val file: Path = {
+    val file = createTempFile(temporaryDirectory, "returnValues-", ".tmp")
+    fileExists = true
+    file
+  }
 
   def clear(): Unit =
     file := ""
+
+  def deleteFile(): Unit = {
+    if (fileExists) {
+      deleteIfExists(file)
+      fileExists = false
+    }
+  }
 
   def env: (String, String) =
     ReturnValuesFileEnvironmentVariableName -> file.toString
@@ -26,7 +39,7 @@ final class ShellReturnValuesProvider(temporaryDirectory: Path)
       (source.getLines() map lineToNamedvalue).toMap
     }
 
-  override def toString = s"ShellReturnValuesProvider($file)"
+  override def toString = file.toString
 }
 
 object ShellReturnValuesProvider

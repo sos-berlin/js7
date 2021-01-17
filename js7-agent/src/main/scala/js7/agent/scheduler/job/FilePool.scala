@@ -24,7 +24,7 @@ private[job] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) exte
         head
       case Nil =>
         val fileSet = FileSet(new ShellReturnValuesProvider(temporaryDirectory))
-        logger.trace(s"Job '${jobKey.keyName}': Using file ${fileSet.shellReturnValuesProvider.file} for order namedValues")
+        logger.trace(s"Job '${jobKey.keyName}': Using file ${fileSet.shellReturnValuesProvider} for order namedValues")
         fileSet
     }
     used += fileSet

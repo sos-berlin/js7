@@ -58,7 +58,7 @@ extends TaskRunner
 
   def terminate: Task[Unit] =
     Task.defer {
-      deleteIfExists(returnValuesProvider.file)
+      returnValuesProvider.deleteFile()
       richProcessOnce.toOption match {
         case Some(richProcess) =>
           Task.fromFuture(richProcess.terminated)
@@ -90,9 +90,9 @@ extends TaskRunner
   private def fetchReturnValuesThenDeleteFile(): NamedValues = {
     val result = returnValuesProvider.variables
     // TODO When Windows locks the file, try delete it later, asynchronously, and block file in FilePool
-    try delete(returnValuesProvider.file)
+    try returnValuesProvider.deleteFile()
     catch { case NonFatal(t) =>
-      logger.error(s"Cannot delete file '${returnValuesProvider.file}': ${t.toStringWithCauses}")
+      logger.error(s"Cannot delete file '$returnValuesProvider': ${t.toStringWithCauses}")
       throw t
     }
     result

@@ -11,7 +11,7 @@ import js7.agent.tests.OrderAgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.SignedString
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
@@ -47,7 +47,7 @@ final class OrderAgentTest extends AnyFreeSpec
     provideAgentDirectory { directory =>
       directory / "config" / "private" / "trusted-pgp-keys" / "test.asc" := verifier.publicKeys.head
       directory / "config" / "private" / "private.conf" ++=
-        s"""|js7.configuration.trusted-signature-keys.PGP = $${js7.config-directory}"/private/trusted-pgp-keys"
+        s"""js7.configuration.trusted-signature-keys.PGP = $${js7.config-directory}"/private/trusted-pgp-keys"
            |""".stripMargin
 
       val jobDir = directory / "config" / "executables"
@@ -59,9 +59,9 @@ final class OrderAgentTest extends AnyFreeSpec
         withCloser { implicit closer =>
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
-          intercept[AkkaHttpClient.HttpException] {  // Login is required
-            agentClient.commandExecute(RegisterAsController(agentId)).await(99.s).orThrow
-          } .status shouldEqual Unauthorized
+          assert(agentClient.commandExecute(RegisterAsController(agentId)).await(99.s) ==
+            Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
+              "The resource requires authentication, which was not supplied with the request")))
           agentClient.login() await 99.s
           assert(agentClient.commandExecute(RegisterAsController(agentId)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
             .isInstanceOf[RegisterAsController.Response])
