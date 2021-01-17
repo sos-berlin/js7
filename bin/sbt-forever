@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-for i in {1..999999}; do
-  echo -e "\n\n———————————————————— $i ———————————————————\n"
-  rm -f target/build.log
-  time ./sbt-batch -Dsbt.log.noformat=false "$@"
+# First build should be error-free
+time ./sbt-batch -Dsbt.log.noformat=false "$@"
+failureCount=0
+failMsg=""
+
+for i in {2..999999}; do
+  echo -e "\n\n———————————————————— $i ———————————————————$failMsg\n"
+  echo -n "" >target/build.log
+  time if ! ./sbt-batch "$@" | tee target/build.out; then :
+    ts=$(date +%Y%m%d-%H%M%S)
+    gzip <target/build.out >"target/build-$ts.out.gz"
+    gzip <target/build.log >"target/build-$ts.log.gz"
+    failureCount=$(($failureCount + 1))
+    failMsg=" \e[1;31m$failureCount FAILURES\e[0m"
+  fi
 done
