@@ -40,7 +40,8 @@ import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
 
-final class GenericEventRouteTest extends AnyFreeSpec  with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
+final class GenericEventRouteTest
+extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
 {
   protected type Session = SimpleSession
 
@@ -192,7 +193,7 @@ final class GenericEventRouteTest extends AnyFreeSpec  with BeforeAndAfterAll wi
       "/event?limit=3&after=150 skip some events" in {
         val runningSince = now
         val stampedSeq = getEventsByUri(Uri("/event?delay=99&limit=3&after=150"))
-        assert(runningSince.elapsed < 1.s)  // Events must have been returned immediately
+        assert(runningSince.elapsed < 3.s)  // Events must have been returned immediately
         assert(stampedSeq.head.eventId == 160)
         assert(stampedSeq.last.eventId == 180)
       }
@@ -213,7 +214,7 @@ final class GenericEventRouteTest extends AnyFreeSpec  with BeforeAndAfterAll wi
     }
 
     "Fetch EventIds with heartbeat" in {
-      val uri = Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=1")
+      val uri = Uri("/event?onlyAcks=true&heartbeat=0.1&timeout=3")
       val events = Observable.fromTask(api.getDecodedLinesObservable[EventId](uri))
         .flatten
         .take(3)
@@ -236,15 +237,14 @@ final class GenericEventRouteTest extends AnyFreeSpec  with BeforeAndAfterAll wi
 
     "whenShuttingDown" - {
       "completes a running observable" in {
-        val whenRunning = Promise[Unit]()
+        val started = Promise[Unit]()
         val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s)))
           .doOnStart(_ => Task {
-            whenRunning.success(())
+            started.success(())
           })
           .completedL.runToFuture
-        whenRunning.future await 9.s
+        started.future await 9.s
         assert(!observableCompleted.isCompleted)
-
         // Shut down service
         shuttingDown.success(now)
         observableCompleted await 99.s

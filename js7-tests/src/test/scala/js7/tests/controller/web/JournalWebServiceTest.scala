@@ -8,6 +8,7 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
+import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
 import js7.common.configutils.Configs._
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -138,7 +139,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
         lines += _.utf8String
       }
     val observeWithHeartbeat = httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
-      .timeoutOnSlowUpstream(1.s)  // Check heartbeat
+      .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
       .doOnError(t => Task(scribe.error(t.toString)))
       .foreach { bytes =>
         heartbeatLines += bytes.utf8String
@@ -149,7 +150,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     controller.eventWatch.await[OrderFinished](_.key == orderId)
     waitForCondition(9.s, 10.ms) { lines.exists(_ contains "OrderFinished") }
-    for (o <- observeWithHeartbeat.value; t <- o.failed) throw t
+    for (o <- observeWithHeartbeat.value; t <- o.failed) throw t.appendCurrentStackTrace
     assert(lines.exists(_ contains "OrderFinished"))
 
     waitForCondition(9.s, 10.ms) { heartbeatLines.exists(_ contains "OrderFinished") }
