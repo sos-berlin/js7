@@ -135,7 +135,13 @@ extends HasCloser
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }
-    runningController.terminate() await 99.s
+    try runningController.terminate() await 99.s
+    catch { case NonFatal(t) =>
+      logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+      try runningController.close()
+      catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+      throw t
+    }
     result
   }
 
