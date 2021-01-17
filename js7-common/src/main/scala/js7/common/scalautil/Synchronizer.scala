@@ -16,19 +16,19 @@ final class Synchronizer(what: String)
   /** Blocking synchronization with some debug messages logged. */
   def synchronize[A](body: => A): A =
     try {
-      ignoreException { logger.trace(s"Start synchronize '$what': wait for lock (${synchronizeLock.getQueueLength} in queue)") }
+      logger.trace(s"Start synchronize '$what': wait for lock (${synchronizeLock.getQueueLength} in queue)")
       if (!synchronizeLock.tryLock()) {
         blocking {
           if (!synchronizeLock.tryLock(LogAfter.toMillis, MILLISECONDS)) {
-            ignoreException { logger.debug(s"Start synchronize '$what': waiting for lock since ${LogAfter.pretty} (#${synchronizeLock.getQueueLength} in queue)") }
+            logger.debug(s"Start synchronize '$what': waiting for lock since ${LogAfter.pretty} (#${synchronizeLock.getQueueLength} in queue)")
             synchronizeLock.lock()
-            ignoreException { logger.debug(s"synchronize '$what': continuing") }
+            logger.debug(s"synchronize '$what': continuing")
           }
         }
       }
       body
     } finally {
-      ignoreException { logger.trace(s"End synchronize '$what': release lock (${synchronizeLock.getQueueLength} in queue)") }
+      logger.trace(s"End synchronize '$what': release lock (${synchronizeLock.getQueueLength} in queue)")
       synchronizeLock.unlock()
     }
 }
@@ -36,10 +36,4 @@ final class Synchronizer(what: String)
 object Synchronizer {
   private val LogAfter = 100.ms
   private val logger = Logger(getClass)
-
-  private def ignoreException(body: => Unit) =
-    try body
-    catch {
-      case _: Throwable =>
-    }
 }
