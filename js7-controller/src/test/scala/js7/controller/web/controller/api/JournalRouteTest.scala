@@ -52,7 +52,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null
 
-  private lazy val webServer = AkkaWebServer.forTest(pathSegments("journal")(journalRoute))
+  private lazy val webServer = AkkaWebServer.forTest()(pathSegments("journal")(journalRoute))
   private lazy val uri = webServer.localUri
   private lazy val client = new AkkaHttpClient.Standard(uri, uriPrefixPath = "", actorSystem = system, name = "JournalRouteTest")
 

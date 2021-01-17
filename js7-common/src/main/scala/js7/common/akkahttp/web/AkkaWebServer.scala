@@ -151,8 +151,12 @@ object AkkaWebServer
     """
 
   @TestOnly
-  def forTest(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =
-    forTest(findFreeTcpPort(), ConfigFactory.empty, route = route)
+  def forTest()(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =
+    forTest(ConfigFactory.empty)(route)
+
+  @TestOnly
+  def forTest(config: Config)(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =
+    forTest(findFreeTcpPort(), config, route = route)
 
   @TestOnly
   def forTest(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)

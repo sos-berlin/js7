@@ -29,6 +29,7 @@ import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteArrayToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.https.Https.loadSSLContext
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
@@ -48,7 +49,6 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
 import scala.util.Success
 
 /**
@@ -108,11 +108,24 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .map(_
         .map(_.toByteArray)
         .flatMap(new ByteArrayToLinesObservable))
-      .onErrorRecover {
-        case akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
-          logger.debug("Return NoMoreElementsNeeded exception as empty Observable")
-          Observable.empty
-      }
+      .map(_.onErrorRecoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
+      .onErrorRecover(ignoreIdleTimeout)
+
+  private def endStreamOnNoMoreElementNeeded: PartialFunction[Throwable, Observable[Nothing]] = {
+    case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+      // On NoMoreElementsNeeded the Observable ends silently !!! Maybe harmless?
+      logger.warn(s"Ignore ${t.toString}")
+      if (t.getStackTrace.nonEmpty) logger.debug(s"Ignore $t", t)
+      Observable.empty
+  }
+
+  private def ignoreIdleTimeout: PartialFunction[Throwable, Observable[Nothing]] = {
+    case t: akka.stream.scaladsl.TcpIdleTimeoutException =>
+      // Idle timeout is silently ignored !!! Maybe harmless?
+      logger.warn(s"Ignore ${t.toString}")
+      if (t.getStackTrace.nonEmpty) logger.debug(s"Ignore $t", t)
+      Observable.empty
+  }
 
   /** HTTP Get with Accept: application/json. */
   final def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A] =

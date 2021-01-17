@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
+import akka.util.ByteString
 import cats.syntax.option._
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
@@ -22,12 +23,16 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.http.AkkaHttpClient.{HttpException, toPrettyProblem}
 import js7.common.http.AkkaHttpClientTest._
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
@@ -39,7 +44,8 @@ import scala.concurrent.duration._
   */
 final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser
 {
-  implicit private lazy val actorSystem = newActorSystem("AkkaHttpClientTest")
+  implicit private lazy val actorSystem = newActorSystem("AkkaHttpClientTest",
+    config"""akka.http.client.idle-timeout = 2s""")
 
   override def afterAll() = {
     closer.close()
@@ -85,14 +91,13 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
   }
 
   "With a server" - {
-    final case class A(int: Int)
     implicit val aJsonCodec = deriveCodec[A]
-
     lazy val webServer = {
-      val server = AkkaWebServer.forTest {
-        import CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
+      val server = AkkaWebServer.forTest() {
         decodeRequest {
+        import CirceJsonOrYamlSupport.jsonOrYamlMarshaller
           post {
+            import CirceJsonOrYamlSupport.jsonUnmarshaller
             entity(as[A]) { a =>
               path("OK") {
                 complete(OK -> A(a.int + 1))
@@ -107,7 +112,21 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
                 complete(InternalServerError -> "SERVER ERROR")
               }
             }
-          }
+          } ~
+            get {
+              path("STREAM") {
+                val source = Observable("ONE\n", "TWO\n")
+                  .map(ByteString(_))
+                  .toAkkaSourceForHttpResponse
+                complete(HttpEntity(`application/x-ndjson`, source))
+              } ~
+              path("IDLE-TIMEOUT") {
+                val source = Observable(ByteString("IDLE-TIMEOUT\n"))
+                  .delayExecution(5.s)
+                  .toAkkaSourceForHttpResponse
+                complete(HttpEntity(`application/x-ndjson`, source))
+              }
+            }
         }
       }.closeWithCloser
       server.start() await 99.s
@@ -156,6 +175,26 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       val t = intercept[HttpException](
         httpClient.post(Uri(s"$uri/SERVER-ERROR"), A(1)).await(99.s))
       assert(t.toString == s"""HTTP 500 Internal Server Error: POST $uri/SERVER-ERROR => "SERVER ERROR"""")
+    }
+
+    "getRawLinesObservable" in {
+      val result = Observable
+        .fromTask(httpClient.getRawLinesObservable(Uri(s"$uri/STREAM")))
+        .flatten
+        .toListL
+        .await(99.s)
+        .map(_.utf8String)
+      assert(result == List("ONE\n", "TWO\n"))
+    }
+
+    "getRawLinesObservable: idle-timeout yield an empty observable" in {
+      // AkkaHttpClient converts the TcpIdleTimeoutException to the empty Observable
+      val result = Observable
+        .fromTask(httpClient.getRawLinesObservable(Uri(s"$uri/IDLE-TIMEOUT")))
+        .flatten
+        .toListL
+        .await(99.s)
+      assert(result.isEmpty)
     }
 
     "close" in {
@@ -279,4 +318,6 @@ object AkkaHttpClientTest
       Some(Uri("https://example.com:9999/PREFIX")),
     Uri("/PREFIX/api?q=1") ->
       Some(Uri("https://example.com:9999/PREFIX/api?q=1")))
+
+  private final case class A(int: Int)
 }
