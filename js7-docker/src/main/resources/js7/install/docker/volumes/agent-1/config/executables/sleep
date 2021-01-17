@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 echo "$SCHEDULER_PARAM_HELLO"
 sleep 1

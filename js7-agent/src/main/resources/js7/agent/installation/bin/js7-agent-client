@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 . "${0%/*}/internal/set-context.sh"
 declare java classpathString

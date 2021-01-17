@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JOBSCHEDULER_HOME

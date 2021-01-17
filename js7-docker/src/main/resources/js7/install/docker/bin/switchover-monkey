@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 while echo -n "·" && sleep 1; do :; done &
 echoPid=$!

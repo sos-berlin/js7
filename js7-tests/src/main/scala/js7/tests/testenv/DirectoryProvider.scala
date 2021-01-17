@@ -379,7 +379,7 @@ object DirectoryProvider
           |""" + (delete ?? s"del $file\n")
     else
        s"""#!/usr/bin/env bash
-          |set -e
+          |set -euo pipefail
           |while [ ! -e '$file' ]; do
           |  sleep 0.1
           |done

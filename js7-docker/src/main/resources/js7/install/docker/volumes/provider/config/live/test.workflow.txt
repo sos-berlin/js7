@@ -53,7 +53,7 @@ define workflow {
       },
       script =
 ''#!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 echo "はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT"
 sleep 2

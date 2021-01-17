@@ -1,5 +1,5 @@
 #! /bin/bash
-set -e
+set -euo pipefail
 
 for project in base data controller-client; do :
   test -d $project || { echo "No such project: $project"; exit 1; }

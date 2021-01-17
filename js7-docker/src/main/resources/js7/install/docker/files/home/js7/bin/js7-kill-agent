@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 kill "$@" "$(cat /var/opt/js7/agent/data/state/pid)"

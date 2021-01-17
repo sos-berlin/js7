@@ -25,7 +25,7 @@ toSystemPath() {
   fi
 }
 
-if [ -z "$JS7_HOME" ]; then :
+if [ -z "${JS7_HOME:-}" ]; then :
   JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
   export JS7_HOME
 fi

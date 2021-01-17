@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shows the thread dump of the running JS7
-set -e
+set -euo pipefail
 
 pid="$(cat "$HOME"/data/state/pid)"
 jstack "$pid"

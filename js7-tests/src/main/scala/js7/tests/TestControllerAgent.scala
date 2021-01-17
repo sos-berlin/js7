@@ -83,9 +83,8 @@ object TestControllerAgent
                  |${(conf.jobDuration.toSeconds > 0) ?? s"ping -n ${conf.jobDuration.toSeconds + 1} 127.0.0.1 >nul"}
                  |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                  |""".stripMargin
-              else s"""
-                 |/usr/bin/env bash
-                 |set -e
+              else s"""#!/usr/bin/env bash
+                 |set -euo pipefail
                  |echo Hello ☘️
                  |for a in {1..${conf.stdoutSize / StdoutRowSize}}; do
                  |  echo "»${"x" * (StdoutRowSize - 2)}«"

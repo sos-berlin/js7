@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 export JS7_HOME=/opt/js7
 . "$JS7_HOME"/bin/internal/set-context.sh

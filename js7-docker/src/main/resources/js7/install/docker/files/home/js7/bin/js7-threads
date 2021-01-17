@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shows the threads (one per line) of running JS7
-set -e
+set -euo pipefail
 
 pid="$(cat "$HOME"/data/state/pid)"
 jstack "$pid" | grep 'prio=' | sort

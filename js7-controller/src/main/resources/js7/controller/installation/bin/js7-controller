@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 # JS7 Controller starter
 
@@ -155,4 +155,3 @@ while true; do
   echo
   echo "Starting again"
 done
-

@@ -21,7 +21,7 @@
       "agentId": "agent-2",
       "executable": {
         "TYPE": "ExecutableScript",
-        "script": "#!/usr/bin/env bash\nset -e\n\necho \"はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT\"\nsleep 2\nexit\n"
+        "script": "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT\"\nsleep 2\nexit\n"
       },
       "taskLimit": 3
     }
