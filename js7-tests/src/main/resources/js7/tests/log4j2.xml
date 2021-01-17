@@ -3,26 +3,39 @@
   <properties>
     <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
   </properties>
+
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
       <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
+
     <rollingRandomAccessFile name="file"
                              fileName="${logDirectory}/test.log"
-                             filePattern="${logDirectory}/test-%d{yyyy-MM-dd}-%i.log.gz">
-    <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
-                   charset="UTF-8"/>
-    <policies>
-      <onStartupTriggeringPolicy/>
-      <timeBasedTriggeringPolicy/>
-      <sizeBasedTriggeringPolicy size="1GB"/>
-    </policies>
-  </rollingRandomAccessFile>
+                             filePattern="${logDirectory}/test-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{DEFAULT_MICROS}  %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="controller-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="1d"/>
+            <ifAccumulatedFileSize exceeds="100MB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
   </appenders>
   <loggers>
     <root level="debug">
       <appenderRef level="warn" ref="stderr"/>
       <appenderRef level="info" ref="file"/>
     </root>
+    <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
   </loggers>
 </configuration>
