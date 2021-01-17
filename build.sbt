@@ -234,6 +234,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      scalaReflect ++  // TODO Avoid JVM dependencies here
       "org.typelevel" %%% "cats-core" % catsVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++

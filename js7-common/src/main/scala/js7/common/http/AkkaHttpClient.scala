@@ -133,7 +133,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B] =
     post2[A, B](uri, data, Nil)
 
-  final def postObservable[A: Encoder: TypeTag, B: Decoder](uri: Uri, data: Observable[A])
+  final def postObservable[A: Encoder, B: Decoder](uri: Uri, data: Observable[A])
     (implicit s: Task[Option[SessionToken]])
   : Task[B] =
     Task.deferAction(implicit s => Task(data

@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy.history
 
+import com.softwaremill.diffx.generic.auto._
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.eventbus.StandardEventBus

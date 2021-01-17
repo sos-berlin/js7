@@ -2,6 +2,7 @@ package js7.journal.state
 
 import akka.pattern.ask
 import akka.util.Timeout
+import com.softwaremill.diffx.generic.auto._
 import io.circe.generic.JsonCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path

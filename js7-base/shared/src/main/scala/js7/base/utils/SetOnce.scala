@@ -7,6 +7,8 @@ import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
 import scala.util.Success
 
+// TODO Avoid scala.reflect.runtime.universe._
+
 /**
  * Variable which can be set only once. Thread-safe.
  *

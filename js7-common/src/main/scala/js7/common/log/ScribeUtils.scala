@@ -3,6 +3,7 @@ package js7.common.log
 import java.util.concurrent.ConcurrentHashMap
 import scribe.format.Formatter
 import scribe.output.LogOutput
+import scribe.output.format.OutputFormat
 import scribe.{Level, LogRecord}
 
 object ScribeUtils
@@ -33,28 +34,28 @@ object ScribeUtils
   }
 
   private object Log4jWriter extends scribe.writer.Writer {
-    def write[M](record: LogRecord[M], output: LogOutput): Unit = {
+    def write[M](record: LogRecord[M], output: LogOutput, outputFormat: OutputFormat): Unit = {
       val slf4jLogger = classToLoggerCache.computeIfAbsent(record.className,
         o => org.slf4j.LoggerFactory.getLogger(classToLoggerName(o)))
       if (record.level.value >= Level.Error.value) {
         if (slf4jLogger.isErrorEnabled) {
-          slf4jLogger.error("{}", record.m, record.throwable.orNull)
+          slf4jLogger.error("{}", record.message.value, record.throwable.orNull)
         }
       } else if (record.level.value >= Level.Warn.value) {
         if (slf4jLogger.isWarnEnabled) {
-          slf4jLogger.warn("{}", record.m, record.throwable.orNull)
+          slf4jLogger.warn("{}", record.message.value, record.throwable.orNull)
         }
       } else if (record.level.value >= Level.Info.value) {
         if (slf4jLogger.isInfoEnabled) {
-          slf4jLogger.info("{}", record.m, record.throwable.orNull)
+          slf4jLogger.info("{}", record.message.value, record.throwable.orNull)
         }
       } else if (record.level.value >= Level.Debug.value) {
         if (slf4jLogger.isDebugEnabled) {
-          slf4jLogger.debug("{}", record.m, record.throwable.orNull)
+          slf4jLogger.debug("{}", record.message.value, record.throwable.orNull)
         }
       } else {
         if (slf4jLogger.isTraceEnabled) {
-          slf4jLogger.trace("{}", record.m, record.throwable.orNull)
+          slf4jLogger.trace("{}", record.message.value, record.throwable.orNull)
         }
       }
     }

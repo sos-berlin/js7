@@ -9,6 +9,7 @@ import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
+import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.Path

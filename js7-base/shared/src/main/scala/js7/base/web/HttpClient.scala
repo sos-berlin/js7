@@ -8,7 +8,6 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
 
 /**
@@ -26,7 +25,7 @@ trait HttpClient
 
   def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B]
 
-  def postObservable[A: Encoder: TypeTag, B: Decoder](uri: Uri, data: Observable[A])(implicit s: Task[Option[SessionToken]]): Task[B]
+  def postObservable[A: Encoder, B: Decoder](uri: Uri, data: Observable[A])(implicit s: Task[Option[SessionToken]]): Task[B]
 
   @TestOnly
   def postObservableJsonString(uri: Uri, data: Observable[String])(implicit s: Task[Option[SessionToken]]): Task[Json]

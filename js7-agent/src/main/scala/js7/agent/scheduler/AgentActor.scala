@@ -3,6 +3,7 @@ package js7.agent.scheduler
 import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import cats.data.EitherT
+import com.softwaremill.diffx.generic.auto._
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import js7.agent.data.Problems.{AgentIsShuttingDown, ControllerAgentMismatch, DuplicateAgentRef, UnknownController}

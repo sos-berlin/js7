@@ -3,6 +3,7 @@ package js7.agent.scheduler.order
 import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
+import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.{Config, ConfigValueFactory}
 import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration

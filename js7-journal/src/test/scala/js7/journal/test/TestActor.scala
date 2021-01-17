@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
+import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.Config
 import java.util.UUID
 import js7.base.time.ScalaTime._

@@ -1,6 +1,7 @@
 package js7.data.workflow
 
 import cats.syntax.show._
+import com.softwaremill.diffx.generic.auto._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
