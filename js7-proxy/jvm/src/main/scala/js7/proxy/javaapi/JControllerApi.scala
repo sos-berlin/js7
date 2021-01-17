@@ -35,7 +35,11 @@ import scala.jdk.OptionConverters._
 
 @javaApi
 final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit scheduler: Scheduler)
+extends AutoCloseable
 {
+  def close() =
+    asScala.close()
+
   /** Fetch event stream from Controller. */
   @Nonnull
   def eventFlux(@Nonnull proxyEventBus: JStandardEventBus[ProxyEvent]): Flux[JEventAndControllerState[Event]] =

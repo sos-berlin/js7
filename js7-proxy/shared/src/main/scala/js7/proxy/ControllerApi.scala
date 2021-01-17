@@ -34,10 +34,17 @@ final class ControllerApi(
   apiResources: Seq[Resource[Task, HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default)
 extends ControllerApiWithHttp
+with AutoCloseable
 {
   protected val apiResource: Resource[Task, HttpControllerApi] =
     JournaledProxy.selectActiveNodeApi(apiResources,
       onCouplingError = api => t => api.logError(t).void)
+
+  /** No operation, but this may change in future. */
+  def close() = {}
+
+  def stop: Task[Unit] =
+    Task.unit
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean): Task[EventAndState[Event, ControllerState]] =
