@@ -8,6 +8,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.AkkaHttpUtils
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
@@ -80,8 +81,9 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
       }
     }"""
 
-  protected val gateKeeper = new GateKeeper(WebServerBinding.Http, GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
-  protected final val sessionRegister = SessionRegister.start[SimpleSession](
+  protected lazy val gateKeeper = new GateKeeper(WebServerBinding.Http,
+    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
+  protected final lazy val sessionRegister = SessionRegister.start[SimpleSession](
     actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
   private val shuttingDown = Promise[Deadline]()
   protected val whenShuttingDown = shuttingDown.future
@@ -99,7 +101,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
   private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
     protected implicit def actorSystem = GenericEventRouteTest.this.actorSystem
     protected val config = GenericEventRouteTest.this.config
-    protected val bindings = WebServerBinding.Http(new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())) :: Nil
+    protected val bindings = WebServerBinding.Http(
+      new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())) :: Nil
     protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
       AkkaWebServer.BoundRoute(route, whenTerminating)
   }
@@ -117,6 +120,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
 
   override def beforeAll() = {
     super.beforeAll()
+    AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
     server.start() await 99.s
   }
 
@@ -170,6 +174,21 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
         val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=60"))
         assert(stampedSeq.head.eventId == 70)
         assert(stampedSeq.last.eventId == 90)
+      }
+
+      "Repeatedly" in {
+        for (_ <- 1 to 1000) {
+          locally {
+            val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=30"))
+            assert(stampedSeq.head.eventId == 40)
+            assert(stampedSeq.last.eventId == 60)
+          }
+          locally {
+            val stampedSeq = getEventsByUri(Uri("/event?limit=3&after=60"))
+            assert(stampedSeq.head.eventId == 70)
+            assert(stampedSeq.last.eventId == 90)
+          }
+        }
       }
 
       "/event?limit=1&after=70 rewind in last chunk" in {
@@ -251,6 +270,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
       }
 
       "completes a observable request, before observable started" in {
+        // Shut down service, try again, in case the previous test failed
+        shuttingDown.trySuccess(now)
         val observableCompleted = getEventObservable(EventRequest.singleClass[Event](after = eventWatch.lastAddedEventId, timeout = Some(99.s)))
           .completedL.runToFuture
         // Previous test has already shut down the service

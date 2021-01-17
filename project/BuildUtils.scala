@@ -15,8 +15,8 @@ object BuildUtils
   val isMac = sys.props("os.name") startsWith "Mac OS"
 
   private val CommitHashLength = 7
-
   private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
+  private val logger = org.slf4j.LoggerFactory.getLogger(getClass)
 
   if (sys.props("java.runtime.version") startsWith "1.8.0_15") {  // Special for Java 8u151 or Java 8u152 (delete this)
     Security.setProperty("crypto.policy", "unlimited")
@@ -101,4 +101,7 @@ object BuildUtils
   implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID]) extends AnyVal {
     def %(configurations: String) = delegate.map(_ % configurations)
   }
+
+  // Initial call to Logger for proper slf4j and log4j initialization ???
+  logger.info(s"Building $prettyVersion, test.parallel=$testParallelization")
 }

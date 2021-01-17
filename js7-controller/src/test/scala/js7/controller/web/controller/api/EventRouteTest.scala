@@ -12,11 +12,14 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.Threads.allThreadStackTraces
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceJsonSupport._
 import js7.common.http.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
 import js7.common.scalautil.Futures.implicits._
+import js7.common.scalautil.Logger
 import js7.controller.web.controller.api.EventRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -30,6 +33,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -43,6 +47,13 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   protected implicit def scheduler: Scheduler = Scheduler.global
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]()
   protected def eventWatch = eventCollector.eventWatch
+
+  override protected def config = config"""
+    akka.actor.default-dispatcher.fork-join-executor {
+      parallelism-min = 1
+      parallelism-factor = 0
+      parallelism-max = 2
+    }""" withFallback super.config
 
   private val route = pathSegments("event")(eventRoute)
 
@@ -258,6 +269,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
     }
 
     "/event?v=XXX&after=0, buildId changed" in {
+    try
       Get(s"/event?v=XXX&after=0") ~> Accept(`text/event-stream`) ~> `Last-Event-ID`("20") ~> route ~> check {
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
         assert(response.entity.contentType == ContentType(`text/event-stream`))
@@ -268,6 +280,10 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
             |""".stripMargin)
         assert(string.drop(5).parseJsonOrThrow.as[Problem].orThrow.toString == "BUILD-CHANGED")
       }
+    catch { case NonFatal(t) =>
+      allThreadStackTraces() foreach { Logger(this.getClass).debug(_) }
+      throw t
+    }
     }
   }
 }
