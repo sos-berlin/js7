@@ -77,6 +77,7 @@ extends Actor with Stash
   private var commitDeadline: Deadline = null
   private var delayedCommit = SerialCancelable()
   private var totalEventCount = 0L
+  private var fileEventCount = 0L
   private var requireClusterAcknowledgement = false
   private var releaseEventIdsDueToClusterCoupled = false
   private val waitingForAcknowledgeTimer = SerialCancelable()
@@ -190,6 +191,8 @@ extends Actor with Stash
                 StandardPersist(totalEventCount + 1, stampedEvents, since, lastFileLengthAndEventId, replyTo, sender(), callersItem))
             }
             totalEventCount += stampedEvents.size
+            fileEventCount += stampedEvents.size
+
             stampedEvents.lastOption match {
               case Some(Stamped(_, _, KeyedEvent(_, _: ClusterCoupled))) =>
                 // Commit now to let Coupled event take effect on following events (avoids deadlock)
@@ -425,8 +428,9 @@ extends Actor with Stash
   }
 
   private def maybeDoASnapshot(): Unit = {
-    if (eventWriter.bytesWritten > conf.snapshotSizeLimit && snapshotRequesters.isEmpty &&
-        persistBuffer.eventCount >= 2 * journaledState.estimatedSnapshotSize)
+    if (snapshotRequesters.isEmpty &&
+      eventWriter.bytesWritten >= conf.snapshotSizeLimit &&
+      fileEventCount >= 2 * journaledState.estimatedSnapshotSize)
     {
       logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
       snapshotRequesters += self
@@ -598,6 +602,7 @@ extends Actor with Stash
       lastAcknowledgedEventId = lastWrittenEventId
     }
     totalEventCount += 1
+    fileEventCount = 1
     lastSnapshotTakenEventId = snapshotTaken.eventId
     snapshotWriter.closeAndLog()
 
