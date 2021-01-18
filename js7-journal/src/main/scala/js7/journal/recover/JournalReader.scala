@@ -230,9 +230,12 @@ extends AutoCloseable
                   //  the transaction buffer should not be cleared.
                   //  Or seek(position before transaction) ?
                   transaction.clear() // File ends before transaction is committed.
+
                 case Some(PositionAnd(_, Commit)) =>
                   transaction.commit()
-                case Some(o) if o.value.isObject =>
+
+                case Some(o) =>
+                  if (!o.value.isObject) sys.error(s"Unexpected JSON value in transaction: $o")
                   transaction.add(o.copy(value = deserialize(o.value)))
                   loop()
               }

@@ -3,7 +3,7 @@ package js7.proxy.javaapi.data.common
 import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.problem.{Checked, Problem}
-import js7.data.value.{BooleanValue, ListValue, NamedValues, NumericValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NamedValues, NumericValue, ObjectValue, StringValue, Value}
 import scala.jdk.CollectionConverters._
 
 object JavaUtils
@@ -40,5 +40,6 @@ object JavaUtils
       case NumericValue(o) => o
       case StringValue(o) => o
       case ListValue(values) => values.asJava
+      case ObjectValue(nameToValue) => throw new NotImplementedError
     }
 }

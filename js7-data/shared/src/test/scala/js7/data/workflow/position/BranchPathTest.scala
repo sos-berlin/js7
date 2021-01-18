@@ -52,15 +52,15 @@ final class BranchPathTest extends AnyFreeSpec
 
   "PositionAndBranchId" in {
     intercept[MatchError] {
-      Nil match {
+      (Nil: @unchecked) match {
         //case Nil =>
         case BranchPath.PositionAndBranchId(_, _) =>
       }
     }
-    Segment(1, "BRANCH") :: Nil match {
+    (Segment(1, "BRANCH") :: Nil: @unchecked) match {
       case BranchPath.PositionAndBranchId(Position(Nil, InstructionNr(1)), BranchId.Named("BRANCH")) =>
     }
-    Segment(1, "A") :: Segment(3, "B") :: Nil match {
+    (Segment(1, "A") :: Segment(3, "B") :: Nil: @unchecked) match {
       case BranchPath.PositionAndBranchId(
         Position(Segment(InstructionNr(1), BranchId.Named("A")) :: Nil, InstructionNr(3)),
         BranchId.Named("B")) =>

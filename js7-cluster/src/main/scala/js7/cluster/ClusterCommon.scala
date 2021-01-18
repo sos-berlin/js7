@@ -44,7 +44,7 @@ private[cluster] final class ClusterCommon(
   private val _clusterWatchSynchronizer = AtomicAny[Option[ClusterWatchSynchronizer]](None)
 
   def stop: Task[Completed] =
-    _clusterWatchSynchronizer.get match {
+    _clusterWatchSynchronizer.get() match {
       case None => Task.completed
       case Some(o) =>
         Task.defer {
@@ -55,7 +55,7 @@ private[cluster] final class ClusterCommon(
 
   def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] = {
     import clusterState.setting
-    _clusterWatchSynchronizer.get match {
+    _clusterWatchSynchronizer.get() match {
       case None =>
         val result = initialClusterWatchSynchronizer(clusterState)
         Task.pure(result)
@@ -72,7 +72,7 @@ private[cluster] final class ClusterCommon(
   }
 
   def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes): ClusterWatchSynchronizer =
-    _clusterWatchSynchronizer.get match {
+    _clusterWatchSynchronizer.get() match {
       case Some(o) =>
         // Only after ClusterFailedOver or ClusterSwitchedOver,
         // because PassiveClusterNode has already started the ClusterWatchSynchronizer
