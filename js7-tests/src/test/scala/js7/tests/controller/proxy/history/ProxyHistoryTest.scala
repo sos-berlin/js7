@@ -90,38 +90,45 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
           while (!finished && rounds <= 100) {
             logger.info(s"Round $rounds")
             var proxyStartedReceived = false
-            controllerApi.eventAndStateObservable(new StandardEventBus, Some(lastState.eventId))
-              .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
-              .takeWhileInclusive {
-                case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
-                  finished = true
-                  false
-                case _=>
-                  true
-              }
-              .take(3)  // Process two events (and initial ProxyStarted) each test round
-              .doOnNext(es => Task {
-                es.stampedEvent.value.event match {
-                  case ProxyStarted =>
-                    assert(!proxyStartedReceived)
-                    proxyStartedReceived = true
-                    es.state should matchTo(lastState)
-                  case _ =>
-                    assert(lastState.eventId < es.stampedEvent.eventId)
+            try {
+              controllerApi.eventAndStateObservable(new StandardEventBus, Some(lastState.eventId))
+                .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
+                .takeWhileInclusive {
+                  case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
+                    finished = true
+                    false
+                  case _=>
+                    true
                 }
-                lastState = es.state
-                var keyedEvent = es.stampedEvent.value
-                for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
-                  keyedEvent = keyedEvent.copy(event = controllerReady.copy(totalRunningTime = 333.s))
-                }
-                es.stampedEvent.value match {
-                  case KeyedEvent(orderId: OrderId, event: OrderEvent) => keyedEvents += orderId <-: event
-                  case _ =>
-                }
-              })
-              .completedL
-              .await(99.s)
-            assert(proxyStartedReceived)
+                .take(3)  // Process two events (and initial ProxyStarted) each test round
+                .doOnNext(es => Task {
+                  es.stampedEvent.value.event match {
+                    case ProxyStarted =>
+                      assert(!proxyStartedReceived)
+                      proxyStartedReceived = true
+                      es.state should matchTo(lastState)
+                    case _ =>
+                      assert(lastState.eventId < es.stampedEvent.eventId)
+                  }
+                  lastState = es.state
+                  var keyedEvent = es.stampedEvent.value
+                  for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
+                    keyedEvent = keyedEvent.copy(event = controllerReady.copy(totalRunningTime = 333.s))
+                  }
+                  es.stampedEvent.value match {
+                    case KeyedEvent(orderId: OrderId, event: OrderEvent) => keyedEvents += orderId <-: event
+                    case _ =>
+                  }
+                })
+                .completedL
+                .await(99.s)
+              assert(proxyStartedReceived)
+            }
+            catch { case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+              // TODO NoMoreElementsNeeded occurs occasionally for unknown reason
+              // Anyway, the caller should repeat the call.
+              logger.error(s"Ignore ${t.toString}")
+            }
             rounds += 1
           }
           assert(rounds > 2)
