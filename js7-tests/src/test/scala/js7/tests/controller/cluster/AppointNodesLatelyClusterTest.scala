@@ -13,7 +13,8 @@ import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.utils.FreeTcpPortFinder
+import js7.common.time.WaitForCondition.waitForCondition
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.data.ControllerCommand.{ClusterAppointNodes, ShutDown}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSettingUpdated}
 import js7.data.cluster.ClusterSetting
@@ -32,7 +33,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
 
   "ClusterAppointNodes command after first journal file has been deleted, then change Backup's URI" in {
     withControllerAndBackupWithoutAgents() { (primary, backup, clusterSetting) =>
-      val otherClusterWatchPort = FreeTcpPortFinder.findFreeTcpPort()
+      val otherClusterWatchPort = findFreeTcpPort()
 
       for (directoryProvider <- Seq(primary, backup)) {
         // Copy password for otherClusterWatch
@@ -63,11 +64,12 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         ).orThrow
         primaryController.eventWatch.await[ClusterCoupled]()
 
-        val orderId = OrderId("🔸")
-        primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-        primaryController.eventWatch.await[OrderFinished](_.key == orderId)
-        backupController.eventWatch.await[OrderFinished](_.key == orderId)
-
+        locally {
+          val orderId = OrderId("🔸")
+          primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
+          primaryController.eventWatch.await[OrderFinished](_.key == orderId)
+          backupController.eventWatch.await[OrderFinished](_.key == orderId)
+        }
 
         // PREPARE CHANGING BACKUP NODE
         val primaryUri = clusterSetting.idToUri(primaryId)
@@ -83,58 +85,66 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         assert(primaryController.executeCommandForTest(clusterAppointNodes) == Left(ClusterSettingNotUpdatable))
 
         // CHANGE BACKUP URI WHEN PASSIVE IS LOST
-        val eventId = primaryController.eventWatch.lastAddedEventId
-        backupController.terminate() await 99.s
-        primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
-        primaryController.executeCommandForTest(clusterAppointNodes).orThrow
-        primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
-
-        backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
-
-        primaryController.eventWatch.await[ClusterCoupled](after = eventId)
-        backupController.eventWatch.await[ClusterCoupled](after = eventId)
-
-        assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
-        assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
-
         locally {
-          // CHANGE CLUSTER WATCH
-
-          // Terminate ClusterWatch
-          agents.map(_.terminate()).await(99.s)
-
-          // Start new ClusterWatch
-          val bAgent = {
-            val conf = primary.agentToTree(primary.agentRefs.head.id).agentConfiguration
-            RunningAgent.startForTest(conf.copy(webServerPorts = Seq(WebServerPort.localhost(otherClusterWatchPort)))).await(99.s)
-          }
-          assert(bAgent.localUri != updatedBackupSetting.clusterWatchUri)
-          assert(bAgent.localUri != primary.agents.head.localUri)
-          val watchSetting = updatedBackupSetting.copy(
-            clusterWatches = updatedBackupSetting.clusterWatches.map(o => ClusterSetting.Watch(bAgent.localUri)))
-          assert(watchSetting != updatedBackupSetting)
-
           val eventId = primaryController.eventWatch.lastAddedEventId
-          primaryController.executeCommandForTest(
-            ClusterAppointNodes(watchSetting.idToUri, watchSetting.activeId, watchSetting.clusterWatches)
-          ).orThrow
-
+          backupController.terminate() await 99.s
+          primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
+          primaryController.executeCommandForTest(clusterAppointNodes).orThrow
           primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
-          backupController.eventWatch.await[ClusterSettingUpdated](after = eventId)
 
-          assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == watchSetting)
-          assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == watchSetting)
+          backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
-          val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type].runToFuture
-          primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
-            .await(99.s)
-          backupController.eventWatch.await[ClusterFailedOver](after = eventId)
-          whenClusterWatchAgrees await 99.s
-          bAgent.terminate() await 90.s
+          primaryController.eventWatch.await[ClusterCoupled](after = eventId)
+          backupController.eventWatch.await[ClusterCoupled](after = eventId)
+
+          assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
+          assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
         }
+
+        // CHANGE CLUSTER WATCH
+
+        // Terminate ClusterWatch
+        agents.map(_.terminate()).await(99.s)
+
+        // Start new ClusterWatch
+        val bAgentUri = Uri(s"http://127.0.0.1:$otherClusterWatchPort")
+        assert(bAgentUri != updatedBackupSetting.clusterWatchUri)
+        assert(bAgentUri != primary.agents.head.localUri)
+        val watchSetting = updatedBackupSetting.copy(
+          clusterWatches = updatedBackupSetting.clusterWatches.map(_ => ClusterSetting.Watch(bAgentUri)))
+        assert(watchSetting != updatedBackupSetting)
+
+        val bAgent = {
+          val conf = primary.agentToTree(primary.agentRefs.head.id).agentConfiguration
+          RunningAgent.startForTest(conf.copy(webServerPorts = Seq(WebServerPort.localhost(otherClusterWatchPort)))).await(99.s)
+        }
+        assert(bAgent.localUri == bAgentUri)
+
+        val eventId = primaryController.eventWatch.lastAddedEventId
+        primaryController.executeCommandForTest(
+          ClusterAppointNodes(watchSetting.idToUri, watchSetting.activeId, watchSetting.clusterWatches)
+        ).orThrow
+
+        primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
+        backupController.eventWatch.await[ClusterSettingUpdated](after = eventId)
+
+        assert(primaryController.clusterState.await(99.s).isNonEmptyActive(primaryId))
+        assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == watchSetting)
+        assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == watchSetting)
+
+        val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type].runToFuture
+        primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
+          .await(99.s)
+        backupController.eventWatch.await[ClusterFailedOver](after = eventId)
+
+        waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isNonEmptyActive(backupId))
+        assert(backupController.clusterState.await(99.s).isNonEmptyActive(backupId))
+
+        whenClusterWatchAgrees await 99.s
 
         primaryController.terminate() await 99.s
         backupController.terminate() await 99.s
+        bAgent.terminate() await 90.s
       }
     }
   }

@@ -290,6 +290,9 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
             .flatMap { o =>
               clusterWatchSynchronizer = o
               clusterWatchSynchronizer.startHeartbeating(state)
+              //, dontWait = true*
+              // The new ClusterWatch must run before the ClusterAppointNodes command.
+              // See also calling appointNodes and stopHeartbeatingTemporarily.
             }
         }
     }

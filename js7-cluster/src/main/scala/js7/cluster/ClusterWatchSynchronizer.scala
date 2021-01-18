@@ -11,7 +11,6 @@ import js7.cluster.ClusterWatchSynchronizer._
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
-import js7.data.cluster.ClusterEvent.ClusterSettingUpdated
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
@@ -55,12 +54,12 @@ private final class ClusterWatchSynchronizer(
         startHeartbeating(clusterState)
           .map(Right.apply))
 
-  def startHeartbeating(clusterState: HasNodes): Task[Completed] =
+  def startHeartbeating(clusterState: HasNodes, dontWait: Boolean = false): Task[Completed] =
     Task.defer {
       val h = new Heartbeat(clusterState)
       heartbeat.getAndSet(Some(h))
         .fold(Task.completed)(_.stop) /*just in case*/
-        .flatMap(_ => h.start)
+        .flatMap(_ => h.doAHeartbeat.unless(dontWait) >> h.startDontWait)
     }
 
   def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): Task[Completed] =
@@ -76,10 +75,7 @@ private final class ClusterWatchSynchronizer(
     private val stopping = MVar.empty[Task, Unit]().memoize
     private val heartbeat = MVar.empty[Task, Fiber[Completed]]().memoize
 
-    def start: Task[Completed] =
-      doAHeartbeat >> continueAsync
-
-    private def continueAsync =
+    def startDontWait =
       Task.defer {
         logger.debug(s"Heartbeat ($nr) continues with $clusterState")
         sendHeartbeats

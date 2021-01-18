@@ -71,27 +71,27 @@ private[cluster] final class ClusterCommon(
     }
   }
 
-  def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes): ClusterWatchSynchronizer = {
-    import clusterState.setting
+  def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes): ClusterWatchSynchronizer =
     _clusterWatchSynchronizer.get match {
       case Some(o) =>
         // Only after ClusterFailedOver or ClusterSwitchedOver,
         // because PassiveClusterNode has already started the ClusterWatchSynchronizer
-        assertThat(clusterState.isInstanceOf[FailedOver] ||
-          clusterState.isInstanceOf[SwitchedOver])
+        assertThat(clusterState.isInstanceOf[FailedOver] || clusterState.isInstanceOf[SwitchedOver])
         o
 
       case None =>
-        val result = new ClusterWatchSynchronizer(ownId,
+        import clusterState.setting
+        val result = new ClusterWatchSynchronizer(
+          ownId,
           newClusterWatchApi(setting.clusterWatchUri),
           setting.timing)
         assertThat(result.uri == setting.clusterWatchUri)
 
         if (_clusterWatchSynchronizer.getAndSet(Some(result)).isDefined)
           throw new IllegalStateException("initialClusterWatchSynchronizer")
+
         result
     }
-  }
 
   private def newClusterWatchApi(uri: Uri): HttpClusterWatch =
     new HttpClusterWatch(
