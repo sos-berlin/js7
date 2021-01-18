@@ -2,14 +2,14 @@ package js7.controller.web.controller.api.order
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound}
+import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, UnsupportedMediaType}
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import cats.syntax.flatMap._
 import io.circe.Json
-import js7.base.auth.ValidUserPermission
+import js7.base.auth.{SimpleUser, ValidUserPermission}
 import js7.base.circeutils.CirceUtils._
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
@@ -27,7 +27,7 @@ import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import js7.controller.OrderApi
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{AddOrder, AddOrders}
+import js7.controller.data.ControllerCommand.{AddOrder, AddOrders, RemoveOrdersWhenTerminated}
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.order.OrderRoute._
 import js7.core.command.CommandMeta
@@ -107,7 +107,10 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                         }
                     }
                 }))
-        }
+        } ~
+          pathPrefix("RemoveOrdersWhenTerminated")(
+            pathEnd(
+              removeOrdersWhenTerminated(user)))
       } ~
       get {
         pathEnd {
@@ -133,6 +136,25 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
         }
       }
     }
+
+  private def removeOrdersWhenTerminated(user: SimpleUser): Route =
+    withSizeLimit(entitySizeLimit)(
+      entity(as[HttpEntity])(httpEntity =>
+        if (httpEntity.contentType != `application/x-ndjson`.toContentType)
+          complete(UnsupportedMediaType)
+        else
+          completeTask(
+            httpEntity
+              .dataBytes
+              .toObservable
+              .map(_.toByteArray)
+              .flatMap(new ByteArrayToLinesObservable)
+              .mapParallelOrderedBatch()(_
+                .parseJsonAs[OrderId].orThrow)
+              .toL(Vector)
+              .map(RemoveOrdersWhenTerminated(_))
+              .flatMap(executeCommand(_, CommandMeta(user)))
+              .map(_.map(o => o: ControllerCommand.Response)))))
 
   private def singleOrder(orderId: OrderId): Route =
     completeTask(

@@ -21,7 +21,7 @@ import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemOperation, ItemPath, SimpleItem, VersionId, VersionedItem, VersionedItemSigner, VersionedItems}
 import js7.data.node.NodeId
-import js7.data.order.FreshOrder
+import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.ProxyEvent
@@ -54,12 +54,14 @@ with AutoCloseable
       .map(_.getOrElse(throw new EndOfEventStreamException))
 
   /** Read events and state from Controller. */
-  def eventAndStateObservable(proxyEventBus: StandardEventBus[ProxyEvent], eventId: Option[EventId])
+  def eventAndStateObservable(
+    proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
+    eventId: Option[EventId] = None)
   : Observable[EventAndState[Event, ControllerState]] =
     JournaledProxy.observable(apiResources, eventId, proxyEventBus.publish, proxyConf)
 
   def startProxy(
-    proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus[ProxyEvent],
+    proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : Task[ControllerProxy] =
     ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)
@@ -116,6 +118,16 @@ with AutoCloseable
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
     executeCommand(ControllerCommand.AddOrder(order))
       .mapt(o => !o.ignoredBecauseDuplicate)
+
+  def removeOrdersWhenTerminated(orderIds: Observable[OrderId])
+  : Task[Checked[ControllerCommand.Response.Accepted]] =
+    untilReachable(_
+      .postObservable[OrderId, Json](
+        "controller/api/order/RemoveOrdersWhenTerminated",
+        orderIds))
+      .map(_.flatMap(_
+        .checkedAs[ControllerCommand.Response]
+        .map(_.asInstanceOf[ControllerCommand.Response.Accepted])))
 
   def releaseEvents(eventId: EventId): Task[Checked[Completed]] =
     executeCommand(ReleaseEvents(eventId))

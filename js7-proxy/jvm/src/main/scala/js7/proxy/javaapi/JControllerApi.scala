@@ -7,10 +7,9 @@ import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
-import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.base.web.Uri
 import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, RemoveOrdersWhenTerminated, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
+import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.cluster.ClusterSetting
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.node.NodeId
@@ -19,7 +18,6 @@ import js7.proxy.ControllerApi
 import js7.proxy.data.ProxyEvent
 import js7.proxy.javaapi.data.agent.JAgentRef
 import js7.proxy.javaapi.data.command.{JCancelMode, JSuspendMode}
-import js7.proxy.javaapi.data.common.JavaUtils.Void
 import js7.proxy.javaapi.data.common.ReactorConverters._
 import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.controller.{JControllerCommand, JControllerState, JEventAndControllerState}
@@ -217,7 +215,14 @@ extends AutoCloseable
 
   @Nonnull
   def removeOrdersWhenTerminated(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
-    execute(RemoveOrdersWhenTerminated(orderIds.asScala.toVector))
+    removeOrdersWhenTerminated(Flux.fromIterable(orderIds))
+
+  @Nonnull
+  def removeOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+    asScala.removeOrdersWhenTerminated(orderIds.asObservable)
+      .map(_.toVoidVavr)
+      .runToFuture
+      .asJava
 
   @Nonnull
   def releaseEvents(until: EventId): CompletableFuture[VEither[Problem, Void]] =
@@ -225,7 +230,6 @@ extends AutoCloseable
 
   private def execute(command: ControllerCommand): CompletableFuture[VEither[Problem, Void]] =
     asScala.executeCommand(command)
-      .mapt(_ => Void)
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
@@ -233,7 +237,6 @@ extends AutoCloseable
   @Nonnull
   def takeSnapshot(): CompletableFuture[VEither[Problem, Void]] =
     asScala.executeCommand(TakeSnapshot)
-      .mapt(_ => Void)
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
