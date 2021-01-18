@@ -143,8 +143,17 @@ with AutoCloseable
     untilReachable(_.snapshot())
 
   private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
-    apiResource.use(api =>
-      HttpClient.liftProblem(
+    HttpClient.liftProblem(
+      apiResource.use(api =>
         api.retryUntilReachable()(
           body(api))))
+}
+
+object ControllerApi
+{
+  def resource(
+    apiResources: Seq[Resource[Task, HttpControllerApi]],
+    proxyConf: ProxyConf = ProxyConf.default)
+  : Resource[Task, ControllerApi] =
+    Resource.make(Task { new ControllerApi(apiResources, proxyConf) })(_.stop)
 }

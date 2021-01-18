@@ -33,7 +33,7 @@
   </appenders>
   <loggers>
     <root level="debug">
-      <appenderRef level="warn" ref="stderr"/>
+      <appenderRef level="info" ref="stderr"/>
       <appenderRef level="info" ref="file"/>
     </root>
     <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>

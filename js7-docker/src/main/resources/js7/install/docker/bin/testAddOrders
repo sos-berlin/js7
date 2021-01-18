@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
+
+test -d volumes || (echo "Missing 'volumes' directory" && exit 1)
+
+mkdir -p volumes/testAddOrders/data/logs
+
+dir="$PWD/volumes/testAddOrders"
+rm -rf "${dir:?}"/*
+docker run \
+  --volume="$dir":/var/opt/js7/testAddOrders \
+  --network=js7_default \
+  --rm --name=TestAddOrders \
+  js7 \
+  testAddOrders "$@"

@@ -1,0 +1,484 @@
+{
+  "instructions": [
+    {
+      "TYPE": "Execute.Named",
+      "jobName": "job1",
+      "label": "step1",
+      "defaultArguments": {
+        "name3": "value3",
+        "name2": "value2",
+        "name1": "value1"
+      }
+    },
+    {
+      "TYPE": "Fork",
+      "branches": [
+        {
+          "id": "branch1",
+          "workflow": {
+            "instructions": [
+              {
+                "TYPE": "Execute.Named",
+                "jobName": "job1_1a",
+                "label": "step1_1a"
+              },
+              {
+                "TYPE": "Fork",
+                "branches": [
+                  {
+                    "id": "branch1b",
+                    "workflow": {
+                      "instructions": [
+                        {
+                          "TYPE": "Execute.Named",
+                          "jobName": "job1_1b",
+                          "label": "step1_1b",
+                          "defaultArguments": {
+                            "name3": "value3",
+                            "name2": "value2",
+                            "name1": "value1"
+                          }
+                        },
+                        {
+                          "TYPE": "Fork",
+                          "branches": [
+                            {
+                              "id": "branch1b_1",
+                              "workflow": {
+                                "instructions": [
+                                  {
+                                    "TYPE": "Execute.Named",
+                                    "jobName": "job1_1b_1",
+                                    "label": "step1_1b_1",
+                                    "defaultArguments": {
+                                      "name3": "value3",
+                                      "name2": "value2",
+                                      "name1": "value1"
+                                    }
+                                  },
+                                  {
+                                    "TYPE": "Fork",
+                                    "branches": [
+                                      {
+                                        "id": "bra1b_1a",
+                                        "workflow": {
+                                          "instructions": [
+                                            {
+                                              "TYPE": "Execute.Named",
+                                              "jobName": "job1_1b_1a",
+                                              "label": "step1_1b_1a",
+                                              "defaultArguments": {
+                                                "name3": "value3",
+                                                "name2": "value2",
+                                                "name1": "value1"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      {
+                                        "id": "bra1b_1b",
+                                        "workflow": {
+                                          "instructions": [
+                                            {
+                                              "TYPE": "Execute.Named",
+                                              "jobName": "job1_1b_1b",
+                                              "label": "step1_1b_1b",
+                                              "defaultArguments": {
+                                                "name3": "value3",
+                                                "name2": "value2",
+                                                "name1": "value1"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "id": "branch1_b2",
+                              "workflow": {
+                                "instructions": [
+                                  {
+                                    "TYPE": "Execute.Named",
+                                    "jobName": "job1_1b_2",
+                                    "label": "step1_1b_2",
+                                    "defaultArguments": {
+                                      "name3": "value3",
+                                      "name2": "value2",
+                                      "name1": "value1"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "branch1c",
+                    "workflow": {
+                      "instructions": [
+                        {
+                          "TYPE": "Execute.Named",
+                          "jobName": "job1_1c",
+                          "label": "step1_1c",
+                          "defaultArguments": {
+                            "name3": "value3",
+                            "name2": "value2",
+                            "name1": "value1"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "TYPE": "Execute.Named",
+                "jobName": "job1_1d",
+                "label": "step1_1d",
+                "defaultArguments": {
+                  "name3": "value3",
+                  "name2": "value2",
+                  "name1": "value1"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "branch2",
+          "workflow": {
+            "instructions": [
+              {
+                "TYPE": "Execute.Named",
+                "jobName": "job1_2a",
+                "label": "step1_2a",
+                "defaultArguments": {
+                  "name3": "value3",
+                  "name2": "value2",
+                  "name1": "value1"
+                }
+              },
+              {
+                "TYPE": "Fork",
+                "branches": [
+                  {
+                    "id": "branch2b",
+                    "workflow": {
+                      "instructions": [
+                        {
+                          "TYPE": "Execute.Named",
+                          "jobName": "job1_2b",
+                          "label": "step1_2b",
+                          "defaultArguments": {
+                            "name3": "value3",
+                            "name2": "value2",
+                            "name1": "value1"
+                          }
+                        },
+                        {
+                          "TYPE": "Fork",
+                          "branches": [
+                            {
+                              "id": "branch2b_1",
+                              "workflow": {
+                                "instructions": [
+                                  {
+                                    "TYPE": "Execute.Named",
+                                    "jobName": "job1_2b_1",
+                                    "label": "step1_2b_1",
+                                    "defaultArguments": {
+                                      "name3": "value3",
+                                      "name2": "value2",
+                                      "name1": "value1"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "id": "branch2b_2",
+                              "workflow": {
+                                "instructions": [
+                                  {
+                                    "TYPE": "Execute.Named",
+                                    "jobName": "job1_2b_2",
+                                    "label": "step1_2b_2",
+                                    "defaultArguments": {
+                                      "name3": "value3",
+                                      "name2": "value2",
+                                      "name1": "value1"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "branch2c",
+                    "workflow": {
+                      "instructions": [
+                        {
+                          "TYPE": "Execute.Named",
+                          "jobName": "job1_2c",
+                          "label": "step1_2c",
+                          "defaultArguments": {
+                            "name3": "value3",
+                            "name2": "value2",
+                            "name1": "value1"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "TYPE": "Execute.Named",
+                "jobName": "job1_2d",
+                "label": "step1_2d",
+                "defaultArguments": {
+                  "name3": "value3",
+                  "name2": "value2",
+                  "name1": "value1"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "TYPE": "Execute.Named",
+      "jobName": "job3",
+      "label": "step3",
+      "defaultArguments": {
+        "name3": "value3",
+        "name2": "value2",
+        "name1": "value1"
+      }
+    }
+  ],
+  "jobs": {
+    "job1_1a": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_2b": {
+      "agentId": "agent-2",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_2a": {
+      "agentId": "agent-2",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_1b_1b": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_1b_2": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_1d": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_1b_1": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_2b_2": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_1b_1a": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_1c": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_2d": {
+      "agentId": "agent-2",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_2b_1": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job3": {
+      "agentId": "agent-2",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100,
+      "title": "some title"
+    },
+    "job1_1b": {
+      "agentId": "agent-1",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    },
+    "job1_2c": {
+      "agentId": "agent-2",
+      "executable": {
+        "TYPE": "ExecutableScript",
+        "script": "echo \"hello world\""
+      },
+      "returnCodeMeaning": {
+        "success": [
+          0
+        ]
+      },
+      "taskLimit": 100
+    }
+  }
+}
