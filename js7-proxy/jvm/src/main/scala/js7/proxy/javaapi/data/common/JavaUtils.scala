@@ -20,7 +20,7 @@ object JavaUtils
       .map(_.toMap)
 
   private def javaToValue(any: java.lang.Object): Checked[Value] =
-    any match {
+    (any: @unchecked) match {
       case o: java.lang.Boolean => Right(BooleanValue(o))
       case o: java.lang.Integer => Right(NumericValue(o.intValue))
       case o: java.lang.Long => Right(NumericValue(o.longValue))

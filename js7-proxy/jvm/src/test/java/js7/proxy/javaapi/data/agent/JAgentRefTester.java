@@ -32,7 +32,7 @@ class JAgentRefTester
     }
 
     private void testAgentId() {
-        assertThat(agentRef.name(), equalTo(AgentId.of("AGENT")));
+        assertThat(agentRef.id(), equalTo(AgentId.of("AGENT")));
     }
 
     private void testJson() {
