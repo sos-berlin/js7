@@ -1,4 +1,5 @@
 import com.typesafe.sbt.GitPlugin.autoImport.git
+import java.lang.ProcessBuilder.Redirect
 import java.nio.ByteBuffer
 import java.security.Security
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME
@@ -8,6 +9,7 @@ import java.util.{Base64, UUID}
 import sbt.Keys.version
 import sbt.{Def, ModuleID}
 import scala.collection.immutable.ListMap
+import scala.jdk.CollectionConverters._
 
 object BuildUtils
 {
@@ -31,6 +33,14 @@ object BuildUtils
     }
     if (factor != 1) println(s"build.sbt: test.parallel=$factor")
     factor
+  }
+
+  val gitBranch = Def.setting {
+    var branch = git.gitCurrentBranch.value
+    if (branch.isEmpty || git.gitHeadCommit.value.getOrElse("")/*commit hash*/.startsWith(branch)) {
+      branch = sys.env.getOrElse("GIT_BRANCH", "")  // Maybe set by Jenkins Git plugin
+    }
+    branch
   }
 
   private val isUncommitted =
@@ -62,13 +72,11 @@ object BuildUtils
       val sb = new StringBuilder
       sb ++= version.value
       if (version.value endsWith "-SNAPSHOT") {
-        val branch = git.gitCurrentBranch.value match {
-          case o if o.isEmpty || git.gitHeadCommit.value.getOrElse("").startsWith(o) =>
-            sys.env.getOrElse("GIT_BRANCH", "")  // Maybe set by Jenkins Git plugin
-          case o => o
-        }
         sb ++= " "
-        sb ++= (branch +: commitHash.value.map(_ take CommitHashLength) ++: committedAt.value.toList)
+        sb ++=
+          (gitBranch.value +:
+            commitHash.value.map(_ take CommitHashLength) ++:
+            committedAt.value.toList)
           .filter(_.nonEmpty)
           .mkString("(", " ", ")")
       }
@@ -112,4 +120,25 @@ object BuildUtils
 
   // Initial call to Logger for proper slf4j and log4j initialization ???
   logger.info(s"Building $prettyVersion, test.parallel=$testParallelization")
+
+  def runProcess(args: String*): Seq[String] = {
+    val process = new java.lang.ProcessBuilder(args.toSeq.asJava)
+      .redirectError(Redirect.INHERIT)
+      .start()
+    process.getErrorStream.close()
+    val stdout = scala.io.Source.fromInputStream(process.getInputStream).getLines().toVector
+    val exitCode = process.waitFor()
+    if (exitCode != 0)
+      throw new RuntimeException(s"Command failed: ${args.head}\n" + stdout.mkString("\n"))
+    stdout
+  }
+
+  final class ProcessException(commandLine: String, returnCode: Int, stdout: String, stderr: String) extends RuntimeException
+  {
+    override def getMessage =
+      s"""Command failed with exit code $returnCode
+         |$commandLine
+         |""".stripMargin +
+        Seq(stderr, stdout).mkString("\n")
+  }
 }

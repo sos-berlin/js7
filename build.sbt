@@ -19,12 +19,18 @@
   *   set SBT_OPTS=-DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=...
   *   sbt clean-publish
   *
+  * To release an alpha version
+  *   Only if the current branch is not "main" and starts not with "release/" !
+  *   sbt release use-defaults
+  *
   * sbt allows to preset these command line options in the environment variable SBT_OPTS.
   */
 import BuildUtils._
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.file
+import sbtrelease.ReleasePlugin.autoImport.releaseNextVersion
+import sbtrelease.{Version, versionFormatError}
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
@@ -53,9 +59,11 @@ addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts 
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 addCommandAlias("TestControllerAgent", "js7-tests/runMain js7.tests.TestControllerAgent --agents=2 --nodes-per-agent=3 --tasks=3 --job-duration=1.5s --period=10.s")
 addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; compile; publishLocal")
+
 //scalafixDependencies in ThisBuild += "org.scala-lang.modules" %% "scala-collection-migrations" % "2.1.4"
 //addCompilerPlugin(scalafixSemanticdb)
 //ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on", "-Yrangepos"/*required by SemanticDB compiler plugin*/)
+
 val enableWarnings = Seq(
   "-Wunused:imports",
   "-Wunused:privates",
@@ -557,3 +565,59 @@ lazy val `js7-tests` = project
   }
 
 def doNotInstallJar(path: String) = false
+
+//--------------------------------------------------------------------------------------------------
+// RELEASE
+
+val isStandardRelease: Def.Initialize[Boolean] =
+  Def.setting(gitBranch.value == "main" || gitBranch.value.startsWith("release/"))
+
+releaseTagComment        := s"Version ${version.value}"
+releaseCommitMessage     := s"Version ${version.value}"
+releaseNextCommitMessage := s"Version ${version.value}"
+
+releaseVersion := (
+  if (isStandardRelease.value)
+    releaseVersion.value
+  else v =>
+    Version(v).fold(versionFormatError(v)) { currentVersion =>
+      val commitDate: String = git.gitHeadCommitDate.value
+        .getOrElse(sys.error("gitHeadCommitDate returned None"))
+        .take(10)
+      val version = currentVersion.withoutQualifier.string + "-alpha-" + commitDate
+      var v = version
+      var i = 1
+      val tags = runProcess("git", "tag").toSet
+      while (tags contains s"v$v") {
+        i += 1
+        v = s"$version-$i"
+      }
+      v
+    })
+
+releaseNextVersion := (
+  if (isStandardRelease.value)
+    releaseNextVersion.value
+  else v =>
+    Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT"))
+
+releaseProcess := {
+  import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, pushChanges, runClean, runTest, setNextVersion, setReleaseVersion, tagRelease}
+  if (isStandardRelease.value)
+    releaseProcess.value
+  else
+    // See https://github.com/sbt/sbt-release#can-we-finally-customize-that-release-process-please
+    Seq[ReleaseStep](
+      checkSnapshotDependencies,
+      inquireVersions,
+      runClean,
+      runTest,
+      setReleaseVersion,
+      commitReleaseVersion,       // performs the initial git checks
+      tagRelease,
+    //publishArtifacts,           // checks whether `publishTo` is properly set up
+      setNextVersion,
+      commitNextVersion,
+      pushChanges                 // also checks that an upstream branch is properly configured
+  )
+}
