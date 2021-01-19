@@ -18,17 +18,23 @@ import js7.data.event.KeyedEvent;
 import js7.data.item.ItemPath;
 import js7.data.item.VersionId;
 import js7.data.item.VersionedEvent;
+import js7.data.lock.LockId;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
+import js7.proxy.javaapi.data.item.JSimpleItem;
+import js7.proxy.javaapi.data.item.JUpdateItemOperation;
+import js7.proxy.javaapi.data.lock.JLock;
 import js7.proxy.javaapi.data.workflow.JWorkflowId;
 import reactor.core.publisher.Flux;
+import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.toList;
 import static js7.proxy.javaapi.data.common.VavrUtils.await;
-import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrChange;
+import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrChangeVersioned;
 import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addVersion;
-import static js7.proxy.javaapi.data.item.JUpdateItemOperation.deleteItem;
+import static js7.proxy.javaapi.data.item.JUpdateItemOperation.deleteVersioned;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
@@ -54,13 +60,14 @@ final class JControllerProxyRepoTester
         // Try to add many items with invalid signature
         String bigSpace = Stream.generate(() -> "          ").limit(10_000).collect(Collectors.joining());
         assertThat(bigSpace.length(), equalTo(100_000));
-        assertThat(manyItemJsons.stream().mapToInt(o -> o.length() + bigSpace.length()).sum(), greaterThan(100_000_000/*bytes*/));
+        assertThat(manyItemJsons.stream().mapToInt(o -> o.length() + bigSpace.length()).sum(),
+            greaterThan(100_000_000/*bytes*/));
         assertThat(
             api.updateItems(Flux.concat(
-                Flux.just(addVersion(versionId)),
-                Flux.fromIterable(manyItemJsons)
-                    .map(json -> addOrChange(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE"))))
-            ).get(99, SECONDS)
+                    Flux.just(addVersion(versionId)),
+                    Flux.fromIterable(manyItemJsons)
+                        .map(json -> addOrChangeVersioned(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE")))))
+                .get(99, SECONDS)
                 .mapLeft(problem -> new Tuple2<>(
                     Optional.ofNullable(problem.codeOrNull()).map(ProblemCode::string),
                     problem.toString())),
@@ -81,22 +88,27 @@ final class JControllerProxyRepoTester
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowAdded =
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
+        JLock lock = JLock.of(LockId.of("MY-LOCK"), 1);
+        List<JSimpleItem> simpleItems = singletonList(lock);
+        List<SignedString> signedItemJsons = itemJsons.stream().map(o -> sign(o)).collect(toList());
         // Add items
-        addItemsOnly(itemJsons);
+        addItemsOnly(simpleItems, signedItemJsons);
 
         // The repeated operation does nothing. This allows a client restart with unknown transaction state.
-        addItemsOnly(itemJsons);
+        addItemsOnly(simpleItems, signedItemJsons);
 
         whenWorkflowAdded.get(99, SECONDS);
         assertThat(proxy.currentState().idToWorkflow(workflowId).map(o -> o.id().path()),
             equalTo(Either.right(bWorkflowPath)));
     }
 
-    private void addItemsOnly(List<String> itemJsons) {
+    private void addItemsOnly(List<JSimpleItem> simpleItems, List<SignedString> signedItemJsons) {
         await(api.updateItems(Flux.concat(
+            Flux.fromIterable(simpleItems)
+                .map(JUpdateItemOperation::addOrChangeSimple),
             Flux.just(addVersion(versionId)),
-            Flux.fromIterable(itemJsons)
-                .map(json -> addOrChange(sign(json))))));
+            Flux.fromIterable(signedItemJsons)
+                .map(JUpdateItemOperation::addOrChangeVersioned))));
     }
 
     void deleteWorkflow() throws InterruptedException, ExecutionException, TimeoutException {
@@ -110,7 +122,7 @@ final class JControllerProxyRepoTester
 
         await(api.updateItems(Flux.just(
             addVersion(versionId),
-            deleteItem(bWorkflowPath))));
+            deleteVersioned(bWorkflowPath))));
 
         whenWorkflowDeleted.get(99, SECONDS);
 

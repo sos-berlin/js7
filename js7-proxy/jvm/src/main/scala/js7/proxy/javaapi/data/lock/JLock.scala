@@ -24,6 +24,10 @@ extends JJsonable[JLock] with JSimpleItem
 object JLock extends JJsonable.Companion[JLock]
 {
   @Nonnull
+  def of(@Nonnull lockId: LockId, limit: Int): JLock =
+    JLock(Lock(lockId, limit))
+
+  @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JLock] =
     super.fromJson(jsonString)
 

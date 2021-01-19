@@ -5,7 +5,7 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.item.{Repo, VersionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.proxy.javaapi.data.common.VavrConverters.VavrOption
+import js7.proxy.javaapi.data.common.VavrConverters._
 import js7.proxy.javaapi.data.workflow.{JWorkflow, JWorkflowId}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
