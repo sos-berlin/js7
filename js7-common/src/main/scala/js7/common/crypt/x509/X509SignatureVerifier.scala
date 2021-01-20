@@ -113,9 +113,9 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
       .traverse(publicKey => X509Cert.fromPem(publicKey.utf8String))
       .flatMap(trustedCertificates =>
         trustedCertificates
-          // CentOS 8 openssl 1.1.1i always sets the CA critical extension
+          // Openssl 1.1.1i always sets the CA critical extension
           // to allow self-signed certificats (?)
-          .filterNot(_.isCA)
+          //.filterNot(_.isCA)
           .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
           .map { signerDNToTrustedCertificate =>
             val rootCertificates = trustedCertificates.filter(_.isCA)

@@ -101,6 +101,7 @@ final class X509Test extends AnyFreeSpec
   }
 
   "Verification against root certificate requires the critical CA contraint" in {
+    pending // openssl 1.1.1i always generates certificates with CA, so this test will fail !!!
     withTemporaryDirectory("X509Test-") { dir =>
       val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root", suppressCAContraint = true)

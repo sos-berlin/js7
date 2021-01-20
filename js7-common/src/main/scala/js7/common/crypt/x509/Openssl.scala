@@ -121,7 +121,7 @@ object Openssl
   private val logger = Logger(getClass)
   private val PrivateKeyPem = Pem("PRIVATE KEY")
 
-  private val useHomebrew = false
+  private val useHomebrew = true
   private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
   lazy val openssl = {
     val openssl = if (useHomebrew && isMac && exists(homebrewOpenssl)) homebrewOpenssl else "openssl"
