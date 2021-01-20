@@ -10,7 +10,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.common.crypt.x509.Openssl.assertPemFile
+import js7.common.crypt.x509.Openssl.{assertPemFile, openssl}
 import js7.common.crypt.x509.X509Algorithm.SHA512withRSA
 import js7.common.crypt.x509.X509Test._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
@@ -29,7 +29,7 @@ final class X509Test extends AnyFreeSpec
 {
   coupleScribeWithSlf4j()
 
-  "Sign progammatically and verify" in {
+  "Sign programmatically and verify" in {
     val (signer, verifier) = X509Signer.forTest
     val document = "TEXT EXAMPLE"
     val signature = signer.signString(document)
@@ -52,15 +52,15 @@ final class X509Test extends AnyFreeSpec
       val document = "TEXT EXAMPLE"
       dir / "document" := document
 
-      runProcess(s"openssl req -x509 -sha512 -newkey rsa:1024 -days 2 -subj '/CN=SIGNER' -nodes" +
-        s" -keyout '$privateKeyFile' -out '$certificateFile'")
+      runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER' " +
+        s"-keyout '$privateKeyFile' -out '$certificateFile' ")
       assertPemFile("CERTIFICATE", certificateFile)
 
       runProcess(s"sh -c 'openssl x509 -pubkey -noout -in \'$certificateFile\' >\'$publicKeyFile\''")
       assertPemFile("PUBLIC KEY", publicKeyFile)
 
-      runProcess(s"openssl dgst -sha512 -sign '$privateKeyFile' -out '$signatureFile' '$documentFile'")
-      runProcess(s"openssl dgst -sha512 -verify '$publicKeyFile' -signature '$signatureFile' '$documentFile'")
+      runProcess(s"$openssl dgst -sha512 -sign '$privateKeyFile' -out '$signatureFile' '$documentFile'")
+      runProcess(s"$openssl dgst -sha512 -verify '$publicKeyFile' -signature '$signatureFile' '$documentFile'")
 
       val certificateBytes = certificateFile.byteArray
       val verifier = X509SignatureVerifier.checked(Seq(certificateBytes), origin = certificateFile.toString).orThrow
@@ -74,7 +74,7 @@ final class X509Test extends AnyFreeSpec
 
   "Sign with certificate and verify signature and certificate against Root" in {
     withTemporaryDirectory("X509Test-") { dir =>
-      val openssl = new OpensslContext(dir)
+      val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root")
       assert(X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
 
@@ -100,11 +100,12 @@ final class X509Test extends AnyFreeSpec
     }
   }
 
-  "Verification agains root certificate requires the critical CA contraint" in {
+  "Verification against root certificate requires the critical CA contraint" in {
     withTemporaryDirectory("X509Test-") { dir =>
-      val openssl = new OpensslContext(dir)
+      val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root", suppressCAContraint = true)
-      assert(!X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
+      // openssl 1.1.1i generates always CA certificates !!!
+      // assert(!X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
 
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
@@ -112,8 +113,8 @@ final class X509Test extends AnyFreeSpec
       val signer = new ca.Signer("SIGNER")
       val signatureFile = signer.sign(documentFile)
 
-      assert(verify(ca.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
-        Left(MessageSignedByUnknownProblem))
+      val cert = toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
+      assert(verify(ca.certificateFile, documentFile, cert) == Left(MessageSignedByUnknownProblem))
     }
   }
 
@@ -121,7 +122,7 @@ final class X509Test extends AnyFreeSpec
     "Speed test" in {
       val n = 10_000
       withTemporaryDirectory("X509Test-") { dir =>
-        val openssl = new OpensslContext(dir)
+        val openssl = new Openssl(dir)
         val ca = new openssl.Root("Root")
         val signer = new ca.Signer("SIGNER")
 
@@ -177,7 +178,7 @@ object X509Test
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA,
       Right(X509Cert.fromPem(signersCertificateFile.contentString).orThrow))
 
-  /** Reverse OpensslContext's base64 encoding. */
+  /** Reverse Openssl's base64 encoding. */
   private def toSignatureBytes(signatureFile: Path) =
     ByteArray.fromMimeBase64(signatureFile.contentString).orThrow
 }

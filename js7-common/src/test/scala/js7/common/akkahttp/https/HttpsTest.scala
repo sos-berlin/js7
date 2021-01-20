@@ -8,6 +8,7 @@ import java.security.cert.X509Certificate
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.utils.AutoClosing.autoClosing
+import js7.common.crypt.x509.Openssl.openssl
 import js7.common.scalautil.FileUtils.{withTemporaryDirectory, withTemporaryFile}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -49,7 +50,8 @@ final class HttpsTest extends AnyFreeSpec
 
   "Read PKCS #12" in {
     withTemporaryDirectory("HttpsTest-") { dir =>
-      val cmd = s"openssl req -batch -x509 -newkey rsa:1024 -days 2 -nodes -subj '/CN=localhost' -out '$dir/TEST.crt' -keyout '$dir/TEST.key'"
+      val cmd = s"$openssl req -batch -x509 -newkey rsa:1024 -days 2 -nodes -subj '/CN=localhost' " +
+        s"-out '$dir/TEST.crt' -keyout '$dir/TEST.key'"
       val rc = cmd.!(nullLogger)
       assert(rc == 0)
 

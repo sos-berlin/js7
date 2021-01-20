@@ -8,7 +8,7 @@ import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.common.crypt.x509.OpensslContext
+import js7.common.crypt.x509.Openssl
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax.RichTask
@@ -31,7 +31,7 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
   //private lazy val (signer_, verifier_) = X509Signer.forTest()
   //override protected def verifier = verifier_
   private lazy val workDir = createTempDirectory("UpdateRepoX509RootTest")
-  private lazy val openssl = new OpensslContext(workDir)
+  private lazy val openssl = new Openssl(workDir)
   private lazy val root = new openssl.Root("Root")
   private lazy val controllerApi = controller.newControllerApi(Some(userAndPassword))
 

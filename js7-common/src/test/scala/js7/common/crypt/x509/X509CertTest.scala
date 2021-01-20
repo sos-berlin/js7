@@ -3,6 +3,7 @@ package js7.common.crypt.x509
 import js7.base.auth.DistinguishedName
 import js7.base.crypt.SignerId
 import js7.base.problem.Checked._
+import js7.common.crypt.x509.Openssl.openssl
 import js7.common.process.Processes.runProcess
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
@@ -14,7 +15,7 @@ final class X509CertTest extends AnyFreeSpec
     withTemporaryDirectory("X509CertTest-") { dir =>
       val privateKeyFile = dir / "signer.key"
       val certificateFile = dir / "signer.crt"
-      runProcess("openssl req -x509 -newkey rsa:1024 -sha512 -subj '/L=Berlin/CN=TESTER' -days 2 -nodes " +
+      runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2  -nodes -subj '/L=Berlin/CN=TESTER' " +
         s"-keyout '$privateKeyFile' -out '$certificateFile'")
       val cert = X509Cert.fromPem(certificateFile.contentString).orThrow
       assert(cert.signerId == SignerId("CN=TESTER, L=Berlin"))

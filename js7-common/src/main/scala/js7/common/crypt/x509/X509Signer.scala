@@ -2,15 +2,12 @@ package js7.common.crypt.x509
 
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.{KeyFactory, PrivateKey, Signature}
-import js7.base.auth.Pem
 import js7.base.crypt.{DocumentSigner, SignerId}
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.common.crypt.x509.X509Algorithm.SHA512withRSA
-import js7.common.process.Processes.runProcess
-import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 
 final class X509Signer private(
@@ -54,21 +51,18 @@ object X509Signer extends DocumentSigner.Companion
           .generatePrivate(new PKCS8EncodedKeySpec(privateKey.toArray))
       }.map(new X509Signer(_, algorithm, signerId))
 
-  private val privateKeyPem = Pem("PRIVATE KEY")
-
   lazy val forTest: (X509Signer, X509SignatureVerifier) =
-    withTemporaryDirectory("X509Signer") { dir =>
-      val privateKeyFile = dir / "private-key"
-      val certificateFile = dir / "certificate.pem"
-      // How to a create certificate with JDK ???
-      runProcess("openssl req -x509 -newkey rsa:1024 -sha512 -subj '/CN=SIGNER' -days 2 -nodes " +
-        s"-keyout '$privateKeyFile' -out '$certificateFile'")
-
-      val signer = privateKeyPem.fromPem(privateKeyFile.contentString)
-        .flatMap(X509Signer.checked(_, SHA512withRSA, SignerId("CN=SIGNER")))
+    newSignerAndVerifier(SignerId("CN=SIGNER"), "forTest")
       .orThrow
-      val verifier = X509SignatureVerifier.checked(certificateFile.byteArray :: Nil, "forTest")
-        .orThrow
-      signer -> verifier
+
+  private def newSignerAndVerifier(signerId: SignerId, origin: String)
+  : Checked[(X509Signer, X509SignatureVerifier)] =
+    withTemporaryDirectory("X509Signer") { dir =>
+      val openssl = new Openssl(dir)
+      for {
+        certWithPrivateKey <- openssl.generateCertWithPrivateKey("X509Signer", s"/${signerId.string}")
+        signer <- X509Signer.checked(certWithPrivateKey.privateKey, SHA512withRSA, signerId)
+        verifier <- X509SignatureVerifier.checked(certWithPrivateKey.certificate :: Nil, origin)
+      } yield signer -> verifier
     }
 }

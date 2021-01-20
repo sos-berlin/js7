@@ -59,6 +59,8 @@ object Processes
   @TestOnly
   def runProcess(commandLine: String): String = {
     import scala.sys.process._
+    logger.debug(commandLine)
+
     val stdout = new StringBuilder
     val stderr = new StringBuilder
 

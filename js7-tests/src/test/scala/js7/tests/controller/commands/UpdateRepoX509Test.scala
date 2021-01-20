@@ -9,6 +9,7 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.common.crypt.x509.Openssl.openssl
 import js7.common.crypt.x509.X509SignatureVerifier
 import js7.common.process.Processes.runProcess
 import js7.common.scalautil.FileUtils.syntax._
@@ -31,7 +32,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
   protected val agentIds = Nil
   protected val versionedItems = Nil
   override protected lazy val verifier = {
-    runProcess(s"openssl req -x509 -sha512 -newkey rsa:1024 -days 2 -subj '/CN=SIGNER' -nodes" +
+    runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER'" +
       s" -keyout '$privateKeyFile' -out '$certificateFile'")
     X509SignatureVerifier.checked(Seq(certificateFile.byteArray), "UpdateRepoX509Test").orThrow
   }
@@ -76,12 +77,12 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
 
       itemFile := (workflow.withVersion(v2): VersionedItem)
 
-      runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
-      runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
+      runProcess(s"$openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
+      runProcess(s"$openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
 
       // Verifiy with openssl
       runProcess(s"sh -c 'openssl x509 -pubkey -noout -in \'$certificateFile\' >\'$publicKeyFile\''")
-      runProcess(s"openssl dgst -verify '$publicKeyFile' -sha512 -signature '$signatureFile' '$itemFile'")
+      runProcess(s"$openssl dgst -verify '$publicKeyFile' -sha512 -signature '$signatureFile' '$itemFile'")
 
       val signedString = SignedString.x509WithSignedId/*Java API*/(
         itemFile.contentString,
@@ -92,8 +93,8 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
       locally {
         val v3 = VersionId("3")
         itemFile := (workflow.withVersion(v3): VersionedItem)
-        runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
-        runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
+        runProcess(s"$openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
+        runProcess(s"$openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
         val signedStringV3 = SignedString(
           itemFile.contentString + "-TAMPERED",
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=SIGNER"))))
@@ -103,8 +104,8 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
       locally {
         val v4 = VersionId("4")
         itemFile := (workflow.withVersion(v4): VersionedItem)
-        runProcess(s"openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
-        runProcess(s"openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
+        runProcess(s"$openssl dgst -sign '$privateKeyFile' -sha512 -out '$signatureFile' '$itemFile'")
+        runProcess(s"$openssl base64 -in '$signatureFile' -out '$signatureBase64File'")
         val signedStringV4 = SignedString(
           itemFile.contentString,
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=ALIEN"))))

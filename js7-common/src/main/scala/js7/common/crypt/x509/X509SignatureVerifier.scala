@@ -42,18 +42,18 @@ extends SignatureVerifier
   def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] = {
     signature.signerIdOrCertificate match {
       case Left(signerId) =>
-        DistinguishedName.checked(signerId.string).flatMap(dn =>
+        DistinguishedName.checked(signerId.string)
+          .flatMap(dn =>
             signerDNToTrustedCertificate.rightOr(dn,
-            Problem(s"The signature's SignerId is unknown: ${signerId.string}"))
-        ).flatMap(trustedCertificate =>
+              Problem(s"The signature's SignerId is unknown: ${signerId.string}")))
+          .flatMap(trustedCertificate =>
             verifySignature(document, signature, trustedCertificate)
               .map(_ :: Nil))
 
       case Right(signerCertificate) =>
         Checked.catchNonFatal {
           // We have to try each of the installed trusted certificates !!!
-          trustedRootCertificates
-            .iterator
+          trustedRootCertificates.iterator
             .map(rootCert =>
               for {
                 signerId <- verifySignature(document, signature, signerCertificate)
@@ -62,8 +62,10 @@ extends SignatureVerifier
             .takeWhileInclusive(_.isLeft)
             .toVector
             .lastOption match {
-              case None => Left(MessageSignedByUnknownProblem)
-              case Some(checkedSignerId) => checkedSignerId.map(_ :: Nil)
+              case None =>
+                Left(MessageSignedByUnknownProblem)
+              case Some(checkedSignerId) =>
+                checkedSignerId.map(_ :: Nil)
             }
         }.flatten
     }
@@ -111,12 +113,16 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
       .traverse(publicKey => X509Cert.fromPem(publicKey.utf8String))
       .flatMap(trustedCertificates =>
         trustedCertificates
+          // CentOS 8 openssl 1.1.1i always sets the CA critical extension
+          // to allow self-signed certificats (?)
           .filterNot(_.isCA)
           .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
           .map { signerDNToTrustedCertificate =>
             val rootCertificates = trustedCertificates.filter(_.isCA)
-            for (o <- rootCertificates) logger.debug(s"Trusting signatures signed with a certificate which is signed with root $o")
-            for (o <- signerDNToTrustedCertificate.values) logger.debug(s"Trusting signatures signed with $o")
+            for (o <- rootCertificates) logger.debug(
+              s"Trusting signatures signed with a certificate which is signed with root $o")
+            for (o <- signerDNToTrustedCertificate.values) logger.debug(
+              s"Trusting signatures signed with $o")
             new X509SignatureVerifier(
               trustedCertificates,
               rootCertificates,
