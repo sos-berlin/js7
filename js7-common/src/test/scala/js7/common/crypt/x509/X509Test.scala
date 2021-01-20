@@ -1,4 +1,4 @@
-package js7.core.crypt.x509
+package js7.common.crypt.x509
 
 import java.nio.file.Files.delete
 import java.nio.file.Path
@@ -10,14 +10,14 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
+import js7.common.crypt.x509.Openssl.assertPemFile
+import js7.common.crypt.x509.X509Algorithm.SHA512withRSA
+import js7.common.crypt.x509.X509Test._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.process.Processes.runProcess
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.core.crypt.x509.OpensslContext.assertPemFile
-import js7.core.crypt.x509.X509Algorithm.SHA512withRSA
-import js7.core.crypt.x509.X509Test._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.Assertions._

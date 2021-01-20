@@ -1,4 +1,4 @@
-package js7.core.crypt.x509
+package js7.common.crypt.x509
 
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.{KeyFactory, PrivateKey, Signature}
@@ -8,10 +8,10 @@ import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.common.crypt.x509.X509Algorithm.SHA512withRSA
 import js7.common.process.Processes.runProcess
-import js7.common.scalautil.FileUtils.syntax._
+import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
-import js7.core.crypt.x509.X509Algorithm.SHA512withRSA
 
 final class X509Signer private(
   x509PrivateKey: PrivateKey,
@@ -66,7 +66,7 @@ object X509Signer extends DocumentSigner.Companion
 
       val signer = privateKeyPem.fromPem(privateKeyFile.contentString)
         .flatMap(X509Signer.checked(_, SHA512withRSA, SignerId("CN=SIGNER")))
-        .orThrow
+      .orThrow
       val verifier = X509SignatureVerifier.checked(certificateFile.byteArray :: Nil, "forTest")
         .orThrow
       signer -> verifier

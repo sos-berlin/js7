@@ -1,13 +1,13 @@
-package js7.core.crypt.generic
+package js7.common.crypt.generic
 
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.SignedString
 import js7.base.data.ByteArray
 import js7.base.problem.Checked.Ops
 import js7.common.configutils.Configs._
+import js7.common.crypt.pgp.{PgpSigner, PgpTest}
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.withTemporaryDirectory
-import js7.core.crypt.pgp.{PgpSigner, PgpTest}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

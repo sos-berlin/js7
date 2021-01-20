@@ -1,4 +1,4 @@
-package js7.core.crypt.pgp
+package js7.common.crypt.pgp
 
 import cats.instances.vector._
 import cats.syntax.foldable._
@@ -9,7 +9,7 @@ import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.core.crypt.pgp.PgpCommons._
+import js7.common.crypt.pgp.PgpCommons._
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
 import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
@@ -100,4 +100,3 @@ object PgpSigner extends DocumentSigner.Companion
     keys.head
   }
 }
-

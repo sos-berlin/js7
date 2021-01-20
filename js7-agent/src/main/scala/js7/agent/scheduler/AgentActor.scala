@@ -22,12 +22,12 @@ import js7.base.problem.Checked._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkautils.{Akkas, SupervisorStrategies}
+import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.core.common.ActorRegister
-import js7.core.crypt.generic.GenericSignatureVerifier
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey

@@ -9,12 +9,12 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.common.crypt.x509.X509SignatureVerifier
 import js7.common.process.Processes.runProcess
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.FileUtils.{deleteDirectoryRecursively, withTemporaryDirectory}
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.controller.data.ControllerState.versionedItemJsonCodec
-import js7.core.crypt.x509.X509SignatureVerifier
 import js7.data.item.{VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509Test._

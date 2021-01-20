@@ -1,4 +1,4 @@
-package js7.core.crypt.x509
+package js7.common.crypt.x509
 
 import cats.Show
 import cats.instances.vector._
@@ -14,9 +14,9 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax.{RichPartialFunction, RichThrowable}
+import js7.common.crypt.x509.X509Cert.CertificatePem
+import js7.common.crypt.x509.X509SignatureVerifier.logger
 import js7.common.scalautil.Logger
-import js7.core.crypt.x509.X509Cert.CertificatePem
-import js7.core.crypt.x509.X509SignatureVerifier.logger
 import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal
 
@@ -43,7 +43,7 @@ extends SignatureVerifier
     signature.signerIdOrCertificate match {
       case Left(signerId) =>
         DistinguishedName.checked(signerId.string).flatMap(dn =>
-          signerDNToTrustedCertificate.rightOr(dn,
+            signerDNToTrustedCertificate.rightOr(dn,
             Problem(s"The signature's SignerId is unknown: ${signerId.string}"))
         ).flatMap(trustedCertificate =>
             verifySignature(document, signature, trustedCertificate)

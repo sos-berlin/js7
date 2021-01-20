@@ -313,6 +313,7 @@ lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test
       scalaXml ++
       scalaLogging ++
       typesafeConfig ++
+      bouncyCastle ++
       akkaHttp ++
       akkaActor ++
       akkaSlf4j ++
@@ -435,7 +436,6 @@ lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester
     import Dependencies._
     libraryDependencies ++=
       shapeless ++
-      bouncyCastle ++
       diffx ++
       akkaHttpTestkit % "test" ++
       scalaTest % "test" ++

@@ -1,6 +1,5 @@
 package js7.agent.tests
 
-import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -11,18 +10,17 @@ import js7.agent.tests.OrderAgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.crypt.SignedString
-import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked.Ops
+import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.common.configutils.Configs._
-import js7.common.http.AkkaHttpClient
+import js7.common.crypt.pgp.PgpSigner
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.AgentId
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import js7.data.item.VersionedItemSigner

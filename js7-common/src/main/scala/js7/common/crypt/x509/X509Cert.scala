@@ -1,4 +1,4 @@
-package js7.core.crypt.x509
+package js7.common.crypt.x509
 
 import java.security.cert.{CertificateFactory, X509Certificate}
 import js7.base.auth.{DistinguishedName, Pem}
@@ -7,7 +7,7 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.core.crypt.x509.X509Cert._
+import js7.common.crypt.x509.X509Cert._
 import scala.jdk.CollectionConverters._
 
 private[x509] final case class X509Cert(x509Certificate: X509Certificate)

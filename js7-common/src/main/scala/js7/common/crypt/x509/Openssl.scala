@@ -1,4 +1,4 @@
-package js7.core.crypt.x509
+package js7.common.crypt.x509
 
 import java.nio.file.Files.{delete, exists}
 import java.nio.file.{Path, Paths}
@@ -8,7 +8,7 @@ import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.process.Processes.runProcess
 import js7.common.scalautil.FileUtils.syntax._
-import js7.core.crypt.x509.OpensslContext.assertPemFile
+import js7.common.crypt.x509.Openssl._
 
 final class OpensslContext(dir: Path) {
   // See https://legacy.thomas-leister.de/eine-eigene-openssl-ca-erstellen-und-zertifikate-ausstellen/
@@ -80,7 +80,7 @@ final class OpensslContext(dir: Path) {
   }
 }
 
-object OpensslContext
+object Openssl
 {
   def assertPemFile(typ: String, file: Path): Unit =
     Pem(typ).fromPem(file.contentString).orThrow

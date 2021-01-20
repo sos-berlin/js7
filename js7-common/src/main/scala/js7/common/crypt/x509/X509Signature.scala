@@ -1,11 +1,11 @@
-package js7.core.crypt.x509
+package js7.common.crypt.x509
 
 import java.util.Base64
 import js7.base.crypt.{GenericSignature, Signature, SignerId}
 import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
-import js7.core.crypt.x509.X509Cert.CertificatePem
-import js7.core.crypt.x509.X509Signature._
+import js7.common.crypt.x509.X509Cert.CertificatePem
+import js7.common.crypt.x509.X509Signature._
 
 private[x509] final case class X509Signature(
   byteArray: ByteArray,

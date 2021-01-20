@@ -19,6 +19,7 @@ import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkahttp.https.TrustStoreRef
+import js7.common.crypt.pgp.PgpSigner
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
@@ -31,7 +32,6 @@ import js7.common.utils.JavaResource
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.ControllerState.versionedItemJsonCodec
-import js7.core.crypt.pgp.PgpSigner
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemOperation, ItemPath, VersionId, VersionedItem, VersionedItemSigner}

@@ -8,19 +8,17 @@ import js7.base.crypt.{GenericSignature, SignedString}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
+import js7.common.crypt.x509.OpensslContext
 import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.controller.data.ControllerState.versionedItemJsonCodec
-import js7.core.crypt.x509.OpensslContext
-import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange}
 import js7.data.item.{VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509RootTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
-import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

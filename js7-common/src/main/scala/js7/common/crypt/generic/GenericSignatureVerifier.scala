@@ -1,4 +1,4 @@
-package js7.core.crypt.generic
+package js7.common.crypt.generic
 
 import cats.Applicative
 import cats.instances.either._

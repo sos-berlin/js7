@@ -7,8 +7,8 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString, SignerId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
-import js7.core.crypt.pgp.PgpCommons.RichPGPPublicKey
-import js7.core.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
+import js7.common.crypt.pgp.PgpCommons.RichPGPPublicKey
+import js7.common.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import js7.core.item.VersionedItemVerifierTest._
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.{VersionedItem, VersionedItemSigner}

@@ -29,6 +29,7 @@ import js7.base.utils.{Closer, SetOnce}
 import js7.cluster.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem}
 import js7.cluster.{Cluster, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Futures.implicits._
@@ -46,7 +47,6 @@ import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
-import js7.core.crypt.generic.GenericSignatureVerifier
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.crypt.VersionedItemVerifier

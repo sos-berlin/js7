@@ -7,9 +7,9 @@ import js7.base.crypt.SignedString
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
+import js7.common.crypt.x509.X509Signer
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerState.versionedItemJsonCodec
-import js7.core.crypt.x509.X509Signer
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.crypt.VersionedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}

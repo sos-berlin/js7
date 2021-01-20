@@ -1,4 +1,4 @@
-package js7.core.crypt.x509
+package js7.common.crypt.x509
 
 import js7.base.auth.DistinguishedName
 import js7.base.crypt.SignerId
