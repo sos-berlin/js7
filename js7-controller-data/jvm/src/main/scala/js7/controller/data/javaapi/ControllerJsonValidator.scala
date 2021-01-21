@@ -20,7 +20,7 @@ final class ControllerJsonValidator
 
   private def checkJson[A: Decoder](jsonString: String): Optional[Problem] =
     // catchNonFatal, because TypedJsonCodec throws
-    jsonString.parseJsonChecked
+    jsonString.parseJson
       .flatMap(o => Checked.catchNonFatal(o.as[A]))
       .flatMap(_.toChecked) match {
         case Right(_) => Optional.empty()

@@ -31,7 +31,7 @@ trait VersionedItemReader
   }
 
   final def readJsonString(source: String): Checked[ThisItem] =
-    source.parseJsonChecked flatMap convertFromJson
+    source.parseJson flatMap convertFromJson
 
   final def readAnonymousJsonLike(sourceType: SourceType.JsonLike, source: ByteArray): Checked[ThisItem] =
     sourceType match {

@@ -58,7 +58,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       val lastJournalFile = listJournalFiles(agentStateDir / "controller-Controller").last.file
       val lastJournalFileContent = lastJournalFile.contentString
       val (headerLine, body) = lastJournalFileContent.splitAt(lastJournalFileContent indexOf '\n')
-      val header = headerLine.parseJsonCheckedAs[JournalHeader].orThrow
+      val header = headerLine.parseJsonAs[JournalHeader].orThrow
       lastJournalFile := header.copy(journalId = JournalId.random()).asJson.compactPrint + body
     }
 
@@ -88,7 +88,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         .filter(o => o.getFileName.toString.startsWith("controller-Controller--") && o != firstJournalFile).min
       val secondJournalFileContent = secondJournalFile.contentString
       val (headerLine, body) = secondJournalFileContent.splitAt(secondJournalFileContent indexOf '\n')
-      val header = headerLine.parseJsonCheckedAs[JournalHeader].orThrow
+      val header = headerLine.parseJsonAs[JournalHeader].orThrow
       secondJournalFile := header.copy(journalId = JournalId.random()).asJson.compactPrint + body
     }
 

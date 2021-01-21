@@ -56,5 +56,5 @@ final class ByteStringByteSequence extends ByteSequence[ByteString]
   //  byteString.copyToArray(array, start, length)
 
   override def parseJson(byteString: ByteString): Checked[Json] =
-    byteString.decodeString(UTF_8).parseJsonChecked
+    byteString.decodeString(UTF_8).parseJson
 }

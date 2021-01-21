@@ -17,7 +17,7 @@ final class ControllerScriptConverter
 
   def workflowJsonToScript(jsonString: String): JavaChecked[String] =
     JavaChecked(
-      jsonString.parseJsonChecked
+      jsonString.parseJson
         .flatMap(_.checkedAs[Workflow])
         .map(WorkflowPrinter.print))
 }

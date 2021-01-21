@@ -83,9 +83,9 @@ final class CirceUtilsTest extends AnyFreeSpec
     assert(jsonString"""{ "A": 7 }""" == """{ "A": 7 }""")  // Only to let IDE highlight JSON error
   }
 
-  "parseJsonChecked" in {
-    assert("7".parseJsonChecked == Right(Json.fromInt(7)))
-    assert("x".parseJsonChecked == Left(Problem("JSON ParsingFailure: expected json value got 'x' (line 1, column 1)")))
+  "parseJson" in {
+    assert("7".parseJson == Right(Json.fromInt(7)))
+    assert("x".parseJson == Left(Problem("JSON ParsingFailure: expected json value got 'x' (line 1, column 1)")))
   }
 
   "parseJsonOrThrow" in {

@@ -17,10 +17,10 @@ final class BranchPathTest extends AnyFreeSpec
     testJson(Segment(1, "BRANCH") :: Nil              , json"""[ 1, "BRANCH" ]""")
     testJson(Segment(1, "A") :: Segment(2, "B") :: Nil, json"""[ 1, "A", 2, "B" ]""")
 
-    assert("""[ 1 ]""".parseJsonCheckedAs[BranchPath] == Left(Problem("JSON DecodingFailure at : Not a valid BranchPath")))
-    assert("""[ 1, "BRANCH"]""".parseJsonCheckedAs[BranchPath] == Right(List(BranchPath.Segment(1, "BRANCH"))))
-    assert("""[ 1, 2 ]""".parseJsonCheckedAs[BranchPath] == Left(Problem("JSON DecodingFailure at : String")))
-    assert("""[ 1, 2, 3 ]""".parseJsonCheckedAs[BranchPath]== Left(Problem("JSON DecodingFailure at : Not a valid BranchPath")))
+    assert("""[ 1 ]""".parseJsonAs[BranchPath] == Left(Problem("JSON DecodingFailure at : Not a valid BranchPath")))
+    assert("""[ 1, "BRANCH"]""".parseJsonAs[BranchPath] == Right(List(BranchPath.Segment(1, "BRANCH"))))
+    assert("""[ 1, 2 ]""".parseJsonAs[BranchPath] == Left(Problem("JSON DecodingFailure at : String")))
+    assert("""[ 1, 2, 3 ]""".parseJsonAs[BranchPath]== Left(Problem("JSON DecodingFailure at : Not a valid BranchPath")))
   }
 
   "commonBranchPath" in {

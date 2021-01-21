@@ -54,6 +54,6 @@ private object TestAddOrdersTest
   private val workflow =
     JavaResource(
       "js7/install/docker/volumes/provider/config/live/testCase3.workflow.json"
-    ).asUTF8String.parseJsonCheckedAs[Workflow].orThrow
+    ).asUTF8String.parseJsonAs[Workflow].orThrow
       .withId(WorkflowPath("/testCase3"))
 }

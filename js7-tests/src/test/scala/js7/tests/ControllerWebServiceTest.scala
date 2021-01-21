@@ -357,7 +357,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
-        assert(response.utf8StringFuture.await(99.s).parseJsonCheckedAs[Problem]
+        assert(response.utf8StringFuture.await(99.s).parseJsonAs[Problem]
           == Right(Problem("JSON DecodingFailure at : OrderId must not contain reserved characters: |")))
         assert(response.header[Location].isEmpty)
       }
@@ -389,7 +389,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         val response = httpClient.post_[Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         assert(response.status.intValue == 400/*BadRequest*/)
         assert(response.header[Location].isEmpty)
-        assert(response.utf8StringFuture.await(99.s).parseJsonCheckedAs[Problem]
+        assert(response.utf8StringFuture.await(99.s).parseJsonAs[Problem]
           == Right(Problem("JSON DecodingFailure at [0]: OrderId must not contain reserved characters: |")))
       }
     }

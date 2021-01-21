@@ -66,7 +66,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
           eventWatch.observeFile(Some(fileEventId), position = Some(position), timeout = 0.s)
             .await(99.s)
             .orThrow
-            .map(o => o.value.utf8String.parseJsonChecked.orThrow)
+            .map(o => o.value.utf8String.parseJson.orThrow)
             .tail
             .toListL
             .await(99.s)

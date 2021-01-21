@@ -65,7 +65,7 @@ final class ByteArray private(val unsafeArray: Array[Byte])
 
   def parseJsonAs[A: Decoder]: Checked[A] =
     parseJsonByteArray(unsafeArray).flatMap(_.as[A]).toChecked
-    //utf8String.parseJsonCheckedAs[A]
+    //utf8String.parseJsonAs[A]
 
   def writeToStream(out: OutputStream): Unit =
     out.write(unsafeArray)

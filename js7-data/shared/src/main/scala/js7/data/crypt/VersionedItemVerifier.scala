@@ -15,7 +15,7 @@ final class VersionedItemVerifier[A <: VersionedItem](signatureVerifier: Signatu
   def verify(signedString: SignedString): Checked[Verified[A]] =
     for {
       signers <- signatureVerifier.verify(signedString)
-      json <- signedString.string.parseJsonChecked
+      json <- signedString.string.parseJson
       item <- jsonDecoder.decodeJson(json).toChecked
     } yield Verified(Signed(item, signedString), signers)
 }
