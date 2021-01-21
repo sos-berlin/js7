@@ -49,7 +49,8 @@ extends VersionedItem
   type Self = Workflow
 
   val companion = Workflow
-  val labeledInstructions = rawLabeledInstructions.map(o => o.copy(instruction = o.instruction.adopt(this)))
+  val labeledInstructions = rawLabeledInstructions.map(o => o.copy(
+    instruction = o.instruction.adopt(this)))
   val instructions: IndexedSeq[Instruction] = labeledInstructions.map(_.instruction)
   private val labelToNumber: Map[Label, InstructionNr] =
     numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _, _)) => maybeLabel.map(_ -> nr) }
@@ -291,7 +292,7 @@ extends VersionedItem
       case Some(job) => Right(job)
       case None =>
         outer match {
-          case None => Left(Problem(s"known job name ('$name' is unknown)"))  // TODO Fehlermeldung ist an fastparse angepasst, beginnnt "Expected "
+          case None => Left(Problem(s"Unknown job name '$name'"))
           case Some(o) => o.findJob(name)
         }
     }
@@ -307,7 +308,7 @@ extends VersionedItem
       else
         workflowBranchPath.branchPath match {
           case Nil =>
-            Left(Problem(s"known job name ('$name' is unknown)"))
+            Left(Problem(s"Unknown job name '$name'"))
           case branchPath =>
             jobKey(workflowBranchPath.copy(branchPath = branchPath.dropChild), name)
         })

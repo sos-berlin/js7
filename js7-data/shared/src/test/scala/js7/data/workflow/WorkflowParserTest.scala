@@ -37,7 +37,7 @@ final class WorkflowParserTest extends AnyFreeSpec
         }
       }"""
     assert(WorkflowParser.parse(source)
-      == Left(Problem("""Expected known job name ('A' is unknown):6:8, found """"")))  // TODO Wrong position in error message, should be 4:12
+      == Left(Problem("""Expected Unknown job name 'A':6:8, found """"")))  // TODO Wrong position in error message, should be 4:12
   }
 
   "Execute anonymous" in {

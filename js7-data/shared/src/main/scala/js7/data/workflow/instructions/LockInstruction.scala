@@ -25,6 +25,10 @@ extends Instruction {
     copy(
       lockedWorkflow = lockedWorkflow.withPositions(position / BranchId.Lock))
 
+  override def adopt(outer: Workflow) = copy(
+    lockedWorkflow = lockedWorkflow.copy(
+      outer = Some(outer)))
+
   override def workflows = lockedWorkflow :: Nil
 
   override def branchWorkflows =

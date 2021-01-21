@@ -2,18 +2,19 @@ package js7.data.workflow
 
 import io.circe.syntax._
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.problem.Checked.Ops
+import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, PathExecutable, ScriptExecutable}
+import js7.data.lock.LockId
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.TestSetting._
@@ -101,7 +102,7 @@ final class WorkflowTest extends AnyFreeSpec
                       "executable": {
                         "TYPE": "PathExecutable",
                         "v1Compatible": true,
-                        "path": "B.cmd"
+                          "path": "B.cmd"
                       },
                       "taskLimit": 3,
                       "defaultArguments": { "JOB_B": "B-VALUE" }
@@ -123,7 +124,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
-                            "path": "A.cmd"
+                                  "path": "A.cmd"
                           },
                           "taskLimit": 3,
                           "defaultArguments": { "JOB_A": "A-VALUE" }
@@ -144,7 +145,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
-                            "path": "B.cmd"
+                                  "path": "B.cmd"
                           },
                           "taskLimit": 3,
                           "defaultArguments": { "JOB_B": "B-VALUE" }
@@ -625,7 +626,7 @@ final class WorkflowTest extends AnyFreeSpec
           Workflow.of(
             Execute.Named(AJobName/*undefined*/)))))
     "Unknown job" in {
-      assert(wrongWorkflow.completelyChecked == Left(Problem("known job name ('A' is unknown)")))
+      assert(wrongWorkflow.completelyChecked == Left(Problem("Unknown job name 'A'")))
     }
 
     "Known job" in {
@@ -766,6 +767,18 @@ final class WorkflowTest extends AnyFreeSpec
       assert(workflow.isMoveable(Position(1) / Catch_ % 0, Position(1)))
     }
   }
+
+  "Workflow with a Lock and a Job" in {
+    Workflow(WorkflowPath("/WORKFLOW"),
+        Vector(
+          LockInstruction(
+            LockId("LOCK"), count = None, Workflow.of(
+              Execute.Named(WorkflowJob.Name("JOB"))))),
+        Map(
+          WorkflowJob.Name("JOB") -> AJob))
+      .completelyChecked
+      .orThrow: Workflow
+  }
 }
 
 private object WorkflowTest
@@ -793,6 +806,5 @@ private object WorkflowTest
       BExecute),
     Map(
       AJobName -> AJob,
-      BJobName -> BJob)
-  )
+      BJobName -> BJob))
 }

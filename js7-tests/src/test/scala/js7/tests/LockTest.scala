@@ -60,6 +60,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflow = defineWorkflow(s"""
         define workflow {
           lock (lock = "LOCK") {
+            job JOB;
+          };
+          define job JOB {
             execute agent="AGENT", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
           }
         }""")
