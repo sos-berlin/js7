@@ -71,7 +71,8 @@ final class AgentTest extends AnyFreeSpec with AgentTester
   }
 }
 
-object AgentTest {
+object AgentTest
+{
   private val TestControllerId = ControllerId("CONTROLLER")
   private val TestUser = SimpleUser(TestControllerId.toUserId)
   private val agentId = AgentId("AGENT")
@@ -79,12 +80,12 @@ object AgentTest {
   private val TestScript =
     if (isWindows) """
       |@echo off
-      |set /p dummy=WORKDIR= <nul >%SCHEDULER_RETURN_VALUES%
-      |cd >>%SCHEDULER_RETURN_VALUES%
+      |set /p dummy=WORKDIR= <nul >%JS7_RETURN_VALUES%
+      |cd >>%JS7_RETURN_VALUES%
       |""".stripMargin
     else """
       |echo TEST TEST
-      |echo "WORKDIR=$(pwd)" >$SCHEDULER_RETURN_VALUES
+      |echo "WORKDIR=$(pwd)" >$JS7_RETURN_VALUES
       |""".stripMargin
 
   private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")

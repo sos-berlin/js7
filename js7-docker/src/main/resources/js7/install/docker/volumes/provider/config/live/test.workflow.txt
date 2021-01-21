@@ -10,7 +10,7 @@ define workflow {
     },
     "🍋": {
       try (retryDelays=[0, 1]) {
-        execute agent="agent-1", taskLimit=10, arguments={"hello": "やあ"}, executable="fail";
+        execute agent="agent-1", taskLimit=10, executable="fail", env={"HELLO": "やあ"};
       } catch {
         if (catchCount < 5) {
           job SLEEP, arguments={"hello": "Will try again ⭕️"};
@@ -26,7 +26,7 @@ define workflow {
   // Fork with all jobs at same (current) Agent
   fork {
     "🥕": {
-      execute agent="agent-1", taskLimit=10, arguments={"hello": "你好"}, executable="test";
+      execute agent="agent-1", taskLimit=10, executable="test", env={"hello": "你好"};
       job TEST1;
     },
     "🍋": {
@@ -42,20 +42,19 @@ define workflow {
   }
 
   define job TEST1 {
-    execute agent="agent-1", taskLimit=50, arguments={"hello": "Hello"}, executable="test";
+    execute agent="agent-1", taskLimit=50, executable="test", env={"hello": "Hello"};
   }
 
   define job TEST2 {
     execute agent="agent-2", taskLimit=50,
-      arguments={
-        "testArgument": "☘️",
-        "other": "other value"
-      },
+      env={
+        "TEST_ARGUMENT": "☘️"
+      }
       script =
 ''#!/usr/bin/env bash
 set -euo pipefail
 
-echo "はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT"
+echo "はじめまして。 $TEST_ARGUMENT"
 sleep 2
 exit
 '';

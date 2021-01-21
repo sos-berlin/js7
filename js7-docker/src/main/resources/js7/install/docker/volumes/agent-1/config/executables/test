@@ -6,10 +6,10 @@ for i in {1..1}; do
   echo "$row"
 done
 
-echo "$SCHEDULER_PARAM_HELLO  🔵"
+echo "$HELLO  🔵"
 sleep 1
-echo "$SCHEDULER_PARAM_HELLO  🔵 🔵"
+echo "$HELLO  🔵 🔵"
 sleep 1
-echo "$SCHEDULER_PARAM_HELLO  🔵 🔵 🔵"
+echo "$HELLO  🔵 🔵 🔵"
 sleep 1
-echo "$SCHEDULER_PARAM_HELLO  🔵 🔵 🔵 🔵"
+echo "$HELLO  🔵 🔵 🔵 🔵"

@@ -216,7 +216,11 @@ extends Actor with Stash
       killOrder(orderId, SIGKILL)
   }
 
-  private def processOrder(orderId: OrderId, commandLine: CommandLine, env: Map[String, String], stdChannels: StdChannels)
+  private def processOrder(
+    orderId: OrderId,
+    commandLine: CommandLine,
+    env: Map[String, String],
+    stdChannels: StdChannels)
   : Future[TaskStepEnded] = {
     waitingForNextOrder = false
     val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, commandLine))

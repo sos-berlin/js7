@@ -11,7 +11,7 @@ import js7.data.value.{NamedValues, StringValue}
 /**
   * @author Joacim Zschimmer
   */
-final class ShellReturnValuesProvider(temporaryDirectory: Path)
+final class ShellReturnValuesProvider(temporaryDirectory: Path, v1Compatible: Boolean = false)
 {
   private var fileExists = false
 
@@ -31,26 +31,29 @@ final class ShellReturnValuesProvider(temporaryDirectory: Path)
     }
   }
 
-  def env: (String, String) =
-    ReturnValuesFileEnvironmentVariableName -> file.toString
+  def toEnv: (String, String) =
+    varName -> file.toString
 
-  def variables: NamedValues =
+  def read(): NamedValues =
     autoClosing(scala.io.Source.fromFile(file.toFile)(FileEncoding)) { source =>
       (source.getLines() map lineToNamedvalue).toMap
     }
+
+  private def lineToNamedvalue(line: String): (String, StringValue) =
+    line match {
+      case ReturnValuesRegex(name, value) => name.trim -> StringValue(value.trim)
+      case _ => throw new IllegalArgumentException(s"Not the expected syntax NAME=VALUE in files denoted by environment variable " +
+        s"$varName: $line")
+    }
+
+  def varName = if (v1Compatible) V1VarName else VarName
 
   override def toString = file.toString
 }
 
 object ShellReturnValuesProvider
 {
-  private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
+  private val V1VarName = "SCHEDULER_RETURN_VALUES"
+  private val VarName = "JS7_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
-
-  private def lineToNamedvalue(line: String): (String, StringValue) =
-    line match {
-      case ReturnValuesRegex(name, value) => name.trim -> StringValue(value.trim)
-      case _ => throw new IllegalArgumentException(s"Not the expected syntax NAME=VALUE in files denoted by environment variable " +
-        s"$ReturnValuesFileEnvironmentVariableName: $line")
-    }
 }

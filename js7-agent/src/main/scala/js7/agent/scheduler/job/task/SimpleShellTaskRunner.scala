@@ -1,6 +1,5 @@
 package js7.agent.scheduler.job.task
 
-import java.nio.file.Files.{delete, deleteIfExists}
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentTaskId
@@ -9,7 +8,6 @@ import js7.agent.scheduler.job.ShellReturnValuesProvider
 import js7.agent.scheduler.job.task.SimpleShellTaskRunner._
 import js7.agent.task.BaseAgentTask
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax._
 import js7.base.process.ProcessSignal
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -52,7 +50,9 @@ extends TaskRunner
 
   private val terminatedPromise = Promise[Completed]()
   private val startedAt = Timestamp.now
-  private lazy val returnValuesProvider = new ShellReturnValuesProvider(temporaryDirectory = agentConfiguration.temporaryDirectory)
+  private lazy val returnValuesProvider = new ShellReturnValuesProvider(
+    agentConfiguration.temporaryDirectory,
+    v1Compatible = conf.workflowJob.executable.v1Compatible)
   private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
 
@@ -88,7 +88,7 @@ extends TaskRunner
       })
 
   private def fetchReturnValuesThenDeleteFile(): NamedValues = {
-    val result = returnValuesProvider.variables
+    val result = returnValuesProvider.read()
     // TODO When Windows locks the file, try delete it later, asynchronously, and block file in FilePool
     try returnValuesProvider.deleteFile()
     catch { case NonFatal(t) =>
@@ -106,7 +106,7 @@ extends TaskRunner
         stdFileMap = Map.empty,
         encoding = AgentConfiguration.FileEncoding,
         workingDirectory = Some(agentConfiguration.jobWorkingDirectory),
-        additionalEnvironment = env + returnValuesProvider.env,
+        additionalEnvironment = env + returnValuesProvider.toEnv,
         agentTaskIdOption = Some(agentTaskId),
         killScriptOption = agentConfiguration.killScript)
       synchronizedStartProcess {
