@@ -56,7 +56,7 @@ object PathExecutable
       TypedJsonCodec.TypeFieldName -> "PathExecutable".asJson,
       "path" -> o.path.asJson,
       "env" -> (o.env.nonEmpty ? o.env).asJson,
-      "v1Compatible" -> (o.v1Compatible ? true).asJson)
+      "v1Compatible" -> o.v1Compatible.?.asJson)
 
   val jsonDecoder: Decoder[PathExecutable] =
     cursor => for {
@@ -150,7 +150,7 @@ object ScriptExecutable
     o => JsonObject(
       "script" -> o.script.asJson,
       "env" -> (o.env.nonEmpty ? o.env).asJson,
-      "v1Compatible" -> (o.v1Compatible ? true).asJson)
+      "v1Compatible" -> o.v1Compatible.?.asJson)
 
   implicit val jsonDecoder: Decoder[ScriptExecutable] =
     cursor => for {

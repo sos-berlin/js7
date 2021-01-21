@@ -223,6 +223,8 @@ object ScalaUtils
       def callIfDefined(a: A): Unit = delegate.getOrElse(a, ())
     }
 
+    private val SomeTrue = Some(true)
+
     implicit final class RichBoolean(private val underlying: Boolean) extends AnyVal
     {
       /**
@@ -232,6 +234,13 @@ object ScalaUtils
         */
       def ?[A](a: => A): Option[A] =
         option(a)
+
+      /** Optional false.
+        * <p>`true.? == Some(a)`
+        * <br>`false.? == None`
+        */
+      def ? : Option[Boolean] =
+        if (underlying) SomeTrue else None
 
       /**
         * Conditional `Option`.

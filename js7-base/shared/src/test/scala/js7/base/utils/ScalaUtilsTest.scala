@@ -383,6 +383,16 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
   }
 
+  "Boolean ? value" in {
+    assert((true ? 7: Option[Int]) == Some(7))
+    assert((false ? 7: Option[Int]) == None)
+  }
+
+  "Boolean ?" in {
+    assert(true.? == Some(true))
+    assert(false.? == None)
+  }
+
   "Boolean.option" in {
     assert((true option 7: Option[Int]) == Some(7))
     assert((false option 7: Option[Int]) == None)

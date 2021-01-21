@@ -549,8 +549,8 @@ object Order
       "parent" -> order.parent.asJson,
       "historicOutcomes" -> order.historicOutcomes.asJson,
       "mark" -> order.mark.asJson,
-      "isSuspended" -> (order.isSuspended ? true).asJson,
-      "removeWhenTerminated" -> (order.removeWhenTerminated ? true).asJson)
+      "isSuspended" -> order.isSuspended.?.asJson,
+      "removeWhenTerminated" -> order.removeWhenTerminated.?.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
