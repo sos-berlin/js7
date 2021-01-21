@@ -35,8 +35,8 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
     (agentDirectory / "config" / "private" / "private.conf") ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |""".stripMargin
-    AExecutablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
-    BExecutablePath.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
+    APathExecutable.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
+    BPathExecutable.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
     super.beforeAll()
   }
 

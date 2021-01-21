@@ -20,7 +20,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.JavaResource
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase._
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
@@ -196,7 +196,7 @@ private[https] object HttpsTestBase
     }""").orThrow
 
   private def provideAgentConfiguration(agent: DirectoryProvider.AgentTree): Unit =
-    agent.writeExecutable(RelativeExecutablePath(s"TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
+    agent.writeExecutable(RelativePathExecutable(s"TEST$sh"), operatingSystem.sleepingShellScript(0.seconds))
 
   private def provideControllerConfiguration(controller: DirectoryProvider.ControllerTree): Unit =
     controller.configDir / "private/private.conf" ++= """

@@ -16,7 +16,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange}
 import js7.data.item.VersionId
 import js7.data.item.VersionedEvent.VersionedItemAdded
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
@@ -59,7 +59,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("TEST.cmd"), script(100.ms))
+    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("TEST.cmd"), script(100.ms))
     proxy
   }
 

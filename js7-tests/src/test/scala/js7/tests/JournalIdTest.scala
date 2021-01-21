@@ -10,7 +10,7 @@ import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.AgentId
 import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -39,7 +39,7 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents(0).writeExecutable(TestExecutablePath, script(0.s))
+    directoryProvider.agents(0).writeExecutable(TestPathExecutable, script(0.s))
   }
 
   "CoupleController fails if Agent's historic journal file has an alien JournalId" in {
@@ -109,11 +109,11 @@ final class JournalIdTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 private object JournalIdTest
 {
   private val agentId = AgentId("AGENT-111")
-  private val TestExecutablePath = RelativeExecutablePath("TEST.cmd")
+  private val TestPathExecutable = RelativePathExecutable("TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentId, TestExecutablePath))))
+      Execute(WorkflowJob(agentId, TestPathExecutable))))
 
   private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
     stamped.iterator.to(Iterable).last.eventId

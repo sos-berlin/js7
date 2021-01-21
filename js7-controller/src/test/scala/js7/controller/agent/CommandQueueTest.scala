@@ -14,7 +14,7 @@ import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.agent.CommandQueueTest._
 import js7.data.agent.AgentId
 import js7.data.item.VersionedItemSigner
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -133,7 +133,7 @@ object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentId = AgentId("AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("/A") ~ "VERSION",
-    Execute(WorkflowJob(TestAgentId, ExecutablePath("EXECUTABLE"))))
+    Execute(WorkflowJob(TestAgentId, PathExecutable("EXECUTABLE"))))
   private val itemSigner = new VersionedItemSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
   private val signedWorkflow: Signed[Workflow] = itemSigner.toSigned(TestWorkflow)
 

@@ -18,101 +18,101 @@ sealed trait Executable {
   def env: ObjectExpression
 }
 
-sealed trait ExecutablePath
+sealed trait PathExecutable
 extends Executable
 {
   def path: String
 
   def isAbsolute: Boolean
 }
-object ExecutablePath
+object PathExecutable
 {
-  def unapply(executablePath: ExecutablePath) =
-    Some((executablePath.path, executablePath.env, executablePath.v1Compatible))
+  def unapply(pathExecutable: PathExecutable) =
+    Some((pathExecutable.path, pathExecutable.env, pathExecutable.v1Compatible))
 
   def apply(path: String, env: ObjectExpression = ObjectExpression.empty, v1Compatible: Boolean = false) =
     unchecked(path, env, v1Compatible)
 
   protected def unchecked(path: String, env: ObjectExpression, v1Compatible: Boolean = false) =
     if (isAbsolute(path))
-      AbsoluteExecutablePath.checked(path, env, v1Compatible).orThrow
+      AbsolutePathExecutable.checked(path, env, v1Compatible).orThrow
     else
-      RelativeExecutablePath.checked(path, env, v1Compatible).orThrow
+      RelativePathExecutable.checked(path, env, v1Compatible).orThrow
 
   def sh(path: String, env: ObjectExpression = ObjectExpression.empty) =
     apply(if (isWindows) s"$path.cmd" else path, env)
 
-  def checked(path: String, env: ObjectExpression = ObjectExpression.empty, v1Compatible: Boolean = false): Checked[ExecutablePath] =
+  def checked(path: String, env: ObjectExpression = ObjectExpression.empty, v1Compatible: Boolean = false): Checked[PathExecutable] =
     if (isAbsolute(path))
-      AbsoluteExecutablePath.checked(path, env, v1Compatible)
+      AbsolutePathExecutable.checked(path, env, v1Compatible)
     else
-      RelativeExecutablePath.checked(path, env, v1Compatible)
+      RelativePathExecutable.checked(path, env, v1Compatible)
 
   private[job] def isAbsolute(path: String) =
     path.startsWith("/") || path.startsWith("\\")/*also on Unix, to be reliable*/
 
-  val jsonEncoder: Encoder.AsObject[ExecutablePath] =
+  val jsonEncoder: Encoder.AsObject[PathExecutable] =
     o => JsonObject(
-      TypedJsonCodec.TypeFieldName -> "ExecutablePath".asJson,
+      TypedJsonCodec.TypeFieldName -> "PathExecutable".asJson,
       "path" -> o.path.asJson,
       "env" -> (o.env.nonEmpty ? o.env).asJson,
       "v1Compatible" -> (o.v1Compatible ? true).asJson)
 
-  val jsonDecoder: Decoder[ExecutablePath] =
+  val jsonDecoder: Decoder[PathExecutable] =
     cursor => for {
       path <-cursor.get[String]("path")
       env <- cursor.getOrElse[ObjectExpression]("env")(ObjectExpression.empty)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
-      executablePath <- ExecutablePath.checked(path, env, v1Compatible).toDecoderResult(cursor.history)
-    } yield executablePath
+      pathExecutable <- PathExecutable.checked(path, env, v1Compatible).toDecoderResult(cursor.history)
+    } yield pathExecutable
 }
 
-final case class AbsoluteExecutablePath private(
+final case class AbsolutePathExecutable private(
   path: String,
   env: ObjectExpression = ObjectExpression.empty,
   v1Compatible: Boolean = false)
-extends ExecutablePath
+extends PathExecutable
 {
-  assert(ExecutablePath.isAbsolute(path))
+  assert(PathExecutable.isAbsolute(path))
 
   def isAbsolute = true
 }
-object AbsoluteExecutablePath {
+object AbsolutePathExecutable {
   def checked(path: String, env: ObjectExpression = ObjectExpression.empty, v1Compatible: Boolean) =
     if (path.isEmpty)
       Left(EmptyStringProblem(path))
-    else if (!ExecutablePath.isAbsolute(path))
-      Left(InvalidNameProblem("AbsoluteExecutablePath", path))
+    else if (!PathExecutable.isAbsolute(path))
+      Left(InvalidNameProblem("AbsolutePathExecutable", path))
     else
-      Right(new AbsoluteExecutablePath(path, env, v1Compatible))
+      Right(new AbsolutePathExecutable(path, env, v1Compatible))
 }
 
-final case class RelativeExecutablePath private(
+final case class RelativePathExecutable private(
   path: String,
   env: ObjectExpression = ObjectExpression.empty,
   v1Compatible: Boolean = false)
-extends ExecutablePath
+extends PathExecutable
 {
-  assert(!ExecutablePath.isAbsolute(path))
+  assert(!PathExecutable.isAbsolute(path))
 
   def isAbsolute = false
 
   def toFile(directory: Path): Path =
     directory resolve path.stripPrefix("/")
 }
-object RelativeExecutablePath {
+object RelativePathExecutable {
   def checked(
     path: String,
     env: ObjectExpression = ObjectExpression.empty,
     v1Compatible: Boolean)
-  : Checked[RelativeExecutablePath] =
+  : Checked[RelativePathExecutable] =
     if (path.isEmpty)
-      Left(EmptyStringProblem("RelativeExecutablePath"))
-    else if (ExecutablePath.isAbsolute(path) || path.contains('\\') || path.startsWith(".")
+      Left(EmptyStringProblem("RelativePathExecutable"))
+    else if (PathExecutable.isAbsolute(path) || path.contains('\\') || path.startsWith(".")
       || path.contains("/.") || path.head.isWhitespace || path.last.isWhitespace)
-      Left(InvalidNameProblem("RelativeExecutablePath", path))
+      Left(InvalidNameProblem("RelativePathExecutable", path))
     else
-      Right(new RelativeExecutablePath(path, env, v1Compatible))
+      Right(new RelativePathExecutable(path, env, v1Compatible))
 }
 
 final case class CommandLineExecutable(
@@ -139,30 +139,35 @@ object CommandLineExecutable
     } yield CommandLineExecutable(commandExpr, env)
 }
 
-final case class ExecutableScript(
+final case class ScriptExecutable(
   script: String,
   env: ObjectExpression = ObjectExpression.empty,
   v1Compatible: Boolean = false)
 extends Executable
-object ExecutableScript {
-  implicit val jsonEncoder: Encoder.AsObject[ExecutableScript] =
+object ScriptExecutable
+{
+  implicit val jsonEncoder: Encoder.AsObject[ScriptExecutable] =
     o => JsonObject(
       "script" -> o.script.asJson,
       "env" -> (o.env.nonEmpty ? o.env).asJson,
       "v1Compatible" -> (o.v1Compatible ? true).asJson)
 
-  implicit val jsonDecoder: Decoder[ExecutableScript] =
+  implicit val jsonDecoder: Decoder[ScriptExecutable] =
     cursor => for {
       script <- cursor.get[String]("script")
       env <- cursor.getOrElse[ObjectExpression]("env")(ObjectExpression.empty)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
-    } yield ExecutableScript(script, env, v1Compatible)
+    } yield ScriptExecutable(script, env, v1Compatible)
 }
 
 object Executable
 {
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
-    Subtype(ExecutablePath.jsonEncoder, ExecutablePath.jsonDecoder, Seq(classOf[AbsoluteExecutablePath], classOf[RelativeExecutablePath])),
-    Subtype[ExecutableScript],
+    Subtype.named(PathExecutable.jsonEncoder, PathExecutable.jsonDecoder,
+      Seq(
+        classOf[AbsolutePathExecutable],
+        classOf[RelativePathExecutable]),
+      aliases = Seq("ExecutablePath")),
+    Subtype.named[ScriptExecutable](aliases = Seq("ExecutableScript")),
     Subtype[CommandLineExecutable])
 }

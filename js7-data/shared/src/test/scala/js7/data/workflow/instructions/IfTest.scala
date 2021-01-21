@@ -2,7 +2,7 @@ package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
 import js7.data.agent.AgentId
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression._
 import js7.data.workflow.instructions.Instructions.jsonCodec
@@ -20,8 +20,8 @@ final class IfTest extends AnyFreeSpec
 {
   private val if_ = If(
     GreaterOrEqual(LastReturnCode, NumericConstant(3)),
-    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("THEN")))),
-    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("ELSE"))))),
+    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("THEN")))),
+    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("ELSE"))))),
     Some(SourcePos(1, 2)))
 
   "JSON" in {
@@ -36,7 +36,7 @@ final class IfTest extends AnyFreeSpec
               "job": {
                 "agentId": "AGENT",
                 "executable": {
-                  "TYPE": "ExecutablePath",
+                  "TYPE": "PathExecutable",
                   "path": "THEN"
                 },
                 "taskLimit": 1
@@ -51,7 +51,7 @@ final class IfTest extends AnyFreeSpec
               "job":  {
                 "agentId": "AGENT",
                 "executable": {
-                  "TYPE": "ExecutablePath",
+                  "TYPE": "PathExecutable",
                   "path": "ELSE"
                 },
                 "taskLimit": 1

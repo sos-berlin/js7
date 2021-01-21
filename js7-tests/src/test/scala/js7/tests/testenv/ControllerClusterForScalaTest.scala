@@ -22,10 +22,10 @@ import js7.data.agent.AgentId
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.item.VersionedItem
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
+import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -124,7 +124,7 @@ trait ControllerClusterForScalaTest
         backup.controller.configDir / "private" / "private.conf",
         REPLACE_EXISTING)
 
-      for (a <- primary.agents) a.writeExecutable(TestExecutablePath, shellScript)
+      for (a <- primary.agents) a.writeExecutable(TestPathExecutable, shellScript)
 
       val setting = ClusterSetting(
         Map(
@@ -158,7 +158,7 @@ trait ControllerClusterForScalaTest
 
 object ControllerClusterForScalaTest
 {
-  val TestExecutablePath = RelativeExecutablePath("TEST.cmd")
+  val TestPathExecutable = RelativePathExecutable("TEST.cmd")
 
   def assertEqualJournalFiles(
     primary: DirectoryProvider.ControllerTree,

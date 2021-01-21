@@ -29,7 +29,7 @@ import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.utils.JavaShutdownHook
 import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.StringValue
@@ -49,7 +49,7 @@ import scala.concurrent.duration._
 object TestControllerAgent
 {
   private val TestWorkflowPath = WorkflowPath("/test")
-  private val TestExecutablePath = RelativeExecutablePath("test")
+  private val TestPathExecutable = RelativePathExecutable("test")
   private val StdoutRowSize = 1000
   private val logger = Logger(getClass)
 
@@ -76,7 +76,7 @@ object TestControllerAgent
       env.agents foreach { _.configDir / "agent.conf" ++= "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
         for (agentId <- conf.agentIds) {
-          TestExecutablePath.toFile(env.agentToTree(agentId).configDir / "executables").writeExecutable(
+          TestPathExecutable.toFile(env.agentToTree(agentId).configDir / "executables").writeExecutable(
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
@@ -168,7 +168,7 @@ object TestControllerAgent
 
   private val PathNames = LazyList("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
   private def testJob(conf: Conf, agentId: AgentId) =
-    WorkflowJob(agentId, TestExecutablePath,
+    WorkflowJob(agentId, TestPathExecutable,
       Map("JOB-VARIABLE" -> StringValue(s"VALUE-$agentId")),
       taskLimit = conf.tasksPerJob)
 
@@ -181,7 +181,7 @@ object TestControllerAgent
             pathName,
             Workflow(
               WorkflowPath("/TestControllerAgent") ~ "1",
-              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentId, TestExecutablePath)) })))
+              Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentId, TestPathExecutable)) })))
         .orThrow,
       If(Or(Equal(LastReturnCode, NumericConstant(0)), Equal(LastReturnCode, NumericConstant(0))),
         thenWorkflow = Workflow.of(Execute(testJob(conf, conf.agentIds.head))),

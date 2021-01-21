@@ -7,7 +7,7 @@ import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.controller.RunningController
 import js7.data.agent.AgentId
 import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderDetachable, OrderDetached, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.position.Position
@@ -38,7 +38,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
           execute executable="executable$sh", agent="AGENT";
         }""").orThrow)
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"executable$sh"), ":")
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
         runOrders(controller)
@@ -101,7 +101,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
           offer orderId = "OFFERED-ORDER-ID", timeout = 60;
         }""").orThrow)
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflows, testName = Some("OfferAndAwaitOrderTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"executable$sh"), ":")
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"executable$sh"), ":")
 
       directoryProvider.run { (controller, _) =>
         runOrders(controller)

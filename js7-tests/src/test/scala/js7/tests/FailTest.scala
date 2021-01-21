@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -33,7 +33,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"♦️-$i"))
 
   override def beforeAll() = {
-    directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
+    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
     super.beforeAll()
   }
 

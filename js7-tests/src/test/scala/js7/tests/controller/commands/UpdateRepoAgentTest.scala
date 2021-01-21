@@ -17,7 +17,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.data.ControllerCommand
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -44,7 +44,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
           |  }
           |}
           |""".stripMargin
-      provider.agentToTree(agentId).writeExecutable(RelativeExecutablePath("SCRIPT.cmd"), ":")
+      provider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT.cmd"), ":")
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
       val agent1 = provider.startAgents().await(99.s).head

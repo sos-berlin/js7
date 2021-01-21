@@ -10,7 +10,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.data.ControllerCommand.AddOrder
 import js7.data.agent.AgentId
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -97,7 +97,7 @@ private object AkkaHttpControllerApiTest
 {
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "INITIAL",
-    Execute(WorkflowJob(AgentId("MISSING"), ExecutablePath("MISSING"))))
+    Execute(WorkflowJob(AgentId("MISSING"), PathExecutable("MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
   private val SecondOrder = Order(OrderId("SECOND-ORDER"), TestWorkflow.id, Order.Fresh.StartImmediately)
 

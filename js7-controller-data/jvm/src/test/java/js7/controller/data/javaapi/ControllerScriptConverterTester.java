@@ -22,7 +22,7 @@ final class ControllerScriptConverterTester
                     "\"job\":{" +
                         "\"agentId\":\"AGENT\"," +
                         "\"executable\":{" +
-                            "\"TYPE\":\"ExecutablePath\"," +
+                            "\"TYPE\":\"PathExecutable\"," +
                             "\"path\":\"/EXECUTABLE\"" +
                         "}," +
                         "\"taskLimit\":1" +

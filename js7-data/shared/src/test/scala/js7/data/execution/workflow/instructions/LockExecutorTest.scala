@@ -4,7 +4,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.LockExecutorTest._
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.lock.{Acquired, Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockQueued, OrderLockReleased}
 import js7.data.order.{Order, OrderId}
@@ -51,7 +51,7 @@ object LockExecutorTest {
   private val freeLockId = LockId("FREE-LOCK")
   private val occupiedLockId = LockId("OCCUPIED-LOCK")
   private val exclusiveLockId = LockId("EXCLUSIVE-LOCK")
-  private val execute = Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("JOB")))
+  private val execute = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("JOB")))
 
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "VERSION",
     LockInstruction(freeLockId, None, Workflow.of(execute)),

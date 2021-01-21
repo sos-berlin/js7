@@ -7,7 +7,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderRemoved, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -27,7 +27,7 @@ final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with Contro
     .withFallback(super.controllerConfig)
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) a.writeExecutable(executablePath, script(1.s))
+    for (a <- directoryProvider.agents) a.writeExecutable(pathExecutable, script(1.s))
     super.beforeAll()
   }
 
@@ -44,11 +44,11 @@ final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with Contro
 
 object RemoveOrderWhenTerminatedDelayedTest
 {
-  private val executablePath = RelativeExecutablePath("quick.cmd")
+  private val pathExecutable = RelativePathExecutable("quick.cmd")
   private val agentId = AgentId("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, executablePath)))
+    Execute(WorkflowJob(agentId, pathExecutable)))
 }

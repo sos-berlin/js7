@@ -3,7 +3,7 @@ package js7.data.workflow.instructions
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.ProblemException
 import js7.data.agent.AgentId
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -18,8 +18,8 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ForkTest extends AnyFreeSpec {
 
   private val fork = Fork.of(
-    "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("A")))),
-    "B" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("B")))))
+    "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("A")))),
+    "B" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("B")))))
     .copy(sourcePos = Some(SourcePos(1, 2)))
 
   "JSON" - {
@@ -37,7 +37,7 @@ final class ForkTest extends AnyFreeSpec {
                   "job": {
                     "agentId": "AGENT",
                     "executable": {
-                      "TYPE": "ExecutablePath",
+                      "TYPE": "PathExecutable",
                       "path": "A"
                     },
                     "taskLimit": 1
@@ -54,7 +54,7 @@ final class ForkTest extends AnyFreeSpec {
                   "job": {
                     "agentId": "AGENT",
                     "executable": {
-                      "TYPE": "ExecutablePath",
+                      "TYPE": "PathExecutable",
                       "path": "B"
                     },
                     "taskLimit": 1
@@ -71,8 +71,8 @@ final class ForkTest extends AnyFreeSpec {
   "Duplicate branch ids are rejected" in {  // TODO
     intercept[ProblemException] {
       Fork.of(
-        "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("A")))),
-        "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("B")))))
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("A")))),
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("B")))))
     }
   }
 

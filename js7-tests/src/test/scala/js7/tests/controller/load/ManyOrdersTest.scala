@@ -12,7 +12,7 @@ import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.data.agent.AgentId
 import js7.data.event.{EventId, EventRequest}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
@@ -47,7 +47,7 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), script(0.ms))
+      a.writeExecutable(RelativePathExecutable(s"TEST$sh"), script(0.ms))
     }
     super.beforeAll()
   }

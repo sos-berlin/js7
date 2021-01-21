@@ -8,7 +8,7 @@ import js7.common.scalautil.FileUtils
 import js7.common.scalautil.FileUtils.syntax._
 import js7.core.item.TypedSourceReader
 import js7.data.agent.AgentId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
@@ -25,12 +25,12 @@ final class WorkflowReaderTest extends AnyFreeSpec {
       val expected = mutable.Buffer[Workflow]()
 
       // JSON
-      val jsonWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), RelativeExecutablePath("JSON.sh"))))
+      val jsonWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), RelativePathExecutable("JSON.sh"))))
       dir / "JSON.workflow.json" := jsonWorkflow.asJson.toPrettyString
       expected += jsonWorkflow.withId(WorkflowPath("/JSON"))
 
       // YAML
-      val yamlWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), RelativeExecutablePath("YAML.sh"))))
+      val yamlWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), RelativePathExecutable("YAML.sh"))))
       dir / "YAML.workflow.yaml" := yamlWorkflow.asJson.toYamlString
       expected += yamlWorkflow.withId(WorkflowPath("/YAML"))
 

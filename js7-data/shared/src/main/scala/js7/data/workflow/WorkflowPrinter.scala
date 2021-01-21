@@ -3,7 +3,7 @@ package js7.data.workflow
 import cats.Show
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{CommandLineExecutable, ExecutablePath, ExecutableScript}
+import js7.data.job.{CommandLineExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockId
 import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
 import js7.data.value.expression.Expression.ObjectExpression
@@ -64,13 +64,13 @@ final class WorkflowPrinter(sb: StringBuilder) {
       sb.append(o.toBigDecimalSeconds)  // TODO Use floating point
     }
     job.executable match {
-      case ExecutablePath(path, envExpr, v1Compatible) =>
+      case PathExecutable(path, envExpr, v1Compatible) =>
         if (v1Compatible) sb ++= ", v1Compatible=true"
         appendEnv(envExpr)
         sb ++= ", executable="
         appendQuoted(path)
 
-      case ExecutableScript(script, envExpr, v1Compatible) =>
+      case ScriptExecutable(script, envExpr, v1Compatible) =>
         if (v1Compatible) sb ++= ", v1Compatible=true"
         appendEnv(envExpr)
         sb ++= ", script="

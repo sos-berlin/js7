@@ -17,7 +17,7 @@ import js7.controller.data.ControllerCommand.{ReleaseEvents, TakeSnapshot}
 import js7.controller.data.events.ControllerEvent
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -51,7 +51,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
 
   "ReleaseEvents" in {
     for ((_, tree) <- directoryProvider.agentToTree) {
-      tree.writeExecutable(TestExecutablePath, script(0.s))
+      tree.writeExecutable(TestPathExecutable, script(0.s))
     }
 
     directoryProvider.run { (controller, _) =>
@@ -141,9 +141,9 @@ private object ReleaseEventsTest
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))
   private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
   private val TestAgentId = AgentId("agent-111")
-  private val TestExecutablePath = RelativeExecutablePath(s"TEST$sh")
+  private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
-    Execute(WorkflowJob(TestAgentId, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentId, TestPathExecutable)))
   private val aOrder = FreshOrder(OrderId("🔵"), TestWorkflow.id.path)
   private val bOrder = FreshOrder(OrderId("🔶"), TestWorkflow.id.path)
   private val cOrder = FreshOrder(OrderId("⭕️"), TestWorkflow.id.path)

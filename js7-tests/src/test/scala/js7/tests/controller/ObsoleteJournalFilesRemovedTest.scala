@@ -9,7 +9,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.TakeSnapshot
 import js7.controller.data.events.ControllerEvent
 import js7.data.agent.AgentId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -34,7 +34,7 @@ final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryPr
 
   "Obsolete journal files are removed if nothing has been configured" in {
     for ((_, tree) <- directoryProvider.agentToTree) {
-      tree.writeExecutable(executablePath, script(0.s))
+      tree.writeExecutable(pathExecutable, script(0.s))
     }
 
     def controllerJournalFiles = listJournalFiles(directoryProvider.controller.dataDir / "state" / "controller")
@@ -57,8 +57,8 @@ final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryPr
 private object ObsoleteJournalFilesRemovedTest
 {
   private val agentId = AgentId("agent-111")
-  private val executablePath = RelativeExecutablePath(s"TEST$sh")
+  private val pathExecutable = RelativePathExecutable(s"TEST$sh")
   private val workflow = Workflow.of(WorkflowPath("/test"),
-    Execute(WorkflowJob(agentId, executablePath)))
+    Execute(WorkflowJob(agentId, pathExecutable)))
   private val aOrder = FreshOrder(OrderId("🔵"), workflow.id.path)
 }

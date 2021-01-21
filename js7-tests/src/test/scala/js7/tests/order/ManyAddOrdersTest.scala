@@ -13,7 +13,7 @@ import js7.controller.data.events.AgentRefStateEvent.AgentReady
 import js7.data.agent.AgentId
 import js7.data.event.EventRequest
 import js7.data.item.VersionId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -42,7 +42,7 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(executablePath, script(0.s))
+      a.writeExecutable(pathExecutable, script(0.s))
     }
     super.beforeAll()
     controller.eventWatch.await[AgentReady]()
@@ -79,15 +79,15 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
 object ManyAddOrdersTest
 {
-  private val executablePath = RelativeExecutablePath("executable.cmd")
+  private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentId1 = AgentId("AGENT-1")
   private val agentId2 = AgentId("AGENT-2")
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId1, executablePath, taskLimit = 3)),
-    Execute(WorkflowJob(agentId2, executablePath, taskLimit = 3)))
+    Execute(WorkflowJob(agentId1, pathExecutable, taskLimit = 3)),
+    Execute(WorkflowJob(agentId2, pathExecutable, taskLimit = 3)))
 
   private val workflow2 =json"""
     {
@@ -158,7 +158,7 @@ object ManyAddOrdersTest
         "job1_e": {
           "agentId": "AGENT-1",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -169,7 +169,7 @@ object ManyAddOrdersTest
         "job1_d": {
           "agentId": "AGENT-1",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -180,7 +180,7 @@ object ManyAddOrdersTest
         "job2_c": {
           "agentId": "AGENT-1",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
           "returnCodeMeaning": {
@@ -191,7 +191,7 @@ object ManyAddOrdersTest
         "job2_b": {
           "agentId": "AGENT-2",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
           "returnCodeMeaning": {
@@ -202,7 +202,7 @@ object ManyAddOrdersTest
         "job2": {
           "agentId": "AGENT-2",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -213,7 +213,7 @@ object ManyAddOrdersTest
         "job1": {
           "agentId": "AGENT-1",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -224,7 +224,7 @@ object ManyAddOrdersTest
         "job3": {
           "agentId": "AGENT-2",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\nsleep 1"
           },
           "returnCodeMeaning": {
@@ -235,7 +235,7 @@ object ManyAddOrdersTest
         "job1_b": {
           "agentId": "AGENT-1",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -246,7 +246,7 @@ object ManyAddOrdersTest
         "job2_a": {
           "agentId": "AGENT-1",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
           "returnCodeMeaning": {
@@ -257,7 +257,7 @@ object ManyAddOrdersTest
         "job1_a": {
           "agentId": "AGENT-2",
           "executable": {
-            "TYPE": "ExecutableScript",
+            "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {

@@ -11,7 +11,7 @@ import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentId
 import js7.data.command.CancelMode
 import js7.data.item.VersionId
-import js7.data.job.{RelativeExecutablePath, ReturnCode}
+import js7.data.job.{RelativePathExecutable, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -37,7 +37,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   protected val versionedItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
 
   override def beforeAll() = {
-    for (a <- directoryProvider.agents) a.writeExecutable(executablePath, sleepingScript("SLEEP"))
+    for (a <- directoryProvider.agents) a.writeExecutable(pathExecutable, sleepingScript("SLEEP"))
     super.beforeAll()
   }
 
@@ -226,24 +226,24 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
 object CancelOrdersTest
 {
-  private val executablePath = RelativeExecutablePath("executable.cmd",
+  private val pathExecutable = RelativePathExecutable("executable.cmd",
     ObjectExpression(Map("SLEEP" -> NamedValue.last("sleep"))))
   private val agentId = AgentId("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, executablePath)))
+    Execute(WorkflowJob(agentId, pathExecutable)))
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("/TWO") ~ versionId,
-    Execute(WorkflowJob(agentId, executablePath)),
-    Execute(WorkflowJob(agentId, executablePath)))
+    Execute(WorkflowJob(agentId, pathExecutable)),
+    Execute(WorkflowJob(agentId, pathExecutable)))
 
   private val forkWorkflow = Workflow.of(
     WorkflowPath("/FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
-        Execute(WorkflowJob(agentId, executablePath)))),
-    Execute(WorkflowJob(agentId, executablePath)))
+        Execute(WorkflowJob(agentId, pathExecutable)))),
+    Execute(WorkflowJob(agentId, pathExecutable)))
 }

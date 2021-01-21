@@ -3,7 +3,7 @@ package js7.data.workflow.instructions
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.BooleanConstant
 import js7.data.workflow.instructions.Instructions.jsonCodec
@@ -21,8 +21,8 @@ import scala.concurrent.duration._
 final class TryInstructionTest extends AnyFreeSpec
 {
   private val try_ = TryInstruction(
-    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("TRY")))),
-    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("CATCH")))))
+    tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("TRY")))),
+    catchWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("CATCH")))))
 
   "JSON" - {
     "with defaults" in {
@@ -36,7 +36,7 @@ final class TryInstructionTest extends AnyFreeSpec
                 "job": {
                   "agentId": "AGENT",
                   "executable": {
-                    "TYPE": "ExecutablePath",
+                    "TYPE": "PathExecutable",
                     "path": "TRY"
                   },
                   "taskLimit": 1
@@ -51,7 +51,7 @@ final class TryInstructionTest extends AnyFreeSpec
                 "job": {
                   "agentId": "AGENT",
                   "executable": {
-                    "TYPE": "ExecutablePath",
+                    "TYPE": "PathExecutable",
                     "path": "CATCH"
                   },
                   "taskLimit": 1

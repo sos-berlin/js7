@@ -24,7 +24,7 @@ import js7.data.Problems.VersionedItemDeletedProblem
 import js7.data.agent.AgentId
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange}
 import js7.data.item.{ItemOperation, VersionId}
-import js7.data.job.{ExecutableScript, RelativeExecutablePath}
+import js7.data.job.{RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -49,7 +49,7 @@ final class ControllerRepoTest extends AnyFreeSpec
       import provider.itemSigner
 
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
-        provider.agents.head.writeExecutable(RelativeExecutablePath(s"EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
+        provider.agents.head.writeExecutable(RelativePathExecutable(s"EXECUTABLE-V$v$sh"), (isWindows ?? "@") + s"echo /VERSION-$v/")
       provider.controller.configDir / "controller.conf" ++=
         """js7.auth.users.TEST-USER {
           |  password = "plain:TEST-PASSWORD"
@@ -184,7 +184,7 @@ final class ControllerRepoTest extends AnyFreeSpec
       }
 
       def generateItemOperations(n: Int): Seq[ItemOperation] = {
-        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentId, ExecutableScript("# " + "BIG "*256))))
+        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentId, ScriptExecutable("# " + "BIG "*256))))
         val versionCounter = AtomicInt(0)
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
           Observable.fromIterable(1 to n)
@@ -222,5 +222,5 @@ object ControllerRepoTest
   private val TestAgentId = AgentId("AGENT")
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
-    Execute(WorkflowJob(TestAgentId, RelativeExecutablePath(s"EXECUTABLE-V${versionId.string}$sh"))))
+    Execute(WorkflowJob(TestAgentId, RelativePathExecutable(s"EXECUTABLE-V${versionId.string}$sh"))))
 }

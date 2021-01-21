@@ -40,8 +40,8 @@ final class AgentActorTest extends AnyFreeSpec
     s"AgentActorTest, $n orders" in {
       TestAgentActorProvider.provide { provider =>
         import provider.{agentDirectory, executeCommand}
-        for (executablePath <- TestExecutablePaths) {
-          val file = executablePath.toFile(agentDirectory / "config" / "executables")
+        for (pathExecutable <- TestPathExecutables) {
+          val file = pathExecutable.toFile(agentDirectory / "config" / "executables")
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s

@@ -7,7 +7,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
@@ -27,8 +27,8 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(quickExecutablePath, script(1.s))
-      a.writeExecutable(slowExecutablePath, script(1.s))
+      a.writeExecutable(quickPathExecutable, script(1.s))
+      a.writeExecutable(slowPathExecutable, script(1.s))
     }
     super.beforeAll()
   }
@@ -78,16 +78,16 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
 
 object RemoveOrderWhenTerminatedTest
 {
-  private val quickExecutablePath = RelativeExecutablePath("quick.cmd")
-  private val slowExecutablePath = RelativeExecutablePath("slow.cmd")
+  private val quickPathExecutable = RelativePathExecutable("quick.cmd")
+  private val slowPathExecutable = RelativePathExecutable("slow.cmd")
   private val agentId = AgentId("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val quickWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, quickExecutablePath)))
+    Execute(WorkflowJob(agentId, quickPathExecutable)))
 
   private val slowWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, slowExecutablePath)))
+    Execute(WorkflowJob(agentId, slowPathExecutable)))
 }

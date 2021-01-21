@@ -16,7 +16,7 @@ import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.item.VersionId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
@@ -45,7 +45,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(executablePath, waitingForFileScript(triggerFile, delete = true))
+      a.writeExecutable(pathExecutable, waitingForFileScript(triggerFile, delete = true))
     }
     super.beforeAll()
     controller.eventWatch.await[AgentReady]()
@@ -443,10 +443,10 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
 object SuspendResumeOrdersTest
 {
-  private val executablePath = RelativeExecutablePath("executable.cmd")
+  private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentId = AgentId("AGENT")
   private val versionId = VersionId("INITIAL")
-  private val executeJob = Execute(WorkflowJob(agentId, executablePath, taskLimit = 100))
+  private val executeJob = Execute(WorkflowJob(agentId, pathExecutable, taskLimit = 100))
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ versionId,

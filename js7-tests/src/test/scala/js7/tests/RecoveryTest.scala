@@ -23,7 +23,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{VersionId, VersionedEvent}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
@@ -61,7 +61,7 @@ final class RecoveryTest extends AnyFreeSpec
         controllerConfig = TestConfig)
       autoClosing(directoryProvider) { _ =>
         for (agent <- directoryProvider.agentToTree.values)
-          agent.writeExecutable(TestExecutablePath, script(1.s, resultVariable = Some("var1")))
+          agent.writeExecutable(TestPathExecutable, script(1.s, resultVariable = Some("var1")))
 
         runController(directoryProvider) { controller =>
           if (lastEventId == EventId.BeforeFirst) {
@@ -166,7 +166,7 @@ private object RecoveryTest {
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
   private val AgentIds = AgentId("agent-111") :: AgentId("agent-222") :: Nil
-  private val TestExecutablePath = RelativeExecutablePath("TEST.cmd", v1Compatible = true)
+  private val TestPathExecutable = RelativePathExecutable("TEST.cmd", v1Compatible = true)
 
   private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(
@@ -176,10 +176,10 @@ private object RecoveryTest {
       Execute(WorkflowJob.Name("TEST-1")),
       Execute(WorkflowJob.Name("TEST-1"))),
     Map(
-      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentIds(0), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentIds(0).string}"))),
-      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentIds(1), TestExecutablePath, Map("var1" -> StringValue(s"VALUE-${AgentIds(1).string}")))))
+      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentIds(0), TestPathExecutable, Map("var1" -> StringValue(s"VALUE-${AgentIds(0).string}"))),
+      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentIds(1), TestPathExecutable, Map("var1" -> StringValue(s"VALUE-${AgentIds(1).string}")))))
 
-  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") ~ "INITIAL", Execute(WorkflowJob(AgentIds(0), TestExecutablePath)))
+  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") ~ "INITIAL", Execute(WorkflowJob(AgentIds(0), TestPathExecutable)))
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(

@@ -18,7 +18,7 @@ import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
@@ -48,7 +48,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
         provideAgentDirectory { directory =>
           createDirectory(directory / "working")
           val workingDirectory = toWorkingDirectory(directory).toRealPath()
-          TestExecutablePath.toFile(directory / "config" / "executables").writeExecutable(TestScript)
+          TestPathExecutable.toFile(directory / "config" / "executables").writeExecutable(TestScript)
           var agentConf = AgentConfiguration.forTest(directory)
           if (directory != WorkingDirectory) {
             agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)
@@ -87,9 +87,9 @@ object AgentTest {
       |echo "WORKDIR=$(pwd)" >$SCHEDULER_RETURN_VALUES
       |""".stripMargin
 
-  private val TestExecutablePath = RelativeExecutablePath(s"TEST$sh")
+  private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")
 
   private val TestWorkflow = Workflow.of(
     WorkflowPath("/WORKFLOW") ~ "VERSION",
-    Execute(WorkflowJob(TestAgentId, TestExecutablePath)))
+    Execute(WorkflowJob(TestAgentId, TestPathExecutable)))
 }

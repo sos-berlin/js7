@@ -12,7 +12,7 @@
     "JOB-1": {
       "agentId": "agent-1",
       "executable": {
-        "TYPE": "ExecutablePath",
+        "TYPE": "PathExecutable",
         "path": "test"
       },
       "taskLimit": 3
@@ -20,7 +20,7 @@
     "JOB-2": {
       "agentId": "agent-2",
       "executable": {
-        "TYPE": "ExecutableScript",
+        "TYPE": "ScriptExecutable",
         "script": "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"はじめまして。 $SCHEDULER_PARAM_TESTARGUMENT\"\nsleep 2\nexit\n"
       },
       "taskLimit": 3

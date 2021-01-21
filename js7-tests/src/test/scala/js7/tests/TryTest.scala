@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{RelativeExecutablePath, ReturnCode}
+import js7.data.job.{RelativePathExecutable, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -23,9 +23,9 @@ final class TryTest extends AnyFreeSpec
   "Nested try catch with outer non-failing catch, OrderFinished" in {
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, FinishingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
-        a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-        a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+        a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
+        a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔺")
@@ -39,8 +39,8 @@ final class TryTest extends AnyFreeSpec
   "Nested try catch with failing catch, OrderFailed" in {
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, StoppingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-        a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+        a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("❌")
@@ -66,8 +66,8 @@ final class TryTest extends AnyFreeSpec
          |}""".stripMargin).orThrow
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
-        a.writeExecutable(RelativeExecutablePath(s"FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
+        a.writeExecutable(RelativePathExecutable(s"FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("⭕")
@@ -112,10 +112,10 @@ final class TryTest extends AnyFreeSpec
          |}""".stripMargin).orThrow
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
-        a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
-        a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-        a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
-        a.writeExecutable(RelativeExecutablePath(s"NEVER$sh"), if (isWindows) "@exit 3" else "exit 3")
+        a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
+        a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+        a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+        a.writeExecutable(RelativePathExecutable(s"NEVER$sh"), if (isWindows) "@exit 3" else "exit 3")
       }
       directoryProvider.run { (controller, _) =>
         val orderId = OrderId("🔴")

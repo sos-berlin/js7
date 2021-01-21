@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -176,8 +176,8 @@ final class FailUncatchableTest extends AnyFreeSpec
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
-      directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("test.cmd"), "exit 3")
-      directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("sleep.cmd"), DirectoryProvider.script(100.ms))
+      directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
+      directoryProvider.agents.head.writeExecutable(RelativePathExecutable("sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         controller.eventWatch.await[E](_.key == orderId)

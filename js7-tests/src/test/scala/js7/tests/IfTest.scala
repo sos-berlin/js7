@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{RelativeExecutablePath, ReturnCode}
+import js7.data.job.{RelativePathExecutable, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumericValue, StringValue}
@@ -22,8 +22,8 @@ final class IfTest extends AnyFreeSpec {
 
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentId :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST$sh"), ":")
-      for (a <- directoryProvider.agents) a.writeExecutable(RelativeExecutablePath(s"TEST-RC$sh"), jobScript)
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
       directoryProvider.run { (controller, _) =>
         for (returnCode <- ExpectedEvents.keys) withClue(s"$returnCode: ") {

@@ -16,7 +16,7 @@ import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.VersionId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -51,9 +51,9 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativeExecutablePath("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativeExecutablePath("SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativeExecutablePath("SCRIPT4.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativePathExecutable("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
+    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 

@@ -24,7 +24,7 @@ import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, Agent
 import js7.data.agent.AgentId
 import js7.data.event.JournalSeparators
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -55,7 +55,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents(0).writeExecutable(executablePath, script(2.s))
+    directoryProvider.agents(0).writeExecutable(pathExecutable, script(2.s))
   }
 
   override protected val controllerConfig = config"""
@@ -164,9 +164,9 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 object JournalWebServiceTest
 {
   private val agentId = AgentId("AGENT-111")
-  private val executablePath = RelativeExecutablePath("TEST.cmd")
+  private val pathExecutable = RelativePathExecutable("TEST.cmd")
 
   private val workflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentId, executablePath))))
+      Execute(WorkflowJob(agentId, pathExecutable))))
 }

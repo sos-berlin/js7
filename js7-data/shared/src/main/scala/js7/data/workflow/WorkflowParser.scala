@@ -6,7 +6,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, CommandLineParser, ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, PathExecutable, ReturnCode, ScriptExecutable}
 import js7.data.lock.LockId
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
@@ -111,13 +111,13 @@ object WorkflowParser
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
         executable <- kv.oneOf[Any]("executable", "command", "script").flatMap {
           case ("executable", path: String) =>
-            Pass(ExecutablePath(path, env, v1Compatible = v1Compatible))
+            Pass(PathExecutable(path, env, v1Compatible = v1Compatible))
           case ("command", command: String) =>
             if (v1Compatible) Fail.opaque(s"v1Compatible=true is inappropriate for a command")
             else checkedToP(CommandLineParser.parse(command).map(CommandLineExecutable(_, env)))
           case ("script", script: Expression) =>
             checkedToP(Evaluator.Constant.eval(script).flatMap(_.toStringValue)
-              .map(v => ExecutableScript(v.string, env, v1Compatible = v1Compatible)))
+              .map(v => ScriptExecutable(v.string, env, v1Compatible = v1Compatible)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
         arguments <- kv[NamedValues]("arguments", NamedValues.empty)

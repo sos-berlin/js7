@@ -20,7 +20,7 @@ import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.item.{ItemOperation, VersionId, VersionedItemSigner}
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -110,8 +110,8 @@ object ControllerAgentWithoutAuthenticationTest
 {
   private val versionId = VersionId("INITIAL")
   private val agentId = AgentId("AGENT")
-  private val executablePath = ExecutablePath("EXECUTABLE.cmd")
+  private val pathExecutable = PathExecutable("EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ versionId,
-    Execute(WorkflowJob(agentId, executablePath)))
+    Execute(WorkflowJob(agentId, pathExecutable)))
   private val orderId = OrderId("🔵")
 }

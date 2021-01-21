@@ -11,7 +11,7 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
-import js7.data.job.ExecutablePath
+import js7.data.job.PathExecutable
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
@@ -929,7 +929,7 @@ object OrderEventSourceTest {
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))
 
-  private val executeScript = Execute(WorkflowJob(AgentId("AGENT"), ExecutablePath("executable")))
+  private val executeScript = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("executable")))
 
   private def step(workflow: Workflow, outcome: Outcome): Seq[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)

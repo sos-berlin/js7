@@ -37,7 +37,7 @@ import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
 import js7.tests.controller.proxy.history.ProxyHistoryTest._
-import js7.tests.testenv.ControllerClusterForScalaTest.TestExecutablePath
+import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -227,18 +227,18 @@ object ProxyHistoryTest
   private val BAgentId = AgentId("AGENT-B")
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""
      |define workflow {
-     |  execute executable="${TestExecutablePath.path}", agent="AGENT-A";
+     |  execute executable="${TestPathExecutable.path}", agent="AGENT-A";
      |  fork {
      |    "🥕": {
-     |      execute executable="${TestExecutablePath.path}", agent="AGENT-A";
-     |      execute executable="${TestExecutablePath.path}", agent="AGENT-A";
+     |      execute executable="${TestPathExecutable.path}", agent="AGENT-A";
+     |      execute executable="${TestPathExecutable.path}", agent="AGENT-A";
      |    },
      |    "🍋": {
-     |      execute executable="${TestExecutablePath.path}", agent="AGENT-A";
-     |      execute executable="${TestExecutablePath.path}", agent="AGENT-B";
+     |      execute executable="${TestPathExecutable.path}", agent="AGENT-A";
+     |      execute executable="${TestPathExecutable.path}", agent="AGENT-B";
      |    }
      |  }
-     |  execute executable="${TestExecutablePath.path}", agent="AGENT-A";
+     |  execute executable="${TestPathExecutable.path}", agent="AGENT-A";
      |}
      """.stripMargin.trim).orThrow
 

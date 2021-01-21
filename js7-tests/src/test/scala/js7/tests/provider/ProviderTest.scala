@@ -3,7 +3,6 @@ package js7.tests.provider
 import cats.syntax.option._
 import java.nio.file.Files.{createDirectories, delete}
 import java.nio.file.{Files, Paths}
-import java.util.concurrent._
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
 import js7.base.data.ByteArray
@@ -28,7 +27,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
 import js7.data.item.{Repo, SourceType, VersionId, VersionedItems}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.provider.Provider
@@ -100,7 +99,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         |}
       """.stripMargin
 
-    directoryProvider.agents.head.writeExecutable(RelativeExecutablePath("EXECUTABLE"), ":")
+    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("EXECUTABLE"), ":")
 
     createDirectories(providerDirectory / "private")
     createDirectories(providerDirectory / "live" / "folder")
@@ -339,7 +338,7 @@ object ProviderTest
           "job": {
             "agentId": "AGENT",
             "executable": {
-              "TYPE": "ExecutablePath",
+              "TYPE": "PathExecutable",
               "path": "EXECUTABLE"
             },
             "taskLimit": 1
@@ -356,7 +355,7 @@ object ProviderTest
           "job": {
             "agentId": "AGENT",
             "executable": {
-              "TYPE": "ExecutablePath",
+              "TYPE": "PathExecutable",
               "path": "OTHER-EXECUTABLE"
             },
             "taskLimit": 1

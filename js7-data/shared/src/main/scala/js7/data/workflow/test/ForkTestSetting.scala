@@ -1,7 +1,7 @@
 package js7.data.workflow.test
 
 import js7.data.agent.AgentId
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -14,11 +14,11 @@ object ForkTestSetting {
   val AAgentId = AgentId("AGENT-A")
   val BAgentId = AgentId("AGENT-B")
   val AgentIds = List(AAgentId, BAgentId)
-  val TestExecutablePath = RelativeExecutablePath("executable.cmd")
+  val TestPathExecutable = RelativePathExecutable("executable.cmd")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
-  val AJob = WorkflowJob(AAgentId, TestExecutablePath)
-  val BJob = WorkflowJob(BAgentId, TestExecutablePath)
+  val AJob = WorkflowJob(AAgentId, TestPathExecutable)
+  val BJob = WorkflowJob(BAgentId, TestPathExecutable)
   val AExecute = Execute.Named(AJobName)
   val BExecute = Execute.Named(BJobName)
 

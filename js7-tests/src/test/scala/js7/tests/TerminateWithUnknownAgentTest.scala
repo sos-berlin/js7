@@ -7,7 +7,7 @@ import js7.base.web.Uri
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.job.ExecutableScript
+import js7.data.job.ScriptExecutable
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -46,5 +46,5 @@ private object TerminateWithUnknownAgentTest
 {
   private val agentId = AgentId("UNKNOWN")
   private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"),
-    Execute.Anonymous(WorkflowJob(agentId, ExecutableScript(":"))))
+    Execute.Anonymous(WorkflowJob(agentId, ScriptExecutable(":"))))
 }

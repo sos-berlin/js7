@@ -274,7 +274,7 @@
     "job-1": {
       "agentId": "agent-1",
       "executable": {
-        "TYPE": "ExecutableScript",
+        "TYPE": "ScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -287,7 +287,7 @@
     "job-2": {
       "agentId": "agent-2",
       "executable": {
-        "TYPE": "ExecutableScript",
+        "TYPE": "ScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {

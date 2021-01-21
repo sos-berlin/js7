@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, Executable, ExecutablePath, ExecutableScript, ReturnCode}
+import js7.data.job.{CommandLineExecutable, Executable, PathExecutable, ReturnCode, ScriptExecutable}
 import js7.data.order.Outcome
 import js7.data.value.{NamedValues, NumericValue, ValuePrinter}
 import js7.data.workflow.instructions.ReturnCodeMeaning
@@ -38,8 +38,8 @@ final case class WorkflowJob private(
 
   def argumentsString = s"agent=${agentId.string}, " +
     (executable match {
-      case ExecutablePath(o, env, v1Compatible) => s"executablePath=$o"
-      case ExecutableScript(o, env, v1Compatible) => s"script=$o"
+      case PathExecutable(o, env, v1Compatible) => s"executable=$o"
+      case ScriptExecutable(o, env, v1Compatible) => s"script=$o"
       case CommandLineExecutable(expr, env) => s"command=" + ValuePrinter.quoteString(expr.toString)
     }) +
     (returnCodeMeaning match {

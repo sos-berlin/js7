@@ -8,11 +8,11 @@ import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.data.events.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.test.ForkTestSetting.TestExecutablePath
+import js7.data.workflow.test.ForkTestSetting.TestPathExecutable
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.agent.DuplicateAgentRefTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -30,7 +30,7 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
       "js7.auth.agents." + quoteString(bAgentId.string) + " = " +
         quoteString(directoryProvider.agentToTree(aAgentId).password.string) + "\n"
-    for (a <- directoryProvider.agents) a.writeExecutable(TestExecutablePath, script(0.s))
+    for (a <- directoryProvider.agents) a.writeExecutable(TestPathExecutable, script(0.s))
     super.beforeAll()
   }
 
@@ -52,6 +52,6 @@ object DuplicateAgentRefTest
   private val bAgentId = AgentId("B-AGENT")
   private val workflow = Workflow.of(
     WorkflowPath("/SINGLE") ~ "INITIAL",
-    Execute(WorkflowJob(aAgentId, RelativeExecutablePath("executable.cmd"))),
-    Execute(WorkflowJob(bAgentId, RelativeExecutablePath("executable.cmd"))))
+    Execute(WorkflowJob(aAgentId, RelativePathExecutable("executable.cmd"))),
+    Execute(WorkflowJob(bAgentId, RelativePathExecutable("executable.cmd"))))
 }

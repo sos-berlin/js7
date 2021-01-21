@@ -9,7 +9,7 @@ import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.event.{EventId, EventRequest, EventSeq}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -35,9 +35,9 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
-      a.writeExecutable(RelativeExecutablePath(s"OKAY$sh"), ":")
-      a.writeExecutable(RelativeExecutablePath(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
-      a.writeExecutable(RelativeExecutablePath(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
+      a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
+      a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
+      a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
     }
     super.beforeAll()
   }

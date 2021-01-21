@@ -28,7 +28,7 @@ import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, KeyedEvent, Stamped}
 import js7.data.item.VersionId
-import js7.data.job.{JobKey, RelativeExecutablePath}
+import js7.data.job.{JobKey, RelativePathExecutable}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -69,9 +69,9 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   }
 
   "Shell script" in {
-    val executablePath = RelativeExecutablePath(s"TEST-1$sh", v1Compatible = true)
-    executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentId, executablePath, Map("VAR1" -> StringValue("FROM-JOB"))))
+    val pathExecutable = RelativePathExecutable(s"TEST-1$sh", v1Compatible = true)
+    pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentId, pathExecutable, Map("VAR1" -> StringValue("FROM-JOB"))))
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout) == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr) == s"THIS IS STDERR$Nl")
@@ -86,14 +86,14 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim.ensuring(_.length < 8000)  // Windows: Maximum command line length is 8191 characters
     val expectedStderr = (for (i <- 1 to n) yield line("e", i) + Nl).mkString
     val expectedStdout = (for (i <- 1 to n) yield line("o", i) + Nl).mkString
-    val executablePath = RelativeExecutablePath(s"TEST-2$sh")
-    executablePath.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
+    val pathExecutable = RelativePathExecutable(s"TEST-2$sh")
+    pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
       (isWindows ?? "@echo off\n") +
         (for (i <- 1 to n) yield
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2
              |""".stripMargin).mkString)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentId, executablePath))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentId, pathExecutable))
     info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)}) took ${result.duration.pretty}")
     assert(result.stdoutStderr(Stderr).toString == expectedStderr)
     assert(result.stdoutStderr(Stdout).toString == expectedStdout)

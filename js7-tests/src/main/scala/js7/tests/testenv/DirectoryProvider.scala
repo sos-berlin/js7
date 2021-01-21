@@ -35,7 +35,7 @@ import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemOperation, ItemPath, VersionId, VersionedItem, VersionedItemSigner}
-import js7.data.job.RelativeExecutablePath
+import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -342,7 +342,7 @@ object DirectoryProvider
     def writeTrustedSignatureKeys(verifier: SignatureVerifier): Unit =
       DirectoryProvider.writeTrustedSignatureKeys(verifier, configDir, "agent.conf")
 
-    def writeExecutable(path: RelativeExecutablePath, string: String): Unit =
+    def writeExecutable(path: RelativePathExecutable, string: String): Unit =
       path.toFile(executables).writeExecutable(string)
   }
 

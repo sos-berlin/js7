@@ -23,7 +23,7 @@ import js7.common.process.Processes.ShellFileAttributes
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.data.execution.workflow.context.OrderContext
-import js7.data.job.{AbsoluteExecutablePath, CommandLine, CommandLineEvaluator, CommandLineExecutable, ExecutableScript, JobKey, RelativeExecutablePath}
+import js7.data.job.{AbsolutePathExecutable, CommandLine, CommandLineEvaluator, CommandLineExecutable, JobKey, RelativePathExecutable, ScriptExecutable}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Evaluator
 import js7.data.value.expression.Expression.ObjectExpression
@@ -55,7 +55,7 @@ extends Actor with Stash
 
   private val checkedExecutable: Checked[(Order[Order.Processing], Workflow) => Checked[Execute]] =
     workflowJob.executable match {
-      case AbsoluteExecutablePath(path, envExpr, v1Compatible) =>
+      case AbsolutePathExecutable(path, envExpr, v1Compatible) =>
         if (!conf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else {
@@ -66,7 +66,7 @@ extends Actor with Stash
               .map(env => Execute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible)))
         }
 
-      case ex @ RelativeExecutablePath(path, envExpr, v1Compatible) =>
+      case ex @ RelativePathExecutable(path, envExpr, v1Compatible) =>
         Right { (order, workflow) =>
           val file = ex.toFile(executablesDirectory)
           warnIfNotExecutable(file)
@@ -87,7 +87,7 @@ extends Actor with Stash
             }
         }
 
-      case ExecutableScript(script, envExpr, v1Compatible) =>
+      case ScriptExecutable(script, envExpr, v1Compatible) =>
         if (!conf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else {

@@ -5,7 +5,7 @@ import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
-import js7.data.job.{RelativeExecutablePath, ReturnCode}
+import js7.data.job.{RelativePathExecutable, ReturnCode}
 import js7.data.value.{NumericValue, StringValue}
 import js7.data.workflow.instructions.ReturnCodeMeaning
 import js7.tester.CirceJsonTester.testJson
@@ -21,11 +21,11 @@ final class WorkflowJobTest extends AnyFreeSpec
       testJson(
         WorkflowJob(
           AgentId("AGENT"),
-          RelativeExecutablePath("EXECUTABLE")),
+          RelativePathExecutable("EXECUTABLE")),
         json"""{
           "agentId": "AGENT",
           "executable": {
-            "TYPE": "ExecutablePath",
+            "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
           },
           "taskLimit": 1
@@ -36,7 +36,7 @@ final class WorkflowJobTest extends AnyFreeSpec
       testJson(
         WorkflowJob(
           AgentId("AGENT"),
-          RelativeExecutablePath("EXECUTABLE"),
+          RelativePathExecutable("EXECUTABLE"),
           Map("NAME" -> StringValue("VALUE"), "NUMBER" -> NumericValue(7)),
           ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))),
           taskLimit = 3,
@@ -44,7 +44,7 @@ final class WorkflowJobTest extends AnyFreeSpec
         json"""{
           "agentId": "AGENT",
           "executable": {
-            "TYPE": "ExecutablePath",
+            "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
           },
           "defaultArguments": {

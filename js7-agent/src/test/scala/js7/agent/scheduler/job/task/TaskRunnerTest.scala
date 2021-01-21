@@ -18,7 +18,7 @@ import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLine, JobKey, RelativeExecutablePath, ReturnCode}
+import js7.data.job.{CommandLine, JobKey, RelativePathExecutable, ReturnCode}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
@@ -46,11 +46,11 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
     val newTaskRunner = injector.instance[SimpleShellTaskRunner.Factory]
     val executableDirectory = createTempDirectory("TaskRunnerTest-")
 
-    val executablePath = RelativeExecutablePath(s"TEST$sh", v1Compatible = true)
-    val shellFile = executablePath.toFile(executableDirectory)
+    val pathExecutable = RelativePathExecutable(s"TEST$sh", v1Compatible = true)
+    val shellFile = pathExecutable.toFile(executableDirectory)
     shellFile := TestScript
     if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
-    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentId("TEST"), executablePath),
+    val taskConfiguration = TaskConfiguration(JobKey.forTest, WorkflowJob(AgentId("TEST"), pathExecutable),
       CommandLine.fromFile(shellFile))
     info(measureTime(10, "TaskRunner") {
       val order = Order(
