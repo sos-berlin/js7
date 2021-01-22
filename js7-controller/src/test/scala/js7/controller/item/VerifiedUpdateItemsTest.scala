@@ -28,8 +28,8 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
   private lazy val itemSigner = new VersionedItemSigner[VersionedItem](signer, versionedItemJsonCodec)
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
-  private val workflow1 = Workflow(WorkflowPath("/WORKFLOW-A") ~ v1, Vector(Fail(None)))
-  private val workflow2 = Workflow(WorkflowPath("/WORKFLOW") ~ v2, Vector(Fail(None)))
+  private val workflow1 = Workflow(WorkflowPath("WORKFLOW-A") ~ v1, Vector(Fail(None)))
+  private val workflow2 = Workflow(WorkflowPath("WORKFLOW") ~ v2, Vector(Fail(None)))
   private val lock = Lock(LockId("LOCK-1"))
   private val user = SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(ValidUserPermission, UpdateItemPermission))
   private def noVerifier(signedString: SignedString): Checked[Verified[VersionedItem]] = Left(Problem("NO VERIFIER"))
@@ -53,11 +53,11 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       SimpleDelete(LockId("DELETE")),
       AddVersion(v1),
       VersionedAddOrChange(itemSigner.sign(workflow1)),
-      VersionedDelete(WorkflowPath("/DELETE")))
+      VersionedDelete(WorkflowPath("DELETE")))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Right(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(Seq(lock), delete = Seq(LockId("DELETE"))),
-        Some(VerifiedUpdateItems.Versioned(v1, Seq(itemVerifier.verify(itemSigner.sign(workflow1)).orThrow), Seq(WorkflowPath("/DELETE")))))))
+        Some(VerifiedUpdateItems.Versioned(v1, Seq(itemVerifier.verify(itemSigner.sign(workflow1)).orThrow), Seq(WorkflowPath("DELETE")))))))
   }
 
   "Verification failed" in {
@@ -88,7 +88,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
         itemVerifier.verify,
         user
       ).await(99.s) ==
-        Left(Problem("Unexpected duplicates: 2×Workflow:/WORKFLOW-A")))
+        Left(Problem("Unexpected duplicates: 2×Workflow:WORKFLOW-A")))
 
     assert(
       VerifiedUpdateItems.fromOperations(
@@ -99,7 +99,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
         itemVerifier.verify,
         user
       ).await(99.s) ==
-        Left(Problem("Unexpected duplicates: 2×Workflow:/WORKFLOW-A")))
+        Left(Problem("Unexpected duplicates: 2×Workflow:WORKFLOW-A")))
   }
 
   "Duplicate AddVersion is rejected" in {

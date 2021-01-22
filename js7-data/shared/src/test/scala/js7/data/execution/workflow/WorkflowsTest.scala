@@ -37,7 +37,7 @@ final class WorkflowsTest extends AnyFreeSpec {
 
   "reduceForAgent B" in {
     assert(TestWorkflow.reduceForAgent(BAgentId) == Workflow(
-      WorkflowPath("/WORKFLOW") ~ "INITIAL" ,
+      WorkflowPath("WORKFLOW") ~ "INITIAL" ,
       Vector(
         /*0*/ Gap(),
         /*1*/ Gap(),

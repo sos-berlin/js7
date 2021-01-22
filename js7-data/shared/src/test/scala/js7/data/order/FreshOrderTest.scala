@@ -15,14 +15,14 @@ final class FreshOrderTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW")),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW")),
       json"""{
         "id": "ORDER-ID",
-        "workflowPath": "/WORKFLOW"
+        "workflowPath": "WORKFLOW"
       }""")
 
     testJson(
-      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"),
+      FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW"),
         Map(
           "boolean" -> BooleanValue.True,
           "number" -> NumericValue(BigDecimal("-111222333444555666777888999000111222333444555666777888999000.123")),
@@ -31,7 +31,7 @@ final class FreshOrderTest extends AnyFreeSpec
         Some(Timestamp.parse("2017-03-07T12:00:00Z"))),
       json"""{
         "id": "ORDER-ID",
-        "workflowPath": "/WORKFLOW",
+        "workflowPath": "WORKFLOW",
         "scheduledFor": 1488888000000,
         "arguments": {
           "boolean": true,
@@ -43,7 +43,7 @@ final class FreshOrderTest extends AnyFreeSpec
   }
 
   "checked" in {
-    assert(FreshOrder.checked(OrderId("INVALID|ID"), WorkflowPath("/WORKFLOW")) ==
+    assert(FreshOrder.checked(OrderId("INVALID|ID"), WorkflowPath("WORKFLOW")) ==
       Left(Problem("OrderId must not contain reserved characters: |")))
   }
 }

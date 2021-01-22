@@ -25,10 +25,10 @@ class JCancelModeTester
                true,
                Optional.of(
                    JWorkflowPosition.of(
-                       JWorkflowId.of("/WORKFLOW", "1.0"),
+                       JWorkflowId.of("WORKFLOW", "1.0"),
                        getOrThrow(
                            JPosition.fromList(Arrays.asList(0, "Then", 1)))))
                ).toString(),
-           equalTo("FreshOrStarted(Some(Kill(true,Some(/WORKFLOW~1.0:0/Then:1))))"));
+           equalTo("FreshOrStarted(Some(Kill(true,Some(WORKFLOW~1.0:0/Then:1))))"));
     }
 }

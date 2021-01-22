@@ -59,12 +59,12 @@ final class ControllerCommandTest extends AnyFreeSpec
 
   "AddOrder" - {
     "AddOrder" in {
-      testJson[ControllerCommand](AddOrder(FreshOrder(OrderId("ORDER"), WorkflowPath("/WORKFLOW"))),
+      testJson[ControllerCommand](AddOrder(FreshOrder(OrderId("ORDER"), WorkflowPath("WORKFLOW"))),
         json"""{
           "TYPE": "AddOrder",
           "order": {
             "id": "ORDER",
-            "workflowPath": "/WORKFLOW"
+            "workflowPath": "WORKFLOW"
           }
         }""")
     }
@@ -93,7 +93,7 @@ final class ControllerCommandTest extends AnyFreeSpec
         CancelMode.FreshOrStarted(
           Some(CancelMode.Kill(
             immediately = true,
-            Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(1)))))),
+            Some(WorkflowPath("WORKFLOW") ~ VersionId("VERSION") /: Position(1)))))),
         json"""{
           "TYPE": "CancelOrders",
           "orderIds": [ "ORDER" ],
@@ -103,7 +103,7 @@ final class ControllerCommandTest extends AnyFreeSpec
               "immediately": true,
               "workflowPosition": {
                 "workflowId": {
-                  "path": "/WORKFLOW",
+                  "path": "WORKFLOW",
                   "versionId": "VERSION"
                 },
                 "position": [ 1 ]

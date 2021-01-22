@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.data.item.{SourceType, ItemPath}
+import js7.data.item.{ItemPath, SourceType}
 
 /**
   * @author Joacim Zschimmer
@@ -21,9 +21,7 @@ object ItemPaths
     val string = ItemPath.fileToString(relativePath)
     companions.iterator
       .map(_.fromFile(string))
-      .collectFirst { case Some(o) =>
-        o flatMap { case (itemPath, sourceType) => itemPath.officialSyntaxChecked.map(_ -> sourceType) }
-      }
+      .collectFirst { case Some(o) => o }
       .toChecked(AlienFileProblem(relativePath))
       .flatten
   }

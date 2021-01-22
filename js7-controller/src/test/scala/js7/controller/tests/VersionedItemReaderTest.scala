@@ -45,8 +45,8 @@ final class VersionedItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
   "readVersionedItem with syntax errors and an alien file" in {
       assert(typedSourceReader.readVersionedItems(DirectoryReader.files(directory)) ==
         Left(Problem.Combined(Set(
-          Problem("""Problem with 'Workflow:/D' (txt) [Expected "define":1:1, found "ERROR"]"""),
-          Problem("""Problem with 'Workflow:/E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
+          Problem("""Problem with 'Workflow:D' (txt) [Expected "define":1:1, found "ERROR"]"""),
+          Problem("""Problem with 'Workflow:E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
           Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file")))))
   }
 

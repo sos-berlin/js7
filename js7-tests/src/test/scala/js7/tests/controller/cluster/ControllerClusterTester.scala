@@ -17,7 +17,7 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec with Controll
 object ControllerClusterTester
 {
   private[cluster] val TestWorkflow = WorkflowParser.parse(
-    WorkflowPath("/WORKFLOW"),
+    WorkflowPath("WORKFLOW"),
     s"""define workflow {
       |  execute executable="${TestPathExecutable.path}", agent="AGENT", v1Compatible=true, taskLimit=2;
       |}""".stripMargin).orThrow

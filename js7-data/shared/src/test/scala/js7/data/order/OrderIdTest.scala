@@ -9,7 +9,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class OrderIdTest extends AnyFreeSpec {
 
-  "officialSyntaxChecked" in {
+  "checkedNameSyntax" in {
     assert(OrderId.checked("") == Left(EmptyStringProblem("OrderId")))
     assert(OrderId("a|b").checkedNameSyntax == Left(Problem("OrderId must not contain reserved characters: |")))
 

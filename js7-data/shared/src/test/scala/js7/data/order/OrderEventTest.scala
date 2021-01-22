@@ -27,14 +27,14 @@ final class OrderEventTest extends AnyFreeSpec
   "OrderAdded" in {
     check(
       OrderAdded(
-        WorkflowPath("/WORKFLOW") ~ "VERSION",
+        WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
         Some(Timestamp("2021-01-01T00:00:00Z"))),
       json"""
       {
         "TYPE": "OrderAdded",
         "workflowId": {
-          "path": "/WORKFLOW",
+          "path": "WORKFLOW",
           "versionId": "VERSION"
         },
         "scheduledFor": 1609459200000,
@@ -56,7 +56,7 @@ final class OrderEventTest extends AnyFreeSpec
   "OrderAttachedToAgent" in {
     check(
       OrderAttachedToAgent(
-        (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(2),
+        (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
         Map("KEY" -> StringValue("VALUE")),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
@@ -69,7 +69,7 @@ final class OrderEventTest extends AnyFreeSpec
         "TYPE": "OrderAttachedToAgent",
         "workflowPosition": {
           "workflowId": {
-            "path": "/WORKFLOW",
+            "path": "WORKFLOW",
             "versionId": "VERSION"
           },
           "position": [ 2 ]
@@ -467,7 +467,7 @@ final class OrderEventTest extends AnyFreeSpec
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
     val event = Stamped(12345678L, Timestamp.ofEpochMilli(1),
-      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") ~ "VERSION",
+      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("WORKFLOW") ~ "VERSION",
         arguments = Map("KEY" -> StringValue("VALUE")))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")

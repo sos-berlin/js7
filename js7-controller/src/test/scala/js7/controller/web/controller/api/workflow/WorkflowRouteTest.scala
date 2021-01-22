@@ -63,7 +63,6 @@ final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with Workflow
 
   // Workflow
   for (uri <- List(
-       s"$WorkflowUri/${pathToWorkflow.values.head.path.withoutStartingSlash}",
        s"$WorkflowUri/${pathToWorkflow.values.head.path.string}",
        s"$WorkflowUri/${pathToWorkflow.values.head.path.string.replace("/", "%2F")}")) {
     s"$uri" in {
@@ -81,6 +80,6 @@ final class WorkflowRouteTest extends AnyFreeSpec with RouteTester with Workflow
 
 object WorkflowRouteTest {
   private val WorkflowUri = "/api/workflow"
-  private val TestWorkflow = ForkTestSetting.TestWorkflow.withId(WorkflowPath("/PATH/WORKFLOW") ~ "VERSION")
+  private val TestWorkflow = ForkTestSetting.TestWorkflow.withId(WorkflowPath("PATH/WORKFLOW") ~ "VERSION")
   private val pathToWorkflow = Map(TestWorkflow.path -> TestWorkflow)
 }

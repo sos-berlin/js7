@@ -46,7 +46,7 @@ object RetryExecutorTest
   private val now = Timestamp("2019-03-08T12:00:00Z")
   private val orderId = OrderId("ORDER-A")
   private val tryPosition = Position(7)
-  private val workflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
+  private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val tryInstruction = TryInstruction(Workflow.empty, Workflow.empty)
 
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) = {

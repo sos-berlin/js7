@@ -37,18 +37,18 @@ object StandardDirectives
   def remainingItemPath[P <: ItemPath: ItemPath.Companion: CheckedString]: PathMatcher1[P] =
     new PathMatcher1[P] {
       def apply(path: Path) =
-        uriPathToItemPath[P](path) match {
+        uriPathToCheckedString[P](path) match {
           case Right(itemPath) => Matched(Path.Empty, Tuple1(itemPath))
           case _ => Unmatched
         }
     }
 
-  private def uriPathToItemPath[P](uriPath: Path)(implicit P: CheckedString[P]): Checked[P] =
+  private def uriPathToCheckedString[P](uriPath: Path)(implicit P: CheckedString[P]): Checked[P] =
     uriPath match {
-      case Path.Segment(segment, Path.Empty) if segment startsWith "/" =>
+      case Path.Segment(segment, Path.Empty) =>
         P.checked(segment)  // Slashes encoded as %2F in a single path segment
       case _ =>
-        P.checked("/" + uriPath.toString.stripPrefix("/"))   // Slashes not encoded, first slash optional (to avoid /api/xxx//path)
+        P.checked(uriPath.toString)
     }
 
   def combineRoutes(routes: Iterable[Route]): Route =

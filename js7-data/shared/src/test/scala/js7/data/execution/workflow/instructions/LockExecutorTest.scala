@@ -53,7 +53,7 @@ object LockExecutorTest {
   private val exclusiveLockId = LockId("EXCLUSIVE-LOCK")
   private val execute = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("JOB")))
 
-  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "VERSION",
+  private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION",
     LockInstruction(freeLockId, None, Workflow.of(execute)),
     LockInstruction(occupiedLockId, None, Workflow.of(execute)),
     LockInstruction(exclusiveLockId, None, Workflow.of(execute)))

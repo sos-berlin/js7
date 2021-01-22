@@ -166,7 +166,7 @@ object JournalWebServiceTest
   private val agentId = AgentId("AGENT-111")
   private val pathExecutable = RelativePathExecutable("TEST.cmd")
 
-  private val workflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
+  private val workflow = Workflow(WorkflowPath("test") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(agentId, pathExecutable))))
 }

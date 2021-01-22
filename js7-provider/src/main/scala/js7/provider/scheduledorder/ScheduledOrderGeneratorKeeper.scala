@@ -32,5 +32,5 @@ object ScheduledOrderGeneratorKeeper {
   private val Separator = "@"
 
   private def toOrderId(path: ScheduledOrderGeneratorPath, timestamp: Timestamp) =
-    OrderId(s"${path.withoutStartingSlash.replace('/', '-')}$Separator$timestamp")  // '/' is a reserved character in OrderId
+    OrderId(s"${path.string.replace('/', '-')}$Separator$timestamp")  // '/' is a reserved character in OrderId
 }

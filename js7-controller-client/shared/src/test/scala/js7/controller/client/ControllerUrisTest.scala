@@ -63,7 +63,7 @@ final class ControllerUrisTest extends AnyFreeSpec
 
   "workflow" - {
     "single" in {
-      assert(controllerUris.workflow(WorkflowPath("/A/B")) == Uri("http://example.com/controller/api/workflow/A%2FB"))
+      assert(controllerUris.workflow(WorkflowPath("A/B")) == Uri("http://example.com/controller/api/workflow/A%2FB"))
     }
 
     "list" in {

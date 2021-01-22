@@ -368,7 +368,7 @@ extends VersionedItem
     for {
       workflow <- nestedWorkflow(position.branchPath)
       instr <- workflow.labeledInstructions.get(position.nr.number)
-        .toRight(Problem(s"Unknown position $position in workflow '${workflow.id}'"))
+        .toRight(Problem(s"Unknown position $position in workflow '$id'"))
     } yield instr
 
   def withoutSource: Workflow =

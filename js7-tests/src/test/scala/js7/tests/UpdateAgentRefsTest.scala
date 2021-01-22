@@ -83,6 +83,6 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 object UpdateAgentRefsTest
 {
   private val agentId = AgentId("AGENT")
-  private val workflow = Workflow(WorkflowPath("/WORKFLOW"), Vector(
+  private val workflow = Workflow(WorkflowPath("WORKFLOW"), Vector(
     Execute(WorkflowJob(agentId, PathExecutable(s"EXECUTABLE$sh")))))
 }

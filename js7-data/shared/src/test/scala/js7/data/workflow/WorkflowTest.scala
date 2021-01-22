@@ -56,7 +56,7 @@ final class WorkflowTest extends AnyFreeSpec
     "Workflow with WorkflowId" in {
       testJson[Workflow](TestWorkflow,
         json"""{
-          "path": "/TEST",
+          "path": "TEST",
           "versionId": "VERSION",
           "instructions": [
             {
@@ -198,7 +198,7 @@ final class WorkflowTest extends AnyFreeSpec
     "Workflow with WorkflowId and positions (for JOC GUI)" in {
       assert(normalizeJson(removeJNull(TestWorkflow.withPositions(Nil).asJson)) ==
         normalizeJson(json"""{
-          "path": "/TEST",
+          "path": "TEST",
           "versionId": "VERSION",
           "instructions": [
             {
@@ -364,7 +364,7 @@ final class WorkflowTest extends AnyFreeSpec
     "Workflow with a script" in {
       testJson[Workflow](
         Workflow(
-          WorkflowPath("/TEST") ~ "VERSION",
+          WorkflowPath("TEST") ~ "VERSION",
           Vector(
             Execute.Named(WorkflowJob.Name("EXECUTABLE")),
             Execute.Named(WorkflowJob.Name("OWN-SCRIPT"))),
@@ -378,7 +378,7 @@ final class WorkflowTest extends AnyFreeSpec
                 AgentId("AGENT"),
                 ScriptExecutable("#!/usr/bin/env bash\n...")))),
         json"""{
-          "path": "/TEST",
+          "path": "TEST",
           "versionId": "VERSION",
           "instructions": [
             {
@@ -435,7 +435,7 @@ final class WorkflowTest extends AnyFreeSpec
 
     "Single shell script Workflow" in {
       val workflow = Workflow(
-        WorkflowPath("/WORKFLOW") ~ VersionId("1"),
+        WorkflowPath("WORKFLOW") ~ VersionId("1"),
         Vector(
           Execute(WorkflowJob(AgentId("AGENT"), ScriptExecutable("echo HELLO\n")))))
       testJson(workflow,json"""
@@ -453,7 +453,7 @@ final class WorkflowTest extends AnyFreeSpec
               }
             }
           ],
-          "path": "/WORKFLOW",
+          "path": "WORKFLOW",
           "versionId": "1"
         }""")
     }
@@ -566,7 +566,7 @@ final class WorkflowTest extends AnyFreeSpec
       (END @: ExplicitEnd())      -> true,
       (B   @: job)              -> true,
       (()  @: Goto(C))          -> true)
-    val id = WorkflowPath("/WORKFLOW") ~ "VERSION"
+    val id = WorkflowPath("WORKFLOW") ~ "VERSION"
     val a = Workflow(id, instructions.map(_._1))
     assert(a.reduce == Workflow(id, instructions collect { case (s, true) => s }))
   }
@@ -614,8 +614,8 @@ final class WorkflowTest extends AnyFreeSpec
     assert(TestWorkflow.checkedPosition(Position(0)) == Right(Position(0)))
     assert(TestWorkflow.checkedPosition(Position(1) / Then % 0) == Right(Position(1) / Then % 0))
     assert(TestWorkflow.checkedPosition(Position(2) / "fork+🥕" % 2) == Right(Position(2) / "fork+🥕" % 2))
-    assert(TestWorkflow.checkedPosition(Position(2) / "fork+🥕" % 3) == Left(Problem("Unknown position 2/fork+🥕:3 in workflow 'Workflow:/?/anonymous'")))
-    assert(TestWorkflow.checkedPosition(Position(5)) == Left(Problem("Unknown position 5 in workflow 'Workflow:/TEST~VERSION'")))
+    assert(TestWorkflow.checkedPosition(Position(2) / "fork+🥕" % 3) == Left(Problem("Unknown position 2/fork+🥕:3 in workflow 'Workflow:TEST~VERSION'")))
+    assert(TestWorkflow.checkedPosition(Position(5)) == Left(Problem("Unknown position 5 in workflow 'Workflow:TEST~VERSION'")))
   }
 
   "completelyChecked in {" - {
@@ -680,7 +680,7 @@ final class WorkflowTest extends AnyFreeSpec
 
   "anonymousJobKey" in {
     val w = Workflow(
-      WorkflowPath("/TEST") ~ "VERSION",
+      WorkflowPath("TEST") ~ "VERSION",
       Vector(
         If(BooleanConstant(true),     // :0
           Workflow.of(Fail()),        // :0/then:0
@@ -769,7 +769,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "Workflow with a Lock and a Job" in {
-    Workflow(WorkflowPath("/WORKFLOW"),
+    Workflow(WorkflowPath("WORKFLOW"),
         Vector(
           LockInstruction(
             LockId("LOCK"), count = None, Workflow.of(
@@ -784,7 +784,7 @@ final class WorkflowTest extends AnyFreeSpec
 private object WorkflowTest
 {
   private val TestWorkflow = Workflow(
-    WorkflowPath("/TEST") ~ "VERSION",
+    WorkflowPath("TEST") ~ "VERSION",
     Vector(
       AExecute,
       "TEST-LABEL" @: If(Equal(LastReturnCode, NumericConstant(1)),

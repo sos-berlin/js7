@@ -59,7 +59,7 @@ implements AutoCloseable
             });
         Disposable subscription = flux.subscribe();
         try {
-            await(api.addOrder(JFreshOrder.of(orderId, WorkflowPath.of("/WORKFLOW"))));
+            await(api.addOrder(JFreshOrder.of(orderId, WorkflowPath.of("WORKFLOW"))));
             orderFinished.get(99, SECONDS);
         } finally {
             subscription.dispose();

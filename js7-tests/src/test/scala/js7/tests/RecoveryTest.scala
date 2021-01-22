@@ -168,7 +168,7 @@ private object RecoveryTest {
   private val AgentIds = AgentId("agent-111") :: AgentId("agent-222") :: Nil
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd", v1Compatible = true)
 
-  private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
+  private val TestWorkflow = Workflow(WorkflowPath("test") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob.Name("TEST-0")),
       Execute(WorkflowJob.Name("TEST-0")),
@@ -179,7 +179,7 @@ private object RecoveryTest {
       WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentIds(0), TestPathExecutable, Map("var1" -> StringValue(s"VALUE-${AgentIds(0).string}"))),
       WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentIds(1), TestPathExecutable, Map("var1" -> StringValue(s"VALUE-${AgentIds(1).string}")))))
 
-  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") ~ "INITIAL", Execute(WorkflowJob(AgentIds(0), TestPathExecutable)))
+  private val QuickWorkflow = Workflow.of(WorkflowPath("quick") ~ "INITIAL", Execute(WorkflowJob(AgentIds(0), TestPathExecutable)))
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(

@@ -86,13 +86,13 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
         execute executable="path-to-my-script", agent="AGENT",
           arguments = { "A": "${"A" * 700}" };
       }""").orThrow.withoutSource
-    val n = calculateNumberOf[VersionedItem](200_000, workflow.withId(WorkflowPath("/WORKFLOW-XXXXX") ~ versionId))
+    val n = calculateNumberOf[VersionedItem](200_000, workflow.withId(WorkflowPath("WORKFLOW-XXXXX") ~ versionId))
     logger.info(s"Adding $n Workflows")
     runControllerAndBackup() { (primary, primaryController, _, _, _) =>
       primaryController.waitUntilReady()
       val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
       val api = new ControllerApi(controllerApiResource :: Nil)
-      val workflowPaths = (1 to n).map(i => WorkflowPath(s"/WORKFLOW-$i"))
+      val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
       val sw = new Stopwatch
       val operations = Observable.fromIterable(workflowPaths)
         .mapParallelUnordered(sys.runtime.availableProcessors)(path => Task(

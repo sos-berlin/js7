@@ -62,7 +62,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controller.addOrderBlocking(order)
     val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,/DUPLICATE~INITIAL:0,Processing,Map(),Vector(),Some(Attached(AGENT-A)),None,None,false,false)"))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing,Map(),Vector(),Some(Attached(AGENT-A)),None,None,false,false)"))
     assert(controller.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.s).orThrow
@@ -82,7 +82,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object ForkTest {
   private val DuplicateWorkflow = Workflow(
-    WorkflowPath("/DUPLICATE") ~ "INITIAL",
+    WorkflowPath("DUPLICATE") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(AAgentId, PathExecutable("SLOW.cmd")))))
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, Map("KEY" -> StringValue("VALUE")))

@@ -91,6 +91,6 @@ object AgentTest
   private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")
 
   private val TestWorkflow = Workflow.of(
-    WorkflowPath("/WORKFLOW") ~ "VERSION",
+    WorkflowPath("WORKFLOW") ~ "VERSION",
     Execute(WorkflowJob(TestAgentId, TestPathExecutable)))
 }

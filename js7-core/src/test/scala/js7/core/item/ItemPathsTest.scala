@@ -19,19 +19,19 @@ final class ItemPathsTest extends AnyFreeSpec {
   "fileToItemPathAndSourceType" in {
     val dir = Paths.get("DIR")
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
-      Right(WorkflowPath("/folder/test") -> SourceType.Json))
+      Right(WorkflowPath("folder/test") -> SourceType.Json))
     //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentId), dir, dir / "folder/test.workflow.json") ==
-    //  Right(WorkflowPath("/folder/test") -> SourceType.Json))
+    //  Right(WorkflowPath("folder/test") -> SourceType.Json))
     //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentId), dir, dir / "folder/test.workflow.yaml") ==
-    //  Right(WorkflowPath("/folder/test") -> SourceType.Yaml))
+    //  Right(WorkflowPath("folder/test") -> SourceType.Yaml))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.txt") ==
-      Right(WorkflowPath("/folder/test") -> SourceType.Txt))
+      Right(WorkflowPath("folder/test") -> SourceType.Txt))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.job_chain.xml") ==
-      Right(WorkflowPath("/folder/test") -> SourceType.Xml))
+      Right(WorkflowPath("folder/test") -> SourceType.Xml))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.wrong") ==
       Left(Problem(s"File '...${separator}folder${separator}test.workflow.wrong' is not recognized as a configuration file")))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
-      Right(WorkflowPath("/folder/test") -> SourceType.Json))
+      Right(WorkflowPath("folder/test") -> SourceType.Json))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "a@b.workflow.json") ==
       Left(InvalidNameProblem("WorkflowPath", "a@b")))
   }

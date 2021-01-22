@@ -194,5 +194,5 @@ object FailUncatchableTest
 {
   private val orderId = OrderId("🔺")
   private val TestAgentId = AgentId("AGENT")
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "INITIAL"
+  private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "INITIAL"
 }

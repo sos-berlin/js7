@@ -76,7 +76,7 @@ final class TaskWebServiceTest extends AnyFreeSpec with WebServiceTest with Task
             "startedAt": 1433937600000,
             "jobKey": {
               "workflowId": {
-                "path": "/WORKFLOW",
+                "path": "WORKFLOW",
                 "versionId": "VERSION"
               },
               "jobName": "JOB"
@@ -96,7 +96,7 @@ final class TaskWebServiceTest extends AnyFreeSpec with WebServiceTest with Task
           "startedAt": 1433937600000,
           "jobKey": {
             "workflowId": {
-              "path": "/WORKFLOW",
+              "path": "WORKFLOW",
               "versionId": "VERSION"
             },
             "jobName": "JOB"
@@ -116,7 +116,7 @@ private object TaskWebServiceTest {
   private val TestTaskOverviews = List(testTaskOverview(TestAgentTaskId))
 
   private def testTaskOverview(id: AgentTaskId) = TaskOverview(
-    JobKey(WorkflowPath("/WORKFLOW") ~ "VERSION", WorkflowJob.Name("JOB")),
+    JobKey(WorkflowPath("WORKFLOW") ~ "VERSION", WorkflowJob.Name("JOB")),
     TestAgentTaskId,
     pid = Some(Pid(123)),
     Timestamp.parse("2015-06-10T12:00:00Z"))

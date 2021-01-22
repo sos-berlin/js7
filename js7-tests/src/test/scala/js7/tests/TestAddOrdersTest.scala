@@ -55,5 +55,5 @@ private object TestAddOrdersTest
     JavaResource(
       "js7/install/docker/volumes/provider/config/live/testCase3.workflow.json"
     ).asUTF8String.parseJsonAs[Workflow].orThrow
-      .withId(WorkflowPath("/testCase3"))
+      .withId(WorkflowPath("testCase3"))
 }

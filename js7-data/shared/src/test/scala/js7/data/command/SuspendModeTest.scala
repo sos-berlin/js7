@@ -32,13 +32,13 @@ final class SuspendModeTest extends AnyFreeSpec
         SuspendMode(Some(
           CancelMode.Kill(
             immediately = true,
-            Some(WorkflowPath("/WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
+            Some(WorkflowPath("WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
         json"""{
           "kill": {
             "immediately": true,
             "workflowPosition": {
               "workflowId": {
-                "path": "/WORKFLOW",
+                "path": "WORKFLOW",
                 "versionId": "VERSION"
               },
               "position": [ 7 ]

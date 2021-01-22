@@ -36,7 +36,7 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScala
 object AddOrderTimeoutTest
 {
   private val workflow = WorkflowParser.parse(
-    WorkflowPath("/WORKFLOW") ~ "1","""
+    WorkflowPath("WORKFLOW") ~ "1","""
       define workflow {
         execute executable="SCRIPT1.cmd", agent="AGENT";
       }"""

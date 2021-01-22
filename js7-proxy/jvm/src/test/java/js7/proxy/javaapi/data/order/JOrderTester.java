@@ -28,7 +28,7 @@ public class JOrderTester
        "  \"id\":\"A-ORDER\"," +
        "  \"workflowPosition\": {\n" +
        "     \"workflowId\": {\n" +
-       "      \"path\": \"/A-WORKFLOW\",\n" +
+       "      \"path\": \"A-WORKFLOW\",\n" +
        "      \"versionId\": \"1.0\"\n" +
        "    },\n" +
        "    \"position\": [ 0 ]\n" +
@@ -45,7 +45,7 @@ public class JOrderTester
        "  \"id\":\"B-ORDER\"," +
        "  \"workflowPosition\": {\n" +
        "     \"workflowId\": {\n" +
-       "      \"path\": \"/B-WORKFLOW\",\n" +
+       "      \"path\": \"B-WORKFLOW\",\n" +
        "      \"versionId\": \"2.0\"\n" +
        "    },\n" +
        "    \"position\": [ 0 ]\n" +
@@ -81,7 +81,7 @@ public class JOrderTester
 
     private void testWorkflowId() {
         JWorkflowId workflowId = order.workflowId();
-        assertThat(workflowId, equalTo(JWorkflowId.of("/A-WORKFLOW", "1.0")));
+        assertThat(workflowId, equalTo(JWorkflowId.of("A-WORKFLOW", "1.0")));
     }
 
     private void testJson() {
@@ -98,14 +98,14 @@ public class JOrderTester
     }
 
     static void testForkedOrder(JOrder order) {
-        assertThat(order.id(), equalTo(OrderId.of("ORDER-ID/A")));
-        assertThat(order.workflowId(), equalTo(JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("1.0"))));
+        assertThat(order.id(), equalTo(OrderId.of("ORDER-ID|A")));
+        assertThat(order.workflowId(), equalTo(JWorkflowId.of(WorkflowPath.of("WORKFLOW"), VersionId.of("1.0"))));
         assertThat(order.workflowPosition().position(), equalTo(getOrThrow(JPosition.fromList(asList(1, "fork+A", 2)))));
         assertThat(order.workflowPosition().position().toList(), equalTo(asList(1, "fork+A", 2)));
         assertThat(order.workflowPosition().position().toString(), equalTo("1/fork+A:2"));
         assertThat(order.workflowPosition(),
             equalTo(JWorkflowPosition.of(
-                JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("1.0")),
+                JWorkflowId.of(WorkflowPath.of("WORKFLOW"), VersionId.of("1.0")),
                 getOrThrow(JPosition.fromList(asList(1, "fork+A", 2))))));
         assertThat(order.arguments(), equalTo(new HashMap<String,Value>() {{
             put("KEY", StringValue.of("VALUE"));

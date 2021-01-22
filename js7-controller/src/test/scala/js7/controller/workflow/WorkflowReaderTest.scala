@@ -27,17 +27,17 @@ final class WorkflowReaderTest extends AnyFreeSpec {
       // JSON
       val jsonWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), RelativePathExecutable("JSON.sh"))))
       dir / "JSON.workflow.json" := jsonWorkflow.asJson.toPrettyString
-      expected += jsonWorkflow.withId(WorkflowPath("/JSON"))
+      expected += jsonWorkflow.withId(WorkflowPath("JSON"))
 
       // YAML
       val yamlWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), RelativePathExecutable("YAML.sh"))))
       dir / "YAML.workflow.yaml" := yamlWorkflow.asJson.toYamlString
-      expected += yamlWorkflow.withId(WorkflowPath("/YAML"))
+      expected += yamlWorkflow.withId(WorkflowPath("YAML"))
 
       // SCRIPT
       val script = """define workflow { execute executable="TEST.sh", agent="AGENT"; }"""
       dir / "TXT.workflow.txt" := script
-      expected += WorkflowParser.parse(script).orThrow.withId(WorkflowPath("/TXT"))
+      expected += WorkflowParser.parse(script).orThrow.withId(WorkflowPath("TXT"))
 
       val typedSourceReader = new TypedSourceReader(dir, WorkflowReader :: Nil)
       assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Right(expected.toSet))

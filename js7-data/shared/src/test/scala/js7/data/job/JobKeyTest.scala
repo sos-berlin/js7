@@ -14,10 +14,10 @@ final class JobKeyTest extends AnyFreeSpec
 {
   "JSON" - {
     "JobKey.Anonymous" in {
-      testJson[JobKey](JobKey.Anonymous((WorkflowPath("/WORKFLOW") ~ "VERSION") /: (Position(1) / "A" % 2)),
+      testJson[JobKey](JobKey.Anonymous((WorkflowPath("WORKFLOW") ~ "VERSION") /: (Position(1) / "A" % 2)),
         json"""{
           "workflowId": {
-            "path": "/WORKFLOW",
+            "path": "WORKFLOW",
             "versionId": "VERSION"
           },
           "position": [ 1, "A", 2 ]
@@ -25,11 +25,11 @@ final class JobKeyTest extends AnyFreeSpec
     }
 
     "JobKey.Named" in {
-      testJson[JobKey](JobKey.Named(WorkflowBranchPath(WorkflowPath("/WORKFLOW") ~ "VERSION", Position(0) / "A"), WorkflowJob.Name("JOBNAME")),
+      testJson[JobKey](JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "VERSION", Position(0) / "A"), WorkflowJob.Name("JOBNAME")),
         json"""
       {
         "workflowId": {
-          "path": "/WORKFLOW",
+          "path": "WORKFLOW",
           "versionId": "VERSION"
         },
         "branchPath": [ 0, "A" ],
@@ -39,7 +39,7 @@ final class JobKeyTest extends AnyFreeSpec
   }
 
   "toString" in {
-    assert(JobKey(WorkflowPath("/WORKFLOW") ~ "1", WorkflowJob.Name("JOBNAME")).toString == "JobKey(/WORKFLOW~1:JOBNAME)")
-    assert(JobKey((WorkflowPath("/WORKFLOW") ~ "1") /: (Position(1) / "branch" % 2)).toString == "JobKey(/WORKFLOW~1:1/branch:2)")
+    assert(JobKey(WorkflowPath("WORKFLOW") ~ "1", WorkflowJob.Name("JOBNAME")).toString == "JobKey(WORKFLOW~1:JOBNAME)")
+    assert(JobKey((WorkflowPath("WORKFLOW") ~ "1") /: (Position(1) / "branch" % 2)).toString == "JobKey(WORKFLOW~1:1/branch:2)")
   }
 }

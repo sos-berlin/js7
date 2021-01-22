@@ -384,7 +384,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(
       controller.executeCommandAsSystemUser(ResumeOrder(order.id,
         historicOutcomes = Some(Seq(HistoricOutcome(Position(99), Outcome.succeeded))))
-      ).await(99.s) == Left(Problem("Unknown position 99 in workflow 'Workflow:/TRY~INITIAL'")))
+      ).await(99.s) == Left(Problem("Unknown position 99 in workflow 'Workflow:TRY~INITIAL'")))
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id))).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
@@ -449,23 +449,23 @@ object SuspendResumeOrdersTest
   private val executeJob = Execute(WorkflowJob(agentId, pathExecutable, taskLimit = 100))
 
   private val singleJobWorkflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ versionId,
+    WorkflowPath("SINGLE") ~ versionId,
     executeJob)
 
   private val twoJobsWorkflow = Workflow.of(
-    WorkflowPath("/TWO") ~ versionId,
+    WorkflowPath("TWO") ~ versionId,
     executeJob,
     executeJob)
 
   private val forkWorkflow = Workflow.of(
-    WorkflowPath("/FORK") ~ versionId,
+    WorkflowPath("FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
       executeJob)),
     executeJob)
 
   private val tryWorkflow = Workflow.of(
-    WorkflowPath("/TRY") ~ versionId,
+    WorkflowPath("TRY") ~ versionId,
     executeJob,
     executeJob,
     TryInstruction(

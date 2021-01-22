@@ -63,9 +63,9 @@ object CirceUtils
     implicit val CompactPrinter = CirceUtils.CompactPrinter
   }
 
-  implicit final class RichCirceError[R](private val underlying: io.circe.Error) extends AnyVal
+  implicit final class RichCirceError(private val error: io.circe.Error) extends AnyVal
   {
-    def toProblem = Problem.pure("JSON " + underlying.show.replace("\n", "\\n"))
+    def toProblem = Problem.pure("JSON " + error.show.replace("\n", "\\n"))
   }
 
   implicit final class RichCirceEither[R](private val underlying: Either[io.circe.Error, R]) extends AnyVal
@@ -298,4 +298,8 @@ object CirceUtils
     throw new JsonException(s"JSON $expected expected instead of $found")
 
   final class JsonException(message: String) extends RuntimeException(message)
+
+  final case class JsonProblem(error: io.circe.Error) extends Problem.Coded {
+    def arguments = Map("error" -> error.show.replace("\n", "\\n"))
+  }
 }

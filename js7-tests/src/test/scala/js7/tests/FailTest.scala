@@ -29,7 +29,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
-  private val workflowIdIterator = Iterator.from(1).map(i => WorkflowPath(s"/WORKFLOW-$i") ~ i.toString)
+  private val workflowIdIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i") ~ i.toString)
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"♦️-$i"))
 
   override def beforeAll() = {

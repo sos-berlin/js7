@@ -23,12 +23,12 @@ final class JCancelModeTest extends AnyFreeSpec
         immediately = false,
         Optional.of(
           JWorkflowPosition.of(
-            JWorkflowId.of("/WORKFLOW", "1.0"),
+            JWorkflowId.of("WORKFLOW", "1.0"),
             getOrThrow(JPosition.fromList(asList(0, "Then", 1)))))
       ).asScala ==
         CancelMode.FreshOrStarted(Some(CancelMode.Kill(
           immediately = false,
-          Some(WorkflowPath("/WORKFLOW") ~ "1.0" /: (Position(0) / "Then" % 1 ))))))
+          Some(WorkflowPath("WORKFLOW") ~ "1.0" /: (Position(0) / "Then" % 1 ))))))
   }
 
   "Java" in {

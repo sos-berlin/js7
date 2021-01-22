@@ -48,7 +48,7 @@ import scala.concurrent.duration._
   */
 object TestControllerAgent
 {
-  private val TestWorkflowPath = WorkflowPath("/test")
+  private val TestWorkflowPath = WorkflowPath("test")
   private val TestPathExecutable = RelativePathExecutable("test")
   private val StdoutRowSize = 1000
   private val logger = Logger(getClass)
@@ -180,7 +180,7 @@ object TestControllerAgent
           Fork.Branch(
             pathName,
             Workflow(
-              WorkflowPath("/TestControllerAgent") ~ "1",
+              WorkflowPath("TestControllerAgent") ~ "1",
               Vector.fill(conf.workflowLength) { Execute(WorkflowJob(agentId, TestPathExecutable)) })))
         .orThrow,
       If(Or(Equal(LastReturnCode, NumericConstant(0)), Equal(LastReturnCode, NumericConstant(0))),

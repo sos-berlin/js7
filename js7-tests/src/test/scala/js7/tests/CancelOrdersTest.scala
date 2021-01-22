@@ -232,16 +232,16 @@ object CancelOrdersTest
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ versionId,
+    WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentId, pathExecutable)))
 
   private val twoJobsWorkflow = Workflow.of(
-    WorkflowPath("/TWO") ~ versionId,
+    WorkflowPath("TWO") ~ versionId,
     Execute(WorkflowJob(agentId, pathExecutable)),
     Execute(WorkflowJob(agentId, pathExecutable)))
 
   private val forkWorkflow = Workflow.of(
-    WorkflowPath("/FORK") ~ versionId,
+    WorkflowPath("FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
         Execute(WorkflowJob(agentId, pathExecutable)))),

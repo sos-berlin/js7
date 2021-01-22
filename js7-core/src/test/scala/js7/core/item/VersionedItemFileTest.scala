@@ -33,7 +33,7 @@ final class VersionedItemFileTest extends AnyFreeSpec
 
 object VersionedItemFileTest
 {
-  private val AWorkflowPath = WorkflowPath("/test")
+  private val AWorkflowPath = WorkflowPath("test")
 
   private def provideDataDirectory[A](body: Path => A): A = {
     val dir = createTempDirectory("test-")

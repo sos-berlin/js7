@@ -18,7 +18,7 @@ import org.scalatest.freespec.AsyncFreeSpec
   */
 final class AgentStateTest extends AsyncFreeSpec
 {
-  private val workflowId = WorkflowPath("/WORKFLOW") ~ "1.0"
+  private val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"
   private val agentState = AgentState(
     EventId(1000),
     JournaledState.Standards.empty,
@@ -41,7 +41,7 @@ final class AgentStateTest extends AsyncFreeSpec
   "applyEvent" in {
     val orderId = OrderId("ORDER")
     val childOrderId = OrderId("ORDER") | "BRANCH"
-    val workflowId = WorkflowPath("/WORKFLOW") ~ "1.0"
+    val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"
     val workflow = Workflow.of(workflowId)
     val agentId = AgentId("AGENT")
     var agentState = AgentState.empty

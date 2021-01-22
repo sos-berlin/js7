@@ -29,7 +29,7 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
 
     val n = 4 * sys.runtime.availableProcessors * MonixBase.DefaultBatchSize
     lazy val big = {
-      val workflowPosition = WorkflowPath("/WORKFLOW") ~ "1" /: (Position(1) / Then % 2 / Then % 3)
+      val workflowPosition = WorkflowPath("WORKFLOW") ~ "1" /: (Position(1) / Then % 2 / Then % 3)
       val namedValues = Map("A" -> StringValue("a"), "B" -> ListValue((1 to 10).map(_.toString).map(StringValue(_))))
       val historicOutcome = HistoricOutcome(workflowPosition.position, Outcome.Succeeded(namedValues))
       val fakeOrder = Order[Order.State](

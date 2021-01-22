@@ -21,7 +21,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 class JControllerApiOrderTester
 {
-    private static final WorkflowPath workflowPath = WorkflowPath.of("/WORKFLOW");  // As defined by ControllerProxyTest
+    private static final WorkflowPath workflowPath = WorkflowPath.of("WORKFLOW");  // As defined by ControllerProxyTest
     private final JControllerApi api;
 
     JControllerApiOrderTester(JControllerApi api) {

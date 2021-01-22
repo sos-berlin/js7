@@ -69,9 +69,9 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
         JControllerProxyTester.run(admissions, JHttpsConfig.empty,
           List[VersionedItem](
             workflow.withVersion(myVersionId),
-            workflow.withId(WorkflowPath("/B-WORKFLOW") ~ myVersionId),
+            workflow.withId(WorkflowPath("B-WORKFLOW") ~ myVersionId),
           ).map(_.asJson.compactPrint).asJava,
-          (1 to 1000).map(i => workflow.withId(WorkflowPath(s"/WORKFLOW-$i") ~ myVersionId))
+          (1 to 1000).map(i => workflow.withId(WorkflowPath(s"WORKFLOW-$i") ~ myVersionId))
             .map(_.asJson.compactPrint).asJava,
           () => controller())
       } finally

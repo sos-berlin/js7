@@ -1,7 +1,7 @@
 package js7.data.workflow.test
 
 import js7.data.agent.AgentId
-import js7.data.job.{PathExecutable, RelativePathExecutable}
+import js7.data.job.RelativePathExecutable
 import js7.data.order.{Order, OrderId}
 import js7.data.value.StringValue
 import js7.data.workflow.instructions.Execute
@@ -26,7 +26,7 @@ private[js7] object TestSetting
   val TestPathExecutables = Vector(APathExecutable, BPathExecutable)
 
   val SimpleTestWorkflow = Workflow.of(
-    WorkflowPath("/WORKFLOW") ~ "VERSION",
+    WorkflowPath("WORKFLOW") ~ "VERSION",
     AExecute,
     BExecute)
 

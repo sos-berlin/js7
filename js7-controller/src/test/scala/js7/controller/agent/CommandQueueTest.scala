@@ -132,7 +132,7 @@ final class CommandQueueTest extends AnyFreeSpec
 object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentId = AgentId("AGENT")
-  private val TestWorkflow = Workflow.of(WorkflowPath("/A") ~ "VERSION",
+  private val TestWorkflow = Workflow.of(WorkflowPath("A") ~ "VERSION",
     Execute(WorkflowJob(TestAgentId, PathExecutable("EXECUTABLE"))))
   private val itemSigner = new VersionedItemSigner(new SillySigner(SillySignature("MY-SILLY-SIGNATURE")), Workflow.jsonEncoder)
   private val signedWorkflow: Signed[Workflow] = itemSigner.toSigned(TestWorkflow)

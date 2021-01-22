@@ -8,7 +8,6 @@ import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.folder.FolderPath
 import js7.data.item.ItemPath
 import js7.data.lock.LockId
 import scala.reflect.ClassTag
@@ -99,8 +98,8 @@ object BasicParsers
 
   def keyword[_: P](name: String) = P[Unit](name ~ identifierEnd)
 
-  def path[A <: ItemPath: ItemPath.Companion](implicit ctx: P[_]) = P[A](
-    pathString.map(p => FolderPath.Root.resolve[A](p)))
+  def path[A <: ItemPath](implicit ctx: P[_], A: ItemPath.Companion[A]) = P[A](
+    pathString.flatMap(p => checkedToP(A.checked(p))))
 
   def agentId(implicit ctx: P[_]) = P[AgentId](
     pathString.flatMap(string =>

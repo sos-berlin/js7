@@ -26,7 +26,7 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
   }
 
   "Run a job" in {
-    controllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("/TEST-WORKFLOW"))) await 99.s
+    controllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))) await 99.s
     val KeyedEvent(AgentId("TEST-AGENT"), AgentCouplingFailed(problem)) = controller.eventWatch.await[AgentCouplingFailed](timeout = 99.seconds).head.value
     logger.info(problem.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
     //assert(msg == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||

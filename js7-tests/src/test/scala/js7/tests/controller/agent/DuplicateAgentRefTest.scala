@@ -51,7 +51,7 @@ object DuplicateAgentRefTest
   private val aAgentId = AgentId("A-AGENT")
   private val bAgentId = AgentId("B-AGENT")
   private val workflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ "INITIAL",
+    WorkflowPath("SINGLE") ~ "INITIAL",
     Execute(WorkflowJob(aAgentId, RelativePathExecutable("executable.cmd"))),
     Execute(WorkflowJob(bAgentId, RelativePathExecutable("executable.cmd"))))
 }

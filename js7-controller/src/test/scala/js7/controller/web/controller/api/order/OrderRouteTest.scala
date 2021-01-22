@@ -94,7 +94,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   }
 
   "POST invalid order" in {
-    val order = FreshOrder.unchecked(OrderId("ORDER|🔵"), WorkflowPath("/WORKFLOW"))
+    val order = FreshOrder.unchecked(OrderId("ORDER|🔵"), WorkflowPath("WORKFLOW"))
     Post(s"/controller/api/order", order) ~> route ~> check {
       assert(status == BadRequest)
       assert(response.utf8StringFuture.await(99.s) == "JSON DecodingFailure at : OrderId must not contain reserved characters: |\n")
@@ -102,7 +102,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   }
 
   "POST new order" in {
-    val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("/WORKFLOW"),
+    val order = FreshOrder(OrderId("ORDER-🔵"), WorkflowPath("WORKFLOW"),
       Map("KEY" -> StringValue("VALUE")),
       Some(Timestamp.parse("2017-03-07T12:00:00Z")))
     Post(s"/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check {
@@ -113,7 +113,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   }
 
   "POST duplicate order" in {
-    val order = FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW"))
+    val order = FreshOrder(DuplicateOrderId, WorkflowPath("WORKFLOW"))
     Post("/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == Conflict)  // Duplicate order
       assert(response.header[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
@@ -122,7 +122,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   }
 
   "POST multiple orders" in {
-    val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW")) :: Nil
+    val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("WORKFLOW")) :: Nil
     Post("/controller/api/order", orders) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
       assert(response.header[Location].isEmpty)
@@ -133,7 +133,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 
 object OrderRouteTest
 {
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
+  private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(
     Order(OrderId("/PATH/ORDER-1"), TestWorkflowId, Order.Fresh.StartImmediately),
     Order(OrderId("ORDER-2"), TestWorkflowId /: Position(2), Order.Finished)

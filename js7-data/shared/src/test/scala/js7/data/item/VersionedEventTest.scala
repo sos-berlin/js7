@@ -28,16 +28,16 @@ final class VersionedEventTest extends AnyFreeSpec {
         }""")
     }
 
-    val workflow = Workflow(WorkflowPath("/WORKFLOW"), Vector(Fail(None)))
+    val workflow = Workflow(WorkflowPath("WORKFLOW"), Vector(Fail(None)))
 
     "VersionedItemAdded" in {
       testJson[VersionedEvent](
         VersionedItemAdded(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "VersionedItemAdded",
-          "path": "Workflow:/WORKFLOW",
+          "path": "Workflow:WORKFLOW",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
             "signature": {
               "TYPE": "PGP",
               "signatureString": "SIGNATURE"
@@ -51,9 +51,9 @@ final class VersionedEventTest extends AnyFreeSpec {
         VersionedItemChanged(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "VersionedItemChanged",
-          "path": "Workflow:/WORKFLOW",
+          "path": "Workflow:WORKFLOW",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
             "signature": {
               "TYPE": "PGP",
               "signatureString": "SIGNATURE"
@@ -64,22 +64,22 @@ final class VersionedEventTest extends AnyFreeSpec {
 
     "VersionedItemDeleted" in {
       testJson[VersionedEvent](
-        VersionedItemDeleted(WorkflowPath("/TEST")),
+        VersionedItemDeleted(WorkflowPath("TEST")),
         json"""{
           "TYPE": "VersionedItemDeleted",
-          "path": "Workflow:/TEST"
+          "path": "Workflow:TEST"
         }""")
     }
   }
 
   //"VersionedItemAdded must have a non-anonymous path but not a versionId" in {
   //  intercept[RuntimeException] { VersionedItemAdded(Workflow.of(Fail(None))) }
-  //  intercept[RuntimeException] { VersionedItemAdded(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  //  intercept[RuntimeException] { VersionedItemAdded(Workflow(WorkflowPath("A") % "VERSION", Vector(Fail(None)))) }
   //}
   //
   //"VersionedItemChanged must have a non-anonymous path but not a versionId" in {
   //  intercept[RuntimeException] { VersionedItemChanged(Workflow.of(Fail(None))) }
-  //  intercept[RuntimeException] { VersionedItemChanged(Workflow(WorkflowPath("/A") % "VERSION", Vector(Fail(None)))) }
+  //  intercept[RuntimeException] { VersionedItemChanged(Workflow(WorkflowPath("A") % "VERSION", Vector(Fail(None)))) }
   //}
 
   "VersionedItemDeleted must have a non-anonymous path" in {

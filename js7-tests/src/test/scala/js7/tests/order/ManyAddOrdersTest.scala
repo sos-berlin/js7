@@ -85,14 +85,14 @@ object ManyAddOrdersTest
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ versionId,
+    WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentId1, pathExecutable, taskLimit = 3)),
     Execute(WorkflowJob(agentId2, pathExecutable, taskLimit = 3)))
 
   private val workflow2 =json"""
     {
       "TYPE": "Workflow",
-      "path": "/TestRuns/Test0000000019/tryCatch_001",
+      "path": "TestRuns/Test0000000019/tryCatch_001",
       "instructions": [ {
         "TYPE": "Execute.Named",
         "jobName": "job1",

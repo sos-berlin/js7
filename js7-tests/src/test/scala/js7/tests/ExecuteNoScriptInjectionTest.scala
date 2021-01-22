@@ -44,12 +44,12 @@ object ExecuteNoScriptInjectionTest
 {
   private val agentId = AgentId("AGENT")
   private val scriptWorkflow = WorkflowParser.parse(
-    WorkflowPath("/SCRIPT-WORKFLOW"),
+    WorkflowPath("SCRIPT-WORKFLOW"),
     """define workflow {
          execute agent="AGENT", script=":";
        }""").orThrow
   private val absolutePathWorkflow = WorkflowParser.parse(
-    WorkflowPath("/ABSOLUTE-PATH-WORKFLOW"),
+    WorkflowPath("ABSOLUTE-PATH-WORKFLOW"),
     """define workflow {
         execute agent="AGENT", executable="/ABSOLUTE";
       }""").orThrow

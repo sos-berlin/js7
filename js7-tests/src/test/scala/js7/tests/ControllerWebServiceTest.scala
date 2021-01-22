@@ -152,9 +152,9 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     controller.updateItemsAsSystemUser(
       ItemOperation.AddVersion(VersionId("VERSION-1")) +:
         Observable(
-          Workflow.of(WorkflowPath("/WORKFLOW") ~ "VERSION-1",
+          Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION-1",
             Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"A$sh")))),
-          Workflow.of(WorkflowPath("/FOLDER/WORKFLOW-2") ~ "VERSION-1",
+          Workflow.of(WorkflowPath("FOLDER/WORKFLOW-2") ~ "VERSION-1",
             Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"B$sh"))),
             Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"MISSING$sh"))))
         ).map(directoryProvider.itemSigner.sign)
@@ -172,16 +172,15 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     testGet("controller/api/workflow/",
       RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""[
-        "/FOLDER/WORKFLOW-2",
-        "/WORKFLOW"
+        "FOLDER/WORKFLOW-2",
+        "WORKFLOW"
       ]""")
 
     testGets("controller/api/workflow/FOLDER/WORKFLOW-2"::
-             "controller/api/workflow//FOLDER/WORKFLOW-2"::
-             "controller/api/workflow/%2FFOLDER%2FWORKFLOW-2":: Nil,
+             "controller/api/workflow/FOLDER%2FWORKFLOW-2":: Nil,
       RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""{
-        "path": "/FOLDER/WORKFLOW-2",
+        "path": "FOLDER/WORKFLOW-2",
         "versionId": "VERSION-1",
         "instructions": [
           {
@@ -281,7 +280,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     "POST" - {
       val orderWithMissingWorkflow = json"""{
         "id": "ORDER-ID",
-        "workflowPath": "/MISSING"
+        "workflowPath": "MISSING"
       }"""
 
       "Order with missing workflow is rejected (single order)" in {
@@ -290,8 +289,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orderWithMissingWorkflow, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "No such ItemPath: Workflow:/MISSING")  // Or similar
-        assert(exception.problem == Some(UnknownKeyProblem("ItemPath", WorkflowPath("/MISSING"))))
+        assert(exception.dataAsString contains "No such ItemPath: Workflow:MISSING")  // Or similar
+        assert(exception.problem == Some(UnknownKeyProblem("ItemPath", WorkflowPath("MISSING"))))
       }
 
       "Order with missing workflow is rejected (order array)" in {
@@ -301,13 +300,13 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "No such ItemPath: Workflow:/MISSING")  // Or similar
-        assert(exception.problem == Some(UnknownKeyProblem("ItemPath", WorkflowPath("/MISSING"))))
+        assert(exception.dataAsString contains "No such ItemPath: Workflow:MISSING")  // Or similar
+        assert(exception.problem == Some(UnknownKeyProblem("ItemPath", WorkflowPath("MISSING"))))
       }
 
       "Invalid OrderId is rejected (single order)" in {
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-        val order = json"""{ "id": "ORDER|ID", "workflowPath": "/MISSING" }"""
+        val order = json"""{ "id": "ORDER|ID", "workflowPath": "MISSING" }"""
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), order, headers) await 99.s
         }
@@ -318,7 +317,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
       "Invalid OrderId is rejected (order array)" in {
         val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-        val orders = Json.fromValues(json"""{ "id": "ORDER|ID", "workflowPath": "/MISSING" }""":: Nil)
+        val orders = Json.fromValues(json"""{ "id": "ORDER|ID", "workflowPath": "MISSING" }""":: Nil)
         val exception = intercept[HttpException] {
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         }
@@ -329,7 +328,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
       val order = json"""{
         "id": "ORDER-ID",
-        "workflowPath": "/WORKFLOW"
+        "workflowPath": "WORKFLOW"
       }"""
 
       "First" in {
@@ -351,7 +350,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       "Bad OrderId" in {
         val order = json"""{
           "id": "A|B",
-          "workflowPath": "/WORKFLOW"
+          "workflowPath": "WORKFLOW"
         }"""
 
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
@@ -367,7 +366,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           [
             {
               "id": "ORDER-ID",
-              "workflowPath": "/WORKFLOW"
+              "workflowPath": "WORKFLOW"
             }
           ]"""
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
@@ -382,7 +381,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           [
             {
               "id": "A|B",
-              "workflowPath": "/WORKFLOW"
+              "workflowPath": "WORKFLOW"
             }
           ]"""
         val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
@@ -446,9 +445,9 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "versionId": "VERSION-1"
       }, {
         "TYPE": "VersionedItemAdded",
-        "path": "Workflow:/FOLDER/WORKFLOW-2",
+        "path": "Workflow:FOLDER/WORKFLOW-2",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -456,9 +455,9 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }
       }, {
         "TYPE": "VersionedItemAdded",
-        "path": "Workflow:/WORKFLOW",
+        "path": "Workflow:WORKFLOW",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -469,7 +468,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "id": "ORDER-ID",
         "workflowPosition": {
           "workflowId": {
-            "path": "/WORKFLOW",
+            "path": "WORKFLOW",
             "versionId": "VERSION-1"
           },
           "position": [ 1 ]
@@ -549,9 +548,9 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1009,
           "TYPE": "VersionedItemAdded",
-          "path": "Workflow:/WORKFLOW",
+          "path": "Workflow:WORKFLOW",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -560,9 +559,9 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1010,
           "TYPE": "VersionedItemAdded",
-          "path": "Workflow:/FOLDER/WORKFLOW-2",
+          "path": "Workflow:FOLDER/WORKFLOW-2",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"/FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -573,7 +572,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "TYPE": "OrderAdded",
           "key": "ORDER-ID",
           "workflowId": {
-            "path": "/WORKFLOW",
+            "path": "WORKFLOW",
             "versionId": "VERSION-1"
           }
         }, {
@@ -672,7 +671,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   "Commands" - {
     "(add order)" in {
-      controller.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("/WORKFLOW"),
+      controller.addOrderBlocking(FreshOrder(OrderId("ORDER-FRESH"), WorkflowPath("WORKFLOW"),
         scheduledFor = Some(Timestamp.parse("3000-01-01T12:00:00Z"))))
     }
 

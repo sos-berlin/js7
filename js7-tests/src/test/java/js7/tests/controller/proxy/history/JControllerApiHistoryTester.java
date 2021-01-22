@@ -15,7 +15,6 @@ import js7.data.item.VersionId;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.data.value.StringValue;
-import js7.data.value.Value;
 import js7.data.workflow.WorkflowPath;
 import js7.proxy.data.ProxyEvent;
 import js7.proxy.javaapi.JControllerApi;
@@ -39,7 +38,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 final class JControllerApiHistoryTester
 {
     private static final Logger logger = LoggerFactory.getLogger(JControllerApiHistoryTester.class);
-    static JWorkflowId TestWorkflowId = JWorkflowId.of(WorkflowPath.of("/WORKFLOW"), VersionId.of("INITIAL"));
+    static JWorkflowId TestWorkflowId = JWorkflowId.of(WorkflowPath.of("WORKFLOW"), VersionId.of("INITIAL"));
     static final OrderId TestOrderId = OrderId.of("ORDER");
 
     private final JControllerApi api;

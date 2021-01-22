@@ -59,7 +59,7 @@ final class FailExecutorTest extends AnyFreeSpec
 
 object FailExecutorTest
 {
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
+  private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
 
   private val TestOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Ready)
 

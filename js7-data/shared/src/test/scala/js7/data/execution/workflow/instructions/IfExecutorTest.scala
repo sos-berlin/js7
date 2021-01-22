@@ -71,7 +71,7 @@ final class IfExecutorTest extends AnyFreeSpec {
 }
 
 object IfExecutorTest {
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
+  private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("AA")))) :: Nil)
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,

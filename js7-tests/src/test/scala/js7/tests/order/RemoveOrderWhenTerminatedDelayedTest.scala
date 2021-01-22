@@ -49,6 +49,6 @@ object RemoveOrderWhenTerminatedDelayedTest
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ versionId,
+    WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentId, pathExecutable)))
 }

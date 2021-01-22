@@ -118,5 +118,5 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
 object UpdateRepoX509Test
 {
   private val userAndPassword = UserAndPassword(UserId("UpdateRepoX509Test"), SecretString("TEST-PASSWORD"))
-  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"))
+  private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))
 }

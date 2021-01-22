@@ -116,7 +116,7 @@ object UpdateItemsTest
   private val userAndPassword = UserAndPassword(UserId("UpdateItemsTest"), SecretString("TEST-PASSWORD"))
   private val Tick = 2.s
   private val TestAgentId = AgentId("AGENT")
-  private val TestWorkflowPath = WorkflowPath("/WORKFLOW")
+  private val TestWorkflowPath = WorkflowPath("WORKFLOW")
   private val script1 = """
     define workflow {
       execute executable="SCRIPT1.cmd", agent="AGENT";
@@ -136,12 +136,12 @@ object UpdateItemsTest
 
   private val V4 = VersionId("4")
   private val workflow4 = WorkflowParser.parse(TestWorkflowPath ~ V4, script2).orThrow
-  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") ~ V4, script2).orThrow
+  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V4, script2).orThrow
 
   private val V5 = VersionId("5")
   private val script5 = """
     define workflow {
       execute executable="SCRIPT4.cmd", agent="AGENT";
     }"""
-  private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("/OTHER-WORKFLOW") ~ V5, script5).orThrow
+  private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V5, script5).orThrow
 }

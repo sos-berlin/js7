@@ -101,7 +101,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
     }
 
     "Written but not flushed" in {
-      eventWriter.writeEvent(Stamped(1000L, OrderId("1") <-: OrderAdded(WorkflowPath("/TEST") ~ "VERSION")))
+      eventWriter.writeEvent(Stamped(1000L, OrderId("1") <-: OrderAdded(WorkflowPath("TEST") ~ "VERSION")))
       sleep(100.ms)
       assert(observed.isEmpty)
     }
@@ -111,7 +111,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
       eventWriter.flush(false)
       waitForCondition(9.s, 10.ms)(observed.nonEmpty)
       assert(observed.mkString ==
-         """{"eventId":1000,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/TEST","versionId":"VERSION"}}
+         """{"eventId":1000,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"TEST","versionId":"VERSION"}}
            |""".stripMargin)
     }
 
@@ -125,7 +125,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
       eventWriter.close()
       observing await 99.s
       assert(observed.mkString ==
-         """{"eventId":1000,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"/TEST","versionId":"VERSION"}}
+         """{"eventId":1000,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"TEST","versionId":"VERSION"}}
            |""".stripMargin ++
            EndOfJournalFileMarker.utf8String)
 

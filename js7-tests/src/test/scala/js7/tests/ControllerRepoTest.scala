@@ -189,7 +189,7 @@ final class ControllerRepoTest extends AnyFreeSpec
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
           Observable.fromIterable(1 to n)
             .mapParallelUnorderedBatch() { i =>
-              val workflow = workflow0.withId(WorkflowPath(s"/WORKFLOW-$i") ~ v)
+              val workflow = workflow0.withId(WorkflowPath(s"WORKFLOW-$i") ~ v)
               VersionedAddOrChange(provider.sign(workflow))
             }
             .prepend(AddVersion(v))
@@ -210,9 +210,9 @@ object ControllerRepoTest
   private val logger = Logger(getClass)
 
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
-  private val AWorkflowPath = WorkflowPath("/A")
-  private val BWorkflowPath = WorkflowPath("/B")
-  private val CWorkflowPath = WorkflowPath("/C")
+  private val AWorkflowPath = WorkflowPath("A")
+  private val BWorkflowPath = WorkflowPath("B")
+  private val CWorkflowPath = WorkflowPath("C")
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")
   private val V3 = VersionId("3")

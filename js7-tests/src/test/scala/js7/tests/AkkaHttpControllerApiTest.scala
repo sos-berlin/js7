@@ -96,7 +96,7 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
 private object AkkaHttpControllerApiTest
 {
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
-  private val TestWorkflow = Workflow.of(WorkflowPath("/WORKFLOW") ~ "INITIAL",
+  private val TestWorkflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "INITIAL",
     Execute(WorkflowJob(AgentId("MISSING"), PathExecutable("MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
   private val SecondOrder = Order(OrderId("SECOND-ORDER"), TestWorkflow.id, Order.Fresh.StartImmediately)

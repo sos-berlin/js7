@@ -160,11 +160,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(provider.updateControllerConfiguration(V2.some).await(99.s) ==
         Left(Problem.Combined(Set(
           ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
-          VersionedItemReader.SourceProblem(WorkflowPath("/NO-JSON"), SourceType.Json,
+          VersionedItemReader.SourceProblem(WorkflowPath("NO-JSON"), SourceType.Json,
             Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
-          VersionedItemReader.SourceProblem(WorkflowPath("/ERROR-1"), SourceType.Json,
+          VersionedItemReader.SourceProblem(WorkflowPath("ERROR-1"), SourceType.Json,
             Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),
-          VersionedItemReader.SourceProblem(WorkflowPath("/ERROR-2"), SourceType.Json,
+          VersionedItemReader.SourceProblem(WorkflowPath("ERROR-2"), SourceType.Json,
             Problem("JSON DecodingFailure at .instructions: C[A]"))))))
     }
 
@@ -205,7 +205,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
              try fail;
              catch {}
            }"""
-      val workflowPath = WorkflowPath("/NOTATION")
+      val workflowPath = WorkflowPath("NOTATION")
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
 
@@ -269,7 +269,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     "Add an order generator" in {
       lastEventId = controller.eventWatch.lastAddedEventId
       (orderGeneratorsDir / "test.order.xml").xml =
-        <order job_chain="/A">
+        <order job_chain="A">
           <run_time>
             <period absolute_repeat="1"/>
           </run_time>
@@ -281,7 +281,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     "Replace an order generator" in {
       (orderGeneratorsDir / "test.order.xml").xml =
-        <order job_chain="/B">
+        <order job_chain="B">
           <run_time>
             <period absolute_repeat="1"/>
           </run_time>
@@ -317,13 +317,13 @@ object ProviderTest
   private val loginPassword = "ProviderTest-PASSWORD"
   private val testConfig = config"""
     js7.provider.directory-watch.minimum-silence = 50ms
-    js7.provider.directory-watch.poll-interval = ${if (isMac) "100ms" else "300s"}
+    js7.provider.directory-watch.poll-interval = "${if (isMac) "100ms" else "300s"}"
     """
 
   private val agentId = AgentId("AGENT")
-  private val AWorkflowPath = WorkflowPath("/A")
-  private val BWorkflowPath = WorkflowPath("/B")
-  private val CWorkflowPath = WorkflowPath("/C")
+  private val AWorkflowPath = WorkflowPath("A")
+  private val BWorkflowPath = WorkflowPath("B")
+  private val CWorkflowPath = WorkflowPath("C")
 
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")

@@ -61,7 +61,7 @@ final class JControllerStateTester
 
     void testWorkflows() {
         new JWorkflowTester(
-            controllerState.idToWorkflow(JWorkflowId.of("/A-WORKFLOW", "1.0")).get()
+            controllerState.idToWorkflow(JWorkflowId.of("A-WORKFLOW", "1.0")).get()
         ).test();
     }
 
@@ -132,7 +132,7 @@ final class JControllerStateTester
             }}));
 
         Map<Class<? extends Order.State>,Integer> workflowCounters =
-            controllerState.orderStateToCount(byWorkflowPath(WorkflowPath.of("/A-WORKFLOW")));
+            controllerState.orderStateToCount(byWorkflowPath(WorkflowPath.of("A-WORKFLOW")));
         assertThat(workflowCounters, equalTo(
             new HashMap<Class<? extends Order.State>, Integer>() {{
                 put(Order.Fresh.class, 1);

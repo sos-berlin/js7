@@ -34,7 +34,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  */
 class JControllerProxyEventBusOrderTester implements AutoCloseable
 {
-    private static final WorkflowPath workflowPath = WorkflowPath.of("/WORKFLOW");  // As defined by ControllerProxyTest
+    private static final WorkflowPath workflowPath = WorkflowPath.of("WORKFLOW");  // As defined by ControllerProxyTest
     private static final List<OrderId> orderIds = IntStream.rangeClosed(0, 2)
         .mapToObj(i -> OrderId.of("TEST-ORDER-" + i))
         .collect(Collectors.toList());

@@ -73,7 +73,7 @@ final class ControllerUris private(controllerUri: Uri)
 
   object workflow {
     def apply(path: WorkflowPath): Uri =
-      api("/" + encodePath("workflow", path.withoutStartingSlash))
+      api("/" + encodePath("workflow", path.string))
 
     def list[A: ClassTag]: Uri =
       api("/" + encodePath("workflow", ""), "return" -> encodeClass[A])

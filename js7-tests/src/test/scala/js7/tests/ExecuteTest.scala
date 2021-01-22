@@ -35,7 +35,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on
     """
   private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))
-  private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"/WORKFLOW-$i"))
+  private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
   private lazy val argScriptFile = createTempFile("ExecuteTest-arg-", ".cmd")
   private lazy val myReturnCodeScriptFile = createTempFile("ExecuteTest-myExitCode-", ".cmd")

@@ -80,7 +80,7 @@ object ExpressionsTest {
      |    execute executable="TEST-RC$sh", agent="AGENT", v1Compatible=true, successReturnCodes=[0, 1];
      |  }
      |}""".stripMargin
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
 
   private val orders = Vector(
     FreshOrder(OrderId("❌"), TestWorkflow.id.path),

@@ -84,10 +84,10 @@ object RemoveOrderWhenTerminatedTest
   private val versionId = VersionId("INITIAL")
 
   private val quickWorkflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ versionId,
+    WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentId, quickPathExecutable)))
 
   private val slowWorkflow = Workflow.of(
-    WorkflowPath("/SINGLE") ~ versionId,
+    WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentId, slowPathExecutable)))
 }

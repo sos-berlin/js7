@@ -27,9 +27,9 @@ final class VersionedItemsTest extends AnyFreeSpec
       assert(diffVersionedItems(Nil, Nil).isEmpty)
     }
 
-    lazy val a = Workflow.of(WorkflowPath("/A") ~ "1", Fail(None))
-    lazy val b = Workflow.of(WorkflowPath("/B") ~ "1", Fail(None))
-    lazy val c = Workflow.of(WorkflowPath("/C") ~ "1", Fail(None))
+    lazy val a = Workflow.of(WorkflowPath("A") ~ "1", Fail(None))
+    lazy val b = Workflow.of(WorkflowPath("B") ~ "1", Fail(None))
+    lazy val c = Workflow.of(WorkflowPath("C") ~ "1", Fail(None))
 
     "different order" in {
       assert(
@@ -56,7 +56,7 @@ final class VersionedItemsTest extends AnyFreeSpec
     }
 
     "one changed" in {
-      val bUpdated = Workflow.of(WorkflowPath("/B") ~ "1", Fail(None), Fail(None))
+      val bUpdated = Workflow.of(WorkflowPath("B") ~ "1", Fail(None), Fail(None))
       assert(bUpdated != b)
       assert(
         diffVersionedItems(
@@ -66,7 +66,7 @@ final class VersionedItemsTest extends AnyFreeSpec
     }
 
     "added, deleted and changed" in {
-      val aUpdated = Workflow.of(WorkflowPath("/A") ~ "1", Fail(None), Fail(None))
+      val aUpdated = Workflow.of(WorkflowPath("A") ~ "1", Fail(None), Fail(None))
       assert(aUpdated != a)
       assert(
         diffVersionedItems(
@@ -127,14 +127,14 @@ object VersionedItemsTest {
   private[tests] val V0 = VersionId("0")
   private[tests] val V1 = VersionId("1")
 
-  private[tests] val AWorkflow = Workflow.of(WorkflowPath("/A"))
-  private[tests] val BWorkflow = Workflow(WorkflowPath("/B"), Vector("B-END" @: ExplicitEnd()))
-  private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C"), "define workflow { /*EMPTY*/ }").orThrow
-  private[tests] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd()))
-  private[tests] val EWorkflow = Workflow(WorkflowPath("/E"), Vector(Fail(None)))
-  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D"), "define workflow { CHANGED-D-END: end; }").orThrow
-  private[tests] val ATestItem = TestItem(TestPath("/A"), "A")
-  private[tests] val BTestItem = TestItem(TestPath("/folder/B"), "B")
+  private[tests] val AWorkflow = Workflow.of(WorkflowPath("A"))
+  private[tests] val BWorkflow = Workflow(WorkflowPath("B"), Vector("B-END" @: ExplicitEnd()))
+  private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("C"), "define workflow { /*EMPTY*/ }").orThrow
+  private[tests] val DWorkflow = Workflow(WorkflowPath("D"), Vector("D-END" @: ExplicitEnd()))
+  private[tests] val EWorkflow = Workflow(WorkflowPath("E"), Vector(Fail(None)))
+  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("D"), "define workflow { CHANGED-D-END: end; }").orThrow
+  private[tests] val ATestItem = TestItem(TestPath("A"), "A")
+  private[tests] val BTestItem = TestItem(TestPath("folder/B"), "B")
 
   private[tests] def provideDirectory[A](body: Path => A): A = {
     val dir = createTempDirectory("test-")

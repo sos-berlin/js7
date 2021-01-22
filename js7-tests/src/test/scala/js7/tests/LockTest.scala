@@ -123,13 +123,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "After releasing a lock of 2, two orders with count=1 each start simultaneously" in {
-    val workflow1 = defineWorkflow(WorkflowPath("/WORKFLOW-1"), s"""
+    val workflow1 = defineWorkflow(WorkflowPath("WORKFLOW-1"), s"""
       define workflow {
         lock (lock="${limit2LockId.string}", count=1) {
           execute agent="AGENT", script="${script(50.ms)}", taskLimit=99
         }
       }""")
-    val workflow2 = defineWorkflow(WorkflowPath("/WORKFLOW-2"), s"""
+    val workflow2 = defineWorkflow(WorkflowPath("WORKFLOW-2"), s"""
       define workflow {
         lock (lock="${limit2LockId.string}", count=2) {
           execute agent="AGENT", script="${script(100.ms)}", taskLimit=99
@@ -156,13 +156,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Multiple orders with count=1 and count=2 finish" in {
-    val workflow1 = defineWorkflow(WorkflowPath("/WORKFLOW-1"), s"""
+    val workflow1 = defineWorkflow(WorkflowPath("WORKFLOW-1"), s"""
       define workflow {
         lock (lock="${limit2LockId.string}", count=1) {
           execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
         }
       }""")
-    val workflow2 = defineWorkflow(WorkflowPath("/WORKFLOW-2"), s"""
+    val workflow2 = defineWorkflow(WorkflowPath("WORKFLOW-2"), s"""
       define workflow {
         lock (lock="${limit2LockId.string}", count=2) {
           execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
@@ -316,7 +316,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   private def defineWorkflow(workflowNotation: String): Workflow =
-    defineWorkflow(WorkflowPath("/WORKFLOW"), workflowNotation)
+    defineWorkflow(WorkflowPath("WORKFLOW"), workflowNotation)
 
   private def defineWorkflow(workflowPath: WorkflowPath, workflowNotation: String): Workflow = {
     val versionId = versionIdIterator.next()

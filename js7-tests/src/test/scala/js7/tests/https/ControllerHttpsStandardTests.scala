@@ -49,7 +49,7 @@ private[https] trait ControllerHttpsStandardTests extends HttpsTestBase
     }
 
     "Run a job" in {
-      controllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("/TEST-WORKFLOW"))) await 99.s
+      controllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))) await 99.s
       controller.eventWatch.await[OrderFinished]()
     }
 

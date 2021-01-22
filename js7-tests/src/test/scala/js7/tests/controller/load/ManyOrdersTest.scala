@@ -98,7 +98,7 @@ object ManyOrdersTest
   private val longTimeout = 999.s
   private val agentId = AgentId("AGENT")
   private val workflow = WorkflowParser.parse(
-    WorkflowPath("/WORKFLOW") ~ "1", s"""
+    WorkflowPath("WORKFLOW") ~ "1", s"""
       define workflow {
         execute executable="TEST$sh", agent="AGENT", taskLimit=1000, v1Compatible=false;
       }"""

@@ -53,7 +53,7 @@ object ForkTestSetting {
    """.stripMargin.trim
 
   val TestWorkflow = Workflow(
-    WorkflowPath("/WORKFLOW") ~ "INITIAL" ,
+    WorkflowPath("WORKFLOW") ~ "INITIAL" ,
     Vector(
       /*0*/ Fork.of(
         "🥕" -> Workflow.of(AExecute),

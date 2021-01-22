@@ -46,7 +46,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
       .toKeyedMap(_.agentId),
     Map(LockId("LOCK") -> LockState(Lock(LockId("LOCK"), limit = 1))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
-    (Order(OrderId("ORDER"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
+    (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh(None)) :: Nil).toKeyedMap(_.id))
 
   //"toSnapshot is equivalent to toSnapshotObservable" in {
   //  assert(controllerState.toSnapshots == controllerState.toSnapshotObservable.toListL.runToFuture.await(9.s))
@@ -158,7 +158,7 @@ final class ControllerStateTest extends AsyncFreeSpec {
             "workflowPosition": {
               "position": [ 1 ],
               "workflowId": {
-                "path": "/WORKFLOW"
+                "path": "WORKFLOW"
               }
             }
           }

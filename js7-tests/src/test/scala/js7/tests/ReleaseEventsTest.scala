@@ -142,7 +142,7 @@ private object ReleaseEventsTest
   private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
   private val TestAgentId = AgentId("agent-111")
   private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")
-  private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
+  private val TestWorkflow = Workflow.of(WorkflowPath("test"),
     Execute(WorkflowJob(TestAgentId, TestPathExecutable)))
   private val aOrder = FreshOrder(OrderId("🔵"), TestWorkflow.id.path)
   private val bOrder = FreshOrder(OrderId("🔶"), TestWorkflow.id.path)

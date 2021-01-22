@@ -11,17 +11,17 @@ final class VersionedItemIdTest extends AnyFreeSpec {
 
   "JSON" in {
     testJson[VersionedItemId[APath]](
-      VersionedItemId(APath("/PATH"), VersionId("VERSION")),
+      VersionedItemId(APath("PATH"), VersionId("VERSION")),
       json"""{
-        "path": "/PATH",
+        "path": "PATH",
         "versionId": "VERSION"
       }""")
   }
 
   "isAnonymous" in {
     assert(APath.NoId.isAnonymous)
-    assert(!VersionedItemId(APath("/PATH"), VersionId.Anonymous).isAnonymous)
+    assert(!VersionedItemId(APath("PATH"), VersionId.Anonymous).isAnonymous)
     assert(!VersionedItemId(APath.Anonymous, VersionId("1")).isAnonymous)
-    assert(!VersionedItemId(APath("/PATH"), VersionId("1")).isAnonymous)
+    assert(!VersionedItemId(APath("PATH"), VersionId("1")).isAnonymous)
   }
 }

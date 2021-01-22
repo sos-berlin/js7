@@ -52,7 +52,7 @@ final class TryTest extends AnyFreeSpec
   }
 
   "try - if - fail" in {
-    val workflow = WorkflowParser.parse(WorkflowPath("/TRY-IF") ~ "INITIAL",
+    val workflow = WorkflowParser.parse(WorkflowPath("TRY-IF") ~ "INITIAL",
       s"""define workflow {
          |  try {
          |    execute executable="OKAY$sh", agent="AGENT";
@@ -97,7 +97,7 @@ final class TryTest extends AnyFreeSpec
   }
 
   "fork - fail" in {
-    val workflow = WorkflowParser.parse(WorkflowPath("/TRY-IF") ~ "INITIAL",
+    val workflow = WorkflowParser.parse(WorkflowPath("TRY-IF") ~ "INITIAL",
       s"""define workflow {
          |  try {
          |    fork {
@@ -178,7 +178,7 @@ object TryTest
      |  } catch {}
      |  execute executable="OKAY$sh", agent="AGENT";         // :1
      |}""".stripMargin
-  private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("/FINISHING") ~ "INITIAL", finishingScript).orThrow
+  private val FinishingWorkflow = WorkflowParser.parse(WorkflowPath("FINISHING") ~ "INITIAL", finishingScript).orThrow
 
   private val ExpectedFinishedEvents = Vector(
     OrderAdded(FinishingWorkflow.id),
@@ -212,7 +212,7 @@ object TryTest
      |    execute executable="FAIL-2$sh", agent="AGENT";   // :0/catch:0  OrderFailed
      |  }
      |}""".stripMargin
-  private val StoppingWorkflow = WorkflowParser.parse(WorkflowPath("/STOPPING") ~ "INITIAL", stoppingScript).orThrow
+  private val StoppingWorkflow = WorkflowParser.parse(WorkflowPath("STOPPING") ~ "INITIAL", stoppingScript).orThrow
 
   private val ExpectedStoppedEvent = Vector(
     OrderAdded(StoppingWorkflow.id),

@@ -190,7 +190,7 @@ private[https] object HttpsTestBase
   private val BackupKeyStoreResource = JavaResource("js7/tests/https/resources/private/backup-controller-https-keystore.p12")
   private val ExportedBackupTrustStoreResource = JavaResource("js7/tests/https/resources/export/backup-controller-https-truststore.p12")
 
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/TEST-WORKFLOW"), s"""
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("TEST-WORKFLOW"), s"""
     define workflow {
       execute executable="TEST$sh", agent="TEST-AGENT";
     }""").orThrow

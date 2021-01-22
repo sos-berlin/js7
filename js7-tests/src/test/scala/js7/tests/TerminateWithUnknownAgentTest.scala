@@ -45,6 +45,6 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 private object TerminateWithUnknownAgentTest
 {
   private val agentId = AgentId("UNKNOWN")
-  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"),
+  private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
     Execute.Anonymous(WorkflowJob(agentId, ScriptExecutable(":"))))
 }

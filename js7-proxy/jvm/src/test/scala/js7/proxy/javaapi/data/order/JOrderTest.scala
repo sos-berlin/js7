@@ -12,10 +12,10 @@ import org.scalatest.freespec.AnyFreeSpec
 final class JOrderTest extends AnyFreeSpec
 {
   private val forkedOrder = Order(
-    OrderId("ORDER-ID/A"),
-    (WorkflowPath("/WORKFLOW") ~ "1.0") /: (Position(1) / "fork+A" % 2),
+    OrderId("ORDER-ID|A"),
+    (WorkflowPath("WORKFLOW") ~ "1.0") /: (Position(1) / "fork+A" % 2),
     Order.Forked(Seq(
-      Order.Forked.Child(Fork.Branch.Id("A1"), OrderId("ORDER-ID/A/A1")))),
+      Order.Forked.Child(Fork.Branch.Id("A1"), OrderId("ORDER-ID|A|A1")))),
     arguments = Map("KEY" -> StringValue("VALUE")),
     attachedState = Some(Order.Attached(AgentId("AGENT"))),
     parent = Some(OrderId("ORDER-ID")),

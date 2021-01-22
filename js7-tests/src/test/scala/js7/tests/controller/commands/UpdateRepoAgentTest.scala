@@ -86,7 +86,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
 object UpdateRepoAgentTest
 {
   private val agentId = AgentId("AGENT")
-  private val workflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"),
+  private val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW"),
      """define workflow {
           execute executable="SCRIPT.cmd", agent="AGENT";
         }"""

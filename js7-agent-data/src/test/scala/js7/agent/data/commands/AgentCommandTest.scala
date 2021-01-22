@@ -181,7 +181,7 @@ final class AgentCommandTest extends AnyFreeSpec
             "id": "ORDER-ID",
             "workflowPosition": {
               "workflowId": {
-                "path": "/WORKFLOW",
+                "path": "WORKFLOW",
                 "versionId": "VERSION"
                 },
               "position": [ 3 ]

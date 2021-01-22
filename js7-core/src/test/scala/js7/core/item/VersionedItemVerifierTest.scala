@@ -58,7 +58,7 @@ object VersionedItemVerifierTest
 {
   private val workflow = {
     val workflowScript = """define workflow { execute executable="SCRIPT.cmd", agent="AGENT"; }"""
-    WorkflowParser.parse(WorkflowPath("/WORKFLOW") ~ "1.0", workflowScript).orThrow
+    WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "1.0", workflowScript).orThrow
   }
 
   private val signerIds = SignerId("VersionedItemVerifierTest") :: Nil

@@ -31,7 +31,7 @@ final class OrderTest extends AnyFreeSpec
 {
   private val testOrder = Order(
     OrderId("ID"),
-    WorkflowPath("/WORKFLOW") ~ "VERSION",
+    WorkflowPath("WORKFLOW") ~ "VERSION",
     Ready,
     arguments = Map(
       "key1" -> StringValue("value1"),
@@ -49,7 +49,7 @@ final class OrderTest extends AnyFreeSpec
             "id": "ID",
             "workflowPosition": {
               "workflowId": {
-                "path": "/WORKFLOW",
+                "path": "WORKFLOW",
                 "versionId": "VERSION"
               },
               "position": [ 0 ]
@@ -82,14 +82,14 @@ final class OrderTest extends AnyFreeSpec
 
       "mark" in {
         check(
-          Order(OrderId("ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Fresh(),
+          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Fresh(),
             mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)),
             isSuspended = true),
           json"""{
             "id": "ID",
             "workflowPosition": {
               "workflowId": {
-                "path": "/WORKFLOW",
+                "path": "WORKFLOW",
                 "versionId": "VERSION"
               },
               "position": [ 0 ]
@@ -242,7 +242,7 @@ final class OrderTest extends AnyFreeSpec
 
   "Order transitions: event to state" - {
     val orderId = OrderId("ID")
-    val workflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
+    val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
     val agentId = AgentId("AGENT")
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
@@ -655,7 +655,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "isAttaching" in {
-      val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") ~ "VERSION", Ready,
+      val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Ready,
         attachedState = Some(Detaching(AgentId("AGENT"))))
       assert(order.detaching == Right(AgentId("AGENT")))
 
@@ -677,11 +677,11 @@ final class OrderTest extends AnyFreeSpec
 
   "Error message when updated failed" in {
     assert(testOrder.applyEvent(OrderDetachable) ==
-      Left(Problem("Order 'ID' at position '/WORKFLOW~VERSION:0' in state 'Ready', on Controller, received an inapplicable event: OrderDetachable")))
+      Left(Problem("Order 'ID' at position 'WORKFLOW~VERSION:0' in state 'Ready', on Controller, received an inapplicable event: OrderDetachable")))
   }
 
   if (sys.props contains "test.speed") "Speed" in {
-    val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") ~ "VERSION") /: Position(1), Ready,
+    val order = Order(OrderId("ORDER-1"), (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(1), Ready,
       attachedState = Some(Attached(AgentId("AGENT"))))
     val json = (order: Order[State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[State]])

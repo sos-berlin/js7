@@ -111,7 +111,7 @@ private object JournalIdTest
   private val agentId = AgentId("AGENT-111")
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd")
 
-  private val TestWorkflow = Workflow(WorkflowPath("/test") ~ "INITIAL",
+  private val TestWorkflow = Workflow(WorkflowPath("test") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(agentId, TestPathExecutable))))
 

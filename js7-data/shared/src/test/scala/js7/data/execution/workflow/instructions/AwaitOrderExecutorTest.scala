@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.time.ScalaTime._
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.<-:
@@ -35,7 +35,7 @@ final class AwaitOrderExecutorTest extends AnyFreeSpec {
 }
 
 object AwaitOrderExecutorTest {
-  private val TestWorkflowId = WorkflowPath("/WORKFLOW") ~ "VERSION"
+  private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   val OfferingOrderId = OrderId("OFFERED")
   val offeringOrder = Order(OfferingOrderId, TestWorkflowId, Order.Ready)
   val OfferedOrderId = OrderId("OFFERED")

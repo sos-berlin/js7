@@ -17,7 +17,6 @@ import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.ItemPath._
-import js7.data.item.VersionedItemId.VersionSeparator
 import scala.reflect.ClassTag
 
 trait ItemPath extends GenericString
@@ -29,15 +28,11 @@ trait ItemPath extends GenericString
   final def requireNonAnonymous(): Unit =
     companion.checked(string).orThrow
 
-  final def nesting = string.stripSuffix("/").count(_ == '/')
-
   final def withTrailingSlash: String = if (string endsWith "/") string else s"$string/"
-
-  final def withoutStartingSlash: String = string stripPrefix "/"
 
   /** The relative standard source file path. */
   def toFile(t: SourceType): Path =
-    Paths.get(withoutStartingSlash + companion.sourceTypeToFilenameExtension(t))
+    Paths.get(string + companion.sourceTypeToFilenameExtension(t))
 
   final def asTyped[P <: ItemPath](implicit P: ItemPath.Companion[P]): P =
     if (P == companion)
@@ -50,20 +45,7 @@ trait ItemPath extends GenericString
     this.asInstanceOf[P]
   }
 
-  final def officialSyntaxChecked: Checked[this.type] =
-    if (string startsWith InternalPrefix)
-      Problem(s"Internal path is not allowed here: $this")
-    else
-      withoutStartingSlash.split('/')
-        .toVector.traverse(officialSyntaxNameValidator.checked(typeName = companion.name, _))
-      match {
-        case Left(problem) => problem.head
-        case Right(_) => Right(this)
-      }
-
   final def isAnonymous = this == companion.Anonymous
-
-  final def isGenerated = string startsWith InternalPrefix
 
   override def toString = toTypedString
 
@@ -74,9 +56,7 @@ trait ItemPath extends GenericString
 
 object ItemPath
 {
-  val InternalPrefix = "/?/"
-  private val ForbiddenCharacters = Set[Char](VersionSeparator(0), ','/*reserved*/)
-  private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))
+  private val nameValidator = new NameValidator(Set('-', '.'))
 
   implicit def ordering[P <: ItemPath]: Ordering[P] =
     (a, b) => a.string compare b.string match {
@@ -94,30 +74,26 @@ object ItemPath
   abstract class Companion[P <: ItemPath: ClassTag] extends GenericString.Checked_[P]
   {
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
-    final lazy val Anonymous: P = unchecked(InternalPrefix + "anonymous")
+    final lazy val Anonymous: P = unchecked("⊥")
     final lazy val NoId: VersionedItemId[P] = Anonymous ~ VersionId.Anonymous
 
-    def isEmptyAllowed = false
-    def isSingleSlashAllowed = false
-
-    /** Must be non-anonymous, too. */
-    override final def checked(string: String): Checked[P] =
-      if (string == Anonymous.string)
-        Problem(s"An anonymous $name is not allowed")
+    override def checked(string: String): Checked[P] =
+      if (string startsWith "/")
+        Left(Problem(s"$name must not start with a slash: $string"))
+      else if (string.isEmpty)
+        Left(EmptyStringProblem(name))
+      else if (string == Anonymous.string)
+        Left(Problem(s"Anonymous $name not allowed here"))
       else
-        check(string).flatMap(_ => super.checked(string))
-
-    final private[ItemPath] def check(string: String): Checked[Unit] =
-      if (!isEmptyAllowed && string.isEmpty)
-        EmptyStringProblem(name)
-      else if (string.nonEmpty && !string.startsWith("/"))
-        Problem(s"$name must be an absolute path, not: $string")
-      else if (string.endsWith("/") && (!isSingleSlashAllowed || string != "/"))
-        Problem(s"$name must not end with a slash: $string")
-      else if (string.contains("//") || string.exists(ForbiddenCharacters))
-        InvalidNameProblem(name, string)
-      else
-        Checked.unit
+        string.stripPrefix("/")
+          .split("/", -1)
+          .toVector
+          .traverse(o => nameValidator.checked(typeName = name, name = o))
+          .left.map {
+            case EmptyStringProblem(`name`) => InvalidNameProblem(name, string)
+            case InvalidNameProblem(`name`, _) => InvalidNameProblem(name, string)
+          }
+          .rightAs(unchecked(string))
 
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
@@ -129,16 +105,8 @@ object ItemPath
     /** Converts a relative file path with normalized slahes (/) to a `ItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext =>
-        checked("/" + normalized.dropRight(ext.length)).map(_ -> t)
+        checked(normalized.dropRight(ext.length)).map(_ -> t)
       }
-
-    /**
-     * Interprets a path as absolute.
-     *
-     * @param path A string starting with "./" is rejected
-     */
-    final def makeAbsolute(path: String): P =
-      apply(absoluteString(path))
 
     override def toString = name
 
@@ -173,20 +141,4 @@ object ItemPath
             .toRight(DecodingFailure(s"Unrecognized type prefix in ItemPath: $prefix", c.history))
         } yield itemPath
     }
-
-  /**
-   * Interprets a path as absolute.
-   *
-   * @param path A string starting with "./" is rejected
-   */
-  private def absoluteString(path: String): String =
-    if (isAbsolute(path))
-      path
-    else {
-      require(!(path startsWith "./"), s"Relative path is not possible here: $path")
-      s"/$path"
-    }
-
-  def isAbsolute(path: String): Boolean =
-    path startsWith "/"
 }

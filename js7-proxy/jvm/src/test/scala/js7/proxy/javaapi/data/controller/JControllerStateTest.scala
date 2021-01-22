@@ -65,12 +65,12 @@ private object JControllerStateTest
 {
   private val v1 = VersionId("1.0")
   private val v2 = VersionId("2.0")
-  private val aWorkflow = WorkflowParser.parse(WorkflowPath("/A-WORKFLOW") ~ v1,
+  private val aWorkflow = WorkflowParser.parse(WorkflowPath("A-WORKFLOW") ~ v1,
     """|define workflow {
        |  execute agent="AGENT", executable="A-EXECUTABLE";
        |}
        |""".stripMargin).orThrow
-  private val bWorkflow = WorkflowParser.parse(WorkflowPath("/B-WORKFLOW") ~ v1,
+  private val bWorkflow = WorkflowParser.parse(WorkflowPath("B-WORKFLOW") ~ v1,
     """|define workflow {
        |  execute agent="AGENT", executable="B-EXECUTABLE";
        |}
@@ -102,11 +102,11 @@ private object JControllerStateTest
     Vector(
       Order(
         OrderId("A-ORDER"),
-        (WorkflowPath("/A-WORKFLOW") ~ v1) /: Position(0),
+        (WorkflowPath("A-WORKFLOW") ~ v1) /: Position(0),
         Order.Fresh(None)),
       Order(
         OrderId("B-ORDER"),
-        (WorkflowPath("/B-WORKFLOW") ~ v2) /: Position(0),
+        (WorkflowPath("B-WORKFLOW") ~ v2) /: Position(0),
         Order.Ready,
         Map(
           "key1" -> StringValue("value1"),

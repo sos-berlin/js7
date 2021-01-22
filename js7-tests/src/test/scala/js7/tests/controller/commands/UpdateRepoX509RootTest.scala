@@ -108,6 +108,6 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
 
 object UpdateRepoX509RootTest
 {
-  private val workflow = Workflow.of(WorkflowPath("/WORKFLOW"))
+  private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))
   private val userAndPassword = UserAndPassword(UserId("UpdateRepoX509RootTest"), SecretString("TEST-PASSWORD"))
 }

@@ -68,7 +68,7 @@ private[proxy] object ClusterProxyTest
   private[proxy] val backupCredentials = UserAndPassword(UserId("Proxy"), SecretString("PROXYS-PASSWORD-FOR-BACKUP"))
 
   private[proxy] val workflow = WorkflowParser.parse(
-    WorkflowPath("/WORKFLOW") ~ "INITIAL",
+    WorkflowPath("WORKFLOW") ~ "INITIAL",
     s"""
       define workflow {
         execute executable="TEST.cmd", agent="AGENT", taskLimit=10;
