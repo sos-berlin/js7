@@ -364,6 +364,14 @@ final class ScalaUtilsTest extends AnyFreeSpec
       } should be theSameInstanceAs (t)
     }
 
+    "orThrow drops own StackTraceElements" in {
+      val throwable = new Exception with NoStackTrace {}
+      val t = intercept[Exception] {
+        (Left(throwable): Either[Throwable, Nothing]).orThrow
+      }
+      assert(t.getStackTrace.head.getMethodName startsWith "$anonfun$new$")
+    }
+
     "withStackTrace" - {
       "with stacktrace provided" in {
         assert(Right[Throwable, Int](7).withStackTrace == Right[Throwable, Int](7))

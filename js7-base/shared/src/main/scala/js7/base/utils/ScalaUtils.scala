@@ -301,11 +301,11 @@ object ScalaUtils
         }
 
       def orThrow: R =
-        orThrow(identity)
+        orThrow(dropFirstMethodsFromStackTrace("orThrow$extension"))
 
       def orThrow(toThrowable: L => Throwable): R =
         underlying match {
-          case Left(t) => throw toThrowable(t).appendCurrentStackTrace
+          case Left(t) => throw toThrowable(t.appendCurrentStackTrace)
           case Right(o) => o
         }
 
@@ -465,5 +465,13 @@ object ScalaUtils
       sb.append(lowerCaseHex(b & 0xf))
     }
     sb.toString
+  }
+
+  def dropFirstMethodsFromStackTrace[A <: Throwable](methodName: String)(throwable: A): A = {
+    val stackTrace = throwable.getStackTrace
+    var i = 0
+    while (i < stackTrace.length && stackTrace(i).getMethodName == methodName) i += 1
+    if (i > 0) throwable.setStackTrace(stackTrace.drop(i))
+    throwable
   }
 }
