@@ -3,6 +3,7 @@ package js7.data.item
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import js7.base.circeutils.CirceCodec
 import js7.base.generic.GenericString
+import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.item.SimpleItemId._
 
@@ -17,7 +18,7 @@ trait SimpleItemId extends GenericString
 
 object SimpleItemId
 {
-  trait Companion[A <: SimpleItemId] extends GenericString.NameValidating[A]
+  trait Companion[A <: SimpleItemId] extends Js7PathValidating[A]
   {
     type Item = A
   }

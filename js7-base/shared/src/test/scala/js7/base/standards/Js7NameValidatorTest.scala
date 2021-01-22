@@ -1,13 +1,15 @@
 package js7.base.standards
 
-import js7.base.standards.NameValidator._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.CollectionConverters._
 
 /**
   * @author Joacim Zschimmer
   */
-final class NameValidatorTest extends AnyFreeSpec {
+final class Js7NameValidatorTest extends AnyFreeSpec
+{
+  private val nameValidator = new Js7NameValidator("TEST")
+  private def isValid(name: String) = nameValidator.checked(name).isRight
 
   "isValid" in {
     assert(isValid("a"))
@@ -18,6 +20,8 @@ final class NameValidatorTest extends AnyFreeSpec {
     assert(isValid("a_b"))
     assert(isValid("a-b"))
     assert(isValid("a.b"))
+    assert(isValid("a-"))
+    assert(isValid("1"))
     assert(isValid("åäöüÅÄÖÜßµπæç"))
     assert(isValid("български")) // Bulgarisch
     assert(isValid("ქართული")) // Georgisch
@@ -34,9 +38,8 @@ final class NameValidatorTest extends AnyFreeSpec {
     assert(!isValid(""))
     assert(!isValid("$"))
     assert(!isValid("_"))
-    assert(!isValid("1"))
     assert(!isValid("-a"))
-    assert(!isValid("a-"))
+    assert(!isValid("a."))
     assert(!isValid("a$"))
     assert(!isValid("a$"))
     assert(!isValid("/"))

@@ -15,25 +15,17 @@ final case class FolderPath private(string: String) extends ItemPath {
       if (isRoot)
         string
       else
-        s"${string stripSuffix "/"}/$name")
+        s"$string/$name")
   }
 
   /**
-    * Resolves the given path agains this FolderPath.
-    * <ul>
-    *   <li>An absolute `path` starting with "/" is used as given.
-    *   <li>A relative `path` (not starting with "/") is used relative to this `FolderPath`.
-    * </ul>
+    * Appends the given path to this FolderPath and returns a `P`.
    */
   def resolve[P <: ItemPath: ItemPath.Companion](path: String): P =
     checkedResolve[P](path).orThrow
 
   /**
-    * Resolves the given path agains this FolderPath.
-    * <ul>
-    *   <li>An absolute `path` starting with "/" is used as given.
-    *   <li>A relative `path` (not starting with "/") is used relative to this `FolderPath`.
-    * </ul>
+    * Appends the given path to this FolderPath and returns a `P`.
    */
   def checkedResolve[P <: ItemPath: ItemPath.Companion](path: String): Checked[P] =
     implicitly[ItemPath.Companion[P]].checked(absoluteString(this, path))
@@ -80,7 +72,7 @@ object FolderPath extends ItemPath.Companion[FolderPath]
    * A relative `path` not starting with "/" is used relative to `defaultFolder`.
    */
   private def absoluteString(folder: FolderPath, path: String): String = {
-    val glue = if (folder.string.isEmpty || folder.string.endsWith("/")) "" else "/"
+    val glue = if (folder.string.isEmpty) "" else "/"
     s"${folder.string}$glue$path"
   }
 }

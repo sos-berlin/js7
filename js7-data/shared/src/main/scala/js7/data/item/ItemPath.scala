@@ -1,18 +1,13 @@
 package js7.data.item
 
-import cats.instances.either._
-import cats.instances.vector._
-import cats.syntax.traverse._
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.generic.GenericString
-import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked.Ops
-import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.problem.{Checked, Problem}
-import js7.base.standards.NameValidator
+import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
@@ -28,7 +23,7 @@ trait ItemPath extends GenericString
   final def requireNonAnonymous(): Unit =
     companion.checked(string).orThrow
 
-  final def withTrailingSlash: String = if (string endsWith "/") string else s"$string/"
+  final def withTrailingSlash = s"$string/"
 
   /** The relative standard source file path. */
   def toFile(t: SourceType): Path =
@@ -56,8 +51,6 @@ trait ItemPath extends GenericString
 
 object ItemPath
 {
-  private val nameValidator = new NameValidator(Set('-', '.'))
-
   implicit def ordering[P <: ItemPath]: Ordering[P] =
     (a, b) => a.string compare b.string match {
       case 0 => a.companion.name compare b.companion.name
@@ -71,29 +64,18 @@ object ItemPath
     def ~(v: VersionId): VersionedItemId[P] = VersionedItemId(underlying, v)
   }
 
-  abstract class Companion[P <: ItemPath: ClassTag] extends GenericString.Checked_[P]
+  abstract class Companion[P <: ItemPath: ClassTag]
+  extends Js7PathValidating[P]
   {
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
     final lazy val Anonymous: P = unchecked("⊥")
     final lazy val NoId: VersionedItemId[P] = Anonymous ~ VersionId.Anonymous
 
     override def checked(string: String): Checked[P] =
-      if (string startsWith "/")
-        Left(Problem(s"$name must not start with a slash: $string"))
-      else if (string.isEmpty)
-        Left(EmptyStringProblem(name))
-      else if (string == Anonymous.string)
+      if (string == Anonymous.string)
         Left(Problem(s"Anonymous $name not allowed here"))
       else
-        string.stripPrefix("/")
-          .split("/", -1)
-          .toVector
-          .traverse(o => nameValidator.checked(typeName = name, name = o))
-          .left.map {
-            case EmptyStringProblem(`name`) => InvalidNameProblem(name, string)
-            case InvalidNameProblem(`name`, _) => InvalidNameProblem(name, string)
-          }
-          .rightAs(unchecked(string))
+        super.checked(string)
 
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 

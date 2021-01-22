@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.convert.As
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, CheckedString, Problem}
-import js7.base.standards.NameValidator
+import js7.base.standards.Js7NameValidator
 import js7.base.utils.ScalaUtils.syntax._
 
 trait GenericString
@@ -68,8 +68,10 @@ object GenericString
 
   trait NameValidating[A <: GenericString] extends Checked_[A]
   {
+    private lazy val nameValidator = new Js7NameValidator(name)
+
     override def checked(string: String): Checked[A] =
-      NameValidator.checked(typeName = name, name = string) flatMap super.checked
+      nameValidator.checked(name = string) flatMap super.checked
   }
 
   final case class EmptyStringProblem(typeName: String) extends Problem.Coded {

@@ -292,7 +292,7 @@ lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
 
 lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(`js7-base`, `js7-tester` % "test")
+  .dependsOn(`js7-base`, `js7-base` % "test->test", `js7-tester` % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -397,7 +397,7 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
       "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1" ++
       hamcrest % "test" ++
       log4j % "test" ++
-        lmaxDisruptor % "test"
+      lmaxDisruptor % "test"
     })
 
 lazy val `js7-controller-data` = crossProject(JSPlatform, JVMPlatform)
@@ -427,7 +427,7 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
       import Dependencies._
       akkaHttp ++
       log4j % "test" ++
-        lmaxDisruptor % "test"
+      lmaxDisruptor % "test"
     })
 
 lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester`.jvm % "test")
