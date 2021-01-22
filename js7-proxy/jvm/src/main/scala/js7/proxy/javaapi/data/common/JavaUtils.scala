@@ -26,7 +26,12 @@ object JavaUtils
       case o: java.lang.Long => Right(NumericValue(o.longValue))
       case o: java.math.BigDecimal => Right(NumericValue(o))
       case o: String => Right(StringValue(o))
-      case values: java.util.List[AnyRef] => values.asScala.toVector.traverse(javaToValue).map(ListValue.apply)
+      case values: java.util.List[_] =>
+        values.asInstanceOf[java.util.List[AnyRef]]
+          .asScala
+          .toVector
+          .traverse(javaToValue)
+          .map(ListValue.apply)
       case o => Left(Problem(s"Invalid Value Java type: ${o.getClass.getName}"))
     }
 
