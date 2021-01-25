@@ -171,9 +171,6 @@ object ScalaUtils
       def pipeIf[B >: A](condition: => Boolean)(f: A => B): B =
         if (condition) f(delegate) else delegate
 
-      def substitute(substitution: (A, A)): A =
-        substitute(substitution._1, substitution._2)
-
       @inline def substitute(when: A, _then: => A): A =
         if (delegate == when) _then else delegate
     }

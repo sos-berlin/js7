@@ -239,14 +239,6 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(3.pipeIf(false)(_ * 7) == 3)
   }
 
-  "substitute" in {
-    7 substitute 7 -> 3 shouldEqual 3
-    7.substitute(7, 3) shouldEqual 3
-    7 substitute 4 -> 3 shouldEqual 7
-    7.substitute(4, sys.error("ERROR")) shouldEqual 7
-    "" substitute "" -> null shouldEqual null
-  }
-
   "AtomicBoolean.switchOn" in {
     val a = new AtomicBoolean
     var x = 0
