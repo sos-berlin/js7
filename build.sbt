@@ -244,6 +244,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++=
       scalaReflect ++  // TODO Avoid JVM dependencies here
       "org.typelevel" %%% "cats-core" % catsVersion ++
+      "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
       "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test" ++
@@ -358,7 +359,6 @@ lazy val `js7-controller` = project.dependsOn(`js7-controller-data`.jvm, `js7-co
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      "org.typelevel" %% "cats-effect" % catsEffectVersion ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
       log4j % "test" ++
@@ -618,6 +618,5 @@ releaseProcess := {
     //publishArtifacts,           // checks whether `publishTo` is properly set up
       setNextVersion,
       commitNextVersion,
-      pushChanges                 // also checks that an upstream branch is properly configured
-  )
+      pushChanges)                // also checks that an upstream branch is properly configured
 }
