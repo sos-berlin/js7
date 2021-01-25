@@ -128,12 +128,9 @@ object Checked
       }
 
     def orThrow: A =
-      orThrow(identity)
-
-    def orThrow(toThrowable: Throwable => Throwable): A =
       underlying
         .left.map(_.throwable)
-        .orThrow(toThrowable)
+        .orThrow
 
     def orThrowWithoutStacktrace: A =
       underlying.left.map(_.throwable).orThrow
