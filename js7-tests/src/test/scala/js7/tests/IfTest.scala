@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
@@ -18,10 +19,10 @@ import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
-final class IfTest extends AnyFreeSpec {
-
+final class IfTest extends AnyFreeSpec
+{
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(agentId :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
@@ -32,6 +33,39 @@ final class IfTest extends AnyFreeSpec {
           controller.eventWatch.await[OrderTerminated](_.key == orderId)
           checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], returnCode)
         }
+      }
+    }
+  }
+
+  "OrderFailed on Agent is delayed until Order has been moved back to Controller" in {
+     val workflowNotation = s"""
+       |define workflow {
+       |  // Move order to agent
+       |  execute executable="TEST$sh", agent="AGENT";
+       |  if ($$MISSING == "?") {
+       |    execute executable="TEST$sh", agent="AGENT";
+       |  }
+       |}""".stripMargin
+    val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
+    val directoryProvider = new DirectoryProvider(agentId :: Nil, versionedItems = workflow :: Nil,
+      testName = Some("IfTest"))
+    autoClosing(directoryProvider) { directoryProvider =>
+      for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
+      directoryProvider.run { (controller, _) =>
+        val orderId = OrderId("❌")
+        controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
+        controller.eventWatch.await[OrderTerminated](_.key == orderId)
+        val EventSeq.NonEmpty(events) = controller.eventWatch.all[OrderEvent]
+        assert(events.map(_.value.event) == Seq(
+          OrderAdded(workflow.id),
+          OrderAttachable(agentId),
+          OrderAttached(agentId),
+          OrderStarted,
+          OrderProcessingStarted,
+          OrderProcessed(Outcome.succeededRC0),
+          OrderDetachable,
+          OrderDetached,
+          OrderFailed(Position(0),Some(Outcome.Disrupted(Problem("No such named value: MISSING"))))))
       }
     }
   }
@@ -47,7 +81,7 @@ final class IfTest extends AnyFreeSpec {
 }
 
 object IfTest {
-  private val TestAgentId = AgentId("AGENT")
+  private val agentId = AgentId("AGENT")
 
   private val jobScript =
     if (isWindows)
@@ -86,8 +120,8 @@ object IfTest {
     ReturnCode(0) -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("0"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentId),
-      OrderAttached(TestAgentId),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(0)))),
@@ -104,8 +138,8 @@ object IfTest {
     ReturnCode(1) -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("1"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentId),
-      OrderAttached(TestAgentId),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(1)))),
@@ -122,8 +156,8 @@ object IfTest {
     ReturnCode(2) ->  Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("2"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(TestAgentId),
-      OrderAttached(TestAgentId),
+      OrderAttachable(agentId),
+      OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(2)))),

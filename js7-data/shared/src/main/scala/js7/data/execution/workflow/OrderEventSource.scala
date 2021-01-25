@@ -140,13 +140,13 @@ final class OrderEventSource(
 
   private def failOrDetach(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
   : Checked[OrderActorEvent] =
-    for (orderFailedEvent <- fail(order, outcome, uncatchable)) yield
-      if (order.isAttached && orderFailedEvent.lockIds.nonEmpty) {
-        scribe.warn(s"Detaching ${order.id} after Outcome.NotSucceeded to release locks ${orderFailedEvent.lockIds.mkString(", ")}")
-        // Controller is expected to reproduce the problem.
+    fail(order, outcome, uncatchable).map {
+      case _: OrderFailed if order.isAttached =>
+        scribe.warn(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
+        // Controller is expected to reproduce the problem !!!
         OrderDetachable
-      } else
-        orderFailedEvent
+      case o => o
+    }
 
   private def fail(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
   : Checked[OrderFailedEvent] =
@@ -167,7 +167,7 @@ final class OrderEventSource(
         case Segment(_, ForkBranchId(_)) :: _ =>
           Right(OrderFailedInFork(failPosition, outcome, lockIds))
 
-        case Segment(nr, BranchId.Lock) :: prefix =>
+        case Segment(_, BranchId.Lock) :: prefix =>
           val pos = prefix.reverse % 0
           checkedCast[LockInstruction](workflow.instruction(pos))
             .flatMap(lockInstr => loop(prefix, pos, lockIds :+ lockInstr.lockId))
@@ -294,7 +294,7 @@ final class OrderEventSource(
     historicOutcomes: Option[Seq[HistoricOutcome]])
   : Checked[Option[OrderActorEvent]] =
     withOrder(orderId)(order =>
-      (order.mark match {
+      order.mark match {
         case Some(_: OrderMark.Cancelling) =>
           Left(CannotResumeOrderProblem)
 
@@ -335,7 +335,7 @@ final class OrderEventSource(
               tryResume(order, position, historicOutcomes)
                 .getOrElse(OrderResumeMarked(position, historicOutcomes)))
           }
-      }))
+      })
 
   /** Retrieve the Order, check if calculated event is applicable. */
   private def withOrder[E <: OrderCoreEvent](orderId: OrderId)(body: Order[Order.State] => Checked[Option[E]]): Checked[Option[E]] =
