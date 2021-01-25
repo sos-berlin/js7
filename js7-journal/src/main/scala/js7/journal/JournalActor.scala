@@ -12,7 +12,6 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
@@ -165,7 +164,7 @@ extends Actor with Stash
         // TODO The caller should handle the error (persist method does not allow this for now)
         //reply(sender(), replyTo, Output.StoreFailure(ClusterNodeHasBeenSwitchedOverProblem, callersItem))
       } else {
-        val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestamp)).toVector
+        val stampedEvents = timestamped.view.map(t => eventIdGenerator.stamp(t.keyedEvent, t.timestampMillis)).toVector
         uncommittedJournaledState.applyStampedEvents(stampedEvents) match {
           case Left(problem) =>
             logger.error(problem.toString)
@@ -720,7 +719,7 @@ object JournalActor
 
   private[journal] trait Timestamped {
     def keyedEvent: AnyKeyedEvent
-    def timestamp: Option[Timestamp]
+    def timestampMillis: Option[Long]
   }
 
   sealed trait Output

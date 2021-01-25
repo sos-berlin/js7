@@ -2,7 +2,6 @@ package js7.journal
 
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}
-import js7.base.time.Timestamp
 import js7.data.event.{EventId, Stamped}
 import scala.annotation.tailrec
 
@@ -36,9 +35,11 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
       next()
   }
 
-  def stamp[A](a: A, timestamp: Option[Timestamp] = None): Stamped[A] =
-    stampWith(a, next(), timestamp)
+  def stamp[A](a: A, timestampMillis: Option[Long] = None): Stamped[A] =
+    stampWith(a, next(), timestampMillis)
 
-  private def stampWith[A](a: A, eventId: EventId, timestamp: Option[Timestamp]): Stamped[A] =
-    Stamped(eventId, timestamp getOrElse EventId.toTimestamp(eventId), a)
+  private def stampWith[A](a: A, eventId: EventId, timestampMillis: Option[Long]): Stamped[A] = {
+    val ts = timestampMillis getOrElse EventId.toEpochMilli(eventId)
+    new Stamped(eventId, ts, a)
+  }
 }

@@ -1,6 +1,5 @@
 package js7.journal
 
-import js7.base.time.Timestamp
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -14,17 +13,17 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 trait MainJournalingActor[S <: JournaledState[S], E <: Event]
   extends JournalingActor[S, E] {
   protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: (Stamped[KeyedEvent[EE]], S) => A): Future[A] =
-    super.persistKeyedEvent(keyedEvent, timestamp = None, async = true)(callback)
+    super.persistKeyedEvent(keyedEvent, async = true)(callback)
 
   protected final def persistMultipleAsync[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]])
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     super.persistKeyedEvents(toTimestamped(keyedEvents), async = true)(callback)
 
-  protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, async: Boolean = false)
+  protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestampMillis: Option[Long] = None, async: Boolean = false)
     (callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
-    super.persistKeyedEvent(keyedEvent, timestamp, async = async)(callback)
+    super.persistKeyedEvent(keyedEvent, timestampMillis, async = async)(callback)
 
   protected final def persistMultiple[EE <: E, A](keyedEvents: Iterable[KeyedEvent[EE]], async: Boolean = false)
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)

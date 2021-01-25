@@ -448,13 +448,13 @@ with MainJournalingActor[ControllerState, Event]
       import agentEntry.agentId
       var timestampedEvents: Seq[Timestamped[Event]] =
         stampedAgentEvents.view.flatMap {
-          case Stamped(_, timestamp, keyedEvent) =>
+          case Stamped(_, timestampMillis, keyedEvent) =>
             keyedEvent match {
               case KeyedEvent(orderId: OrderId, _: OrderCancelMarked) =>
-                Some(Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestamp)))
+                Some(Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestampMillis)))
 
               case KeyedEvent(orderId: OrderId, _: OrderSuspendMarked) =>
-                Some(Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestamp)))
+                Some(Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestampMillis)))
 
               case KeyedEvent(_, _: OrderResumeMarked) =>
                 None /*Agent does not emit OrderResumeMarked*/
@@ -464,10 +464,10 @@ with MainJournalingActor[ControllerState, Event]
                   case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentId) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ => event
                 }
-                Some(Timestamped(orderId <-: ownEvent, Some(timestamp)))
+                Some(Timestamped(orderId <-: ownEvent, Some(timestampMillis)))
 
               case KeyedEvent(_: NoKey, AgentControllerEvent.AgentReadyForController(timezone, _)) =>
-                Some(Timestamped(agentEntry.agentId <-: AgentReady(timezone), Some(timestamp)))
+                Some(Timestamped(agentEntry.agentId <-: AgentReady(timezone), Some(timestampMillis)))
 
               case _ =>
                 logger.error(s"Unknown event received from ${agentEntry.agentId}: $keyedEvent")

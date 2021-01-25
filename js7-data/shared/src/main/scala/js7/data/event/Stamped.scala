@@ -13,7 +13,10 @@ import scala.collection.mutable
   *
   * @author Joacim Zschimmer
   */
-final case class Stamped[+A](eventId: EventId, timestamp: Timestamp, value: A) {
+final case class Stamped[+A](eventId: EventId, timestampMillis: Long, value: A)
+{
+  // Delay Timesstamp construction for faster JSON deserialization
+  def timestamp = Timestamp.ofEpochMilli(timestampMillis)
 
   def map[B](f: A => B): Stamped[B] = functor.map(this)(f)
 
@@ -23,7 +26,10 @@ final case class Stamped[+A](eventId: EventId, timestamp: Timestamp, value: A) {
 object Stamped
 {
   def apply[A](eventId: EventId, value: A): Stamped[A] =
-    new Stamped(eventId, EventId.toTimestamp(eventId), value)
+    new Stamped(eventId, EventId.toEpochMilli(eventId), value)
+
+  def apply[A](eventId: EventId, timestamp: Timestamp, value: A): Stamped[A] =
+    new Stamped(eventId, timestamp.toEpochMilli, value)
 
   implicit def stampedEq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
 
@@ -36,7 +42,7 @@ object Stamped
     stamped => {
       val fields = mutable.Buffer[(String, Json)]()
       fields += "eventId" -> Json.fromLong(stamped.eventId)
-      val epochMilli = stamped.timestamp.toEpochMilli
+      val epochMilli = stamped.timestampMillis
       if (epochMilli != EventId.toEpochMilli(stamped.eventId)) {
         fields += "timestamp" -> Json.fromLong(epochMilli)
       }
@@ -55,10 +61,10 @@ object Stamped
     cursor =>
       for {
         eventId <- cursor.get[EventId]("eventId")
-        timestamp = cursor.get[Long]("timestamp") map Timestamp.ofEpochMilli getOrElse EventId.toTimestamp(eventId)
+        timestampMillis = cursor.get[Long]("timestamp") getOrElse EventId.toEpochMilli(eventId)
         a <- cursor.get[A]("array") match {  // stamped.value must not contain a field named "array" !!!
           case o if o.isRight => o
           case _ => cursor.as[A]
         }
-      } yield Stamped(eventId, timestamp, a)
+      } yield Stamped(eventId, timestampMillis, a)
 }

@@ -7,7 +7,6 @@ import js7.base.monixutils.MonixBase.syntax.RichScheduler
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
@@ -73,12 +72,12 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   /** Fast lane for events not affecting the journaled state. */
   protected final def persistKeyedEventAcceptEarly[EE <: E](
     keyedEvent: KeyedEvent[EE],
-    timestamp: Option[Timestamp] = None,
+    timestampMillis: Option[Long] = None,
     delay: FiniteDuration = Duration.Zero)
   : Future[Checked[Accepted]] =
     promiseFuture[Checked[Accepted]] { promise =>
       start(async = true, "persistKeyedEventAcceptEarly")
-      val timestamped = Timestamped(keyedEvent, timestamp) :: Nil
+      val timestamped = Timestamped(keyedEvent, timestampMillis) :: Nil
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
           delay = delay, alreadyDelayed = Duration.Zero, since = now,
@@ -87,11 +86,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   protected final def persistKeyedEvent[EE <: E, A](
     keyedEvent: KeyedEvent[EE],
-    timestamp: Option[Timestamp] = None,
+    timestampMillis: Option[Long] = None,
     async: Boolean = false)(
     callback: (Stamped[KeyedEvent[EE]], S) => A)
   : Future[A] =
-    persistKeyedEvents(Timestamped(keyedEvent, timestamp) :: Nil, async = async) { (events, journaledState) =>
+    persistKeyedEvents(Timestamped(keyedEvent, timestampMillis) :: Nil, async = async) { (events, journaledState) =>
       assertThat(events.sizeIs == 1)
       callback(events.head, journaledState)
     }
@@ -243,8 +242,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   protected type Timestamped[+EE <: E] = JournalingActor.Timestamped[EE]
 
-  protected final def Timestamped[EE <: E](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None) =
-    JournalingActor.Timestamped(keyedEvent, timestamp)
+  protected final def Timestamped[EE <: E](keyedEvent: KeyedEvent[EE], timestampMillis: Option[Long] = None) =
+    JournalingActor.Timestamped(keyedEvent, timestampMillis)
 
   private case class EventsCallback[S <: JournaledState[S]](
     async: Boolean,
@@ -298,7 +297,7 @@ object JournalingActor
   private val TraceLog = true
   private val BigStoreThreshold = 1.s
 
-  final case class Timestamped[+E <: Event](keyedEvent: KeyedEvent[E], timestamp: Option[Timestamp] = None)
+  final case class Timestamped[+E <: Event](keyedEvent: KeyedEvent[E], timestampMillis: Option[Long] = None)
   extends JournalActor.Timestamped
 
   private sealed trait Item extends JournalActor.CallersItem {
