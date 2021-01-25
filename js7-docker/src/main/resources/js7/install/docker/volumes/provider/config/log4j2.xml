@@ -55,6 +55,7 @@
 
   <loggers>
     <root level="info">
+      <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
       <appenderRef level="warn"  ref="stderr"/>
       <appenderRef level="info"  ref="file-info"/>
       <appenderRef level="trace" ref="file-debug"/>

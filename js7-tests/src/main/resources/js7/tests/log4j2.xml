@@ -33,6 +33,7 @@
   </appenders>
   <loggers>
     <root level="debug">
+      <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
       <appenderRef level="info" ref="stderr"/>
       <appenderRef level="info" ref="file"/>
     </root>

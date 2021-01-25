@@ -23,7 +23,7 @@
       <appenderRef level="trace" ref="file"/>
     </root>
     <logger level="debug" name="js7"/>
-    <logger level="trace" name="js7.journal.JournalActor"/>
+    <logger level="debug" name="js7.journal.JournalActor"/>
     <logger level="debug" name="js7.journal.watch.RealEventWatch"/>
   </loggers>
 </configuration>
