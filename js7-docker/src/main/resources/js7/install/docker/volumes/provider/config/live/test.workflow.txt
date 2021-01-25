@@ -49,7 +49,7 @@ define workflow {
     execute agent="agent-2", taskLimit=50,
       env={
         "TEST_ARGUMENT": "☘️"
-      }
+      },
       script =
 ''#!/usr/bin/env bash
 set -euo pipefail
