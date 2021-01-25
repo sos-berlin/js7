@@ -84,7 +84,7 @@ object PgpSignatureVerifier extends SignatureVerifier.Companion
   def checked(publicKeys: Seq[ByteArray], origin: String) =
     Checked.catchNonFatal(
       new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeys), origin)
-    ).left.map(o => Problem(s"Error when reading public key '$origin'", cause = Some(o)))
+    ).left.map(o => Problem(s"Error while reading public key '$origin'", cause = Some(o)))
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[PgpSignature] = {
     assertThat(signature.typeName == typeName)

@@ -173,12 +173,12 @@ with Stash {
       val state = recovered.state
       journalState = state.journalState
       for (workflow <- state.idToWorkflow.values)
-        wrapException(s"Error when recovering ${workflow.path}") {
+        wrapException(s"Error while recovering ${workflow.path}") {
           workflowRegister.recover(workflow)
           startJobActors(workflow)
         }
       for (recoveredOrder <- state.idToOrder.values)
-        wrapException(s"Error when recovering ${recoveredOrder.id}") {
+        wrapException(s"Error while recovering ${recoveredOrder.id}") {
           val order = workflowRegister.reuseMemory(recoveredOrder)
           val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
           val actor = newOrderActor(order, workflow)

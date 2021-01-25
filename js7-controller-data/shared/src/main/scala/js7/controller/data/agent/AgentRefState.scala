@@ -38,7 +38,7 @@ final case class AgentRefState(
       case AgentEventsObserved(eventId_) =>
         if (eventId_ < eventId)
           Left(Problem(
-            s"Invalid AgentEventsObserved(${EventId.toString(eventId)}) event; expected eventId >= ${EventId.toString(eventId)}"))
+            s"Invalid AgentEventsObserved(${EventId.toString(eventId_)}) event; expected eventId >= ${EventId.toString(eventId)}"))
         else
           Right(copy(eventId = eventId_))
     }
