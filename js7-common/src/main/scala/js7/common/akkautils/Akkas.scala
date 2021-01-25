@@ -64,7 +64,7 @@ object Akkas
     import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
     val poolShutdownTimeout =
       try actorSystem.settings.config.getDuration("js7.akka.http.connection-pool-shutdown-timeout").toFiniteDuration
-      catch { case _: ConfigException.Missing => 3.s }
+      catch { case _: ConfigException.Missing => 100.ms }
     val timeoutPromise = Promise[Unit]()
     val timer = actorSystem.scheduler.scheduleOnce(poolShutdownTimeout) {
       timeoutPromise.success(())
