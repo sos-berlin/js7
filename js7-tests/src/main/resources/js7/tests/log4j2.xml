@@ -35,8 +35,9 @@
     <root level="debug">
       <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
       <appenderRef level="info" ref="stderr"/>
-      <appenderRef level="info" ref="file"/>
+      <appenderRef level="debug" ref="file"/>
     </root>
-    <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="debug" name="js7"/>
   </loggers>
 </configuration>

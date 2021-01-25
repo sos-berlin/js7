@@ -46,7 +46,7 @@ execute=(
   "$java"
   "${javaOptions[@]}"
   -classpath "$classpathString"
-  "js7.tests.TestAddOrders"
+  "js7.tests.addOrders.TestAddOrdersMain"
   "${args[@]}"
 )
 #echo "${execute[@]}"

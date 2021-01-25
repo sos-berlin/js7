@@ -71,6 +71,9 @@ object Stopwatch
   def perSecondString(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
     Result(duration, n, ops, gap).toShortString
 
+  def perSecondStringOnly(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
+    Result(duration, n, ops, gap).toPerSecondsString
+
   final case class Result(duration: FiniteDuration, n: Long, ops: String = "ops", private val gap: Boolean = true) {
     def singleDuration = duration / n
     def perSecondString = if (duration.toNanos == 0) "∞" else (n * 1000L*1000*1000 / duration.toNanos).toString
@@ -87,6 +90,12 @@ object Stopwatch
         s"0$gapOps"
       else
         s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
+
+    def toPerSecondsString =
+      if (n == 0)
+        s"0$gapOps"
+      else
+        s"$perSecondString$gapOps/s"
   }
   object Result {
     implicit def resultToString(result: Result) = result.toString
