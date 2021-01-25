@@ -581,16 +581,21 @@ releaseVersion := (
     releaseVersion.value
   else v =>
     Version(v).fold(versionFormatError(v)) { currentVersion =>
-      val commitDate: String = git.gitHeadCommitDate.value
-        .getOrElse(sys.error("gitHeadCommitDate returned None"))
-        .take(10)
-      val version = currentVersion.withoutQualifier.string + "-alpha-" + commitDate
+      val prelease = {
+        val commitDate = git.gitHeadCommitDate.value
+          .getOrElse(sys.error("gitHeadCommitDate returned None"))
+          .take(10)
+        // Remove hypens according to Semantic Versioning pre-release syntax
+        val yyyymmdd = commitDate.substring(0, 4) + commitDate.substring(5, 7) + commitDate.substring(8, 10)
+        "alpha." + yyyymmdd
+      }
+      val version = currentVersion.withoutQualifier.string + "-" + prelease
       var v = version
       var i = 1
       val tags = runProcess("git", "tag").toSet
       while (tags contains s"v$v") {
         i += 1
-        v = s"$version-$i"
+        v = s"$version.$i"
       }
       v
     })
