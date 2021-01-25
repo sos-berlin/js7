@@ -1,0 +1,9 @@
+package js7.controller.web.serviceprovider
+
+import akka.http.scaladsl.server.Route
+import js7.controller.web.controller.api.SnapshotRoute.SnapshotFilter
+import js7.journal.web.GenericEventRoute.StampedEventFilter
+
+final case class RouteServiceContext(
+  snapshotRoute: SnapshotFilter => Route,
+  eventRoute: StampedEventFilter => Route)

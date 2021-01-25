@@ -74,6 +74,9 @@ trait GenericEventRoute extends RouteProvider
 
     protected def defaultReturnType: Option[Class[_ <: Event]] = Some(classOf[Event])
 
+    protected def filterObservable: StampedEventFilter =
+      identity
+
     private val exceptionHandler = ExceptionHandler {
       case t: ClosedException if t.getMessage != null =>
         if (whenShuttingDown.isCompleted)
@@ -216,9 +219,10 @@ trait GenericEventRoute extends RouteProvider
 
     private def observe(request: EventRequest[Event], predicate: AnyKeyedEvent => Boolean, eventWatch: EventWatch)
     : Observable[Stamped[AnyKeyedEvent]] =
-      eventWatch  // Continue with an Observable, skipping the already read event
-        .observe(request, predicate)
-        .onErrorRecoverWith { case NonFatal(e) =>
+      filterObservable(
+        eventWatch  // Continue with an Observable, skipping the already read event
+          .observe(request, predicate)
+      ) .onErrorRecoverWith { case NonFatal(e) =>
           logger.warn(e.toStringWithCauses)
           if (e.getStackTrace.nonEmpty) logger.debug(e.toStringWithCauses, e)
           Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
@@ -269,6 +273,8 @@ trait GenericEventRoute extends RouteProvider
 
 object GenericEventRoute
 {
+  type StampedEventFilter = Observable[Stamped[KeyedEvent[Event]]] => Observable[Stamped[KeyedEvent[Event]]]
+
   private val logger = Logger(getClass)
 
   private def toLastEventId(header: `Last-Event-ID`): EventId =

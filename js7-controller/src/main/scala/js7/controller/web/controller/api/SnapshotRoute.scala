@@ -27,6 +27,7 @@ import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.event.EventId
 import js7.journal.watch.EventWatch
 import monix.eval.Task
+import monix.reactive.Observable
 
 trait SnapshotRoute extends ControllerRouteProvider
 {
@@ -38,23 +39,25 @@ trait SnapshotRoute extends ControllerRouteProvider
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
-  final lazy val snapshotRoute: Route =
+  final lazy val snapshotRoute = filteredSnapshotRoute(identity)
+
+  final def filteredSnapshotRoute(filter: SnapshotFilter): Route =
     get {
       authorizedUser(ValidUserPermission) { _ =>
         pathSingleSlash {
           parameter("eventId".as[Long].?) {
-            case None => currentSnapshot
+            case None => currentSnapshot(filter)
             case Some(eventId) => historicSnapshot(eventId)
           }
         }
       }
     }
 
-  private lazy val currentSnapshot: Route =
+  private def currentSnapshot(filter: SnapshotFilter): Route =
     completeTask(
       for (checkedState <- controllerState) yield
         for (state <- checkedState) yield
-          snapshotToHttpEntity(state))
+          snapshotToHttpEntity(state, filter))
 
   private def historicSnapshot(eventId: EventId): Route =
     complete {
@@ -74,10 +77,10 @@ trait SnapshotRoute extends ControllerRouteProvider
       checked
     }
 
-  private def snapshotToHttpEntity(state: ControllerState): HttpEntity.Chunked =
+  private def snapshotToHttpEntity(state: ControllerState, filter: SnapshotFilter): HttpEntity.Chunked =
     HttpEntity(
       `application/x-ndjson`,
-      state.toSnapshotObservable
+      filter(state.toSnapshotObservable)
         .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
           Task { logger.debug("whenShuttingDown completed") })
         .mapParallelOrderedBatch()(_
@@ -87,6 +90,8 @@ trait SnapshotRoute extends ControllerRouteProvider
 
 object SnapshotRoute
 {
+  type SnapshotFilter = Observable[Any] => Observable[Any]
+
   private val logger = Logger(getClass)
   private val LF = ByteString("\n")
 }

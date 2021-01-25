@@ -20,6 +20,7 @@ import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.item.ItemUpdater
+import js7.controller.web.serviceprovider.RouteServiceContext
 import js7.core.command.CommandMeta
 import js7.core.item.VersionedItemApi
 import js7.journal.watch.EventWatch
@@ -76,6 +77,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def controllerState = ControllerWebServer.this.controllerState
       protected def totalRunningSince = ControllerWebServer.this.totalRunningSince
       protected val currentLogFile = config.as[Path]("js7.log.file")
+      protected val routeServiceContext = RouteServiceContext(filteredSnapshotRoute, filteredEventRoute)
 
       def webServerRoute = completeRoute
 

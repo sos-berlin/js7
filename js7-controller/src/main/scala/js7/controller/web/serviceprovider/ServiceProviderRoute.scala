@@ -18,31 +18,49 @@ import scala.jdk.CollectionConverters._
 private[web] trait ServiceProviderRoute
 {
   protected def injector: Injector
+  protected def routeServiceContext: RouteServiceContext
 
   private lazy val services: Seq[RouteService] = {
-    val services = ServiceLoader.load(classOf[RouteService]).iterator.asScala.toVector
-    if (services.isEmpty) logger.debug("No service providers")
-    else for (s <- services) {
-      logger.debug(s"Found service provider ${s.getClass.scalaName}")
-      injector.injectMembers(s)
-    }
-    services
+    val serviceLoader = ServiceLoader.load(classOf[RouteService])
+
+    val iterator = serviceLoader.iterator.asScala
+    if (iterator.isEmpty)
+      logger.debug("No service providers")
+    else
+      for (service <- iterator/*loads services lazily*/) {
+        logger.debug(s"Found service provider ${service.getClass.scalaName}")
+        injector.injectMembers(service)
+      }
+
+    serviceLoader.asScala.toVector
   }
 
   private val lazyServiceProviderRoute = Lazy[Route] {
-    val servicePathRoutes = for (s <- services; (p, r) <- s.pathToRoute) yield (s, p, r)
+    val servicePathRoutes: Seq[(RouteService, String, Route)] =
+      for {
+        service <- services
+        (p, r) <- service.pathToRoute(routeServiceContext)
+      } yield (service, p, r)
     logAndCheck(servicePathRoutes)
     combineRoutes(
       for ((_, p, r) <- servicePathRoutes) yield pathSegments(p)(r))
   }
 
-  protected final def serviceProviderRoute: Route =
-    requestContext => {
-      if (lazyServiceProviderRoute.isEmpty) {
-        logger.debug(s"Looking up RouteService for unhandled URI ${requestContext.request.uri.path}")
+  protected final def serviceProviderRoute: Route = {
+    //implicit val exceptionHandler = ExceptionHandler { case throwable =>
+    //  // Do not return exception to client
+    //  logger.error(throwable.toStringWithCauses)
+    //  if (throwable.getStackTrace.nonEmpty) logger.error(throwable.toStringWithCauses, throwable)
+    //  complete(StatusCodes.NotFound, Problem.pure("Unknown URI or RouteService failed"))
+    //}
+    //Route.seal(
+      requestContext => {
+        if (lazyServiceProviderRoute.isEmpty) {
+          logger.debug(s"Looking up RouteService for unhandled URI ${requestContext.request.uri.path}")
+        }
+        lazyServiceProviderRoute()(requestContext)
       }
-      lazyServiceProviderRoute()(requestContext)
-    }
+  }
 }
 
 private[web] object ServiceProviderRoute
