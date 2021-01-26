@@ -21,7 +21,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.value.{NumericValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.test.TestSetting.TestAgentId
@@ -63,7 +63,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
               == Right(AgentCommand.Response.Accepted))
             val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.s)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
-            assert(orderProcessed.outcome == Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "WORKDIR" -> StringValue(workingDirectory.toString))))
+            assert(orderProcessed.outcome == Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "WORKDIR" -> StringValue(workingDirectory.toString))))
             agent.terminate() await 99.s
           }
         }

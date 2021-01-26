@@ -15,7 +15,7 @@ sealed trait Value
 {
   def toStringValue: Checked[StringValue]
 
-  def toNumeric: Checked[NumericValue] =
+  def toNumber: Checked[NumberValue] =
     Left(InvalidExpressionTypeProblem("Numeric", this))
 
   def toBoolean: Checked[BooleanValue] =
@@ -32,23 +32,24 @@ sealed trait Value
 
   def convertToString: String
 }
+
 object Value
 {
   //def apply(value: String) = StringValue(value)
-  //def apply(value: BigDecimal) = NumericValue(value)
-  //def apply(value: Long) = NumericValue(BigDecimal(value))
-  //def apply(value: Int) = NumericValue(BigDecimal(value))
+  //def apply(value: BigDecimal) = NumberValue(value)
+  //def apply(value: Long) = NumberValue(BigDecimal(value))
+  //def apply(value: Int) = NumberValue(BigDecimal(value))
   //def apply(value: Boolean) = BooleanValue(value)
 
   @javaApi def of(value: String) = StringValue(value)
-  @javaApi def of(value: BigDecimal) = NumericValue(value)
-  @javaApi def of(value: java.lang.Long) = NumericValue(BigDecimal(value))
-  @javaApi def of(value: java.lang.Integer) = NumericValue(BigDecimal(value))
+  @javaApi def of(value: BigDecimal) = NumberValue(value)
+  @javaApi def of(value: java.lang.Long) = NumberValue(BigDecimal(value))
+  @javaApi def of(value: java.lang.Integer) = NumberValue(BigDecimal(value))
   @javaApi def of(value: java.lang.Boolean) = BooleanValue(value)
 
   implicit val jsonEncoder: Encoder[Value] = {
     case StringValue(o) => Json.fromString(o)
-    case NumericValue(o) => Json.fromBigDecimal(o)
+    case NumberValue(o) => Json.fromBigDecimal(o)
     case BooleanValue(o) => Json.fromBoolean(o)
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
@@ -60,7 +61,7 @@ object Value
       Right(StringValue(j.asString.get))
     else if (j.isNumber)
       j.asNumber.get.toBigDecimal match {
-        case Some(o) => Right(NumericValue(o))
+        case Some(o) => Right(NumberValue(o))
         case None => Left(DecodingFailure(s"JSON number is not representable as a Java BigDecimal: $j", c.history))
       }
     else if (j.isBoolean)
@@ -76,7 +77,7 @@ object Value
   }
 
   object conversions {
-    implicit def implicitNumericValue(number: Int): Value = NumericValue(number)
+    implicit def implicitNumericValue(number: Int): Value = NumberValue(number)
     implicit def implicitStringValue(string: String): Value = StringValue(string)
   }
 }
@@ -84,8 +85,8 @@ object Value
 final case class StringValue(string: String) extends Value {
   def toStringValue = Right(this)
 
-  override def toNumeric =
-    try Right(NumericValue(BigDecimal(string)))
+  override def toNumber =
+    try Right(NumberValue(BigDecimal(string)))
     catch { case NonFatal(t) => Left(Problem.pure(t.toStringWithCauses)) }
 
   override def toBoolean = string match {
@@ -99,20 +100,21 @@ final case class StringValue(string: String) extends Value {
 
   override def toString = ValuePrinter.quoteString(string)
 }
+
 object StringValue {
   @javaApi def of(value: String) = StringValue(value)
 }
 
-final case class NumericValue(number: BigDecimal) extends Value
+final case class NumberValue(number: BigDecimal) extends Value
 {
   def toStringValue = Right(StringValue(number.toString))
 
-  override def toNumeric = Right(this)
+  override def toNumber = Right(this)
 
   override def toBoolean =
-    if (number == NumericValue.One.number) Right(BooleanValue.True)
+    if (number == NumberValue.One.number) Right(BooleanValue.True)
     else
-    if (number == NumericValue.Zero.number) Right(BooleanValue.False)
+    if (number == NumberValue.Zero.number) Right(BooleanValue.False)
     else
       super.toBoolean
 
@@ -122,24 +124,25 @@ final case class NumericValue(number: BigDecimal) extends Value
 
   override def toString = convertToString
 }
-object NumericValue {
-  val Zero = NumericValue(0)
-  val One = NumericValue(1)
 
-  def fromString(number: String): Checked[NumericValue] =
+object NumberValue {
+  val Zero = NumberValue(0)
+  val One = NumberValue(1)
+
+  def fromString(number: String): Checked[NumberValue] =
     try
-      Right(NumericValue(BigDecimal(number)))
+      Right(NumberValue(BigDecimal(number)))
     catch { case e: NumberFormatException => Problem(Option(e.getMessage) getOrElse e.toString)}
 
-  @javaApi def of(value: BigDecimal) = NumericValue(value)
-  @javaApi def of(value: java.lang.Long) = NumericValue(BigDecimal(value))
-  @javaApi def of(value: java.lang.Integer) = NumericValue(BigDecimal(value))
+  @javaApi def of(value: BigDecimal) = NumberValue(value)
+  @javaApi def of(value: java.lang.Long) = NumberValue(BigDecimal(value))
+  @javaApi def of(value: java.lang.Integer) = NumberValue(BigDecimal(value))
 }
 
 final case class BooleanValue(booleanValue: Boolean) extends Value
 {
-  override def toNumeric =
-    Right(if (booleanValue) NumericValue.One else NumericValue.Zero)
+  override def toNumber =
+    Right(if (booleanValue) NumberValue.One else NumberValue.Zero)
 
   override def toBoolean = Right(BooleanValue(booleanValue))
 
@@ -151,6 +154,7 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
 
   override def toString = convertToString
 }
+
 object BooleanValue {
   val True = BooleanValue(true)
   val False = BooleanValue(false)
@@ -170,6 +174,7 @@ final case class ListValue(list: Seq[Value]) extends Value
 
   override def toString = convertToString
 }
+
 object ListValue {
   @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
@@ -189,6 +194,7 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
 
   override def toString = convertToString
 }
+
 object ObjectValue {
   @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)

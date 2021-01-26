@@ -11,7 +11,7 @@ import js7.data.lock.LockId
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
-import js7.data.value.{NumericValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, ReturnCodeMeaning, TryInstruction}
@@ -74,7 +74,7 @@ final class WorkflowParserTest extends AnyFreeSpec
             Map(
               "A" -> StringValue("aaa"),
               "B" -> StringValue("bbb"),
-              "I" -> NumericValue(-123)),
+              "I" -> NumberValue(-123)),
             taskLimit = 3,
             sigkillDelay = Some(30.s)),
           sourcePos(20, 198)),
@@ -450,10 +450,10 @@ final class WorkflowParserTest extends AnyFreeSpec
       }""",
       Workflow(WorkflowPath.NoId, Vector(
         Fail(None, Map.empty, sourcePos = sourcePos(33, 37)),
-        Fail(None, Map("returnCode" -> NumericValue(7)), sourcePos = sourcePos(47, 87)),
+        Fail(None, Map("returnCode" -> NumberValue(7)), sourcePos = sourcePos(47, 87)),
         Fail(Some(StringConstant("ERROR")), Map.empty, sourcePos = sourcePos(97, 119)),
-        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumericValue(7)), sourcePos = sourcePos(129, 186)),
-        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumericValue(7)), uncatchable = true, sourcePos(196, 271)),
+        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumberValue(7)), sourcePos = sourcePos(129, 186)),
+        Fail(Some(StringConstant("ERROR")), Map("returnCode" -> NumberValue(7)), uncatchable = true, sourcePos(196, 271)),
         ImplicitEnd(sourcePos = sourcePos(279, 280)))))
   }
 

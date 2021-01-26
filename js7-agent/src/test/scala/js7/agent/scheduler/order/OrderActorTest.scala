@@ -32,7 +32,7 @@ import js7.data.job.{JobKey, RelativePathExecutable}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
-import js7.data.value.{NumericValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -121,7 +121,7 @@ private object OrderActorTest {
     OrderAttachedToAgent(TestOrder.workflowPosition, Order.Ready, TestOrder.arguments, TestOrder.historicOutcomes,
       AgentId("TEST-AGENT"), None, None, false, false),
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("TEST-RESULT-FROM-JOB")))),
+    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-FROM-JOB")))),
     OrderMoved(TestPosition),
     OrderDetachable,
     OrderDetached)

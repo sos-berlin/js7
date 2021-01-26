@@ -7,7 +7,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.ReturnCode
-import js7.data.value.{NamedValues, NumericValue}
+import js7.data.value.{NamedValues, NumberValue}
 
 /**
   * @author Joacim Zschimmer
@@ -22,7 +22,7 @@ sealed trait Outcome
 object Outcome
 {
   val succeeded = new Succeeded(NamedValues.empty)
-  val succeededRC0 = new Succeeded(Map("returnCode" -> NumericValue(0)))
+  val succeededRC0 = new Succeeded(Map("returnCode" -> NumberValue(0)))
   val failed = new Failed(None, Map.empty)
   val RecoveryGeneratedOutcome = new Disrupted(Disrupted.JobSchedulerRestarted)
 
@@ -63,7 +63,7 @@ object Outcome
     protected def make(namedValues: NamedValues): Succeeded =
       if (namedValues.isEmpty)
         succeeded
-      else if (namedValues == Map("returnCode" -> NumericValue(0)))
+      else if (namedValues == Map("returnCode" -> NumberValue(0)))
         succeededRC0
       else
         new Succeeded(namedValues)

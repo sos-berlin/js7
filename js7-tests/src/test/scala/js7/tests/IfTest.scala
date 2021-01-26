@@ -10,7 +10,7 @@ import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.{RelativePathExecutable, ReturnCode}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.{NumericValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -124,7 +124,7 @@ object IfTest {
       OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(0)))),
+      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(0)))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
@@ -142,7 +142,7 @@ object IfTest {
       OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(1)))),
+      OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(1)))),
       OrderMoved(Position(1) / Then % 0 / Else % 0),
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
@@ -160,7 +160,7 @@ object IfTest {
       OrderAttached(agentId),
       OrderStarted,
       OrderProcessingStarted,
-      OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumericValue(2)))),
+      OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(2)))),
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0) / Then % 0 / Then % 0)))

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import js7.data.value.BooleanValue;
 import js7.data.value.ListValue;
-import js7.data.value.NumericValue;
+import js7.data.value.NumberValue;
 import js7.data.value.StringValue;
 import js7.data.value.Value;
 import static java.util.Arrays.asList;
@@ -21,11 +21,11 @@ class JOutcomeTester
 
     static void testSucceededRC1(JOutcome outcome) {
         Map<String,Value> namedValues = new HashMap<>();
-        namedValues.put("returnCode", NumericValue.of(1));
+        namedValues.put("returnCode", NumberValue.of(1));
         namedValues.put("aString", StringValue.of("STRING"));
         namedValues.put("aBoolean", BooleanValue.of(true));
         namedValues.put("aList", ListValue.of(asList(
-            NumericValue.of(1), StringValue.of("STRING"), BooleanValue.of(true))));
+            NumberValue.of(1), StringValue.of("STRING"), BooleanValue.of(true))));
         assertThat(outcome, equalTo(JOutcome.succeeded(namedValues)));
 
         assertThat(outcome instanceof JOutcome.Succeeded, equalTo(true));
@@ -35,10 +35,10 @@ class JOutcomeTester
 
         {
             Value value = succeeded.namedValues().get("returnCode");
-            assertThat(value, equalTo(NumericValue.of(1)));
-            assertThat(value instanceof NumericValue, equalTo(true));
-            NumericValue numericValue = (NumericValue)value;
-            java.math.BigDecimal returnCode = numericValue.number()/*Scala*/.bigDecimal()/*Java*/;
+            assertThat(value, equalTo(NumberValue.of(1)));
+            assertThat(value instanceof NumberValue, equalTo(true));
+            NumberValue numberValue = (NumberValue)value;
+            java.math.BigDecimal returnCode = numberValue.number()/*Scala*/.bigDecimal()/*Java*/;
             assertThat(returnCode.intValue(), equalTo(1));
         }
         {
@@ -60,7 +60,7 @@ class JOutcomeTester
         {
             Value value = succeeded.namedValues().get("aList");
             assertThat(value, equalTo(ListValue.of(asList(
-                        NumericValue.of(1), StringValue.of("STRING"), BooleanValue.of(true)))));
+                        NumberValue.of(1), StringValue.of("STRING"), BooleanValue.of(true)))));
             assertThat(value instanceof ListValue, equalTo(true));
             ListValue listValue = (ListValue)value;
             // TODO Provide a JValue wrapper for Value classes ?

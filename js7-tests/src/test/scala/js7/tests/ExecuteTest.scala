@@ -14,7 +14,7 @@ import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineP
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
-import js7.data.value.{NamedValues, NumericValue, StringValue, Value}
+import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
@@ -91,7 +91,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       ScriptExecutable(
         returnCodeScript(variableRef("myExitCode")),
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
-    orderArguments = Map("orderValue" -> NumericValue(44)),
+    orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -100,7 +100,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       ScriptExecutable(
         returnCodeScript(variableRef("myExitCode")),
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("defaultArg")))),
-      defaultArguments = Map("defaultArg" -> NumericValue(44)))),
+      defaultArguments = Map("defaultArg" -> NumberValue(44)))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -109,8 +109,8 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       ScriptExecutable(
         returnCodeScript(variableRef("myExitCode")),
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("NAME")))),
-      defaultArguments = Map("NAME" -> NumericValue(99)))),  // ignored
-    orderArguments = Map("NAME" -> NumericValue(44)),  // has priority
+      defaultArguments = Map("NAME" -> NumberValue(99)))),  // ignored
+    orderArguments = Map("NAME" -> NumberValue(44)),  // has priority
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -142,7 +142,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       CommandLineExecutable(
         CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
         env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
-    orderArguments = Map("orderValue" -> NumericValue(44)),
+    orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -151,7 +151,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       ScriptExecutable(
         returnCodeScript(variableRef("SCHEDULER_PARAM_MYEXITCODE")),
         v1Compatible = true))),
-    orderArguments = Map("myExitCode" -> NumericValue(44)),
+    orderArguments = Map("myExitCode" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(

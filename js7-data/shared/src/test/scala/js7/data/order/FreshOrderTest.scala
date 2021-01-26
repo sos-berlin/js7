@@ -3,7 +3,7 @@ package js7.data.order
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
-import js7.data.value.{BooleanValue, ListValue, NumericValue, StringValue}
+import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -25,9 +25,9 @@ final class FreshOrderTest extends AnyFreeSpec
       FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW"),
         Map(
           "boolean" -> BooleanValue.True,
-          "number" -> NumericValue(BigDecimal("-111222333444555666777888999000111222333444555666777888999000.123")),
+          "number" -> NumberValue(BigDecimal("-111222333444555666777888999000111222333444555666777888999000.123")),
           "string" -> StringValue("STRING"),
-          "list" -> ListValue(Seq(BooleanValue.True, NumericValue(123), StringValue("string")))),
+          "list" -> ListValue(Seq(BooleanValue.True, NumberValue(123), StringValue("string")))),
         Some(Timestamp.parse("2017-03-07T12:00:00Z"))),
       json"""{
         "id": "ORDER-ID",

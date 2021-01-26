@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.data.job.ReturnCode
 import js7.data.order.Outcome.Completed
-import js7.data.value.{NamedValues, NumericValue, StringValue}
+import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -22,8 +22,8 @@ final class OutcomeTest extends AnyFreeSpec
   }
 
   "Completed" in {
-    assert(Completed(true, Map("returnCode" -> NumericValue(1), "K" -> StringValue("V"))) == Outcome.Succeeded(Map("returnCode" -> NumericValue(1), "K" -> StringValue("V"))))
-    assert(Completed(false, Map("returnCode" -> NumericValue(1), "K" -> StringValue("V"))) == Outcome.Failed(Map("returnCode" -> NumericValue(1), "K" -> StringValue("V"))))
+    assert(Completed(true, Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))) == Outcome.Succeeded(Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))))
+    assert(Completed(false, Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))) == Outcome.Failed(Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))))
     assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
       case _: Outcome.Completed => false
       case _ => true
@@ -32,7 +32,7 @@ final class OutcomeTest extends AnyFreeSpec
 
   "JSON" - {
     "Succeeded" in {
-      testJson[Outcome](Outcome.Succeeded(Map("returnCode" -> NumericValue(0))), json"""
+      testJson[Outcome](Outcome.Succeeded(Map("returnCode" -> NumberValue(0))), json"""
         {
           "TYPE": "Succeeded",
           "namedValues": {
@@ -42,7 +42,7 @@ final class OutcomeTest extends AnyFreeSpec
     }
 
     "Succeeded with namedValues" in {
-      testJson[Outcome](Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "KEY" -> StringValue("VALUE"))), json"""
+      testJson[Outcome](Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "KEY" -> StringValue("VALUE"))), json"""
         {
           "TYPE": "Succeeded",
           "namedValues": {
@@ -53,7 +53,7 @@ final class OutcomeTest extends AnyFreeSpec
     }
 
     "Failed" in {
-      testJson[Outcome](Outcome.Failed(None, Map("returnCode" -> NumericValue(1))), json"""
+      testJson[Outcome](Outcome.Failed(None, Map("returnCode" -> NumberValue(1))), json"""
         {
           "TYPE": "Failed",
           "namedValues": {
@@ -63,7 +63,7 @@ final class OutcomeTest extends AnyFreeSpec
     }
 
     "Failed complete" in {
-      testJson[Outcome](Outcome.Failed(Some("ERROR"), Map("returnCode" -> NumericValue(1), "KEY" -> StringValue("VALUE"))), json"""
+      testJson[Outcome](Outcome.Failed(Some("ERROR"), Map("returnCode" -> NumberValue(1), "KEY" -> StringValue("VALUE"))), json"""
         {
           "TYPE": "Failed",
           "message": "ERROR",
@@ -75,7 +75,7 @@ final class OutcomeTest extends AnyFreeSpec
     }
 
     "Killed with Succeeded and namedValues" in {
-      testJson[Outcome](Outcome.Killed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "KEY" -> StringValue("VALUE")))), json"""
+      testJson[Outcome](Outcome.Killed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "KEY" -> StringValue("VALUE")))), json"""
         {
           "TYPE": "Killed",
           "outcome": {
@@ -116,6 +116,6 @@ final class OutcomeTest extends AnyFreeSpec
     assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.succeeded)
     assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.Completed(true))
     assert(Outcome.Succeeded(ReturnCode(0)) eq Outcome.Succeeded(ReturnCode(0)))
-    assert(Outcome.Succeeded(ReturnCode(0)) eq Outcome.Completed(true, Map("returnCode" -> NumericValue(0))))
+    assert(Outcome.Succeeded(ReturnCode(0)) eq Outcome.Completed(true, Map("returnCode" -> NumberValue(0))))
   }
 }

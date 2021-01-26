@@ -26,7 +26,7 @@ import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import js7.data.item.VersionedItemSigner
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.{NumericValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
@@ -161,6 +161,6 @@ private object OrderAgentTest
       attachedState = Some(Order.Detaching(TestAgentId)),
       arguments = Map("x" -> StringValue("X")),
       historicOutcomes =
-        HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("TEST-RESULT-")))) ::
-        HistoricOutcome(Position(1), Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("TEST-RESULT-B-VALUE")))) :: Nil)
+        HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-")))) ::
+        HistoricOutcome(Position(1), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-B-VALUE")))) :: Nil)
 }

@@ -9,7 +9,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.expression.Expression._
-import js7.data.value.{BooleanValue, ListValue, NumericValue, ObjectValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 
@@ -38,9 +38,9 @@ final class Evaluator(scope: Scope)
       case And            (a, b) => evalBoolean(a).flatMap(o => if (!o.booleanValue) Right(o) else evalBoolean(b))
       case Or             (a, b) => evalBoolean(a).flatMap(o => if (o.booleanValue) Right(o) else evalBoolean(b))
       case ToBoolean(a) => evalString(a) flatMap toBoolean
-      case NumericConstant(o) => Right(NumericValue(o))
-      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.toNumeric)
-      case ToNumber(e) => eval(e) flatMap toNumeric
+      case NumericConstant(o) => Right(NumberValue(o))
+      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.toNumber)
+      case ToNumber(e) => eval(e) flatMap toNumber
       case MkString(e) => eval(e) flatMap mkString
       case StringConstant(o) => Right(StringValue(o))
 
@@ -83,11 +83,11 @@ final class Evaluator(scope: Scope)
       .map(_.toMap)
       .map(ObjectValue.apply)
 
-  private def numNumToNum[A <: Expression, B <: Expression](a: A, b: B)(op: (NumericValue, NumericValue) => BigDecimal): Checked[NumericValue] =
+  private def numNumToNum[A <: Expression, B <: Expression](a: A, b: B)(op: (NumberValue, NumberValue) => BigDecimal): Checked[NumberValue] =
     for {
       a1 <- evalNumeric(a)
       b1 <- evalNumeric(b)
-    } yield NumericValue(op(a1, b1))
+    } yield NumberValue(op(a1, b1))
 
   private def anyAnyToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (Value, Value) => Boolean): Checked[BooleanValue] =
     for {
@@ -95,29 +95,29 @@ final class Evaluator(scope: Scope)
       b1 <- eval(b)
     } yield BooleanValue(op(a1, b1))
 
-  private def numNumToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (NumericValue, NumericValue) => Boolean): Checked[BooleanValue] =
+  private def numNumToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (NumberValue, NumberValue) => Boolean): Checked[BooleanValue] =
     for {
       a1 <- evalNumeric(a)
       b1 <- evalNumeric(b)
     } yield BooleanValue(op(a1, b1))
 
   private[expression] def evalBoolean(e: Expression): Checked[BooleanValue] = eval(e).flatMap(_.toBoolean)
-  private[expression] def evalNumeric(e: Expression): Checked[NumericValue] = eval(e).flatMap(_.toNumeric)
+  private[expression] def evalNumeric(e: Expression): Checked[NumberValue] = eval(e).flatMap(_.toNumber)
   private[expression] def evalString(e: Expression): Checked[StringValue] = eval(e).flatMap(_.toStringValue)
   private[expression] def evalList(e: Expression): Checked[ListValue] = eval(e).flatMap(_.toList)
 
-  private def toNumeric(v: Value): Checked[NumericValue] =
+  private def toNumber(v: Value): Checked[NumberValue] =
     v match {
-      case v: NumericValue => Right(v)
-      case BooleanValue(false) => Right(NumericValue(0))
-      case BooleanValue(true) => Right(NumericValue(1))
+      case v: NumberValue => Right(v)
+      case BooleanValue(false) => Right(NumberValue(0))
+      case BooleanValue(true) => Right(NumberValue(1))
       case StringValue(o) =>
-        try Right(NumericValue(BigDecimal(o)))
+        try Right(NumberValue(BigDecimal(o)))
         catch { case _: NumberFormatException =>
           // getMessage returns null
           Problem(s"Not a valid number: ${o.truncateWithEllipsis(10)}")
         }
-      case o => Problem(s"Operator .toNumeric may not applied to a value of type ${o.getClass.simpleScalaName}")
+      case o => Problem(s"Operator .toNumber may not applied to a value of type ${o.getClass.simpleScalaName}")
     }
 
   private def toBoolean(v: Value): Checked[BooleanValue] =

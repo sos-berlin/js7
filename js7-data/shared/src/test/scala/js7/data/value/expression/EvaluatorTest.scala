@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
-import js7.data.value.{BooleanValue, ListValue, NumericValue, ObjectValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -22,7 +22,7 @@ final class EvaluatorTest extends AnyFreeSpec
   "NamedValue expressions" - {
     implicit val evaluator = new Evaluator(
       new Scope {
-        private val symbols = Map[String, Value]("catchCount" -> NumericValue(3))
+        private val symbols = Map[String, Value]("catchCount" -> NumberValue(3))
         val symbolToValue = name => symbols.checked(name)
 
         val findValue = {
@@ -30,9 +30,9 @@ final class EvaluatorTest extends AnyFreeSpec
             Right(
               Map(
                 "ASTRING" -> StringValue("AA"),
-                "ANUMBER" -> NumericValue(7),
+                "ANUMBER" -> NumberValue(7),
                 "ABOOLEAN" -> BooleanValue(true),
-                "returnCode" -> NumericValue(1)
+                "returnCode" -> NumberValue(1)
               ).get(name))
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.NamedValue(name)) =>
             Right(Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply)
@@ -40,13 +40,13 @@ final class EvaluatorTest extends AnyFreeSpec
             Right(
               Map(
                 "KEY" -> StringValue("LABEL-VALUE"),
-                "returnCode" -> NumericValue(2)
+                "returnCode" -> NumberValue(2)
               ).get(name))
           case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.NamedValue(name)) =>
             Right(
               Map(
                 "KEY" -> StringValue("JOB-VALUE"),
-                "returnCode" -> NumericValue(3)
+                "returnCode" -> NumberValue(3)
               ).get(name))
           case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
             Right(Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply)
@@ -293,18 +293,18 @@ final class EvaluatorTest extends AnyFreeSpec
         "LIST" -> ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3)))))
       assert(evaluator.evalObjectExpression(expr) ==
         Right(ObjectValue(Map(
-          "A" -> NumericValue(1),
+          "A" -> NumberValue(1),
           "B" -> StringValue("BBB"),
-          "LIST" -> ListValue(List(NumericValue(1), NumericValue(2), NumericValue(3)))))),
+          "LIST" -> ListValue(List(NumberValue(1), NumberValue(2), NumberValue(3)))))),
         Right(
           In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
     }
 
     //testEval("""{"A": 1, "B": "BBB", "LIST": [1, 2, 3]}""",
     //  result = Right(ObjectValue(Map(
-    //    "A" -> NumericValue(1),
+    //    "A" -> NumberValue(1),
     //    "B" -> StringValue("BBB"),
-    //    "LIST" -> ListValue(List(NumericValue(1), NumericValue(2), NumericValue(3)))))),
+    //    "LIST" -> ListValue(List(NumberValue(1), NumberValue(2), NumberValue(3)))))),
     //  Right(
     //    In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
 
@@ -416,7 +416,7 @@ final class EvaluatorTest extends AnyFreeSpec
     testEval(exprString, Right(BooleanValue(result)), expression)
 
   private def testEval(exprString: String, result: Int, expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
-    testEval(exprString, Right(NumericValue(result)), expression)
+    testEval(exprString, Right(NumberValue(result)), expression)
 
   private def testEval(exprString: String, result: String, expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
     testEval(exprString, Right(StringValue(result)), expression)

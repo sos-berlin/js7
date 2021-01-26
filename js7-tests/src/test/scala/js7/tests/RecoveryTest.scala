@@ -26,7 +26,7 @@ import js7.data.item.{VersionId, VersionedEvent}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.{NumericValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -189,15 +189,15 @@ private object RecoveryTest {
     OrderStarted,
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
+    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
+    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
+    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderDetached,
@@ -205,11 +205,11 @@ private object RecoveryTest {
     OrderAttached(AgentIds(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
+    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(4)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
+    OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(5)),
     OrderDetachable,
     OrderDetached,

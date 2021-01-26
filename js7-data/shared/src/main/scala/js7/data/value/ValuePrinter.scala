@@ -5,7 +5,7 @@ object ValuePrinter
   def appendValue(sb: StringBuilder, value: Value): Unit =
     value match {
       case BooleanValue(bool) => sb.append(bool)
-      case NumericValue(number) => sb.append(number)
+      case NumberValue(number) => sb.append(number)
       case StringValue(string) => appendQuoted(sb, string)
       case ListValue(values) =>
         sb.append('[')

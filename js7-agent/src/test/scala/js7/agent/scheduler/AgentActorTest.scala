@@ -22,7 +22,7 @@ import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
-import js7.data.value.{NumericValue, StringValue}
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
 import js7.journal.watch.EventWatch
@@ -78,8 +78,8 @@ final class AgentActorTest extends AnyFreeSpec
             Order.Ready,
             Map("KEY" -> StringValue("VALUE")),
             historicOutcomes = TestOrder.historicOutcomes :+
-              HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("TEST-RESULT-")))) :+
-              HistoricOutcome(Position(1), Outcome.Succeeded(Map("returnCode" -> NumericValue(0), "result" -> StringValue("TEST-RESULT-B-VALUE")))),
+              HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-")))) :+
+              HistoricOutcome(Position(1), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-B-VALUE")))),
             Some(Order.Detaching(TestAgentId))
           )).toSet)
 

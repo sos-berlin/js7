@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.data.lock.{LockId, LockState}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.{Scope, ValueSearch}
-import js7.data.value.{NamedValues, NumericValue, Value}
+import js7.data.value.{NamedValues, NumberValue, Value}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
@@ -59,7 +59,7 @@ object OrderContext
     workflow: Workflow,
     default: NamedValues = NamedValues.empty): Scope =
     new Scope {
-      private lazy val catchCount = Right(NumericValue(order.workflowPosition.position.catchCount))
+      private lazy val catchCount = Right(NumberValue(order.workflowPosition.position.catchCount))
 
       val symbolToValue = {
         case "catchCount" => catchCount
