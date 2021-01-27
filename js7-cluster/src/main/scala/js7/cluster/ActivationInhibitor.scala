@@ -69,11 +69,6 @@ private[cluster] final class ActivationInhibitor
               .flatMap(_ => setInhibitionTimer(duration))
               .map(_ => Right(true))
 
-          case Inhibited(n) =>
-            mvar.put(Inhibited(n + 1))
-              .flatMap(_ => setInhibitionTimer(duration))
-              .map(_ => Right(true))
-
           case Active =>
             mvar.put(Active)
               .map(_ => Right(false))

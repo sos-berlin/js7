@@ -203,8 +203,8 @@ extends VersionedItem
 
   private[workflow] def nestedWorkflow(branchPath: BranchPath): Checked[Workflow] =
     branchPath match {
-      case Nil => Right(this)
       case BranchPath.PositionAndBranchId(position, branchId) => instruction(position).workflow(branchId)
+      case _ => Right(this)
     }
 
   def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =

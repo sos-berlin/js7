@@ -192,8 +192,10 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
             response.failure(problem.throwable)
         }
 
-      case _ if terminating =>
-        response.failure(AgentIsShuttingDown.throwable)
+      case command =>
+        response.failure(
+          if (terminating) AgentIsShuttingDown.throwable
+          else new RuntimeException(s"Unexpected command for AgentActor: $command"))
     }
   }
 

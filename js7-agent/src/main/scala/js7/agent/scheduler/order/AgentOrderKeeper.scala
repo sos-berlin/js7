@@ -291,65 +291,71 @@ with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
-    case AttachOrder(order, signedWorkflowString) if !shuttingDown =>
-      order.attached match {
-        case Left(problem) => Future.successful(Left(problem))
-        case Right(agentId) =>
-          workflowVerifier.verify(signedWorkflowString) match {
-            case Left(problem) => Future.successful(Left(problem))
-            case Right(verified) =>
-              if (orderRegister contains order.id)
-                Future.successful(Left(AgentDuplicateOrder(order.id)))
-              else {
-                val workflow = verified.signedItem.value.reduceForAgent(agentId)
-                (workflowRegister.get(order.workflowId) match {
-                  case None =>
-                    logger.info(Logger.SignatureVerified, verified.toString)
-                    persist(WorkflowAttached(workflow)) { (stampedEvent, journaledState) =>
-                      workflowRegister.handleEvent(stampedEvent.value)
-                      startJobActors(workflow)
-                      Right(workflow)
-                    }
-                  case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
-                    Future.successful(Right(registeredWorkflow))
-                  case Some(_) =>
-                    Future.successful(Left(Problem.pure(s"Changed ${order.workflowId}")))
-                })
-                .flatMapT(registeredWorkflow =>
-                  // Reuse registeredWorkflow to reduce memory usage!
-                  promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
-                    self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
+    case AttachOrder(order, signedWorkflowString) =>
+      if (shuttingDown)
+        Future.failed(AgentIsShuttingDown.throwable)
+      else
+        order.attached match {
+          case Left(problem) => Future.successful(Left(problem))
+          case Right(agentId) =>
+            workflowVerifier.verify(signedWorkflowString) match {
+              case Left(problem) => Future.successful(Left(problem))
+              case Right(verified) =>
+                if (orderRegister contains order.id)
+                  Future.successful(Left(AgentDuplicateOrder(order.id)))
+                else {
+                  val workflow = verified.signedItem.value.reduceForAgent(agentId)
+                  (workflowRegister.get(order.workflowId) match {
+                    case None =>
+                      logger.info(Logger.SignatureVerified, verified.toString)
+                      persist(WorkflowAttached(workflow)) { (stampedEvent, journaledState) =>
+                        workflowRegister.handleEvent(stampedEvent.value)
+                        startJobActors(workflow)
+                        Right(workflow)
+                      }
+                    case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
+                      Future.successful(Right(registeredWorkflow))
+                    case Some(_) =>
+                      Future.successful(Left(Problem.pure(s"Changed ${order.workflowId}")))
                   })
-              }
-          }
-      }
-
-    case DetachOrder(orderId) if !shuttingDown =>
-      orderRegister.get(orderId) match {
-        case Some(orderEntry) =>
-          // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
-          // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-          orderEntry.order.detaching match {
-            case Left(problem) => Future.failed(problem.throwable)
-            case Right(_) =>
-              val promise = Promise[Unit]()
-              orderEntry.detachResponses ::= promise
-              (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached))
-                .mapTo[Completed]
-                .onComplete {
-                  case Failure(t) => promise.tryFailure(t)
-                  case Success(Completed) =>
-                    // Ignore this and instead await OrderActor termination and removal from orderRegister.
-                    // Otherwise in case of a quick Controller restart, CoupleController would response with this OrderId
-                    // and the Controller will try again to DetachOrder, while the original DetachOrder is still in progress.
+                  .flatMapT(registeredWorkflow =>
+                    // Reuse registeredWorkflow to reduce memory usage!
+                    promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
+                      self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
+                    })
                 }
-              promise.future.map(_ => Right(AgentCommand.Response.Accepted))
-          }
-        case None =>
-          // May occur after Controller restart when Controller is not sure about order has been detached previously.
-          logger.debug(s"Ignoring duplicate $cmd")
-          Future.successful(Right(AgentCommand.Response.Accepted))
-      }
+            }
+        }
+
+    case DetachOrder(orderId) =>
+      if (shuttingDown)
+        Future.failed(AgentIsShuttingDown.throwable)
+      else
+        orderRegister.get(orderId) match {
+          case Some(orderEntry) =>
+            // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
+            // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
+            orderEntry.order.detaching match {
+              case Left(problem) => Future.failed(problem.throwable)
+              case Right(_) =>
+                val promise = Promise[Unit]()
+                orderEntry.detachResponses ::= promise
+                (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached))
+                  .mapTo[Completed]
+                  .onComplete {
+                    case Failure(t) => promise.tryFailure(t)
+                    case Success(Completed) =>
+                      // Ignore this and instead await OrderActor termination and removal from orderRegister.
+                      // Otherwise in case of a quick Controller restart, CoupleController would response with this OrderId
+                      // and the Controller will try again to DetachOrder, while the original DetachOrder is still in progress.
+                  }
+                promise.future.map(_ => Right(AgentCommand.Response.Accepted))
+            }
+          case None =>
+            // May occur after Controller restart when Controller is not sure about order has been detached previously.
+            logger.debug(s"Ignoring duplicate $cmd")
+            Future.successful(Right(AgentCommand.Response.Accepted))
+        }
 
     case MarkOrder(orderId, mark) =>
       orderRegister.checked(orderId) match {
@@ -387,20 +393,21 @@ with Stash {
       Future.successful(Right(GetOrders.Response(
         for (orderEntry <- orderRegister.values) yield orderEntry.order)))
 
-    case ReleaseEvents(after) if !shuttingDown =>
-      val userId = controllerId.toUserId
-      val current = journalState.userIdToReleasedEventId(userId)  // Must contain userId
-      if (after < current)
-        Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = after, currentUntilEventId = current)))
-      else
-        persist(JournalEventsReleased(userId, after)) {
-          case (Stamped(_,_, _ <-: event), journaledState) =>
-            journalState = journalState.applyEvent(event)
-            Right(AgentCommand.Response.Accepted)
-          }
-
-    case _ if shuttingDown =>
-      Future.failed(AgentIsShuttingDown.throwable)
+    case ReleaseEvents(after) =>
+      if (shuttingDown)
+        Future.failed(AgentIsShuttingDown.throwable)
+      else {
+        val userId = controllerId.toUserId
+        val current = journalState.userIdToReleasedEventId(userId)  // Must contain userId
+        if (after < current)
+          Future(Left(ReverseReleaseEventsProblem(requestedUntilEventId = after, currentUntilEventId = current)))
+        else
+          persist(JournalEventsReleased(userId, after)) {
+            case (Stamped(_,_, _ <-: event), journaledState) =>
+              journalState = journalState.applyEvent(event)
+              Right(AgentCommand.Response.Accepted)
+            }
+        }
   }
 
   private def startJobActors(workflow: Workflow): Unit =
