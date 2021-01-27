@@ -11,6 +11,7 @@ import js7.data.job.{JobKey, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockId
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.value.expression.PositionSearch
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -58,6 +59,17 @@ final class WorkflowTest extends AnyFreeSpec
         json"""{
           "path": "TEST",
           "versionId": "VERSION",
+          "orderRequirements": {
+            "parameters": {
+              "stringParameter": {
+                "type": "String",
+                "default": "DEFAULT"
+              },
+              "numberParameter": {
+                "type": "Number"
+              }
+            }
+          },
           "instructions": [
             {
               "TYPE": "Execute.Anonymous",
@@ -200,6 +212,17 @@ final class WorkflowTest extends AnyFreeSpec
         normalizeJson(json"""{
           "path": "TEST",
           "versionId": "VERSION",
+          "orderRequirements": {
+            "parameters": {
+              "stringParameter": {
+                "type": "String",
+                "default": "DEFAULT"
+              },
+              "numberParameter": {
+                "type": "Number"
+              }
+            }
+          },
           "instructions": [
             {
               "position": [ 0 ],
@@ -806,5 +829,9 @@ private object WorkflowTest
       BExecute),
     Map(
       AJobName -> AJob,
-      BJobName -> BJob))
+      BJobName -> BJob),
+    OrderRequirements(
+      Some(WorkflowParameters(Seq(
+        WorkflowParameter("stringParameter", StringValue, Some(StringValue("DEFAULT"))),
+        WorkflowParameter("numberParameter", NumberValue))))))
 }

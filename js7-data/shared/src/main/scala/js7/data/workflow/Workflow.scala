@@ -30,6 +30,7 @@ final case class Workflow private(
   id: WorkflowId,
   rawLabeledInstructions: IndexedSeq[Instruction.Labeled],
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
+  orderRequirements: OrderRequirements,
   source: Option[String],
   outer: Option[Workflow])
 extends VersionedItem
@@ -39,6 +40,7 @@ extends VersionedItem
       id == o.id &&
       rawLabeledInstructions == o.rawLabeledInstructions &&
       nameToJob == o.nameToJob &&
+      orderRequirements == o.orderRequirements &&
       source == o.source
       // Ignore `outer`
     case _ => false
@@ -49,6 +51,7 @@ extends VersionedItem
   type Self = Workflow
 
   val companion = Workflow
+
   val labeledInstructions = rawLabeledInstructions.map(o => o.copy(
     instruction = o.instruction.adopt(this)))
   val instructions: IndexedSeq[Instruction] = labeledInstructions.map(_.instruction)
@@ -383,7 +386,8 @@ extends VersionedItem
     s"{ ${labeledInstructions.mkString("; ")} ${nameToJob.map { case (k, v) => s"define job $k { $v }" }.mkString(" ")} }"
 }
 
-object Workflow extends VersionedItem.Companion[Workflow] {
+object Workflow extends VersionedItem.Companion[Workflow]
+{
   type ThisItem = Workflow
   type Path = WorkflowPath
 
@@ -397,17 +401,18 @@ object Workflow extends VersionedItem.Companion[Workflow] {
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    apply(WorkflowPath.NoId, labeledInstructions, nameToJob, source, outer)
+    apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderRequirements.empty, source, outer)
 
   /** Test only. */
   def apply(
     id: WorkflowId,
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    orderRequirements: OrderRequirements = OrderRequirements.empty,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    checkedSub(id, labeledInstructions, nameToJob, source, outer).orThrow
+    checkedSub(id, labeledInstructions, nameToJob, orderRequirements, source, outer).orThrow
 
   /** Checks a subworkflow.
     * Use `completelyChecked` to check a whole workflow incldung subworkfows. */
@@ -415,6 +420,7 @@ object Workflow extends VersionedItem.Companion[Workflow] {
     id: WorkflowId,
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    orderRequirements: OrderRequirements = OrderRequirements.empty,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Checked[Workflow] =
@@ -422,9 +428,10 @@ object Workflow extends VersionedItem.Companion[Workflow] {
       id,
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
+      orderRequirements,
       source,
-      outer)
-    .checked
+      outer
+    ).checked
 
   /** Checks a complete workflow including subworkflows. */
   def completelyChecked(
@@ -438,9 +445,10 @@ object Workflow extends VersionedItem.Companion[Workflow] {
       id,
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
+      OrderRequirements.empty,
       source,
-      outer)
-    .completelyChecked
+      outer
+    ).completelyChecked
 
   def of(instructions: Instruction.Labeled*): Workflow =
     if (instructions.isEmpty)
@@ -457,9 +465,10 @@ object Workflow extends VersionedItem.Companion[Workflow] {
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
   implicit val jsonEncoder: Encoder.AsObject[Workflow] = {
-    case Workflow(id, instructions, namedJobs, source, _) =>
+    case Workflow(id, instructions, namedJobs, orderRequirements, source, _) =>
       id.asJsonObject ++
         JsonObject(
+          "orderRequirements" -> (orderRequirements.nonEmpty ? orderRequirements).asJson,
           "instructions" -> instructions
             .dropLastWhile(labeled => labeled.instruction == ImplicitEnd() && labeled.maybePosition.isEmpty)
             .asJson,
@@ -473,8 +482,10 @@ object Workflow extends VersionedItem.Companion[Workflow] {
       id <- cursor.value.as[WorkflowId]
       instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
       namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
+      orderRequirements <- cursor.get[Option[OrderRequirements]]("orderRequirements").map(_ getOrElse OrderRequirements.empty)
       source <- cursor.get[Option[String]]("source")
-      workflow <- Workflow.checkedSub(id, instructions, namedJobs, source).toDecoderResult(cursor.history)
+      workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderRequirements, source)
+        .toDecoderResult(cursor.history)
     } yield workflow
 
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow

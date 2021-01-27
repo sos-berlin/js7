@@ -773,11 +773,16 @@ with MainJournalingActor[ControllerState, Event]
         _controllerState.repo.pathTo[Workflow](freshOrder.workflowPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(workflow) =>
-            persistTransactionAndSubsequentEvents(freshOrder.toOrderAdded(workflow.id.versionId) :: Nil) { (stamped, updatedState) =>
-              handleEvents(stamped, updatedState)
-              Right(true)
+            workflow.orderRequirements.checkArguments(freshOrder.arguments) match {
+              case Left(problem) => Future.successful(Left(problem))
+              case Right(()) =>
+                val events = freshOrder.toOrderAdded(workflow.id.versionId) :: Nil
+                persistTransactionAndSubsequentEvents(events) { (stamped, updatedState) =>
+                  handleEvents(stamped, updatedState)
+                  Right(true)
+                }
+                .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
             }
-            .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
         }
     }
 

@@ -59,7 +59,8 @@ object OrderContext
     workflow: Workflow,
     default: NamedValues = NamedValues.empty): Scope =
     new Scope {
-      private lazy val catchCount = Right(NumberValue(order.workflowPosition.position.catchCount))
+      private lazy val catchCount = Right(NumberValue(
+        order.workflowPosition.position.catchCount))
 
       val symbolToValue = {
         case "catchCount" => catchCount
@@ -67,7 +68,7 @@ object OrderContext
 
       val findValue = {
         case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
-          Right(order.arguments.get(name))
+          Right(argument(name))
 
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
           Right(
@@ -75,21 +76,28 @@ object OrderContext
               .orElse(
                 order.historicOutcomes.reverseIterator
                   .collectFirst {
-                    case HistoricOutcome(_, outcome: Outcome.Completed) if outcome.namedValues.contains(name) =>
+                    case HistoricOutcome(_, outcome: Outcome.Completed)
+                      if outcome.namedValues.contains(name) =>
                       outcome.namedValues(name)
                   })
-              .orElse(order.arguments.get(name))
+              .orElse(argument(name))
               .orElse(default.get(name)))
 
         case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
           order.historicOutcomes
             .reverseIterator
             .collectFirst {
-              case HistoricOutcome(pos, outcome: Outcome.Completed) if workflow.positionMatchesSearch(pos, positionSearch) =>
+              case HistoricOutcome(pos, outcome: Outcome.Completed)
+                if workflow.positionMatchesSearch(pos, positionSearch) =>
                 whatToValue(outcome, what)
             }
-            .toChecked(Problem(s"There is no position in workflow that matches '$positionSearch'"))
+            .toChecked(Problem(
+              s"There is no position in workflow that matches '$positionSearch'"))
       }
+
+      private def argument(name: String): Option[Value] =
+        order.arguments.get(name) orElse
+          workflow.orderRequirements.defaultArgument(name)
     }
 
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =

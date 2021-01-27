@@ -140,6 +140,7 @@ object Problem
 
   trait Coded extends HasCode {
     val code = Coded.codeOf(getClass)
+    def toSerialized: Problem = HasCodeAndMessage(code, arguments, message)
   }
   object Coded {
     trait Companion {

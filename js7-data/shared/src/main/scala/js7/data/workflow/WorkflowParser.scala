@@ -26,6 +26,8 @@ import scala.concurrent.duration._
   */
 object WorkflowParser
 {
+  // TODO Add OrderRequirements, also in WorkflowPrinter
+
   def parse(string: String): Checked[Workflow] =
     parse(WorkflowPath.NoId, string)
 

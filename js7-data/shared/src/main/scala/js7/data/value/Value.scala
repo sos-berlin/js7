@@ -4,7 +4,9 @@ import cats.instances.vector._
 import cats.syntax.traverse._
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.base.annotation.javaApi
+import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
 import scala.jdk.CollectionConverters._
@@ -13,19 +15,21 @@ import scala.util.control.NonFatal
 
 sealed trait Value
 {
+  def valueType: ValueType
+
   def toStringValue: Checked[StringValue]
 
   def toNumber: Checked[NumberValue] =
-    Left(InvalidExpressionTypeProblem("Numeric", this))
+    Left(InvalidExpressionTypeProblem(NumberValue, this))
 
   def toBoolean: Checked[BooleanValue] =
-    Left(InvalidExpressionTypeProblem("Boolean", this))
+    Left(InvalidExpressionTypeProblem(BooleanValue, this))
 
   def toList: Checked[ListValue] =
-    Left(InvalidExpressionTypeProblem("List", this))
+    Left(InvalidExpressionTypeProblem(ListValue, this))
 
   def toObject: Checked[ObjectValue] =
-    Left(InvalidExpressionTypeProblem("Object", this))
+    Left(InvalidExpressionTypeProblem(ObjectValue, this))
 
   @javaApi
   def toJava: java.lang.Object
@@ -43,9 +47,9 @@ object Value
 
   @javaApi def of(value: String) = StringValue(value)
   @javaApi def of(value: BigDecimal) = NumberValue(value)
-  @javaApi def of(value: java.lang.Long) = NumberValue(BigDecimal(value))
-  @javaApi def of(value: java.lang.Integer) = NumberValue(BigDecimal(value))
-  @javaApi def of(value: java.lang.Boolean) = BooleanValue(value)
+  @javaApi def of(value: Long) = NumberValue(BigDecimal(value))
+  @javaApi def of(value: Int) = NumberValue(BigDecimal(value))
+  @javaApi def of(value: Boolean) = BooleanValue(value)
 
   implicit val jsonEncoder: Encoder[Value] = {
     case StringValue(o) => Json.fromString(o)
@@ -82,7 +86,10 @@ object Value
   }
 }
 
-final case class StringValue(string: String) extends Value {
+final case class StringValue(string: String) extends Value
+{
+  def valueType = StringValue
+
   def toStringValue = Right(this)
 
   override def toNumber =
@@ -101,12 +108,17 @@ final case class StringValue(string: String) extends Value {
   override def toString = ValuePrinter.quoteString(string)
 }
 
-object StringValue {
+object StringValue extends ValueType
+{
+  val name = "String"
+
   @javaApi def of(value: String) = StringValue(value)
 }
 
 final case class NumberValue(number: BigDecimal) extends Value
 {
+  def valueType = NumberValue
+
   def toStringValue = Right(StringValue(number.toString))
 
   override def toNumber = Right(this)
@@ -125,7 +137,9 @@ final case class NumberValue(number: BigDecimal) extends Value
   override def toString = convertToString
 }
 
-object NumberValue {
+object NumberValue extends ValueType
+{
+  val name = "Number"
   val Zero = NumberValue(0)
   val One = NumberValue(1)
 
@@ -141,6 +155,8 @@ object NumberValue {
 
 final case class BooleanValue(booleanValue: Boolean) extends Value
 {
+  def valueType = BooleanValue
+
   override def toNumber =
     Right(if (booleanValue) NumberValue.One else NumberValue.Zero)
 
@@ -155,7 +171,9 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
   override def toString = convertToString
 }
 
-object BooleanValue {
+object BooleanValue extends ValueType
+{
+  val name = "Boolean"
   val True = BooleanValue(true)
   val False = BooleanValue(false)
 
@@ -164,6 +182,8 @@ object BooleanValue {
 
 final case class ListValue(list: Seq[Value]) extends Value
 {
+  def valueType = ListValue
+
   override def toList = Right(this)
 
   def toJava = list.asJava
@@ -175,13 +195,18 @@ final case class ListValue(list: Seq[Value]) extends Value
   override def toString = convertToString
 }
 
-object ListValue {
+object ListValue extends ValueType
+{
+  val name = "List"
+
   @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
 }
 
 final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
 {
+  def valueType = ObjectValue
+
   override def toObject = Right(this)
 
   def toStringValue = Right(StringValue(convertToString))
@@ -195,13 +220,39 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
   override def toString = convertToString
 }
 
-object ObjectValue {
+object ObjectValue extends ValueType
+{
+  val name = "Object"
+  val empty = ObjectValue(Map.empty)
+
   @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
 }
 
-private case class InvalidExpressionTypeProblem(typ: String, value: Value) extends Problem.Coded {
+sealed trait ValueType
+{
+  def name: String
+
+  override def toString = name
+}
+
+object ValueType
+{
+  val values = Seq(StringValue, BooleanValue, NumberValue, ListValue, ObjectValue)
+  private val nameToType = values.toKeyedMap(_.name)
+
+  implicit val jsonEncoder: Encoder[ValueType] =
+    o => Json.fromString(o.name)
+
+  implicit val jsonDecoder: Decoder[ValueType] =
+    cursor => (cursor.value.asString match {
+      case None => Left(Problem("ValueType expected"))
+      case Some(string) => nameToType.checked(string)
+    }).toDecoderResult(cursor.history)
+}
+
+private case class InvalidExpressionTypeProblem(valueType: ValueType, value: Value) extends Problem.Coded {
   def arguments = Map(
-    "type" -> typ,
+    "type" -> valueType.name,
     "value" -> value.toString.truncateWithEllipsis(30))
 }
