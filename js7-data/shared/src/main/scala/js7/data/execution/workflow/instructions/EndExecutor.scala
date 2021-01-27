@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.data.execution.workflow.context.OrderContext
 import js7.data.execution.workflow.instructions.InstructionExecutor.instructionToExecutor
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved}
+import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved, OrderStarted}
 import js7.data.workflow.instructions.{End, Fork, LockInstruction}
 
 /**
@@ -17,22 +17,33 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
     Right(
       (order.position.dropChild match {
         case None =>
-          for (order <- order.ifState[Order.Ready]) yield
-            if (order.isAttached)
-              order.id <-: OrderDetachable
-            else
-              order.id <-: OrderFinished
+          order.state match {
+            case _: Order.Ready =>
+              if (order.isAttached)
+                (order.id <-: OrderDetachable) :: Nil
+              else
+                (order.id <-: OrderFinished) :: Nil
+
+            case _: Order.Fresh =>
+              if (order.isAttached)
+                (order.id <-: OrderDetachable) :: Nil
+              else
+                (order.id <-: OrderStarted) ::
+                (order.id <-: OrderFinished) :: Nil
+
+            case _ => Nil
+          }
 
         case Some(returnPosition) =>
           context.instruction(order.workflowId /: returnPosition) match {
             case fork: Fork =>
-              ForkExecutor.tryJoinChildOrder(context, order, fork)
+              ForkExecutor.tryJoinChildOrder(context, order, fork).toList
             case lock: LockInstruction =>
-              LockExecutor.onReturnFromSubworkflow(order, lock)
+              LockExecutor.onReturnFromSubworkflow(order, lock).toList
             case _ =>
-              Some(order.id <-: OrderMoved(returnPosition.increment))
+              (order.id <-: OrderMoved(returnPosition.increment)) :: Nil
           }
-      }).toList)
+      }))
 
   def nextPosition(instruction: End, order: Order[Order.State], context: OrderContext) =
     Right(
