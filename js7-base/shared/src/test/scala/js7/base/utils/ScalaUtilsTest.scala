@@ -315,6 +315,17 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
   }
 
+  "Iterable[Either]" - {
+    "reducesLeftEither" in {
+      type T = Seq[Either[String, Int]]
+      assert((Nil: T).reducesLeftEither == Right(Nil))
+      assert((Seq(Left("A"), Right(1)): T).reducesLeftEither == Left("A"))
+      assert((Seq(Left("A"), Right(1), Left("B")): T).reducesLeftEither == Left("AB"))
+      assert((Seq(Right(1), Right(2)): T).reducesLeftEither == Right(Seq(1, 2)))
+      assert((Seq(Left(Seq("A")), Right(1), Left(Seq("B")))).reducesLeftEither == Left(Seq("A", "B")))
+    }
+  }
+
   "Either" - {
     "rightAs" in {
       type O = Either[String, Int]
@@ -329,10 +340,12 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert((Right(true): Either[Int, Boolean]).orElse(Right("LOOSER")) == Right(true))
     }
 
-    "toFuture" in {
-      assert(Right[Throwable, Int](7).toFuture.value.get.get == 7)
-      val t = new IllegalArgumentException
-      assert(Left[Throwable, Int](t).toFuture.failed.value.get.get eq t)
+    "combineLeft" in {
+      type T = Either[String, Int]
+      assert((Left("A"): T).combineLeft(Left("B"): T) == Left("AB"))
+      assert((Left("A"): T).combineLeft(Right(2): T) == Left("A"))
+      assert((Right(1): T).combineLeft(Left("B"): T) == Left("B"))
+      assert((Right(1): T).combineLeft(Right(2): T) == Right((1, 2)))
     }
 
     "toThrowableChecked" in {

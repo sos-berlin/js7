@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import cats.data.NonEmptyList
+import cats.kernel.Semigroup
 import cats.syntax.option._
 import cats.{Functor, Monad}
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
@@ -10,7 +12,7 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.concurrent.Future
+import scala.collection.Factory
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.chaining._
@@ -18,7 +20,7 @@ import scala.util.chaining._
 object ScalaUtils
 {
   private val Ellipsis = "..."
-  private val RightUnit = Right(())
+  val RightUnit: Either[Nothing, Unit] = Right(())
 
   object syntax
   {
@@ -41,6 +43,17 @@ object ScalaUtils
         F.flatMap(underlying) {
           case Left(left) => F.pure(Left(left))
           case Right(right) => f(right)
+        }
+    }
+
+    implicit final class RichEitherIterable[F[x] <: Iterable[x], L, R](private val iterable: F[Either[L, R]])
+    extends AnyVal
+    {
+      /** Combines left sides of any, otherwise return right sides.*/
+      def reducesLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] =
+        NonEmptyList.fromList(iterable.view.collect { case Left(l) => l }.toList) match {
+          case Some(ls) => Left(ls.reduce)
+          case None => Right(iterable.collect { case Right(r) => r }.to(F))
         }
     }
 
@@ -284,19 +297,22 @@ object ScalaUtils
         if (underlying) string else ""
     }
 
-    implicit final class RichEither[L, R](private val underlying: Either[L, R]) extends AnyVal
+    implicit final class RichEither[L, R](private val either: Either[L, R]) extends AnyVal
     {
       def rightAs[R1](newRight: => R1): Either[L, R1] =
-        underlying.map(_ => newRight)
+        either.map(_ => newRight)
+
+      /** Useful for `Checked` to combine both `Problem`s. */
+      def combineLeft[R1](other: Either[L, R1])(implicit L: Semigroup[L]): Either[L, (R, R1)] =
+        (either, other) match {
+          case (Left(a), Left(b)) => Left(L.combine(a, b))
+          case (Left(a), Right(_)) => Left(a)
+          case (Right(_), Left(b)) => Left(b)
+          case (Right(r), Right(r1)) => Right((r, r1))
+        }
     }
 
     implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {
-      def toFuture: Future[R] =
-        withStackTrace match {
-          case Left(t) => Future.failed(t)
-          case Right(o) => Future.successful(o)
-        }
-
       def orThrow: R =
         orThrow(dropFirstMethodsFromStackTrace("orThrow$extension"))
 

@@ -6,7 +6,6 @@ import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.either._
 import cats.syntax.option._
-import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import cats.{Applicative, Apply}
 import io.circe.generic.JsonCodec
@@ -257,16 +256,14 @@ final class CheckedTest extends AnyFreeSpec
     val problemA = Problem("A")
     val problemB = Problem("B")
     val problemC = Problem("C")
-    val invalidA: Checked[Int] = problemA
-    val invalidB: Checked[Int] = problemB
+    val invalidA: Checked[Int] = Left(problemA)
+    val invalidB: Checked[Int] = Left(problemB)
 
     "product" in {
       assert(Applicative[Checked].product(valid1, valid2) == Right((1, 2)))
       assert(Applicative[Checked].product(valid1, problemB) == Left(problemB))
       assert(Applicative[Checked].product(problemA, valid2) == Left(problemA))
-    //assert(Applicative[Checked].product(problemA, problemB) == Left(Problem("A\n & B")))
       assert(Applicative[Checked].product(problemA, problemB) == Left(problemA))
-    //assert(Apply      [Checked].product(problemA, problemB) == Left(Problem("A\n & B")))
       assert(Apply      [Checked].product(problemA, problemB) == Left(problemA))
     }
 
@@ -274,9 +271,7 @@ final class CheckedTest extends AnyFreeSpec
       assert(Applicative[Checked].productR(valid1)(valid2) == valid2)
       assert(Applicative[Checked].productR(valid1)(problemB) == Left(problemB))
       assert(Applicative[Checked].productR(problemA)(valid2) == Left(problemA))
-    //assert(Applicative[Checked].productR(problemA)(problemB) == Left(Problem("A\n & B")))
       assert(Applicative[Checked].productR(problemA)(problemB) == Left(problemA))
-    //assert(Apply      [Checked].productR(problemA)(problemB) == Left(Problem("A\n & B")))
       assert(Apply      [Checked].productR(problemA)(problemB) == Left(problemA))
     }
 
@@ -284,7 +279,7 @@ final class CheckedTest extends AnyFreeSpec
       assert((valid1 *> valid2) == valid2)
       assert((valid1 *> invalidB) == invalidB)
       assert((invalidA *> valid2) == invalidA)
-      assert((invalidA *> invalidB) == (invalidA |+| invalidB))
+      assert((invalidA *> invalidB) == Left(problemA))
     }
 
     "ap" in {
@@ -292,9 +287,7 @@ final class CheckedTest extends AnyFreeSpec
       assert(Applicative[Checked].ap(ff)(valid1) == Right("1"))
       assert(Applicative[Checked].ap(ff)(problemB) == Left(problemB))
       assert(Applicative[Checked].ap(problemA)(valid1) == Left(problemA))
-    //assert(Applicative[Checked].ap(problemA)(problemB) == Left(Problem("A\n & B")))
       assert(Applicative[Checked].ap(problemA)(problemB) == Left(problemA))
-    //assert(Apply      [Checked].ap(problemA)(problemB) == Left(Problem("A\n & B")))
       assert(Apply      [Checked].ap(problemA)(problemB) == Left(problemA))
     }
 
@@ -304,7 +297,6 @@ final class CheckedTest extends AnyFreeSpec
       assert((validFf <*> valid1) == Right("1"))
       assert((validFf <*> invalidB) == Left(Problem("B")))
       assert((invalidFf <*> valid1) == Left(Problem("ff")))
-    // assert((invalidFf <*> invalidB) == Left(Problem("ff\n & B")))
       assert((invalidFf <*> invalidB) == Left(Problem("ff")))
     }
 
@@ -313,14 +305,10 @@ final class CheckedTest extends AnyFreeSpec
       assert(Applicative[Checked].ap2(ff)(valid1, valid2) == Right("12"))
       assert(Applicative[Checked].ap2(ff)(valid1, problemB) == Left(problemB))
       assert(Applicative[Checked].ap2(ff)(problemA, valid2) == Left(problemA))
-    //assert(Applicative[Checked].ap2(ff)(problemA, problemB) == Left(Problem("A\n & B")))
       assert(Applicative[Checked].ap2(ff)(problemA, problemB) == Left(problemA))
       assert(Applicative[Checked].ap2(problemC)(valid1, valid2) == Left(problemC))
-    //assert(Applicative[Checked].ap2(problemC)(valid1, problemB) == Left(Problem("B\n & C")))
       assert(Applicative[Checked].ap2(problemC)(valid1, problemB) == Left(problemB))
-    //assert(Applicative[Checked].ap2(problemC)(problemA, problemB) == Left(Problem("A\n & B\n & C")))
       assert(Applicative[Checked].ap2(problemC)(problemA, problemB) == Left(problemA))
-    //assert(Apply      [Checked].ap2(problemC)(problemA, problemB) == Left(Problem("A\n & B\n & C")))
       assert(Apply      [Checked].ap2(problemC)(problemA, problemB) == Left(problemA))
     }
 
@@ -329,9 +317,7 @@ final class CheckedTest extends AnyFreeSpec
       assert(Applicative[Checked].map2(valid1, valid2)(f) == Right("12"))
       assert(Applicative[Checked].map2(valid1, problemB)(f) == Left(problemB))
       assert(Applicative[Checked].map2(problemA, valid2)(f) == Left(problemA))
-    //assert(Applicative[Checked].map2(problemA, problemB)(f) == Left(Problem("A\n & B")))
       assert(Applicative[Checked].map2(problemA, problemB)(f) == Left(problemA))
-    //assert(Apply      [Checked].map2(problemA, problemB)(f) == Left(Problem("A\n & B")))
       assert(Apply      [Checked].map2(problemA, problemB)(f) == Left(problemA))
     }
   }
