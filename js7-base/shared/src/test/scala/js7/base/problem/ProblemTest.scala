@@ -52,7 +52,8 @@ final class ProblemTest extends AnyFreeSpec
   }
 
   "String" in {
-    assert(TestCodeProblem(Map("argument" -> "ARGUMENT")).toString == "TestCode (argument=ARGUMENT)")
+    val a = TestCodeProblem(Map("argument" -> "ARGUMENT")).toString
+    assert(TestCodeProblem(Map("argument" -> "ARGUMENT")).toString == "TestCode(argument=ARGUMENT)")
 
     assert(Problem("").toString == "A problem occurred (no message)")
     assert(Problem(null: String).toString == "A problem occurred (null)")

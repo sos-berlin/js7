@@ -121,7 +121,8 @@ object Problem
 
     override def toString = {
       val msg = messageWithCause
-      if (msg + " " startsWith code.string + " ") msg
+      if (s"$msg ".startsWith(s"${code.string} ") ||
+          s"$msg(".startsWith(s"${code.string}(")) msg
       else code.string + ": " + msg
     }
   }

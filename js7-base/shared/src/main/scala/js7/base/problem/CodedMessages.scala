@@ -1,6 +1,7 @@
 package js7.base.problem
 
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
+import js7.base.utils.ScalaUtils.syntax._
 import monix.execution.atomic.AtomicAny
 import scala.collection.mutable
 
@@ -51,12 +52,15 @@ object CodedMessages
       } else
         sb += c
     }
-    val message = sb.toString
     val unused = arguments.keySet -- used
-    message + unusedArgumentsToString(arguments.view.filterKeys(unused).toMap)
+    if (unused.nonEmpty) {
+      if (sb contains ' ') sb.append(' ')
+      sb ++= unusedArgumentsToString(arguments.view.filterKeys(unused).toMap)
+    }
+    sb.toString
   }
 
   private def unusedArgumentsToString(arguments: Map[String, String]): String =
-    if (arguments.isEmpty) ""
-    else arguments.map { case (k, v) => s"$k=$v" } .mkString(" (", ", ", ")")
+    arguments.nonEmpty ??
+      arguments.map { case (k, v) => s"$k=$v" } .mkString("(", ", ", ")")
 }
