@@ -27,6 +27,7 @@ final case class JournalHeader private[data](
   timestamp: Timestamp,
   startedAt: Timestamp,
   version: String,
+  // TODO Rename as js7Version
   softwareVersion: String,
   buildId: String)
 {
@@ -38,7 +39,7 @@ final case class JournalHeader private[data](
       totalRunningTime = totalRunningTime,
       timestamp = timestamp,
       version = Version,
-      softwareVersion = BuildInfo.prettyVersion,
+      softwareVersion = BuildInfo.longVersion,
       buildId = BuildInfo.buildId)
 
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
@@ -58,7 +59,7 @@ object JournalHeader
       Duration.Zero,
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
-      softwareVersion = BuildInfo.prettyVersion,
+      softwareVersion = BuildInfo.longVersion,
       version = Version,
       buildId = BuildInfo.buildId)
 
@@ -72,7 +73,7 @@ object JournalHeader
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
       version = Version,
-      softwareVersion = BuildInfo.prettyVersion,
+      softwareVersion = BuildInfo.longVersion,
       buildId = BuildInfo.buildId)
 
   implicit lazy val jsonCodec = {

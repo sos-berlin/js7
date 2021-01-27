@@ -61,7 +61,8 @@ object TestControllerProxy
 
   def main(args: Array[String]): Unit = {
     implicit def scheduler = Scheduler.global
-    println(s"${LocalDateTime.now.toString.replace('T', ' ')} JS7 TestControllerProxy ${BuildInfo.prettyVersion}")
+    println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
+      s"JS7 TestControllerProxy ${BuildInfo.longVersion}")
     coupleScribeWithSlf4j()
     CommandLineArguments.parse(args.toSeq) { arguments =>
       val controllerUri = arguments.as[Uri]("--controller-uri=")

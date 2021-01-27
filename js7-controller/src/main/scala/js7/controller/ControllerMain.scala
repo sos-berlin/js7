@@ -24,7 +24,7 @@ final class ControllerMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ControllerTermination.Terminate = {
-    logger.info(s"JS7 JobScheduler Controller ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JS7 JobScheduler Controller ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val controllerConfiguration = ControllerConfiguration.fromCommandLine(arguments)
     logStartUp(Some(controllerConfiguration.configDirectory), Some(controllerConfiguration.dataDirectory))
@@ -77,7 +77,7 @@ object ControllerMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JS7 JobScheduler Controller ${BuildInfo.prettyVersion}")
+    printlnWithClock(s"JS7 JobScheduler Controller ${BuildInfo.longVersion}")
     var terminate = ControllerTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminate = new ControllerMain().run(commandLineArguments)

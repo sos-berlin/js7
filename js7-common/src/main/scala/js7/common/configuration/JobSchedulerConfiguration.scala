@@ -12,7 +12,8 @@ object JobSchedulerConfiguration
     ConfigFactory
       .parseMap(
         Map(
-          "js7.prettyVersion" -> BuildInfo.prettyVersion
+          "js7.version" -> BuildInfo.version,
+          "js7.longVersion" -> BuildInfo.longVersion
         ).asJava)
       .withFallback(
         Configs.loadResource(

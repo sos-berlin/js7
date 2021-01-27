@@ -9,6 +9,7 @@ import java.util.{Base64, UUID}
 import sbt.Keys.version
 import sbt.{Def, ModuleID}
 import scala.collection.immutable.ListMap
+import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
 object BuildUtils
@@ -52,36 +53,43 @@ object BuildUtils
   val longVersion: Def.Initialize[String] =
     Def.setting(
       if (isUncommitted.value)
-        // "2.0.0-SNAPSHOT-UNCOMMITTED"
-        version.value + "-UNCOMMITTED"
-      else if (version.value endsWith "-SNAPSHOT") {
-        // "2.0.0-SNAPSHOT-2019-01-14T1200-9abcdef"
-        version.value + "-" + committedAt.value.getOrElse("?") +
-          git.gitHeadCommit.value.fold("")(o => "-" + o.take(CommitHashLength))
-      } else
+        // "2.0.0-SNAPSHOT+UNCOMMITTED.20210127.1200"
+        version.value + "+UNCOMMITTED." +
+          Instant.now.toString
+            .filter(c => c != '-' && c != ':')
+            .take(13)
+            .replace('T', '.')
+          + "Z"
+      else if (version.value endsWith "-SNAPSHOT")
+        // "2.0.0-SNAPSHOT+9abcdef"
+        version.value + commitHash.value.fold("")("+" + _.take(CommitHashLength))
+      else
         // "2.0.0-M1"
         version.value)
 
-  private lazy val committedAt: Def.Initialize[Option[String]] =
+  /** Git commit date as "yyyy-mm-ddThh:mmZ". */
+  lazy val committedAt: Def.Initialize[Option[String]] =
     Def.setting(git.gitHeadCommitDate.value
       .map(o => parseInstant(o).toString)
-      .map(_.take(16) + "Z"))
+      .map(_.take(13) + "Z"))
 
   private val prettyVersion: Def.Initialize[String] =
     Def.setting {
       val sb = new StringBuilder
-      sb ++= version.value
+      sb ++= longVersion.value
+      val extras = mutable.Buffer[String]()
       if (version.value endsWith "-SNAPSHOT") {
-        sb ++= " "
-        sb ++=
-          (gitBranch.value +:
-            commitHash.value.map(_ take CommitHashLength) ++:
-            committedAt.value.toList)
-          .filter(_.nonEmpty)
-          .mkString("(", " ", ")")
+        extras += gitBranch.value + " branch"
+        if (!longVersion.value.contains("+UNCOMMITTED.")) {
+          extras += Instant.now.toString.take(16) + "Z"  // yyyy-mm-ddThh:mm
+        }
+      } else {
+        committedAt.value.foreach(extras += _.take(10))
       }
-      if (isUncommitted.value) sb ++= " UNCOMMITTED " + Instant.now.toString.take(16) + "Z"
-      sb.toString.trim
+      if (extras.nonEmpty) {
+        sb.append(extras.mkString(" (", " ", ")"))
+      }
+      sb.toString
     }
 
   val buildId: String = {
@@ -96,8 +104,8 @@ object BuildUtils
     "buildTime" -> System.currentTimeMillis,
     "buildId" -> buildId,
     "version" -> version.value,
-    "longVersion" -> BuildUtils.longVersion.value,
-    "prettyVersion" -> BuildUtils.prettyVersion.value,
+    "longVersion" -> longVersion.value,
+    "prettyVersion" -> prettyVersion.value,
     "commitId" -> git.gitHeadCommit.value,
     "commitMessage" -> git.gitHeadMessage.value))
 

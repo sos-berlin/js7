@@ -582,9 +582,9 @@ releaseVersion := (
   else v =>
     Version(v).fold(versionFormatError(v)) { currentVersion =>
       val prelease = {
-        val commitDate = git.gitHeadCommitDate.value
-          .getOrElse(sys.error("gitHeadCommitDate returned None"))
-          .take(10)
+        val commitDate = committedAt.value
+          .getOrElse(sys.error("gitHeadCommitDate returned None (no Git?)"))
+          .take(10)/*yyyy-mm-dd*/
         // Remove hypens according to Semantic Versioning pre-release syntax
         val yyyymmdd = commitDate.substring(0, 4) + commitDate.substring(5, 7) + commitDate.substring(8, 10)
         "alpha." + yyyymmdd

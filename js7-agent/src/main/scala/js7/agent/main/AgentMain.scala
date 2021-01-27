@@ -27,7 +27,7 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
-    logger.info(s"JS7 JobScheduler Agent Server ${BuildInfo.prettyVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JS7 JobScheduler Agent Server ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
     logConfig(agentConfiguration.config)
@@ -63,7 +63,7 @@ object AgentMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JS7 JobScheduler Agent Server ${BuildInfo.prettyVersion}")
+    printlnWithClock(s"JS7 JobScheduler Agent Server ${BuildInfo.longVersion}")
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)
