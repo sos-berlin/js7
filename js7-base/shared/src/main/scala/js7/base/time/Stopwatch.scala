@@ -64,12 +64,15 @@ object Stopwatch
 
   def bytesPerSecondString(duration: FiniteDuration, n: Long): String =
     if (n < 10_000_000)
-      perSecondString(duration, n / 1_000, "kB", gap = false)
+      durationAndPerSecondString(duration, n / 1_000, "kB", gap = false)
     else
-      perSecondString(duration, n / 1_000_000, "MB")
+      durationAndPerSecondString(duration, n / 1_000_000, "MB")
 
-  def perSecondString(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
+  def durationAndPerSecondString(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
     Result(duration, n, ops, gap).toShortString
+
+  def numberAndPerSecondString(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
+    Result(duration, n, ops, gap).countAndPerSecondString
 
   def perSecondStringOnly(duration: FiniteDuration, n: Long, ops: String = "ops", gap: Boolean = true): String =
     Result(duration, n, ops, gap).toPerSecondsString
@@ -90,6 +93,12 @@ object Stopwatch
         s"0$gapOps"
       else
         s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
+
+    def countAndPerSecondString =
+      if (n == 0)
+        s"0$gapOps"
+      else
+        s"$n$gapOps, $perSecondString/s"
 
     def toPerSecondsString =
       if (n == 0)

@@ -3,7 +3,7 @@ package js7.tests.addOrders
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch.perSecondString
+import js7.base.time.Stopwatch.durationAndPerSecondString
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
@@ -23,7 +23,7 @@ final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
   protected val versionedItems = Seq(workflow)
 
   override protected def controllerConfig = config"""
-    js7.auth.users.TestAddOrders.password = "plain:TestAddOrders"
+    js7.auth.users.TestAddOrders.password = "plain:TEST-PASSWORD"
     """ withFallback super.controllerConfig
 
   override protected def agentConfig = config"""
@@ -39,14 +39,13 @@ final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
       }
 
     def logAddOrdersDuration(duration: FiniteDuration) =
-      info(perSecondString(duration, orderCount, "orders added"))
+      info(durationAndPerSecondString(duration, orderCount, "orders added"))
 
     val settings = Settings.parseArguments(Seq(
       "--controller=" + controller.localUri,
       "--workflow=" + workflow.path.string,
       "--count=" + orderCount,
-      "--user=TestAddOrders",
-      "--password=TestAddOrders"))
+      "--user=TestAddOrders:TEST-PASSWORD"))
     val statistics = TestAddOrders.run(settings, logOrderCountChanged, logAddOrdersDuration)
       .await(99.s).orThrow
     controller.eventWatch.await[OrderRemoved](_.key.string startsWith "TestAddOrders-")

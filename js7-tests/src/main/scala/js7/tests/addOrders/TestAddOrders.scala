@@ -2,6 +2,7 @@ package js7.tests.addOrders
 
 import cats.syntax.flatMap._
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
@@ -59,8 +60,11 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
               Task.fromFuture(allOrdersAddedSubject.onNext(since.elapsed)).as(())
                 .unless(result.isLeft)))
 
-      // TODO Deadlock wenn Workflow unbekannt ist, weil awaitOrderCompletion nicht endet
-      Task.parMap2(awaitOrderCompletion, add)((a, b) => b >> a)
+      Task.parMap2(
+        awaitOrderCompletion.map(_.orThrow/*abort parMap2*/),
+        add.map(_.orThrow)
+      )((statistics, _) => statistics)
+        .materialize.map(Checked.fromTry)
     }
     (allOrdersAddedSubject, statisticsSubject, task)
   }
@@ -89,10 +93,7 @@ object TestAddOrders
         val testAddOrders = new TestAddOrders(controllerApi, settings)
         val (allOrdersAddedObservable, statisticsObservable, runOrdersTask) = testAddOrders.run()
         allOrdersAddedObservable.foreach(onOrdersAdded)
-        (() +: Observable.interval(100.ms))
-          .withLatestFrom(
-            statisticsObservable.distinctUntilChanged)((_, s) => s)
-          .foreach(onStatisticsUpdate)
+        statisticsObservable foreach onStatisticsUpdate
         runOrdersTask
       }
 

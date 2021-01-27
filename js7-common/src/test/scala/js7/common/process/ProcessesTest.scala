@@ -101,7 +101,7 @@ final class ProcessesTest extends AnyFreeSpec {
             runProcess(s"""'$file'""")
           })
           .await(99.s)
-        info(Stopwatch.perSecondString(since.elapsed, n, "processes"))
+        info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
       }
     }
   }
@@ -114,7 +114,7 @@ final class ProcessesTest extends AnyFreeSpec {
             runProcess("sleep 0")
           })
           .await(99.s)
-        info(Stopwatch.perSecondString(since.elapsed, n, "processes"))
+        info(Stopwatch.durationAndPerSecondString(since.elapsed, n, "processes"))
     }
   }
   //"runProcess" in {

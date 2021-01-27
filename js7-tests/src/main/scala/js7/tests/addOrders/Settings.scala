@@ -21,11 +21,13 @@ private object Settings
 
   def parseArguments(args: Seq[String]): Settings =
     CommandLineArguments.parse(args) { a =>
-      val userAndPassword = a.optionAs[UserId]("--user=")
-        .fold(defaultUserAndPassword)(userId =>
-          UserAndPassword(
-            userId,
-            a.as[SecretString]("--password="/*TODO Should not be a command line argument*/)))
+      val userAndPassword = a.optionAs[String]("--user=")
+        .fold(defaultUserAndPassword) { string =>
+          string.split(":", 2) match {
+            case Array(u, password) => UserAndPassword(UserId(u), SecretString(password))
+            case Array(u) => UserAndPassword(UserId(u), SecretString.empty)
+          }
+        }
       Settings(
         a.as[WorkflowPath]("--workflow="),
         a.as[Int]("--count=", 1),

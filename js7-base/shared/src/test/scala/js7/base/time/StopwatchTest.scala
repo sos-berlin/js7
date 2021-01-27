@@ -14,7 +14,11 @@ final class StopwatchTest extends AnyFreeSpec {
     assert(itemsPerSecondString(2.s, 3000) == "2s/3000 ops (⌀0.667ms), 1500 ops/s")
   }
 
-  "perSecondString" in {
-    assert(perSecondString(2.s, 3000) == "2s/3000 ops, 1500 ops/s")
+  "durationAndPerSecondString" in {
+    assert(durationAndPerSecondString(2.s, 3000) == "2s/3000 ops, 1500 ops/s")
+  }
+
+  "numberAndPerSecondString" in {
+    assert(numberAndPerSecondString(2.s, 3000) == "3000 ops, 1500/s")
   }
 }

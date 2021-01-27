@@ -1,9 +1,10 @@
 package js7.tests.addOrders
 
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent, Stamped}
-import js7.data.order.OrderEvent.{OrderAdded, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.OrderId
 import monix.execution.Ack
 import monix.reactive.Observer
@@ -23,22 +24,31 @@ private final class StatisticsBuilder(
   private var eventCount = 0
   private var orderAddedCount = 0
   private var _removedOrderCount = 0
+  private var failedOrderCount = 0
   private var completedForkedOrderCount = 0
   private var totalOrderDuration = 0.s
   private var maximumOrderDuration = 0.s
   private var processedCount = 0
   private var totalProcessDuration = 0.s
   private var maximumProcessDuration = 0.s
+  private var stdWritten = 0L
 
   def removedOrderCount = _removedOrderCount
   def lastOrderCount = orderAddedCount - _removedOrderCount
 
   object obs {
-    var observerAck: Future[Ack] = Future.successful(Ack.Continue)
-    def tryPublish() =
-      if (observerAck.value contains Success(Ack.Continue)) {
-        observerAck = observer.onNext(toStatistics)
+    private val pause = 100.ms
+    private var next = now
+    private var observerAck: Future[Ack] = Future.successful(Ack.Continue)
+
+    def tryPublish() = {
+      if (now >= next) {
+        if (observerAck.value contains Success(Ack.Continue)) {
+          observerAck = observer.onNext(toStatistics)
+          next = now + pause
+        }
       }
+    }
   }
 
   obs.tryPublish()  // Initial empty Statistics
@@ -50,6 +60,9 @@ private final class StatisticsBuilder(
     stampedEvent.value match {
       case KeyedEvent(orderId: OrderId, event) if isOurOrder(orderId.root) =>
         event match {
+          case event: OrderStdWritten =>
+            stdWritten += event.chunk.getBytes(UTF_8).size
+
           case _: OrderAdded =>
             orderAddedCount += 1
             obs.tryPublish()
@@ -86,6 +99,10 @@ private final class StatisticsBuilder(
             for (children <- orderToChildren.remove(orderId)) {
               completedForkedOrderCount += children.size
             }
+            obs.tryPublish()
+
+          case _: OrderCancelled | _: OrderFailed | _: OrderFailedInFork =>
+            failedOrderCount += 1
 
           case _ =>
         }
@@ -99,10 +116,12 @@ private final class StatisticsBuilder(
     lastOrderCount = lastOrderCount,
     eventCount = eventCount,
     completedOrderCount = _removedOrderCount,
+    failedOrderCount = failedOrderCount,
     totalOrderDuration = totalOrderDuration,
     maximumOrderDuration = maximumOrderDuration,
     completedForkedOrderCount = completedForkedOrderCount,
     processedCount = processedCount,
     totalProcessDuration = totalProcessDuration,
-    maximumProcessDuration = maximumProcessDuration)
+    maximumProcessDuration = maximumProcessDuration,
+    stdWritten = stdWritten)
 }
