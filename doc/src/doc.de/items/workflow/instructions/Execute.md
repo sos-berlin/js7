@@ -17,7 +17,7 @@ der am Ende des Workflows definiert sein muss.
 }
 ```
 
-**Parameter**
+**Felder**
 
 * `jobName`
 
@@ -48,7 +48,7 @@ der direkt in dieser Anweisung definiert ist.
 }
 ```
 
-**Parameter**
+**Felder**
 
 * `job`
 

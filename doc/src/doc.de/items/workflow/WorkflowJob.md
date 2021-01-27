@@ -19,7 +19,7 @@ Beispiel:
   "sigkillDelay": 15
 }
 ```
-**Parameter**
+**Felder**
 * `agentId`
 * `executable`
 
