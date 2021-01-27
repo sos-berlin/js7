@@ -132,24 +132,28 @@ extends Actor with Stash
       handleIfReadyForOrder()
 
     case cmd: Command.ProcessOrder if waitingForNextOrder =>
-      if (cmd.jobKey != jobKey)
-        sender() ! Response.OrderProcessed(
+      waitingForNextOrder = false
+      if (cmd.jobKey != jobKey) {
+        replyWithOrderProcessed(Response.OrderProcessed(
           cmd.order.id,
-          TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), isKilled = false)
-      else {
+          TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), isKilled = false))
+      } else {
         val killed = orderToRun.get(cmd.order.id).fold(false)(_.isKilled)
         checkedExecutable.flatMap(_(cmd.order, cmd.workflow)) match {
           case Left(problem) =>
-            sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed)  // Exception.toString is published !!!
+            replyWithOrderProcessed(
+              Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed))  // Exception.toString is published !!!
           case Right(execute) =>
             if (!exists(execute.file)) {
               val msg = s"Execute '${execute.file}' not found"
               logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
-              sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)), killed)
+              replyWithOrderProcessed(
+                Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)), killed))
             } else
               Try(execute.file.toRealPath()) match {
                 case Failure(t) =>
-                  sender() ! Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Execute '$execute': $t")), killed)  // Exception.toString is published !!!
+                  replyWithOrderProcessed(
+                    Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Execute '$execute': $t")), killed))  // Exception.toString is published !!!
                 case Success(executableFile) =>
                   assertThat(taskCount < workflowJob.taskLimit, "Task limit exceeded")
                   if (!execute.isTemporary && !conf.scriptInjectionAllowed) {
@@ -181,9 +185,8 @@ extends Actor with Stash
     case Internal.TaskFinished(order, triedStepEnded) =>
       val run = orderToRun(order.id)
       orderToRun -= order.id
-      sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded), isKilled = run.isKilled)
-      continueTermination()
-      handleIfReadyForOrder()
+      replyWithOrderProcessed(
+        Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded), isKilled = run.isKilled))
 
     case Input.Terminate(maybeSignal) =>
       logger.debug("Terminate")
@@ -216,13 +219,18 @@ extends Actor with Stash
       killOrder(orderId, SIGKILL)
   }
 
+  private def replyWithOrderProcessed(msg: Response.OrderProcessed): Unit = {
+    sender() ! msg
+    continueTermination()
+    handleIfReadyForOrder()
+  }
+
   private def processOrder(
     orderId: OrderId,
     commandLine: CommandLine,
     env: Map[String, String],
     stdChannels: StdChannels)
   : Future[TaskStepEnded] = {
-    waitingForNextOrder = false
     val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, commandLine))
     orderToRun.insert(orderId -> Run(taskRunner))
     taskRunner.processOrder(orderId, env, stdChannels)
