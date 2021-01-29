@@ -10,7 +10,7 @@ import js7.data.job.{CommandLineExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockId
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
-import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
+import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, ObjectExpression, Or, StringConstant}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -45,7 +45,7 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), PathExecutable("my/executable")),
-          sourcePos(18, 67)),
+          sourcePos = sourcePos(18, 67)),
         ImplicitEnd(sourcePos(69, 70))))
   }
 
@@ -54,7 +54,7 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), PathExecutable("my/executable")),
-          sourcePos(18, 67)),
+          sourcePos= sourcePos(18, 67)),
         ImplicitEnd(sourcePos(69, 70))))
   }
 
@@ -77,7 +77,7 @@ final class WorkflowParserTest extends AnyFreeSpec
               "I" -> NumberValue(-123)),
             taskLimit = 3,
             sigkillDelay = Some(30.s)),
-          sourcePos(20, 198)),
+          sourcePos = sourcePos(20, 198)),
         ImplicitEnd(sourcePos(200, 201))))
   }
 
@@ -87,7 +87,7 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), ScriptExecutable("LINE 1\nLINE 2\nLINE 3")),
-          sourcePos(18, 72)),
+          sourcePos = sourcePos(18, 72)),
         ImplicitEnd(sourcePos(74, 75))))
   }
 
@@ -103,7 +103,7 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow.of(
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), ScriptExecutable("LINE 1\nLINE 2\nLINE 3\n")),
-          sourcePos(20, 101)),
+          sourcePos = sourcePos(20, 101)),
         ImplicitEnd(sourcePos(103, 104))))
   }
 
@@ -146,6 +146,37 @@ final class WorkflowParserTest extends AnyFreeSpec
               ScriptExecutable("SCRIPT")))))
   }
 
+  "define job" in {
+    check("""
+      define workflow {
+        job A;
+        define job A {
+          execute
+            agent="AGENT",
+            executable="my/executable",
+            successReturnCodes=[0, 1, 3],
+            env={
+              "A": 1,
+              "B": $b
+            };
+        }
+      }""",
+      Workflow(
+        WorkflowPath.NoId,
+        Vector(
+          Execute.Named(WorkflowJob.Name("A"))),
+        Map(
+          WorkflowJob.Name("A") ->
+            WorkflowJob(
+              AgentId("AGENT"),
+              PathExecutable(
+                "my/executable",
+                env = ObjectExpression(Map(
+                  "A" -> NumericConstant(1),
+                  "B" -> NamedValue.last("b")))),
+              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)))))
+  }
+
   "Execute named with duplicate jobs" in {
     assert(WorkflowParser.parse("""
       define workflow {
@@ -164,7 +195,7 @@ final class WorkflowParserTest extends AnyFreeSpec
     checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("A")), sourcePos(18, 55)),
+          Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("A")), sourcePos = sourcePos(18, 55)),
           ImplicitEnd(sourcePos(57, 58)))))
   }
 
@@ -172,7 +203,7 @@ final class WorkflowParserTest extends AnyFreeSpec
     checkWithSourcePos("""define workflow { execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("A")), sourcePos(18, 55)),
+          Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("A")), sourcePos = sourcePos(18, 55)),
           ImplicitEnd(sourcePos(57, 58)))))
   }
 
@@ -182,7 +213,7 @@ final class WorkflowParserTest extends AnyFreeSpec
         Vector(
           Execute.Anonymous(
             WorkflowJob(AgentId("AGENT"), PathExecutable("A"), returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
-            sourcePos(18, 85)),
+            sourcePos = sourcePos(18, 85)),
           ImplicitEnd(sourcePos(87, 88)))))
   }
 
@@ -192,7 +223,7 @@ final class WorkflowParserTest extends AnyFreeSpec
         Vector(
           Execute.Anonymous(
             WorkflowJob(AgentId("AGENT"), PathExecutable("A"), returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3)),
-            sourcePos(18, 82)),
+            sourcePos = sourcePos(18, 82)),
           ImplicitEnd(sourcePos(84, 85)))))
   }
 
@@ -208,7 +239,7 @@ final class WorkflowParserTest extends AnyFreeSpec
     checkWithSourcePos("""define workflow { A: execute executable="A", agent="AGENT"; }""",
       Workflow.anonymous(
         Vector(
-          "A" @: Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("A")), sourcePos(21, 58)),
+          "A" @: Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("A")), sourcePos = sourcePos(21, 58)),
           ImplicitEnd(sourcePos(60, 61)))))
   }
 
@@ -237,14 +268,14 @@ final class WorkflowParserTest extends AnyFreeSpec
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentId("AGENT"), PathExecutable("/THEN")),
-                sourcePos(43, 84)),
+                sourcePos = sourcePos(43, 84)),
               ImplicitEnd(sourcePos(85, 86))),
             Some(Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentId("AGENT"), PathExecutable("/ELSE")),
-                sourcePos(94, 135)),
+                sourcePos = sourcePos(94, 135)),
               ImplicitEnd(sourcePos(136, 137)))),
-            sourcePos(18, 40)),
+            sourcePos = sourcePos(18, 40)),
           ImplicitEnd(sourcePos(138, 139)))))
   }
 
@@ -328,12 +359,12 @@ final class WorkflowParserTest extends AnyFreeSpec
             Fork.Branch("🥕", Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentId("agent-a"), PathExecutable("/a")),
-                sourcePos(71+1, 111+1)),
+                sourcePos = sourcePos(71+1, 111+1)),
               ImplicitEnd(sourcePos(126+1, 127+1)))),
             Fork.Branch("🍋", Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentId("agent-b"), PathExecutable("/b")),
-                sourcePos(147+2, 187+2))))),
+                sourcePos = sourcePos(147+2, 187+2))))),
             sourcePos(29, 33)),
         ImplicitEnd(sourcePos(211+2, 212+2))))
   }
@@ -367,12 +398,12 @@ final class WorkflowParserTest extends AnyFreeSpec
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentId("AGENT"), PathExecutable("/TRY")),
-                sourcePos(55, 95)),
+                sourcePos = sourcePos(55, 95)),
               ImplicitEnd(sourcePos(107, 108))),
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentId("AGENT"), PathExecutable("/CATCH")),
-                sourcePos(129, 171)),
+                sourcePos = sourcePos(129, 171)),
               ImplicitEnd(sourcePos(183, 184))),
             sourcePos = sourcePos(37, 40)),
           ImplicitEnd(sourcePos(193, 194))))
@@ -494,16 +525,16 @@ final class WorkflowParserTest extends AnyFreeSpec
       Vector(
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), PathExecutable("/A")),
-          sourcePos(33, 71)),
+          sourcePos = sourcePos(33, 71)),
         IfFailedGoto(Label("FAILURE"), sourcePos(81, 101)),
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), PathExecutable("/B")),
-          sourcePos(111, 149)),
+          sourcePos = sourcePos(111, 149)),
         Goto(Label("END"), sourcePos(159, 167)),
         "FAILURE" @:
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), PathExecutable("/OnFailure")),
-          sourcePos(186, 232)),
+          sourcePos = sourcePos(186, 232)),
         "END" @:
         ExplicitEnd(sourcePos(247, 250)))))
   }
@@ -535,7 +566,7 @@ final class WorkflowParserTest extends AnyFreeSpec
       Vector(
         Execute.Anonymous(
           WorkflowJob(AgentId("AGENT"), PathExecutable("/A")),
-          sourcePos(90, 143)),
+          sourcePos = sourcePos(90, 143)),
         ImplicitEnd(sourcePos(170, 171))),
       source = Some(source)))
   }

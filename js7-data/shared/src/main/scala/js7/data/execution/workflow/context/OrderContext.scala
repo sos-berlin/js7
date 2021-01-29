@@ -57,8 +57,10 @@ object OrderContext
     highPriorityArguments: NamedValues,
     order: Order[Order.State],
     workflow: Workflow,
-    default: NamedValues = NamedValues.empty): Scope =
+    default: PartialFunction[String, Value] = PartialFunction.empty)
+  : Scope =
     new Scope {
+      private val nameToMaybeDefault: String => Option[Value] = default.lift
       private lazy val catchCount = Right(NumberValue(
         order.workflowPosition.position.catchCount))
 
@@ -81,7 +83,7 @@ object OrderContext
                       outcome.namedValues(name)
                   })
               .orElse(argument(name))
-              .orElse(default.get(name)))
+              .orElse(nameToMaybeDefault(name)))
 
         case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
           order.historicOutcomes

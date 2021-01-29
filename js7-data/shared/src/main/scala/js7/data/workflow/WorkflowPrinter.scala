@@ -87,6 +87,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
     if (env.nonEmpty) {
       sb.append(", env={")
       for ((name, expr) <- env.nameToExpr) {
+        if (sb.last != '{') sb.append(", ")
         appendQuoted(name)
         sb.append(": ")
         sb.append(expr.toString)
@@ -129,9 +130,13 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case ExplicitEnd(_) =>
         sb ++= "end;\n"
 
-      case Execute.Anonymous(workflowExecutable, _) =>
+      case Execute.Anonymous(workflowExecutable, arguments, _) =>
         sb ++= "execute "
         appendWorkflowExecutable(workflowExecutable)
+        if (arguments.nonEmpty) {
+          sb ++= ", arguments="
+          appendNamedValues(arguments)
+        }
         sb ++= ";\n"
 
       case Execute.Named(name, arguments, _) =>

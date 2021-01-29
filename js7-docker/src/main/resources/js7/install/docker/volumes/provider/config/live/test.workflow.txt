@@ -42,11 +42,19 @@ define workflow {
   }
 
   define job TEST1 {
-    execute agent="agent-1", taskLimit=50, executable="test", env={"hello": "Hello"};
+    execute
+      agent="agent-1",
+      executable="test",
+      taskLimit=50,
+      env={
+        "HELLO": $hello
+      };
   }
 
   define job TEST2 {
-    execute agent="agent-2", taskLimit=50,
+    execute
+      agent="agent-2",
+      taskLimit=50,
       env={
         "TEST_ARGUMENT": "☘️"
       },
@@ -61,6 +69,12 @@ exit
   }
 
   define job SLEEP {
-    execute executable="sleep", agent="agent-1", taskLimit=10;
+    execute
+      agent="agent-1",
+      executable="sleep",
+      taskLimit=10,
+      env={
+        "HELLO": $hello
+      };
   }
 }

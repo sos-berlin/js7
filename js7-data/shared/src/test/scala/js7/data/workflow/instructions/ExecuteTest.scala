@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.data.agent.AgentId
 import js7.data.job.{PathExecutable, ScriptExecutable}
 import js7.data.source.SourcePos
-import js7.data.value.StringValue
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
@@ -42,7 +42,7 @@ final class ExecuteTest extends AnyFreeSpec
 
     "Anonymous with defaults" in {
       testJson[Instruction.Labeled](
-        Execute(
+        Execute.Anonymous(
           WorkflowJob(
             AgentId("AGENT"),
             PathExecutable("EXECUTABLE"))),
@@ -69,9 +69,13 @@ final class ExecuteTest extends AnyFreeSpec
                 "ENV-VAR" -> NamedValue.last("VAR"),
                 "NUMBER" -> NumericConstant(7)))),
             Map("ARG" -> StringValue("VALUE"))),
+          Map("ARG" -> NumberValue(1)),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Anonymous",
+          "defaultArguments": {
+            "ARG": 1
+          },
           "job": {
             "agentId": "AGENT",
             "executable": {

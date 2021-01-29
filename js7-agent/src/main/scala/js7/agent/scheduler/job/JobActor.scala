@@ -53,7 +53,7 @@ extends Actor with Stash
   private var terminating = false
   private var temporaryFile = SetOnce[Path]
 
-  private val checkedExecutable: Checked[(Order[Order.Processing], Workflow) => Checked[Execute]] =
+  private val checkedExecutable: Checked[(Order[Order.Processing], NamedValues, Workflow) => Checked[Execute]] =
     workflowJob.executable match {
       case AbsolutePathExecutable(path, envExpr, v1Compatible) =>
         if (!conf.scriptInjectionAllowed)
@@ -61,22 +61,22 @@ extends Actor with Stash
         else {
           val file = Paths.get(path)
           warnIfNotExecutable(file)
-          Right((order, workflow) =>
-            evalEnv(toEvaluator(order, workflow), envExpr)
+          Right((order, executeArguments, workflow) =>
+            evalEnv(toEvaluator(order, executeArguments, workflow), envExpr)
               .map(env => Execute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible)))
         }
 
       case ex @ RelativePathExecutable(path, envExpr, v1Compatible) =>
-        Right { (order, workflow) =>
+        Right { (order, executeArguments, workflow) =>
           val file = ex.toFile(executablesDirectory)
           warnIfNotExecutable(file)
-          evalEnv(toEvaluator(order, workflow), envExpr)
+          evalEnv(toEvaluator(order, executeArguments, workflow), envExpr)
             .map(env => Execute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible))
         }
 
       case ex @ CommandLineExecutable(commandLineExpression, envExpr) =>
-        Right { (order, workflow) =>
-          val evaluator = toEvaluator(order, workflow)
+        Right { (order, executeArguments, workflow) =>
+          val evaluator = toEvaluator(order, executeArguments, workflow)
           new CommandLineEvaluator(evaluator)
             .eval(commandLineExpression)
             .flatMap { commandLine =>
@@ -96,16 +96,17 @@ extends Actor with Stash
             file.write(script, AgentConfiguration.FileEncoding)
           }.map { _ =>
             temporaryFile := file
-            (order, workflow) =>
-              evalEnv(toEvaluator(order, workflow), envExpr).map(env =>
+            (order, executeArguments, workflow) =>
+              evalEnv(toEvaluator(order, executeArguments, workflow), envExpr).map(env =>
                 Execute(CommandLine.fromFile(file), name = "tmp/" + file.getFileName,
                   env, v1Compatible = v1Compatible, isTemporary = true))
           }
         }
     }
 
-  private def toEvaluator(order: Order[Order.Processing], workflow: Workflow): Evaluator =
-    new Evaluator(OrderContext.makeScope(Map.empty, order, workflow, conf.workflowJob.defaultArguments))
+  private def toEvaluator(order: Order[Order.Processing], defaultArguments: NamedValues, workflow: Workflow): Evaluator =
+    new Evaluator(OrderContext.makeScope(Map.empty, order, workflow,
+      default = defaultArguments orElse conf.workflowJob.defaultArguments))
 
   private def evalEnv(evaluator: Evaluator, envExpr: ObjectExpression): Checked[Map[String, String]] =
     evaluator.evalObjectExpression(envExpr)
@@ -139,7 +140,7 @@ extends Actor with Stash
           TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), isKilled = false))
       } else {
         val killed = orderToRun.get(cmd.order.id).fold(false)(_.isKilled)
-        checkedExecutable.flatMap(_(cmd.order, cmd.workflow)) match {
+        checkedExecutable.flatMap(_(cmd.order, cmd.defaultArguments, cmd.workflow)) match {
           case Left(problem) =>
             replyWithOrderProcessed(
               Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed))  // Exception.toString is published !!!
@@ -331,7 +332,7 @@ object JobActor
   private case class Execute(
     commandLine: CommandLine,
     name: String,
-    env: Map[String,String],
+    env: Map[String, String],
     v1Compatible: Boolean,
     isTemporary: Boolean = false)
   {

@@ -132,7 +132,7 @@ object WorkflowParser
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
       (Index ~ keyword("execute") ~ w ~ anonymousWorkflowJob ~ hardEnd)
-        .map { case (start, job, end) => Execute.Anonymous(job, sourcePos(start, end)) })
+        .map { case (start, job, end) => Execute.Anonymous(job, sourcePos = sourcePos(start, end)) })
 
     private def jobInstruction[_: P] = P[Execute](
       (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValues(keyValue("arguments", namedValues))).? ~ hardEnd)
