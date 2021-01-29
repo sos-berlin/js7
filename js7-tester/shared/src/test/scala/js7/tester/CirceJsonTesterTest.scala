@@ -1,7 +1,7 @@
 package js7.tester
 
 import io.circe.generic.JsonCodec
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.testJsonString
 import js7.tester.CirceJsonTesterTest._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -11,7 +11,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class CirceJsonTesterTest extends AnyFreeSpec
 {
   "Case class" in {
-    testJson(a, JsonString)
+    testJsonString(a, JsonString)
   }
 }
 

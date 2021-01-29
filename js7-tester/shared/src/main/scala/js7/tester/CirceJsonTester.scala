@@ -15,7 +15,7 @@ object CirceJsonTester
   private val printer = Printer.noSpaces.copy(dropNullValues = true/*drops None*/)
   private val prettyPrinter = Printer.spaces2.copy(colonLeft = "", lrbracketsEmpty = "")
 
-  def testJson[A: Encoder: Decoder](a: A, jsonString: String): Assertion =
+  def testJsonString[A: Encoder: Decoder](a: A, jsonString: String): Assertion =
     testJson(a, parseJson(jsonString))
 
   def testJson[A: Encoder: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion = {

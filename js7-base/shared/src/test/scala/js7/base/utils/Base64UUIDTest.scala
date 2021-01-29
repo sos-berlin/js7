@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import java.util.UUID
+import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.utils.Base64UUID.{base64ToUUID, uuidToBase64}
 import js7.tester.CirceJsonTester.testJson
 import org.scalacheck.Gen
@@ -13,7 +14,8 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 final class Base64UUIDTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(Base64UUID(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")), """"ABEiM0RVZneImaq7zN3u_w"""")
+    testJson(Base64UUID(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")),
+    json""" "ABEiM0RVZneImaq7zN3u_w" """)
   }
 
   "Base64UUID" in {
