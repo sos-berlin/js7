@@ -7,7 +7,7 @@ import js7.base.process.ProcessSignal
 /**
  * @author Joacim Zschimmer
  */
-final case class ReturnCode(number: Int) extends GenericInt
+final case class ReturnCode private(number: Int) extends GenericInt
 {
   def isSuccess = number == 0
 
@@ -17,14 +17,22 @@ final case class ReturnCode(number: Int) extends GenericInt
 
 object ReturnCode extends GenericInt.Companion[ReturnCode]
 {
-  val Success = new ReturnCode(0)
-  val StandardFailure = new ReturnCode(1)
+  private val predefined = (0 to 255).map(new ReturnCode(_)).toArray
+
+  val Success = predefined(0)
+  val StandardFailure = predefined(1)
+
+  def apply(number: Int): ReturnCode =
+    if (predefined isDefinedAt number)
+      predefined(number)
+    else
+      new ReturnCode(number)
 
   def apply(o: Boolean): ReturnCode =
     if (o) Success else StandardFailure
 
-  def apply(signal: ProcessSignal) =
-    new ReturnCode(128 + signal.number)
+  def apply(signal: ProcessSignal): ReturnCode =
+    apply(128 + signal.number)
 
   @javaApi
   def fromBoolean(o: Boolean): ReturnCode =

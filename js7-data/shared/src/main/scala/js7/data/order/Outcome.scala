@@ -7,7 +7,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.ReturnCode
-import js7.data.value.{NamedValues, NumberValue}
+import js7.data.value.NamedValues
 
 /**
   * @author Joacim Zschimmer
@@ -21,8 +21,8 @@ sealed trait Outcome
 
 object Outcome
 {
-  val succeeded = new Succeeded(NamedValues.empty)
-  val succeededRC0 = new Succeeded(Map("returnCode" -> NumberValue(0)))
+  val succeeded = Succeeded.empty
+  val succeededRC0 = Succeeded.returnCode0
   val failed = new Failed(None, Map.empty)
   val RecoveryGeneratedOutcome = new Disrupted(Disrupted.JobSchedulerRestarted)
 
@@ -55,16 +55,19 @@ object Outcome
       Subtype(deriveCodec[Succeeded]))
   }
 
-  final case class Succeeded(namedValues: NamedValues = Map.empty) extends Completed {
+  final case class Succeeded(namedValues: NamedValues) extends Completed {
     def isSucceeded = true
   }
   object Succeeded extends Completed.Companion[Succeeded]
   {
+    val empty = new Succeeded(Map.empty)
+    val returnCode0 = new Succeeded(NamedValues.rc(0))
+
     protected def make(namedValues: NamedValues): Succeeded =
       if (namedValues.isEmpty)
-        succeeded
-      else if (namedValues == Map("returnCode" -> NumberValue(0)))
-        succeededRC0
+        empty
+      else if (namedValues == returnCode0.namedValues)
+        returnCode0
       else
         new Succeeded(namedValues)
 
@@ -74,7 +77,7 @@ object Outcome
 
     implicit val jsonDecoder: Decoder[Succeeded] = c =>
       for (namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)) yield
-        Succeeded(namedValues)
+        make(namedValues)
   }
 
   final case class Failed(errorMessage: Option[String], namedValues: NamedValues)
@@ -145,9 +148,21 @@ object Outcome
       Subtype(deriveCodec[Disrupted]))
   }
 
-  implicit val jsonCodec = TypedJsonCodec[Outcome](
+  private val typedJsonCodec = TypedJsonCodec[Outcome](
     Subtype[Succeeded],
     Subtype[Failed],
     Subtype(deriveCodec[Killed]),
     Subtype(deriveCodec[Disrupted]))
+
+  private val predefinedRC0SucceededJson: JsonObject =
+    TypedJsonCodec.typeField[Succeeded] +: Succeeded.returnCode0.asJsonObject
+
+  implicit val jsonEncoder: Encoder.AsObject[Outcome] = outcome =>
+    if (outcome eq Succeeded.returnCode0)
+      predefinedRC0SucceededJson
+    else
+      typedJsonCodec.encodeObject(outcome)
+
+  implicit val jsonDecoder: Decoder[Outcome] =
+    typedJsonCodec
 }

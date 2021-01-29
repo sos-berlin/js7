@@ -2,6 +2,7 @@ package js7.data.value
 
 import cats.instances.vector._
 import cats.syntax.traverse._
+import io.circe.syntax._
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
@@ -53,31 +54,43 @@ object Value
 
   implicit val jsonEncoder: Encoder[Value] = {
     case StringValue(o) => Json.fromString(o)
+    case NumberValue.Zero => NumberValue.ZeroJson
+    case NumberValue.One => NumberValue.OneJson
     case NumberValue(o) => Json.fromBigDecimal(o)
     case BooleanValue(o) => Json.fromBoolean(o)
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
   }
 
-  implicit val jsonDecoder: Decoder[Value] = c => {
-    val j = c.value
-    if (j.isString)
-      Right(StringValue(j.asString.get))
-    else if (j.isNumber)
-      j.asNumber.get.toBigDecimal match {
-        case Some(o) => Right(NumberValue(o))
-        case None => Left(DecodingFailure(s"JSON number is not representable as a Java BigDecimal: $j", c.history))
-      }
-    else if (j.isBoolean)
-      Right(BooleanValue(j.asBoolean.get))
-    else if (j.isArray)
-      j.asArray.get.traverse(jsonDecoder.decodeJson).map(ListValue.apply)
-    else if (j.isObject)
-      j.asObject.get.toVector
-        .traverse { case (k, v) => jsonDecoder.decodeJson(v).map(k -> _) }
-        .map(o => ObjectValue(o.toMap))
-    else
-      Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
+  implicit val jsonDecoder: Decoder[Value] = {
+    val Zero = Right(NumberValue.Zero)
+    val One = Right(NumberValue.One)
+    val False = Right(BooleanValue.False)
+    val True = Right(BooleanValue.True)
+    c => {
+      val j = c.value
+      if (j.isString)
+        Right(StringValue(j.asString.get))
+      else if (j.isNumber)
+        j.asNumber.get match {
+          case NumberValue.ZeroJson => Zero
+          case NumberValue.OneJson => One
+          case number => number.toBigDecimal match {
+            case Some(o) => Right(NumberValue(o))
+            case None => Left(DecodingFailure(s"JSON number is not representable as a Java BigDecimal: $j", c.history))
+          }
+        }
+      else if (j.isBoolean)
+        if (j.asBoolean.get) True else False
+      else if (j.isArray)
+        j.asArray.get.traverse(jsonDecoder.decodeJson) map ListValue.apply
+      else if (j.isObject)
+        j.asObject.get.toVector
+          .traverse { case (k, v) => jsonDecoder.decodeJson(v).map(k -> _) }
+          .map(o => ObjectValue(o.toMap))
+      else
+        Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
+    }
   }
 
   object conversions {
@@ -142,6 +155,8 @@ object NumberValue extends ValueType
   val name = "Number"
   val Zero = NumberValue(0)
   val One = NumberValue(1)
+  val ZeroJson = 0.asJson
+  val OneJson = 1.asJson
 
   def fromString(number: String): Checked[NumberValue] =
     try

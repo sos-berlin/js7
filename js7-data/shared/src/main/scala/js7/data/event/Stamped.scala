@@ -51,7 +51,8 @@ object Stamped
         case Some(o) =>
           fields ++= o.toIterable
         case None =>
-          if (!json.isArray) sys.error(s"Stamped[A], A must serialze to a JSON object or array, not: ${json.getClass.simpleScalaName}")
+          if (!json.isArray) sys.error(s"Stamped[A]: A must serialize to a JSON object or array, " +
+            s"but not: ${json.getClass.simpleScalaName}")
           fields += "array" -> json
       }
       JsonObject.fromIterable(fields)
@@ -61,7 +62,7 @@ object Stamped
     cursor =>
       for {
         eventId <- cursor.get[EventId]("eventId")
-        timestampMillis = cursor.get[Long]("timestamp") getOrElse EventId.toEpochMilli(eventId)
+        timestampMillis <- cursor.getOrElse[Long]("timestamp")(EventId.toEpochMilli(eventId))
         a <- cursor.get[A]("array") match {  // stamped.value must not contain a field named "array" !!!
           case o if o.isRight => o
           case _ => cursor.as[A]

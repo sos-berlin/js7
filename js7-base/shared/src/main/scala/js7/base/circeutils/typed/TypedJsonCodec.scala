@@ -81,6 +81,9 @@ object TypedJsonCodec
 {
   val TypeFieldName = "TYPE"
 
+  def typeField[A: ClassTag]: (String, Json) =
+    TypeFieldName -> Json.fromString(typeName(implicitClass[A]))
+
   def typeName[A: ClassTag]: String =
     typeName(implicitClass[A])
 

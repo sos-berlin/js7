@@ -54,6 +54,6 @@ object JOutcome extends JJsonable.Companion[JOutcome]
   final case class Killed(asScala: Outcome.Killed) extends JOutcome
   final case class Disrupted(asScala: Outcome.Disrupted) extends JOutcome
 
-  protected def jsonEncoder = Outcome.jsonCodec
-  protected def jsonDecoder = Outcome.jsonCodec
+  protected def jsonEncoder = Outcome.jsonEncoder
+  protected def jsonDecoder = Outcome.jsonDecoder
 }

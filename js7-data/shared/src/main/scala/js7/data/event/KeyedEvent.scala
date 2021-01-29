@@ -49,11 +49,10 @@ object KeyedEvent {
     }
 
   implicit def jsonDecoder[E <: Event](implicit decoder: Decoder[E], keyDecoder: Decoder[E#Key]): Decoder[KeyedEvent[E]] =
-    cursor => {
-      val key = cursor.get[E#Key]("key") getOrElse NoKey.asInstanceOf[E#Key]
-      for (event <- cursor.as[E]) yield
-        KeyedEvent(key, event)
-    }
+    cursor => for {
+      key <- cursor.getOrElse[E#Key]("key")(NoKey.asInstanceOf[E#Key])
+      event <- cursor.as[E]
+    } yield KeyedEvent(key, event)
 
   def typedJsonCodec[E <: Event: ClassTag](subtypes: KeyedEventTypedJsonCodec.KeyedSubtype[_ <: E]*) =
     KeyedEventTypedJsonCodec[E](subtypes: _*)
