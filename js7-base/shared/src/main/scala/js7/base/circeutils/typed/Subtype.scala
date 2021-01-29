@@ -47,7 +47,7 @@ object Subtype {
     * Usage: Subtype(encoder, decoder)
     */
   def apply[A: ClassTag](encoder: Encoder.AsObject[A], decoder: Decoder[A],
-    subclasses: Iterable[Class[_/*crashes scalac 2.13.3: <: A*/]])
+    subclasses: Iterable[Class[_<: A]])
   : Subtype[A] =
     fromClassName[A](implicitClass[A], subclasses, encoder, decoder)
 
@@ -88,7 +88,7 @@ object Subtype {
     of(implicitClass[A], Nil, typeName, codec, codec)
 
   def named[A: ClassTag: Encoder.AsObject: Decoder](
-    subclasses: Iterable[Class[_/*crashes scalac 2.13.3: <: A*/]],
+    subclasses: Iterable[Class[_ <: A]],
     aliases: Seq[String])
   : Subtype[A] =
     fromClassName[A](implicitClass[A], subclasses, implicitly[Encoder.AsObject[A]], implicitly[Decoder[A]],
@@ -97,7 +97,7 @@ object Subtype {
   def named[A: ClassTag](
     encoder: Encoder.AsObject[A],
     decoder: Decoder[A],
-    subclasses: Iterable[Class[_/*crashes scalac 2.13.3: <: A*/]],
+    subclasses: Iterable[Class[_ <: A]],
     aliases: Seq[String])
   : Subtype[A] =
     fromClassName[A](implicitClass[A], subclasses, encoder, decoder, aliases)
