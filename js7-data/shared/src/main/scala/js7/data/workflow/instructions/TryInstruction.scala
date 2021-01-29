@@ -1,11 +1,12 @@
 package js7.data.workflow.instructions
 
+import cats.implicits.catsKernelStdCommutativeMonoidForOption
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.TryInstruction._
 import js7.data.workflow.position.{BranchId, CatchBranchId, Position, TryBranchId, TryCatchBranchId}
@@ -114,8 +115,8 @@ object TryInstruction
     o => JsonObject(
       "try" -> o.tryWorkflow.asJson,
       "catch" -> o.catchWorkflow.asJson,
-      "retryDelays" -> (o.retryDelays.nonEmpty ? o.retryDelays).asJson,
-      "maxTries" -> (o.maxTries.nonEmpty ? o.maxTries).asJson,
+      "retryDelays" -> o.retryDelays.asJson,
+      "maxTries" -> o.maxTries.??.asJson,
       "sourcePos" -> o.sourcePos.asJson)
 
   implicit val jsonDecoder: Decoder[TryInstruction] =

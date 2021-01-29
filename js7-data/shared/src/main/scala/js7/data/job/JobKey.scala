@@ -2,7 +2,7 @@ package js7.data.job
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowPosition, _}
 import js7.data.workflow.{WorkflowId, WorkflowPath}
@@ -46,7 +46,7 @@ object JobKey
     case Named(WorkflowBranchPath(workflowId, branchPath), name) =>
       JsonObject(
         "workflowId" -> workflowId.asJson,
-        "branchPath" -> (branchPath.nonEmpty ? branchPath).asJson,
+        "branchPath" -> branchPath.??.asJson,
         "jobName" -> name.asJson)
   }
 

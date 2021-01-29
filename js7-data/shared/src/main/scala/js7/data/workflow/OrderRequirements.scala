@@ -2,6 +2,7 @@ package js7.data.workflow
 
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.Checked
+import js7.base.utils.typeclasses.IsEmpty
 import js7.data.value.{NamedValues, Value}
 
 final case class OrderRequirements(
@@ -23,5 +24,6 @@ final case class OrderRequirements(
 object OrderRequirements
 {
   val empty = OrderRequirements(None)
+  implicit val orderRequirementsIsEmpty = IsEmpty[OrderRequirements](_.isEmpty)
   implicit val jsonCodec = deriveCodec[OrderRequirements]
 }

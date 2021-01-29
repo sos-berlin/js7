@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderAdded
@@ -66,7 +66,7 @@ object FreshOrder
       "id" -> o.id.asJson,
       "workflowPath" -> o.workflowPath.asJson,
       "scheduledFor" -> o.scheduledFor.asJson,
-      "arguments" -> (o.arguments.nonEmpty ? o.arguments).asJson)
+      "arguments" -> o.arguments.??.asJson)
 
   implicit val jsonDecoder: Decoder[FreshOrder] =
     c => for {

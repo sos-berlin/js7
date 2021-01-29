@@ -11,6 +11,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.value.expression.Expression.ObjectExpression
 
 sealed trait Executable {
@@ -53,9 +54,9 @@ object PathExecutable
 
   val jsonEncoder: Encoder.AsObject[PathExecutable] =
     o => JsonObject(
-      TypedJsonCodec.TypeFieldName -> "PathExecutable".asJson,
+      TypedJsonCodec.typeField[PathExecutable],
       "path" -> o.path.asJson,
-      "env" -> (o.env.nonEmpty ? o.env).asJson,
+      "env" -> o.env.??.asJson,
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
   val jsonDecoder: Decoder[PathExecutable] =
@@ -129,7 +130,7 @@ object CommandLineExecutable
   implicit val jsonEncoder: Encoder.AsObject[CommandLineExecutable] =
     o => JsonObject(
       "command" -> o.commandLineExpression.toString.asJson,
-      "env" -> (o.env.nonEmpty ? o.env).asJson)
+      "env" -> o.env.??.asJson)
 
   implicit val jsonDecoder: Decoder[CommandLineExecutable] =
     cursor => for {
@@ -149,7 +150,7 @@ object ScriptExecutable
   implicit val jsonEncoder: Encoder.AsObject[ScriptExecutable] =
     o => JsonObject(
       "script" -> o.script.asJson,
-      "env" -> (o.env.nonEmpty ? o.env).asJson,
+      "env" -> o.env.??.asJson,
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
   implicit val jsonDecoder: Decoder[ScriptExecutable] =

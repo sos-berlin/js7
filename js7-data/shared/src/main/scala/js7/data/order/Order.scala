@@ -9,6 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.order.Order._
@@ -551,7 +552,7 @@ object Order
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
     JsonObject(
       "id" -> order.id.asJson,
-      "arguments" -> (order.arguments.nonEmpty ? order.arguments).asJson,
+      "arguments" -> order.arguments.??.asJson,
       "workflowPosition" -> order.workflowPosition.asJson,
       "state" -> order.state.asJson,
       "attachedState" -> order.attachedState.asJson,

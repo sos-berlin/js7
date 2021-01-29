@@ -11,6 +11,7 @@ import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentId
 import js7.data.item.{VersionedItem, VersionedItemId}
 import js7.data.job.JobKey
@@ -323,7 +324,7 @@ extends VersionedItem
       val anonymousJobKeys = workflow.numberedInstructions.collect {
         case (nr, _ @: (ex: Execute.Anonymous)) => JobKey.Anonymous(workflowBranchPath / nr) -> ex.job
       }
-      namedJobKeys ++ anonymousJobKeys
+      namedJobKeys ++ anonymousJobKeys: Seq[(JobKey, WorkflowJob)]/*for IntelliJ*/
     }
 
   def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =
@@ -468,7 +469,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     case Workflow(id, instructions, namedJobs, orderRequirements, source, _) =>
       id.asJsonObject ++
         JsonObject(
-          "orderRequirements" -> (orderRequirements.nonEmpty ? orderRequirements).asJson,
+          "orderRequirements" -> orderRequirements.??.asJson,
           "instructions" -> instructions
             .dropLastWhile(labeled => labeled.instruction == ImplicitEnd() && labeled.maybePosition.isEmpty)
             .asJson,
@@ -482,7 +483,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       id <- cursor.value.as[WorkflowId]
       instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
       namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
-      orderRequirements <- cursor.get[Option[OrderRequirements]]("orderRequirements").map(_ getOrElse OrderRequirements.empty)
+      orderRequirements <- cursor.getOrElse[OrderRequirements]("orderRequirements")(OrderRequirements.empty)
       source <- cursor.get[Option[String]]("source")
       workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderRequirements, source)
         .toDecoderResult(cursor.history)

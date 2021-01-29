@@ -6,6 +6,7 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.utils.Identifier.isIdentifier
+import js7.base.utils.typeclasses.IsEmpty
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.workflow.Label
@@ -116,7 +117,7 @@ object Expression
   }
   object ObjectExpression {
     val empty = ObjectExpression(Map.empty)
-
+    implicit val objectExpressionIsEmpty = IsEmpty[ObjectExpression](_.isEmpty)
     implicit val jsonEncoder: Encoder.AsObject[ObjectExpression] =
       o => JsonObject.fromIterable(o.nameToExpr.view.mapValues(_.asJson).toSeq)
 

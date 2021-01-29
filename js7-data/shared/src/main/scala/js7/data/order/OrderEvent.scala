@@ -7,6 +7,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
@@ -39,7 +40,7 @@ object OrderEvent {
       o => JsonObject(
         "workflowId" -> o.workflowId.asJson,
         "scheduledFor" -> o.scheduledFor.asJson,
-        "arguments" -> (o.arguments.nonEmpty ? o.arguments).asJson)
+        "arguments" -> o.arguments.??.asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
       c => for {

@@ -5,6 +5,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor}
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
@@ -35,9 +36,10 @@ object SimpleItem
   def jsonCodec(companions: Seq[Companion]): CirceObjectCodec[SimpleItem] = {
     val typeToCompanion = companions.toKeyedMap(_.name)
     new Encoder.AsObject[SimpleItem] with Decoder[SimpleItem] {
-      def encodeObject(item: SimpleItem) =
+      def encodeObject(item: SimpleItem) = {
         (TypeFieldName -> item.companion.name.asJson) +:
           item.companion.jsonEncoder.encodeObject(item.asInstanceOf[item.companion.Item])
+      }
 
       def apply(cursor: HCursor): Result[SimpleItem] =
         for {

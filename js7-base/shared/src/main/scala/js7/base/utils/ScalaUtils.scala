@@ -1,9 +1,8 @@
 package js7.base.utils
 
 import cats.data.NonEmptyList
-import cats.kernel.Semigroup
 import cats.syntax.option._
-import cats.{Functor, Monad}
+import cats.{Functor, Monad, Semigroup}
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
@@ -66,7 +65,7 @@ object ScalaUtils
           case Some(a) => F.pure(a.some)
         }
 
-      /** Simple alernative to `EitherT` `flatMap` if for-comprehension is not needed. */
+      /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
       def flatMapT(f: A => F[Option[A]])(implicit F: Monad[F]): F[Option[A]] =
         F.flatMap(underlying) {
           case None => F.pure(None)

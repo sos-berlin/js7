@@ -9,6 +9,7 @@ import js7.base.annotation.javaApi
 import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import scala.language.implicitConversions
 
 /**
@@ -273,7 +274,7 @@ object Problem
       (problem match {
         case problem: HasCode => Seq(
           ("code" -> problem.code.asJson),
-          ("arguments" -> (problem.arguments.nonEmpty ? problem.arguments).asJson))
+          ("arguments" -> problem.arguments.??.asJson))
 
         case _: Problem =>
           Seq.empty

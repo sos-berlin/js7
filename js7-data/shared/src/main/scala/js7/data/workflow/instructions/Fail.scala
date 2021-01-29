@@ -3,6 +3,7 @@ package js7.data.workflow.instructions
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.source.SourcePos
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression
@@ -26,7 +27,7 @@ object Fail
   implicit val jsonEncoder: Encoder.AsObject[Fail] =
     o => JsonObject(
       "message" -> o.message.asJson,
-      "namedValues" -> (o.namedValues.nonEmpty ? o.namedValues).asJson,
+      "namedValues" -> o.namedValues.??.asJson,
       "uncatchable" -> (o.uncatchable ? o.uncatchable).asJson,
       "sourcePos" -> o.sourcePos.asJson)
 
