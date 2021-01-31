@@ -34,13 +34,17 @@ object Workflows
                 reuseIfEqual(b, b.copy(
                   workflow = b.workflow.reduceForAgent(agentId))))
 
+          case labels @: (lock: LockInstruction)  =>
+            labels @: reuseIfEqual(lock, lock.copy(
+              lockedWorkflow = lock.lockedWorkflow.reduceForAgent(agentId)))
+
           case o @ _ @: (ex: Execute.Named) if underlying.findJob(ex.name).orThrow/*never*/ isExecutableOnAgent agentId =>
             o
 
           case o @ _ @: (ex: Execute.Anonymous) if ex.job isExecutableOnAgent agentId =>
             o
 
-          case o @ _ @: (_: Fail | _: End | _: IfFailedGoto | _: Goto | _: Retry | _: LockInstruction) =>
+          case o @ _ @: (_: Fail | _: End | _: IfFailedGoto | _: Goto | _: Retry) =>
             o
 
           case labels @: instruction =>

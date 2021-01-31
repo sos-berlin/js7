@@ -32,7 +32,7 @@ import scala.util.Random
 
 final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentIds = Seq(agentId, bAgentId)
   protected val versionedItems = Nil
   override protected def controllerConfig = config"""
     js7.web.server.auth.loopback-is-public = on
@@ -55,15 +55,20 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.updateSimpleItems(items).await(99.s).orThrow
   }
 
-  "Run some orders on a lock with limit=1" in {
+
+  "Run some orders at differant agents with a lock with limit=1" in {
     withTemporaryFile("LockTest-", ".tmp") { file =>
       val workflow = defineWorkflow(s"""
         define workflow {
           lock (lock = "LOCK") {
-            job JOB;
+            job JOB-1;
+            job JOB-2;
           };
-          define job JOB {
-            execute agent="AGENT", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
+          define job JOB-1 {
+            execute agent="${agentId.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
+          }
+          define job JOB-2 {
+            execute agent="${bAgentId.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
           }
         }""")
 
@@ -85,13 +90,21 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAdded(workflow.id),
         OrderStarted,
         OrderLockAcquired(lockId, None),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
-        OrderProcessingStarted,
-        OrderProcessed(Outcome.succeededRC0),
-        OrderMoved(Position(0) / "lock" % 1),
-        OrderDetachable,
-        OrderDetached,
+          OrderAttachable(agentId),
+          OrderAttached(agentId),
+          OrderProcessingStarted,
+          OrderProcessed(Outcome.succeededRC0),
+          OrderMoved(Position(0) / "lock" % 1),
+          OrderDetachable,
+          OrderDetached,
+
+          OrderAttachable(bAgentId),
+          OrderAttached(bAgentId),
+          OrderProcessingStarted,
+          OrderProcessed(Outcome.succeededRC0),
+          OrderMoved(Position(0) / "lock" % 2),
+          OrderDetachable,
+          OrderDetached,
         OrderLockReleased(lockId),
         OrderFinished))
 
@@ -102,13 +115,21 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           OrderStarted,
           OrderLockQueued(lockId, None),
           OrderLockAcquired(lockId, None),
-          OrderAttachable(agentId),
-          OrderAttached(agentId),
-          OrderProcessingStarted,
-          OrderProcessed(Outcome.succeededRC0),
-          OrderMoved(Position(0) / "lock" % 1),
-          OrderDetachable,
-          OrderDetached,
+            OrderAttachable(agentId),
+            OrderAttached(agentId),
+            OrderProcessingStarted,
+            OrderProcessed(Outcome.succeededRC0),
+            OrderMoved(Position(0) / "lock" % 1),
+            OrderDetachable,
+            OrderDetached,
+
+            OrderAttachable(bAgentId),
+            OrderAttached(bAgentId),
+            OrderProcessingStarted,
+            OrderProcessed(Outcome.succeededRC0),
+            OrderMoved(Position(0) / "lock" % 2),
+            OrderDetachable,
+            OrderDetached,
           OrderLockReleased(lockId),
           OrderFinished))
       }
@@ -328,6 +349,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object LockTest {
   private val agentId = AgentId("AGENT")
+  private val bAgentId = AgentId("B-AGENT")
   private val lockId = LockId("LOCK")
   private val lock2Id = LockId("LOCK-2")
   private val limit2LockId = LockId("LOCK-LIMIT-2")
