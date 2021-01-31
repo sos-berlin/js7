@@ -21,11 +21,13 @@ final class IsEmptyTest extends AnyFreeSpec
   private val some: Option[Int]= Some(1)
 
   private case class Special(number: Int)
-  private implicit val specialMonoid: Monoid[Special] = new Monoid[Special] {
-    val empty = Special(0)
-    def combine(x: Special, y: Special) = Special(x.number + y.number)
+  private object Special {
+    implicit val specialMonoid: Monoid[Special] = new Monoid[Special] {
+      val empty = Special(0)
+      def combine(x: Special, y: Special) = Special(x.number + y.number)
+    }
+    implicit val specialEq = Eq.fromUniversalEquals[Special]
   }
-  private implicit val specialEq = Eq.fromUniversalEquals[Special]
 
   private def testIsEmpty[A](what: A)(implicit A: IsEmpty[A]): Boolean =
     A.isEmpty(what)
@@ -61,11 +63,30 @@ final class IsEmptyTest extends AnyFreeSpec
     assert(none.?? == None)
     assert(some.?? == Some(some))  // !!!
 
+    // Boolean ?? operator conflicts with dyadic operator (see test below)
+    assert(false.emptyToNone == None)
+    assert(true.emptyToNone == Some(true))
+
+    assert(0.?? == None)
+    assert(1.?? == Some(1))
+
+    assert("".?? == None)
+    assert("x".?? == Some("x"))
+
     assert(emptySpecial.?? == None)
     assert(nonEmptySpecial.?? == Some(nonEmptySpecial))
   }
 
-  "IsEmpty ?? is compatible with Boolean ??" in {
+  "Monadic boolean ?? operator and dyadic ?? operator" in {
+    // Boolean ?? conflicts with dyadic operator
+    //assert(false.?? == None)
+    //assert(true.?? == Some(true))
+
+    // But there is the ? operator
+    assert(false.? == None)
+    assert(true.? == Some(true))
+
+    // The dyadic operator
     assert(true ?? "x" == "x")
     assert(false ?? "x" == "")
   }
