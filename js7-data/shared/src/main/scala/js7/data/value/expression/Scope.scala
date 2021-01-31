@@ -21,7 +21,9 @@ trait Scope
 
 object Scope
 {
-  object Constant extends Scope {
+  val empty: Scope = Empty
+
+  private object Empty extends Scope {
     val symbolToValue = _ => Left(ConstantExpressionRequiredProblem)
     val findValue = _ => Left(ConstantExpressionRequiredProblem)
   }

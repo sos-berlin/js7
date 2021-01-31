@@ -383,7 +383,7 @@ final class EvaluatorTest extends AnyFreeSpec
   }
 
   "Constant expressions" - {
-    implicit val evaluator = Evaluator.Constant
+    implicit val evaluator = new Evaluator(Scope.empty)
     val eval = evaluator.eval _
 
     val longString =

@@ -146,5 +146,6 @@ final class Evaluator(scope: Scope)
 
 object Evaluator
 {
-  val Constant = new Evaluator(Scope.Constant)
+  def eval(expression: Expression, scope: Scope = Scope.empty): Checked[Value] =
+    new Evaluator(scope).eval(expression)
 }
