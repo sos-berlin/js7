@@ -93,9 +93,9 @@ object Value
     }
   }
 
-  object conversions {
-    implicit def implicitNumericValue(number: Int): Value = NumberValue(number)
-    implicit def implicitStringValue(string: String): Value = StringValue(string)
+  object convenience {
+    implicit def convenientStringValue(string: String): Value = StringValue(string)
+    implicit def convenientNumericValue(number: Int): Value = NumberValue(number)
   }
 }
 
