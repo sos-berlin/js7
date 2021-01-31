@@ -10,7 +10,8 @@ import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Logger
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, RelativePathExecutable, ReturnCode, ScriptExecutable}
+import js7.data.job.internal.InternalJob
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, InternalExecutable, RelativePathExecutable, ReturnCode, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
@@ -20,6 +21,7 @@ import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.tests.ExecuteTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import monix.eval.Task
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -194,6 +196,14 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Outcome.Succeeded.rc(3)))
   }
 
+  addExecuteTest(
+    Execute(
+      WorkflowJob(
+        agentId,
+        InternalExecutable(classOf[TestInternalJob].getName))),
+    orderArguments = Map("ARG" -> NumberValue(100)),
+    expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
+
   "Jobs in nested workflow" in {
     testWithWorkflow(
       WorkflowParser.parse("""
@@ -263,8 +273,8 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private def runWithWorkflow(
     anonymousWorkflow: Workflow,
-    orderArguments: Map[String, Value] = Map.empty):
-  Seq[OrderEvent] = {
+    orderArguments: Map[String, Value] = Map.empty)
+  : Seq[OrderEvent] = {
     testPrintAndParse(anonymousWorkflow)
 
     val versionId = versionIdIterator.next()
@@ -288,8 +298,6 @@ object ExecuteTest
   private val logger = Logger(getClass)
   private val agentId = AgentId("AGENT")
 
-  private def variableRef(name: String) = if (isWindows) s"%$name%" else "$" + name
-
   private def returnCodeScript(returnCode: Int) =
     if (isWindows) s"@exit $returnCode"
     else s"exit $returnCode"
@@ -297,4 +305,14 @@ object ExecuteTest
   private def returnCodeScript(envName: String) =
     if (isWindows) s"@exit %$envName%"
     else s"""exit "$$$envName""""
+
+  private final class TestInternalJob
+  extends InternalJob
+  {
+    def processOrder(context: InternalJob.OrderContext) =
+      Task {
+        for (number <- context.evalToBigDecimal("$ARG")) yield
+          NamedValues("RESULT" -> NumberValue(number + 1))
+      }
+  }
 }

@@ -26,7 +26,7 @@ private final case class Statistics(
   def toLine: String =
     completedOrderCount.toString + "+" + completedForkedOrderCount + " orders completed" +
       ((failedOrderCount > 0) ?? s", $failedOrderCount FAILED") + " · " +
-      processedCount + " processes · " +
+      processedCount + " jobs executed · " +
       eventCount + " events · " +
       toKBGB(stdWritten) + " stdout+stderr · " +
       duration.pretty
@@ -36,11 +36,11 @@ private final case class Statistics(
       numberAndPerSecondString(duration, completedOrderCount, "main orders") + ", " +
         ((failedOrderCount > 0) ?? s", $failedOrderCount ORDERS FAILED"),
       numberAndPerSecondString(duration, totalOrderCount, "orders"),
-      numberAndPerSecondString(duration, processedCount, "processes"),
+      numberAndPerSecondString(duration, processedCount, "jobs"),
       numberAndPerSecondString(duration, eventCount, "events"),
       numberAndPerSecondString(duration, stdWritten / 1_000_000, "MB stdout+stderr"),
       s"∅ ${if (completedOrderCount == 0) "∞" else (totalOrderDuration / completedOrderCount).pretty} order duration",
-      s"∅ ${if (processedCount == 0) "∞" else (totalProcessDuration / processedCount).pretty} process duration" +
+      s"∅ ${if (processedCount == 0) "∞" else (totalProcessDuration / processedCount).pretty} job duration" +
         s", longest is ${maximumProcessDuration.pretty}",
       duration.pretty)
 }

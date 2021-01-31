@@ -15,7 +15,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.scalautil.{IOExecutor, Logger}
 import js7.data.job.ReturnCode
-import js7.data.order.OrderId
+import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.taskserver.modules.shell.RichProcessStartSynchronizer
 import js7.taskserver.task.process.ShellScriptProcess.startPipedShellScript
@@ -28,7 +28,8 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class SimpleShellTaskRunner(conf: TaskConfiguration,
+final class SimpleShellTaskRunner(
+  conf: TaskConfiguration,
   agentTaskId: AgentTaskId,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   agentConfiguration: AgentConfiguration)
@@ -52,7 +53,7 @@ extends TaskRunner
   private val startedAt = Timestamp.now
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(
     agentConfiguration.temporaryDirectory,
-    v1Compatible = conf.workflowJob.executable.v1Compatible)
+    v1Compatible = conf.v1Compatible)
   private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
 
@@ -69,9 +70,9 @@ extends TaskRunner
     }
 
   def processOrder(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels)
-  : Task[TaskStepEnded] =
+  : Task[Outcome.Completed] =
     for (returnCode <- runProcess(orderId, env, stdChannels)) yield
-      TaskStepSucceeded(fetchReturnValuesThenDeleteFile(), returnCode)
+      conf.toOutcome(fetchReturnValuesThenDeleteFile(), returnCode)
 
   private def runProcess(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels): Task[ReturnCode] =
     Task.deferFuture(
@@ -88,7 +89,7 @@ extends TaskRunner
       })
 
   private def fetchReturnValuesThenDeleteFile(): NamedValues = {
-    val result = returnValuesProvider.read()
+    val result = returnValuesProvider.read() // TODO Catch exceptions
     // TODO When Windows locks the file, try delete it later, asynchronously, and block file in FilePool
     try returnValuesProvider.deleteFile()
     catch { case NonFatal(t) =>

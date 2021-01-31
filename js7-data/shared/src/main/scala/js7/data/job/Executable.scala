@@ -14,13 +14,15 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.value.expression.Expression.ObjectExpression
 
-sealed trait Executable {
+sealed trait Executable
+
+sealed trait ProcessExecutable extends Executable {
   def v1Compatible: Boolean
   def env: ObjectExpression
 }
 
 sealed trait PathExecutable
-extends Executable
+extends ProcessExecutable
 {
   def path: String
 
@@ -119,7 +121,7 @@ object RelativePathExecutable {
 final case class CommandLineExecutable(
   commandLineExpression: CommandLineExpression,
   env: ObjectExpression = ObjectExpression.empty)
-extends Executable {
+extends ProcessExecutable {
   def v1Compatible = false
 }
 object CommandLineExecutable
@@ -144,7 +146,7 @@ final case class ScriptExecutable(
   script: String,
   env: ObjectExpression = ObjectExpression.empty,
   v1Compatible: Boolean = false)
-extends Executable
+extends ProcessExecutable
 object ScriptExecutable
 {
   implicit val jsonEncoder: Encoder.AsObject[ScriptExecutable] =
@@ -161,6 +163,8 @@ object ScriptExecutable
     } yield ScriptExecutable(script, env, v1Compatible)
 }
 
+final case class InternalExecutable(className: String) extends Executable
+
 object Executable
 {
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
@@ -170,5 +174,6 @@ object Executable
         classOf[RelativePathExecutable]),
       aliases = Seq("ExecutablePath")),
     Subtype.named[ScriptExecutable](aliases = Seq("ExecutableScript")),
-    Subtype[CommandLineExecutable])
+    Subtype[CommandLineExecutable],
+    Subtype(deriveCodec[InternalExecutable]))
 }

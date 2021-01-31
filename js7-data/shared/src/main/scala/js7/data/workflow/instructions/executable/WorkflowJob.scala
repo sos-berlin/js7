@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, Executable, PathExecutable, ReturnCode, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, PathExecutable, ReturnCode, ScriptExecutable}
 import js7.data.order.Outcome
 import js7.data.value.{NamedValues, NumberValue, ValuePrinter}
 import js7.data.workflow.instructions.ReturnCodeMeaning
@@ -22,9 +22,9 @@ final case class WorkflowJob private(
   agentId: AgentId,
   executable: Executable,
   defaultArguments: NamedValues,
-  returnCodeMeaning: ReturnCodeMeaning,
-  taskLimit: Int,
-  sigkillDelay: Option[FiniteDuration])
+  returnCodeMeaning: ReturnCodeMeaning/*TODO Move to ProcessExecutable*/,
+  taskLimit: Int,/*TODO Rename as parallelism*/
+  sigkillDelay: Option[FiniteDuration]/*TODO Move to ProcessExecutable*/)
 {
   def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
     Outcome.Completed(
@@ -40,7 +40,8 @@ final case class WorkflowJob private(
     (executable match {
       case PathExecutable(o, env, v1Compatible) => s"executable=$o"
       case ScriptExecutable(o, env, v1Compatible) => s"script=$o"
-      case CommandLineExecutable(expr, env) => s"command=" + ValuePrinter.quoteString(expr.toString)
+      case CommandLineExecutable(expr, env) => "command=" + ValuePrinter.quoteString(expr.toString)
+      case InternalExecutable(className) => "internalJobClass=" + ValuePrinter.quoteString(className)
     }) +
     (returnCodeMeaning match {
       case ReturnCodeMeaning.Default => ""

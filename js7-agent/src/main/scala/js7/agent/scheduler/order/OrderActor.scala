@@ -6,7 +6,6 @@ import akka.pattern.pipe
 import com.typesafe.config.Config
 import js7.agent.data.AgentState
 import js7.agent.scheduler.job.JobActor
-import js7.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import js7.agent.scheduler.order.OrderActor._
 import js7.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import js7.base.generic.{Accepted, Completed}
@@ -38,7 +37,11 @@ import shapeless.tag.@@
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActor private(orderId: OrderId, workflow: Workflow, protected val journalActor: ActorRef @@ JournalActor.type, conf: Conf)
+final class OrderActor private(
+  orderId: OrderId,
+  workflow: Workflow,
+  protected val journalActor: ActorRef @@ JournalActor.type,
+  conf: Conf)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
@@ -145,15 +148,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       case msg: Stdouterr =>  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
         stdouterr.handle(msg)
 
-      case JobActor.Response.OrderProcessed(`orderId`, taskStepEnded, isKilled) =>
-        val outcome = taskStepEnded match {
-          case TaskStepSucceeded(namedValues, returnCode) =>
-            val o = job.toOutcome(namedValues, returnCode)
-            if (isKilled) Outcome.Killed(o) else o
-
-          case TaskStepFailed(problem) =>
-            if (isKilled) Outcome.Killed(Outcome.Failed(Some(problem.toString/*???*/), Map.empty))
-            else Outcome.Disrupted(problem)
+      case JobActor.Response.OrderProcessed(`orderId`, outcome_, isKilled) =>
+        val outcome = outcome_ match {
+          case o: Outcome.Completed => if (isKilled) Outcome.Killed(o) else outcome_
+          case o => o
         }
         finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)
         context.unwatch(jobActor)

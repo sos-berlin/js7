@@ -3,6 +3,8 @@ package js7.agent.scheduler.job
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import cats.instances.vector._
 import cats.syntax.traverse._
+import java.lang.reflect.Constructor
+import java.lang.reflect.Modifier.isPublic
 import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
@@ -10,7 +12,8 @@ import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.agent.scheduler.job.JobActor._
-import js7.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
+import js7.agent.scheduler.job.task.{TaskConfiguration, TaskRunner}
+import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.SIGKILL
@@ -23,10 +26,11 @@ import js7.common.process.Processes.ShellFileAttributes
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.data.execution.workflow.context.OrderContext
-import js7.data.job.{AbsolutePathExecutable, CommandLine, CommandLineEvaluator, CommandLineExecutable, JobKey, RelativePathExecutable, ScriptExecutable}
-import js7.data.order.{Order, OrderId}
-import js7.data.value.expression.Evaluator
+import js7.data.job.internal.InternalJob
+import js7.data.job.{AbsolutePathExecutable, CommandLine, CommandLineEvaluator, CommandLineExecutable, InternalExecutable, JobKey, RelativePathExecutable, ScriptExecutable}
+import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.ObjectExpression
+import js7.data.value.expression.{Evaluator, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -63,7 +67,8 @@ extends Actor with Stash
           warnIfNotExecutable(file)
           Right((order, executeArguments, workflow) =>
             evalEnv(toEvaluator(order, executeArguments, workflow), envExpr)
-              .map(env => Execute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible)))
+              .map(env =>
+                ProcessExecute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible)))
         }
 
       case ex @ RelativePathExecutable(path, envExpr, v1Compatible) =>
@@ -71,7 +76,8 @@ extends Actor with Stash
           val file = ex.toFile(executablesDirectory)
           warnIfNotExecutable(file)
           evalEnv(toEvaluator(order, executeArguments, workflow), envExpr)
-            .map(env => Execute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible))
+            .map(env =>
+              ProcessExecute(CommandLine.fromFile(file), path, env, v1Compatible = v1Compatible))
         }
 
       case ex @ CommandLineExecutable(commandLineExpression, envExpr) =>
@@ -83,7 +89,8 @@ extends Actor with Stash
               warnIfNotExecutable(commandLine.file)
               evalEnv(evaluator, envExpr)
                 .map(env =>
-                  Execute(commandLine, name = commandLine.file.getFileName.toString, env, v1Compatible = ex.v1Compatible))
+                  ProcessExecute(commandLine, name = commandLine.file.getFileName.toString, env,
+                    v1Compatible = ex.v1Compatible))
             }
         }
 
@@ -98,15 +105,33 @@ extends Actor with Stash
             temporaryFile := file
             (order, executeArguments, workflow) =>
               evalEnv(toEvaluator(order, executeArguments, workflow), envExpr).map(env =>
-                Execute(CommandLine.fromFile(file), name = "tmp/" + file.getFileName,
+                ProcessExecute(CommandLine.fromFile(file), name = "tmp/" + file.getFileName,
                   env, v1Compatible = v1Compatible, isTemporary = true))
           }
         }
+
+      case InternalExecutable(className) =>
+        Checked.catchNonFatal {
+          val constructors = getClass.getClassLoader
+            .loadClass(className).asInstanceOf[Class[InternalJob]]
+            .getConstructors.asInstanceOf[Array[Constructor[InternalJob]]]
+            .filter(o => isPublic(o.getModifiers))
+          constructors
+            .find(_.getParameterTypes sameElements Array(classOf[InternalJob.JobContext]))
+            .orElse(constructors.find(_.getParameterTypes.isEmpty))
+            .toChecked(Problem.pure(s"Class '$className' does not have an appropriate constructor (empty or InternalJob.Context)"))
+        } .flatten
+          .map(constructor =>
+            (order, executeArguments, workflow) =>
+              Right(InternalExecute(constructor, order, workflow, executeArguments)))
     }
 
   private def toEvaluator(order: Order[Order.Processing], defaultArguments: NamedValues, workflow: Workflow): Evaluator =
-    new Evaluator(OrderContext.makeScope(Map.empty, order, workflow,
-      default = defaultArguments orElse conf.workflowJob.defaultArguments))
+    new Evaluator(toScope(order, defaultArguments, workflow))
+
+  private def toScope(order: Order[Order.Processing], defaultArguments: NamedValues, workflow: Workflow): Scope =
+    OrderContext.makeScope(Map.empty, order, workflow,
+      default = defaultArguments orElse conf.workflowJob.defaultArguments)
 
   private def evalEnv(evaluator: Evaluator, envExpr: ObjectExpression): Checked[Map[String, String]] =
     evaluator.evalObjectExpression(envExpr)
@@ -137,24 +162,28 @@ extends Actor with Stash
       if (cmd.jobKey != jobKey) {
         replyWithOrderProcessed(Response.OrderProcessed(
           cmd.order.id,
-          TaskStepFailed(Problem.pure(s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), isKilled = false))
+          Outcome.Disrupted(Problem.pure(
+            s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), isKilled = false))
       } else {
         val killed = orderToRun.get(cmd.order.id).fold(false)(_.isKilled)
         checkedExecutable.flatMap(_(cmd.order, cmd.defaultArguments, cmd.workflow)) match {
           case Left(problem) =>
             replyWithOrderProcessed(
-              Response.OrderProcessed(cmd.order.id, TaskStepFailed(problem), killed))  // Exception.toString is published !!!
-          case Right(execute) =>
+              Response.OrderProcessed(cmd.order.id, Outcome.Disrupted(problem), killed))  // Exception.toString is published !!!
+
+          case Right(execute: ProcessExecute) =>
             if (!exists(execute.file)) {
               val msg = s"Execute '${execute.file}' not found"
               logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
               replyWithOrderProcessed(
-                Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(msg)), killed))
+                Response.OrderProcessed(cmd.order.id, Outcome.Disrupted(Problem.pure(msg)), killed))
             } else
               Try(execute.file.toRealPath()) match {
                 case Failure(t) =>
-                  replyWithOrderProcessed(
-                    Response.OrderProcessed(cmd.order.id, TaskStepFailed(Problem.pure(s"Execute '$execute': $t")), killed))  // Exception.toString is published !!!
+                  replyWithOrderProcessed(Response.OrderProcessed(
+                    cmd.order.id,
+                    Outcome.Disrupted(Problem.pure(
+                      s"Execute '$execute': ${t.toStringWithCauses}")), killed))  // Exception.toString is published !!!
                 case Success(executableFile) =>
                   assertThat(taskCount < workflowJob.taskLimit, "Task limit exceeded")
                   if (!execute.isTemporary && !conf.scriptInjectionAllowed) {
@@ -174,20 +203,51 @@ extends Actor with Stash
                         .toMap
 
                   val sender = this.sender()
-                  processOrder(cmd.order.id, execute.commandLine, v1Env ++ execute.env, cmd.stdChannels)
-                    .onComplete { triedStepEnded =>
-                      self.!(Internal.TaskFinished(cmd.order, triedStepEnded))(sender)
+                  processOrder(cmd.order.id, execute.commandLine, v1Env ++ execute.env,
+                    v1Compatible = execute.v1Compatible, cmd.stdChannels
+                  ) .onComplete { triedCheckedCompleted =>
+                      self.!(Internal.TaskFinished(cmd.order.id, triedCheckedCompleted))(sender)
                     }
                   handleIfReadyForOrder()
               }
+
+          case Right(InternalExecute(contructor, order, workflow, arguments)) =>
+            Try {
+              contructor.getParameterCount match {
+                case 0 => contructor.newInstance()
+                case 1 => contructor.newInstance(InternalJob.JobContext(workflowJob, workflow))
+              }
+            } match {
+              case Failure(t) =>
+                replyWithOrderProcessed(Response.OrderProcessed(
+                  cmd.order.id,
+                  Outcome.Disrupted(Problem.fromThrowable(t)),
+                  isKilled = false))
+
+              case Success(job) =>
+                orderToRun.insert(order.id -> Run(
+                  name = () => job.toString,
+                  kill = _ => {}))
+                val scope = toScope(order, arguments, workflow)
+                val sender = this.sender()
+                job.processOrder(InternalJob.OrderContext(order, scope, arguments))
+                  .runToFuture
+                  .onComplete { tried_ =>
+                    val tried = tried_.map {
+                      case Left(problem) => Outcome.Failed(Some(problem.toString))
+                      case Right(namedValues) => Outcome.Succeeded(namedValues)
+                    }
+                    self.!(Internal.TaskFinished(cmd.order.id, tried))(sender)
+                  }
+            }
         }
       }
 
-    case Internal.TaskFinished(order, triedStepEnded) =>
-      val run = orderToRun(order.id)
-      orderToRun -= order.id
+    case Internal.TaskFinished(orderId, triedNamedValues) =>
+      val run = orderToRun(orderId)
+      orderToRun -= orderId
       replyWithOrderProcessed(
-        Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded), isKilled = run.isKilled))
+        Response.OrderProcessed(orderId, recoverFromFailure(triedNamedValues), isKilled = run.isKilled))
 
     case Input.Terminate(maybeSignal) =>
       logger.debug("Terminate")
@@ -195,7 +255,7 @@ extends Actor with Stash
       for (signal <- maybeSignal) {
         killAll(signal)
       }
-      if (maybeSignal != Some(SIGKILL) && taskCount > 0) {
+      if (!maybeSignal.contains(SIGKILL) && taskCount > 0) {
         scheduler.scheduleOnce(conf.sigkillProcessesAfter) {
           self ! Internal.KillAll
         }
@@ -207,7 +267,7 @@ extends Actor with Stash
       for (signal <- maybeSignal) {
         killOrder(orderId, signal)
       }
-      if (maybeSignal != Some(SIGKILL) && taskCount > 0) {
+      if (!maybeSignal.contains(SIGKILL) && taskCount > 0) {
         scheduler.scheduleOnce(conf.sigkillProcessesAfter) {
           self ! Internal.KillOrder(orderId)
         }
@@ -230,10 +290,14 @@ extends Actor with Stash
     orderId: OrderId,
     commandLine: CommandLine,
     env: Map[String, String],
+    v1Compatible: Boolean,
     stdChannels: StdChannels)
-  : Future[TaskStepEnded] = {
-    val taskRunner = newTaskRunner(TaskConfiguration(jobKey, workflowJob, commandLine))
-    orderToRun.insert(orderId -> Run(taskRunner))
+  : Future[Outcome.Completed] = {
+    val taskRunner = newTaskRunner(
+      TaskConfiguration(jobKey, workflowJob.toOutcome, commandLine, v1Compatible = v1Compatible))
+    orderToRun.insert(orderId -> Run(
+      name = () => taskRunner.asBaseAgentTask.id.toString,
+      taskRunner.kill))
     taskRunner.processOrder(orderId, env, stdChannels)
       .guarantee(taskRunner.terminate/*for now (shell only), returns immediately s a completed Future*/)
       .runToFuture
@@ -245,12 +309,12 @@ extends Actor with Stash
       waitingForNextOrder = true
     }
 
-  private def recoverFromFailure(tried: Try[TaskStepEnded]): TaskStepEnded =
+  private def recoverFromFailure(tried: Try[Outcome.Completed]): Outcome =
     tried match {
       case Success(o) => o
       case Failure(t) =>
         logger.error(s"Job step failed: ${t.toStringWithCauses}", t)
-        TaskStepFailed(Problem.pure(s"Job step failed: ${t.toStringWithCauses}"))  // Publish internal exception in event ???
+        Outcome.Disrupted(Problem.pure(s"Job step failed: ${t.toStringWithCauses}"))  // Publish internal exception in event ???
     }
 
   private def killAll(signal: ProcessSignal): Unit =
@@ -263,10 +327,9 @@ extends Actor with Stash
 
   private def killOrder(orderId: OrderId, signal: ProcessSignal): Unit =
     for (run <- orderToRun.get(orderId)) {
-      import run.taskRunner
-      logger.info(s"Kill $signal ${taskRunner.asBaseAgentTask.id} processing $orderId")
+      logger.info(s"Kill $signal ${run.name()} processing $orderId")
       run.isKilled = true
-      taskRunner.kill(signal)
+      run.kill(signal)
     }
 
   private def continueTermination(): Unit =
@@ -310,7 +373,7 @@ object JobActor
   }
 
   object Response {
-    final case class OrderProcessed(orderId: OrderId, taskStepEnded: TaskStepEnded, isKilled: Boolean)
+    final case class OrderProcessed(orderId: OrderId, outcome: Outcome, isKilled: Boolean)
   }
 
   object Input {
@@ -324,21 +387,35 @@ object JobActor
   }
 
   private object Internal {
-    final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
+    final case class TaskFinished(orderId: OrderId, triedCheckedCompleted: Try[Outcome.Completed])
     final case object KillAll extends DeadLetterSuppression
     final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression
   }
 
-  private case class Execute(
+  sealed trait Execute
+
+  private case class ProcessExecute(
     commandLine: CommandLine,
     name: String,
     env: Map[String, String],
     v1Compatible: Boolean,
     isTemporary: Boolean = false)
+  extends Execute
   {
     def file = commandLine.file
     override def toString = name
   }
 
-  private final case class Run(taskRunner: TaskRunner, var isKilled: Boolean = false)
+  private case class InternalExecute(
+    contructor: Constructor[InternalJob],
+    order: Order[Order.Processing],
+    workflow: Workflow,
+    arguments: NamedValues)
+
+  extends Execute
+
+  private final case class Run(
+    name: () => String,
+    kill: ProcessSignal => Unit,
+    var isKilled: Boolean = false)
 }

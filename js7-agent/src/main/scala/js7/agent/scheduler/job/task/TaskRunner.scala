@@ -3,7 +3,7 @@ package js7.agent.scheduler.job.task
 import com.google.inject.ImplementedBy
 import js7.agent.task.BaseAgentTask
 import js7.base.process.ProcessSignal
-import js7.data.order.OrderId
+import js7.data.order.{OrderId, Outcome}
 import js7.taskserver.task.process.StdChannels
 import monix.eval.Task
 
@@ -14,7 +14,8 @@ trait TaskRunner
 {
   def terminate: Task[Unit]
 
-  def processOrder(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels): Task[TaskStepEnded]
+  def processOrder(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels)
+  : Task[Outcome.Completed]
 
   def kill(signal: ProcessSignal): Unit
 

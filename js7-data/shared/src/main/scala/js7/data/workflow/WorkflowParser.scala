@@ -6,7 +6,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, CommandLineParser, PathExecutable, ReturnCode, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, PathExecutable, ReturnCode, ScriptExecutable}
 import js7.data.lock.LockId
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
@@ -92,7 +92,7 @@ object WorkflowParser
 
     private def namedValues[_: P]: P[NamedValues] = P(
       objectExpression
-        .flatMap(o => checkedToP(Evaluator.Constant.eval(o).flatMap(_.toObject).map(_.nameToValue))))
+        .flatMap(o => checkedToP(Evaluator.eval(o).flatMap(_.toObject).map(_.nameToValue))))
 
     private def anonymousWorkflowJob[_: P] = P[WorkflowJob](
       for {
@@ -102,6 +102,7 @@ object WorkflowParser
           keyValue("executable", quotedString) |
           keyValue("command", quotedString) |
           keyValue("script", constantExpression) |
+          keyValue("internalJobClass", constantExpression) |
           keyValue("agent", agentId) |
           keyValue("arguments", namedValues) |
           keyValue("successReturnCodes", successReturnCodes) |
@@ -111,15 +112,18 @@ object WorkflowParser
         agentId <- kv[AgentId]("agent")
         env <- kv.oneOfOr[ObjectExpression](Set("env"), ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
-        executable <- kv.oneOf[Any]("executable", "command", "script").flatMap {
+        executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
           case ("executable", path: String) =>
             Pass(PathExecutable(path, env, v1Compatible = v1Compatible))
           case ("command", command: String) =>
             if (v1Compatible) Fail.opaque(s"v1Compatible=true is inappropriate for a command")
             else checkedToP(CommandLineParser.parse(command).map(CommandLineExecutable(_, env)))
           case ("script", script: Expression) =>
-            checkedToP(Evaluator.Constant.eval(script).flatMap(_.toStringValue)
+            checkedToP(Evaluator.eval(script).flatMap(_.toStringValue)
               .map(v => ScriptExecutable(v.string, env, v1Compatible = v1Compatible)))
+          case ("internalJobClass", className: Expression) =>
+            checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
+              .map(v => InternalExecutable(v.string)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
         arguments <- kv[NamedValues]("arguments", NamedValues.empty)
@@ -148,7 +152,7 @@ object WorkflowParser
       (Index ~ keyword("fail") ~
         inParentheses(keyValues(
           keyValueConvert("namedValues", objectExpression)(o =>
-            Evaluator.Constant.eval(o).map(_.asInstanceOf[ObjectValue].nameToValue)) |
+            Evaluator.eval(o).map(_.asInstanceOf[ObjectValue].nameToValue)) |
           keyValue("message", expression) |
           keyValue("uncatchable", booleanConstant))).? ~
         hardEnd)
