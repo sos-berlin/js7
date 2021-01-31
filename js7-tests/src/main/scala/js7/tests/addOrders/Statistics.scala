@@ -24,7 +24,7 @@ private final case class Statistics(
   def totalOrderCount = completedOrderCount + completedForkedOrderCount
 
   def toLine: String =
-    completedOrderCount + "+" + completedForkedOrderCount + " orders completed" +
+    completedOrderCount.toString + "+" + completedForkedOrderCount + " orders completed" +
       ((failedOrderCount > 0) ?? s", $failedOrderCount FAILED") + " · " +
       processedCount + " processes · " +
       eventCount + " events · " +
