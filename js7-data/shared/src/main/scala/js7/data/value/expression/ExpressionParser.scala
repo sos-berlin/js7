@@ -2,18 +2,26 @@ package js7.data.value.expression
 
 import fastparse.NoWhitespace._
 import fastparse._
-import js7.data.value.expression.Expression._
-import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.base.problem.Checked
 import js7.data.parser.BasicParsers
 import js7.data.parser.BasicParsers._
+import js7.data.parser.Parsers.checkedParse
+import js7.data.value.expression.Expression._
+import js7.data.workflow.instructions.executable.WorkflowJob
 
 /**
   * @author Joacim Zschimmer
   */
 object ExpressionParser
 {
+  def parse(string: String): Checked[Expression] =
+    checkedParse(string, expressionOnly(_))
+
   def constantExpression[_: P]: P[Expression] =
     expression
+
+  def expressionOnly[_: P]: P[Expression] =
+    P(wordOperation ~ End)
 
   def expression[_: P]: P[Expression] =
     P(wordOperation)

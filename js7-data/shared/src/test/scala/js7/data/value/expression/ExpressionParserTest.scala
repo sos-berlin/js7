@@ -3,10 +3,10 @@ package js7.data.value.expression
 import fastparse.NoWhitespace._
 import fastparse.{Parsed, _}
 import js7.base.problem.Problem
-import js7.data.value.expression.Expression._
-import js7.data.value.expression.ExpressionParser._
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.parser.Parsers.checkedParse
+import js7.data.value.expression.Expression._
+import js7.data.value.expression.ExpressionParser.{parse => _, _}
+import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 

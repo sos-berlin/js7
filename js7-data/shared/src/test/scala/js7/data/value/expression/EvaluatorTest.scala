@@ -1,11 +1,11 @@
 package js7.data.value.expression
 
 import fastparse.NoWhitespace._
-import fastparse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
+import js7.data.value.expression.ExpressionParser.expressionOnly
 import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
 import js7.data.value.{BooleanValue, ListValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
@@ -73,7 +73,7 @@ final class EvaluatorTest extends AnyFreeSpec
       result = "\\",
       Right(StringConstant("\\")))
 
-    testSyntaxError(""" "$var" """,
+    testSyntaxError(""""$var"""",
       """Expected properly terminated "…"-quoted string:1:2, found "$var\""""")
 
     testEval(""" "x" """,
@@ -405,11 +405,9 @@ final class EvaluatorTest extends AnyFreeSpec
     }
   }
 
-  private def completeExpression[_: P] = ExpressionParser.expression ~ End
-
   private def testSyntaxError(exprString: String, problem: String)(implicit pos: source.Position): Unit =
     registerTest(s"$exprString - should fail") {
-      assert(checkedParse(exprString.trim, completeExpression(_)) == Left(Problem(problem)))
+      assert(ExpressionParser.parse(exprString) == Left(Problem(problem)))
     }
 
   private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
@@ -423,9 +421,9 @@ final class EvaluatorTest extends AnyFreeSpec
 
   private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
     registerTest(exprString) {
-      assert(checkedParse(exprString.trim, completeExpression(_)) == expression)
+      assert(checkedParse(exprString.trim, expressionOnly(_)) == expression)
       for (e <- expression) {
-        assert(checkedParse(e.toString, completeExpression(_)) == expression, " *** toString ***")
+        assert(checkedParse(e.toString, expressionOnly(_)) == expression, " *** toString ***")
         assert(evaluator.eval(e) == result)
       }
     }
