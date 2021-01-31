@@ -57,7 +57,7 @@ object RetryExecutorTest
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       override def instruction(position: WorkflowPosition) =
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
-        else Gap()
+        else Gap.empty
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
       val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
     }

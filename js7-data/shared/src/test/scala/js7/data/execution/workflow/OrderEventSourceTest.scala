@@ -165,7 +165,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         val workflow = Workflow.of(TestWorkflowId,
                    executeScript,  // 0
                    Goto("B"),      // 1
-                   Gap(),          // 2
+                   Gap.empty,      // 2
           "C" @:   executeScript,  // 3
           "END" @: ExplicitEnd(),  // 4
           "B" @:   IfFailedGoto("C"), // 5

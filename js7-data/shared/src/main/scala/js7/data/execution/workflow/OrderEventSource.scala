@@ -416,7 +416,7 @@ final class OrderEventSource(
     idToWorkflow(workflowPosition.workflowId) match {
       case Left(_) =>
         scribe.error(s"Missing ${workflowPosition.workflowId}")
-        Gap()
+        Gap.empty
       case Right(workflow) =>
         workflow.instruction(workflowPosition.position)
     }

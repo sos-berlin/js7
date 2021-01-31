@@ -356,14 +356,14 @@ extends VersionedItem
       case Position(BranchPath.Segment(nr, branchId) :: tail, tailNr) =>
         instruction(nr).workflow(branchId.normalized)
           .map(_.instruction(Position(tail, tailNr)))
-          .getOrElse(Gap())
+          .getOrElse(Gap.empty)
     }
 
   def instruction(nr: InstructionNr): Instruction =
     if (instructions.indices contains nr.number)
       instructions(nr.number)
     else
-      Gap()
+      Gap.empty
 
   def checkedPosition(position: Position): Checked[Position] =
     labeledInstruction(position).map(_ => position)

@@ -22,7 +22,7 @@ final class WorkflowsTest extends AnyFreeSpec {
         /*1*/ Fork.of(
           "🥕" -> Workflow.of(AExecute),
           "🍋" -> Workflow.of(AExecute)),
-        /*2*/ Gap(),
+        /*2*/ Gap.empty,
         /*3*/ Fork.of(
           "🥕" -> Workflow.of(Gap()),
           "🍋" -> Workflow.of(AExecute, Gap())),
@@ -39,12 +39,12 @@ final class WorkflowsTest extends AnyFreeSpec {
     assert(TestWorkflow.reduceForAgent(BAgentId) == Workflow(
       WorkflowPath("WORKFLOW") ~ "INITIAL" ,
       Vector(
-        /*0*/ Gap(),
-        /*1*/ Gap(),
+        /*0*/ Gap.empty,
+        /*1*/ Gap.empty,
         /*2*/ BExecute,
         /*3*/ Fork.of(
           "🥕" -> Workflow.of(BExecute),
-          "🍋" -> Workflow.of(Gap(), BExecute)),
+          "🍋" -> Workflow.of(Gap.empty, BExecute)),
         /*4*/ Fork.of(
           "🥕" -> Workflow.of(Gap()),
           "🍋" -> Workflow.of(BExecute))),
