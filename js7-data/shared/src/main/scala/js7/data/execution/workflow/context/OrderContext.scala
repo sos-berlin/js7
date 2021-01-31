@@ -69,10 +69,10 @@ object OrderContext
       }
 
       val findValue = {
-        case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
+        case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
           Right(argument(name))
 
-        case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
+        case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
           Right(
             highPriorityArguments.get(name)
               .orElse(
@@ -104,6 +104,6 @@ object OrderContext
 
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =
     what match {
-      case ValueSearch.NamedValue(key) => outcome.namedValues.get(key)
+      case ValueSearch.Name(key) => outcome.namedValues.get(key)
     }
 }

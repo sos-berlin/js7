@@ -56,7 +56,7 @@ final class Evaluator(scope: Scope)
           case NamedValue.KeyValue(stringExpr) =>
             for {
               key <- evalString(stringExpr).map(_.string)
-              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.NamedValue(key)))
+              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(key)))
               value <- maybeValue.map(Right.apply)
                 .getOrElse(
                   default.map(evalString).toChecked(Problem(where match {

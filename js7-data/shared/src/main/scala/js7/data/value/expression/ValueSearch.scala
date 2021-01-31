@@ -13,5 +13,5 @@ object ValueSearch
   final case class LastExecuted(search: PositionSearch) extends Where
 
   sealed trait What
-  final case class NamedValue(name: String) extends What
+  final case class Name(name: String) extends What
 }

@@ -26,7 +26,7 @@ final class EvaluatorTest extends AnyFreeSpec
         val symbolToValue = name => symbols.checked(name)
 
         val findValue = {
-          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue(name)) =>
+          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
             Right(
               Map(
                 "ASTRING" -> StringValue("AA"),
@@ -34,21 +34,21 @@ final class EvaluatorTest extends AnyFreeSpec
                 "ABOOLEAN" -> BooleanValue(true),
                 "returnCode" -> NumberValue(1)
               ).get(name))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.NamedValue(name)) =>
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.Name(name)) =>
             Right(Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.NamedValue(name)) =>
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.Name(name)) =>
             Right(
               Map(
                 "KEY" -> StringValue("LABEL-VALUE"),
                 "returnCode" -> NumberValue(2)
               ).get(name))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.NamedValue(name)) =>
+          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.Name(name)) =>
             Right(
               Map(
                 "KEY" -> StringValue("JOB-VALUE"),
                 "returnCode" -> NumberValue(3)
               ).get(name))
-          case ValueSearch(ValueSearch.Argument, ValueSearch.NamedValue(name)) =>
+          case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
             Right(Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply)
           case o =>
             Left(Problem(s"UNEXPECTED CASE: $o"))

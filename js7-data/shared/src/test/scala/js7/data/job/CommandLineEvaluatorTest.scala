@@ -59,10 +59,10 @@ final class CommandLineEvaluatorTest extends AnyFreeSpec
           val symbolToValue = PartialFunction.empty
 
           val findValue = {
-            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue("NAME")) =>
+            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NAME")) =>
               Right(Some(StringValue("MY NAME")))
 
-            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.NamedValue("NUMERIC")) =>
+            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NUMERIC")) =>
               Right(Some(NumberValue(7)))
 
             case _ => Left(Problem("Unexpected ValueSearch"))
