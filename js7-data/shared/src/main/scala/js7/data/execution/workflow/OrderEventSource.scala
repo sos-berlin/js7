@@ -128,8 +128,8 @@ final class OrderEventSource(
               case Right(event) => event
             }
           else if (order.isAttached && order.isInDetachableState && order.copy(attachedState = None).isOrderFailedApplicable) {
-            scribe.warn(s"Detaching ${order.id} after failure: $problem")
-            // Controller is expected to reproduce the problem.
+            scribe.debug(s"Detaching ${order.id} after failure: $problem")
+            // Controller is expected to repeat this call and to reproduce the problem.
             OrderDetachable
           } else
             OrderBroken(problem)
@@ -142,7 +142,7 @@ final class OrderEventSource(
   : Checked[OrderActorEvent] =
     fail(order, outcome, uncatchable).map {
       case _: OrderFailed if order.isAttached =>
-        scribe.warn(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
+        scribe.debug(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
         // Controller is expected to reproduce the problem !!!
         OrderDetachable
       case o => o
