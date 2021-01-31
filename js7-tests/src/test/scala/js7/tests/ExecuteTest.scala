@@ -172,7 +172,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           env = ObjectExpression(Map("myExitCode" -> NamedValue.last("myExitCode")))),
         returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
-    expectedOutcome = Outcome.Succeeded(ReturnCode(1)))
+    expectedOutcome = Outcome.Succeeded.rc(1))
 
   "Argument precedence" in {
     val executable = ScriptExecutable(
@@ -189,9 +189,9 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           WorkflowJob(agentId, executable, Map("myExitCode" -> NumberValue(1)),
             returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1), ReturnCode(2), ReturnCode(3)))))),
       expectedOutcomes = Seq(
-        Outcome.Succeeded(ReturnCode(1)),
-        Outcome.Succeeded(ReturnCode(2)),
-        Outcome.Succeeded(ReturnCode(3))))
+        Outcome.Succeeded.rc(1),
+        Outcome.Succeeded.rc(2),
+        Outcome.Succeeded.rc(3)))
   }
 
   "Jobs in nested workflow" in {

@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.common.process.Processes.{ShellFileExtension => sh}
 import js7.data.agent.AgentId
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
-import js7.data.job.{RelativePathExecutable, ReturnCode}
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -188,16 +188,16 @@ object TryTest
 
     OrderStarted,
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Failed(ReturnCode(1))),
+    OrderProcessed(Outcome.Failed.rc(1)),
     OrderCatched(Position(0) / "try+0" % 0 / "catch+0" % 0),
 
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Failed(ReturnCode(2))),
+    OrderProcessed(Outcome.Failed.rc(2)),
     OrderCatched(Position(0) / "catch+0" % 0),
     OrderMoved(Position(1)),
 
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Succeeded(ReturnCode(0))),
+    OrderProcessed(Outcome.Succeeded.rc(0)),
     OrderMoved(Position(2)),
 
     OrderDetachable,
@@ -222,11 +222,11 @@ object TryTest
 
     OrderStarted,
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Failed(ReturnCode(1))),
+    OrderProcessed(Outcome.Failed.rc(1)),
     OrderCatched(Position(0) / "catch+0" % 0),
 
     OrderProcessingStarted,
-    OrderProcessed(Outcome.Failed(ReturnCode(2))),
+    OrderProcessed(Outcome.Failed.rc(2)),
     OrderDetachable,
     OrderDetached,
     OrderFailed(Position(0) / "catch+0" % 0))

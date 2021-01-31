@@ -115,7 +115,7 @@ final class OutcomeTest extends AnyFreeSpec
   "Constant pool for memory reuse" in {
     assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.succeeded)
     assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.Completed(true))
-    assert(Outcome.Succeeded(ReturnCode(0)) eq Outcome.Succeeded(ReturnCode(0)))
-    assert(Outcome.Succeeded(ReturnCode(0)) eq Outcome.Completed(true, Map("returnCode" -> NumberValue(0))))
+    assert(Outcome.Succeeded.rc(0) eq Outcome.Succeeded.rc(ReturnCode(0)))
+    assert(Outcome.Succeeded.rc(ReturnCode(0)) eq Outcome.Completed(true, Map("returnCode" -> NumberValue(0))))
   }
 }

@@ -43,7 +43,10 @@ object Outcome
     private[Outcome] sealed trait Companion[A <: Completed] {
       protected def make(namedValues: NamedValues): A
 
-      def apply(returnCode: ReturnCode): A =
+      def rc(returnCode: Int): A =
+        make(NamedValues.rc(returnCode))
+
+      def rc(returnCode: ReturnCode): A =
         make(NamedValues.rc(returnCode))
 
       def apply(namedValues: NamedValues = Map.empty): A =
@@ -80,7 +83,7 @@ object Outcome
         make(namedValues)
   }
 
-  final case class Failed(errorMessage: Option[String], namedValues: NamedValues)
+  final case class Failed(errorMessage: Option[String], namedValues: NamedValues/*TODO DELETE THIS?*/)
   extends Completed with NotSucceeded
   {
     def isSucceeded = false
