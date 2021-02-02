@@ -84,9 +84,11 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
       runProcess(s"sh -c 'openssl x509 -pubkey -noout -in \'$certificateFile\' >\'$publicKeyFile\''")
       runProcess(s"$openssl dgst -verify '$publicKeyFile' -sha512 -signature '$signatureFile' '$itemFile'")
 
-      val signedString = SignedString.x509WithSignedId/*Java API*/(
+      val signedString = SignedString.x509WithSignerId/*Java API*/(
         itemFile.contentString,
-        signatureBase64File.contentString, algorithm = "SHA512withRSA", signerId = SignerId.of("CN=SIGNER"))
+        signatureBase64File.contentString,
+        algorithm = "SHA512withRSA",
+        signerId = SignerId.of("CN=SIGNER"))
       controllerApi.updateRepo(v2, Seq(signedString))
         .await(99.s).orThrow
 
