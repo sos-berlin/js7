@@ -17,7 +17,6 @@ extends RootWebService
 with CommandWebService
 with ControllerRoute
 with OrderWebService
-//with TaskWebService
 with SessionRoute
 {
   protected final val apiRoute: Route =

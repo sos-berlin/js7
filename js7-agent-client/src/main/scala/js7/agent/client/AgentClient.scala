@@ -5,7 +5,7 @@ import js7.agent.data.AgentApi
 import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand._
-import js7.agent.data.views.{AgentOverview, TaskOverview, TaskRegisterOverview}
+import js7.agent.data.views.AgentOverview
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
 import js7.base.problem.Checked
@@ -13,7 +13,6 @@ import js7.base.web.Uri
 import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import js7.data.job.TaskId
 import js7.data.order.{Order, OrderId}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -43,14 +42,6 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
         .map(_.asInstanceOf[command.Response]))
 
   final def overview: Task[AgentOverview] = get[AgentOverview](agentUris.overview)
-
-  object task {
-    final def overview: Task[TaskRegisterOverview] = get[TaskRegisterOverview](agentUris.task.overview)
-
-    final def tasks: Task[Seq[TaskOverview]] = get[Seq[TaskOverview]](agentUris.task.tasks)
-
-    final def apply(id: TaskId): Task[TaskOverview] = get[TaskOverview](agentUris.task(id))
-  }
 
   final def order(orderId: OrderId): Task[Checked[Order[Order.State]]] =
     liftProblem(

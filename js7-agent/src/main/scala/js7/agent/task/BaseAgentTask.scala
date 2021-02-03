@@ -1,6 +1,5 @@
 package js7.agent.task
 
-import js7.agent.data.views.TaskOverview
 import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.common.process.Processes.Pid
@@ -10,8 +9,8 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-trait BaseAgentTask {
-
+trait BaseAgentTask
+{
   def id: TaskId
 
   def jobKey: JobKey
@@ -21,6 +20,4 @@ trait BaseAgentTask {
   def terminated: Future[Completed]
 
   def sendProcessSignal(signal: ProcessSignal): Unit
-
-  def overview: TaskOverview
 }

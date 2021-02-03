@@ -2,7 +2,6 @@ package js7.agent.scheduler.job.task
 
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.views.TaskOverview
 import js7.agent.scheduler.job.ShellReturnValuesProvider
 import js7.agent.scheduler.job.task.SimpleShellTaskRunner._
 import js7.agent.task.BaseAgentTask
@@ -41,7 +40,6 @@ extends TaskRunner
     def jobKey = conf.jobKey
     def pidOption = richProcessOnce.flatMap(_.pidOption)
     def terminated = terminatedPromise.future
-    def overview = TaskOverview(jobKey, id, pidOption, startedAt)
 
     def sendProcessSignal(signal: ProcessSignal) =
       for (o <- richProcessOnce) o.sendProcessSignal(signal)

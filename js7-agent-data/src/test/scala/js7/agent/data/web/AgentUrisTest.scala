@@ -1,7 +1,6 @@
 package js7.agent.data.web
 
 import js7.base.web.Uri
-import js7.data.job.TaskId
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -19,28 +18,6 @@ final class AgentUrisTest extends AnyFreeSpec
   "session" in {
     assert(agentUris.session ==
       Uri("https://example.com:9999/testPrefix/agent/api/session"))
-  }
-
-  "task" - {
-    "overview" in {
-      assert(agentUris.task.overview ==
-        Uri("https://example.com:9999/testPrefix/agent/api/task"))
-    }
-
-    "tasks" in {
-      assert(agentUris.task.tasks ==
-        Uri("https://example.com:9999/testPrefix/agent/api/task/"))
-    }
-
-    "task" in {
-      assert(agentUris.task.tasks ==
-        Uri("https://example.com:9999/testPrefix/agent/api/task/"))
-    }
-  }
-
-  "task.tasks" in {
-    assert(agentUris.task(TaskId("TASK-ID")) ==
-      Uri("https://example.com:9999/testPrefix/agent/api/task/TASK-ID"))
   }
 
   "overview" in {
