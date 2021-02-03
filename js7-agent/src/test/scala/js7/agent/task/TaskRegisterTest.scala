@@ -62,8 +62,8 @@ final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAf
   }
 
   "crashKillScript (1)" in {
-    assert(crashKillScript == Set(s""""$killFile" --kill-agent-task-id=1-11 --pid=123 --controller-task-id=0""",
-                                  s""""$killFile" --kill-agent-task-id=2-22 --pid=123 --controller-task-id=0"""))
+    assert(crashKillScript == Set(s""""$killFile" --kill-agent-task-id=1-11 --pid=123""",
+                                  s""""$killFile" --kill-agent-task-id=2-22 --pid=123"""))
   }
 
   "GetTaskOverview" in {
@@ -97,8 +97,8 @@ final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAf
   }
 
   "crashKillScript (2)" in {
-    assert(crashKillScript == Set(s""""$killFile" --kill-agent-task-id=2-22 --pid=123 --controller-task-id=0""",
-                                  s""""$killFile" --kill-agent-task-id=3-33 --pid=123 --controller-task-id=0"""))
+    assert(crashKillScript == Set(s""""$killFile" --kill-agent-task-id=2-22 --pid=123""",
+                                  s""""$killFile" --kill-agent-task-id=3-33 --pid=123"""))
   }
 
   "Terminate" in {

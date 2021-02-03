@@ -10,7 +10,11 @@ log() {
     echo "[$1]  $2" 1>&2
 }
 
+AGENT_TASK_ID=""
+CONTROLLER_TASK_ID=""
+JOB_PATH=""
 PID=""
+
 for arg in "$@"; do
     case "$arg" in
         --kill-agent-task-id=*)

@@ -12,7 +12,6 @@ import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
-import js7.data.job.TaskId
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline
@@ -54,7 +53,7 @@ final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) ex
       case Input.Add(task, promise) =>
         idToTask += task.id -> task
         totalCount += 1
-        for (o <- crashKillScriptOption) o.add(task.id, task.pidOption, TaskId(0))
+        for (o <- crashKillScriptOption) o.add(task.id, task.pidOption)
         task.terminated onComplete { _ =>
           self ! Input.Remove(task.id)
         }
