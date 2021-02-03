@@ -9,10 +9,8 @@ import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import java.nio.file.{Path, Paths}
-import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.agent.scheduler.job.JobActor._
-import js7.agent.scheduler.job.task.{TaskConfiguration, TaskRunner}
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
 import js7.base.process.ProcessSignal
@@ -34,8 +32,9 @@ import js7.data.value.expression.{Evaluator, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.taskserver.task.process.RichProcess.tryDeleteFile
-import js7.taskserver.task.process.StdChannels
+import js7.executor.configuration.{ExecutorConfiguration, TaskConfiguration}
+import js7.executor.process.RichProcess.tryDeleteFile
+import js7.executor.task.{StdChannels, TaskRunner}
 import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -100,7 +99,7 @@ extends Actor with Stash
         else {
           val file = createTempFile(temporaryDirectory, "script-", isWindows ?? ".cmd", ShellFileAttributes: _*)
           Checked.catchNonFatal {
-            file.write(script, AgentConfiguration.FileEncoding)
+            file.write(script, ExecutorConfiguration.FileEncoding)
           }.map { _ =>
             temporaryFile := file
             (order, executeArguments, workflow) =>

@@ -15,6 +15,7 @@ object Dependencies
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.13.0"
+  val scalaJava8Version = "0.9.1"
   val scalaTestVersion = "3.2.2"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
@@ -27,6 +28,8 @@ object Dependencies
   val scalaJsDomVersion = "1.1.0"
   val shapelessVersion = "2.3.3"
   val diffxVersion = "0.4.0"
+  val reactorVersion = "3.3.7.RELEASE"
+  val vavrVersion = "0.10.3"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion

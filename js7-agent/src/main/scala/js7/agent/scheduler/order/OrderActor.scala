@@ -26,9 +26,9 @@ import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.executor.task.StdChannels
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
-import js7.taskserver.task.process.StdChannels
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.concurrent.duration._

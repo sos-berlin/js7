@@ -15,6 +15,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.scalautil.IOExecutor
 import js7.common.system.ThreadPools
 import js7.core.cluster.ClusterWatchRegister
+import js7.executor.configuration.ExecutorConfiguration
 import js7.journal.EventIdGenerator
 import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
@@ -58,6 +59,10 @@ extends AbstractModule
   @Provides @Singleton
   def monixScheduler(configuration: AgentConfiguration, closer: Closer): Scheduler =
     ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
+
+  @Provides @Singleton
+  def executorConfiguration(conf: AgentConfiguration): ExecutorConfiguration =
+    conf.toExecutorConfiguration
 
   @Provides @Singleton
   def agentConfiguration(): AgentConfiguration = originalAgentConfiguration.finishAndProvideFiles

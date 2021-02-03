@@ -156,6 +156,7 @@ lazy val js7 = (project in file("."))
     `js7-common`,
     `js7-common-http`.jvm,
     `js7-core`,
+    `js7-executor`,
     `js7-data`.jvm,
     `js7-docker`,
     `js7-install`,
@@ -166,7 +167,6 @@ lazy val js7 = (project in file("."))
     `js7-controller-data`.jvm,
     `js7-agent-client`,
     `js7-agent-data`,
-    `js7-taskserver`,
     `js7-provider`,
     `js7-proxy`.jvm,
     `js7-tests`,
@@ -385,7 +385,7 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .settings(
     libraryDependencies ++= {
       import Dependencies._
-      "io.vavr" % "vavr" % "0.10.3" ++
+      "io.vavr" % "vavr" % vavrVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" /*++
       "org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test"*/
     })
@@ -393,8 +393,8 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++= {
       import Dependencies._
       akkaHttp ++
-      "io.projectreactor" % "reactor-core" % "3.3.7.RELEASE" ++
-      "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1" ++
+      "io.projectreactor" % "reactor-core" % reactorVersion ++
+      "org.scala-lang.modules" %% "scala-java8-compat" % scalaJava8Version ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -449,6 +449,18 @@ lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester
       Seq(versionFile)
     }.taskValue)
 
+lazy val `js7-executor` = project
+  .dependsOn(`js7-core`, `js7-tester`.jvm % "test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTest % "test" ++
+      scalaCheck % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
 lazy val `js7-journal` = project.dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
@@ -464,7 +476,8 @@ lazy val `js7-journal` = project.dependsOn(`js7-common-http`.jvm, `js7-common`, 
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-cluster` = project.dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
+lazy val `js7-cluster` = project
+  .dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -476,7 +489,9 @@ lazy val `js7-cluster` = project.dependsOn(`js7-core`, `js7-common-http`.jvm, `j
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-common`, `js7-data`.jvm, `js7-taskserver`, `js7-agent-client` % "test", `js7-tester`.jvm % "test")
+lazy val `js7-agent` = project
+  .dependsOn(`js7-agent-data`, `js7-executor`, `js7-core`, `js7-common`, `js7-data`.jvm,
+    `js7-agent-client` % "test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -496,7 +511,9 @@ lazy val `js7-agent` = project.dependsOn(`js7-agent-data`, `js7-core`, `js7-comm
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-agent-client` = project.dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`, `js7-tester`.jvm % "test")
+lazy val `js7-agent-client` = project
+  .dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`,
+    `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Client")
   .settings {
@@ -521,25 +538,6 @@ lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7
       guava ++
       findbugs % "compile" ++
       intelliJAnnotations % "compile" ++
-      scalaTest % "test" ++
-      log4j % "test" ++
-      lmaxDisruptor % "test"
-  }
-
-lazy val `js7-taskserver` = project
-  .dependsOn(
-    `js7-agent-data`,
-    `js7-common`,
-    `js7-data`.jvm,
-    `js7-tester`.jvm % "test")
-  .settings(commonSettings)
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      scalaXml ++
-      akkaActor ++
-      akkaSlf4j ++
-      guava ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"

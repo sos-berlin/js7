@@ -5,12 +5,12 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.{Config, ConfigValueFactory}
+import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.scheduler.job.JobActor
-import js7.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import js7.agent.scheduler.order.OrderActorTest._
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.generic.Completed
@@ -36,11 +36,13 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.configuration.ExecutorConfiguration
+import js7.executor.process.{SimpleShellTaskRunner, StandardRichProcessStartSynchronizer}
+import js7.executor.task.TaskRunner
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
-import js7.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
@@ -95,8 +97,8 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
              |""".stripMargin).mkString)
     val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentId, pathExecutable))
     info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)}) took ${result.duration.pretty}")
-    assert(result.stdoutStderr(Stderr).toString == expectedStderr)
-    assert(result.stdoutStderr(Stdout).toString == expectedStdout)
+    assert(result.stdoutStderr(Stderr) == expectedStderr)
+    assert(result.stdoutStderr(Stdout) == expectedStdout)
     testActor ! PoisonPill
   }
 
@@ -152,10 +154,11 @@ private object OrderActorTest {
   extends Actor {
     import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
+    if (!exists(dir / "tmp")) createDirectory(dir / "tmp")
     private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
       new SimpleShellTaskRunner.TaskIdGenerator,
       new StandardRichProcessStartSynchronizer()(context.system),
-      AgentConfiguration.forTest(configAndData = dir))
+      ExecutorConfiguration(temporaryDirectory = dir / "tmp", killScript = None))
 
     private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
 

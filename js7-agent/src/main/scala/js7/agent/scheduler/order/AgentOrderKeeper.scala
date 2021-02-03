@@ -12,7 +12,6 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
-import js7.agent.scheduler.job.task.TaskRunner
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.JobRegister.JobEntry
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
@@ -47,6 +46,7 @@ import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.executor.task.TaskRunner
 import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}

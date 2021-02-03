@@ -13,7 +13,6 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.data.{AgentState, AgentTermination}
 import js7.agent.scheduler.AgentActor._
 import js7.agent.scheduler.job.JobActor
-import js7.agent.scheduler.job.task.TaskRunner
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.auth.UserId
 import js7.base.generic.Completed
@@ -32,6 +31,7 @@ import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, KeyedEvent, Stamped}
+import js7.executor.task.TaskRunner
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
