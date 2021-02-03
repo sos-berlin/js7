@@ -44,6 +44,7 @@ final class Js7NameValidatorTest extends AnyFreeSpec
     assert(!isValid("a$"))
     assert(!isValid("/"))
     assert(!isValid("a/b"))
+    assert(!isValid("a:b"))
     assert(!isValid("a\u0000"))
     assert(!isValid("a\u0001"))
     assert(!isValid("a\u0002"))
