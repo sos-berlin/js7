@@ -49,7 +49,7 @@ object ScalaUtils
     extends AnyVal
     {
       /** Combines left sides of any, otherwise return right sides.*/
-      def reducesLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] =
+      def reduceLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] =
         NonEmptyList.fromList(iterable.view.collect { case Left(l) => l }.toList) match {
           case Some(ls) => Left(ls.reduce)
           case None => Right(iterable.collect { case Right(r) => r }.to(F))

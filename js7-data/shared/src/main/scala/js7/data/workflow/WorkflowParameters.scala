@@ -34,7 +34,7 @@ final case class WorkflowParameters private(nameToParameter: Map[String, Workflo
             else
               RightUnit
         })
-      .reducesLeftEither
+      .reduceLeftEither
 
     checkedAllExpected.combineLeft(checked).rightAs(())
   }
@@ -59,7 +59,7 @@ object WorkflowParameters
               Left(Problem(s"Unsupported type of parameter '${p.name}': ${p.valueType}"))
             else
               RightUnit)
-          .reducesLeftEither
+          .reduceLeftEither
           .map(_ => new WorkflowParameters(nameToParam)))
 
   implicit val jsonEncoder: Encoder.AsObject[WorkflowParameters] =
