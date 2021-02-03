@@ -33,8 +33,8 @@ extends AutoCloseable
   private var _eventsStarted = append
   private var _lastEventId = after
 
-  if (!append && Files.exists(file)) sys.error(s"JournalWriter: Not expecting already existing file '$file'")
-  if (append && !Files.exists(file)) sys.error(s"JournalWriter: Missing file '$file'")
+  if (!append && Files.exists(file)) sys.error(s"JournalWriter: Unexpected journal file: $file")
+  if (append && !Files.exists(file)) sys.error(s"JournalWriter: Missing journal file: $file")
 
   protected final val jsonWriter = new FileJsonWriter(file, append = append, simulateSync = simulateSync)
 

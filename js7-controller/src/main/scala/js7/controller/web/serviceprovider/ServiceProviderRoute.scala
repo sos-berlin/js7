@@ -25,7 +25,7 @@ private[web] trait ServiceProviderRoute
 
     val iterator = serviceLoader.iterator.asScala
     if (iterator.isEmpty)
-      logger.debug("No service providers")
+      logger.debug("No RouteService")
     else
       for (service <- iterator/*loads services lazily*/) {
         logger.debug(s"Found service provider ${service.getClass.scalaName}")
