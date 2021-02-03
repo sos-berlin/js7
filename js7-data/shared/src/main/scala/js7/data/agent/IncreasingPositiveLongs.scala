@@ -1,4 +1,4 @@
-package js7.agent.data
+package js7.data.agent
 
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.LongUnaryOperator

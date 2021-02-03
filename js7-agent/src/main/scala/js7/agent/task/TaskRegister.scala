@@ -3,13 +3,13 @@ package js7.agent.task
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-import js7.agent.data.AgentTaskId
 import js7.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import js7.agent.task.TaskRegisterActor.Command
 import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.SIGTERM
 import js7.common.scalautil.Futures.promiseFuture
+import js7.data.job.TaskId
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 
@@ -30,7 +30,7 @@ final class TaskRegister(actor: ActorRef)(implicit askTimeout: Timeout) {
     * TaskRegister removes task automatically when task terminates.
     */
   @TestOnly
-  def remove(taskId: AgentTaskId): Unit =
+  def remove(taskId: TaskId): Unit =
     actor ! TaskRegisterActor.Input.Remove(taskId)
 
   def sendSignalToAllProcesses(signal: ProcessSignal): Future[Completed] =
@@ -42,6 +42,6 @@ final class TaskRegister(actor: ActorRef)(implicit askTimeout: Timeout) {
   def taskOverviews: Future[Seq[TaskOverview]] =
     (actor ? Command.GetTaskOverviews).mapTo[Seq[TaskOverview]]
 
-  def taskOverview(taskId: AgentTaskId): Future[TaskOverview] =
+  def taskOverview(taskId: TaskId): Future[TaskOverview] =
     (actor ? Command.GetTaskOverview(taskId)).mapTo[TaskOverview]
 }

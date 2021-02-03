@@ -2,7 +2,7 @@ package js7.agent.task
 
 import java.nio.file.Files.{createTempFile, delete, exists, size}
 import java.nio.file.Paths
-import js7.agent.data.{AgentTaskId, ProcessKillScript}
+import js7.agent.data.ProcessKillScript
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -10,6 +10,7 @@ import js7.base.utils.HasCloser
 import js7.common.process.Processes.Pid
 import js7.common.scalautil.FileUtils.implicits._
 import js7.common.scalautil.FileUtils.syntax._
+import js7.data.job.TaskId
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -50,63 +51,63 @@ final class CrashKillScriptTest extends AnyFreeSpec with HasCloser with BeforeAn
   }
 
   "add" in {
-    crashKillScript.add(AgentTaskId("1-111"), pid = None)
+    crashKillScript.add(TaskId("1-111"), pid = None)
     assert(file.contentString == """"test-kill.sh" --kill-agent-task-id=1-111""" + (if (isWindows) "\r\n" else "\n"))
   }
 
   "add more" in {
-    crashKillScript.add(AgentTaskId("2-222"), pid = Some(Pid(123)))
-    crashKillScript.add(AgentTaskId("3-333"), pid = None)
+    crashKillScript.add(TaskId("2-222"), pid = Some(Pid(123)))
+    crashKillScript.add(TaskId("3-333"), pid = None)
     assert(lines == List(""""test-kill.sh" --kill-agent-task-id=1-111""",
                          """"test-kill.sh" --kill-agent-task-id=2-222 --pid=123""",
                          """"test-kill.sh" --kill-agent-task-id=3-333"""))
   }
 
   "remove" in {
-    crashKillScript.remove(AgentTaskId("2-222"))
+    crashKillScript.remove(TaskId("2-222"))
     assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111""",
                               """"test-kill.sh" --kill-agent-task-id=3-333"""))
   }
 
   "add then remove" in {
-    crashKillScript.add(AgentTaskId("4-444"), pid = None)
+    crashKillScript.add(TaskId("4-444"), pid = None)
     assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111""",
                               """"test-kill.sh" --kill-agent-task-id=3-333""",
                               """"test-kill.sh" --kill-agent-task-id=4-444"""))
   }
 
   "remove again" in {
-    crashKillScript.remove(AgentTaskId("3-333"))
+    crashKillScript.remove(TaskId("3-333"))
     assert(lines.toSet == Set(""""test-kill.sh" --kill-agent-task-id=1-111""",
                               """"test-kill.sh" --kill-agent-task-id=4-444"""))
   }
 
   "remove last" in {
-    crashKillScript.remove(AgentTaskId("1-111"))
-    crashKillScript.remove(AgentTaskId("4-444"))
+    crashKillScript.remove(TaskId("1-111"))
+    crashKillScript.remove(TaskId("4-444"))
     assert(!exists(file))
   }
 
   "add again and remove last" in {
-    crashKillScript.add(AgentTaskId("5-5555"), pid = None)
+    crashKillScript.add(TaskId("5-5555"), pid = None)
     assert(lines == List(""""test-kill.sh" --kill-agent-task-id=5-5555"""))
-    crashKillScript.remove(AgentTaskId("5-5555"))
+    crashKillScript.remove(TaskId("5-5555"))
     assert(!exists(file))
   }
 
   "Tries to suppress code injection" in {
     val evilJobPaths = Vector("/x$(evil)", "/x|evil ", "/x'|evil")
     for ((evilJobPath, i) <- evilJobPaths.zipWithIndex) {
-      crashKillScript.add(AgentTaskId(s"$i"), pid = None)
+      crashKillScript.add(TaskId(s"$i"), pid = None)
     }
     assert(lines.toSet == (evilJobPaths.indices map { i => s""""test-kill.sh" --kill-agent-task-id=$i""" }).toSet)
     for (i <- evilJobPaths.indices) {
-      crashKillScript.remove(AgentTaskId(s"$i"))
+      crashKillScript.remove(TaskId(s"$i"))
     }
   }
 
   "close with left tasks does not delete file" in {
-    crashKillScript.add(AgentTaskId("LEFT"), pid = None)
+    crashKillScript.add(TaskId("LEFT"), pid = None)
     crashKillScript.close()
     assert(lines == s""""test-kill.sh" --kill-agent-task-id=LEFT""" :: Nil)
   }

@@ -1,7 +1,7 @@
 package js7.taskserver.task.process
 
 import java.nio.file.Files._
-import js7.agent.data.{AgentTaskId, ProcessKillScript}
+import js7.agent.data.ProcessKillScript
 import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.time.ScalaTime._
@@ -15,7 +15,7 @@ import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.system.FileUtils._
 import js7.common.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.common.time.WaitForCondition.waitForCondition
-import js7.data.job.ReturnCode
+import js7.data.job.{ReturnCode, TaskId}
 import js7.data.system.Stdout
 import js7.taskserver.task.process.ShellScriptProcess.startShellScript
 import org.scalatest.freespec.AnyFreeSpec
@@ -79,7 +79,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
       info("Disabled on MacOS because it kills our builder process")
       pending
     } else {
-      val agentTaskId = AgentTaskId("TEST-PROCESS-ID")
+      val taskId = TaskId("TEST-PROCESS-ID")
       val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 7 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 6"
       withCloser { closer =>
         val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
@@ -95,7 +95,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
         }
         val processConfig = ProcessConfiguration.forTest.copy(
           stdFileMap = stdFileMap,
-          agentTaskIdOption = Some(agentTaskId),
+          maybeTaskId = Some(taskId),
           killScriptOption = Some(ProcessKillScript(killScriptFile)))
         val shellProcess = startShellScript(processConfig, scriptString = script)
         assert(shellProcess.processConfiguration.files.size == 2)
@@ -112,8 +112,8 @@ final class ShellScriptProcessTest extends AnyFreeSpec
         shellProcess.close()
 
         assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
-        assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=--agent-task-id=${agentTaskId.string}")
-        assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=--kill-agent-task-id=${agentTaskId.string}")
+        assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=--agent-task-id=${taskId.string}")
+        assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=--kill-agent-task-id=${taskId.string}")
       }
     }
   }

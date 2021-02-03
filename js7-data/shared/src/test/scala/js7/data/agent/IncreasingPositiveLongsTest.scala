@@ -1,4 +1,4 @@
-package js7.agent.data
+package js7.data.agent
 
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
@@ -6,8 +6,8 @@ import org.scalatest.matchers.should.Matchers._
 /**
  * @author Joacim Zschimmer
  */
-final class IncreasingPositiveLongsTest extends AnyFreeSpec {
-
+final class IncreasingPositiveLongsTest extends AnyFreeSpec
+{
   "Only positives" in {
     val iterator = new IncreasingPositiveLongs()
     for (_ <- 1 to 10000) assert(iterator.next() >= 1)

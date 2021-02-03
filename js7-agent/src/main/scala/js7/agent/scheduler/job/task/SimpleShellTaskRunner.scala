@@ -2,7 +2,6 @@ package js7.agent.scheduler.job.task
 
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.AgentTaskId
 import js7.agent.data.views.TaskOverview
 import js7.agent.scheduler.job.ShellReturnValuesProvider
 import js7.agent.scheduler.job.task.SimpleShellTaskRunner._
@@ -14,7 +13,8 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.scalautil.{IOExecutor, Logger}
-import js7.data.job.ReturnCode
+import js7.data.job.TaskId.newGenerator
+import js7.data.job.{ReturnCode, TaskId}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.taskserver.modules.shell.RichProcessStartSynchronizer
@@ -30,14 +30,14 @@ import scala.util.control.NonFatal
   */
 final class SimpleShellTaskRunner(
   conf: TaskConfiguration,
-  agentTaskId: AgentTaskId,
+  taskId: TaskId,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   agentConfiguration: AgentConfiguration)
   (implicit iox: IOExecutor, ec: ExecutionContext)
 extends TaskRunner
 {
   val asBaseAgentTask = new BaseAgentTask {
-    def id = agentTaskId
+    def id = taskId
     def jobKey = conf.jobKey
     def pidOption = richProcessOnce.flatMap(_.pidOption)
     def terminated = terminatedPromise.future
@@ -101,14 +101,14 @@ extends TaskRunner
 
   private def startProcess(env: Map[String, String], stdChannels: StdChannels): Future[RichProcess] =
     if (killedBeforeStart)
-      Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
+      Future.failed(new RuntimeException(s"$taskId killed before start"))
     else {
       val processConfiguration = ProcessConfiguration(
         stdFileMap = Map.empty,
         encoding = AgentConfiguration.FileEncoding,
         workingDirectory = Some(agentConfiguration.jobWorkingDirectory),
         additionalEnvironment = env + returnValuesProvider.toEnv,
-        agentTaskIdOption = Some(agentTaskId),
+        maybeTaskId = Some(taskId),
         killScriptOption = agentConfiguration.killScript)
       synchronizedStartProcess {
         startPipedShellScript(conf.commandLine, processConfiguration, stdChannels)
@@ -123,11 +123,11 @@ extends TaskRunner
       case Some(richProcess) =>
         richProcess.sendProcessSignal(signal)
       case None =>
-        terminatedPromise.tryFailure(new RuntimeException(s"$agentTaskId killed before start"))
+        terminatedPromise.tryFailure(new RuntimeException(s"$taskId killed before start"))
         killedBeforeStart = true
     }
 
-  override def toString = s"SimpleShellTaskRunner($agentTaskId ${conf.jobKey})"
+  override def toString = s"SimpleShellTaskRunner($taskId ${conf.jobKey})"
 }
 
 object SimpleShellTaskRunner
@@ -135,16 +135,23 @@ object SimpleShellTaskRunner
   private val logger = Logger(getClass)
 
   @Singleton
+  final class TaskIdGenerator extends Iterator[TaskId] {
+    private val generator = newGenerator()
+    def hasNext = generator.hasNext
+    def next() = generator.next()
+  }
+
+  @Singleton
   final class Factory @Inject()(
-    agentTaskIdGenerator: AgentTaskId.Generator,
+    taskIdGenerator: TaskIdGenerator,
     synchronizedStartProcess: RichProcessStartSynchronizer,
     agentConfiguration: AgentConfiguration)
     (implicit iox: IOExecutor, ec: ExecutionContext)
   extends TaskRunner.Factory
   {
     def apply(conf: TaskConfiguration) = {
-      val agentTaskId = agentTaskIdGenerator.next()
-      new SimpleShellTaskRunner(conf, agentTaskId, synchronizedStartProcess, agentConfiguration)
+      val taskId = taskIdGenerator.next()
+      new SimpleShellTaskRunner(conf, taskId, synchronizedStartProcess, agentConfiguration)
     }
   }
 }

@@ -233,7 +233,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Command line arguments" in {
     // TODO Replace --agent-task-id= by something different (for example, PID returned by Java 9)
-    def removeAgentTaskId(string: String): String =
+    def removeTaskId(string: String): String =
       Pattern.compile(""" --agent-task-id=[0-9]+-[0-9]+""").matcher(string).replaceAll("")
 
     val events = runWithWorkflow(
@@ -244,7 +244,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
             CommandLineParser.parse(s"""'$argScriptFile' 1 'two' "three" $$ARG""").orThrow)))),
         orderArguments = Map("ARG" -> StringValue("ARG-VALUE")))
     val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.mkString
-    assert(removeAgentTaskId(stdout)
+    assert(removeTaskId(stdout)
       .contains("ARGUMENTS=/1 two three ARG-VALUE/"))
   }
 

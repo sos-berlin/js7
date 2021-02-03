@@ -3,7 +3,6 @@ package js7.agent.web.views
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import io.circe.Json
-import js7.agent.data.AgentTaskId
 import js7.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import js7.agent.task.{BaseAgentTask, TaskRegister, TaskRegisterActor}
 import js7.agent.web.test.WebServiceTest
@@ -16,7 +15,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
 import js7.common.process.Processes.Pid
 import js7.common.scalautil.Futures.implicits.SuccessFuture
-import js7.data.job.JobKey
+import js7.data.job.{JobKey, TaskId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import monix.execution.Scheduler
@@ -44,7 +43,7 @@ final class TaskWebServiceTest extends AnyFreeSpec with WebServiceTest with Task
 
   override def beforeAll() = {
     taskRegister.add(new BaseAgentTask {
-      def overview = testTaskOverview(TestAgentTaskId)
+      def overview = testTaskOverview(TestTaskId)
       def pidOption = overview.pid
       def jobKey = overview.jobKey
       def id = overview.taskId
@@ -88,7 +87,7 @@ final class TaskWebServiceTest extends AnyFreeSpec with WebServiceTest with Task
 
   "task/1-123" in {
     Get("/agent/api/task/1-123") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[TaskOverview] == testTaskOverview(TestAgentTaskId))
+      assert(responseAs[TaskOverview] == testTaskOverview(TestTaskId))
       assert(responseAs[Json] == json"""
         {
           "taskId": "1-123",
@@ -107,17 +106,17 @@ final class TaskWebServiceTest extends AnyFreeSpec with WebServiceTest with Task
 }
 
 private object TaskWebServiceTest {
-  private val TestAgentTaskId = AgentTaskId("1-123")
+  private val TestTaskId = TaskId("1-123")
 
   private val TestOverview = TaskRegisterOverview(
     currentTaskCount = 1,
     totalTaskCount = 1)
 
-  private val TestTaskOverviews = List(testTaskOverview(TestAgentTaskId))
+  private val TestTaskOverviews = List(testTaskOverview(TestTaskId))
 
-  private def testTaskOverview(id: AgentTaskId) = TaskOverview(
+  private def testTaskOverview(id: TaskId) = TaskOverview(
     JobKey(WorkflowPath("WORKFLOW") ~ "VERSION", WorkflowJob.Name("JOB")),
-    TestAgentTaskId,
+    TestTaskId,
     pid = Some(Pid(123)),
     Timestamp.parse("2015-06-10T12:00:00Z"))
 }

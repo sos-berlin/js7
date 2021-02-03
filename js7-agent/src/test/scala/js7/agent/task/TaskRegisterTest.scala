@@ -5,7 +5,6 @@ import akka.pattern.ask
 import akka.util.Timeout
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.AgentTaskId
 import js7.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import js7.agent.task.TaskRegisterTest._
 import js7.agent.tests.TestAgentDirectoryProvider
@@ -21,7 +20,7 @@ import js7.common.configutils.Configs._
 import js7.common.process.Processes.Pid
 import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.time.WaitForCondition.retryUntil
-import js7.data.job.JobKey
+import js7.data.job.{JobKey, TaskId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalatest.BeforeAndAfterAll
@@ -42,9 +41,9 @@ final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAf
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(agentDirectory).finishAndProvideFiles
   private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration.killScriptConf) )
   private lazy val handle = new TaskRegister(actor)
-  private lazy val aTask = new TestTask(AgentTaskId(1, 11))
-  private lazy val bTask = new TestTask(AgentTaskId(2, 22))
-  private lazy val cTask = new TestTask(AgentTaskId(3, 33))
+  private lazy val aTask = new TestTask(TaskId(1, 11))
+  private lazy val bTask = new TestTask(TaskId(2, 22))
+  private lazy val cTask = new TestTask(TaskId(3, 33))
 
   override def afterAll() = {
     closer.close()
@@ -131,7 +130,7 @@ final class TaskRegisterTest extends AnyFreeSpec with HasCloser with BeforeAndAf
 }
 
 private object TaskRegisterTest {
-  private class TestTask(val id: AgentTaskId) extends BaseAgentTask {
+  private class TestTask(val id: TaskId) extends BaseAgentTask {
 
     val jobKey = JobKey(WorkflowPath("WORKFLOW") ~ "VERSION", WorkflowJob.Name("JOB"))
     val pidOption = Some(Pid(123))

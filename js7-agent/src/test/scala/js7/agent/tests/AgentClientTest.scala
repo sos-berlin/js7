@@ -2,9 +2,9 @@ package js7.agent.tests
 
 import js7.agent.client.AgentClient
 import js7.agent.configuration.{AgentStartInformation, Akkas}
-import js7.agent.data.AgentTaskId
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
+import js7.data.job.TaskId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
@@ -41,7 +41,7 @@ final class AgentClientTest extends AnyFreeSpec with ScalaFutures with AgentTest
   //
   //"get /task/1-123 (incomplete)" in {
   //  val e = intercept[UnsuccessfulResponseException] {
-  //    awaitResult(client.task(TestAgentTaskId), 2.s): TaskOverview
+  //    awaitResult(client.task(TestTaskId), 2.s): TaskOverview
   //  }
   //  assert(e.response.status == InternalServerError)
   //  assert(e.response.entity.asString contains "UnknownTaskException")
@@ -50,5 +50,5 @@ final class AgentClientTest extends AnyFreeSpec with ScalaFutures with AgentTest
 }
 
 object AgentClientTest {
-  private val TestAgentTaskId = AgentTaskId("1-123")
+  private val TestTaskId = TaskId("1-123")
 }

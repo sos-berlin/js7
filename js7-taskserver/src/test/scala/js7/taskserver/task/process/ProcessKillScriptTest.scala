@@ -4,7 +4,6 @@ import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._
 import java.nio.file.Path
-import js7.agent.data.AgentTaskId
 import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.time.ScalaTime._
@@ -18,6 +17,7 @@ import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.system.FileUtils._
 import js7.common.utils.JavaResource
+import js7.data.job.TaskId
 import js7.taskserver.task.process.ProcessKillScriptTest._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -38,10 +38,10 @@ final class ProcessKillScriptTest extends AnyFreeSpec {
       pending
     } else {
       val out = createTempFile("test-", ".log")
-      val (scriptFile, process) = startNestedProcess(TestAgentTaskId, out)
+      val (scriptFile, process) = startNestedProcess(TestTaskId, out)
       sleep(2.s)
       logProcessTree()
-      runKillScript(TestAgentTaskId, processToPidOption(process))
+      runKillScript(TestTaskId, processToPidOption(process))
       process.waitFor(10, SECONDS)
       assert(process.exitValue == SIGKILLexitValue)
       sleep(1.s) // Time to let kill take effect
@@ -62,20 +62,20 @@ final class ProcessKillScriptTest extends AnyFreeSpec {
     }
   }
 
-  private def startNestedProcess(agentTaskId: AgentTaskId, out: Path): (Path, Process) = {
+  private def startNestedProcess(taskId: TaskId, out: Path): (Path, Process) = {
     val file = Processes.newTemporaryShellFile("test")
     file := Script
-    val args = List(file.toString, s"--agent-task-id=${agentTaskId.string}")
+    val args = List(file.toString, s"--agent-task-id=${taskId.string}")
     val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT).startRobustly()
     logger.info(s"Started process ${processToPidOption(process)}")
     (file, process)
   }
 
-  private def runKillScript(agentTaskId: AgentTaskId, pidOption: Option[Pid]): Unit = {
+  private def runKillScript(taskId: TaskId, pidOption: Option[Pid]): Unit = {
     autoClosing(new ProcessKillScriptProvider) { provider =>
       val tmp = createTempDirectory("test-")
       val killScript = provider.provideTo(temporaryDirectory)
-      val args = killScript.toCommandArguments(agentTaskId, pidOption)
+      val args = killScript.toCommandArguments(taskId, pidOption)
       val killProcess = new ProcessBuilder(args.asJava).startRobustly()
       startLogStreams(killProcess, "Kill script") await 60.s
       killProcess.waitFor(60, SECONDS)
@@ -87,7 +87,7 @@ final class ProcessKillScriptTest extends AnyFreeSpec {
 
 private object ProcessKillScriptTest {
   private val logger = Logger(getClass)
-  private val TestAgentTaskId = AgentTaskId("1-TEST")
+  private val TestTaskId = TaskId("1-TEST")
   private def Script =
     (if (isWindows) JavaResource("js7/taskserver/task/process/scripts/windows/test.cmd")
                else JavaResource("js7/taskserver/task/process/scripts/unix/test.sh"))

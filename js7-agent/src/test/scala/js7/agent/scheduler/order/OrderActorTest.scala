@@ -8,7 +8,7 @@ import com.typesafe.config.{Config, ConfigValueFactory}
 import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.{AgentState, AgentTaskId}
+import js7.agent.data.AgentState
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import js7.agent.scheduler.order.OrderActorTest._
@@ -153,7 +153,7 @@ private object OrderActorTest {
     import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
     private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
-      new AgentTaskId.Generator,
+      new SimpleShellTaskRunner.TaskIdGenerator,
       new StandardRichProcessStartSynchronizer()(context.system),
       AgentConfiguration.forTest(configAndData = dir))
 

@@ -2,10 +2,10 @@ package js7.agent.data.web
 
 import akka.http.scaladsl.model.Uri.{Path, Query}
 import akka.http.scaladsl.model.{Uri => AkkaUri}
-import js7.agent.data.AgentTaskId
 import js7.agent.data.web.AgentUris._
 import js7.base.web.Uri
 import js7.data.event.{Event, EventRequest}
+import js7.data.job.TaskId
 import js7.data.order.OrderId
 
 /**
@@ -25,7 +25,7 @@ final class AgentUris private(agentUri: Uri)
     val overview = toUri("api/task")
     val tasks = toUri("api/task/")
 
-    def apply(id: AgentTaskId) = toUri(Path("api/task") / id.string)
+    def apply(id: TaskId) = toUri(Path("api/task") / id.string)
   }
 
   object order {

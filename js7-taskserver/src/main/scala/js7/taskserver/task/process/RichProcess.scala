@@ -114,7 +114,7 @@ extends HasCloser with ClosedFuture
     process.getOutputStream
 
   override def toString =
-    Some(processToString(process, pidOption)) ++ processConfiguration.agentTaskIdOption mkString " "
+    Some(processToString(process, pidOption)) ++ processConfiguration.maybeTaskId mkString " "
 }
 
 object RichProcess {

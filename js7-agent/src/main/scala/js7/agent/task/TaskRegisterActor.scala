@@ -3,8 +3,8 @@ package js7.agent.task
 import akka.actor.{Actor, ActorSystem, Cancellable, DeadLetterSuppression, PoisonPill, Props, Status}
 import akka.dispatch.{PriorityGenerator, UnboundedStablePriorityMailbox}
 import com.typesafe.config.Config
+import js7.agent.data.KillScriptConf
 import js7.agent.data.views.TaskRegisterOverview
-import js7.agent.data.{AgentTaskId, KillScriptConf}
 import js7.agent.task.TaskRegisterActor._
 import js7.base.generic.Completed
 import js7.base.process.ProcessSignal
@@ -12,6 +12,7 @@ import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
+import js7.data.job.TaskId
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline
@@ -22,11 +23,11 @@ import scala.util.control.NonFatal
   *
   * @author Joacim Zschimmer
   */
-final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) extends Actor {
-
+final class TaskRegisterActor private(killScriptConf: Option[KillScriptConf]) extends Actor
+{
   import context.dispatcher
 
-  private val idToTask = mutable.Map[AgentTaskId, BaseAgentTask]()
+  private val idToTask = mutable.Map[TaskId, BaseAgentTask]()
   private var totalCount = 0
   private val crashKillScriptOption =
     for (conf <- killScriptConf) yield new CrashKillScript(conf.killScript, conf.crashKillScriptFile)
@@ -135,7 +136,7 @@ object TaskRegisterActor {
   sealed trait Input
   object Input {
     final case class Add(task: BaseAgentTask, response: Promise[Completed]) extends Input
-    final case class Remove(taskId: AgentTaskId) extends Input
+    final case class Remove(taskId: TaskId) extends Input
   }
 
   sealed trait Command
@@ -144,7 +145,7 @@ object TaskRegisterActor {
     final case class Terminate(sigterm: Boolean, sigkillProcessesDeadline: Deadline) extends Command
     final case object GetOverview extends Command
     final case object GetTaskOverviews extends Command
-    final case class GetTaskOverview(taskId: AgentTaskId) extends Command
+    final case class GetTaskOverview(taskId: TaskId) extends Command
   }
 
   private sealed trait Internal
