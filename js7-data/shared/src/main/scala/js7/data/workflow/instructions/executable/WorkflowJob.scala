@@ -34,14 +34,16 @@ final case class WorkflowJob private(
   def isExecutableOnAgent(agentId: AgentId): Boolean =
     this.agentId == agentId
 
-  override def toString = s"Job($argumentsString)"
+  //override def toString = s"Job($argumentsString)"
 
   def argumentsString = s"agent=${agentId.string}, " +
     (executable match {
       case PathExecutable(o, env, v1Compatible) => s"executable=$o"
       case ScriptExecutable(o, env, v1Compatible) => s"script=$o"
       case CommandLineExecutable(expr, env) => "command=" + ValuePrinter.quoteString(expr.toString)
-      case InternalExecutable(className) => "internalJobClass=" + ValuePrinter.quoteString(className)
+      case InternalExecutable(className, args) =>
+        "internalJobClass=" + ValuePrinter.quoteString(className) ++
+          (args.nonEmpty ?? ("arguments=" + ValuePrinter.objectExpressionToString(args)))
     }) +
     (returnCodeMeaning match {
       case ReturnCodeMeaning.Default => ""

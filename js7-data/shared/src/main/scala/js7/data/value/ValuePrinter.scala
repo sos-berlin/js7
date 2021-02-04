@@ -1,7 +1,26 @@
 package js7.data.value
 
+import js7.data.value.expression.Expression.ObjectExpression
+
 object ValuePrinter
 {
+  def objectExpressionToString(objExpr: ObjectExpression): String = {
+    val sb = new StringBuilder
+    appendObjectExpression(sb, objExpr)
+    sb.toString
+  }
+
+  def appendObjectExpression(sb: StringBuilder, env: ObjectExpression): Unit = {
+    sb.append('{')
+    for ((name, expr) <- env.nameToExpr) {
+      if (sb.last != '{') sb.append(", ")
+      appendQuoted(sb, name)
+      sb.append(": ")
+      sb.append(expr.toString)
+    }
+    sb.append('}')
+  }
+
   def appendValue(sb: StringBuilder, value: Value): Unit =
     value match {
       case BooleanValue(bool) => sb.append(bool)

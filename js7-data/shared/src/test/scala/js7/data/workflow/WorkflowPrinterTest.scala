@@ -40,7 +40,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         Vector(
           Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("my-script"), Map("KEY" -> StringValue("VALUE")))))),
       """define workflow {
-        |  execute agent="AGENT", arguments={"KEY": "VALUE"}, executable="my-script";
+        |  execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -52,7 +52,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         Vector(
           Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("my-script"), Map("KEY\n\"$" -> StringValue("VALUE")))))),
       """define workflow {
-        |  execute agent="AGENT", arguments={'KEY
+        |  execute agent="AGENT", defaultArguments={'KEY
         |"$': "VALUE"}, executable="my-script";
         |}
         |""".stripMargin)
@@ -71,7 +71,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
           Execute.Anonymous(
             WorkflowJob(AgentId("AGENT"), ScriptExecutable("SCRIPT", v1Compatible = true))))),
       """define workflow {
-        |  execute agent="AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=
+        |  execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=
         |''''LINE 1
         |   |LINE 2
         |   |'''LINE 3'''
@@ -89,7 +89,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
           Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("my-script"), Map("KEY" -> StringValue("VALUE")),
             ReturnCodeMeaning.NoFailure, taskLimit = 3, sigkillDelay = Some(10.s))))),
       """define workflow {
-        |  execute agent="AGENT", taskLimit=3, arguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillDelay=10, executable="my-script";
+        |  execute agent="AGENT", taskLimit=3, defaultArguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillDelay=10, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -109,7 +109,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         |  job B;
         |
         |  define job A {
-        |    execute agent="AGENT", arguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], executable="a-script"
+        |    execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], executable="a-script"
         |  }
         |  define job B {
         |    execute agent="AGENT", executable="b-script"

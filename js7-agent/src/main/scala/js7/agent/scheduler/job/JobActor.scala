@@ -3,15 +3,11 @@ package js7.agent.scheduler.job
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import cats.instances.vector._
 import cats.syntax.traverse._
-import java.lang.reflect.Constructor
-import java.lang.reflect.Modifier.isPublic
 import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import java.nio.file.{Path, Paths}
-import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.agent.scheduler.job.JobActor._
-import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
 import js7.base.process.ProcessSignal
 import js7.base.process.ProcessSignal.SIGKILL
@@ -24,7 +20,6 @@ import js7.common.process.Processes.ShellFileAttributes
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.data.execution.workflow.context.StateView
-import js7.data.job.internal.InternalJob
 import js7.data.job.{AbsolutePathExecutable, CommandLine, CommandLineEvaluator, CommandLineExecutable, InternalExecutable, JobKey, RelativePathExecutable, ScriptExecutable}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.ObjectExpression
@@ -32,7 +27,9 @@ import js7.data.value.expression.{Evaluator, Scope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.configuration.{ExecutorConfiguration, TaskConfiguration}
+import js7.executor.internal.{InternalExecutor, InternalJob}
 import js7.executor.process.RichProcess.tryDeleteFile
 import js7.executor.task.{StdChannels, TaskRunner}
 import monix.execution.Scheduler
@@ -109,20 +106,17 @@ extends Actor with Stash
           }
         }
 
-      case InternalExecutable(className) =>
-        Checked.catchNonFatal {
-          val constructors = getClass.getClassLoader
-            .loadClass(className).asInstanceOf[Class[InternalJob]]
-            .getConstructors.asInstanceOf[Array[Constructor[InternalJob]]]
-            .filter(o => isPublic(o.getModifiers))
-          constructors
-            .find(_.getParameterTypes sameElements Array(classOf[InternalJob.JobContext]))
-            .orElse(constructors.find(_.getParameterTypes.isEmpty))
-            .toChecked(Problem.pure(s"Class '$className' does not have an appropriate constructor (empty or InternalJob.Context)"))
-        } .flatten
-          .map(constructor =>
-            (order, executeArguments, workflow) =>
-              Right(InternalExecute(constructor, order, workflow, executeArguments)))
+      case executable: InternalExecutable =>
+        val executor = new InternalExecutor(executable, workflowJob)
+        // TODO execute.start here, but it returns a Task
+        Right {
+          (order, executeArguments, workflow) => {
+            toEvaluator(order, executeArguments, workflow)
+              .evalObjectExpression(executable.arguments)
+              .map(_.nameToValue)
+              .map(InternalExecute(executor, order, workflow, _))
+          }
+        }
     }
 
   private def toEvaluator(order: Order[Order.Processing], defaultArguments: NamedValues, workflow: Workflow): Evaluator =
@@ -210,35 +204,23 @@ extends Actor with Stash
                   handleIfReadyForOrder()
               }
 
-          case Right(InternalExecute(contructor, order, workflow, arguments)) =>
-            Try {
-              contructor.getParameterCount match {
-                case 0 => contructor.newInstance()
-                case 1 => contructor.newInstance(InternalJob.JobContext(workflowJob, workflow))
+          case Right(InternalExecute(executor, order, workflow, arguments)) =>
+            orderToRun.insert(order.id -> Run(
+              name = () => executor.toString,
+              kill = _ => {}))
+            val scope = toScope(order, arguments, workflow)
+            val sender = this.sender()
+            executor.processOrder(InternalJob.OrderContext(order, workflow, arguments, scope))
+              .flatMapT(_.completed)
+              .map(_.map(_.namedValues))
+              .runToFuture
+              .onComplete { tried_ =>
+                val tried = tried_.map {
+                  case Left(problem) => Outcome.Failed(Some(problem.toString))
+                  case Right(namedValues) => Outcome.Succeeded(namedValues)
+                }
+                self.!(Internal.TaskFinished(cmd.order.id, tried))(sender)
               }
-            } match {
-              case Failure(t) =>
-                replyWithOrderProcessed(Response.OrderProcessed(
-                  cmd.order.id,
-                  Outcome.Disrupted(Problem.fromThrowable(t)),
-                  isKilled = false))
-
-              case Success(job) =>
-                orderToRun.insert(order.id -> Run(
-                  name = () => job.toString,
-                  kill = _ => {}))
-                val scope = toScope(order, arguments, workflow)
-                val sender = this.sender()
-                job.processOrder(InternalJob.OrderContext(order, scope, arguments))
-                  .runToFuture
-                  .onComplete { tried_ =>
-                    val tried = tried_.map {
-                      case Left(problem) => Outcome.Failed(Some(problem.toString))
-                      case Right(namedValues) => Outcome.Succeeded(namedValues)
-                    }
-                    self.!(Internal.TaskFinished(cmd.order.id, tried))(sender)
-                  }
-            }
         }
       }
 
@@ -406,7 +388,7 @@ object JobActor
   }
 
   private case class InternalExecute(
-    contructor: Constructor[InternalJob],
+    executor: InternalExecutor,
     order: Order[Order.Processing],
     workflow: Workflow,
     arguments: NamedValues)

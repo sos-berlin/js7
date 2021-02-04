@@ -163,7 +163,10 @@ object ScriptExecutable
     } yield ScriptExecutable(script, env, v1Compatible)
 }
 
-final case class InternalExecutable(className: String) extends Executable
+final case class InternalExecutable(
+  className: String,
+  arguments: ObjectExpression = ObjectExpression.empty)
+  extends Executable
 
 object Executable
 {

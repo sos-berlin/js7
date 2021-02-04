@@ -5,12 +5,12 @@ import java.util.regex.Pattern
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.common.configutils.Configs._
 import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Logger
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
-import js7.data.job.internal.InternalJob
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, InternalExecutable, RelativePathExecutable, ReturnCode, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -19,6 +19,8 @@ import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.executor.internal.InternalJob
+import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
 import js7.tests.ExecuteTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
@@ -200,7 +202,9 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     Execute(
       WorkflowJob(
         agentId,
-        InternalExecutable(classOf[TestInternalJob].getName))),
+        InternalExecutable(
+          classOf[TestInternalJob].getName,
+          arguments = ObjectExpression(Map("ARG" -> NamedValue.last("ARG")))))),
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
@@ -306,13 +310,13 @@ object ExecuteTest
     if (isWindows) s"@exit %$envName%"
     else s"""exit "$$$envName""""
 
-  private final class TestInternalJob
-  extends InternalJob
+  private final class TestInternalJob extends InternalJob
   {
-    def processOrder(context: InternalJob.OrderContext) =
-      Task {
-        for (number <- context.evalToBigDecimal("$ARG")) yield
-          NamedValues("RESULT" -> NumberValue(number + 1))
-      }
+    def processOrder(context: OrderContext) =
+      OrderProcess(
+        Task {
+          for (number <- context.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
+            Result(NamedValues("RESULT" -> NumberValue(number + 1)))
+        })
   }
 }

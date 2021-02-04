@@ -84,7 +84,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     val workflow = WorkflowParser.parse(s"""
       define workflow {
         execute executable="path-to-my-script", agent="AGENT",
-          arguments = { "A": "${"A" * 700}" };
+          defaultArguments = { "A": "${"A" * 700}" };
       }""").orThrow.withoutSource
     val n = calculateNumberOf[VersionedItem](200_000, workflow.withId(WorkflowPath("WORKFLOW-XXXXX") ~ versionId))
     logger.info(s"Adding $n Workflows")

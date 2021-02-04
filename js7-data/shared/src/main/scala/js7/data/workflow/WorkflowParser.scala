@@ -104,13 +104,16 @@ object WorkflowParser
           keyValue("script", constantExpression) |
           keyValue("internalJobClass", constantExpression) |
           keyValue("agent", agentId) |
-          keyValue("arguments", namedValues) |
+          keyValue("defaultArguments", namedValues) |
+          keyValue("arguments", objectExpression) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int) |
           keyValue("sigkillDelay", int))
         agentId <- kv[AgentId]("agent")
-        env <- kv.oneOfOr[ObjectExpression](Set("env"), ObjectExpression.empty)
+        defaultArguments <- kv[NamedValues]("defaultArguments", NamedValues.empty)
+        arguments <- kv[ObjectExpression]("arguments", ObjectExpression.empty)
+        env <- kv[ObjectExpression]("env", ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
         executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
           case ("executable", path: String) =>
@@ -123,15 +126,14 @@ object WorkflowParser
               .map(v => ScriptExecutable(v.string, env, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
             checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
-              .map(v => InternalExecutable(v.string)))
+              .map(v => InternalExecutable(v.string, arguments)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
-        arguments <- kv[NamedValues]("arguments", NamedValues.empty)
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
       } yield
-        WorkflowJob(agentId, executable, arguments, returnCodeMeaning, taskLimit = taskLimit,
+        WorkflowJob(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit = taskLimit,
           sigkillDelay = sigkillDelay))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
@@ -139,12 +141,12 @@ object WorkflowParser
         .map { case (start, job, end) => Execute.Anonymous(job, sourcePos = sourcePos(start, end)) })
 
     private def jobInstruction[_: P] = P[Execute](
-      (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValues(keyValue("arguments", namedValues))).? ~ hardEnd)
+      (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValues(keyValue("defaultArguments", namedValues))).? ~ hardEnd)
         .flatMap {
           case (start, name, None, end) =>
             valid(Execute.Named(WorkflowJob.Name(name), sourcePos = sourcePos(start, end)))
           case (start, name, Some(keyToValue), end) =>
-            for (arguments <- keyToValue[NamedValues]("arguments", NamedValues.empty)) yield
+            for (arguments <- keyToValue[NamedValues]("defaultArguments", NamedValues.empty)) yield
               Execute.Named(WorkflowJob.Name(name), defaultArguments = arguments, sourcePos(start, end))
         })
 

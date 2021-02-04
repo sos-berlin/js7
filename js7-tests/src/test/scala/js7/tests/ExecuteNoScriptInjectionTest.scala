@@ -1,12 +1,12 @@
 package js7.tests
 
-import js7.agent.data.Problems.SignedInjectionNotAllowed
 import js7.base.problem.Checked.Ops
 import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.data.agent.AgentId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.tests.ExecuteNoScriptInjectionTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global

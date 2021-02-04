@@ -1,22 +1,37 @@
 package js7.data.value.expression
 
 import js7.base.problem.{Checked, Problem}
-import js7.data.value.Value
+import js7.base.utils.ScalaUtils.checkedCast
+import js7.data.value.{NumberValue, Value}
 
 /**
   * @author Joacim Zschimmer
   */
 trait Scope
 {
+  private lazy val evaluator = new Evaluator(this)
+
   val symbolToValue: String => Checked[Value]
 
   val findValue: ValueSearch => Checked[Option[Value]]
 
   final def evalBoolean(expression: Expression): Checked[Boolean] =
-    new Evaluator(this).evalBoolean(expression).map(_.booleanValue)
+    evaluator.evalBoolean(expression).map(_.booleanValue)
 
   final def evalString(expression: Expression): Checked[String] =
-    new Evaluator(this).evalString(expression).map(_.string)
+    evaluator.evalString(expression).map(_.string)
+
+  def variable(name: String): Checked[Option[Value]] =
+    findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
+
+  def evalToBigDecimal(expression: String): Checked[BigDecimal] =
+    eval(expression)
+      .flatMap(checkedCast[NumberValue])
+      .map(_.number)
+
+  def eval(expression: String): Checked[Value] =
+    ExpressionParser.parse(expression)
+      .flatMap(evaluator.eval)
 }
 
 object Scope

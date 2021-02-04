@@ -40,7 +40,7 @@ object Execute
   {
     def withoutSourcePos = copy(sourcePos = None)
 
-    override def toString = s"execute $name"
+    //override def toString = s"execute $name, defaultArguments=$defaultArguments"
   }
   object Named {
     implicit val jsonEncoder: Encoder.AsObject[Named] = named =>
@@ -64,7 +64,7 @@ object Execute
   {
     def withoutSourcePos = copy(sourcePos = None)
 
-    override def toString = s"execute (${job.argumentsString})$sourcePosToString"
+    override def toString = s"execute(defaultArguments=$defaultArguments, $job)$sourcePosToString"
   }
   object Anonymous {
     // TODO Implement automatic removal of empty collections in JSON serialization/deserialization

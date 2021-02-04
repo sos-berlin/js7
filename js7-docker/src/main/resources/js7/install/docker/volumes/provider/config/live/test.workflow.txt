@@ -1,22 +1,22 @@
 define workflow {
-  job TEST1, arguments={"hello": "გამარჯობა!"};
+  job TEST1, defaultArguments={"hello": "გამარჯობა!"};
 
   fork {
     "🥕": {
-      job TEST1, arguments={"hello": "Здравей!"};
-      job TEST1, arguments={"hello": "გამარჯობა!"};
-      job TEST1, arguments={"hello": "مرحبًا"};
-      job TEST1, arguments={"hello": "やあ!"};
+      job TEST1, defaultArguments={"hello": "Здравей!"};
+      job TEST1, defaultArguments={"hello": "გამარჯობა!"};
+      job TEST1, defaultArguments={"hello": "مرحبًا"};
+      job TEST1, defaultArguments={"hello": "やあ!"};
     },
     "🍋": {
       try (retryDelays=[0, 1]) {
         execute agent="agent-1", taskLimit=10, executable="fail", env={"HELLO": "やあ"};
       } catch {
         if (catchCount < 5) {
-          job SLEEP, arguments={"hello": "Will try again ⭕️"};
+          job SLEEP, defaultArguments={"hello": "Will try again ⭕️"};
           retry;
         } else
-          job SLEEP, arguments={"hello": "LAST JOB FAILED"};
+          job SLEEP, defaultArguments={"hello": "LAST JOB FAILED"};
       }
     }
   }

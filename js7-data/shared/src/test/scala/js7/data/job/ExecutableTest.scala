@@ -129,6 +129,25 @@ final class ExecutableTest extends AnyFreeSpec
         }
       """)
     }
+
+    "InternalExecutable" in {
+      testJson[Executable](
+        InternalExecutable(
+          "js7.tests.jobs.EmptyJob",
+          arguments = ObjectExpression(Map(
+            "MY-ARG" -> NamedValue.last("ARG"),
+            "NUMBER" -> NumericConstant(7)))),
+      json"""
+        {
+          "TYPE": "InternalExecutable",
+          "className": "js7.tests.jobs.EmptyJob",
+          "arguments": {
+            "MY-ARG": "$$ARG",
+            "NUMBER": "7"
+          }
+        }
+      """)
+    }
   }
 
   "Names before 2020-01-20" - {

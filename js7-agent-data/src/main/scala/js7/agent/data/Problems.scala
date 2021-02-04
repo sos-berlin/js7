@@ -33,6 +33,4 @@ object Problems
   final case class UnknownController(controllerId: ControllerId) extends Problem.Coded {
     def arguments = Map("controllerId" -> controllerId.string)
   }
-
-  case object SignedInjectionNotAllowed extends Problem.ArgumentlessCoded
 }

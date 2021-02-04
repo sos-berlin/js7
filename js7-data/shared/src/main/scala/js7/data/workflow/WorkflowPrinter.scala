@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockId
-import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
+import js7.data.value.ValuePrinter.{appendObjectExpression, appendQuoted, appendValue}
 import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter._
@@ -45,7 +45,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
       sb.append(job.taskLimit)
     }
     if (job.defaultArguments.nonEmpty) {
-      sb ++= ", arguments="
+      sb ++= ", defaultArguments="
       appendNamedValues(job.defaultArguments)
     }
     job.returnCodeMeaning match {
@@ -81,27 +81,25 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= ", command="
         appendQuoted(command.toString)
 
-      case InternalExecutable(className) =>
+      case InternalExecutable(className, arguments) =>
         sb ++= ", internalJobClass="
         appendQuoted(className)
+        if (arguments.nonEmpty) {
+          sb ++= ", arguments="
+          appendObjectExpression(sb, arguments)
+        }
     }
   }
 
   def appendEnv(env: ObjectExpression): Unit =
     if (env.nonEmpty) {
-      sb.append(", env={")
-      for ((name, expr) <- env.nameToExpr) {
-        if (sb.last != '{') sb.append(", ")
-        appendQuoted(name)
-        sb.append(": ")
-        sb.append(expr.toString)
-      }
-      sb.append("}")
+      sb.append(", env=")
+      appendObjectExpression(sb, env)
     }
 
   def appendWorkflowContent(nesting: Int, workflow: Workflow): Unit = {
     for (labeled <- workflow.labeledInstructions if !labeled.instruction.isInstanceOf[ImplicitEnd]) {
-      appendLabelledInstruction(nesting, labeled)
+      appendLabeledInstruction(nesting, labeled)
     }
 
     if (workflow.nameToJob.nonEmpty) sb ++= "\n"
@@ -119,7 +117,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
     }
   }
 
-  def appendLabelledInstruction(nesting: Int, labeled: Instruction.Labeled): Unit = {
+  def appendLabeledInstruction(nesting: Int, labeled: Instruction.Labeled): Unit = {
     indent(nesting)
     for (label <- labeled.maybeLabel) {
       sb ++= label.string
@@ -138,17 +136,17 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= "execute "
         appendWorkflowExecutable(workflowExecutable)
         if (arguments.nonEmpty) {
-          sb ++= ", arguments="
+          sb ++= ", defaultArguments="
           appendNamedValues(arguments)
         }
         sb ++= ";\n"
 
-      case Execute.Named(name, arguments, _) =>
+      case Execute.Named(name, defaultArguments, _) =>
         sb ++= "job "
         sb ++= name.string
-        if (arguments.nonEmpty) {
-          sb ++= ", arguments="
-          appendNamedValues(arguments)
+        if (defaultArguments.nonEmpty) {
+          sb ++= ", defaultArguments="
+          appendNamedValues(defaultArguments)
         }
         sb ++= ";\n"
 
@@ -248,7 +246,6 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= ";\n"
     }
   }
-
 }
 
 object WorkflowPrinter
@@ -265,7 +262,7 @@ object WorkflowPrinter
 
   def instructionToString(instruction: Instruction): String = {
     val sb = new StringBuilder(1024)
-    new WorkflowPrinter(sb).appendLabelledInstruction(nesting = 0, () @: instruction)
+    new WorkflowPrinter(sb).appendLabeledInstruction(nesting = 0, () @: instruction)
     sb.toString
   }
 

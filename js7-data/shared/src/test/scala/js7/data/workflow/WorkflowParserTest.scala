@@ -63,7 +63,7 @@ final class WorkflowParserTest extends AnyFreeSpec
        """define workflow {
          |  execute executable = "my/executable",
          |          agent = "AGENT",
-         |          arguments = { "A": "aaa", "B": "bbb", "I": -123 },
+         |          defaultArguments = { "A": "aaa", "B": "bbb", "I": -123 },
          |          taskLimit = 3,
          |          sigkillDelay = 30;
          |}""".stripMargin,
@@ -77,8 +77,8 @@ final class WorkflowParserTest extends AnyFreeSpec
               "I" -> NumberValue(-123)),
             taskLimit = 3,
             sigkillDelay = Some(30.s)),
-          sourcePos = sourcePos(20, 198)),
-        ImplicitEnd(sourcePos(200, 201))))
+          sourcePos = sourcePos(20, 205)),
+        ImplicitEnd(sourcePos(207, 208))))
   }
 
   "Execute script with \\n" in {
@@ -111,7 +111,7 @@ final class WorkflowParserTest extends AnyFreeSpec
     checkWithSourcePos("""
       define workflow {
         job A;
-        job B, arguments = { "KEY": "VALUE" };
+        job B, defaultArguments = { "KEY": "VALUE" };
         job C;
         define job A {
           execute executable="my/executable", agent="AGENT", successReturnCodes=[0, 1, 3];
@@ -127,9 +127,9 @@ final class WorkflowParserTest extends AnyFreeSpec
         WorkflowPath.NoId,
         Vector(
           Execute.Named(WorkflowJob.Name("A"), sourcePos = sourcePos(33, 38)),
-          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> StringValue("VALUE")), sourcePos(48, 85)),
-          Execute.Named(WorkflowJob.Name("C"), sourcePos = sourcePos(95, 100)),
-          ImplicitEnd(sourcePos(407, 408))),
+          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> StringValue("VALUE")), sourcePos(48, 92)),
+          Execute.Named(WorkflowJob.Name("C"), sourcePos = sourcePos(102, 107)),
+          ImplicitEnd(sourcePos(414, 415))),
         Map(
           WorkflowJob.Name("A") ->
             WorkflowJob(
