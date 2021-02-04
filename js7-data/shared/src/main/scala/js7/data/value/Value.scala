@@ -47,7 +47,7 @@ object Value
   //def apply(value: Boolean) = BooleanValue(value)
 
   @javaApi def of(value: String) = StringValue(value)
-  @javaApi def of(value: BigDecimal) = NumberValue(value)
+  @javaApi def of(value: java.math.BigDecimal) = NumberValue(value)
   @javaApi def of(value: Long) = NumberValue(BigDecimal(value))
   @javaApi def of(value: Int) = NumberValue(BigDecimal(value))
   @javaApi def of(value: Boolean) = BooleanValue(value)
@@ -163,9 +163,9 @@ object NumberValue extends ValueType
       Right(NumberValue(BigDecimal(number)))
     catch { case e: NumberFormatException => Problem(Option(e.getMessage) getOrElse e.toString)}
 
-  @javaApi def of(value: BigDecimal) = NumberValue(value)
-  @javaApi def of(value: java.lang.Long) = NumberValue(BigDecimal(value))
-  @javaApi def of(value: java.lang.Integer) = NumberValue(BigDecimal(value))
+  @javaApi def of(value: java.math.BigDecimal) = NumberValue(value)
+  @javaApi def of(value: Long) = NumberValue(BigDecimal(value))
+  @javaApi def of(value: Integer) = NumberValue(BigDecimal(value))
 }
 
 final case class BooleanValue(booleanValue: Boolean) extends Value
@@ -192,7 +192,7 @@ object BooleanValue extends ValueType
   val True = BooleanValue(true)
   val False = BooleanValue(false)
 
-  @javaApi def of(value: java.lang.Boolean) = BooleanValue(value)
+  @javaApi def of(value: Boolean) = BooleanValue(value)
 }
 
 final case class ListValue(list: Seq[Value]) extends Value
