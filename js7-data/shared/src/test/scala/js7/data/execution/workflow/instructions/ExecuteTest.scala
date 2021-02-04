@@ -4,7 +4,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.data.agent.AgentId
 import js7.data.event.KeyedEvent
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.job.{RelativePathExecutable, ReturnCode}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -24,7 +24,7 @@ final class ExecuteTest extends AnyFreeSpec {
     returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9)))
   private val orderId = OrderId("ORDER")
 
-  private val orderContext = new OrderContext {
+  private val stateView = new StateView {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToOrder = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
@@ -48,6 +48,6 @@ final class ExecuteTest extends AnyFreeSpec {
   private def toEvents(outcome: Outcome): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = Order(orderId, (WorkflowPath("WORKFLOW") ~ "VERSION" ) /: (Position(1) / "A" % 20), Order.Processed,
       historicOutcomes = HistoricOutcome(Position(1) / "B" % 20, outcome) :: Nil)
-    ExecuteExecutor.toEvents(executeAnonymous, order, orderContext).orThrow
+    ExecuteExecutor.toEvents(executeAnonymous, order, stateView).orThrow
   }
 }

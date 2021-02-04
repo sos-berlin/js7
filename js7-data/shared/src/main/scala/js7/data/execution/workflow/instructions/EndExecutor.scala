@@ -1,6 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.InstructionExecutor.instructionToExecutor
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved, OrderStarted}
@@ -13,7 +13,7 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
 {
   type Instr = End
 
-  def toEvents(instruction: End, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
     Right(
       (order.position.dropChild match {
         case None =>
@@ -35,9 +35,9 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
           }
 
         case Some(returnPosition) =>
-          context.instruction(order.workflowId /: returnPosition) match {
+          state.instruction(order.workflowId /: returnPosition) match {
             case fork: Fork =>
-              ForkExecutor.tryJoinChildOrder(context, order, fork).toList
+              ForkExecutor.tryJoinChildOrder(state, order, fork).toList
             case lock: LockInstruction =>
               LockExecutor.onReturnFromSubworkflow(order, lock).toList
             case _ =>
@@ -45,11 +45,11 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
           }
       }))
 
-  def nextPosition(instruction: End, order: Order[Order.State], context: OrderContext) =
+  def nextPosition(instruction: End, order: Order[Order.State], state: StateView) =
     Right(
       for {
         returnPosition <- order.position.dropChild
-        next <- instructionToExecutor(context.instruction(order.workflowId /: returnPosition)) match {
+        next <- instructionToExecutor(state.instruction(order.workflowId /: returnPosition)) match {
           case ForkExecutor => None
           case LockExecutor => None
           case _: PositionInstructionExecutor => Some(returnPosition.increment)  // Check this first for TryInstruction !!!

@@ -5,7 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.TryExecutorTest._
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
@@ -24,7 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class TryExecutorTest extends AnyFreeSpec
 {
-  private lazy val context = new OrderContext {
+  private lazy val stateView = new StateView {
     def idToOrder = Map(AOrder.id -> AOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
@@ -33,7 +33,7 @@ final class TryExecutorTest extends AnyFreeSpec
 
   "JSON" - {
     "try" in {
-      testJson(TryExecutor.nextPosition(tryInstruction, AOrder, context).orThrow,
+      testJson(TryExecutor.nextPosition(tryInstruction, AOrder, stateView).orThrow,
         json"""[ 7, "try+0", 0 ]""")
     }
 
@@ -44,12 +44,12 @@ final class TryExecutorTest extends AnyFreeSpec
   }
 
   "nextPosition" in {
-    assert(InstructionExecutor.nextPosition(tryInstruction, AOrder, context) ==
+    assert(InstructionExecutor.nextPosition(tryInstruction, AOrder, stateView) ==
       Right(Some(Position(7) / try_(0) % 0)))
   }
 
   "toEvents" in {
-    assert(InstructionExecutor.toEvents(tryInstruction, AOrder, context) ==
+    assert(InstructionExecutor.toEvents(tryInstruction, AOrder, stateView) ==
       Right(Seq(AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
   }
 }

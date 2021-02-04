@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.lock.LockRefusal
 import js7.data.order.Order
 import js7.data.order.Order.Fresh
@@ -13,7 +13,7 @@ object LockExecutor extends EventInstructionExecutor
 {
   type Instr = LockInstruction
 
-  def toEvents(instruction: LockInstruction, order: Order[Order.State], context: OrderContext) = {
+  def toEvents(instruction: LockInstruction, order: Order[Order.State], state: StateView) = {
     import instruction.{count, lockId}
 
     if (order.isAttached)
@@ -22,7 +22,7 @@ object LockExecutor extends EventInstructionExecutor
       Right((order.id <-: OrderStarted) :: Nil)
     else if (order.isState[Order.Ready] || order.isState[Order.WaitingForLock])
       for {
-        lockState <- context.idToLockState(lockId)
+        lockState <- state.idToLockState(lockId)
         event <- lockState.checkAcquire(order.id, count) match {
           case Right(()) =>
             Right(Some(OrderLockAcquired(lockId, count)))

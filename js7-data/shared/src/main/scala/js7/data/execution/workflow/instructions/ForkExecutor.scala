@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderBroken, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined, OrderMoved, OrderStarted}
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Fork
@@ -15,17 +15,17 @@ object ForkExecutor extends EventInstructionExecutor
 {
   type Instr = Fork
 
-  def toEvents(fork: Fork, order: Order[Order.State], context: OrderContext) =
+  def toEvents(fork: Fork, order: Order[Order.State], state: StateView) =
     Checked(
       order.ifState[Order.Fresh].map(order =>
         order.id <-: OrderStarted)
       .orElse(
         order.ifState[Order.Ready].map(order =>
-          checkOrderForked(context,
+          checkOrderForked(state,
             order.id <-: OrderForked(
               for (branch <- fork.branches) yield
                 OrderForked.Child(branch.id, order.id | branch.id.string)))))
-      .orElse(toJoined(context, order))
+      .orElse(toJoined(state, order))
       .orElse(order.ifState[Order.Processed].map(order =>
         order.id <-: (
           order.lastOutcome match {
@@ -37,8 +37,8 @@ object ForkExecutor extends EventInstructionExecutor
           })))
       .toList)
 
-  private def checkOrderForked(context: OrderContext, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
-    val duplicates = orderForked.event.children.map(_.orderId).flatMap(o => context.idToOrder(o).toOption)
+  private def checkOrderForked(state: StateView, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
+    val duplicates = orderForked.event.children.map(_.orderId).flatMap(o => state.idToOrder(o).toOption)
     if (duplicates.nonEmpty) {
       // Internal error, maybe a lost event OrderDetached
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
@@ -48,15 +48,15 @@ object ForkExecutor extends EventInstructionExecutor
       orderForked
   }
 
-  private def toJoined(context: OrderContext, order: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] =
+  private def toJoined(state: StateView, order: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] =
     order.ifState[Order.Forked].flatMap(order =>
       //orderEntry.fork match {
       //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentId =>
       if (order.isAttached)
         Some(order.id <-: OrderDetachable)
       else {
-        val childOrders = order.state.childOrderIds.flatMap(o => context.idToOrder(o).toOption)
-        childOrders.forall(context.childOrderEnded) ? (
+        val childOrders = order.state.childOrderIds.flatMap(o => state.idToOrder(o).toOption)
+        childOrders.forall(state.childOrderEnded) ? (
           order.id <-: OrderJoined(
             if (childOrders.exists(_.lastOutcome.isFailed))
               Outcome.failed
@@ -64,12 +64,12 @@ object ForkExecutor extends EventInstructionExecutor
               Outcome.succeeded))
       })
 
-  private[workflow] def tryJoinChildOrder(context: OrderContext, childOrder: Order[Order.State], fork: Fork)
+  private[workflow] def tryJoinChildOrder(state: StateView, childOrder: Order[Order.State], fork: Fork)
   : Option[KeyedEvent[OrderActorEvent]] =
     if (childOrder.isAttached)
       Some(childOrder.id <-: OrderDetachable)
     else
       childOrder.parent
-        .flatMap(o => context.idToOrder(o).toOption)
-        .flatMap(parentOrder => toJoined(context, parentOrder))
+        .flatMap(o => state.idToOrder(o).toOption)
+        .flatMap(parentOrder => toJoined(state, parentOrder))
 }

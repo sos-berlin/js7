@@ -12,7 +12,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.lock.{LockId, LockState}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
@@ -34,7 +34,7 @@ final class OrderEventSource(
   idToLockState: LockId => Checked[LockState],
   isAgent: Boolean)
 {
-  private val context = new OrderContext {
+  private val stateView = new StateView {
     def idToOrder                    = OrderEventSource.this.idToOrder
     def idToWorkflow(id: WorkflowId) = OrderEventSource.this.idToWorkflow(id)
     def idToLockState                = OrderEventSource.this.idToLockState
@@ -71,7 +71,7 @@ final class OrderEventSource(
             case Left(problem) => Left(problem)
             case Right(Some(event)) => Right(event :: Nil)
             case Right(None) =>
-              InstructionExecutor.toEvents(instruction(order.workflowPosition), order, context)
+              InstructionExecutor.toEvents(instruction(order.workflowPosition), order, stateView)
                 // Multiple returned events are expected to be independant and are applied to same idToOrder
                 .flatMap(_
                   .traverse {
@@ -189,9 +189,9 @@ final class OrderEventSource(
   private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     if ((order.isDetached || order.isAttached) && order.isState[Order.FailedInFork])
       order.forkPosition.flatMap(forkPosition =>
-        context.instruction(order.workflowId /: forkPosition) match {
+        stateView.instruction(order.workflowId /: forkPosition) match {
           case fork: Fork =>
-            Right(ForkExecutor.tryJoinChildOrder(context, order, fork))
+            Right(ForkExecutor.tryJoinChildOrder(stateView, order, fork))
           case _ =>
             // Self-test
             Left(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))
@@ -397,7 +397,7 @@ final class OrderEventSource(
             Right(Some(order.position.increment))
 
         case instr: Instruction =>
-          InstructionExecutor.nextPosition(instr, order, context)
+          InstructionExecutor.nextPosition(instr, order, stateView)
 
         //case _: End if order.position.isNested =>
         //  order.position.dropChild.flatMap(returnPosition =>

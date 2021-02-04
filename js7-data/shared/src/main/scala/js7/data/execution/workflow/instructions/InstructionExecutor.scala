@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.data.event.KeyedEvent
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import js7.data.workflow.Instruction
@@ -19,12 +19,14 @@ trait InstructionExecutor {
 
 trait EventInstructionExecutor extends InstructionExecutor
 {
-  def toEvents(instruction: Instr, order: Order[Order.State], context: OrderContext): Checked[List[KeyedEvent[OrderActorEvent]]]
+  def toEvents(instruction: Instr, order: Order[Order.State], stateView: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]]
 }
 
 trait PositionInstructionExecutor extends InstructionExecutor
 {
-  def nextPosition(instruction: Instr, order: Order[Order.State], context: OrderContext): Checked[Option[Position]]
+  def nextPosition(instruction: Instr, order: Order[Order.State], stateView: StateView)
+  : Checked[Option[Position]]
 }
 
 object InstructionExecutor
@@ -45,21 +47,24 @@ object InstructionExecutor
       case _: Retry => new RetryExecutor(() => Timestamp.now)
     }
 
-  def nextPosition(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[Option[Position]] =
+  def nextPosition(instruction: Instruction, order: Order[Order.State], stateView: StateView)
+  : Checked[Option[Position]] =
     instructionToExecutor(instruction) match {
-      case executor: PositionInstructionExecutor => executor.nextPosition(instruction.asInstanceOf[executor.Instr], order, context)
+      case executor: PositionInstructionExecutor =>
+        executor.nextPosition(instruction.asInstanceOf[executor.Instr], order, stateView)
       case _ => Right(None)
     }
 
-  def toEvents(instruction: Instruction, order: Order[Order.State], context: OrderContext): Checked[List[KeyedEvent[OrderActorEvent]]] =
+  def toEvents(instruction: Instruction, order: Order[Order.State], stateView: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
     instructionToExecutor(instruction) match {
       case exec: EventInstructionExecutor =>
-        exec.toEvents(instruction.asInstanceOf[exec.Instr], order, context)
+        exec.toEvents(instruction.asInstanceOf[exec.Instr], order, stateView)
       case _ =>
         Right(Nil)
     }
 
-  private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], context: OrderContext) =
+  private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], stateView: StateView) =
     order.ifState[Order.Processed].map(order =>
       order.id <-: OrderMoved(order.position.increment))
 }

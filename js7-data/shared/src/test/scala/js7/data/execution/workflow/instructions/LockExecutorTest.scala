@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.LockExecutorTest._
 import js7.data.job.PathExecutable
 import js7.data.lock.{Acquired, Lock, LockId, LockState}
@@ -16,7 +16,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class LockExecutorTest extends AnyFreeSpec {
 
-  private lazy val context = new OrderContext {
+  private lazy val stateView = new StateView {
     def idToOrder = Map(freeLockOrder.id -> freeLockOrder, freeLockedOrder.id -> freeLockedOrder, occupiedLockOrder.id -> occupiedLockOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(workflow.id -> workflow).checked(id)
@@ -27,22 +27,22 @@ final class LockExecutorTest extends AnyFreeSpec {
   }
 
   "Lock acquired" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockOrder.position), freeLockOrder, context) ==
+    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockOrder.position), freeLockOrder, stateView) ==
       Right(Seq(freeLockOrder.id <-: OrderLockAcquired(freeLockId))))
   }
 
   "Lock released" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, context) ==
+    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
       Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockId))))
   }
 
   "Lock can not acquired and is queued" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(occupiedLockOrder.position), occupiedLockOrder, context) ==
+    assert(InstructionExecutor.toEvents(workflow.instruction(occupiedLockOrder.position), occupiedLockOrder, stateView) ==
       Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockId, None))))
   }
 
   "Lock released and waiting order continues" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, context) ==
+    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
       Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockId))))
   }
 }

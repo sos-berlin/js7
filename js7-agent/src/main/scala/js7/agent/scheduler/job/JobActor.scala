@@ -23,7 +23,7 @@ import js7.base.utils.SetOnce
 import js7.common.process.Processes.ShellFileAttributes
 import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.job.internal.InternalJob
 import js7.data.job.{AbsolutePathExecutable, CommandLine, CommandLineEvaluator, CommandLineExecutable, InternalExecutable, JobKey, RelativePathExecutable, ScriptExecutable}
 import js7.data.order.{Order, OrderId, Outcome}
@@ -129,7 +129,7 @@ extends Actor with Stash
     new Evaluator(toScope(order, defaultArguments, workflow))
 
   private def toScope(order: Order[Order.Processing], defaultArguments: NamedValues, workflow: Workflow): Scope =
-    OrderContext.makeScope(Map.empty, order, workflow,
+    StateView.makeScope(Map.empty, order, workflow,
       default = defaultArguments orElse conf.workflowJob.defaultArguments)
 
   private def evalEnv(evaluator: Evaluator, envExpr: ObjectExpression): Checked[Map[String, String]] =

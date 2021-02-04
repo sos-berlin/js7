@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-trait OrderContext
+trait StateView
 {
   def idToOrder: OrderId => Checked[Order[Order.State]]
 
@@ -48,10 +48,10 @@ trait OrderContext
 
   final def makeScope(order: Order[Order.State]): Checked[Scope] =
     idToWorkflow(order.workflowId)
-      .map(OrderContext.makeScope(NamedValues.empty, order, _))
+      .map(StateView.makeScope(NamedValues.empty, order, _))
 }
 
-object OrderContext
+object StateView
 {
   final def makeScope(
     highPriorityArguments: NamedValues,

@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.<-:
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.AwaitOrderExecutorTest._
 import js7.data.order.OrderEvent.{OrderAwaiting, OrderOffered}
 import js7.data.order.{Order, OrderId}
@@ -19,16 +19,16 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AwaitOrderExecutorTest extends AnyFreeSpec {
 
   "test" in {
-    val context = new OrderContext {
+    val stateView = new StateView {
       val idToOrder = Map(awaitingOrder.id -> awaitingOrder, offeredOrder.id -> offeredOrder).checked
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
       val idToLockState = _ => Left(Problem("idToLockState is not implemented"))
     }
-    assert(InstructionExecutor.toEvents(AwaitOrder(offeredOrder.id), awaitingOrder, context) ==
+    assert(InstructionExecutor.toEvents(AwaitOrder(offeredOrder.id), awaitingOrder, stateView) ==
       Right(Seq(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id))))
 
-    val offerResult = InstructionExecutor.toEvents(Offer(OfferingOrderId, 60.s), offeredOrder, context)
+    val offerResult = InstructionExecutor.toEvents(Offer(OfferingOrderId, 60.s), offeredOrder, stateView)
     val Right(Seq(OfferingOrderId <-: OrderOffered(OfferedOrderId, until))) = offerResult
     assert(until >= Timestamp.now + 50.s && until <= Timestamp.now + 70.s)
   }

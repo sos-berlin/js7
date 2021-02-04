@@ -1,6 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.order.OrderEvent.{OrderAttachable, OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, Outcome}
@@ -13,9 +13,9 @@ object ExecuteExecutor extends EventInstructionExecutor
 {
   type Instr = Execute
 
-  def toEvents(instruction: Execute, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
     if (order.isProcessable && order.isDetached)
-      for (job <- context.workflowJob(order.workflowPosition)) yield
+      for (job <- state.workflowJob(order.workflowPosition)) yield
         (order.id <-: OrderAttachable(job.agentId)) :: Nil
     else
     // Order.Ready: Execution has to be started by the caller

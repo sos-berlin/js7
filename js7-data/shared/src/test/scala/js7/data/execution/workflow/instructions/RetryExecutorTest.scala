@@ -4,7 +4,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.RetryExecutorTest._
 import js7.data.order.OrderEvent.OrderRetrying
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -52,7 +52,7 @@ object RetryExecutorTest
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) = {
     val order = Order(orderId, workflowId /: position, Order.Ready,
       historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
-    val context = new OrderContext {
+    val stateView = new StateView {
       def idToOrder = Map(order.id -> order).checked
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       override def instruction(position: WorkflowPosition) =
@@ -61,6 +61,6 @@ object RetryExecutorTest
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
       val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
     }
-    new RetryExecutor(() => now).toEvents(Retry(), order, context)
+    new RetryExecutor(() => now).toEvents(Retry(), order, stateView)
   }
 }

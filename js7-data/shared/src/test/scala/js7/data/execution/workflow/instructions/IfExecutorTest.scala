@@ -5,7 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.IfExecutorTest._
 import js7.data.job.PathExecutable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -24,7 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class IfExecutorTest extends AnyFreeSpec {
 
-  private lazy val context = new OrderContext {
+  private lazy val stateView = new StateView {
     def idToOrder = Map(AOrder.id -> AOrder, BOrder.id -> BOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(TestWorkflowId -> Workflow.of(TestWorkflowId)).checked(id)
@@ -33,40 +33,40 @@ final class IfExecutorTest extends AnyFreeSpec {
 
   "JSON BranchId" - {
     "then" in {
-      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, context).orThrow,
+      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow,
         json"""[ 7, "then", 0 ]""")
     }
 
     "else" in {
-      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, context).orThrow,
+      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow,
         json"""[ 7, "else", 0 ]""")
     }
   }
 
   "If true" in {
-    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, context) ==
+    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView) ==
       Right(Some(Position(7) / Then % 0)))
   }
 
   "If false" in {
-    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, context) ==
+    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView) ==
       Right(Some(Position(7) / Else % 0)))
   }
 
   "If false, no else branch" in {
-    assert(InstructionExecutor.nextPosition(ifThen(BooleanConstant(false)), AOrder, context) ==
+    assert(InstructionExecutor.nextPosition(ifThen(BooleanConstant(false)), AOrder, stateView) ==
       Right(Some(Position(8))))
   }
 
   "Naned value comparison" in {
     val expr = Equal(NamedValue.last("A"), StringConstant("AA"))
-    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, context) == Right(Some(Position(7) / Then % 0)))
-    assert(InstructionExecutor.nextPosition(ifThenElse(expr), BOrder, context) == Right(Some(Position(7) / Else % 0)))
+    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, stateView) == Right(Some(Position(7) / Then % 0)))
+    assert(InstructionExecutor.nextPosition(ifThenElse(expr), BOrder, stateView) == Right(Some(Position(7) / Else % 0)))
   }
 
   "Error in expression" in {
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, context) == Left(Problem("Not a valid number: X")))
+    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
   }
 }
 

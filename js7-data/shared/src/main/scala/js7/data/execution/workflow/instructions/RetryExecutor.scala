@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.RetryExecutor._
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderRetrying}
@@ -20,7 +20,7 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
 {
   type Instr = Retry
 
-  def toEvents(retry: Retry, order: Order[Order.State], context: OrderContext) =
+  def toEvents(retry: Retry, order: Order[Order.State], state: StateView) =
     if (!order.isState[Order.Ready])
       Right(Nil)
     else
@@ -28,7 +28,7 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
         .flatMap(branchPath =>
           branchPath.parent
             .flatMap(parent =>
-              Some(context.instruction(order.workflowId /: parent))
+              Some(state.instruction(order.workflowId /: parent))
                 .collect { case o: TryInstruction => o }
                 .flatMap(_try =>
                   branchPath.lastOption.map(_.branchId).collect {

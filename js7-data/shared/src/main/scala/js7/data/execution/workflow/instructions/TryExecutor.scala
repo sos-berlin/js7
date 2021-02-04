@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.workflow.instructions.TryInstruction
@@ -16,12 +16,12 @@ object TryExecutor extends PositionInstructionExecutor with EventInstructionExec
 
   type Instr = TryInstruction
 
-  def nextPosition(instruction: TryInstruction, order: Order[Order.State], context: OrderContext): Checked[Option[Position]] = {
-    assertThat(Right(order) == context.idToOrder(order.id).map(_ withPosition order.position))
+  def nextPosition(instruction: TryInstruction, order: Order[Order.State], state: StateView): Checked[Option[Position]] = {
+    assertThat(Right(order) == state.idToOrder(order.id).map(_ withPosition order.position))
     Right(Some(nextPos(order)))
   }
 
-  def toEvents(instruction: TryInstruction, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: TryInstruction, order: Order[Order.State], stateView: StateView) =
     Right(
       order.ifState[Order.IsFreshOrReady].map(order =>
         order.id <-: OrderMoved(nextPos(order)))

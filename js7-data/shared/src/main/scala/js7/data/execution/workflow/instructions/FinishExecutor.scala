@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved, OrderStarted}
 import js7.data.workflow.instructions.{End, Finish, Fork}
@@ -15,7 +15,7 @@ object FinishExecutor extends EventInstructionExecutor
 {
   type Instr = Finish
 
-  def toEvents(instruction: Finish, order: Order[Order.State], context: OrderContext) =
+  def toEvents(instruction: Finish, order: Order[Order.State], state: StateView) =
     order.state match {
       case _: Order.Fresh =>
         Right((order.id <-: OrderStarted) :: Nil)
@@ -33,7 +33,7 @@ object FinishExecutor extends EventInstructionExecutor
               // In a fork
               val forkPosition = reverseInit.reverse % nr
               for {
-                fork <- context.instruction_[Fork](order.workflowId /: forkPosition)
+                fork <- state.instruction_[Fork](order.workflowId /: forkPosition)
                 branchWorkflow <- fork.workflow(branchId)
                 endPos <- branchWorkflow.instructions.iterator.zipWithIndex
                   .collectFirst { case (_: End, index) => forkPosition / branchId % InstructionNr(index) }

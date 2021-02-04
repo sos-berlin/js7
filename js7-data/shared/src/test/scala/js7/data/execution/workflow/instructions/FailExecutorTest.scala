@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.execution.workflow.context.OrderContext
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.FailExecutorTest._
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
@@ -18,7 +18,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class FailExecutorTest extends AnyFreeSpec
 {
-  private lazy val context = new OrderContext {
+  private lazy val stateView = new StateView {
     val idToOrder = Map(TestOrder.id -> TestOrder, ForkedOrder.id -> ForkedOrder, Carrot.id -> Carrot, Lemon.id -> Lemon).checked
 
     val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
@@ -39,18 +39,18 @@ final class FailExecutorTest extends AnyFreeSpec
 
   "toEvents" - {
     "Fresh order will be started" in {
-      assert(FailExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh()), context) ==
+      assert(FailExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh()), stateView) ==
         Right(Seq(TestOrder.id <-: OrderStarted)))
     }
 
     "Catchable Fail" - {
       "Detached order" in {
-        assert(FailExecutor.toEvents(Fail(), TestOrder, context) ==
+        assert(FailExecutor.toEvents(Fail(), TestOrder, stateView) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
 
       "Attached order" in {
-        assert(FailExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentId("AGENT")))), context) ==
+        assert(FailExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentId("AGENT")))), stateView) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
     }
