@@ -57,7 +57,7 @@ object Dependencies
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = ("com.google.inject" % "guice" % "4.2.3" classifier "no_aop") :: javaxInject :: Nil
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.0"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.1"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
