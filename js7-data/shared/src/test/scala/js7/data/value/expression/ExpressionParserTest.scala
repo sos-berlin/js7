@@ -30,6 +30,7 @@ final class ExpressionParserTest extends AnyFreeSpec
     }
 
     testExpression("""$key""", NamedValue.last("key"))
+    testExpression("""$under_line""", NamedValue.last("under_line"))
     testExpression("""$Schlüssel""", NamedValue.last("Schlüssel"))
     testExpression("""$clé""", NamedValue.last("clé"))
     testExpression("""$A""", NamedValue.last("A"))
