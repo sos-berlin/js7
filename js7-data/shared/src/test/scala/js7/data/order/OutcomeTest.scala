@@ -1,8 +1,8 @@
 package js7.data.order
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.io.process.ReturnCode
 import js7.base.problem.Problem
-import js7.data.job.ReturnCode
 import js7.data.order.Outcome.Completed
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.tester.CirceJsonTester.testJson

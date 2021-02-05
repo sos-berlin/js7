@@ -5,11 +5,12 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.generic.GenericString
+import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, PathExecutable, ReturnCode, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, PathExecutable, ScriptExecutable}
 import js7.data.order.Outcome
 import js7.data.value.{NamedValues, NumberValue, ValuePrinter}
 import js7.data.workflow.instructions.ReturnCodeMeaning

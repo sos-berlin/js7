@@ -2,8 +2,8 @@ package js7.provider.scheduledorder
 
 import java.time.ZoneId
 import js7.base.problem.Checked.Ops
+import js7.base.time.JavaTime._
 import js7.common.scalautil.xmls.XmlSources._
-import js7.common.time.JavaTime._
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.OldSchedule.EveryDay

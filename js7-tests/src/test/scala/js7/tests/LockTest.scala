@@ -3,11 +3,11 @@ package js7.tests
 import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.delete
 import js7.base.auth.Admission
+import js7.base.configutils.Configs._
+import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.common.configutils.Configs._
-import js7.common.scalautil.FileUtils.withTemporaryFile
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId

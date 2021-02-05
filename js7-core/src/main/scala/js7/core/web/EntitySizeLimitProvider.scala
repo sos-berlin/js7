@@ -1,8 +1,8 @@
 package js7.core.web
 
 import com.typesafe.config.Config
+import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.StringAsPercentage
-import js7.common.configutils.Configs.ConvertibleConfig
 import js7.common.scalautil.Logger
 import js7.common.utils.ByteUnits.toKiBGiB
 import js7.core.web.EntitySizeLimitProvider._

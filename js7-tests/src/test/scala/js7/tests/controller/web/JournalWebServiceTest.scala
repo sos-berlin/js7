@@ -3,25 +3,25 @@ package js7.tests.controller.web
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.configutils.Configs._
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
-import js7.common.configutils.Configs._
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.http.AkkaHttpClient.HttpException
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand
-import js7.controller.data.events.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentRegisteredController}
 import js7.data.agent.AgentId
+import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentRegisteredController}
+import js7.data.controller.ControllerCommand
 import js7.data.event.JournalSeparators
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.job.RelativePathExecutable

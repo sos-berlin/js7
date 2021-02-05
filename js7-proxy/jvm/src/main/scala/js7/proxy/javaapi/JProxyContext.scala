@@ -15,10 +15,10 @@ import js7.common.scalautil.Logger
 import js7.common.system.ThreadPools
 import js7.common.system.startup.StartUp
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.javaapi.JProxyContext._
-import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import monix.execution.Scheduler
 import scala.jdk.CollectionConverters._
 

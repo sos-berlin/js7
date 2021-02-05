@@ -1,0 +1,183 @@
+package js7.base.io.https
+
+import java.io.InputStream
+import java.security.KeyStore
+import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
+import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
+import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
+import js7.base.generic.SecretString
+import js7.base.utils.AutoClosing._
+import js7.base.utils.ScalaUtils.syntax._
+import scala.collection.mutable
+import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
+
+/**
+  * Provides HTTPS keystore and truststore..
+  * <p>
+  * Another way to use an own keystore may be via Java system properties:
+  * <ul>
+  *   <li>Server: javax.net.ssl.keyStore=keystore javax.net.ssl.keyStorePassword=password
+  *   <li>Client: javax.net.ssl.trustStore=truststore javax.net.ssl.trustStorePassword=trustword
+  * </ul>
+  *
+  * @author Joacim Zschimmer
+  * @see http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
+  *      https://doc.akka.io/docs/akka-http/current/server-side/server-https-support.html
+  *      https://tools.ietf.org/html/rfc5246
+  */
+object Https
+{
+  private val logger = scribe.Logger[this.type]
+  private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
+
+  def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
+    val keyManagers = keyStoreRef match {
+      case None => Array.empty[KeyManager]
+      case Some(ref) =>
+        val keyStore = loadKeyStore(ref, "private")
+        val factory = KeyManagerFactory.getInstance("SunX509")
+        ref.keyPassword.provideCharArray(
+          factory.init(keyStore, _))
+        factory.getKeyManagers
+    }
+    val trustManagers = trustStoreRefs.view.flatMap { trustStoreRef =>
+      val factory = TrustManagerFactory.getInstance("SunX509")
+      factory.init(loadKeyStore(trustStoreRef, "trust"))
+      factory.getTrustManagers
+    }.collect {
+      case o: X509TrustManager => Some(o)
+      case o =>
+        logger.debug(s"Ignoring unknown TrustManager: ${o.getClass.getName} $o")
+        None
+    }.flatten
+      .toSeq
+    val sslContext = SSLContext.getInstance("TLS")
+    sslContext.init(keyManagers, Array(CompositeX509TrustManager(trustManagers)), null)
+    sslContext
+  }
+
+  private[https] def loadKeyStore(storeRef: StoreRef, kind: String): KeyStore = {
+    autoClosing(storeRef.url.openStream())(
+      loadKeyStoreFromInputStream(_, storeRef.storePassword, storeRef.url.toString, kind))
+  }
+
+  private[https] def loadKeyStoreFromInputStream(in: InputStream, password: SecretString, sourcePath: String, kind: String)
+  : KeyStore = {
+    val sizeLimit = 10_000_000
+    val keyStore =
+      try {
+        val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
+            .getOrElse(throw new RuntimeException(s"Certificate store must have more than $sizeLimit bytes: $sourcePath"))
+        if (content startsWith PemHeader)
+          pemToKeyStore(content.toInputStream,
+            name = sourcePath.replace('\\', '/').indexOf('/') match {
+              case -1 => sourcePath
+              case i => sourcePath.take(i + 1)
+            })
+        else
+          pkcs12ToKeyStore(content.toInputStream, password)
+      } catch { case NonFatal(t) =>
+        throw new RuntimeException(s"Cannot load keystore '$sourcePath': $t", t)
+      }
+    log(keyStore, sourcePath, kind)
+    keyStore
+  }
+
+  private def pkcs12ToKeyStore(in: InputStream, password: SecretString): KeyStore = {
+    val keyStore = KeyStore.getInstance("PKCS12")
+    password.provideCharArray(
+      keyStore.load(in, _))
+    keyStore
+  }
+
+  private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit = {
+    val iterator = keyStore.aliases.asScala.flatMap(a => Option(keyStore.getCertificate(a)) map a.->)
+    if (iterator.isEmpty) {
+      logger.warn(s"Loaded empty $kind keystore $sourcePath")
+    } else {
+      logger.info(s"Loaded $kind keystore $sourcePath" +
+        iterator.map { case (alias, cert)  =>
+          s"\n  " +
+            (keyStore.isKeyEntry(alias) ?? "Private key ") +
+            (keyStore.isCertificateEntry(alias) ?? "Trusted ") +
+            certificateToString(cert) +
+            " alias=" + alias +
+            " (hashCode=" + cert.hashCode + ")"
+        }.mkString(""))
+    }
+  }
+
+  private def certificateToString(cert: Certificate): String =
+    (cert match {
+      case cert: X509Certificate =>
+        "X.509 '" + cert.getSubjectX500Principal + "'" +
+          (cert.getKeyUsage != null) ??
+            (" keyUsage=" + keyUsageToString(cert.getKeyUsage)) +
+          (cert.getExtendedKeyUsage != null) ??
+            (" extendedKeyUsage=" + cert.getExtendedKeyUsage.asScala.map(o => oidToString.getOrElse(o, o)).mkString(",")) +
+          (cert.getSubjectAlternativeNames != null) ??
+            (" subjectAlternativeNames=" + subjectAlternativeNamesToString(cert.getSubjectAlternativeNames))
+      case o =>
+        o.getType
+    })
+
+  private def pemToKeyStore(in: InputStream, name: String): KeyStore = {
+    val certs = mutable.Buffer[Certificate]()
+    var eof = false
+    while (!eof) {
+      certs += CertificateFactory.getInstance("X.509").generateCertificate(in)
+      in.mark(1)
+      eof = in.read() < 0
+      if (!eof) in.reset()
+    }
+    val keyStore = KeyStore.getInstance(KeyStore.getDefaultType)
+    keyStore.load(null, null)
+    for ((cert, i) <- certs.zipWithIndex) {
+      keyStore.setCertificateEntry(name + (certs.length > 1) ?? ("#" + (i + 1)), cert)
+    }
+    keyStore
+  }
+
+  private val keyUsages = Vector(
+    "digitalSignature",
+    "nonRepudiation",
+    "keyEncipherment",
+    "dataEncipherment",
+    "keyAgreement",
+    "keyCertSign",
+    "crlSign",
+    "encipherOnly",
+    "decipherOnly")
+
+  private def keyUsageToString(keyUsage: Array[Boolean]): String =
+    keyUsages.indices.flatMap(i => keyUsage(i) ? keyUsages(i)).mkString(",")
+
+  private val subjectAlternativeKeys = Map(
+    0 -> "other",
+    1 -> "rfc822",
+    2 -> "DNS",
+    3 -> "x400Address",
+    4 -> "directory",
+    5 -> "ediParty",
+    6 -> "uniformResourceIdentifier",
+    7 -> "IP",
+    8 -> "registeredID")
+
+  private def subjectAlternativeNamesToString(collection: java.util.Collection[java.util.List[_]]): String =
+    collection.asScala.map(_.asScala.to(Array) match {
+      case Array(i, value) =>
+        (i match {
+          case i: java.lang.Integer => subjectAlternativeKeys.getOrElse(i, i.toString)
+          case i => i.toString
+        }) + "=" + (value match {
+          case value: String => value
+          case _ => "..."
+        })
+    }).mkString(",")
+
+  private val oidToString = Map[String, String](
+    "1.3.6.1.5.5.7.3.1" -> "serverAuth",
+    "1.3.6.1.5.5.7.3.2" -> "clientAuth")
+}

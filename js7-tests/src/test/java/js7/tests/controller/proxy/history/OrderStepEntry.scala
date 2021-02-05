@@ -5,7 +5,7 @@ import java.util.Optional
 import js7.base.web.Uri
 import js7.data.order.OrderId
 import js7.data.value.Value
-import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
+import js7.data_for_java.workflow.position.JWorkflowPosition
 
 private[history] final case class OrderStepEntry(
   orderId: OrderId,

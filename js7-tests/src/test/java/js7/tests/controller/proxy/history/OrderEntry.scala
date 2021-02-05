@@ -2,10 +2,10 @@ package js7.tests.controller.proxy.history
 
 import java.time.Instant
 import java.util.Optional
+import js7.base.io.process.StdoutOrStderr
 import js7.data.order.{OrderId, Outcome}
-import js7.data.system.StdoutOrStderr
 import js7.data.value.Value
-import js7.proxy.javaapi.data.workflow.position.JWorkflowPosition
+import js7.data_for_java.workflow.position.JWorkflowPosition
 import js7.tests.controller.proxy.history.OrderEntry._
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._

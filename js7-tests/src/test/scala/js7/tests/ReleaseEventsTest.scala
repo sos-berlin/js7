@@ -2,21 +2,21 @@ package js7.tests
 
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.{SimpleUser, UserAndPassword, UserId}
+import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
-import js7.common.configutils.Configs._
-import js7.common.process.Processes.{ShellFileExtension => sh}
-import js7.common.scalautil.FileUtils.syntax._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.RunningController
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.controller.data.ControllerCommand.{ReleaseEvents, TakeSnapshot}
-import js7.controller.data.events.ControllerEvent
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerCommand.{ReleaseEvents, TakeSnapshot}
+import js7.data.controller.ControllerEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}

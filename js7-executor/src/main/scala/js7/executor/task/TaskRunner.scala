@@ -1,7 +1,7 @@
 package js7.executor.task
 
 import com.google.inject.ImplementedBy
-import js7.base.process.ProcessSignal
+import js7.base.io.process.ProcessSignal
 import js7.data.order.{OrderId, Outcome}
 import js7.executor.configuration.TaskConfiguration
 import js7.executor.process.SimpleShellTaskRunner

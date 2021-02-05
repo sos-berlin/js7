@@ -2,16 +2,16 @@ package js7.tests
 
 import js7.agent.RunningAgent
 import js7.agent.data.Problems.UnknownController
+import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
+import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked._
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
-import js7.common.process.Processes.{ShellFileExtension => sh}
-import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
-import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
+import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerId
 import js7.data.job.{PathExecutable, RelativePathExecutable}

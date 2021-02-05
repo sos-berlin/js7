@@ -3,8 +3,8 @@ package js7.controller.tests
 import java.io.IOException
 import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
 import java.nio.file.Path
-import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
-import js7.common.scalautil.FileUtils.syntax._
+import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
+import js7.base.io.file.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.controller.tests.TestEnvironment._
 import js7.data.agent.AgentId

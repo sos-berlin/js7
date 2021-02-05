@@ -22,9 +22,8 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, Stamped}
 import js7.proxy.JournaledProxy._
 import js7.proxy.configuration.ProxyConf
-import js7.proxy.data.ProxyEvent
-import js7.proxy.data.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
-import js7.proxy.data.event.{EventAndState, ProxyStarted}
+import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
+import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}
 import monix.eval.{Fiber, Task}
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}

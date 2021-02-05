@@ -1,9 +1,9 @@
 package js7.journal.files
 
 import com.google.common.io.MoreFiles.touch
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, withTemporaryDirectory}
 import js7.base.problem.Problem
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.FileUtils.{deleteDirectoryContentRecursively, withTemporaryDirectory}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

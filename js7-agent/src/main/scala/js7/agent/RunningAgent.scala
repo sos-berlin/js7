@@ -13,9 +13,12 @@ import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.base.process.ProcessSignal
+import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.promiseFuture
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer
@@ -23,9 +26,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits._
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
-import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.startup.StartUp

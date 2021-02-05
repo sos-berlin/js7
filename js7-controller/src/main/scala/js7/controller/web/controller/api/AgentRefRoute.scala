@@ -11,9 +11,8 @@ import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.akkahttp.StandardDirectives.remainingPath
 import js7.common.akkahttp.StandardMarshallers.checkedToResponseMarshaller
-import js7.controller.data.agent.AgentRefState
 import js7.controller.web.common.ControllerRouteProvider
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentId, AgentRef, AgentRefState}
 import monix.eval.Task
 import monix.execution.Scheduler
 

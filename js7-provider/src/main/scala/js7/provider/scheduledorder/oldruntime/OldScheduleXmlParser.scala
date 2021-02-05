@@ -3,8 +3,8 @@ package js7.provider.scheduledorder.oldruntime
 import java.time.{DayOfWeek, LocalTime, ZoneId}
 import javax.xml.stream.XMLEventReader
 import js7.base.convert.As
+import js7.base.time.JavaTime._
 import js7.common.scalautil.xmls.ScalaXMLEventReader
-import js7.common.time.JavaTime._
 
 object OldScheduleXmlParser{
 

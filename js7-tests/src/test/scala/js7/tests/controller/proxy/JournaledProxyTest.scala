@@ -1,13 +1,13 @@
 package js7.tests.controller.proxy
 
+import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.ProvideActorSystem
-import js7.common.configutils.Configs._
-import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem

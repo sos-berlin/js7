@@ -2,10 +2,10 @@ package js7.provider.scheduledorder
 
 import com.typesafe.config.Config
 import js7.base.generic.Completed
+import js7.base.time.JavaTimeConverters._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
-import js7.common.time.JavaTimeConverters._
 import js7.data.order.FreshOrder
 import js7.provider.scheduledorder.OrderScheduleGenerator._
 import js7.provider.scheduledorder.oldruntime.InstantInterval

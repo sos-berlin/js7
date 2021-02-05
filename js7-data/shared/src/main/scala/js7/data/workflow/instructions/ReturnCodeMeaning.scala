@@ -2,7 +2,7 @@ package js7.data.workflow.instructions
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import js7.data.job.ReturnCode
+import js7.base.io.process.ReturnCode
 
 /**
   * @author Joacim Zschimmer

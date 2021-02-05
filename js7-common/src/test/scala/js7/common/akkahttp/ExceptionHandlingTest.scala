@@ -5,9 +5,9 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, InternalServerError}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import js7.base.configutils.Configs._
 import js7.base.problem.Problem
 import js7.common.akkahttp.ExceptionHandlingTest._
-import js7.common.configutils.Configs._
 import js7.common.http.CirceJsonSupport._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

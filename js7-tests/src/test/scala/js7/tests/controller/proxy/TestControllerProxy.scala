@@ -16,9 +16,9 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.data.ControllerState
+import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId}
-import js7.proxy.data.ProxyEvent
+import js7.proxy.data.event.ProxyEvent
 import js7.proxy.{ControllerApi, JournaledStateEventBus}
 import js7.tests.controller.proxy.TestControllerProxy._
 import monix.eval.Task

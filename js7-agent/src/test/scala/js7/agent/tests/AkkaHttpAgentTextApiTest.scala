@@ -11,15 +11,14 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.tests.AkkaHttpAgentTextApiTest._
 import js7.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
 import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
+import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
-import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator
-import js7.common.configutils.Configs._
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort

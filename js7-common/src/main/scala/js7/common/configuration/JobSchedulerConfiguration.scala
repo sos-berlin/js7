@@ -2,8 +2,8 @@ package js7.common.configuration
 
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.BuildInfo
-import js7.common.configutils.Configs
-import js7.common.utils.JavaResource
+import js7.base.configutils.Configs
+import js7.base.io.JavaResource
 import scala.jdk.CollectionConverters._
 
 object JobSchedulerConfiguration

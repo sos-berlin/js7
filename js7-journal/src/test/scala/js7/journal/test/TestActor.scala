@@ -7,9 +7,9 @@ import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.Config
 import java.util.UUID
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.SupervisorStrategies
-import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import js7.data.event.JournalId
 import js7.journal.configuration.JournalConf

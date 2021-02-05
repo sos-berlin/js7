@@ -1,7 +1,6 @@
 package js7.data
 
-import js7.base.process.ProcessSignal
-import js7.data.job.ReturnCode
+import js7.base.io.process.{ProcessSignal, ReturnCode}
 
 package object value
 {

@@ -3,24 +3,24 @@ package js7.tests.testenv
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import js7.base.configutils.Configs._
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.CatsUtils.combineArgs
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
 import js7.common.auth.SecretStringGenerator
-import js7.common.configutils.Configs._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
-import js7.controller.data.ControllerCommand.ShutDown
 import js7.controller.{ControllerTermination, RunningController}
 import js7.data.agent.AgentId
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
+import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.item.VersionedItem
 import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId

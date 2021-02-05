@@ -3,24 +3,24 @@ package js7.tests.controller.proxy.history
 import com.softwaremill.diffx.generic.auto._
 import com.softwaremill.diffx.scalatest.DiffMatcher._
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
 import js7.common.akkautils.ProvideActorSystem
-import js7.common.configutils.Configs.HoconStringInterpolator
-import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
-import js7.controller.data.ControllerCommand.TakeSnapshot
-import js7.controller.data.ControllerState
-import js7.controller.data.events.ControllerEvent.ControllerReady
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerCommand.TakeSnapshot
+import js7.data.controller.ControllerEvent.ControllerReady
+import js7.data.controller.ControllerState
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.Outcome.{Succeeded, succeeded}
@@ -28,11 +28,11 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowParser
 import js7.data.workflow.position.Position
+import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext
-import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId

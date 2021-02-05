@@ -2,8 +2,8 @@ package js7.executor.process
 
 import java.nio.file.Files.{createTempFile, deleteIfExists}
 import java.nio.file.Path
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.scalautil.FileUtils.syntax._
 import js7.data.value.{NamedValues, StringValue}
 import js7.executor.configuration.ExecutorConfiguration.FileEncoding
 import js7.executor.process.ShellReturnValuesProvider._

@@ -8,22 +8,23 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.web.Uri
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.cluster.ClusterSetting
+import js7.data.controller.ControllerCommand
+import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
+import js7.data_for_java.agent.JAgentRef
+import js7.data_for_java.command.{JCancelMode, JSuspendMode}
+import js7.data_for_java.controller.{JControllerCommand, JControllerState}
+import js7.data_for_java.item.JUpdateItemOperation
+import js7.data_for_java.order.{JFreshOrder, JHistoricOutcome}
+import js7.data_for_java.reactor.ReactorConverters._
+import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
-import js7.proxy.data.ProxyEvent
-import js7.proxy.javaapi.data.agent.JAgentRef
-import js7.proxy.javaapi.data.command.{JCancelMode, JSuspendMode}
-import js7.proxy.javaapi.data.common.ReactorConverters._
-import js7.proxy.javaapi.data.common.VavrConverters._
-import js7.proxy.javaapi.data.controller.{JControllerCommand, JControllerState, JEventAndControllerState}
-import js7.proxy.javaapi.data.item.JUpdateItemOperation
-import js7.proxy.javaapi.data.order.{JFreshOrder, JHistoricOutcome}
-import js7.proxy.javaapi.data.workflow.position.JPosition
+import js7.proxy.data.event.ProxyEvent
+import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
@@ -293,7 +294,7 @@ extends AutoCloseable
   @Nonnull
   def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] = {
     requireNonNull(predicate)
-    asScala.when(es => predicate(JEventAndControllerState(es)))
+    asScala.when(es => predicate(js7.data_for_java.controller.JEventAndControllerState(es)))
       .map(JEventAndControllerState.apply)
       .runToFuture
       .asJava

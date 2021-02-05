@@ -3,14 +3,14 @@ package js7.tests.controller.cluster
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.RunningController
-import js7.controller.data.ControllerCommand.ClusterSwitchOver
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
+import js7.data.controller.ControllerCommand.ClusterSwitchOver
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}

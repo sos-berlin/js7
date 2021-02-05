@@ -2,8 +2,8 @@ package js7.executor.configuration
 
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Path
+import js7.base.io.file.FileUtils.WorkingDirectory
 import js7.base.system.OperatingSystem.isWindows
-import js7.common.scalautil.FileUtils.WorkingDirectory
 
 final case class ExecutorConfiguration(
   jobWorkingDirectory: Path = WorkingDirectory,

@@ -5,8 +5,8 @@ import com.typesafe.config.Config
 import java.io.Writer
 import js7.agent.scheduler.order.StdouterrToEvent._
 import js7.base.generic.Accepted
-import js7.common.time.JavaTimeConverters._
-import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
+import js7.base.time.JavaTimeConverters._
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
@@ -95,4 +95,3 @@ object StdouterrToEvent {
       noDelayAfter = config.getDuration("js7.order.stdout-stderr.no-delay-after").toFiniteDuration)
   }
 }
-

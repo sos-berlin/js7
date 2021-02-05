@@ -1,9 +1,9 @@
 package js7.journal.watch
 
 import js7.base.monixutils.MonixDeadline.now
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.common.scalautil.Futures.implicits._
 import js7.data.event.EventId
 import js7.journal.EventIdGenerator
 import monix.eval.Task

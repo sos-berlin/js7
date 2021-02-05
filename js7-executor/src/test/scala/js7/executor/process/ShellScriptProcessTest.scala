@@ -1,21 +1,20 @@
 package js7.executor.process
 
 import java.nio.file.Files._
-import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.io.file.FileUtils.autoDeleting
+import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.process.Processes.newTemporaryShellFile
+import js7.base.io.process.{ReturnCode, Stdout}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
+import js7.base.thread.Futures.implicits.SuccessFuture
+import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.process.Processes.newTemporaryShellFile
-import js7.common.scalautil.FileUtils.autoDeleting
-import js7.common.scalautil.FileUtils.syntax.RichPath
-import js7.common.scalautil.Futures.implicits.SuccessFuture
-import js7.common.scalautil.IOExecutor.Implicits.globalIOX
 import js7.common.system.FileUtils._
 import js7.common.system.ServerOperatingSystem.KernelSupportsNestedShebang
-import js7.common.time.WaitForCondition.waitForCondition
-import js7.data.job.{ReturnCode, TaskId}
-import js7.data.system.Stdout
+import js7.data.job.TaskId
 import js7.executor.configuration.ProcessKillScript
 import js7.executor.process.ShellScriptProcess.startShellScript
 import org.scalatest.freespec.AnyFreeSpec

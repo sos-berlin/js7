@@ -8,16 +8,16 @@ import js7.agent.data.commands.AgentCommand.{AttachOrder, CoupleController, Deta
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.auth.UserId
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}

@@ -9,12 +9,12 @@ import java.nio.file.Files.exists
 import java.nio.file.{Files, Paths}
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Collections._
 import js7.base.utils.JavaCollections.syntax._
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.common.scalautil.FileUtils.syntax.RichPath
 import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
 

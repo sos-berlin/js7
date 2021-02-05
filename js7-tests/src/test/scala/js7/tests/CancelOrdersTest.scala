@@ -1,17 +1,17 @@
 package js7.tests
 
+import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.Ops
-import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.ControllerCommand.{CancelOrders, Response}
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentId
 import js7.data.command.CancelMode
+import js7.data.controller.ControllerCommand.{CancelOrders, Response}
 import js7.data.item.VersionId
-import js7.data.job.{RelativePathExecutable, ReturnCode}
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues

@@ -2,10 +2,10 @@ package js7.controller.workflow
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.common.http.CirceToYaml.ToYamlString
-import js7.common.scalautil.FileUtils
-import js7.common.scalautil.FileUtils.syntax._
 import js7.core.item.TypedSourceReader
 import js7.data.agent.AgentId
 import js7.data.job.RelativePathExecutable
@@ -21,7 +21,7 @@ import scala.collection.mutable
 final class WorkflowReaderTest extends AnyFreeSpec {
 
   "Different Workflow file formats" in {
-    FileUtils.withTemporaryDirectory("WorkflowReaderTest-") { dir =>
+    withTemporaryDirectory("WorkflowReaderTest-") { dir =>
       val expected = mutable.Buffer[Workflow]()
 
       // JSON

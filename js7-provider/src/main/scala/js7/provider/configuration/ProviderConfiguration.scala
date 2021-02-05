@@ -2,15 +2,15 @@ package js7.provider.configuration
 
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
+import js7.base.configutils.Configs
+import js7.base.configutils.Configs.parseConfigIfExists
 import js7.base.convert.AsJava.StringAsPath
+import js7.base.io.JavaResource
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.https.HttpsConfig
 import js7.base.web.Uri
-import js7.common.akkahttp.https.HttpsConfig
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.JobSchedulerConfiguration
-import js7.common.configutils.Configs
-import js7.common.configutils.Configs.parseConfigIfExists
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.utils.JavaResource
 import scala.jdk.CollectionConverters._
 
 /**

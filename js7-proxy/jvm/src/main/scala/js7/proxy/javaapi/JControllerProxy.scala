@@ -9,16 +9,17 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.ControllerCommand.AddOrdersResponse
+import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderTerminated
+import js7.data_for_java.common.JavaUtils.Void
+import js7.data_for_java.controller.JControllerState
+import js7.data_for_java.order.JFreshOrder
+import js7.data_for_java.reactor.ReactorConverters._
+import js7.data_for_java.vavr.VavrConverters._
 import js7.proxy.ControllerProxy
 import js7.proxy.data.event.EventAndState
-import js7.proxy.javaapi.data.common.JavaUtils.Void
-import js7.proxy.javaapi.data.common.ReactorConverters._
-import js7.proxy.javaapi.data.common.VavrConverters._
-import js7.proxy.javaapi.data.controller.{JControllerState, JEventAndControllerState}
-import js7.proxy.javaapi.data.order.JFreshOrder
+import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.JControllerEventBus
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
@@ -75,7 +76,7 @@ final class JControllerProxy private[proxy](
   @Nonnull
   def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] = {
     requireNonNull(predicate)
-    asScala.when(es => predicate(JEventAndControllerState(es)))
+    asScala.when(es => predicate(js7.data_for_java.controller.JEventAndControllerState(es)))
       .map(JEventAndControllerState.apply)
       .runToFuture
       .asJava

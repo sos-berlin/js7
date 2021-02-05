@@ -6,9 +6,9 @@ import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJsonObject, deriveCodec}
 import js7.base.data.ByteArray
+import js7.base.io.file.FileUtils.deleteDirectoryRecursively
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
-import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
-import js7.common.scalautil.FileUtils.syntax._
 import js7.controller.tests.VersionedItemsTest._
 import js7.core.item.VersionedItemReader
 import js7.data.item.VersionedItems.diffVersionedItems

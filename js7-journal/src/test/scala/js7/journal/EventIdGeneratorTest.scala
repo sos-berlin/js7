@@ -1,8 +1,8 @@
 package js7.journal
 
 import java.util.concurrent.ConcurrentHashMap
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Futures.implicits._
 import js7.data.event.EventId
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable

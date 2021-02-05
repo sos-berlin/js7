@@ -1,8 +1,8 @@
 package js7.executor.process
 
 import java.nio.file.Files.exists
-import js7.common.scalautil.FileUtils._
-import js7.common.scalautil.FileUtils.syntax._
+import js7.base.io.file.FileUtils._
+import js7.base.io.file.FileUtils.syntax._
 import js7.data.value.{NamedValues, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
 

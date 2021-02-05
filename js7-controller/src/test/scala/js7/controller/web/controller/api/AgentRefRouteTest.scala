@@ -9,10 +9,9 @@ import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
-import js7.controller.data.agent.AgentRefState
 import js7.controller.web.controller.api.AgentRefRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentId, AgentRef, AgentRefState}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec

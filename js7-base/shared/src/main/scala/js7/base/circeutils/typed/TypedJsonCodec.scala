@@ -18,7 +18,7 @@ final class TypedJsonCodec[A](
 extends Encoder.AsObject[A] with Decoder[A]
 {
   private val _classToName: Map[Class[_ <: A], String] =
-    nameToClass.map(o => o._2 -> o._1).toMap
+    nameToClass.map(o => o._2 -> o._1)
 
   private val classToNameJson: Map[Class[_ <: A], Json/*String*/] =
     _classToName.view.mapValues(Json.fromString).toMap
@@ -65,7 +65,7 @@ extends Encoder.AsObject[A] with Decoder[A]
 
   def classes[A1 <: A: ClassTag]: Set[Class[_ <: A1]] =
     classToEncoder.keySet collect {
-      case c if implicitClass[A1] isAssignableFrom c => c.asInstanceOf[Class[A1]]
+      case c if implicitClass[A1] isAssignableFrom c => c.asInstanceOf[Class[_ <: A1]]
     }
 
   def isOfType[A1 <: A: ClassTag](json: Json): Boolean =

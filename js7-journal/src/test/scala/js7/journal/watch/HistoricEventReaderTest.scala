@@ -1,8 +1,8 @@
 package js7.journal.watch
 
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.io.file.FileUtils._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.scalautil.FileUtils._
 import js7.data.event.{JournalHeader, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps

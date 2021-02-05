@@ -5,7 +5,7 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.eventbus.StandardEventBus
 import js7.base.utils.Assertions.assertThat
-import js7.proxy.javaapi.data.common.JavaWrapper
+import js7.data_for_java.common.JavaWrapper
 import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 

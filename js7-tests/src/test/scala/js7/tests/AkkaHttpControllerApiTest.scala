@@ -3,13 +3,13 @@ package js7.tests
 import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.data.ControllerCommand.AddOrder
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerCommand.AddOrder
 import js7.data.job.PathExecutable
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.workflow.instructions.Execute

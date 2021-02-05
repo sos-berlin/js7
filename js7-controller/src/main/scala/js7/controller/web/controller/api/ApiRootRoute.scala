@@ -9,9 +9,8 @@ import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
-import js7.controller.data.{ControllerOverview, ControllerState}
 import js7.controller.web.common.ControllerRouteProvider
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerOverview, ControllerState}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline
@@ -37,7 +36,7 @@ trait ApiRootRoute extends ControllerRouteProvider
 
   private def overview: Task[ControllerOverview] =
     for (checkedControllerState <- controllerState) yield
-      ControllerOverview(
+      js7.data.controller.ControllerOverview(
         id = controllerId,
         version = BuildInfo.prettyVersion,
         buildId = BuildInfo.buildId,

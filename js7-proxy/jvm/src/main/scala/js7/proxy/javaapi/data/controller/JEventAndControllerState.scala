@@ -2,10 +2,11 @@ package js7.proxy.javaapi.data.controller
 
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.controller.data.ControllerState
+import js7.data.controller.ControllerState
 import js7.data.event.{Event, KeyedEvent, Stamped}
+import js7.data_for_java.common.JavaWrapper
+import js7.data_for_java.controller.JControllerState
 import js7.proxy.data.event.EventAndState
-import js7.proxy.javaapi.data.common.JavaWrapper
 
 @javaApi
 final case class JEventAndControllerState[E <: Event](asScala: EventAndState[E, ControllerState])

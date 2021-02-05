@@ -8,9 +8,9 @@ import js7.agent.data.commands.AgentCommand._
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
+import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked
 import js7.base.web.Uri
-import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.http.AkkaHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.{Order, OrderId}

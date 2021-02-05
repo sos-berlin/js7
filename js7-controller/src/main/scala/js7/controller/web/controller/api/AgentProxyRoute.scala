@@ -14,10 +14,9 @@ import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.http.AkkaHttpUtils.RichAkkaUri
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.agent.AgentRefState
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.AgentProxyRoute._
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentId, AgentRef, AgentRefState}
 import monix.eval.Task
 import monix.execution.Scheduler
 

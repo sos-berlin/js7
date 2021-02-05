@@ -1,6 +1,7 @@
 package js7.data.system
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 

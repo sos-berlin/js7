@@ -19,13 +19,13 @@ import js7.base.crypt.SignatureVerifier
 import js7.base.generic.Completed
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.Futures.promiseFuture
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
-import js7.common.scalautil.Futures.promiseFuture
 import js7.common.scalautil.Logger
 import js7.common.scalautil.Logger.ops._
 import js7.common.utils.Exceptions.wrapException

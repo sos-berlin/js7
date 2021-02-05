@@ -16,13 +16,13 @@ import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.auth.UserId
 import js7.base.generic.Completed
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkautils.{Akkas, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
-import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation

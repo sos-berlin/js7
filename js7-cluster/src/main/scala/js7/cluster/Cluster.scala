@@ -8,6 +8,7 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Path, Paths}
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
+import js7.base.io.https.HttpsConfig
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
@@ -16,7 +17,6 @@ import js7.base.utils.SetOnce
 import js7.cluster.Cluster._
 import js7.cluster.ClusterCommon.truncateFile
 import js7.cluster.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
-import js7.common.akkahttp.https.HttpsConfig
 import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}

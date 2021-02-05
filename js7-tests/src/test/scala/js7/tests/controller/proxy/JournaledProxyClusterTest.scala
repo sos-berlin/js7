@@ -7,21 +7,21 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient
 import js7.common.http.AkkaHttpClient
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.ByteUnits.toKBGB
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
-import js7.controller.data.ControllerCommand.TakeSnapshot
-import js7.controller.data.ControllerState
-import js7.controller.data.ControllerState.versionedItemJsonCodec
+import js7.data.controller.ControllerCommand.TakeSnapshot
+import js7.data.controller.ControllerState
+import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{ItemOperation, VersionId, VersionedItem}
@@ -29,11 +29,10 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
+import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
-import js7.proxy.data.ProxyEvent
-import js7.proxy.data.event.ProxyStarted
-import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
+import js7.proxy.data.event.{ProxyEvent, ProxyStarted}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest._
 import monix.eval.Task

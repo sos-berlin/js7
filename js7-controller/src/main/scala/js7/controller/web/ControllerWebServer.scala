@@ -6,6 +6,7 @@ import com.typesafe.config.Config
 import java.nio.file.Path
 import javax.inject.{Inject, Singleton}
 import js7.base.auth.SimpleUser
+import js7.base.configutils.Configs._
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked
 import js7.base.utils.Closer
@@ -14,15 +15,14 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.configutils.Configs._
 import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.controller.item.ItemUpdater
 import js7.controller.web.serviceprovider.RouteServiceContext
 import js7.core.command.CommandMeta
 import js7.core.item.VersionedItemApi
+import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler

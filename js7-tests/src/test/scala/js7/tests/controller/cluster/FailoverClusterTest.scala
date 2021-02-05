@@ -1,18 +1,18 @@
 package js7.tests.controller.cluster
 
 import java.nio.file.Files.size
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
-import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
+import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event._
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}

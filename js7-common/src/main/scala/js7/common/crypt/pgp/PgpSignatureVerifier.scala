@@ -5,7 +5,8 @@ import cats.syntax.show._
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import js7.base.crypt.{GenericSignature, PgpSignature, SignatureVerifier, SignerId}
+import js7.base.crypt.pgp.PgpSignature
+import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat

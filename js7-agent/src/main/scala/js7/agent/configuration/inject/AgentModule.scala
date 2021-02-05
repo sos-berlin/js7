@@ -8,11 +8,11 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.web.AgentWebServer
 import js7.base.auth.SimpleUser
+import js7.base.thread.IOExecutor
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.scalautil.IOExecutor
 import js7.common.system.ThreadPools
 import js7.core.cluster.ClusterWatchRegister
 import js7.executor.configuration.ExecutorConfiguration

@@ -4,7 +4,8 @@ import cats.instances.vector._
 import cats.syntax.foldable._
 import cats.syntax.show._
 import java.util.Base64
-import js7.base.crypt.{DocumentSigner, PgpSignature, SignerId}
+import js7.base.crypt.pgp.PgpSignature
+import js7.base.crypt.{DocumentSigner, SignerId}
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked

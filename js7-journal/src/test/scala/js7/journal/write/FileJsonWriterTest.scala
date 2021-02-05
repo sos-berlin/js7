@@ -3,7 +3,7 @@ package js7.journal.write
 import java.io.IOException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import js7.base.data.ByteArray
-import js7.common.scalautil.FileUtils.syntax.RichPath
+import js7.base.io.file.FileUtils.syntax.RichPath
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 

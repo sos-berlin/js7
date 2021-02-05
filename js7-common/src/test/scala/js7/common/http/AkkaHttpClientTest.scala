@@ -11,6 +11,7 @@ import cats.syntax.option._
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
@@ -23,7 +24,6 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.http.AkkaHttpClient.{HttpException, toPrettyProblem}
 import js7.common.http.AkkaHttpClientTest._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`

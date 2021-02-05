@@ -7,8 +7,8 @@ import js7.base.crypt.Signed
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.common.scalautil.Logger
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.agent.CommandQueueTest._

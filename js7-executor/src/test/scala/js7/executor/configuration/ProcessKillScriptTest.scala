@@ -1,7 +1,7 @@
 package js7.executor.configuration
 
 import java.nio.file.Paths
-import js7.common.process.Processes.Pid
+import js7.base.io.process.Processes.Pid
 import js7.data.job.TaskId
 import org.scalatest.freespec.AnyFreeSpec
 

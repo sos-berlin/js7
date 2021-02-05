@@ -1,7 +1,7 @@
 package js7.journal.configuration
 
+import js7.base.configutils.Configs._
 import js7.base.time.ScalaTime._
-import js7.common.configutils.Configs._
 import js7.journal.configuration.JournalConfTest._
 import org.scalatest.freespec.AnyFreeSpec
 

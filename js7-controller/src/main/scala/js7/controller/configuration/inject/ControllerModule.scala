@@ -6,6 +6,7 @@ import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.base.auth.{Permission, SimpleUser, UpdateItemPermission}
 import js7.base.eventbus.StandardEventBus
+import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -13,7 +14,6 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.scalautil.Logger
 import js7.common.system.ThreadPools
-import js7.common.time.JavaTimeConverters._
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule._
 import js7.journal.{EventIdClock, EventIdGenerator}

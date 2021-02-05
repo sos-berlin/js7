@@ -4,12 +4,12 @@ import akka.pattern.ask
 import java.nio.file.Files.{delete, deleteIfExists}
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils._
+import js7.base.configutils.Configs._
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.thread.Futures.blockingThreadFuture
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.common.configutils.Configs._
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.blockingThreadFuture
-import js7.common.scalautil.Futures.implicits._
 import js7.journal.JournalActor
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.journal.test.JournalTest._

@@ -6,10 +6,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt
 import js7.controller.command.ControllerCommandExecutor._
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{Batch, EmergencyStop}
 import js7.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
+import js7.data.controller.ControllerCommand
+import js7.data.controller.ControllerCommand.{Batch, EmergencyStop}
 import monix.eval.Task
 
 /**

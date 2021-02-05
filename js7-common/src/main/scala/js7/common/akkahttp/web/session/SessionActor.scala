@@ -6,13 +6,13 @@ import js7.base.auth.{SessionToken, User, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.session.SessionActor._
 import js7.common.auth.SecretStringGenerator
 import js7.common.scalautil.Logger
-import js7.common.time.JavaTimeConverters._
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 

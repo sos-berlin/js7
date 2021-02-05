@@ -10,12 +10,12 @@ import akka.util.ByteString
 import io.circe.generic.semiauto.deriveEncoder
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.CirceJsonSupport._
-import js7.common.scalautil.Futures.implicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global

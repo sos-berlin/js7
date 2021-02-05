@@ -1,12 +1,12 @@
 package js7.common.async.synchronizer
 
+import js7.base.thread.Futures.blockingThreadFuture
+import js7.base.thread.Futures.implicits.RichFutures
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.scalautil.Futures.blockingThreadFuture
-import js7.common.scalautil.Futures.implicits.RichFutures
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 

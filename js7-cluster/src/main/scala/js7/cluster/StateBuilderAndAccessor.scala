@@ -1,8 +1,8 @@
 package js7.cluster
 
+import js7.base.thread.Futures.syntax.RichFuture
 import js7.base.utils.ScalaUtils.syntax._
 import js7.cluster.StateBuilderAndAccessor._
-import js7.common.scalautil.Futures.syntax.RichFuture
 import js7.common.scalautil.Logger
 import js7.data.event.{JournaledState, JournaledStateBuilder}
 import monix.catnap.MVar

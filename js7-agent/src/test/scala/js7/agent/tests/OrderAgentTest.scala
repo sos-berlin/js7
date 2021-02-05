@@ -9,7 +9,9 @@ import js7.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, Re
 import js7.agent.tests.OrderAgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
+import js7.base.configutils.Configs._
 import js7.base.crypt.SignedString
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
@@ -17,9 +19,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
-import js7.common.configutils.Configs._
 import js7.common.crypt.pgp.PgpSigner
-import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}

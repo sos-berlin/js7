@@ -10,13 +10,13 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
-import js7.controller.data.ControllerCommand.Response.Accepted
-import js7.controller.data.ControllerCommand.{AddOrders, ReleaseEvents}
-import js7.controller.data.ControllerState.generic.{itemPathJsonCodec, simpleItemIdJsonCodec}
-import js7.controller.data.ControllerState.simpleItemJsonCodec
-import js7.controller.data.{ControllerCommand, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
+import js7.data.controller.ControllerCommand.Response.Accepted
+import js7.data.controller.ControllerCommand.{AddOrders, ReleaseEvents}
+import js7.data.controller.ControllerState.generic.{itemPathJsonCodec, simpleItemIdJsonCodec}
+import js7.data.controller.ControllerState.simpleItemJsonCodec
+import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemOperation, ItemPath, SimpleItem, VersionId, VersionedItem, VersionedItemSigner, VersionedItems}
@@ -24,8 +24,7 @@ import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
-import js7.proxy.data.ProxyEvent
-import js7.proxy.data.event.EventAndState
+import js7.proxy.data.event.{EventAndState, ProxyEvent}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.immutable

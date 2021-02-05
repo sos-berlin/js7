@@ -4,9 +4,9 @@ import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{Admission, UserAndPassword}
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.session.SessionApi
 import js7.base.web.Uri
-import js7.common.akkahttp.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient
 import monix.eval.Task

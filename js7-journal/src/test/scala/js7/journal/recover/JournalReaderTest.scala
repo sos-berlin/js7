@@ -8,9 +8,9 @@ import java.util.UUID
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey

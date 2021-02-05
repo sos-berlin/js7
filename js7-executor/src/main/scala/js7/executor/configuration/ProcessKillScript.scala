@@ -2,7 +2,7 @@ package js7.executor.configuration
 
 import java.nio.file.{Path, Paths}
 import js7.base.generic.GenericString
-import js7.common.process.Processes.Pid
+import js7.base.io.process.Processes.Pid
 import js7.data.job.TaskId
 
 /**

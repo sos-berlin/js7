@@ -2,10 +2,10 @@ package js7.core.item
 
 import java.io.File.separator
 import java.nio.file.Paths
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.Stopwatch.measureTime
-import js7.common.scalautil.FileUtils.syntax._
 import js7.core.item.ItemPaths._
 import js7.data.item.SourceType
 import js7.data.workflow.WorkflowPath

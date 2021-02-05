@@ -13,16 +13,16 @@ import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
+import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
 import js7.common.akkahttp.web.auth.GateKeeperTest._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
-import js7.common.configutils.Configs._
 import js7.common.http.CirceJsonSupport._
-import js7.common.scalautil.Futures.implicits.SuccessFuture
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now

@@ -7,12 +7,12 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils._
 import js7.base.system.SystemInformation
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceJsonSupport._
-import js7.common.scalautil.Futures.implicits._
 import js7.data.system.JavaInformation
 import monix.eval.Task
 import monix.execution.Scheduler

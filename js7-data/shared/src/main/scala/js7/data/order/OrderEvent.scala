@@ -4,6 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
@@ -13,7 +14,6 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
 import js7.data.lock.LockId
 import js7.data.order.Order._
-import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork

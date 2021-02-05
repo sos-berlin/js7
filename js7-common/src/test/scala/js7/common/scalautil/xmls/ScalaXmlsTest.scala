@@ -5,7 +5,7 @@ import com.google.common.base.Charsets.ISO_8859_1
 import java.io.File
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import js7.common.scalautil.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import org.scalatest.freespec.AnyFreeSpec
 

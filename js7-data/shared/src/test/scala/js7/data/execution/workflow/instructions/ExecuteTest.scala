@@ -1,11 +1,12 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.data.agent.AgentId
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
-import js7.data.job.{RelativePathExecutable, ReturnCode}
+import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumberValue, StringValue}

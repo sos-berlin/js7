@@ -1,12 +1,12 @@
 package js7.core.item
 
 import java.nio.file.Path
+import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.common.files.DirectoryReader
-import js7.common.scalautil.FileUtils.syntax.RichPath
-import js7.data.item.{VersionedItem, ItemPath}
+import js7.data.item.{ItemPath, VersionedItem}
 
 /**
   * @author Joacim Zschimmer

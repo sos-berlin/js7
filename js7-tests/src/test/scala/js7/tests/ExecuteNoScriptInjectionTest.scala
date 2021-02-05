@@ -1,7 +1,7 @@
 package js7.tests
 
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
-import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.data.agent.AgentId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{FreshOrder, OrderId, Outcome}

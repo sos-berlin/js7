@@ -2,14 +2,15 @@ package js7.executor.process
 
 import javax.inject.{Inject, Singleton}
 import js7.base.generic.Completed
-import js7.base.process.ProcessSignal
+import js7.base.io.process.{ProcessSignal, ReturnCode}
+import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
-import js7.common.scalautil.{IOExecutor, Logger}
+import js7.common.scalautil.Logger
+import js7.data.job.TaskId
 import js7.data.job.TaskId.newGenerator
-import js7.data.job.{ReturnCode, TaskId}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.executor.configuration.{ExecutorConfiguration, TaskConfiguration}

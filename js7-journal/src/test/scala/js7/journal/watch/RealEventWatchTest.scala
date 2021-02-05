@@ -1,9 +1,9 @@
 package js7.journal.watch
 
 import js7.base.problem.Problem
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
-import js7.common.scalautil.Futures.implicits._
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.watch.RealEventWatchTest._
 import monix.eval.Task

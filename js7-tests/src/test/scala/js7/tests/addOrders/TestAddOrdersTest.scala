@@ -1,13 +1,13 @@
 package js7.tests.addOrders
 
 import js7.base.circeutils.CirceUtils.RichCirceString
+import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.io.JavaResource
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.durationAndPerSecondString
-import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.utils.JavaResource
 import js7.data.agent.AgentId
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.workflow.{Workflow, WorkflowPath}

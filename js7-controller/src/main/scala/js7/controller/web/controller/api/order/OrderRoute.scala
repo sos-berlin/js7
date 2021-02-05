@@ -26,12 +26,12 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.scalautil.Logger
 import js7.controller.OrderApi
-import js7.controller.data.ControllerCommand
-import js7.controller.data.ControllerCommand.{AddOrder, AddOrders, RemoveOrdersWhenTerminated}
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.order.OrderRoute._
 import js7.core.command.CommandMeta
 import js7.core.web.EntitySizeLimitProvider
+import js7.data.controller.ControllerCommand
+import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, RemoveOrdersWhenTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import monix.eval.Task
 import monix.execution.Scheduler

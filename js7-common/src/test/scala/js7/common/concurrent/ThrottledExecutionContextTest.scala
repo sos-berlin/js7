@@ -1,9 +1,9 @@
 package js7.common.concurrent
 
 import java.util.concurrent.Executors.newFixedThreadPool
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTime
-import js7.common.scalautil.Futures.implicits._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.{ExecutionContext, Future}

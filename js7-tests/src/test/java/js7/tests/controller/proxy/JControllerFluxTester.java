@@ -7,17 +7,17 @@ import js7.data.event.Event;
 import js7.data.order.OrderEvent.OrderFinished$;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
+import js7.data_for_java.auth.JAdmission;
+import js7.data_for_java.auth.JHttpsConfig;
+import js7.data_for_java.order.JFreshOrder;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.JProxyContext;
-import js7.proxy.javaapi.data.auth.JAdmission;
-import js7.proxy.javaapi.data.auth.JHttpsConfig;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
-import js7.proxy.javaapi.data.order.JFreshOrder;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static js7.proxy.javaapi.data.common.VavrUtils.await;
+import static js7.data_for_java.vavr.VavrUtils.await;
 
 /** Java test using Reactor streaming.
  * @author Joacim Zschimmer

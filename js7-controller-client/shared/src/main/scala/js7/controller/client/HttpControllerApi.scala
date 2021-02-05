@@ -12,10 +12,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
-import js7.controller.data.ControllerCommand.{InternalClusterCommand, RemoveOrdersWhenTerminated}
-import js7.controller.data.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
+import js7.data.controller.ControllerCommand.{InternalClusterCommand, RemoveOrdersWhenTerminated}
+import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi

@@ -2,8 +2,8 @@ package js7.controller
 
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.controller.data.ControllerState
 import js7.core.item.VersionedItemApi
+import js7.data.controller.ControllerState
 import js7.data.item.{ItemPath, Repo, VersionedItem, VersionedItemId, VersionedItemOverview}
 import monix.eval.Task
 

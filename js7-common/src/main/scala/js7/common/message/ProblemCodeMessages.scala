@@ -1,8 +1,8 @@
 package js7.common.message
 
+import js7.base.configutils.Configs
+import js7.base.io.JavaResource
 import js7.base.problem.{CodedMessages, ProblemCode}
-import js7.common.configutils.Configs
-import js7.common.utils.JavaResource
 import monix.execution.atomic.AtomicBoolean
 import scala.util.Try
 

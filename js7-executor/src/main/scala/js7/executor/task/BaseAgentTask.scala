@@ -1,8 +1,8 @@
 package js7.executor.task
 
 import js7.base.generic.Completed
-import js7.base.process.ProcessSignal
-import js7.common.process.Processes.Pid
+import js7.base.io.process.ProcessSignal
+import js7.base.io.process.Processes.Pid
 import js7.data.job.{JobKey, TaskId}
 import scala.concurrent.Future
 

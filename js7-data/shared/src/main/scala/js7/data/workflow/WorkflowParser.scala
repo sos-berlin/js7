@@ -2,11 +2,12 @@ package js7.data.workflow
 
 import fastparse.NoWhitespace._
 import fastparse._
+import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichTraversable
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, PathExecutable, ReturnCode, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockId
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._

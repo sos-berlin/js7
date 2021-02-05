@@ -2,7 +2,7 @@ package js7.agent.scheduler.order
 
 import java.io.{IOException, Writer}
 import js7.base.generic.Accepted
-import js7.common.scalautil.Futures.implicits.SuccessFuture
+import js7.base.thread.Futures.implicits.SuccessFuture
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{Future, Promise}

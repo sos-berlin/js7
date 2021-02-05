@@ -3,15 +3,15 @@ package js7.tests.controller.commands
 import io.circe.syntax.EncoderOps
 import js7.base.auth.SimpleUser
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.configutils.Configs._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.common.configutils.Configs._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax.RichTask
-import js7.controller.data.ControllerCommand.{AddOrder, RemoveOrdersWhenTerminated}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerCommand.{AddOrder, RemoveOrdersWhenTerminated}
 import js7.data.job.ScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}

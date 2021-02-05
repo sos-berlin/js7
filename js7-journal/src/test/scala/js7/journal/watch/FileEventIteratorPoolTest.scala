@@ -2,7 +2,7 @@ package js7.journal.watch
 
 import java.nio.file.Files
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.common.scalautil.FileUtils
+import js7.base.io.file.FileUtils
 import js7.data.event.{EventId, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps

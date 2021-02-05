@@ -4,12 +4,12 @@ import cats.instances.either._
 import cats.syntax.traverse._
 import com.typesafe.config.Config
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.web.Uri
-import js7.common.configutils.Configs._
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
-import js7.common.time.JavaTimeConverters.AsScalaDuration
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.node.NodeId
 import scala.jdk.CollectionConverters._

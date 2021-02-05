@@ -4,21 +4,21 @@ import com.typesafe.config.ConfigUtil.quoteString
 import js7.agent.RunningAgent
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.ClusterWatchAgreedToActivation
 import js7.cluster.Problems.{BackupClusterNodeNotAppointed, ClusterSettingNotUpdatable}
 import js7.common.akkahttp.web.data.WebServerPort
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.data.ControllerCommand.{ClusterAppointNodes, ShutDown}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSettingUpdated}
 import js7.data.cluster.ClusterSetting
 import js7.data.cluster.ClusterState.Coupled
+import js7.data.controller.ControllerCommand.{ClusterAppointNodes, ShutDown}
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}

@@ -1,6 +1,6 @@
 package js7.core.web
 
-import js7.common.configutils.Configs.HoconStringInterpolator
+import js7.base.configutils.Configs.HoconStringInterpolator
 import org.scalatest.freespec.AnyFreeSpec
 import scala.language.reflectiveCalls
 

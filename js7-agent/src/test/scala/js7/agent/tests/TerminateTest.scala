@@ -6,12 +6,11 @@ import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsController, 
 import js7.agent.tests.TerminateTest._
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.generic.SecretString
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
-import js7.base.process.ProcessSignal.SIGKILL
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.core.command.CommandMeta

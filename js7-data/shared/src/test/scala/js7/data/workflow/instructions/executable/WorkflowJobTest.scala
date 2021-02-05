@@ -2,10 +2,11 @@ package js7.data.workflow.instructions.executable
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.io.process.ReturnCode
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
-import js7.data.job.{RelativePathExecutable, ReturnCode}
+import js7.data.job.RelativePathExecutable
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.ReturnCodeMeaning
 import js7.tester.CirceJsonTester.testJson

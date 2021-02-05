@@ -2,13 +2,13 @@ package js7.provider
 
 import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.{createTempDirectory, delete}
+import js7.base.io.file.FileUtils.deleteDirectoryRecursively
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.system.OperatingSystem.isMac
+import js7.base.thread.Futures.implicits._
+import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
-import js7.common.scalautil.IOExecutor.Implicits.globalIOX
-import js7.common.time.WaitForCondition.waitForCondition
+import js7.base.time.WaitForCondition.waitForCondition
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

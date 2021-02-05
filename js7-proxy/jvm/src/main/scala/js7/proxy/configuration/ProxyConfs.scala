@@ -1,10 +1,10 @@
 package js7.proxy.configuration
 
 import com.typesafe.config.Config
+import js7.base.configutils.Configs
+import js7.base.io.JavaResource
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.common.configuration.JobSchedulerConfiguration
-import js7.common.configutils.Configs
-import js7.common.time.JavaTimeConverters.AsScalaDuration
-import js7.common.utils.JavaResource
 
 object ProxyConfs
 {

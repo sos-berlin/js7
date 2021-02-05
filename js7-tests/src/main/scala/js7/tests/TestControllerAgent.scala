@@ -7,9 +7,11 @@ import java.nio.file.{Files, Path}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.convert.AsJava.StringAsPath
+import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
-import js7.base.process.ProcessSignal.SIGTERM
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
@@ -21,9 +23,6 @@ import js7.base.utils.{Closer, DecimalPrefixes}
 import js7.common.commandline.CommandLineArguments
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.log.Log4j
-import js7.common.scalautil.FileUtils.deleteDirectoryContentRecursively
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.utils.JavaShutdownHook

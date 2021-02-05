@@ -4,10 +4,10 @@ import akka.actor.{Actor, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import js7.base.generic.Completed
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.CatchingActorTest._
-import js7.common.scalautil.Futures.implicits.SuccessFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
@@ -87,4 +87,3 @@ object CatchingActorTest {
     }
   }
 }
-

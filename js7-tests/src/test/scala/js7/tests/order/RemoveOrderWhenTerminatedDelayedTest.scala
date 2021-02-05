@@ -1,11 +1,11 @@
 package js7.tests.order
 
+import js7.base.configutils.Configs._
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.common.configutils.Configs._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderRemoved, OrderStarted}

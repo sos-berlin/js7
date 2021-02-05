@@ -1,7 +1,7 @@
 package js7.common.monixutils
 
 import java.lang.Thread.sleep
-import js7.common.scalautil.Futures.implicits._
+import js7.base.thread.Futures.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt

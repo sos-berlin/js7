@@ -2,19 +2,18 @@ package js7.tests.order
 
 import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.{createTempFile, deleteIfExists}
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.common.configutils.Configs.HoconStringInterpolator
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
-import js7.controller.data.events.AgentRefStateEvent.AgentReady
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentId
+import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.controller.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}

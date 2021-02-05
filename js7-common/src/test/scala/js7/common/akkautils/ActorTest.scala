@@ -1,10 +1,10 @@
 package js7.common.akkautils
 
 import akka.actor.{Actor, Props}
+import js7.base.configutils.Configs._
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.ActorTest._
-import js7.common.configutils.Configs._
-import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import monix.execution.atomic.{AtomicBoolean, AtomicInt}
 import org.scalatest.BeforeAndAfterAll

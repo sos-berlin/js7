@@ -8,10 +8,10 @@ import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singl
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.SignedString
+import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
-import js7.base.process.ProcessSignal
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._

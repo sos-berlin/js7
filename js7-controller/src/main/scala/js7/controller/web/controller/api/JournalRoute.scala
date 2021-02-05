@@ -8,6 +8,7 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.JavaTimeConverters._
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
@@ -18,7 +19,6 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
 import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Logger
-import js7.common.time.JavaTimeConverters._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.JournalRoute._
 import js7.data.event.JournalSeparators.HeartbeatMarker

@@ -12,7 +12,10 @@ import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
+import js7.base.io.file.FileUtils.deleteDirectoryRecursively
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
@@ -21,9 +24,6 @@ import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.log.LogLevel.syntax._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
-import js7.common.scalautil.FileUtils.deleteDirectoryRecursively
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.data.event.{Event, JournalId, KeyedEvent, Stamped}
 import js7.journal.JournalActor

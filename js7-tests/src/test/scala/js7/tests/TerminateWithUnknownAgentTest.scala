@@ -5,7 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
+import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.job.ScriptExecutable
 import js7.data.order.{FreshOrder, OrderId}

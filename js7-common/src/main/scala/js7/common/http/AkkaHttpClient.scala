@@ -21,6 +21,8 @@ import js7.base.circeutils.CirceUtils.implicits._
 import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
+import js7.base.io.https.Https.loadSSLContext
+import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -29,10 +31,7 @@ import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteArrayToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
-import js7.common.akkahttp.https.Https.loadSSLContext
-import js7.common.akkahttp.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.akkautils.JsonObservableForAkka.syntax._
 import js7.common.http.AkkaHttpClient._

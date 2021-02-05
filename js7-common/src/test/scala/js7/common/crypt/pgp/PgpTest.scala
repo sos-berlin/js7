@@ -4,14 +4,15 @@ import cats.syntax.show._
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import js7.base.crypt.{PgpSignature, SignerId}
+import js7.base.crypt.SignerId
+import js7.base.crypt.pgp.PgpSignature
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
+import js7.base.io.JavaResource
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.common.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
 import js7.common.crypt.pgp.PgpTest._
-import js7.common.utils.JavaResource
 import org.bouncycastle.openpgp.PGPSignature
 import org.scalatest.freespec.AnyFreeSpec
 

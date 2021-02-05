@@ -7,20 +7,18 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.generic.Completed
-import js7.base.process.ProcessSignal
-import js7.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.io.process.Processes._
+import js7.base.io.process.{ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
+import js7.base.thread.IOExecutor
+import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.log.LogLevel
 import js7.common.log.LogLevel.syntax._
-import js7.common.process.Processes._
-import js7.common.scalautil.IOExecutor.ioFuture
-import js7.common.scalautil.{ClosedFuture, IOExecutor, Logger}
-import js7.data.job.ReturnCode
-import js7.data.system.{Stderr, Stdout, StdoutOrStderr}
+import js7.common.scalautil.{ClosedFuture, Logger}
 import js7.executor.process.RichProcess._
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now

@@ -2,11 +2,11 @@ package js7.journal.configuration
 
 import com.typesafe.config.Config
 import js7.base.auth.UserId
+import js7.base.configutils.Configs._
 import js7.base.convert.As.StringAsByteCountWithDecimalPrefix
+import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
-import js7.common.configutils.Configs._
 import js7.common.scalautil.Logger
-import js7.common.time.JavaTimeConverters._
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 

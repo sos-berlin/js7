@@ -20,10 +20,10 @@ import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.scalautil.Logger
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.data.ControllerState
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute._
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
+import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.journal.watch.EventWatch
 import monix.eval.Task

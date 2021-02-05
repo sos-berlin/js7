@@ -6,12 +6,12 @@ import com.softwaremill.diffx
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.Futures.syntax._
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichThrowable}
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.Problems.ClusterNodesAlreadyAppointed
 import js7.cluster.WorkingClusterNode._
-import js7.common.scalautil.Futures.syntax._
 import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes

@@ -4,10 +4,10 @@ import cats.effect.Resource
 import cats.syntax.flatMap._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
-import js7.common.scalautil.Futures.implicits._
 import js7.data.session.HttpSessionApi
 import monix.catnap.MVar
 import monix.eval.Task

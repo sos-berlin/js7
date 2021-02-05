@@ -2,10 +2,13 @@ package js7.tests
 
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.AutoClosing.autoClosing
@@ -13,9 +16,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient.HttpException
-import js7.common.process.Processes.{ShellFileExtension => sh}
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.RunningController

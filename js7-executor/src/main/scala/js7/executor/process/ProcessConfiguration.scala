@@ -3,10 +3,10 @@ package js7.executor.process
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Path
+import js7.base.io.process.Processes.Pid
+import js7.base.io.process.StdoutOrStderr
 import js7.base.system.OperatingSystem.isWindows
-import js7.common.process.Processes.Pid
 import js7.data.job.TaskId
-import js7.data.system.StdoutOrStderr
 import js7.executor.configuration.ProcessKillScript
 
 /**

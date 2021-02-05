@@ -5,10 +5,11 @@ import java.nio.file.Path
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
+import js7.base.thread.IOExecutor
+import js7.base.time.JavaTimeConverters._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient
-import js7.common.scalautil.{IOExecutor, Logger}
-import js7.common.time.JavaTimeConverters._
+import js7.common.scalautil.Logger
 import js7.provider.Observing._
 import monix.eval.Task
 import monix.execution.Scheduler

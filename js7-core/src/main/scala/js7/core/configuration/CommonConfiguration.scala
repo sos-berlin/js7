@@ -2,13 +2,11 @@ package js7.core.configuration
 
 import cats.syntax.semigroup._
 import com.typesafe.config.Config
-import java.net.InetSocketAddress
 import java.nio.file.Path
-import js7.base.convert.As
 import js7.base.convert.AsJava.StringAsPath
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.common.akkahttp.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
 import js7.common.internet.IP.StringToServerInetSocketAddress

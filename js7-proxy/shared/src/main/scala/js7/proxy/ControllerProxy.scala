@@ -5,13 +5,12 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
-import js7.controller.data.ControllerCommand.AddOrders
-import js7.controller.data.ControllerState
+import js7.data.controller.ControllerCommand.AddOrders
+import js7.data.controller.ControllerState
 import js7.data.event.Event
 import js7.data.order.FreshOrder
 import js7.proxy.configuration.ProxyConf
-import js7.proxy.data.ProxyEvent
-import js7.proxy.data.event.EventAndState
+import js7.proxy.data.event.{EventAndState, ProxyEvent}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

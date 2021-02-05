@@ -2,7 +2,7 @@ package js7.controller
 
 import akka.util.Timeout
 import js7.base.problem.Checked
-import js7.controller.data.ControllerState
+import js7.data.controller.ControllerState
 import js7.data.order.{Order, OrderId}
 import monix.eval.Task
 

@@ -5,13 +5,12 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.BuildInfo
-import js7.base.process.ProcessSignal.SIGTERM
+import js7.base.configutils.Configs.logConfig
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
-import js7.common.configutils.Configs.logConfig
-import js7.common.scalautil.Futures.implicits.SuccessFuture
 import js7.common.scalautil.Logger
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain

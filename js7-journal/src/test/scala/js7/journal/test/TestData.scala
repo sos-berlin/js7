@@ -2,8 +2,8 @@ package js7.journal.test
 
 import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.configutils.Configs._
 import js7.common.configuration.JobSchedulerConfiguration
-import js7.common.configutils.Configs._
 import js7.journal.data.JournalMeta
 
 /**

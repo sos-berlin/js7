@@ -2,13 +2,13 @@ package js7.executor.process
 
 import java.nio.file.Files.{createTempFile, delete, exists, size}
 import java.nio.file.Paths
+import js7.base.io.file.FileUtils.implicits._
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.Processes.Pid
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.HasCloser
-import js7.common.process.Processes.Pid
-import js7.common.scalautil.FileUtils.implicits._
-import js7.common.scalautil.FileUtils.syntax._
 import js7.data.job.TaskId
 import js7.executor.configuration.ProcessKillScript
 import org.scalatest.BeforeAndAfterAll

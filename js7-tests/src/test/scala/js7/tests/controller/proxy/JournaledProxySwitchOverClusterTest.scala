@@ -3,17 +3,17 @@ package js7.tests.controller.proxy
 import java.net.URI
 import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.scalautil.Futures.implicits._
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.ControllerCommand
+import js7.data.controller.ControllerCommand
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.EventAndState
-import js7.proxy.javaapi.data.auth.{JAdmission, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryUserAndPassword, workflow}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

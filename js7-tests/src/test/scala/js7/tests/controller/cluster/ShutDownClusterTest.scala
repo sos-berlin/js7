@@ -3,16 +3,16 @@ package js7.tests.controller.cluster
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked._
+import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Futures.implicits._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.common.time.WaitForCondition.waitForCondition
-import js7.controller.data.ControllerCommand.ShutDown
-import js7.controller.data.ControllerCommand.ShutDown.ClusterAction
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
+import js7.data.controller.ControllerCommand.ShutDown
+import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import js7.data.event.EventId
 import monix.execution.Scheduler.Implicits.global
 
@@ -174,4 +174,3 @@ final class ShutDownClusterTest extends ControllerClusterTester
     }
   }
 }
-

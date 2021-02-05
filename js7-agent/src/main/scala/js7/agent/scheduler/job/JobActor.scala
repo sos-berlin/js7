@@ -8,16 +8,15 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import java.nio.file.{Path, Paths}
 import js7.agent.scheduler.job.JobActor._
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.ProcessSignal
+import js7.base.io.process.Processes.ShellFileAttributes
 import js7.base.problem.{Checked, Problem}
-import js7.base.process.ProcessSignal
-import js7.base.process.ProcessSignal.SIGKILL
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
-import js7.common.process.Processes.ShellFileAttributes
-import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.data.execution.workflow.context.StateView
 import js7.data.job.{AbsolutePathExecutable, CommandLine, CommandLineEvaluator, CommandLineExecutable, InternalExecutable, JobKey, RelativePathExecutable, ScriptExecutable}

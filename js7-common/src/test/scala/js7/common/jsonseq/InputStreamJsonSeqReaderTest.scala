@@ -4,10 +4,10 @@ import com.google.common.base.Ascii.{LF, RS}
 import io.circe.Json
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}
+import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.jsonseq.InputStreamJsonSeqReaderTest._
 import js7.common.message.ProblemCodeMessages
-import js7.common.scalautil.FileUtils.withTemporaryFile
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.language.reflectiveCalls

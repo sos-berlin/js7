@@ -5,20 +5,20 @@ import java.nio.file.Files.createDirectory
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.TimeoutException
 import js7.base.circeutils.CirceUtils._
+import js7.base.configutils.Configs._
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
-import js7.common.configutils.Configs._
-import js7.common.scalautil.FileUtils.syntax._
 import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.data.ControllerState.versionedItemJsonCodec
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.{VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
 import js7.data.workflow.WorkflowPath
+import js7.data_for_java.auth.{JAdmission, JCredentials, JHttpsConfig}
 import js7.proxy.javaapi.JProxyContext
-import js7.proxy.javaapi.data.auth.{JAdmission, JCredentials, JHttpsConfig}
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest

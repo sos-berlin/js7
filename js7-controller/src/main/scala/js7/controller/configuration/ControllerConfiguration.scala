@@ -6,21 +6,20 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import java.time.ZoneId
+import js7.base.configutils.Configs
+import js7.base.configutils.Configs._
+import js7.base.io.JavaResource
+import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
+import js7.base.time.JavaTimeConverters._
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.JobSchedulerConfiguration
-import js7.common.configutils.Configs
-import js7.common.configutils.Configs._
-import js7.common.scalautil.FileUtils.syntax._
-import js7.common.time.JavaTimeConverters._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.common.utils.JavaResource
 import js7.common.utils.Tests.isTest
-import js7.controller.data.ControllerState
 import js7.core.configuration.CommonConfiguration
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerState}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import scala.jdk.CollectionConverters._

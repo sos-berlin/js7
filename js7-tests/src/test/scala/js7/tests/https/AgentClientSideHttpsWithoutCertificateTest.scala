@@ -3,8 +3,8 @@ package js7.tests.https
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
 import js7.common.scalautil.MonixUtils.syntax._
-import js7.controller.data.events.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.AgentId
+import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.event.KeyedEvent
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath

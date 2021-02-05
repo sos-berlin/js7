@@ -1,6 +1,6 @@
 package js7.base
 
-import io.circe.{Decoder, Encoder}
+import _root_.io.circe.{Decoder, Encoder}
 
 /**
   * @author Joacim Zschimmer

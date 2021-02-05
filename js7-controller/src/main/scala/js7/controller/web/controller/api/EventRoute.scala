@@ -2,8 +2,8 @@ package js7.controller.web.controller.api
 
 import akka.http.scaladsl.server.Route
 import js7.base.auth.SimpleUser
-import js7.controller.data.ControllerState
 import js7.controller.web.common.ControllerRouteProvider
+import js7.data.controller.ControllerState
 import js7.journal.watch.EventWatch
 import js7.journal.web.GenericEventRoute
 import js7.journal.web.GenericEventRoute.StampedEventFilter

@@ -1,7 +1,7 @@
 package js7.executor.process
 
 import com.google.inject.ImplementedBy
-import js7.common.scalautil.Futures.blockingThreadFuture
+import js7.base.thread.Futures.blockingThreadFuture
 import scala.concurrent.Future
 
 /**
