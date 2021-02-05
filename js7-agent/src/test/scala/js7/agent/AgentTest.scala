@@ -13,8 +13,8 @@ import js7.base.io.file.FileUtils.WorkingDirectory
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId

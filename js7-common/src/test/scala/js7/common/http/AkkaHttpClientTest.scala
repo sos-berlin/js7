@@ -13,6 +13,7 @@ import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -28,7 +29,6 @@ import js7.common.http.AkkaHttpClient.{HttpException, toPrettyProblem}
 import js7.common.http.AkkaHttpClientTest._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

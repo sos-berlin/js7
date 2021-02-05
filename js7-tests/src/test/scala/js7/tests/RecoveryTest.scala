@@ -7,13 +7,13 @@ import js7.base.configutils.Configs._
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.scalautil.Logger
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.UntilNoneIterator
 import js7.controller.RunningController
 import js7.data.agent.AgentId

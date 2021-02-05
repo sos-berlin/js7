@@ -2,8 +2,8 @@ package js7.journal.state
 
 import akka.actor.{ActorRef, Props}
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.MonixBlocking.promiseTask
 import js7.common.akkautils.SupervisorStrategies
-import js7.common.scalautil.MonixUtils.promiseTask
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.state.StateJournalingActor._

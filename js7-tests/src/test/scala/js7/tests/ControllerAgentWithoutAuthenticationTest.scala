@@ -9,10 +9,10 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration

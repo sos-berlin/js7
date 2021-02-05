@@ -1,8 +1,9 @@
 package js7.executor.process
 
 import java.nio.file.Files._
-import js7.base.io.file.FileUtils.autoDeleting
 import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory}
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.newTemporaryShellFile
 import js7.base.io.process.{ReturnCode, Stdout}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
@@ -12,7 +13,6 @@ import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.system.FileUtils._
 import js7.common.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.data.job.TaskId
 import js7.executor.configuration.ProcessKillScript

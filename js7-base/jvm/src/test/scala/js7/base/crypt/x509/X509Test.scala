@@ -14,6 +14,7 @@ import js7.base.io.process.Processes.runProcess
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import monix.execution.Scheduler.Implicits.global
@@ -25,8 +26,6 @@ import scala.util.Random
 
 final class X509Test extends AnyFreeSpec
 {
-  coupleScribeWithSlf4j()
-
   "Sign programmatically and verify" in {
     val (signer, verifier) = X509Signer.forTest
     val document = "TEXT EXAMPLE"

@@ -8,10 +8,10 @@ import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.WorkflowPath

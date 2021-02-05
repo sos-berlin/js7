@@ -3,9 +3,9 @@ package js7.tests.controller.cluster
 import js7.base.configutils.Configs._
 import js7.base.problem.Checked._
 import js7.base.problem.ProblemException
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.cluster.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

@@ -5,9 +5,10 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._
 import java.nio.file.Path
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.implicits._
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, temporaryDirectory}
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes
 import js7.base.io.process.Processes.{Pid, RobustlyStartProcess, processToPidOption}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
@@ -15,7 +16,6 @@ import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.scalautil.Logger
-import js7.common.system.FileUtils._
 import js7.data.job.TaskId
 import js7.executor.process.ProcessKillScriptTest._
 import org.scalatest.freespec.AnyFreeSpec

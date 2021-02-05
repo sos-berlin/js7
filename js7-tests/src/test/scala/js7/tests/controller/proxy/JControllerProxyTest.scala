@@ -7,10 +7,10 @@ import java.util.concurrent.TimeoutException
 import js7.base.circeutils.CirceUtils._
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerState.versionedItemJsonCodec

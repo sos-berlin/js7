@@ -8,6 +8,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.web.common.AgentRouteProvider
 import js7.base.auth.{HashedPassword, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
 import js7.common.akkahttp.WebLogDirectives
@@ -16,7 +17,6 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.message.ProblemCodeMessages
-import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
 

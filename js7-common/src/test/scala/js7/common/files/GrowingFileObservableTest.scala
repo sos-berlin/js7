@@ -4,8 +4,8 @@ import java.util.concurrent.ArrayBlockingQueue
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

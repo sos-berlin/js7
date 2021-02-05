@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.generic.Completed
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes._
 import js7.base.io.process.{ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.system.OperatingSystem.{isMac, isWindows}

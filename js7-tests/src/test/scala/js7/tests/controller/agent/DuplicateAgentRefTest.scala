@@ -4,8 +4,8 @@ import com.typesafe.config.ConfigUtil.quoteString
 import js7.agent.data.Problems.DuplicateAgentRef
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.job.RelativePathExecutable

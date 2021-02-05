@@ -21,6 +21,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -29,7 +30,6 @@ import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceToYaml.yamlToJson
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.agent.AgentRefStateEvent.AgentRegisteredController
 import js7.data.agent.{AgentId, AgentRefStateEvent}

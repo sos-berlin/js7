@@ -4,8 +4,8 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerEvent

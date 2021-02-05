@@ -12,7 +12,7 @@ import js7.agent.web.CommandWebServiceTest._
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.CirceUtils.implicits._
-import js7.base.process.ProcessSignal.SIGTERM
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._

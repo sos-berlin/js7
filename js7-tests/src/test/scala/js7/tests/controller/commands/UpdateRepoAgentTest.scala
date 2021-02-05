@@ -8,11 +8,11 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient.HttpException
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
-import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.data.agent.{AgentId, AgentRef}

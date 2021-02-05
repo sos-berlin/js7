@@ -2,8 +2,8 @@ package js7.agent.tests
 
 import js7.agent.client.AgentClient
 import js7.agent.configuration.{AgentStartInformation, Akkas}
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.job.TaskId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.concurrent.ScalaFutures

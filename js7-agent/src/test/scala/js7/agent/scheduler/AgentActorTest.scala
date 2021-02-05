@@ -13,11 +13,11 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}

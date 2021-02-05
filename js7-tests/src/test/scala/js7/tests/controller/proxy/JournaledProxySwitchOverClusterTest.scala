@@ -4,9 +4,9 @@ import java.net.URI
 import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.controller.ControllerCommand
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderFinished

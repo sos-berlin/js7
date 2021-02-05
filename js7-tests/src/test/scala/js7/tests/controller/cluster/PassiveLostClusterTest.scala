@@ -1,8 +1,8 @@
 package js7.tests.controller.cluster
 
 import js7.base.problem.Checked._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.cluster.ClusterEvent
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.controller.ControllerCommand.ClusterAppointNodes

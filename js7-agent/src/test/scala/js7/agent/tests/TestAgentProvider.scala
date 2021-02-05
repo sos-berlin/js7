@@ -6,10 +6,11 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
-import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler.Implicits.global
 
 /**

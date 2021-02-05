@@ -2,7 +2,7 @@ package js7.executor.process
 
 import java.nio.file.Files.exists
 import js7.base.io.file.FileUtils.syntax._
-import js7.common.system.FileUtils.temporaryDirectory
+import js7.base.io.file.FileUtils.temporaryDirectory
 import js7.data.job.JobKey
 import org.scalatest.freespec.AnyFreeSpec
 

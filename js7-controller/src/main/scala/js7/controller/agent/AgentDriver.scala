@@ -17,6 +17,7 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.Futures.syntax.RichFuture
+import js7.base.thread.MonixBlocking.promiseTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
@@ -26,7 +27,6 @@ import js7.base.web.Uri
 import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.http.RecouplingStreamReader
 import js7.common.scalautil.Logger
-import js7.common.scalautil.MonixUtils.promiseTask
 import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration

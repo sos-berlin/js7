@@ -1,4 +1,4 @@
-package js7.common.scalautil
+package js7.base.thread
 
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.Futures.promiseFuture
@@ -12,7 +12,7 @@ import scala.reflect.runtime.universe._
 /**
   * @author Joacim Zschimmer
   */
-object MonixUtils
+object MonixBlocking
 {
   object syntax {
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal

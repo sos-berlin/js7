@@ -2,8 +2,8 @@ package js7.controller.command
 
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.problem.Problem
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.data.command.CancelMode
 import js7.data.controller.ControllerCommand

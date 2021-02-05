@@ -22,6 +22,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
@@ -34,7 +35,6 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.scalautil.Logger
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController._
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}

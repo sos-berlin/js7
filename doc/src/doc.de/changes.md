@@ -1,3 +1,32 @@
+# Nächste Version
+
+* Proxy
+  * Der Aufruf `x509WithSignerId` ersetzt `x509WithSignedId`.
+  * Wegen der neuen internen Java-Jobs haben ich mehrere Klassennamen geändert.
+* Interne Java-Jobs
+  * Betrifft die Verwendung des Proxys
+
+
+## Interne Java-Jobs
+
+### Subprojekt js7-data-for-java
+* Das neue Subprojekt js7-data-for-java nimmt die Java-Adapter aus dem Proxy auf,
+  so dass sie auch für interne Java-Jobs verwendet werden können.
+  Die betroffenen Klassen (im Wesentlichen die J-Klassen) sind in neuen Packages.
+  Eure Import-Anweisungen müssten wie folgt angepasst werden
+
+  Alt | Neu
+  --- | ---
+  js7.proxy.javaapi.data.command.             |  js7.data_for_java.command.
+  js7.proxy.javaapi.data.controller.          |  js7.data_for_java.controller.
+  js7.proxy.javaapi.data.event.JKeyedEvent.   |  js7.data_for_java.event.JKeyedEvent.
+  js7.proxy.javaapi.data.auth.                |  js7.data_for_java.auth.
+  js7.proxy.javaapi.data.order.               |  js7.data_for_java.order.
+  js7.proxy.javaapi.data.problem.             |  js7.data_for_java.problem.
+  js7.proxy.javaapi.data.workflow.            |  js7.data_for_java.workflow.
+  js7.proxy.javaapi.data.common.VavrUtils.    |  js7.data_for_java.vavr.VavrUtils.
+
+----------------------------------------------------------------------------------------------------
 # v2.0.0-alpha.20210131
 
 * Fix: Die Lock-Anweisung erlaubt jetzt Jobs verschiedener Agenten

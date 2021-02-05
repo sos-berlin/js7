@@ -13,12 +13,12 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked._
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.jsonseq.PositionAnd
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}

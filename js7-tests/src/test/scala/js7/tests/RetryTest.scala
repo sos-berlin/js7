@@ -4,9 +4,9 @@ import js7.base.configutils.Configs._
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.common.scalautil.Logger
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable

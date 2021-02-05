@@ -4,9 +4,9 @@ import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.AddOrder

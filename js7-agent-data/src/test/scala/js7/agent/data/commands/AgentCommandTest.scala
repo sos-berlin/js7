@@ -5,8 +5,8 @@ import java.util.UUID
 import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.TestCodeProblem
-import js7.base.process.ProcessSignal.SIGTERM
 import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CancelMode

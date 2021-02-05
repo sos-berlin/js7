@@ -8,9 +8,9 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.RunningController
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.core.command.CommandMeta

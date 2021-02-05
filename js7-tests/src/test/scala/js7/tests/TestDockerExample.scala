@@ -9,8 +9,9 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer
@@ -19,7 +20,6 @@ import js7.base.utils.Closer.withCloser
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.log.Log4j
-import js7.common.system.FileUtils.temporaryDirectory
 import js7.common.utils.JavaShutdownHook
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration

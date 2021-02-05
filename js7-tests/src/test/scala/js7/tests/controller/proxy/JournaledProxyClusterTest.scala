@@ -8,6 +8,7 @@ import js7.base.generic.Completed
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
 import js7.base.time.WaitForCondition.waitForCondition
@@ -16,7 +17,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Logger
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.ByteUnits.toKBGB
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.data.controller.ControllerCommand.TakeSnapshot

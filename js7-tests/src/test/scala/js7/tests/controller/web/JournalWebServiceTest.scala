@@ -9,6 +9,7 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax._
@@ -16,7 +17,6 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.http.AkkaHttpClient.HttpException
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentId

@@ -16,9 +16,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.core.item.{ItemPaths, VersionedItemReader}
 import js7.data.agent.AgentId

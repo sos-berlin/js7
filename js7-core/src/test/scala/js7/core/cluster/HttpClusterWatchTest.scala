@@ -7,6 +7,7 @@ import js7.base.auth.SessionToken
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionCommand
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.web.Uri
@@ -14,7 +15,6 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.http.CirceJsonSupport._
-import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.core.cluster.HttpClusterWatchTest._
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}

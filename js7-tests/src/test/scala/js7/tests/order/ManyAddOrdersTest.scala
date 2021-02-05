@@ -6,9 +6,9 @@ import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils._
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.EventRequest

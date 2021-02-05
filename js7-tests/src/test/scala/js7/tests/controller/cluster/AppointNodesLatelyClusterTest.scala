@@ -7,13 +7,13 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.ClusterWatchAgreedToActivation
 import js7.cluster.Problems.{BackupClusterNodeNotAppointed, ClusterSettingNotUpdatable}
 import js7.common.akkahttp.web.data.WebServerPort
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSettingUpdated}
 import js7.data.cluster.ClusterSetting

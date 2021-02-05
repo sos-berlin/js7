@@ -11,11 +11,11 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.https.KeyStoreRef
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.ProvideActorSystem
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi

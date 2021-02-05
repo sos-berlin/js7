@@ -8,13 +8,13 @@ import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
+import js7.base.thread.MonixBlocking.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.RouteProviderTest._
 import js7.common.auth.IdToUser
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.http.CirceJsonSupport._
-import js7.common.scalautil.MonixUtils.syntax._
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

@@ -19,6 +19,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.Futures.promiseFuture
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer
@@ -27,7 +28,6 @@ import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits._
 import js7.common.scalautil.Logger
-import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
 import monix.eval.Task

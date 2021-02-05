@@ -1,9 +1,9 @@
 package js7.tests.https
 
 import javax.net.ssl.SSLException
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi
 import js7.tests.testenv.DirectoryProvider.ExportedControllerTrustStoreRef
 import monix.execution.Scheduler.Implicits.global

@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
 import js7.base.configutils.Configs._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
@@ -17,7 +18,6 @@ import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.CirceJsonSupport._
 import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
-import js7.common.scalautil.MonixUtils.syntax._
 import monix.eval.Task
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.{BeforeAndAfterAll, Suite}

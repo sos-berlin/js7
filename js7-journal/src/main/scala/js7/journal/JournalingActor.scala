@@ -6,6 +6,7 @@ import js7.base.generic.Accepted
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.thread.Futures.promiseFuture
+import js7.base.thread.MonixBlocking.promiseTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.Assertions.assertThat
@@ -13,7 +14,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.scalautil.Logger
-import js7.common.scalautil.MonixUtils.promiseTask
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.JournalingActor._
 import js7.journal.configuration.JournalConf

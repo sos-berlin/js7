@@ -3,9 +3,9 @@ package js7.tests.controller.cluster
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.order.OrderEvent.OrderFinished

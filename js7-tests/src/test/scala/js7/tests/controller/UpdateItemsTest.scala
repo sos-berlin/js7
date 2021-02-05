@@ -7,8 +7,8 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.RichFutures
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId

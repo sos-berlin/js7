@@ -50,15 +50,14 @@ final class ProcessTextFileBusyTest extends AnyFreeSpec {
   }
 }
 
-object ProcessTextFileBusyTest {
-  private val logger = Logger(getClass)
-
+object ProcessTextFileBusyTest
+{
   private def tryDelete(path: Path): Unit = {
     // Under Windows, the file may be locked for a very short while, resulting in error
     // "The process cannot access the file because it is being used by another process.".
     try delete(path)
     catch {
-      case NonFatal(t) => logger.warn(s"$path: $t")
+      case NonFatal(t) => scribe.warn(s"$path: $t")
     }
   }
 }

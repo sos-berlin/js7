@@ -27,6 +27,7 @@ object FileUtils
 {
   val EmptyPath = Paths.get("")
   val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath
+  def temporaryDirectory = Paths.get(sys.props("java.io.tmpdir"))
 
   /**
    * Touchs the file and deletes it when closer is closed.

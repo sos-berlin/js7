@@ -9,6 +9,7 @@ import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.OrderActor._
 import js7.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import js7.base.generic.{Accepted, Completed}
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem

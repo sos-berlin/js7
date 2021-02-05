@@ -16,6 +16,7 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.AkkaWebServer.HasUri
 import js7.common.akkahttp.web.AkkaWebServerTest._
@@ -23,7 +24,6 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll

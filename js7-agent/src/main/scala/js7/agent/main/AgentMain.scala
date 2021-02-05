@@ -6,6 +6,7 @@ import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
+import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing

@@ -15,12 +15,12 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.common.crypt.pgp.PgpSigner
-import js7.common.scalautil.MonixUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import js7.data.item.VersionedItemSigner

@@ -12,11 +12,11 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.Closer
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.common.scalautil.MonixUtils.syntax.RichTask
 import js7.data.job.{CommandLine, JobKey, RelativePathExecutable}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumberValue, StringValue}

@@ -294,7 +294,7 @@ extends AutoCloseable
   @Nonnull
   def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] = {
     requireNonNull(predicate)
-    asScala.when(es => predicate(js7.data_for_java.controller.JEventAndControllerState(es)))
+    asScala.when(es => predicate(JEventAndControllerState(es)))
       .map(JEventAndControllerState.apply)
       .runToFuture
       .asJava

@@ -10,6 +10,7 @@ import java.nio.file.{Path, Paths}
 import js7.agent.scheduler.job.JobActor._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.ShellFileAttributes
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
