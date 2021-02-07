@@ -14,6 +14,7 @@ import scala.annotation.tailrec
 import scala.collection.Factory
 import scala.math.max
 import scala.reflect.ClassTag
+import scala.util.Left
 import scala.util.chaining._
 
 object ScalaUtils
@@ -311,6 +312,20 @@ object ScalaUtils
           case (Left(a), Right(_)) => Left(a)
           case (Right(_), Left(b)) => Left(b)
           case (Right(r), Right(r1)) => Right((r, r1))
+        }
+
+      def orThrow: R =
+        either match {
+          case Left(_) => throw new NoSuchElementException(s"Either.orThrow on $either")
+            .dropTopMethodsFromStackTrace("orThrow$extension")
+          case Right(r) => r
+        }
+
+      def leftOrThrow: L =
+        either match {
+          case Left(l) => l
+          case Right(_) => throw new NoSuchElementException(s"Either.orThrow on $either")
+            .dropTopMethodsFromStackTrace("orThrow$extension")
         }
     }
 

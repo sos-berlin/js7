@@ -361,12 +361,20 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(Left[Throwable, Int](t).toMessageOnlyChecked.swap.getOrElse(null).toString == "EXCEPTION")
     }
 
-    "orThrow" in {
+    "orThrow for Left(Throwable)" in {
       assert(Right[Throwable, Int](7).orThrow == 7)
       val t = new IllegalArgumentException
       intercept[IllegalArgumentException] {
         (Left[Throwable, Int](t): Either[Throwable, Int]).orThrow
       } should be theSameInstanceAs (t)
+    }
+
+    "orThrow" in {
+      assert(Right[String, Int](7).orThrow == 7)
+      val t = intercept[NoSuchElementException] {
+        (Left[String, Int]("LEFT"): Either[String, Int]).orThrow
+      }
+      assert(t.toString == "java.util.NoSuchElementException: Either.orThrow on Left(LEFT)")
     }
 
     "orThrow drops own StackTraceElements" in {
