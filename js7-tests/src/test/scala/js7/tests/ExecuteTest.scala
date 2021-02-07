@@ -187,16 +187,16 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       Workflow(WorkflowPath.Anonymous,
         Vector(
           Execute.Named(WorkflowJob.Name("JOB")), // ReturnCode 1 of JOB
-          Execute.Named(WorkflowJob.Name("JOB"), Map("myExitCode" -> NumberValue(2))),
-          Execute.Anonymous(WorkflowJob(agentId, executable, Map("myExitCode" -> NumberValue(3)),
-            returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(3)))))),
+          Execute.Named(WorkflowJob.Name("JOB"), Map("myExitCode" -> NumberValue(22))),
+          Execute.Anonymous(WorkflowJob(agentId, executable, Map("myExitCode" -> NumberValue(33)),
+            returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(33)))))),
         Map(WorkflowJob.Name("JOB") ->
-          WorkflowJob(agentId, executable, Map("myExitCode" -> NumberValue(1)),
-            returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1), ReturnCode(2), ReturnCode(3)))))),
+          WorkflowJob(agentId, executable, Map("myExitCode" -> NumberValue(11)),
+            returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(11), ReturnCode(22)))))),
       expectedOutcomes = Seq(
-        Outcome.Succeeded.rc(1),
-        Outcome.Succeeded.rc(2),
-        Outcome.Succeeded.rc(3)))
+        Outcome.Succeeded.rc(11),
+        Outcome.Succeeded.rc(22),
+        Outcome.Succeeded.rc(33)))
   }
 
   addExecuteTest(
