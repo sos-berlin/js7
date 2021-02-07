@@ -109,7 +109,8 @@ object ScalaUtils
         }
     }
 
-    implicit final class RichThrowable[A <: Throwable](private val delegate: A) extends AnyVal {
+    implicit final class RichThrowable[A <: Throwable](private val throwable: A) extends AnyVal
+    {
       def rootCause: Throwable = {
         @tailrec def cause(t: Throwable): Throwable =
           t.getCause match {
@@ -117,61 +118,74 @@ object ScalaUtils
             case o if o == t => t
             case o => cause(o)
           }
-        cause(delegate)
+        cause(throwable)
       }
 
       def toStringWithCausesAndStackTrace: String =
-        delegate.toStringWithCauses +
-          (delegate.getStackTrace.nonEmpty ?? ("\n" + delegate.stackTraceAsString))
+        throwable.toStringWithCauses +
+          (throwable.getStackTrace.nonEmpty ?? ("\n" + throwable.stackTraceAsString))
 
       def toStringWithCauses: String = {
-        var result = delegate.toSimplifiedString
-        delegate.getCause match {
+        var result = throwable.toSimplifiedString
+        throwable.getCause match {
           case null =>
-          case cause => result = result.stripSuffix(":") + ", caused by: " + cause.toStringWithCauses
+          case cause =>
+            val c = cause.toStringWithCauses
+            if (!result.contains(c)) {
+              result = result.stripSuffix(":") + ", caused by: " + c
+            }
         }
-        if (delegate.getSuppressed.nonEmpty) {
-          result += delegate.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
+        if (throwable.getSuppressed.nonEmpty) {
+          result += throwable.getSuppressed.map(t => " [suppressed: " + t.toStringWithCauses + "]").mkString
         }
         result
       }
 
       def toSimplifiedString: String = {
-        val msg = delegate.getMessage
+        val msg = throwable.getMessage
         if (msg != null && msg != "" && (
-            delegate.isInstanceOf[ProblemException] ||
-            delegate.getClass == classOf[IllegalArgumentException] ||
-            delegate.getClass == classOf[RuntimeException] ||
-            delegate.getClass == classOf[Exception] ||
-            delegate.isInstanceOf[PublicException] ||
-            delegate.getClass.getName == "scala.scalajs.js.JavaScriptException"))
+            throwable.isInstanceOf[ProblemException] ||
+            throwable.getClass == classOf[IllegalArgumentException] ||
+            throwable.getClass == classOf[RuntimeException] ||
+            throwable.getClass == classOf[Exception] ||
+            throwable.isInstanceOf[PublicException] ||
+            throwable.getClass.getName == "scala.scalajs.js.JavaScriptException" ||
+            throwable.getClass.getName == "java.util.concurrent.CompletionException"))
           msg
         else
-          delegate match {
+          throwable match {
             case _: java.util.NoSuchElementException =>
-              delegate.toString stripPrefix "java.util."
+              throwable.toString stripPrefix "java.util."
 
             case _: IllegalStateException | _: NumberFormatException =>
-              delegate.toString stripPrefix "java.lang."
+              throwable.toString stripPrefix "java.lang."
 
             case _ =>
-              delegate.toString
+              throwable.toString
           }
       }.trim
 
       def stackTraceAsString: String = {
         val w = new StringWriter
-        delegate.printStackTrace(new PrintWriter(w))
+        throwable.printStackTrace(new PrintWriter(w))
         w.toString
       }
 
       /** Useable for logging.
         * `logger.info(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)` */
       def nullIfNoStackTrace: Throwable =
-        if (delegate.getStackTrace.isEmpty) null else delegate
+        if (throwable.getStackTrace.isEmpty) null else throwable
 
       def ifNoStackTrace: Option[Throwable] =
         Option(nullIfNoStackTrace)
+
+      def dropTopMethodsFromStackTrace(methodName: String): A = {
+        val stackTrace = throwable.getStackTrace
+        var i = 0
+        while (i < stackTrace.length && stackTrace(i).getMethodName == methodName) i += 1
+        if (i > 0) throwable.setStackTrace(stackTrace.drop(i))
+        throwable
+      }
     }
 
     implicit final class RichAny[A](private val delegate: A) extends AnyVal
@@ -329,9 +343,10 @@ object ScalaUtils
         }
     }
 
-    implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {
+    implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal
+    {
       def orThrow: R =
-        orThrow(dropFirstMethodsFromStackTrace("orThrow$extension"))
+        orThrow(_.dropTopMethodsFromStackTrace("orThrow$extension"))
 
       def orThrow(toThrowable: L => Throwable): R =
         underlying match {
@@ -495,13 +510,5 @@ object ScalaUtils
       sb.append(lowerCaseHex(b & 0xf))
     }
     sb.toString
-  }
-
-  def dropFirstMethodsFromStackTrace[A <: Throwable](methodName: String)(throwable: A): A = {
-    val stackTrace = throwable.getStackTrace
-    var i = 0
-    while (i < stackTrace.length && stackTrace(i).getMethodName == methodName) i += 1
-    if (i > 0) throwable.setStackTrace(stackTrace.drop(i))
-    throwable
   }
 }
