@@ -4,6 +4,7 @@ import cats.instances.vector._
 import cats.syntax.traverse._
 import io.circe.syntax._
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
+import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
@@ -143,7 +144,13 @@ final case class NumberValue(number: BigDecimal) extends Value
     else
       super.toBoolean
 
-  def toJava = number: BigDecimal
+  @javaApi @Nonnull
+  def toJava: java.math.BigDecimal =
+    number.bigDecimal
+
+  @javaApi @Nonnull
+  def toBigDecimal: java.math.BigDecimal =
+    number.bigDecimal
 
   def convertToString = number.toString
 
