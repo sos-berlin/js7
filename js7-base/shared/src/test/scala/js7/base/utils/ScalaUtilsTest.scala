@@ -200,7 +200,7 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
   }
 
-  "cast" in {
+  "narrow" in {
     val s: Any = "Hej!"
     val string = cast[String](s)
     (string: String) shouldEqual "Hej!"
@@ -393,6 +393,17 @@ final class ScalaUtilsTest extends AnyFreeSpec
           case Left(uu: IllegalStateException) => assert(uu.getStackTrace.nonEmpty)
         }
       }
+    }
+  }
+
+  "Any" - {
+    "narrow" in {
+      trait A
+      case class A1() extends A
+      case class A2() extends A
+      assert(((A1(): A).narrow[A]: Checked[A]) == Right(A1()))
+      assert(((A1(): A).narrow[A2]: Checked[A2]).isLeft)
+      assert(((A2(): A).narrow[A2]: Checked[A]) == Right(A2()))
     }
   }
 

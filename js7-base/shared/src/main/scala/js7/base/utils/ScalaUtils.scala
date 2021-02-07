@@ -183,6 +183,9 @@ object ScalaUtils
       def pipeIf[B >: A](condition: => Boolean)(f: A => B): B =
         if (condition) f(delegate) else delegate
 
+      def narrow[B <: A: ClassTag]: Checked[B] =
+        checkedCast[B](delegate)
+
       @inline def substitute(when: A, _then: => A): A =
         if (delegate == when) _then else delegate
     }
