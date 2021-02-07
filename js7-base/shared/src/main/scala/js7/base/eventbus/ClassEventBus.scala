@@ -2,6 +2,7 @@ package js7.base.eventbus
 
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.SuperclassCache
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import scala.concurrent.Promise

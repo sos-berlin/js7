@@ -49,7 +49,7 @@ final case class Repo private(
     currentSignedItems.view.map(o => o.value.path -> o).toMap
 
   private lazy val typeToPathToCurrentItem: VersionedItem.Companion_ => Map[ItemPath, Signed[VersionedItem]] =
-    Memoizer.nonStrict { companion: VersionedItem.Companion_ =>
+    Memoizer.nonStrict1 { companion: VersionedItem.Companion_ =>
       currentVersion collect {
         case (path, signedItem) if signedItem.value.companion == companion =>
           path -> signedItem

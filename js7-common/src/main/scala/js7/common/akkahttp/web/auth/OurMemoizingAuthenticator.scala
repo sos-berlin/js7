@@ -17,7 +17,7 @@ import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator._
 final class OurMemoizingAuthenticator[U <: User](toUser: UserId => Option[U])
 extends Authenticator[U] {
 
-  private val memoizedToUser = Memoizer.strict(toUser)  // Only cache for short time if source will be a changing database !!!
+  private val memoizedToUser = Memoizer.strict1(toUser)  // Only cache for short time if source will be a changing database !!!
 
   def apply(credentials: Credentials) =
     credentials match {

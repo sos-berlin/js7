@@ -36,7 +36,7 @@ final class IdToUser[U <: User](
 extends (UserId => Option[U])
 {
   private lazy val someAnonymous = Some(toUser(UserId.Anonymous, HashedPassword.newEmpty(), Set.empty, Nil))
-  private val memoizedToUser = Memoizer.strict((userId: UserId) =>
+  private val memoizedToUser = Memoizer.strict1((userId: UserId) =>
     if (userId.isAnonymous)
       someAnonymous
     else
