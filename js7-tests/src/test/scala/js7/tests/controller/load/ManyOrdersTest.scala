@@ -7,7 +7,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.common.utils.ByteUnits.toKBGB
+import js7.base.utils.ByteUnits.toKBGB
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.TakeSnapshot

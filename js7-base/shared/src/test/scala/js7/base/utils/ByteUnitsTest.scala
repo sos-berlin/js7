@@ -1,6 +1,6 @@
-package js7.common.utils
+package js7.base.utils
 
-import js7.common.utils.ByteUnits.{toKBGB, toKiBGiB, toMB, formatNumber}
+import js7.base.utils.ByteUnits.{formatNumber, toKBGB, toKiBGiB, toMB}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

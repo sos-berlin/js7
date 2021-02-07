@@ -13,13 +13,13 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Logger
-import js7.common.utils.ByteUnits.toKBGB
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}

@@ -21,10 +21,10 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime._
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
-import js7.common.utils.ByteUnits.toKBGB
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, KeyedEvent, Stamped}

@@ -3,8 +3,8 @@ package js7.tests.addOrders
 import cats.kernel.Eq
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch._
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.common.utils.ByteUnits.toKBGB
 import scala.concurrent.duration._
 
 private final case class Statistics(

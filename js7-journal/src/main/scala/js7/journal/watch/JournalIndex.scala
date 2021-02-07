@@ -1,9 +1,9 @@
 package js7.journal.watch
 
 import java.util.Arrays.binarySearch
+import js7.base.utils.ByteUnits.toKBGB
 import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.{Logger, Synchronizer}
-import js7.common.utils.ByteUnits.toKBGB
 import js7.data.event.EventId
 import js7.journal.watch.JournalIndex._
 import org.jetbrains.annotations.TestOnly

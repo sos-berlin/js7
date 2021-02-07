@@ -14,10 +14,10 @@ import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.web.HttpClient
 import js7.common.http.AkkaHttpClient
 import js7.common.scalautil.Logger
-import js7.common.utils.ByteUnits.toKBGB
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerState

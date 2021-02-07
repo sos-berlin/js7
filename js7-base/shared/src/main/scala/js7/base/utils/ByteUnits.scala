@@ -1,4 +1,4 @@
-package js7.common.utils
+package js7.base.utils
 
 /**
   * @author Joacim Zschimmer

@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase.DefaultBatchSize
 import js7.base.monixutils.MonixBase.syntax._
-import js7.common.utils.ByteUnits.toMB
+import js7.base.utils.ByteUnits.toMB
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta
