@@ -11,7 +11,7 @@ import scala.concurrent.duration.Deadline.now
 final class CommandRegister[C <: CommonCommand]
 {
   private var totalCounter = 0L
-  private val idToCommand = mutable.Map[InternalCommandId, CommandRun[C]]()
+  private val idToCommand = mutable.Map.empty[InternalCommandId, CommandRun[C]]
   private val idGenerator = InternalCommandId.newGenerator()
 
   def add(userId: UserId, command: C, batchId: Option[InternalCommandId]): CommandRun[C] =

@@ -12,9 +12,9 @@ import scala.collection.mutable
   */
 class ActorRegister[K, V](valueToActorRef: V => ActorRef)
 {
-  private val keyToValue = mutable.Map[K, V]()
+  private val keyToValue = mutable.Map.empty[K, V]
     .withDefault(k => throw noSuchKeyProblem(k).throwable.appendCurrentStackTrace)
-  private val _actorToKey = mutable.Map[ActorRef, K]()
+  private val _actorToKey = mutable.Map.empty[ActorRef, K]
 
   protected def noSuchKeyProblem(k: K): Problem = Problem(s"No such key: $k")
 

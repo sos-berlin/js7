@@ -18,9 +18,9 @@ private final class StatisticsBuilder(
   observer: Observer[Statistics])
 {
   private val since = now
-  private val orderIdToStarted = mutable.Map[OrderId, Timestamp]()
-  private val orderIdToProcessingStarted = mutable.Map[OrderId, Timestamp]()
-  private val orderToChildren = mutable.Map[OrderId, Seq[OrderId]]()
+  private val orderIdToStarted = mutable.Map.empty[OrderId, Timestamp]
+  private val orderIdToProcessingStarted = mutable.Map.empty[OrderId, Timestamp]
+  private val orderToChildren = mutable.Map.empty[OrderId, Seq[OrderId]]
   private var eventCount = 0
   private var orderAddedCount = 0
   private var _removedOrderCount = 0

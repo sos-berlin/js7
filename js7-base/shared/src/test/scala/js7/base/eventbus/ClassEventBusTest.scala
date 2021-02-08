@@ -11,7 +11,7 @@ import scala.collection.mutable
 final class ClassEventBusTest extends AsyncFreeSpec
 {
   "subscribe" in {
-    val events = mutable.Buffer[AnyRef]()
+    val events = mutable.Buffer.empty[AnyRef]
     val eventBus = new TestEventBus
 
     val aSubscription = eventBus.subscribeToClass(classOf[AClassifier])(events += _)
@@ -28,7 +28,7 @@ final class ClassEventBusTest extends AsyncFreeSpec
   }
 
   "oneShot" in {
-    val events = mutable.Buffer[Event[_ <: Classifier]]()
+    val events = mutable.Buffer.empty[Event[_ <: Classifier]]
     val eventBus = new TestEventBus
     eventBus.oneShot[BClassifier]((event: Event[BClassifier]) => events += event)
     eventBus.publish(Event(AClassifier("1"), "IGNORE"))
@@ -49,7 +49,7 @@ final class ClassEventBusTest extends AsyncFreeSpec
   }
 
   "superclass" in {
-    val events = mutable.Buffer[(Classifier, String)]()
+    val events = mutable.Buffer.empty[(Classifier, String)]
     val eventBus = new TestEventBus
     eventBus.subscribe[Classifier](event => events += event.classifier -> "")
     eventBus.subscribe[AClassifier](event => events += event.classifier -> "A")

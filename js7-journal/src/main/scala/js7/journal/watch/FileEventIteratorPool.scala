@@ -21,8 +21,8 @@ private[watch] final class FileEventIteratorPool(
   tornEventId: EventId,
   committedLength: () => Long)
 {
-  private val freeIterators = mutable.ArrayBuffer[FileEventIterator]()
-  private val lentIterators = mutable.ArrayBuffer[FileEventIterator]()
+  private val freeIterators = mutable.ArrayBuffer.empty[FileEventIterator]
+  private val lentIterators = mutable.ArrayBuffer.empty[FileEventIterator]
   private val closed = AtomicBoolean(false)
 
   def close(): Unit =

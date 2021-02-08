@@ -21,8 +21,8 @@ object WorkflowAndOrderRecovering
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
   final def followUpRecoveredWorkflowsAndOrders(idToWorkflow: WorkflowId => Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
   : (Iterable[Order[Order.State]], Iterable[OrderId]) = {
-    val added = mutable.Map[OrderId, Order[Order.State]]()
-    val removed = mutable.Buffer[OrderId]()
+    val added = mutable.Map.empty[OrderId, Order[Order.State]]
+    val removed = mutable.Buffer.empty[OrderId]
     val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder.checked)
     for (order <- idToOrder.values;
          event <- snapshotToEvent(order);

@@ -23,17 +23,17 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
   protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
   protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem): Unit
 
-  private val attachedOrderIds = mutable.Set[OrderId]()
-  private val executingInputs = mutable.Set[Queueable]()
+  private val attachedOrderIds = mutable.Set.empty[OrderId]
+  private val executingInputs = mutable.Set.empty[Queueable]
   private var isCoupled = false
   private var freshlyCoupled = false
   private var openRequestCount = 0
   private var isTerminating = false
 
   private object queue {
-    private val queue = mutable.Queue[Queueable]()
-    private val queueSet = mutable.Set[Queueable]()
-    private val detachQueue = mutable.Queue[Queueable]()  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
+    private val queue = mutable.Queue.empty[Queueable]
+    private val queueSet = mutable.Set.empty[Queueable]
+    private val detachQueue = mutable.Queue.empty[Queueable]  // DetachOrder is sent to Agent before any AttachOrder, to relieve the Agent
 
     def enqueue(input: Queueable): Unit =
       input match {

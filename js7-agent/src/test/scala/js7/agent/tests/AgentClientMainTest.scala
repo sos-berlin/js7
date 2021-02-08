@@ -44,7 +44,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
   }
 
   "main" in {
-    val output = mutable.Buffer[String]()
+    val output = mutable.Buffer.empty[String]
     val commandYaml = """{ TYPE: ShutDown, processSignal: SIGTERM }"""
     AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o => output += o)
     assert(output.size == 3)
@@ -55,7 +55,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
   }
 
   "main with Agent URI only checks wether Agent Server is responding (it is)" in {
-    val output = mutable.Buffer[String]()
+    val output = mutable.Buffer.empty[String]
     assertResult(0) {
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
     }
@@ -64,7 +64,7 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
 
   "main with Agent URI only checks wether Agent Server is responding (it is not)" in {
     val port = findFreeTcpPort()
-    val output = mutable.Buffer[String]()
+    val output = mutable.Buffer.empty[String]
     assertResult(1) {
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
     }

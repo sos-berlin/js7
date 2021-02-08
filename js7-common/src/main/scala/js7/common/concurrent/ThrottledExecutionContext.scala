@@ -12,7 +12,7 @@ extends ExecutionContext {
   require(throttle >= 1)
 
   private val semaphore = new Semaphore(throttle)
-  private val queue = new ConcurrentLinkedQueue[Runnable]()
+  private val queue = new ConcurrentLinkedQueue[Runnable]
   // Two more behaviours are imaginable:
   // - blocking: with ArrayBlockingQueue, execute() blocks when a limit is reached
   // - rejecting: with a limited ConcurrentLinkedQueue, execute() fails when a limit is reached

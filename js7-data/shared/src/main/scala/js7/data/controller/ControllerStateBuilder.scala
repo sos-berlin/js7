@@ -23,9 +23,9 @@ extends JournaledStateBuilder[ControllerState]
   private var standards: JournaledState.Standards = JournaledState.Standards.empty
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
-  private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val idToAgentRefState = mutable.Map[AgentId, AgentRefState]()
-  private val idToLockState = mutable.Map[LockId, LockState]()
+  private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
+  private val idToAgentRefState = mutable.Map.empty[AgentId, AgentRefState]
+  private val idToLockState = mutable.Map.empty[LockId, LockState]
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState

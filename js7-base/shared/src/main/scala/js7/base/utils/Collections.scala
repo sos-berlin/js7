@@ -101,7 +101,7 @@ object Collections
         * Like `groupBy`, but returns a `Vector[(K, Vector[A])] ` retaining the original key order (of every first occurrence),
         */
       def retainOrderGroupBy[K](toKey: A => K): Vector[(K, Vector[A])] = {
-        val m = mutable.LinkedHashMap[K, VectorBuilder[A]]()
+        val m = mutable.LinkedHashMap.empty[K, VectorBuilder[A]]
         for (elem <- underlying) {
           m.getOrElseUpdate(toKey(elem), new VectorBuilder[A]) += elem
         }

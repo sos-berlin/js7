@@ -13,8 +13,8 @@ extends JournaledStateBuilder[AgentState]
 {
   private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
-  private var idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private var idToWorkflow = mutable.Map[WorkflowId, Workflow]()
+  private var idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
+  private var idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
   private var _state = AgentState.empty
 
   protected def onInitializeState(state: AgentState) = {

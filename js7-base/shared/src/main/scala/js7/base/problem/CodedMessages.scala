@@ -31,7 +31,7 @@ object CodedMessages
     }
 
   private[problem] def patternToMessage(pattern: String, arguments: Map[String, String]) = {
-    val used = mutable.Set[String]()
+    val used = mutable.Set.empty[String]
     val it = pattern.iterator.buffered
     val sb = new StringBuilder(pattern.length)
     while (it.hasNext) {

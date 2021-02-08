@@ -119,7 +119,7 @@ final class OrderAgentTest extends AnyFreeSpec
           agentClient.commandExecute(Batch(orders.map(AttachOrder(_, SignedSimpleWorkflow)))) await 99.s
 
           val awaitedOrderIds = orders.map(_.id).toSet
-          val ready = mutable.Set[OrderId]()
+          val ready = mutable.Set.empty[OrderId]
           while (
             agentClient.controllersEvents(EventRequest.singleClass[Event](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
               case EventSeq.NonEmpty(stampeds) =>

@@ -91,7 +91,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
   }
 
   "AgentCommand" in {
-    val output = mutable.Buffer[String]()
+    val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
       client.login() await 99.s
       client.executeCommand("""{ TYPE: ShutDown, processSignal: SIGTERM }""")
@@ -105,7 +105,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
   }
 
   "requireIsResponding" in {
-    val output = mutable.Buffer[String]()
+    val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
       client.login() await 99.s
       client.requireIsResponding()

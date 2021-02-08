@@ -50,7 +50,7 @@ object BranchPath
   private def genericSeqToBranchPath[L, R](seqToSegment: Seq[R] => Either[L, Segment])(pairs: Iterator[Seq[R]])
   : Either[L, BranchPath] = {
     var left: Option[Left[L, Nothing]] = None
-    val buffer = mutable.ListBuffer[Segment]()
+    val buffer = mutable.ListBuffer.empty[Segment]
     val parentResults: Iterator[Either[L, Segment]] = pairs map seqToSegment
     parentResults foreach {
       case Left(error) => left = Some(Left(error))

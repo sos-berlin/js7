@@ -19,8 +19,8 @@ object MapDiff {
   def empty[K, V]: MapDiff[K, V] =
     Empty.asInstanceOf[MapDiff[K, V]]
 
-  def apply[K, V](changed: Map[K, V] = Map[K, V]()) =
-    new MapDiff[K, V](changed, deleted = Set[K]())
+  def apply[K, V](changed: Map[K, V] = Map.empty[K, V]) =
+    new MapDiff[K, V](changed, deleted = Set.empty[K])
 
   def apply[K, V](changed: Map[K, V], deleted: Set[K]): MapDiff[K, V] =
     if (changed.isEmpty && deleted.isEmpty)

@@ -124,7 +124,7 @@ object Https
     })
 
   private def pemToKeyStore(in: InputStream, name: String): KeyStore = {
-    val certs = mutable.Buffer[Certificate]()
+    val certs = mutable.Buffer.empty[Certificate]
     var eof = false
     while (!eof) {
       certs += CertificateFactory.getInstance("X.509").generateCertificate(in)

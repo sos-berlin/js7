@@ -77,7 +77,7 @@ object BuildUtils
     Def.setting {
       val sb = new StringBuilder
       sb ++= longVersion.value
-      val extras = mutable.Buffer[String]()
+      val extras = mutable.Buffer.empty[String]
       if (version.value endsWith "-SNAPSHOT") {
         extras += gitBranch.value + " branch"
         if (!longVersion.value.contains("+UNCOMMITTED.")) {

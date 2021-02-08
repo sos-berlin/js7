@@ -13,7 +13,7 @@ import scala.util.Random
 final class SyncResourceTest extends AnyFreeSpec
 {
   "SyncIO useSync" in {
-    val opened = mutable.Set[MySimpleResource]()
+    val opened = mutable.Set.empty[MySimpleResource]
 
     class MySimpleResource extends AutoCloseable {
       private val value = AtomicAny[java.lang.Long](Random.nextLong())

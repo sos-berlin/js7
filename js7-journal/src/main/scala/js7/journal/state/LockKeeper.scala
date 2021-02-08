@@ -16,7 +16,7 @@ final class LockKeeper[K]
 {
   // keyMap.contains(key): key is locked
   // keyMap(key).length: Number of clients waiting to get the lock
-  private val keyMap = mutable.Map[Any, mutable.Queue[Promise[Token]]]()
+  private val keyMap = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
 
   def lock[A](key: K)(body: Task[A]): Task[A] =
     lockResource(key).use(_ => body)

@@ -57,7 +57,7 @@ extends Actor with Stash
 
   private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
-  private val snapshotRequesters = mutable.Set[ActorRef]()
+  private val snapshotRequesters = mutable.Set.empty[ActorRef]
   private var snapshotSchedule: Cancelable = null
 
   private var uncommittedJournaledState: S = null.asInstanceOf[S]
@@ -748,7 +748,7 @@ object JournalActor
   }
 
   private class PersistBuffer {
-    private val buffer = mutable.ArrayBuffer[Persist]()
+    private val buffer = mutable.ArrayBuffer.empty[Persist]
     private var _eventCount = 0
 
     def add(persist: Persist): Unit = {

@@ -27,7 +27,7 @@ final class CollectionsTest extends AnyFreeSpec
 
   "countEquals" in {
     Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 -> 1, 22 -> 2, 33 -> 3)
-    Map[Int, Int]().countEquals shouldEqual Map()
+    Map.empty[Int, Int].countEquals shouldEqual Map()
   }
 
   "foldFast" in {
@@ -119,12 +119,12 @@ final class CollectionsTest extends AnyFreeSpec
     assert(it.takeWhileInclusive(_ <= 3).toList == 1 :: 2 :: 3 :: 4 :: Nil)
     assert(next == 4)
 
-    assert(Iterator[Int]().takeWhileInclusive(_ <= 3).isEmpty)
+    assert(Iterator.empty[Int].takeWhileInclusive(_ <= 3).isEmpty)
     assert(Iterator(1, 1, 1).takeWhileInclusive(_ < 1).toList == 1 :: Nil)
   }
 
   "duplicate" in {
-    assert(Seq[A]().duplicates.isEmpty)
+    assert(Seq.empty[A].duplicates.isEmpty)
     assert(Seq("a").duplicates.isEmpty)
     assert(Seq("a", "b").duplicates.isEmpty)
     assert(Seq("a", "b", "c").duplicates.isEmpty)
@@ -135,7 +135,7 @@ final class CollectionsTest extends AnyFreeSpec
   "duplicateKeys" in {
     def dup(o: Seq[A]) = o.duplicateKeys(_.i)
 
-    assert(dup(Seq[A]()) == None)
+    assert(dup(Seq.empty[A]) == None)
     assert(dup(Seq(a1)) == None)
     assert(dup(Seq(a1, b1)) == None)
     assert(dup(Seq(a1, b1, c1)) == None)
@@ -148,7 +148,7 @@ final class CollectionsTest extends AnyFreeSpec
   "requireUniqueness" in {
     def r(o: Seq[A]) = o.requireUniqueness(_.i)
 
-    r(Seq[A]()) shouldBe Symbol("empty")
+    assert(r(Seq[A]()).isEmpty)
     intercept[DuplicateKeyException] { r(Seq(a1, a2)) }
 
     Nil.requireUniqueness
@@ -158,7 +158,7 @@ final class CollectionsTest extends AnyFreeSpec
   "checkUniqueness" in {
     def r(o: Seq[A]) = o.checkUniqueness(_.i)
 
-    assert(r(Seq[A]()) == Right(Nil))
+    assert(r(Seq.empty[A]) == Right(Nil))
     assert(r(Seq(a1, a2)) == Left(Problem("Unexpected duplicates: 2×1")))
     assert(r(Seq(a1, a2, a1)) == Left(Problem("Unexpected duplicates: 3×1")))
 
@@ -191,7 +191,7 @@ final class CollectionsTest extends AnyFreeSpec
     emptyToNone(Nil) shouldEqual None
     emptyToNone(null: Iterable[_]) shouldEqual None
     emptyToNone(List(1)) shouldEqual Some(List(1))
-    emptyToNone(Array[Int]()) shouldEqual None
+    emptyToNone(Array.empty[Int]) shouldEqual None
     emptyToNone(null: Array[Int]) shouldEqual None
     val a = Array(1)
     emptyToNone(a) shouldEqual Some(a)
@@ -208,7 +208,7 @@ final class CollectionsTest extends AnyFreeSpec
   }
 
   "compareChain" in {
-    assert((Iterator[Int]() compareElementWise Iterator()) == 0)
+    assert((Iterator.empty[Int] compareElementWise Iterator()) == 0)
     assert((Iterator(1) compareElementWise Iterator()) > 0)
     assert((Iterator(1) compareElementWise Iterator(1)) == 0)
     assert((Iterator() compareElementWise Iterator(1)) < 0)

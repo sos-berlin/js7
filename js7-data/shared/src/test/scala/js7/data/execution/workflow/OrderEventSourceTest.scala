@@ -688,7 +688,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       def eventSource(isAgent: Boolean) = new OrderEventSource(
         Map(order.id -> order).checked,
         Map(TestWorkflowId -> ForkWorkflow).checked,
-        Map.empty.checked,
+        Map.empty[LockId, LockState].checked,
         isAgent = isAgent)
       body(order, eventSource(isAgent = false), eventSource(isAgent = true))
     }
@@ -838,7 +838,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
           bChild.id -> bChild
         ).checked,
         Map(workflow.id -> workflow).checked,
-        Map.empty.checked,
+        Map.empty[LockId, LockState].checked,
         isAgent = false)
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
@@ -965,10 +965,12 @@ object OrderEventSourceTest {
   final class Process(workflow: Workflow) {
     val idToWorkflow = Map(workflow.id -> workflow).checked(_)
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-    private def eventSource(isAgent: Boolean) =
-      new OrderEventSource(o => idToOrder.checked(o), idToWorkflow, Map.empty.checked, isAgent = isAgent)
     private val eventHandler = new OrderEventHandler(idToWorkflow, o => idToOrder.checked(o))
-    private val inProcess = mutable.Set[OrderId]()
+    private val inProcess = mutable.Set.empty[OrderId]
+
+    private def eventSource(isAgent: Boolean) =
+      new OrderEventSource(o => idToOrder.checked(o), idToWorkflow,
+        Map.empty[LockId, LockState].checked, isAgent = isAgent)
 
     def jobStep(orderId: OrderId, outcome: Outcome = Outcome.succeeded): Unit = {
       update(orderId <-: OrderProcessingStarted)

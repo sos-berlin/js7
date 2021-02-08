@@ -139,7 +139,7 @@ object Checked
   implicit final class RichCheckedIterable[A](private val underlying: Iterable[Checked[A]]) extends AnyVal {
     def traverseAndCombineProblems[B](f: A => Checked[B]): Checked[Seq[B]] = {
       val rightBuilder = Vector.newBuilder[B]
-      val leftBuilder = mutable.Buffer[Problem]()
+      val leftBuilder = mutable.Buffer.empty[Problem]
       underlying.map(
         _.flatMap(f) match {
           case Left(problem) => leftBuilder += problem

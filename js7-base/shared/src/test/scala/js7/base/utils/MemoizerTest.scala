@@ -13,7 +13,7 @@ import scala.concurrent.Future
 final class MemoizerTest extends AsyncFreeSpec
 {
   "Unary" in {
-    val called = mutable.Buffer[Int]()
+    val called = mutable.Buffer.empty[Int]
     def f(a: Int) = {
       called += a
       s"/$a/"
@@ -30,7 +30,7 @@ final class MemoizerTest extends AsyncFreeSpec
   }
 
   "Binary" in {
-    val called = mutable.Buffer[(Int, Boolean)]()
+    val called = mutable.Buffer.empty[(Int, Boolean)]
     def f(a: Int, b: Boolean) = {
       called += ((a, b))
       s"$a $b"

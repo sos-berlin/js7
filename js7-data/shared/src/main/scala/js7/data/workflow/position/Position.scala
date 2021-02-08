@@ -115,7 +115,7 @@ object Position
             Left(DecodingFailure("Not a valid Position, JSON array size must be 2*n + 1", cursor.history))
           else {
             var error: Option[String] = None
-            val branchPath = ListBuffer[Segment]()
+            val branchPath = ListBuffer.empty[Segment]
             var lastInstructionNr = -1
             val iterator = parts.iterator
             while (error.isEmpty && lastInstructionNr == -1) {

@@ -28,7 +28,7 @@ extends Actor {
 
   private val sessionTimeout = config.getDuration("js7.auth.session.timeout").toFiniteDuration
   private val cleanupInterval = sessionTimeout / 4
-  private val tokenToSession = mutable.Map[SessionToken, S]()
+  private val tokenToSession = mutable.Map.empty[SessionToken, S]
   private var nextCleanup: Cancelable = null
 
   override def postStop(): Unit = {

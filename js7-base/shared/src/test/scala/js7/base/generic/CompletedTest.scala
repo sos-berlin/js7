@@ -22,7 +22,7 @@ final class CompletedTest extends AnyFreeSpec
 
   "combineAll" in {
     assert(List(Completed, Completed, Completed).combineAll eq Completed)
-    assert(List[Completed]().combineAll eq Completed)
+    assert(List.empty[Completed].combineAll eq Completed)
   }
 
   "fill" in {

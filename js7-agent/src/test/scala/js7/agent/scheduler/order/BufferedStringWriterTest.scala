@@ -83,7 +83,7 @@ object BufferedStringWriterTest {
     protected val size = 30
     protected val passThroughSize = 10
     protected def scheduler = Scheduler.global
-    val result = mutable.Buffer[String]()
+    val result = mutable.Buffer.empty[String]
 
     protected def onBufferingStarted() = {
       result += "onBufferingStarted"

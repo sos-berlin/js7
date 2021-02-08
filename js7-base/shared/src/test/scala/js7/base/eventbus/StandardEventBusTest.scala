@@ -11,7 +11,7 @@ import scala.collection.mutable
 final class StandardEventBusTest extends AsyncFreeSpec
 {
   "subscribe" in {
-    val events = mutable.Buffer[AnyRef]()
+    val events = mutable.Buffer.empty[AnyRef]
     val eventBus = new StandardEventBus[Any]
     eventBus.publish("ignored")
 
@@ -36,7 +36,7 @@ final class StandardEventBusTest extends AsyncFreeSpec
 
   "oneShot" in {
     type Event = String
-    val events = mutable.Buffer[Event]()
+    val events = mutable.Buffer.empty[Event]
     val eventBus = new StandardEventBus[Event]
     eventBus.oneShot[Event](events += _)
     assert(!eventBus.isEmpty)

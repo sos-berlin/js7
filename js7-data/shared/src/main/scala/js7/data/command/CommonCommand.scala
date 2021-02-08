@@ -34,7 +34,7 @@ object CommonCommand
       def commands: Seq[Command]
 
       override def toString = {
-        val b = mutable.Buffer[String]()
+        val b = mutable.Buffer.empty[String]
         var last = ""
         var n = 0
         def flush() = if (!last.isEmpty) {

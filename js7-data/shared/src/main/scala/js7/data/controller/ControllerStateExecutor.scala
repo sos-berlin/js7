@@ -28,7 +28,7 @@ final class ControllerStateExecutor(initialControllerState: ControllerState)
   }
 
   def nextOrderEvents(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] = {
-    val queue = mutable.Queue[OrderId]() ++= orderIds
+    val queue = mutable.Queue.empty[OrderId] ++= orderIds
     val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent]]
     @tailrec def loop(): Unit = {
       queue.removeHeadOption() match {

@@ -12,8 +12,8 @@ import scala.collection.mutable
 final class ByteArrayToLinesObservable
 extends (ByteArray => Observable[ByteArray])
 {
-  private val lines = mutable.Buffer[ByteArray]()
-  private lazy val startedLine = mutable.ArrayBuffer[ByteArray]()
+  private val lines = mutable.Buffer.empty[ByteArray]
+  private lazy val startedLine = mutable.ArrayBuffer.empty[ByteArray]
 
   def apply(bytes: ByteArray): Observable[ByteArray] =
     if (bytes.isEmpty)
@@ -39,4 +39,3 @@ extends (ByteArray => Observable[ByteArray])
       result
     }
 }
-

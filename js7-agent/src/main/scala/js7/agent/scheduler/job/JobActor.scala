@@ -48,7 +48,7 @@ extends Actor with Stash
 
   private val logger = Logger.withPrefix[this.type](jobKey.keyName)
   private val executablesDirectory = conf.executablesDirectory.toRealPath(NOFOLLOW_LINKS)
-  private val orderToRun = mutable.Map[OrderId, Run]()
+  private val orderToRun = mutable.Map.empty[OrderId, Run]
   private var waitingForNextOrder = false
   private var terminating = false
   private var temporaryFile = SetOnce[Path]

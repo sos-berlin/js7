@@ -40,7 +40,7 @@ object Stamped
 
   implicit def jsonEncoder[A: Encoder]: Encoder.AsObject[Stamped[A]] =
     stamped => {
-      val fields = mutable.Buffer[(String, Json)]()
+      val fields = mutable.Buffer.empty[(String, Json)]
       fields += "eventId" -> Json.fromLong(stamped.eventId)
       val epochMilli = stamped.timestampMillis
       if (epochMilli != EventId.toEpochMilli(stamped.eventId)) {

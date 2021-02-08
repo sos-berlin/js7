@@ -19,7 +19,7 @@ import scala.util.Try
   */
 final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext)
 {
-  private val numberToEntry = mutable.Map[Int, Entry]()
+  private val numberToEntry = mutable.Map.empty[Int, Entry]
   private val counter = AtomicInt(0)
   @volatile private var completed: Option[Try[A]] = None
 

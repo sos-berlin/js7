@@ -77,7 +77,7 @@ final class CloserTest extends AnyFreeSpec
   }
 
   "closeThen" in {
-    val closes = mutable.Buffer[Int]()
+    val closes = mutable.Buffer.empty[Int]
     val closer = new Closer
     closer.onClose { closes += 1 }
     closer.closeThen { closes += 2 }
@@ -124,7 +124,7 @@ final class CloserTest extends AnyFreeSpec
     }
 
     "closeOrdered" in {
-      val closed = mutable.Buffer[Any]()
+      val closed = mutable.Buffer.empty[Any]
       val a = new AutoCloseable { def close() = closed += this }
       val b = new AutoCloseable { def close() = closed += this }
       closeOrdered(a, b)

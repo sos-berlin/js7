@@ -171,7 +171,7 @@ object Expression
       //case (ByLabel(Label(label)), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${label::$label.$key}"
       //case (LastExecutedJob(WorkflowJob.Name(jobName)), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${job::$jobName.$key}"
       case _ =>
-        val args = mutable.Buffer[String]()
+        val args = mutable.Buffer.empty[String]
         what match {
           case NamedValue.KeyValue(expr) => args += s"key=$expr"
           case _ =>

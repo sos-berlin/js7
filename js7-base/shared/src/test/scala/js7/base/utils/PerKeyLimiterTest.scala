@@ -12,7 +12,7 @@ final class PerKeyLimiterTest extends AnyFreeSpec {
 
     intercept[IllegalArgumentException] { perKeyLimiter(-1) }
 
-    assert((List[(Int, Int)]() filter perKeyLimiter(1)) == Nil)
+    assert((List.empty[(Int, Int)] filter perKeyLimiter(1)) == Nil)
     assert((List(1 -> 10) filter perKeyLimiter(0)) == Nil)
     assert((List(1 -> 10) filter perKeyLimiter(1)) == List(1 -> 10))
     assert((List(1 -> 10, 1 -> 11) filter perKeyLimiter(1)) == List(1 -> 10))

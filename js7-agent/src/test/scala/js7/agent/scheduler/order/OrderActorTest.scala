@@ -177,8 +177,8 @@ private object OrderActorTest {
         journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
       s"Order-${TestOrder.id.string}"))
 
-    private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
-    private val events = mutable.Buffer[OrderEvent]()
+    private val orderChangeds = mutable.Buffer.empty[OrderActor.Output.OrderChanged]
+    private val events = mutable.Buffer.empty[OrderEvent]
     private val stdoutStderr = (for (t <- StdoutOrStderr.values) yield t -> new StringBuilder).toMap
     private var orderDetached = false
     private var orderActorTerminated = false

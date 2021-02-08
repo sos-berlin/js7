@@ -51,7 +51,7 @@ final class ListVectorPerformanceTest extends AnyFreeSpec
   private def testList(m: Int, n: Int): Unit = {
     val t = now
     for (_ <- 1 to m) {
-      val buffer = ListBuffer[String]()
+      val buffer = ListBuffer.empty[String]
       for (_ <- 1 to n) buffer += ""
       val list = buffer.toList
       assert(list.head == "")

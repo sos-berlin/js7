@@ -99,7 +99,7 @@ with MainJournalingActor[ControllerState, Event]
   private val orderEventHandler = liveOrderEventHandler(() => _controllerState)
 
   private val agentRegister = new AgentRegister
-  private val orderRegister = mutable.HashMap[OrderId, OrderEntry]()
+  private val orderRegister = mutable.HashMap.empty[OrderId, OrderEntry]
   private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
   private val removeOrderDelay = config.getDuration("js7.order.remove-delay").toFiniteDuration
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
@@ -818,7 +818,7 @@ with MainJournalingActor[ControllerState, Event]
       new ControllerStateExecutor(_controllerState).nextOrderEvents(orderIds))
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
-    val orderIds = mutable.Buffer[OrderId]()
+    val orderIds = mutable.Buffer.empty[OrderId]
     for (stamped <- stampedEvents) {
       val keyedEvent = stamped.value
       keyedEvent match {
