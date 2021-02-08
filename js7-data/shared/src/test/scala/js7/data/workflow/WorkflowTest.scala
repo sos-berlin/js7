@@ -15,7 +15,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.TestSetting._
@@ -801,6 +801,181 @@ final class WorkflowTest extends AnyFreeSpec
           WorkflowJob.Name("JOB") -> AJob))
       .completelyChecked
       .orThrow: Workflow
+  }
+
+  "reduceForAgent" - {
+    import js7.data.workflow.test.ForkTestSetting._
+
+    "reduceForAgent A" in {
+      assert(TestWorkflow.reduceForAgent(AAgentId) == Workflow(
+        TestWorkflow.id,
+        Vector(
+          /*0*/ Fork.of(
+            "🥕" -> Workflow.of(AExecute),
+            "🍋" -> Workflow.of(AExecute)),
+          /*1*/ Fork.of(
+            "🥕" -> Workflow.of(AExecute),
+            "🍋" -> Workflow.of(AExecute)),
+          /*2*/ Gap(),
+          /*3*/ Fork.of(
+            "🥕" -> Workflow.of(Gap()),
+            "🍋" -> Workflow.of(AExecute, Gap())),
+          /*4*/ Fork.of(
+            "🥕" -> Workflow.of(AExecute),
+            "🍋" -> Workflow.of(Gap()))),
+        Map(AJobName -> AJob),
+        source = TestWorkflow.source))
+    }
+
+    "reduceForAgent B" in {
+      assert(TestWorkflow.reduceForAgent(BAgentId) == Workflow(
+        WorkflowPath("WORKFLOW") ~ "INITIAL" ,
+        Vector(
+          /*0*/ Gap(),
+          /*1*/ Gap(),
+          /*2*/ BExecute,
+          /*3*/ Fork.of(
+            "🥕" -> Workflow.of(BExecute),
+            "🍋" -> Workflow.of(Gap(), BExecute)),
+          /*4*/ Fork.of(
+            "🥕" -> Workflow.of(Gap()),
+            "🍋" -> Workflow.of(BExecute))),
+        Map(BJobName -> BJob),
+        source = TestWorkflow.source))
+    }
+
+    "reduceForAgent with LockInstruction" in {
+      val workflow = Workflow(WorkflowPath.Anonymous,
+        Vector(
+          LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+            AExecute,
+            Fork.of(
+              "🥕" -> Workflow.of(AExecute))))),
+        Map(AJobName -> AJob))
+      assert(workflow.reduceForAgent(AAgentId) eq workflow)
+      assert(workflow.reduceForAgent(BAgentId) == Workflow.of(Gap()))
+    }
+
+    "reduceForAgent with LockInstruction and more (1)" in {
+      val workflow = Workflow(WorkflowPath.Anonymous,
+        Vector(
+          LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+            If(BooleanConstant(true), Workflow.of(
+              TryInstruction(Workflow.empty, Workflow.empty),
+              Fail(),
+            )),
+            AExecute,
+            Fork.of(
+              "🥕" -> Workflow.of(AExecute))))),
+        Map(AJobName -> AJob))
+      assert(workflow.reduceForAgent(AAgentId) eq workflow)
+      assert(workflow.reduceForAgent(BAgentId) == Workflow.of(Gap()))
+    }
+
+    "reduceForAgent with LockInstruction and if" in {
+      val workflow = Workflow(WorkflowPath.Anonymous,
+        Vector(
+          LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+            AExecute,
+            If(BooleanConstant(true),
+              Workflow.of(
+                BExecute,
+                TryInstruction(Workflow.empty, Workflow.empty),
+                Fail()),
+              Some(Workflow.of(
+                BExecute))),
+            AExecute))),
+        Map(
+          AJobName -> AJob,
+          BJobName -> BJob))
+
+      assert(workflow.reduceForAgent(AAgentId) ==
+        Workflow(WorkflowPath.Anonymous,
+          Vector(
+            LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+              AExecute,
+              If(BooleanConstant(true),
+                Workflow.of(
+                  Gap(),
+                  TryInstruction(Workflow.empty, Workflow.empty),
+                  Fail()),
+                Some(Workflow.of(
+                  Gap()))),
+              AExecute))),
+          Map(
+            AJobName -> AJob)))
+
+      assert(workflow.reduceForAgent(BAgentId) ==
+        Workflow(WorkflowPath.Anonymous,
+          Vector(
+            LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+              Gap(),
+              If(BooleanConstant(true),
+                Workflow.of(
+                  BExecute,
+                  TryInstruction(Workflow.empty, Workflow.empty),
+                  Fail()),
+              Some(Workflow.of(
+                BExecute))),
+            Gap()))),
+          Map(
+            BJobName -> BJob)))
+    }
+
+    "isStartableOnAgent" - {
+      val isStartableSetting = List(
+        Position(0) -> List(AAgentId),
+        Position(0) / "fork+🥕" % 0 -> List(AAgentId),
+        Position(0) / "fork+🥕" % 1 -> Nil,
+        Position(0) / "fork+🍋" % 0 -> List(AAgentId),
+        Position(0) / "fork+🍋" % 1 -> Nil,
+        Position(1) -> List(AAgentId),
+        Position(1) / "fork+🥕" % 0 -> List(AAgentId),
+        Position(1) / "fork+🥕" % 1 -> Nil,
+        Position(1) / "fork+🍋" % 0 -> List(AAgentId),
+        Position(1) / "fork+🍋" % 1 -> Nil,
+        Position(2) -> List(BAgentId),
+        Position(3) -> List(AAgentId, BAgentId),
+        Position(3) / "fork+🥕" % 0 -> List(BAgentId),
+        Position(3) / "fork+🥕" % 1 -> Nil,
+        Position(3) / "fork+🍋" % 0 -> List(AAgentId),
+        Position(3) / "fork+🍋" % 1 -> List(BAgentId),
+        Position(3) / "fork+🍋" % 2 -> Nil,
+        Position(4) -> List(AAgentId, BAgentId),  // Order 🍋 is created on A but executed on B
+        Position(4) / "fork+🥕" % 0 -> List(AAgentId),
+        Position(4) / "fork+🥕" % 1 -> Nil,
+        Position(4) / "fork+🍋" % 0 -> List(BAgentId),
+        Position(4) / "fork+🍋" % 1 -> Nil,
+        Position(5) -> Nil)
+
+      for ((position, agentIds) <- isStartableSetting) {
+        for ((agentId, expected) <- agentIds.map(_ -> true) ++ (AgentIds filterNot agentIds.toSet).map(_ -> false)) {
+          s"isStartableOnAgent($position $agentId) = $expected" in {
+            assert(TestWorkflow.isStartableOnAgent(position, agentId) == expected)
+          }
+          s".reduceForAgent.isStartableOnAgent($position $agentId) = $expected" in {
+            //assert(SimpleTestWorkflow.reduceForAgent(agentId).isStartableOnAgent(position, agentId))
+            assert(TestWorkflow.reduceForAgent(agentId).isStartableOnAgent(position, agentId) == expected)
+          }
+        }
+      }
+    }
+
+    //"determinedExecutingAgent" - {
+    //  val setting = List(
+    //    Position(0) -> Some(AAgentId),
+    //    Position(1) -> Some(AAgentId),
+    //    Position(2) -> Some(BAgentId),
+    //    Position(3) -> None,
+    //    Position(4) -> None,
+    //    Position(5) -> Nil)
+    //
+    //  for ((position, expected) <- setting) {
+    //    s"determinedExecutingAgent($position)" in {
+    //      assert(TestWorkflow.determinedExecutingAgent(position) == expected)
+    //    }
+    //  }
+    //}
   }
 }
 

@@ -26,6 +26,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
+import js7.common.http.CirceToYaml.ToYamlString
 import js7.common.scalautil.Logger
 import js7.common.scalautil.Logger.ops._
 import js7.common.utils.Exceptions.wrapException
@@ -36,7 +37,6 @@ import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.execution.workflow.Workflows.ExecutableWorkflow
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
@@ -307,6 +307,7 @@ with Stash {
                   val workflow = verified.signedItem.value.reduceForAgent(agentId)
                   (workflowRegister.get(order.workflowId) match {
                     case None =>
+                      logger.trace("Reduced workflow ⏎\n" + workflow.toYamlString)
                       logger.info(Logger.SignatureVerified, verified.toString)
                       persist(WorkflowAttached(workflow)) { (stampedEvent, journaledState) =>
                         workflowRegister.handleEvent(stampedEvent.value)

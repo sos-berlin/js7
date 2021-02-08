@@ -3,6 +3,7 @@ package js7.data.workflow.instructions
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.Problem
 import js7.base.utils.Assertions.assertThat
+import js7.data.agent.AgentId
 import js7.data.lock.LockId
 import js7.data.source.SourcePos
 import js7.data.workflow.position.{BranchId, Position}
@@ -28,6 +29,13 @@ extends Instruction {
   override def adopt(outer: Workflow) = copy(
     lockedWorkflow = lockedWorkflow.copy(
       outer = Some(outer)))
+
+  override def reduceForAgent(agentId: AgentId, workflow: Workflow) =
+    if (isVisibleForAgent(agentId, workflow))
+      copy(
+        lockedWorkflow = lockedWorkflow.reduceForAgent(agentId))
+    else
+      Gap(sourcePos)  // The agent will never touch this lock or it subworkflow
 
   override def workflows = lockedWorkflow :: Nil
 

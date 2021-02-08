@@ -234,49 +234,30 @@ extends VersionedItem
       }.toVector ++
         rawLabeledInstructions.lastOption)
 
-  private[workflow] def isPartiallyExecutableOnAgent(agentId: AgentId): Boolean =
-    labeledInstructions.map(_.instruction) collect {
-      case o: Execute.Anonymous => o.job isExecutableOnAgent agentId
-      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentId)
-      case o: Fork => o isPartiallyExecutableOnAgent agentId
-    } contains true
+  def reduceForAgent(agentId: AgentId): Workflow =
+    reuseIfEqual(this, copy(
+      rawLabeledInstructions = labeledInstructions
+        .map(labeled => labeled.copy(
+          instruction = labeled.instruction
+            .reduceForAgent(agentId, this))),
+      nameToJob = reuseIfEqual(nameToJob,
+        nameToJob.filter(o => o._2.agentId == agentId))))
+
+  private[workflow] def isVisibleForAgent(agentId: AgentId): Boolean =
+    instructions.exists(_.isVisibleForAgent(agentId, this))
 
   def isStartableOnAgent(position: Position, agentId: AgentId): Boolean =
     isStartableOnAgent(instruction(position), agentId)
 
   private def isStartableOnAgent(instruction: Instruction, agentId: AgentId): Boolean =
     instruction match {
-      case o: Fork => o.isStartableOnAgent(agentId)
-      case o: Execute.Anonymous => o.job.isExecutableOnAgent(agentId)
-      case o: Execute.Named => findJob(o.name) exists (_ isExecutableOnAgent agentId)
+      case o: Fork => o isStartableOnAgent agentId
+      case o: Execute => o.isVisibleForAgent(agentId, this)
       case _ => false
     }
 
   private[workflow] def isStartableOnAgent(agentId: AgentId): Boolean =
-    checkedWorkflowJob(Position(0)) exists (_ isExecutableOnAgent agentId)
-
-  //def determinedExecutingAgent(position: Position): Option[AgentId] =
-  //  executingAgents(position) match {
-  //    case a if a.size <= 1 => a.headOption
-  //    case _ => None
-  //  }
-  //
-  //private[workflow] def determinedExecutingAgent: Option[AgentId] =
-  //  determinedExecutingAgent(Position(0))
-  //
-  //def executingAgents(position: Position): Set[AgentId] =
-  //  instruction(position) match {
-  //    case _: Execute =>
-  //      checkedWorkflowJob(Position(0)).toOption.map(_.agentId).toSet
-  //
-  //    case fork: Fork =>
-  //      fork.startAgents
-  //
-  //    case _ => Set.empty
-  //  }
-
-  //private[workflow] def executingAgents: Set[AgentId] =
-  //  executingAgents(Position(0))
+    checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentId)
 
   def isDefinedAt(position: Position): Boolean =
     position match {

@@ -7,6 +7,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.agent.AgentId
 import js7.data.source.SourcePos
@@ -38,12 +39,18 @@ extends Instruction
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
-  def isPartiallyExecutableOnAgent(agentId: AgentId): Boolean =
-    branches exists (_.workflow isPartiallyExecutableOnAgent agentId)
+  override def reduceForAgent(agentId: AgentId, workflow: Workflow) =
+    if (isVisibleForAgent(agentId, workflow))
+      copy(
+        branches = for (b <- branches) yield
+          reuseIfEqual(b, b.copy(
+            workflow = b.workflow.reduceForAgent(agentId))))
+    else
+      Gap(sourcePos = sourcePos)  // The agent will never touch this fork or its branches
 
   def isStartableOnAgent(agentId: AgentId): Boolean =
     // Any Agent or the controller can fork. The current Agent is okay.
-    branches exists (_.workflow isStartableOnAgent agentId)
+    branches.exists(_.workflow isStartableOnAgent agentId)
 
   //def isJoinableOnAgent(agentId: AgentId): Boolean =
   //  // If branches end on multiple Agents, only the Controller can join the Orders
