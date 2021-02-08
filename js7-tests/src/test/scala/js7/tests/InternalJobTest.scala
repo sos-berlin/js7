@@ -1,26 +1,40 @@
 package js7.tests
 
+import js7.base.auth.Admission
 import js7.base.configutils.Configs._
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.scalautil.Logger
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
+import js7.data.event.{EventRequest, KeyedEvent}
 import js7.data.item.VersionId
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.{NamedValues, NumberValue, Value}
+import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
+import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
+import js7.data.workflow.WorkflowPrinter.instructionToString
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.executor.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.{JobContext, OrderContext, OrderProcess, Result}
+import js7.proxy.ControllerApi
 import js7.tests.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
+import monix.reactive.Observable
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.mutable
 
 final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
@@ -36,21 +50,8 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
   private val testCounter = AtomicInt(0)
 
-  addInternalJobTest(
-    Execute(internalWorkflowJob),
-    orderArguments = Map("ARG" -> NumberValue(100)),
-    expectedOutcome = Outcome.Succeeded(NamedValues(
-      "START" -> NumberValue(1),
-      "PROCESS" -> NumberValue(1),
-      "RESULT" -> NumberValue(101))))
-
-  addInternalJobTest(
-    Execute(internalWorkflowJob),
-    orderArguments = Map("ARG" -> NumberValue(200)),
-    expectedOutcome = Outcome.Succeeded(NamedValues(
-      "START" -> NumberValue(1),
-      "PROCESS" -> NumberValue(1),  // 1 agein, because it is a different WorkflowJob
-      "RESULT" -> NumberValue(201))))
+  private lazy val controllerApi = new ControllerApi(
+    admissionsToApiResources(Seq(Admission(controller.localUri, None)))(controller.actorSystem))
 
   "One InternalJob.start for multiple InternalJob.processOrder" in {
     val versionId = versionIdIterator.next()
@@ -72,6 +73,22 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   addInternalJobTest(
+    Execute(internalWorkflowJob),
+    orderArguments = Map("ARG" -> NumberValue(100)),
+    expectedOutcome = Outcome.Succeeded(NamedValues(
+      "START" -> NumberValue(1),
+      "PROCESS" -> NumberValue(1),
+      "RESULT" -> NumberValue(101))))
+
+  addInternalJobTest(
+    Execute(internalWorkflowJob),
+    orderArguments = Map("ARG" -> NumberValue(200)),
+    expectedOutcome = Outcome.Succeeded(NamedValues(
+      "START" -> NumberValue(1),
+      "PROCESS" -> NumberValue(1),  // 1 agein, because it is a different WorkflowJob
+      "RESULT" -> NumberValue(201))))
+
+  addInternalJobTest(
     Execute(WorkflowJob(agentId, InternalExecutable(classOf[SimpleJob.type].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
@@ -79,44 +96,110 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
+  addInternalJobTest(
+    Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyJInternalJob].getName))),
+    expectedOutcome = Outcome.Succeeded(NamedValues.empty))
+
+  addInternalJobTest(
+    Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
+    expectedOutcome = Outcome.Succeeded(NamedValues.empty))
+
+  for (jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]))
+    jobClass.getName - {
+      val n = 10
+      lazy val indexedOrderIds = (1 to n).map(_ -> orderIdIterator.next())
+      addInternalJobTestWithMultipleOrders(
+        Execute(WorkflowJob(
+          agentId,
+          InternalExecutable(
+            jobClass.getName,
+            Map("expectedThreadPrefix" -> StringValue("JS7 blocking job ")),
+            ObjectExpression(Map("arg" -> NamedValue.last("ARG")))),
+          taskLimit = n)),
+        indexedOrderIds
+          .map { case (i, orderId) => orderId -> Map("ARG" -> NumberValue(i)) }
+          .toMap,
+        expectedOutcomes = indexedOrderIds
+          .map { case (i, orderId) =>
+            orderId -> Seq(Outcome.Succeeded(Map("RESULT" -> NumberValue(i + 1))))
+          }
+          .toMap)
+    }
+
   private def addInternalJobTest(
     execute: Execute,
     orderArguments: Map[String, Value] = Map.empty,
     expectedOutcome: Outcome)
     (implicit pos: source.Position)
   : Unit = {
-    val testName = testCounter.incrementAndGet().toString + ") "  +
-      WorkflowPrinter.instructionToString(execute)
+    val orderId = orderIdIterator.next()
+    addInternalJobTestWithMultipleOrders(execute,
+      Map(orderId -> orderArguments),
+      Map(orderId -> Seq(expectedOutcome)))
+  }
+  private def addInternalJobTestWithMultipleOrders(
+    execute: Execute,
+    orderArguments: Map[OrderId, Map[String, Value]],
+    expectedOutcomes: Map[OrderId, Seq[Outcome]])
+    (implicit pos: source.Position)
+  : Unit = {
+    val testName = testCounter.incrementAndGet().toString + ") " + instructionToString(execute)
     testName in {
-      testWithWorkflow(Workflow.of(execute), orderArguments, Seq(expectedOutcome))
+      testWithWorkflow(Workflow.of(execute), orderArguments, expectedOutcomes)
     }
   }
 
   private def testWithWorkflow(
     anonymousWorkflow: Workflow,
-    orderArguments: Map[String, Value] = Map.empty,
-    expectedOutcomes: Seq[Outcome])
+    ordersArguments: Map[OrderId, Map[String, Value]],
+    expectedOutcomes: Map[OrderId, Seq[Outcome]])
   : Unit = {
-    val events = runWithWorkflow(anonymousWorkflow, orderArguments)
-    val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
+    val orderToEvents = runMultipleOrdersWithWorkflow(anonymousWorkflow, ordersArguments)
+    val outcomes = orderToEvents.view
+      .mapValues(_.collect { case OrderProcessed(outcome) => outcome })
+      .toMap
     assert(outcomes == expectedOutcomes)
 
-    if (expectedOutcomes.last.isSucceeded) assert(events.last.isInstanceOf[OrderFinished])
-    else assert(events.last.isInstanceOf[OrderFailed])
+    for ((orderId, events) <- orderToEvents) {
+      if (expectedOutcomes(orderId).last.isSucceeded)
+        assert(events.last.isInstanceOf[OrderFinished])
+      else
+        assert(events.last.isInstanceOf[OrderFailed])
+    }
   }
 
-  private def runWithWorkflow(
+  private def runMultipleOrdersWithWorkflow(
     anonymousWorkflow: Workflow,
-    orderArguments: Map[String, Value] = Map.empty)
-  : Seq[OrderEvent] = {
+    ordersArguments: Map[OrderId, Map[String, Value]])
+  : Map[OrderId, Seq[OrderEvent]] = {
     testPrintAndParse(anonymousWorkflow)
 
     val versionId = versionIdIterator.next()
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next() ~ versionId)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
-    val order = FreshOrder(orderIdIterator.next(), workflow.path, arguments = orderArguments)
-    controller.runOrder(order).map(_.value)
+    val eventId = controller.eventWatch.lastAddedEventId
+    controllerApi.addOrders(
+      Observable.fromIterable(ordersArguments)
+        .map {
+          case (orderId, args) => FreshOrder(orderId, workflow.path, arguments = args)
+        })
+      .await(99.s).orThrow
+    val orderIds = ordersArguments.keySet
+    val _runningOrderIds = orderIds.to(mutable.Set)
+    controller.eventWatch
+      .observe(EventRequest.singleClass[OrderEvent](eventId, Some(99.s)))
+      .filter(stamped => orderIds contains stamped.value.key)
+      .map(_.value)
+      .tapEach {
+        case KeyedEvent(orderId: OrderId, _: OrderTerminated) =>
+          _runningOrderIds -= orderId
+        case _ =>
+      }
+      .takeWhileInclusive(_ => _runningOrderIds.nonEmpty)
+      .toL(Vector)
+      .await(99.s)
+      .groupMap(_.key)(_.event)
   }
 
   private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
@@ -139,13 +222,14 @@ object InternalJobTest
   {
     def processOrder(context: OrderContext) =
       OrderProcess(
-        Task.pure(Right(
-          Result(NamedValues.empty))))
+        Task {
+          Right(Result(NamedValues.empty))
+        })
   }
 
   private final class AddOneJob(jobContext: JobContext) extends InternalJob
   {
-    assertThat(jobContext.workflowJob == internalWorkflowJob)
+    assertThat(jobContext.implementationClass == getClass)
     private val startCount = AtomicInt(0)
     private val processCount = AtomicInt(0)
 

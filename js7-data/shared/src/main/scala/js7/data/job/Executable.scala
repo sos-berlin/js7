@@ -12,6 +12,7 @@ import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.ObjectExpression
 
 sealed trait Executable
@@ -165,6 +166,9 @@ object ScriptExecutable
 
 final case class InternalExecutable(
   className: String,
+  /** Arguments for the job itself. */
+  jobArguments: NamedValues = NamedValues.empty,
+  /** Argument expressions evalutated for each `processOrder`. */
   arguments: ObjectExpression = ObjectExpression.empty)
   extends Executable
 

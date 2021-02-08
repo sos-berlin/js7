@@ -107,6 +107,7 @@ object WorkflowParser
           keyValue("agent", agentId) |
           keyValue("defaultArguments", namedValues) |
           keyValue("arguments", objectExpression) |
+          keyValue("jobArguments", namedValues) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int) |
@@ -114,6 +115,7 @@ object WorkflowParser
         agentId <- kv[AgentId]("agent")
         defaultArguments <- kv[NamedValues]("defaultArguments", NamedValues.empty)
         arguments <- kv[ObjectExpression]("arguments", ObjectExpression.empty)
+        jobArguments <- kv[NamedValues]("jobArguments", NamedValues.empty)
         env <- kv[ObjectExpression]("env", ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
         executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
@@ -127,7 +129,7 @@ object WorkflowParser
               .map(v => ScriptExecutable(v.string, env, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
             checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
-              .map(v => InternalExecutable(v.string, arguments)))
+              .map(v => InternalExecutable(v.string, jobArguments, arguments)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)

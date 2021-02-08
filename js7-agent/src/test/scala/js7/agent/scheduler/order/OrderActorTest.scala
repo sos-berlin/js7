@@ -171,7 +171,8 @@ private object OrderActorTest {
         temporaryDirectory = dir / "data" / "tmp",
         executablesDirectory = (dir / "config" / "executables").toRealPath(),
         sigkillProcessesAfter = 5.s,
-        scriptInjectionAllowed = false)))
+        scriptInjectionAllowed = false,
+        blockingJobScheduler = globalIOX.testScheduler)))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
         journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),

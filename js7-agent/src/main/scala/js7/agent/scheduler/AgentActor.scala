@@ -26,6 +26,7 @@ import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
+import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.common.ActorRegister
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.controller.ControllerId
@@ -39,13 +40,14 @@ import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, MainJournalingActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.schedulers.SchedulerService
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
   */
-private[agent] final class AgentActor @Inject private(
+private[agent] final class AgentActor private(
   terminatePromise: Promise[AgentTermination.Terminate],
   agentConfiguration: AgentConfiguration,
   newTaskRunner: TaskRunner.Factory,
@@ -239,6 +241,12 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
     }
   }
 
+  private val blockingJobScheduler: SchedulerService = {
+    val scheduler = newUnlimitedScheduler("JS7 blocking job")
+    closer.onClose(scheduler.shutdown())
+    scheduler
+  }
+
   private def addOrderKeeper(controllerId: ControllerId, agentId: AgentId, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(AgentState, stateDirectory / s"controller-$controllerId")
 
@@ -259,7 +267,8 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
           newTaskRunner,
           persistence,
           askTimeout = akkaAskTimeout,
-          agentConfiguration)
+          agentConfiguration,
+          blockingJobScheduler)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$controllerId"))
     controllerToOrderKeeper.insert(controllerId -> ControllerRegister.Entry(controllerId, agentRunId, persistence, actor, recovered.eventWatch))

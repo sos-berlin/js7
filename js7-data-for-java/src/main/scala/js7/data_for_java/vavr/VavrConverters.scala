@@ -1,6 +1,6 @@
 package js7.data_for_java.vavr
 
-import io.vavr.collection.{List => VavrList}
+import io.vavr.collection.{List => VList}
 import io.vavr.control.{Either => VEither}
 import js7.data_for_java.common.JavaUtils.Void
 import scala.jdk.CollectionConverters._
@@ -19,9 +19,15 @@ object VavrConverters
       underlying.map(_ => Void).toVavr
   }
 
-  implicit final class RichRawVavrList[A](private val underlying: Iterable[A]) extends AnyVal
+  implicit final class RichVavrEitherProblem[L, R](private val underlying: VEither[L, R]) extends AnyVal
   {
-    def toVavr: VavrList[A] =
-      VavrList.ofAll(underlying.asJava)
+    def toScala: Either[L, R] =
+      if (underlying.isLeft) Left(underlying.getLeft) else Right(underlying.get)
+  }
+
+  implicit final class RichRawVList[A](private val underlying: Iterable[A]) extends AnyVal
+  {
+    def toVavr: VList[A] =
+      VList.ofAll(underlying.asJava)
   }
 }

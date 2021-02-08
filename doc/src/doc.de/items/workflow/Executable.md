@@ -100,3 +100,134 @@ dann bezeichnet er eine Datei im Verzeichnis `CONFIG/executable`.
 ```
 
 ## CommandLineExecutable
+
+...
+
+## InternalExecutable
+
+Interne Jobs sind Java-Klassen, die der Agent in seine JVM lädt und dort lokal ausführt.
+Sie sind vorsichtig zu benutzen, denn sie laufen im Prozess des Agenten und
+können den Betrieb des Agenten stören.
+
+Interne Jobs können eines der beiden folgenden Interfaces implementieren.
+* `JInternalJob` zur Ausführung als `Future` mit einem Threadpool (etwa Javas `commonPool`),
+* `BlockingInternalJob` zur einfachen Implementierung ohne Future.
+
+
+### JInternalJob
+
+Minimales Beispiel für einen internen Job, der nichts tut:
+
+```java
+package js7.executor.forjava.internal.tests;
+
+import java.util.concurrent.CompletableFuture;
+import js7.executor.forjava.internal.JInternalJob;
+import js7.executor.forjava.internal.JOrderContext;
+import js7.executor.forjava.internal.JOrderProcess;
+import js7.executor.forjava.internal.JOrderResult;
+import static java.util.Collections.emptyMap;
+
+public final class EmptyJInternalJob implements JInternalJob
+{
+    public JOrderProcess processOrder(JOrderContext context) {
+        return JOrderProcess.of(
+            CompletableFuture.supplyAsync(
+                () -> JOrderResult.of(emptyMap())));
+    }
+}
+```
+`processOrder` liefert sofort ein `OrderProcess` zurück,
+dessen einziges Element ein `CompletionStage<JOrderResult>` ist,
+dass aus `JOrderContext` ein `JResult` berechnet.
+`processOrder` kann noch in einem Thread des Agenten laufen und soll deshalb nichts anderes tun,
+als eine `Future` (genauer: `CompletableStage`) zu starten und
+ohne deren Ergebnis abzuwarten in `JOrderProces` zurückzugeben.
+
+Die üblichen Regeln für Futures und den betreibenden `Executor` gelten.
+(Dokumentation dazu vielleicht hier: https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html)
+
+Der Parameter `JOrderContext` mit vor allem den Parametern ist unten beschrieben.
+
+`JResult.of` erwartet eine `Map<String, Value>` mit dem Ergebnis der Ausführung.
+
+### BlockingInternalJob
+
+Ein Job, der `BlockingInternalJob` implementiert,
+verzichtet auf asynchrone Ausführung mit `Future`
+und führt den Schritt stattdessen synchron durch.
+Der Agent lässt die Aufrufe dieser Klasse in einem
+unbegrenzten Threadpool ausführen.
+
+⚠️ Viele parallel ausgeführte Auftragsschritte könnten
+den Betrieb des Agenten beeinträchtigen,
+wenn dessen Threads nicht mehr genug CPU zugeteilt bekommen.
+
+Minimales Beispiel für einen internen Job, der nichts tut:
+
+```java
+package js7.executor.forjava.internal.tests;
+
+import js7.executor.forjava.internal.BlockingInternalJob;
+import js7.executor.forjava.internal.JOrderContext;
+import js7.executor.forjava.internal.JOrderResult;
+import static java.util.Collections.emptyMap;
+
+public final class EmptyBlockingInternalJob implements BlockingInternalJob
+{
+    public JOrderResult processOrder(JOrderContext context) {
+        return JOrderResult.of(emptyMap());
+    }
+}
+```
+
+### JJobContext
+
+Die Klassen beider Implementierungen können einen Konstruktor
+mit dem Parameter `JJobContext` definieren,
+der im Wesentlichen das folgende Feld enthält:
+* `jobArguments`, eine `Map<String, Value>` mit den für den Job (nicht Auftragsschritt)
+  bestimmten Parametern.
+
+### JOrderContext
+`JOrderContext` stellt für einen Auftragsschritt bereit:
+* `arguments`, eine `Map<String, Value>` mit den deklarieren Parametern (s.u.),
+* `order`, ein `JOrder`, also der Auftrag, und
+* `workflow`, ein `JWorkflow`, also der Workflow, in dem sich der Auftrag befindet.
+
+In den meisten Fällen wird man mit `arguments` auskommen.
+
+### Fehlerbehandlung
+
+Ich habe mich hier gegen die Rückgabe von `Either<Problem, ...>` entschieden.
+Es erscheint mir einfacher, vom positiven Fall keines Fehlers auszugegehen.
+Fehler können traditionell per Exception zurückgegeben werden.
+
+Vielleicht bestimmen wir eine bestimmte Exception für
+vorhergesehene, standardisierte Fehlerfälle.
+
+#### JSON
+
+In einem WorkflowJob wird das `executable` zum Beispiel so angegeben:
+
+````json
+{
+  "TYPE": "InternalExecutable",
+  "className": "com.example.MyInternalJavaJob",
+  "jobArguments": {
+    "stringArgument": "An Argument for the intantiated class",
+    "numericArgument": 3
+  },
+  "arguments": {
+    "arg": "$ARG",
+    "numericArg": "7"
+  }
+}
+````
+
+* `jobArguments` sind die konstanten Werte,
+  die der Job im optionalen Konstruktor per `JJobContext` erhält.
+* `arguments` sind die Parameter für jeden Auftragsschritt.
+Auf der rechten Seite werden Ausdrücke erwartet,
+die den jeweiligen Parameter aus dem Auftrag errechnen
+(hier "arg" aus dem letzten Wert für "ARG" im Auftrag).

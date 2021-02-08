@@ -1,19 +1,21 @@
-# Nächste Version
+# v2.0.0-alpha.20210208
 
 * Proxy
   * Der Aufruf `x509WithSignerId` ersetzt `x509WithSignedId`.
-  * Wegen der neuen internen Java-Jobs haben ich mehrere Klassennamen geändert.
+  * Wegen der neuen internen Java-Jobs haben sich mehrere Klassennamen geändert.
+  * Value.of akzeptiert jetzt java.math.Bigdecimal
+  * NumberValue.toBigDecimal und .toJava liefern java.math.Bigdecimal
 * Interne Java-Jobs
   * Betrifft die Verwendung des Proxys
 
 
 ## Interne Java-Jobs
 
-### Subprojekt js7-data-for-java
+### Neues Subprojekt js7-data-for-java
 * Das neue Subprojekt js7-data-for-java nimmt die Java-Adapter aus dem Proxy auf,
-  so dass sie auch für interne Java-Jobs verwendet werden können.
+  sodass sie auch für interne Java-Jobs verwendet werden können.
   Die betroffenen Klassen (im Wesentlichen die J-Klassen) sind in neuen Packages.
-  Eure Import-Anweisungen müssten wie folgt angepasst werden
+  Eure Import-Anweisungen müssten wie folgt angepasst werden:
 
   Alt | Neu
   --- | ---
@@ -25,6 +27,41 @@
   js7.proxy.javaapi.data.problem.             |  js7.data_for_java.problem.
   js7.proxy.javaapi.data.workflow.            |  js7.data_for_java.workflow.
   js7.proxy.javaapi.data.common.VavrUtils.    |  js7.data_for_java.vavr.VavrUtils.
+
+### Neues Subproject js7-executor-for-java
+
+#### InternalExecutable
+
+Näheres zur den internen Java-Jobs unter [Executable](items/workflow/Executable.md),
+Abschnitt InternalExecutable.
+
+````json
+{
+  "TYPE": "InternalExecutable",
+  "className": "com.example.MyInternalJavaJob",
+  "jobArguments": {
+    "stringArgument": "An Argument for the intantiated class",
+    "numericArgument": 3
+  },
+  "arguments": {
+    "arg": "$$ARG",
+    "numericArg": "7"
+  }
+}
+````
+
+```java
+package js7.executor.forjava.internal.tests;
+
+import ...
+
+public final class EmptyBlockingInternalJob implements BlockingInternalJob
+{
+    public JOrderResult processOrder(JOrderContext context) {
+        return JOrderResult.of(emptyMap());
+    }
+}
+```
 
 ----------------------------------------------------------------------------------------------------
 # v2.0.0-alpha.20210131

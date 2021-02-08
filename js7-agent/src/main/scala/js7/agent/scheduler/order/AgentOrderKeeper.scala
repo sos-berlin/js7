@@ -70,7 +70,8 @@ final class AgentOrderKeeper(
   newTaskRunner: TaskRunner.Factory,
   persistence: JournaledStatePersistence[AgentState],
   implicit private val askTimeout: Timeout,
-  conf: AgentConfiguration)(
+  conf: AgentConfiguration,
+  blockingJobScheduler: Scheduler)(
   implicit protected val scheduler: Scheduler)
 extends MainJournalingActor[AgentState, Event]
 with Stash {
@@ -415,9 +416,13 @@ with Stash {
     for ((jobKey, job) <- workflow.keyToJob) {
       if (job.agentId == ownAgentId) {
         val jobActor = watch(actorOf(
-          JobActor.props(JobActor.Conf(jobKey, job, newTaskRunner, temporaryDirectory = conf.temporaryDirectory,
-            executablesDirectory = conf.executableDirectory, sigkillProcessesAfter = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay,
-            scriptInjectionAllowed = conf.scriptInjectionAllowed))
+          JobActor.props(JobActor.Conf(
+            jobKey, job, newTaskRunner,
+            temporaryDirectory = conf.temporaryDirectory,
+            executablesDirectory = conf.executableDirectory,
+            scriptInjectionAllowed = conf.scriptInjectionAllowed,
+            sigkillProcessesAfter = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay,
+            blockingJobScheduler = blockingJobScheduler))
           /*TODO name actor?*/))
         jobRegister.insert(jobKey, jobActor)
       }

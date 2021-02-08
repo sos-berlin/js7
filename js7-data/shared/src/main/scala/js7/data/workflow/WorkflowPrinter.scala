@@ -81,9 +81,13 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= ", command="
         appendQuoted(command.toString)
 
-      case InternalExecutable(className, arguments) =>
+      case InternalExecutable(className, jobArguments, arguments) =>
         sb ++= ", internalJobClass="
         appendQuoted(className)
+        if (jobArguments.nonEmpty) {
+          sb ++= ", jobArguments="
+          appendNamedValues(jobArguments)
+        }
         if (arguments.nonEmpty) {
           sb ++= ", arguments="
           appendObjectExpression(sb, arguments)
@@ -266,7 +270,7 @@ object WorkflowPrinter
     sb.toString
   }
 
-  private def namedValuesToString(namedValues: NamedValues) = {
+  def namedValuesToString(namedValues: NamedValues) = {
     val sb = new StringBuilder(128)
     appendNamedValues(sb, namedValues)
     sb.toString()

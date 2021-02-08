@@ -157,6 +157,7 @@ lazy val js7 = (project in file("."))
     `js7-common-http`.jvm,
     `js7-core`,
     `js7-executor`,
+    `js7-executor-for-java`,
     `js7-data`.jvm,
     `js7-data-for-java`,
     `js7-docker`,
@@ -469,6 +470,21 @@ lazy val `js7-executor` = project
       lmaxDisruptor % "test"
   }
 
+lazy val `js7-executor-for-java` = project
+  .dependsOn(`js7-executor`, `js7-data-for-java`, `js7-tester`.jvm % "test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      "io.projectreactor" % "reactor-core" % reactorVersion ++
+      "io.vavr" % "vavr" % vavrVersion ++
+      hamcrest % "test" ++
+      scalaTest % "test" ++
+      scalaCheck % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
 lazy val `js7-journal` = project.dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
@@ -553,7 +569,8 @@ lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7
 
 lazy val `js7-tests` = project
   .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
-    `js7-core` % "test->test", `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test")
+    `js7-core` % "test->test", `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test",
+    `js7-executor-for-java` % "test->test")
   .settings(
     commonSettings,
     skip in publish := true,

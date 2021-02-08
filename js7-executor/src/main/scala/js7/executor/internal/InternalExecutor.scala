@@ -4,40 +4,80 @@ import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax._
+import js7.common.scalautil.Logger
 import js7.data.job.InternalExecutable
-import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.executor.internal.InternalExecutor.startClass
-import js7.executor.internal.InternalJob.{JobContext, OrderProcess, OrderContext}
+import js7.executor.internal.InternalExecutor._
+import js7.executor.internal.InternalJob.{JobContext, OrderContext, OrderProcess}
 import monix.eval.Task
+import monix.execution.Scheduler
 import scala.util.control.NonFatal
 
-final class InternalExecutor(
-  executable: InternalExecutable,
-  workflowJob: WorkflowJob)
+final class InternalExecutor(executable: InternalExecutable, blockingJobScheduler: Scheduler)
 {
   private lazy val runningJob: Checked[InternalJob] =
-    startClass(executable.className, JobContext(executable, workflowJob))
+    toInstantiator(executable.className)
+      .flatMap(_())
 
   val start: Task[Checked[Unit]] =
-    Task.pure(runningJob).flatMapT(_.start).memoize
+    Task { runningJob }
+      .flatMapT(_.start)
+      .tapEval {
+        case Left(problem) => Task(
+          logger.debug(s"${executable.className} start: $problem", problem.throwableOption.orNull))
+        case Right(_) => Task.unit
+      }
+      .memoize
 
   def processOrder(context: OrderContext): Task[Checked[OrderProcess]] =
-    start.flatMapT(_ => Task.pure(runningJob.map(_
-      .processOrder(context))))
+    start
+      .flatMapT(_ => Task {
+        runningJob.map(_.processOrder(context))
+      })
+      .tapEval {
+        case Left(problem) => Task(logger.debug(s"${executable.className} " +
+          s"processOrder(${context.order.id.string}): $problem", problem.throwableOption.orNull))
+        case Right(_) => Task.unit
+      }
+
+  private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =
+    loadClass(className)
+      .flatMap(cls =>
+        if (classOf[InternalJob] isAssignableFrom cls)
+          getConstructor(cls.asInstanceOf[Class[InternalJob]])
+            .map(con => () => construct(con, toJobContext(cls)))
+        else
+          tryAdapter(cls))
+
+  private def tryAdapter(cls: Class[_]): Checked[() => Checked[InternalJob]] = {
+    val internalJobs = superclassesOf(cls)
+      .flatMap(cls =>
+        Option(cls.getAnnotation(classOf[InternalJobAdapter])))
+      .map(_.value)
+    if (internalJobs.sizeIs > 1)
+      Left(Problem(s"Class ${cls.getName} has multiple @InternalJobAdapter annotations"))
+    else
+      internalJobs
+        .headOption
+        .toChecked(Problem(s"Class '${cls.getName}' is not an InternalJob"))
+        .flatMap(getConstructor)
+        .map(con =>
+          () => construct(con, toJobContext(cls)))
+  }
+
+  private def toJobContext(cls: Class[_]) =
+    JobContext(cls, executable.jobArguments, blockingJobScheduler)
 
   override def toString = s"InternalExecutor(${executable.className})"
 }
 
 object InternalExecutor
 {
-  def startClass(className: String, startJob: JobContext): Checked[InternalJob] =
-    loadClass(className)
-      .flatMap(getConstructor)
-      .flatMap(construct(_, startJob))
+  private val logger = Logger(getClass)
 
-  private def loadClass(className: String): Checked[Class[_]] =
-    try Right(Class.forName(className))
+  private def loadClass(className: String): Checked[Class[_ <: AnyRef]] =
+    try Right(Class.forName(className).asInstanceOf[Class[_ <: AnyRef]])
     catch {
       case t: ExceptionInInitializerError =>
         Left(Problem.pure(Option(t.getCause).getOrElse(t).toStringWithCauses))
@@ -47,7 +87,7 @@ object InternalExecutor
         Left(Problem.pure(t.toStringWithCauses))
     }
 
-  private def getConstructor(clas: Class[_]): Checked[Constructor[InternalJob]] =
+  private def getConstructor(clas: Class[_ <: InternalJob]): Checked[Constructor[InternalJob]] =
     Checked.catchNonFatal {
       val constructors = clas
         .getConstructors.asInstanceOf[Array[Constructor[InternalJob]]]

@@ -107,7 +107,7 @@ extends Actor with Stash
         }
 
       case executable: InternalExecutable =>
-        val executor = new InternalExecutor(executable, workflowJob)
+        val executor = new InternalExecutor(executable, conf.blockingJobScheduler)
         // TODO execute.start here, but it returns a Task
         Right {
           (order, executeArguments, workflow) => {
@@ -340,7 +340,8 @@ object JobActor
     temporaryDirectory: Path,
     executablesDirectory: Path,
     sigkillProcessesAfter: FiniteDuration,
-    scriptInjectionAllowed: Boolean)
+    scriptInjectionAllowed: Boolean,
+    blockingJobScheduler: Scheduler)
 
   sealed trait Command
   object Command {

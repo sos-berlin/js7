@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.data.value.expression.Expression.{Add, NamedValue, NumericConstant, ObjectExpression, StringConstant}
+import js7.data.value.{NumberValue, StringValue}
 import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -134,6 +135,9 @@ final class ExecutableTest extends AnyFreeSpec
       testJson[Executable](
         InternalExecutable(
           "js7.tests.jobs.EmptyJob",
+          jobArguments = Map(
+            "ARG" -> StringValue("An Argument for the intantiated class"),
+            "NUMBER" -> NumberValue(3)),
           arguments = ObjectExpression(Map(
             "MY-ARG" -> NamedValue.last("ARG"),
             "NUMBER" -> NumericConstant(7)))),
@@ -141,6 +145,10 @@ final class ExecutableTest extends AnyFreeSpec
         {
           "TYPE": "InternalExecutable",
           "className": "js7.tests.jobs.EmptyJob",
+          "jobArguments": {
+            "ARG": "An Argument for the intantiated class",
+            "NUMBER": 3
+          },
           "arguments": {
             "MY-ARG": "$$ARG",
             "NUMBER": "7"
