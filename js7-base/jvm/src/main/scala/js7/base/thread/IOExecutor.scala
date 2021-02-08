@@ -1,13 +1,13 @@
 package js7.base.thread
 
-import com.typesafe.config.Config
-import java.util.concurrent.{Executor, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
-import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.convert.As.StringAsIntOrUnlimited
+import java.util.concurrent.{Executor, ThreadPoolExecutor}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor._
-import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import monix.execution.ExecutionModel.SynchronousExecution
+import monix.execution.Scheduler
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.util.Try
@@ -19,13 +19,19 @@ import scala.util.control.NonFatal
   */
 final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
 {
+  def this(name: String, keepAlive: FiniteDuration = 10.s) =
+    this(newUnlimitedThreadPool(name = name, keepAlive = keepAlive))
+
   private val myExecutionContext = ExecutionContext.fromExecutor(
     threadPool,
     t => logger.error(t.toStringWithCauses, t))
 
-  def this(keepAlive: FiniteDuration, name: String) = this(newThreadPoolExecutor(keepAlive, name = name))
+  lazy val testScheduler = Scheduler(myExecutionContext, SynchronousExecution)
 
   def execute(runnable: Runnable) = myExecutionContext.execute(runnable)
+
+  def shutdown(): Unit =
+    threadPool.shutdown()
 
   implicit def executionContext: ExecutionContext = myExecutionContext
 }
@@ -33,30 +39,11 @@ final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
 object IOExecutor
 {
   private val logger = scribe.Logger[this.type]
+  val globalIOX = new IOExecutor(name = "JS7 I/O")
 
   object Implicits {
-    implicit val globalIOX = new IOExecutor(60.seconds, name = "JS7")
+    implicit val globalIOX = IOExecutor.globalIOX
   }
-
-  def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
-    newThreadPoolExecutor(
-      keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration,
-      minimum   = config.getInt     ("js7.thread-pools.io.minimum"),
-      maximum   = config.as         ("js7.thread-pools.io.maximum")(StringAsIntOrUnlimited),
-      name      = name)
-
-  def newThreadPoolExecutor(keepAlive: FiniteDuration = 60.seconds, minimum: Int = 0, maximum: Option[Int] = None, name: String): ThreadPoolExecutor =
-    new ThreadPoolExecutor(minimum, maximum getOrElse Int.MaxValue, keepAlive.toMillis, MILLISECONDS,
-      if (maximum.isEmpty) new SynchronousQueue[Runnable] else new LinkedBlockingQueue[Runnable],
-      myThreadFactory(name)) //with NamedRunnable.RenamesThread
-
-  private def myThreadFactory(name: String): ThreadFactory =
-    runnable => {
-      val thread = new Thread(runnable)
-      thread.setName(s"$name I/O ${thread.getId}")
-      thread.setDaemon(true)  // Do it like Monix and Akka
-      thread
-    }
 
   def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =
     try

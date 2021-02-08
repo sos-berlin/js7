@@ -9,6 +9,7 @@ import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.web.AgentWebServer
 import js7.base.auth.SimpleUser
 import js7.base.thread.IOExecutor
+import js7.base.thread.ThreadPoolsBase.newThreadPoolExecutor
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -47,9 +48,9 @@ extends AbstractModule
 
   @Provides @Singleton
   def ioExecutor(closer: Closer, conf: AgentConfiguration, config: Config): IOExecutor = {
-    val threadPool = IOExecutor.newThreadPoolExecutor(config, name = conf.name)
-    closer.onClose { threadPool.shutdown() }
-    new IOExecutor(threadPool)
+    val result = new IOExecutor(newThreadPoolExecutor(config, name = conf.name))
+    closer.onClose { result.shutdown() }
+    result
   }
 
   @Provides @Singleton

@@ -4,6 +4,7 @@ import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As
+import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.utils.ByteUnits.toKiBGiB
@@ -12,9 +13,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
 import js7.common.system.startup.StartUp.printlnWithClockIgnoringException
+import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.atomic.AtomicInt
-import monix.execution.schedulers.ExecutorScheduler
-import monix.execution.{ExecutionModel, UncaughtExceptionReporter}
+import monix.execution.schedulers.{ExecutorScheduler, SchedulerService}
+import monix.execution.{ExecutionModel, Features, UncaughtExceptionReporter}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -57,6 +59,10 @@ object ThreadPools
         UncaughtExceptionReporter.default.reportFailure(throwable)
     }
   }
+
+  def newUnlimitedScheduler(name: String): SchedulerService =
+    ExecutorScheduler(newUnlimitedThreadPool(name),
+      uncaughtExceptionReporter, SynchronousExecution, Features.empty)
 
   private val nextNumber = AtomicInt(0)
 
