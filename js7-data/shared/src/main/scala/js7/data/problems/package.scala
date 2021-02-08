@@ -20,6 +20,8 @@ package object problems
     override def httpStatusCode = 401/*Unauthorized*/
   }
 
+  final object UnreachableOrderPositionProblem extends Problem.ArgumentlessCoded
+
   case object CannotResumeOrderProblem extends Problem.ArgumentlessCoded
 
   case object CannotSuspendOrderProblem extends Problem.ArgumentlessCoded

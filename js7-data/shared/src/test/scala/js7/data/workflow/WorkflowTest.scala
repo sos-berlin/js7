@@ -759,8 +759,16 @@ final class WorkflowTest extends AnyFreeSpec
 
     "if-then-else is okay" in {
       assert(TestWorkflow.isMoveable(Position(0), Position(1) / Then % 0))
+
+      assert(TestWorkflow.isMoveable(Position(1) / Then % 0, Position(0)))
       assert(TestWorkflow.isMoveable(Position(1), Position(1) / Then % 0))
       assert(TestWorkflow.isMoveable(Position(1), Position(1) / Then % 1))
+      assert(TestWorkflow.isMoveable(Position(1) / Then % 0, Position(1)))
+      assert(TestWorkflow.isMoveable(Position(1) / Then % 1, Position(1)))
+
+      assert(TestWorkflow.isMoveable(Position(1), Position(1) / Else % 0))
+      assert(TestWorkflow.isMoveable(Position(1) / Else % 0, Position(1)))
+
       assert(TestWorkflow.isMoveable(Position(1), Position(1) / Then % 0))
       assert(TestWorkflow.isMoveable(Position(1), Position(1) / Else % 1))
     }
@@ -773,6 +781,31 @@ final class WorkflowTest extends AnyFreeSpec
     "Same fork branch is okay" in {
       assert(TestWorkflow.isMoveable(Position(2) / fork("🥕") % 0, Position(2) / fork("🥕") % 0))
       assert(TestWorkflow.isMoveable(Position(2) / fork("🥕") % 0, Position(2) / fork("🥕") % 2))
+    }
+
+    "Lock" - {
+      lazy val workflow = Workflow(WorkflowPath("TEST") ~ "1",
+        Vector(
+          AExecute,
+          LockInstruction(LockId("LOCK"), None, Workflow.of(
+            If(BooleanConstant(true),
+              Workflow.of(AExecute))))),
+        Map(
+          AJobName -> AJob))
+
+      "Into same locked block" in {
+        assert(workflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1) / BranchId.Lock % 0))
+        assert(workflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1) / BranchId.Lock % 0 / Then % 0))
+        assert(workflow.isMoveable(Position(1) / BranchId.Lock % 0 / Then % 0, Position(1) / BranchId.Lock % 0))
+      }
+
+      "Into a locked block is not okay" in {
+        assert(!workflow.isMoveable(Position(1), Position(1) / BranchId.Lock % 0))
+      }
+
+      "Out of a locked block is not okay" in {
+        assert(!workflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1)))
+      }
     }
 
     "try catch is okay" in {

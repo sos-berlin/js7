@@ -2,7 +2,7 @@ package js7.data.execution.workflow
 
 import cats.syntax.option._
 import js7.base.problem.Checked.Ops
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.CancelStartedOrderProblem
@@ -11,15 +11,15 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
-import js7.data.job.PathExecutable
+import js7.data.job.{PathExecutable, ScriptExecutable}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
-import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
+import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.NamedValues
-import js7.data.value.expression.Expression.{Equal, LastReturnCode, NumericConstant}
+import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Gap, Goto, If, IfFailedGoto, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fork, Gap, Goto, If, IfFailedGoto, LockInstruction, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.test.ForkTestSetting
@@ -540,7 +540,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(controller.suspend(order.id, SuspendMode()) == Right(None))
             assert(controller.resume(order.id, None, None) == Right(Some(OrderResumed())))
             assert(controller.resume(order.id, Some(Position(1)), None) == Right(Some(OrderResumed(Some(Position(1))))))
-            assert(controller.resume(order.id, Some(Position(99)), None) == Left(Problem("ResumeOrder: Unreachable order position")))
+            assert(controller.resume(order.id, Some(Position(99)), None) == Left(UnreachableOrderPositionProblem))
           }
         }
 
@@ -691,6 +691,81 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Map.empty[LockId, LockState].checked,
         isAgent = isAgent)
       body(order, eventSource(isAgent = false), eventSource(isAgent = true))
+    }
+
+    "Resume and UnreachableOrderPositionProblem" - {
+      val lockId = LockId("LOCK")
+      lazy val execute = Execute.Anonymous(WorkflowJob(TestAgentId, ScriptExecutable(":")))
+      lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(
+        /*0*/ execute,
+        /*1*/ If(BooleanConstant(true),
+          Workflow.of(execute),
+          Some(Workflow.of(execute))),
+        /*2*/ TryInstruction(
+          Workflow.of(execute),
+          Workflow.of(execute)),
+        /*3*/ Fork.of(
+          "A" -> Workflow.of(execute),
+          "B" -> Workflow.of(execute)),
+        /*4*/ LockInstruction(lockId, count = None, Workflow.of(execute))))
+
+      "Same level" in {
+        assert(testResume(workflow, Position(0), Position(1)) == Right(Some(OrderResumed(Some(Position(1))))))
+      }
+
+      "Into and out of if-then" in {
+        assert(isResumableBackAndForth(workflow, Position(0), Position(1) / BranchId.Then % 0))
+      }
+
+      "Into and out of if-else" in {
+        assert(isResumableBackAndForth(workflow, Position(0), Position(1) / BranchId.Else % 0))
+      }
+
+      "Into and out of try" in {
+        assert(isResumableBackAndForth(workflow, Position(0), Position(2) / BranchId.Try_ % 0))
+        assert(isResumableBackAndForth(workflow, Position(0), Position(2) / BranchId.try_(3) % 0))
+      }
+
+      "Into and out of catch" in {
+        assert(isResumableBackAndForth(workflow, Position(0), Position(2) / BranchId.Catch_ % 0))
+        assert(isResumableBackAndForth(workflow, Position(0), Position(2) / BranchId.catch_(3) % 0))
+      }
+
+      "Into a fork is forbidden" in {
+        assert(testResume(workflow, Position(0), Position(3) / BranchId.fork("A") % 0) ==
+          Left(UnreachableOrderPositionProblem))
+      }
+
+      "Leaving a fork is forbidden" in {
+        assert(testResume(workflow, Position(3) / BranchId.fork("A") % 0, Position(0)) ==
+          Left(UnreachableOrderPositionProblem))
+      }
+
+      "Into a lock is forbidden" in {
+        assert(testResume(workflow, Position(0), Position(4) / BranchId.Lock % 0) ==
+          Left(UnreachableOrderPositionProblem))
+      }
+
+      "Leaving a lock is forbidden" in {
+        assert(testResume(workflow, Position(4) / BranchId.Lock % 0, Position(0)) ==
+          Left(UnreachableOrderPositionProblem))
+      }
+
+      def isResumableBackAndForth(workflow: Workflow, a: Position, b: Position) =
+        isResumable(workflow, a, b) && isResumable(workflow, b, a)
+
+      def isResumable(workflow: Workflow, from: Position, to: Position) =
+        testResume(workflow, from, to) == Right(Some(OrderResumed(Some(to))))
+
+      def testResume(workflow: Workflow, from: Position, to: Position): Checked[Option[OrderEvent.OrderActorEvent]] = {
+        val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready, isSuspended = true)
+        def eventSource = new OrderEventSource(
+          Map(order.id -> order).checked,
+          Map(workflow.id -> workflow).checked,
+          Map(lockId -> LockState(Lock(lockId))).checked,
+          isAgent = false)
+        eventSource.resume(order.id, Some(to), None)
+      }
     }
   }
 

@@ -21,7 +21,8 @@ import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
-import js7.data.workflow.position.{BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
+import js7.data.workflow.position.BranchPath.Segment
+import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
 
 /**
@@ -324,9 +325,12 @@ extends VersionedItem
     isDefinedAt(from) && isDefinedAt(to) && isMoveable(from.branchPath, to.branchPath)
 
   private def isMoveable(from: BranchPath, to: BranchPath): Boolean = {
+    def isMoveBoundary(segment: Segment) =
+      segment.branchId.isFork || segment.branchId == BranchId.Lock
+
     val prefix = BranchPath.commonBranchPath(from, to)
-    !from.drop(prefix.length).exists(_.branchId.isFork) &&
-      !to.drop(prefix.length).exists(_.branchId.isFork)
+    !from.drop(prefix.length).exists(isMoveBoundary) &&
+      !to.drop(prefix.length).exists(isMoveBoundary)
   }
 
   def instruction(position: Position): Instruction =

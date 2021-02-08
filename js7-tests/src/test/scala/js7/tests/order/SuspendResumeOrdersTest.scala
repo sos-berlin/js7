@@ -19,7 +19,7 @@ import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
-import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
+import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.{BooleanValue, NamedValues}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Fork, Retry, TryInstruction}
@@ -380,7 +380,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(
       controller.executeCommandAsSystemUser(ResumeOrder(order.id, Some(Position(99)))).await(99.s) ==
-        Left(Problem("ResumeOrder: Unreachable order position")))
+        Left(UnreachableOrderPositionProblem))
     assert(
       controller.executeCommandAsSystemUser(ResumeOrder(order.id,
         historicOutcomes = Some(Seq(HistoricOutcome(Position(99), Outcome.succeeded))))

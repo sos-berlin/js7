@@ -18,7 +18,7 @@ import js7.data.lock.{LockId, LockState}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
-import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem}
+import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, ForkBranchId, Position, TryBranchId, WorkflowPosition}
@@ -317,7 +317,7 @@ final class OrderEventSource(
               case Some(position) =>
                 checkedWorkflow.flatMap(workflow =>
                   if (!workflow.isMoveable(order.position, position))
-                    Left(Problem.pure("ResumeOrder: Unreachable order position"))
+                    Left(UnreachableOrderPositionProblem)
                   else
                     Right(Some(position)))
             }
