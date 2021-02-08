@@ -1,3 +1,23 @@
+# v2.0.0-alpha.20210131
+
+* Fix: Die Lock-Anweisung erlaubt jetzt Jobs verschiedener Agenten
+* Fix: Ein leerer Workflow blockiert nicht mehr den Auftrag. Der Auftrag wird nun nach dem Start sofort beendet.
+* Fix: defaultArguments von Job und Execute-Anweisung werden jetzt korrekt berücksichtigt (Execute hat Vorrang vor dem Job).
+* Experimentell: InternalExecutable zum Ausführen interner, als Klasse definierter Jobs; zunächst für Scala
+
+## InternalExecutable
+`InternalExecutable` erlaubt es (zunächst experimentell) einen Job als JVM-Klasse mit Scala-Schnittstelle, später auch mit Java-Schnittstelle zu definieren. So ein Job startet also keinen Prozess, sondern läuft in der JVM des Agenten.
+
+Beispiel für einen Aufruf:
+```json
+"executable": {
+  "TYPE": "InternalExecutable",
+  "className": "js7.tests.jobs.EmptyJob"
+}
+```
+Der in JS7 bereits vordefinierte interne Job `js7.tests.jobs.EmptyJob` tut nichts.
+
+----------------------------------------------------------------------------------------------------
 # v2.0.0-alpha.20210127
 
 ## Deklarierte Auftragsparameter
