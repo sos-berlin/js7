@@ -71,7 +71,7 @@ object ThreadPools
     val myName = if (nr == 1) name else s"$name-#$nr"
     val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
     val parallelism = config.as("js7.thread-pools.standard.parallelism")(ThreadCount)
-    val maxThreads = config.as("js7.thread-pools.standard.maximum")(ThreadCount)
+    val maxThreads = config.getInt("js7.thread-pools.standard.maximum")
     logger.debug(s"newStandardScheduler $myName parallelism=$parallelism maxThreads=$maxThreads")
 
     val scheduler = ExecutorScheduler.forkJoinDynamic(myName,
