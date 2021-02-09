@@ -275,7 +275,8 @@
       "agentId": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
-        "className":"js7.tests.jobs.EmptyJob",
+        "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -290,6 +291,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -304,6 +306,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -318,6 +321,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -332,6 +336,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -346,6 +351,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -360,6 +366,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -374,6 +381,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -388,6 +396,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -402,6 +411,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -416,6 +426,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -430,6 +441,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -444,6 +456,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -458,6 +471,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
@@ -473,6 +487,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
