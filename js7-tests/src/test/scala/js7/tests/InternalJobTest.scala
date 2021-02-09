@@ -44,7 +44,11 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms"""
+    js7.controller.agent-driver.event-buffer-delay = 10ms
+    """
+  override protected val agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
+    """
   private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))

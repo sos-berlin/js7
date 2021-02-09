@@ -24,18 +24,27 @@ final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgen
     """
 
   "signed-script-injection-allowed = off (default)" - {
-    "Executing an inline script is not allowed" in {
-      testInjectionNotAllowed(OrderId("❌"), scriptWorkflow.path)
+    "Executing an ScriptExecutable is not allowed" in {
+      testInjectionNotAllowed(OrderId("❌-ScriptExecutable"), scriptWorkflow.path)
     }
 
-    "Executing an absolute path executable is not allowed" in {
-      testInjectionNotAllowed(OrderId("❌❌"), absolutePathWorkflow.path)
+    "Executing an AbsolutePathExecutable is not allowed" in {
+      testInjectionNotAllowed(OrderId("❌-AbsolutePathExecutable"), absolutePathWorkflow.path)
+    }
+
+    "Executing an CommandLineExecutable is not allowed" in {
+      testInjectionNotAllowed(OrderId("❌-CommandLineExecutable"), commandLineWorkflow.path)
+    }
+
+    "Executing an InternalExecutable is not allowed" in {
+      testInjectionNotAllowed(OrderId("❌-InternalExecutable"), internalJobWorkflow.path)
     }
 
     def testInjectionNotAllowed(orderId: OrderId, workflowPath: WorkflowPath): Unit = {
       controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
       val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head
-      assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem == SignedInjectionNotAllowed)
+      assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem ==
+        SignedInjectionNotAllowed)
     }
   }
 }
@@ -43,14 +52,28 @@ final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgen
 object ExecuteNoScriptInjectionTest
 {
   private val agentId = AgentId("AGENT")
+
   private val scriptWorkflow = WorkflowParser.parse(
     WorkflowPath("SCRIPT-WORKFLOW"),
     """define workflow {
          execute agent="AGENT", script=":";
        }""").orThrow
+
   private val absolutePathWorkflow = WorkflowParser.parse(
     WorkflowPath("ABSOLUTE-PATH-WORKFLOW"),
     """define workflow {
         execute agent="AGENT", executable="/ABSOLUTE";
+      }""").orThrow
+
+  private val commandLineWorkflow = WorkflowParser.parse(
+    WorkflowPath("ABSOLUTE-PATH-WORKFLOW"),
+    """define workflow {
+        execute agent="AGENT", command="COMMAND LINE";
+      }""").orThrow
+
+  private val internalJobWorkflow = WorkflowParser.parse(
+    WorkflowPath("ABSOLUTE-PATH-WORKFLOW"),
+    """define workflow {
+        execute agent="AGENT", internalJobClass="js7.executor.forjava.internal.tests.EmptyJInternalJob";
       }""").orThrow
 }

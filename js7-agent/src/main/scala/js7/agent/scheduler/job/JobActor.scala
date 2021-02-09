@@ -77,18 +77,21 @@ extends Actor with Stash
         }
 
       case ex @ CommandLineExecutable(commandLineExpression, envExpr) =>
-        Right { (order, executeArguments, workflow) =>
-          val evaluator = toEvaluator(order, executeArguments, workflow)
-          new CommandLineEvaluator(evaluator)
-            .eval(commandLineExpression)
-            .flatMap { commandLine =>
-              warnIfNotExecutable(commandLine.file)
-              evalEnv(evaluator, envExpr)
-                .map(env =>
-                  ProcessExecute(commandLine, name = commandLine.file.getFileName.toString, env,
-                    v1Compatible = ex.v1Compatible))
-            }
-        }
+        if (!conf.scriptInjectionAllowed)
+          Left(SignedInjectionNotAllowed)
+        else
+          Right { (order, executeArguments, workflow) =>
+            val evaluator = toEvaluator(order, executeArguments, workflow)
+            new CommandLineEvaluator(evaluator)
+              .eval(commandLineExpression)
+              .flatMap { commandLine =>
+                warnIfNotExecutable(commandLine.file)
+                evalEnv(evaluator, envExpr)
+                  .map(env =>
+                    ProcessExecute(commandLine, name = commandLine.file.getFileName.toString, env,
+                      v1Compatible = ex.v1Compatible))
+              }
+          }
 
       case ScriptExecutable(script, envExpr, v1Compatible) =>
         if (!conf.scriptInjectionAllowed)
@@ -107,14 +110,18 @@ extends Actor with Stash
         }
 
       case executable: InternalExecutable =>
-        val executor = new InternalExecutor(executable, conf.blockingJobScheduler)
-        // TODO execute.start here, but it returns a Task
-        Right {
-          (order, executeArguments, workflow) => {
-            toEvaluator(order, executeArguments, workflow)
-              .evalObjectExpression(executable.arguments)
-              .map(_.nameToValue)
-              .map(InternalExecute(executor, order, workflow, _))
+        if (!conf.scriptInjectionAllowed)
+          Left(SignedInjectionNotAllowed)
+        else {
+          val executor = new InternalExecutor(executable, conf.blockingJobScheduler)
+          // TODO execute.start here, but it returns a Task
+          Right {
+            (order, executeArguments, workflow) => {
+              toEvaluator(order, executeArguments, workflow)
+                .evalObjectExpression(executable.arguments)
+                .map(_.nameToValue)
+                .map(InternalExecute(executor, order, workflow, _))
+            }
           }
         }
     }
