@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.Scheduler
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -39,7 +39,7 @@ final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
 object IOExecutor
 {
   private val logger = scribe.Logger[this.type]
-  val globalIOX = new IOExecutor(name = "JS7 I/O")
+  val globalIOX = new IOExecutor(name = "JS7 global I/O")
 
   object Implicits {
     implicit val globalIOX = IOExecutor.globalIOX
@@ -47,12 +47,10 @@ object IOExecutor
 
   def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =
     try
-      promiseFuture[A] { p =>
+      promiseFuture[A] { promise =>
         iox execute { () =>
-          p.complete(Try {
-            blocking {
-              body
-            }
+          promise.complete(Try {
+            body
           })
         }
       }

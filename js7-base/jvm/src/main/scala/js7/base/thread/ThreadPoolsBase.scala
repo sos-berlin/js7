@@ -2,8 +2,6 @@ package js7.base.thread
 
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
-import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.convert.As.StringAsIntOrUnlimited
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
@@ -14,14 +12,19 @@ object ThreadPoolsBase
       newThreadPoolExecutor(name = name, keepAlive = keepAlive,
         corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
 
-  def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
-    newThreadPoolExecutor(
+  def newUnlimitedThreadPool(config: Config, name: String): ThreadPoolExecutor =
+    newUnlimitedThreadPool(
       name = name,
-      keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration,
-      corePoolSize = config.getInt("js7.thread-pools.io.core-pool-size"),
-      maximumPoolSize = config.as("js7.thread-pools.io.maximum-pool-size")(StringAsIntOrUnlimited)
-        .getOrElse(Int.MaxValue),
-      queueSize = config.optionAs[Int]("js7.thread-pools.io.queue-size"))
+      keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration)
+
+  //def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
+  //  newThreadPoolExecutor(
+  //    name = name,
+  //    keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration,
+  //    corePoolSize = config.getInt("js7.thread-pools.io.core-pool-size"),
+  //    maximumPoolSize = config.as("js7.thread-pools.io.maximum-pool-size")(StringAsIntOrUnlimited)
+  //      .getOrElse(Int.MaxValue),
+  //    queueSize = config.optionAs[Int]("js7.thread-pools.io.queue-size"))
 
   def newThreadPoolExecutor(
     name: String,
