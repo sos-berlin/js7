@@ -38,6 +38,15 @@ final case class WorkflowParameters private(nameToParameter: Map[String, Workflo
 
     checkedAllExpected.combineLeft(checked).rightAs(())
   }
+
+  def defaultArgument(name: String): Option[Value] =
+    nameToParameter.get(name)
+      .flatMap(_.default)
+
+  def defaultArguments: NamedValues =
+    nameToParameter.values.view
+      .collect { case WorkflowParameter(name, _, Some(default)) => name -> default }
+      .toMap
 }
 
 object WorkflowParameters

@@ -42,4 +42,9 @@ final class OrderRequirementsTest extends AnyFreeSpec
     assert(orderRequirements.defaultArgument("string").isEmpty)
     assert(orderRequirements.defaultArgument("string-default") == Some(StringValue("DEFAULT")))
   }
+
+  "defaultArguments" in {
+    assert(orderRequirements.defaultArguments == Map(
+      "string-default" -> StringValue("DEFAULT")))
+  }
 }

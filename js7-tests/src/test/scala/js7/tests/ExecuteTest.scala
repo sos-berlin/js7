@@ -19,7 +19,7 @@ import js7.data.value.expression.Expression.{NamedValue, NumericConstant, Object
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
-import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
 import js7.tests.ExecuteTest._
@@ -199,6 +199,35 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Outcome.Succeeded.rc(33)))
   }
 
+  "Arguments when v1Compatible include workflow defaults" in {
+    testWithWorkflow(
+      Workflow(WorkflowPath.Anonymous,
+        Vector(
+          Execute.Anonymous(WorkflowJob(agentId,
+            ScriptExecutable("""echo "C=FROM JOB" >>"$JS7_RETURN_VALUES" """))),
+          Execute.Anonymous(WorkflowJob(agentId,
+            ScriptExecutable(
+              """echo "A=$SCHEDULER_PARAM_A" >>"$SCHEDULER_RETURN_VALUES"
+                |echo "B=$SCHEDULER_PARAM_B" >>"$SCHEDULER_RETURN_VALUES"
+                |echo "C=$SCHEDULER_PARAM_C" >>"$SCHEDULER_RETURN_VALUES"
+                |""".stripMargin,
+              v1Compatible = true)))),
+      orderRequirements = OrderRequirements(Some(WorkflowParameters(
+        WorkflowParameter("A", NumberValue),
+        WorkflowParameter("B", StringValue, Some(StringValue("WORKFLOW PARAMETER DEFAULT VALUE"))))))),
+      orderArguments = Map(
+        "A" -> NumberValue(4711)),
+      expectedOutcomes = Seq(
+        Outcome.Succeeded(NamedValues(
+          "returnCode" -> NumberValue(0),
+          "C" ->  StringValue("FROM JOB"))),
+        Outcome.Succeeded(NamedValues(
+          "returnCode" -> NumberValue(0),
+          "A" ->  StringValue("4711"),
+          "B" ->  StringValue("WORKFLOW PARAMETER DEFAULT VALUE"),
+          "C" ->  StringValue("FROM JOB")/*Results from jobs are unknown*/))))
+  }
+
   addExecuteTest(
     Execute(
       WorkflowJob(
@@ -280,7 +309,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty)
   : Seq[OrderEvent] = {
-    testPrintAndParse(anonymousWorkflow)
+    //TODO OrderRequirements are missing: testPrintAndParse(anonymousWorkflow)
 
     val versionId = versionIdIterator.next()
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next() ~ versionId)

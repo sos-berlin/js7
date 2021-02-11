@@ -7,6 +7,7 @@ import java.nio.file.Files.{createTempFile, exists, getPosixFilePermissions}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import java.nio.file.{Path, Paths}
+import java.util.Locale
 import js7.agent.scheduler.job.JobActor._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
@@ -193,13 +194,16 @@ extends Actor with Stash
                   val v1Env =
                     if (!execute.v1Compatible) Map.empty[String, String]
                     else
-                      (conf.workflowJob.defaultArguments ++ cmd.defaultArguments ++ cmd.order.namedValues)
-                        .view
+                      (conf.workflowJob.defaultArguments ++
+                        cmd.defaultArguments ++
+                        cmd.order.namedValues ++
+                        cmd.workflow.defaultArguments
+                      ) .view
                         .mapValues(_.toStringValue)
                         .collect {
                           case (name, Right(v)) => name -> v  // ignore toStringValue errors (ListValue)
                         }
-                        .map { case (k, StringValue(v)) => (DefaultV1EnvPrefix + k.toUpperCase) -> v }
+                        .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(Locale.ROOT)) -> v }
                         .toMap
 
                   val sender = this.sender()
@@ -336,7 +340,7 @@ extends Actor with Stash
 
 object JobActor
 {
-  private val DefaultV1EnvPrefix = "SCHEDULER_PARAM_"
+  private val V1EnvPrefix = "SCHEDULER_PARAM_"
 
   def props(conf: Conf)(implicit s: Scheduler) = Props { new JobActor(conf) }
 

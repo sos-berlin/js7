@@ -16,9 +16,10 @@ final case class OrderRequirements(
     parameters.fold(Checked.unit)(p => p.checkNamedValues(namedValues))
 
   def defaultArgument(name: String): Option[Value] =
-    parameters
-      .flatMap(_.nameToParameter.get(name))
-      .flatMap(_.default)
+    parameters.flatMap(_.defaultArgument(name))
+
+  def defaultArguments: NamedValues =
+    parameters.fold(NamedValues.empty)(_.defaultArguments)
 }
 
 object OrderRequirements
