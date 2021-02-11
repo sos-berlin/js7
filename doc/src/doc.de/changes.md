@@ -1,3 +1,10 @@
+# v2.0.0-alpha.20210211
+
+* Shell-Jobs mit v1Compatible erhalten jetzt auch die
+im Workflow deklarierten Default-Parameter,
+obwohl JobScheduler 1 das kannte.
+* Außerdem kleine Verbesserungen und eine Optimierung durch weniger Threads.
+
 # v2.0.0-alpha.20210208
 
 * Proxy
