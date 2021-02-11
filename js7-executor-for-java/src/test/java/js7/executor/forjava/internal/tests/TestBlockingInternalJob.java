@@ -29,7 +29,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         logger.debug("processOrder " + context.order().id());
         // Blocking is allowed here, because it is a BlockingInternalJob
         assertSpecialThread();
-        sleep(1000);
+        sleep(500);
         doSomethingInParallel();
 
         Value maybeValue = context.arguments().get("arg");  // May be null

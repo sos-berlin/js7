@@ -2,6 +2,10 @@ package js7.executor.forjava.internal.tests;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import js7.data.value.NumberValue;
 import js7.executor.forjava.internal.JInternalJob;
 import js7.executor.forjava.internal.JJobContext;
@@ -11,17 +15,32 @@ import js7.executor.forjava.internal.JOrderResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static java.util.Collections.singletonMap;
+import static java.util.concurrent.ForkJoinPool.commonPool;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 // For a simpler example, see TestBlockingInternalJob
 public final class TestJInternalJob implements JInternalJob
 {
     private static final Logger logger = LoggerFactory.getLogger(TestBlockingInternalJob.class);
+    private static final int delayMillis = 500;
+
     private final JJobContext jobContext;
     private volatile String started = "NOT STARTED";
+
+    // Schedule like Java 9:
+    private final ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(0);
+    private Executor delayedExecutor(long delay, TimeUnit unit) {
+      return runnable -> scheduler.schedule(() -> commonPool().execute(runnable), delay, unit);
+    }
 
     public TestJInternalJob(JJobContext jobContext) {
         this.jobContext = jobContext;
     }
+
+    // Not yet possible
+    //public void stop() {
+    //    scheduler.shutdown();
+    //}
 
     public CompletionStage<Void> start() {
         return CompletableFuture.runAsync(
@@ -32,7 +51,7 @@ public final class TestJInternalJob implements JInternalJob
         return JOrderProcess.of(
             CompletableFuture.supplyAsync(
                 () -> process(context),
-                jobContext.js7Executor()/*optional SET ONLY IF YOU KNOW WHAT THIS MEANS*/));
+                delayedExecutor(delayMillis, MILLISECONDS)));
 
         /* USING JS7'S OWN EXECUTOR IS EFFICIENT BUT DANGEROUS!
            It's efficient because no extra thread pool competing about CPU is started.

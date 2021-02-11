@@ -37,14 +37,12 @@ final class InternalExecutorForJavaTest extends AnyFreeSpec with BeforeAndAfterA
         jobScheduler)
 
       "processOrder" in {
-        for (i <- 1 to 3) withClue(s"Order #$i: ") {
-          assert(processOrder(NumberValue(i)).completed.await(99.s) ==
-            Right(Result(NamedValues("RESULT" -> NumberValue(i + 1)))))
-        }
+        assert(processOrder(NumberValue(1000)).completed.await(99.s) ==
+          Right(Result(NamedValues("RESULT" -> NumberValue(1001)))))
       }
 
       "parallel" in {
-        val indices = 1 to 10000
+        val indices = 1 to 1000
         val processes = for (i <- indices) yield
           processOrder(NumberValue(i))
             .completed
