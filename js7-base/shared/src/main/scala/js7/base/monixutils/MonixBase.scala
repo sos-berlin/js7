@@ -205,9 +205,14 @@ object MonixBase
         onComplete: (FiniteDuration, Long, ExitCase[Throwable]) => Unit,
         startedAt: Deadline = now)
       : Observable[A] =
-        Observable.fromTask(
-          Task.pure(underlying).logTiming(toCount, onComplete, startedAt)
-        ).flatten
+        Observable
+          .fromTask(
+            Task.pure(underlying)
+              .logTiming(toCount, onComplete, startedAt))
+          .flatten
+
+      final def buffer(timespan: Option[FiniteDuration], maxCount: Long, toWeight: A => Long = _ => 1): Observable[Seq[A]] =
+        new BufferedObservable[A](underlying, timespan, maxCount, toWeight)
     }
 
     implicit class RichMonixObservableTask[A](private val underlying: Task[Observable[A]]) extends AnyVal
