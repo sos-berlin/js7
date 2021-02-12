@@ -109,11 +109,11 @@ object MonixBase
     {
       /** Provides the Scheduler, similar to Task deferAction. */
       def deferAction[A](toObservable: Scheduler => Observable[A]): Observable[A] =
-        Observable.fromTask(
-          Task.deferAction(implicit scheduler =>
-            Task(
-              toObservable(scheduler)))
-        ).flatten
+        Observable
+          .fromTask(
+            Task.deferAction(implicit scheduler =>
+              Task(toObservable(scheduler))))
+          .flatten
     }
 
     implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal
@@ -228,7 +228,8 @@ object MonixBase
           .map(_.orThrow/*never throws*/)
     }
 
-    implicit class RichMonixObservableCheckedTask[A](private val underlying: Task[Checked[Observable[A]]]) extends AnyVal
+    implicit class RichMonixObservableCheckedTask[A](private val underlying: Task[Checked[Observable[A]]])
+    extends AnyVal
     {
       def logTiming(
         toCount: A => Long = simpleCount,

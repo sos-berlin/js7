@@ -30,7 +30,8 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process, argumentsForLogging: Seq[String])
+class RichProcess protected[process](val processConfiguration: ProcessConfiguration,
+  process: Process, argumentsForLogging: Seq[String])
   (implicit iox: IOExecutor, ec: ExecutionContext)
 extends HasCloser with ClosedFuture
 {
