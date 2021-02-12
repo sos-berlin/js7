@@ -387,8 +387,8 @@ with ReceiveLoggingActor.WithStash
           if (!delay.isPositive)
             obs.bufferIntrospective(conf.eventBufferSize)
           else obs
-            .bufferTimedAndCounted(
-              conf.eventBufferDelay max conf.commitDelay,
+            .buffer(
+              Some(conf.eventBufferDelay max conf.commitDelay),
               maxCount = conf.eventBufferSize)  // ticks
             .filter(_.nonEmpty))   // Ignore empty ticks
         .mapEval(stampedEvents =>
