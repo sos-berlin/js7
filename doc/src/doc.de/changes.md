@@ -1,3 +1,14 @@
+# v2.0.0-alpha.20210212
+
+* out und err für interne Jobs.
+Das sind eigene Kanäle, _nicht_ stdout und stderr des Agenten.
+Dazu erhält `BlockingInternalJob` ein neues `JOrderProcess` mit den Methoden
+  * `out()` und `err()` als `PrinterWriter`
+  * `outWriter()` und `errWriter()` für die zugrunde liegenden `Writer`.
+
+Es ist deutlich effizienter, viel Text auf einmal statt in vielen Häppchen zu schreiben.
+Jedes `printLn()` bzw. `write()` kann ein Event erzeugen.
+
 # v2.0.0-alpha.20210211
 
 * Shell-Jobs mit v1Compatible erhalten jetzt auch die
