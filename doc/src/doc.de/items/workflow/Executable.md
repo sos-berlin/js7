@@ -123,11 +123,11 @@ package js7.executor.forjava.internal.tests;
 
 import java.util.concurrent.CompletableFuture;
 import js7.executor.forjava.internal.JInternalJob;
-import js7.executor.forjava.internal.JOrderContext;
 import js7.executor.forjava.internal.JOrderProcess;
 import js7.executor.forjava.internal.JOrderResult;
 import static java.util.Collections.emptyMap;
 
+/** Skeleton for a JInternalJob implementation. */
 public final class EmptyJInternalJob implements JInternalJob
 {
     public JOrderProcess processOrder(JOrderContext context) {
@@ -151,6 +151,21 @@ Der Parameter `JOrderContext` mit vor allem den Parametern ist unten beschrieben
 
 `JResult.of` erwartet eine `Map<String, Value>` mit dem Ergebnis der Ausführung.
 
+#### JJobContext
+
+Eine JInternalJob-Klasse kann einen Konstruktor mit dem Parameter `JJobContext` definieren,
+der im Wesentlichen das folgende Feld enthält:
+* `jobArguments`, eine `Map<String, Value>` mit den für den Job (nicht Auftragsschritt)
+  bestimmten Parametern.
+
+#### JOrderContext
+`JOrderContext` stellt für einen Auftragsschritt bereit:
+* `arguments`, eine `Map<String, Value>` mit den deklarieren Parametern (s.u.),
+* `order`, ein `JOrder`, also der Auftrag, und
+* `workflow`, ein `JWorkflow`, also der Workflow, in dem sich der Auftrag befindet.
+
+In den meisten Fällen wird man mit `arguments` auskommen.
+
 ### BlockingInternalJob
 
 Ein Job, der `BlockingInternalJob` implementiert,
@@ -169,7 +184,6 @@ Minimales Beispiel für einen internen Job, der nichts tut:
 package js7.executor.forjava.internal.tests;
 
 import js7.executor.forjava.internal.BlockingInternalJob;
-import js7.executor.forjava.internal.JOrderContext;
 import js7.executor.forjava.internal.JOrderResult;
 import static java.util.Collections.emptyMap;
 
@@ -181,21 +195,28 @@ public final class EmptyBlockingInternalJob implements BlockingInternalJob
 }
 ```
 
-### JJobContext
+#### JJobContext
 
-Die Klassen beider Implementierungen können einen Konstruktor
-mit dem Parameter `JJobContext` definieren,
+Eine BlockingInternalJob-Klasse kann einen Konstruktor mit dem Parameter `JJobContext` definieren,
 der im Wesentlichen das folgende Feld enthält:
 * `jobArguments`, eine `Map<String, Value>` mit den für den Job (nicht Auftragsschritt)
   bestimmten Parametern.
 
-### JOrderContext
+#### JOrderContext
 `JOrderContext` stellt für einen Auftragsschritt bereit:
-* `arguments`, eine `Map<String, Value>` mit den deklarieren Parametern (s.u.),
-* `order`, ein `JOrder`, also der Auftrag, und
-* `workflow`, ein `JWorkflow`, also der Workflow, in dem sich der Auftrag befindet.
+* `arguments`: eine `Map<String, Value>` mit den deklarieren Parametern (s.u.),
+* `order`: ein `JOrder`, also der Auftrag, und
+* `workflow`: ein `JWorkflow`, also der Workflow, in dem sich der Auftrag befindet.
+* `outWriter` und `errWriter` die Out- und Err-Känäle
+* `out`, `err`: die Out- und Err-Kanäle als `PrinterWriter`.
 
 In den meisten Fällen wird man mit `arguments` auskommen.
+
+Die Out- und Err-Kanäle sind ungepuffert und
+haben bei jedem `write` bzw. `println` einen Kontextwechsel
+und oft ein Event zur Folge.
+Eine Ausgabe mehrerer Zeilen wird effizienter in einem Aufruf übergeben,
+oder man verwendet einen ausreichend gepufferten `BufferedWriter`.
 
 ### Fehlerbehandlung
 

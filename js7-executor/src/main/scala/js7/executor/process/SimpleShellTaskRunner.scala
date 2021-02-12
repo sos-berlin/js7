@@ -18,7 +18,8 @@ import js7.executor.process.ShellScriptProcess.startPipedShellScript
 import js7.executor.process.SimpleShellTaskRunner._
 import js7.executor.task.{BaseAgentTask, StdChannels, TaskRunner}
 import monix.eval.Task
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import monix.execution.Scheduler
+import scala.concurrent.{Future, Promise}
 import scala.util.Success
 import scala.util.control.NonFatal
 
@@ -30,7 +31,7 @@ final class SimpleShellTaskRunner(
   taskId: TaskId,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   executorConfiguration: ExecutorConfiguration)
-  (implicit iox: IOExecutor, ec: ExecutionContext)
+  (implicit scheduler: Scheduler, iox: IOExecutor)
 extends TaskRunner
 {
   val asBaseAgentTask = new BaseAgentTask {
@@ -142,7 +143,7 @@ object SimpleShellTaskRunner
     taskIdGenerator: TaskIdGenerator,
     synchronizedStartProcess: RichProcessStartSynchronizer,
     executorConfiguration: ExecutorConfiguration)
-    (implicit iox: IOExecutor, ec: ExecutionContext)
+    (implicit scheduler: Scheduler, iox: IOExecutor)
   extends TaskRunner.Factory
   {
     def apply(conf: TaskConfiguration) = {

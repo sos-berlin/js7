@@ -7,17 +7,18 @@ import js7.data_for_java.workflow.JWorkflow
 import js7.executor.internal.InternalJob.OrderContext
 import scala.jdk.CollectionConverters._
 
-final case class JOrderContext(asScala: OrderContext)
-extends JavaWrapper
+trait JavaOrderContext extends JavaWrapper
 {
   type AsScala = OrderContext
 
-  lazy val order =
+  def asScala: OrderContext
+
+  final lazy val order =
     JOrder(asScala.order)
 
-  lazy val workflow =
+  final lazy val workflow =
     JWorkflow(asScala.workflow)
 
-  lazy val arguments: java.util.Map[String, Value] =
+  final lazy val arguments: java.util.Map[String, Value] =
     asScala.arguments.asJava
 }

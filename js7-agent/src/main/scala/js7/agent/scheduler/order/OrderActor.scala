@@ -3,14 +3,15 @@ package js7.agent.scheduler.order
 import akka.actor.ActorRef.noSender
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import akka.pattern.pipe
+import cats.syntax.foldable._
 import com.typesafe.config.Config
 import js7.agent.data.AgentState
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.OrderActor._
-import js7.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import js7.base.generic.{Accepted, Completed}
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters._
@@ -24,11 +25,14 @@ import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.task.StdChannels
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
+import monix.eval.Task
 import monix.execution.Scheduler
+import monix.reactive.Observable
+import monix.reactive.subjects.PublishSubject
+import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import shapeless.tag.@@
@@ -49,15 +53,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   protected def journalConf = conf.journalConf
   private var order: Order[Order.State] = null
-  private var stdouterr: StdouterrToEvent = null
   private var terminating = false
 
   protected def key = orderId
-
-  override def postStop() = {
-    if (stdouterr != null) stdouterr.close()
-    super.postStop()
-  }
 
   def receive = {
     case Input.Recover(o) =>
@@ -111,16 +109,29 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def startable: Receive =
     receiveEvent() orElse {
-      case Input.StartProcessing(jobKey, workflowJob, jobActor, defaultArguments) =>
+      case Input.StartProcessing(jobKey, jobActor, defaultArguments) =>
         if (order.isProcessable) {
-          assertThat(stdouterr == null)
-          stdouterr = new StdouterrToEvent(context, conf.stdouterrToEventConf, writeStdouterr)
-          val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
-          val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
-          become("processing")(processing(jobKey, workflowJob, jobActor,
-            () => (stdoutWriter.isRelevant || stderrWriter.isRelevant) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
+          val out, err = PublishSubject[String]()
+          val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
+          def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
+            observable
+              .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
+              .flatMap(strings => Observable.fromIterable(combineStringsAndSplit(strings, conf.stdouterr.chunkSize)))
+              .flatMap(chunk => Observable.fromTask(
+                outErrStatistics(outerr).count(chunk.length,
+                  writeStdouterr(outerr, chunk))))
+              .completedL
+          val outErrCompleted = Task.parZip2(
+            writeObservableAsEvents(Stdout, out),
+            writeObservableAsEvents(Stderr, err)
+          ).void.runToFuture
+          become("processing")(
+            processing(jobKey, jobActor, outErrCompleted,
+              () => (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) ?
+                s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
           context.watch(jobActor)
-          val orderStarted = order.isState[Order.Fresh] thenList OrderStarted  // OrderStarted automatically with first OrderProcessingStarted
+          // OrderStarted automatically with first OrderProcessingStarted
+          val orderStarted = order.isState[Order.Fresh] thenList OrderStarted
           persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
             update(events, updatedState)
             jobActor ! JobActor.Command.ProcessOrder(
@@ -128,10 +139,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               order.castState[Order.Processing],
               workflow,
               defaultArguments,
-              new StdChannels(
-                charBufferSize = charBufferSize,
-                stdoutWriter = stdoutWriter,
-                stderrWriter = stderrWriter))
+              StdChannels(charBufferSize = charBufferSize, out, err))
           }
         }
 
@@ -142,18 +150,22 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def failedOrBroken: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-  private def processing(jobKey: JobKey, job: WorkflowJob, jobActor: ActorRef, stdoutStderrStatistics: () => Option[String]): Receive =
+  private def processing(jobKey: JobKey, jobActor: ActorRef, outerrCompleted: Future[Unit],
+    stdoutStderrStatistics: () => Option[String])
+  : Receive =
     receiveCommand orElse receiveEvent(jobActor) orElse {
-      case msg: Stdouterr =>  // Handle these events to continue the stdout and stderr threads or the threads will never terminate !!!
-        stdouterr.handle(msg)
-
       case JobActor.Response.OrderProcessed(`orderId`, outcome_, isKilled) =>
         val outcome = outcome_ match {
           case o: Outcome.Completed => if (isKilled) Outcome.Killed(o) else outcome_
           case o => o
         }
-        finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)
         context.unwatch(jobActor)
+        outerrCompleted.onComplete { _ =>
+          self ! Internal.OutErrCompleted(outcome)
+        }
+
+      case Internal.OutErrCompleted(outcome) =>
+        finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)
 
       case Terminated(`jobActor`) =>
         // May occur when JobActor is terminated while receiving JobActor.Command.ProcessOrder
@@ -171,8 +183,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     }
 
   private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () => Option[String]): Unit = {
-    stdouterr.close()
-    stdouterr = null
     for (o <- stdoutStderrStatistics()) logger.debug(o)
     handleEvent(event)
   }
@@ -258,13 +268,13 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     sender() ! Status.Failure(new IllegalStateException(msg))
   }
 
-  private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Accepted] =
+  private def writeStdouterr(t: StdoutOrStderr, chunk: String): Task[Accepted] =
     if (stdoutCommitDelay.isZero)  // slow
-      persist(OrderStdWritten(t)(chunk)) { (_, _) =>
+      persistTask(OrderStdWritten(t)(chunk)) { (_, _) =>
         Accepted
-      }
+      }.map(_.orThrow)
     else
-      persistAcceptEarly(OrderStdWritten(t)(chunk), delay = stdoutCommitDelay)
+      persistAcceptEarlyTask(OrderStdWritten(t)(chunk), delay = stdoutCommitDelay)
         .map(_.orThrow)
       // Don't wait for disk-sync. OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
 
@@ -312,6 +322,52 @@ private[order] object OrderActor
   private[order] def props(orderId: OrderId, workflow: Workflow, journalActor: ActorRef @@ JournalActor.type, conf: OrderActor.Conf)(implicit s: Scheduler) =
     Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf) }
 
+  private[order] def combineStringsAndSplit(strings: Seq[String], maxSize: Int): Seq[String] = {
+    val total = strings.view.map(_.length).sum
+    if (total == 0)
+      Nil
+    else if (total <= maxSize)
+      strings.combineAll :: Nil
+    else {
+      val result = mutable.Buffer.empty[String]
+      val sb = new StringBuilder(maxSize)
+      for (str <- strings) {
+        if (sb.isEmpty && str.length == maxSize) {
+          result.append(str)
+        } else
+        if (sb.length + str.length <= maxSize) {
+          sb.append(str)
+          if (sb.length == maxSize) {
+            result.append(sb.toString)
+            sb.clear()
+          }
+        } else {
+          var start = 0
+          while (start < str.length) {
+            val end = (start + maxSize - sb.length) min str.length
+            val a = str.substring(start, end)
+            if (sb.isEmpty && a.length == maxSize) {
+              result.append(a)
+            } else {
+              sb.append(a)
+              if (sb.length == maxSize) {
+                result.append(sb.toString)
+                sb.clear()
+              }
+            }
+            start += a.length
+          }
+        }
+      }
+      if (sb.nonEmpty) result.append(sb.toString)
+      result.toSeq
+    }
+  }
+
+  private object Internal {
+    final case class OutErrCompleted(outcome: Outcome)
+  }
+
   sealed trait Command
   object Command {
     final case class Attach(order: Order[Order.IsFreshOrReady]) extends Command
@@ -323,8 +379,8 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddOffering(order: Order[Order.Offering]) extends Input
-    final case class StartProcessing(jobKey: JobKey, workflowJob: WorkflowJob, jobActor: ActorRef, defaultArguments: NamedValues)
-      extends Input
+    final case class StartProcessing(jobKey: JobKey, jobActor: ActorRef,
+      defaultArguments: NamedValues) extends Input
     final case class Terminate(processSignal: Option[ProcessSignal] = None)
     extends Input with DeadLetterSuppression
   }
@@ -334,13 +390,25 @@ private[order] object OrderActor
     final case class OrderChanged(order: Order[Order.State], events: Seq[OrderEvent])
   }
 
-  final case class Conf(stdoutCommitDelay: FiniteDuration, charBufferSize: Int, stdouterrToEventConf: StdouterrToEvent.Conf,
-    journalConf: JournalConf)
+  final case class Conf(stdoutCommitDelay: FiniteDuration, charBufferSize: Int, journalConf: JournalConf,
+    stdouterr: StdouterrConf)
   object Conf {
-    def apply(config: Config, journalConf: JournalConf) = new Conf(
-      stdoutCommitDelay = config.getDuration("js7.order.stdout-stderr.commit-delay").toFiniteDuration,
-      charBufferSize    = config.getInt     ("js7.order.stdout-stderr.char-buffer-size"),
-      stdouterrToEventConf = StdouterrToEvent.Conf(config),
-      journalConf)
+    def apply(config: Config, journalConf: JournalConf) = {
+      val outErrConf = StdouterrConf(config)
+      new Conf(
+        stdoutCommitDelay = config.getDuration("js7.order.stdout-stderr.commit-delay").toFiniteDuration,
+        charBufferSize    = config.getInt     ("js7.order.stdout-stderr.char-buffer-size")
+                              .min(outErrConf.chunkSize),
+        journalConf,
+        outErrConf)
+    }
+  }
+
+  final case class StdouterrConf(chunkSize: Int, delay: FiniteDuration/*, noDelayAfter: FiniteDuration*/)
+  object StdouterrConf {
+    def apply(config: Config): StdouterrConf = new StdouterrConf(
+      chunkSize    = config.getInt     ("js7.order.stdout-stderr.chunk-size"),
+      delay        = config.getDuration("js7.order.stdout-stderr.delay").toFiniteDuration)
+      //noDelayAfter = config.getDuration("js7.order.stdout-stderr.no-delay-after").toFiniteDuration)
   }
 }

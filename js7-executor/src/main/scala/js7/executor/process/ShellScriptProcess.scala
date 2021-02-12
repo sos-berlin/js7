@@ -1,23 +1,25 @@
 package js7.executor.process
 
-import java.io.{InputStream, InputStreamReader, Reader, Writer}
+import cats.effect.ExitCase
+import java.io.{InputStream, InputStreamReader}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes._
 import js7.base.io.process.ReturnCode
+import js7.base.monixutils.UnbufferedReaderObservable
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.ioFuture
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.scalautil.Logger
 import js7.data.job.CommandLine
 import js7.executor.process.RichProcess.{startProcessBuilder, tryDeleteFile}
 import js7.executor.task.StdChannels
-import scala.annotation.tailrec
-import scala.concurrent.{ExecutionContext, Future}
+import monix.eval.Task
+import monix.execution.Scheduler
+import monix.reactive.Observable
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
-import scala.util.{Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -25,9 +27,8 @@ import scala.util.{Success, Try}
 class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Process,
-  private[process] val commandLine: CommandLine,
   argumentsForLogging: Seq[String])
-  (implicit iox: IOExecutor, ec: ExecutionContext)
+  (implicit ec: ExecutionContext, iox: IOExecutor)
 extends RichProcess(processConfiguration, process, argumentsForLogging)
 {
   stdin.close() // Process gets an empty stdin
@@ -47,7 +48,7 @@ object ShellScriptProcess
     try {
       shellFile.write(scriptString, processConfiguration.encoding)
       val process = startProcessBuilder(processConfiguration, shellFile, arguments = Nil) { _.startRobustly() }
-      new ShellScriptProcess(processConfiguration, process, CommandLine.fromFile(shellFile),
+      new ShellScriptProcess(processConfiguration, process,
         argumentsForLogging = shellFile.toString :: Nil)
       {
         override val terminated = promiseFuture[ReturnCode] { p =>
@@ -65,7 +66,7 @@ object ShellScriptProcess
   }
 
   def startPipedShellScript(commandLine: CommandLine, conf: ProcessConfiguration, stdChannels: StdChannels)
-    (implicit ec: ExecutionContext, iox: IOExecutor): ShellScriptProcess =
+    (implicit scheduler: Scheduler, iox: IOExecutor): ShellScriptProcess =
   {
     val processBuilder = new ProcessBuilder(toShellCommandArguments(
       commandLine.file, commandLine.arguments.tail ++ conf.idArgumentOption/*TODO Should not be an argument*/).asJava)
@@ -73,20 +74,22 @@ object ShellScriptProcess
     processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
     val process = processBuilder.startRobustly()
 
-    def startCopy(in: InputStream, w: Writer): Future[Try[Unit]] =
-      ioFuture {
-        Try {
-          Success(copyChunks(new InputStreamReader(in, conf.encoding), stdChannels.charBufferSize, w))
+    def toObservable(in: InputStream, onTerminated: Promise[Unit]): Observable[String] =
+      UnbufferedReaderObservable(Task(new InputStreamReader(in)), stdChannels.charBufferSize)
+        .executeOn(iox.scheduler)
+        .guaranteeCase {
+          case ExitCase.Error(t) => Task(onTerminated.failure(t))
+          case ExitCase.Completed | ExitCase.Canceled => Task(onTerminated.success(()))
         }
-      }
 
-    val stdoutClosed = startCopy(process.getInputStream, stdChannels.stdoutWriter)
-    val stderrClosed = startCopy(process.getErrorStream, stdChannels.stderrWriter)
+    val outClosed, errClosed = Promise[Unit]()
+    toObservable(process.getInputStream, outClosed).subscribe(stdChannels.out)
+    toObservable(process.getErrorStream, errClosed).subscribe(stdChannels.err)
 
-    new ShellScriptProcess(conf, process, commandLine, argumentsForLogging = commandLine.toString :: Nil) {
+    new ShellScriptProcess(conf, process, argumentsForLogging = commandLine.toString :: Nil) {
       override def terminated = for {
-        outTried <- stdoutClosed
-        errTried <- stderrClosed
+        outTried <- outClosed.future transformWith Future.successful
+        errTried <- errClosed.future transformWith Future.successful
         returnCode <- super.terminated
         returnCode <-
           if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
@@ -97,20 +100,5 @@ object ShellScriptProcess
             Future.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
       } yield returnCode
     }
-  }
-
-  private def copyChunks(reader: Reader, charBufferSize: Int, writer: Writer): Unit = {
-    val array = new Array[Char](charBufferSize)
-
-    @tailrec def loop(): Unit =
-      reader.read(array) match {
-        case -1 =>
-        case len =>
-          writer.write(array, 0, len)
-          loop()
-      }
-
-    try loop()
-    finally writer.close()  // Send "end of file"
   }
 }

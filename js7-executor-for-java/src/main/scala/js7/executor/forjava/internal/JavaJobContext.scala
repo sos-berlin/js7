@@ -5,12 +5,14 @@ import js7.data_for_java.common.JavaWrapper
 import js7.executor.internal.InternalJob.JobContext
 import scala.jdk.CollectionConverters._
 
-final case class JJobContext(
-  asScala: JobContext,
-  js7Executor: java.util.concurrent.Executor)
-extends JavaWrapper
+trait JavaJobContext extends JavaWrapper
 {
   type AsScala = JobContext
+
+  def asScala: JobContext
+
+  final val js7Executor: java.util.concurrent.Executor =
+    asScala.js7Scheduler
 
   lazy val jobArguments: java.util.Map[String, Value] =
     asScala.jobArguments.asJava

@@ -37,7 +37,6 @@ final class ShellScriptProcessTest extends AnyFreeSpec
     shellProcess.close()
     assert(shellProcess.closed.isCompleted)
     shellProcess.terminated await 5.s
-    assert(!exists(shellProcess.commandLine.file))
   }
 
   if (isUnix) {

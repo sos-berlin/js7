@@ -8,6 +8,7 @@ import js7.data.workflow.Workflow
 import js7.executor.internal.InternalJob._
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.reactive.Observer
 
 trait InternalJob
 {
@@ -22,13 +23,16 @@ object InternalJob
   final case class JobContext(
     implementationClass: Class[_],
     jobArguments: Map[String, Value],
+    implicit val js7Scheduler: Scheduler,
     blockingJobScheduler: Scheduler)
 
   final case class OrderContext private(
     order: Order[Order.Processing],
     workflow: Workflow,
     arguments: NamedValues,
-    scope: Scope)
+    scope: Scope,
+    out: Observer[String],
+    err: Observer[String])
 
   final case class OrderProcess private(
     completed: Task[Checked[Result]])

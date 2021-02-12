@@ -4,8 +4,6 @@ import java.util.concurrent.CompletableFuture;
 import js7.data.value.NumberValue;
 import js7.data.value.Value;
 import js7.executor.forjava.internal.BlockingInternalJob;
-import js7.executor.forjava.internal.JJobContext;
-import js7.executor.forjava.internal.JOrderContext;
 import js7.executor.forjava.internal.JOrderResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,12 +23,21 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         assertSpecialThread();
     }
 
-    public JOrderResult processOrder(JOrderContext context) {
+    public JOrderResult processOrder(JOrderContext context) throws Exception {
         logger.debug("processOrder " + context.order().id());
         // Blocking is allowed here, because it is a BlockingInternalJob
         assertSpecialThread();
-        sleep(500);
+        Thread.sleep(500);
         doSomethingInParallel();
+
+        context.out().println("TEST FOR OUT");
+        context.out().println("FROM " + getClass().getName());
+
+        // Test many write()
+        String string = "TEST FOR ERR";
+        for (int i = 0; i < string.length(); i++) {
+            context.errWriter().write(string.charAt(i));
+        }
 
         Value maybeValue = context.arguments().get("arg");  // May be null
         // 💥 May throw NullPointerException or ArithmeticException 💥
@@ -45,14 +52,6 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         assertThat("thread=" + currentThread().getName() + ", but expectedThreadPrefix=" + blockingThreadPrefix,
             currentThread().getName().startsWith(blockingThreadPrefix),
             equalTo(true));
-    }
-
-    private static void sleep(int millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private void doSomethingInParallel() {

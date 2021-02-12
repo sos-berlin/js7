@@ -13,12 +13,13 @@ extends InternalJob
 
   override def start: Task[Checked[Unit]] =
     helper.start(
-      jobContext,
+      JInternalJob.JJobContext(jobContext),
       job => Task.fromFuture(job.start.asScala).void)
 
-  def processOrder(context: OrderContext) =
-    helper.processOrder(
-      context,
-      (jInternalJob, jOrderContext) =>
-        jInternalJob.processOrder(jOrderContext).asScala)
+  def processOrder(context: OrderContext) = {
+    import jobContext.js7Scheduler
+    val jOrderContext = JInternalJob.JOrderContext(context)
+    helper.processOrder(jOrderContext)((jInternalJob, jOrderContext) =>
+      jInternalJob.processOrder(jOrderContext).asScala)
+  }
 }

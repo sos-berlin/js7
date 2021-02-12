@@ -8,8 +8,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import js7.data.value.NumberValue;
 import js7.executor.forjava.internal.JInternalJob;
-import js7.executor.forjava.internal.JJobContext;
-import js7.executor.forjava.internal.JOrderContext;
 import js7.executor.forjava.internal.JOrderProcess;
 import js7.executor.forjava.internal.JOrderResult;
 import org.slf4j.Logger;
@@ -49,21 +47,13 @@ public final class TestJInternalJob implements JInternalJob
 
     public JOrderProcess processOrder(JOrderContext context) {
         return JOrderProcess.of(
-            CompletableFuture.supplyAsync(
-                () -> process(context),
-                delayedExecutor(delayMillis, MILLISECONDS)));
-
-        /* USING JS7'S OWN EXECUTOR IS EFFICIENT BUT DANGEROUS!
-           It's efficient because no extra thread pool competing about CPU is started.
-           Use js7Executor only if the code does not block, that means
-           - no Thread.sleep() or something like that, not even for a millisecond
-           - no 'synchronized' or other blocking locking
-           -  (unless you are sure it's very quick)
-           - no blocking network I/O
-           - no file access unless you are sure it's not a network mounted drive
-           - no long calculations blocking a thread for a long time
-           -  (break up the calculation in multiple Futures)
-        */
+            CompletableFuture
+                .supplyAsync(
+                    () -> process(context),
+                    delayedExecutor(delayMillis, MILLISECONDS))
+                .thenCombine(context.sendOut("TEST FOR OUT\n"), (a, b) -> a)
+                .thenCombine(context.sendOut("FROM " + TestJInternalJob.class.getName() + "\n"), (a, b) -> a)
+                .thenCombine(context.sendErr("TEST FOR ERR"), (a, b) -> a));
     }
 
     private JOrderResult process(JOrderContext context) {

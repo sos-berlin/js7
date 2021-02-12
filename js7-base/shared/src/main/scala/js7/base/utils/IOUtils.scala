@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import java.io.{InputStream, OutputStream}
+import java.io.{InputStream, OutputStream, Reader, Writer}
 import scala.annotation.tailrec
 
 object IOUtils
@@ -17,5 +17,20 @@ object IOUtils
       }
     }
     loop()
+  }
+
+  private def copyReaderToWriter(reader: Reader, charBufferSize: Int, writer: Writer): Unit = {
+    val array = new Array[Char](charBufferSize)
+
+    @tailrec def loop(): Unit =
+      reader.read(array) match {
+        case -1 =>
+        case len =>
+          writer.write(array, 0, len)
+          loop()
+      }
+
+    try loop()
+    finally writer.close()  // Send "end of file"
   }
 }

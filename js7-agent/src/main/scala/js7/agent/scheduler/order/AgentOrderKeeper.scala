@@ -45,7 +45,6 @@ import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.task.TaskRunner
 import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
@@ -539,9 +538,7 @@ with Stash {
             logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
 
           case Some(orderEntry) =>
-            for (workflowJob <- orderEntry.checkedJob.onProblem(o => logger.error(o))) {
-              startProcessing(orderEntry, jobEntry.jobKey, workflowJob, jobEntry)
-            }
+            startProcessing(orderEntry, jobEntry.jobKey, jobEntry)
             jobEntry.waitingForOrder = false
         }
 
@@ -549,13 +546,13 @@ with Stash {
         jobEntry.waitingForOrder = true
     }
 
-  private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, job: WorkflowJob, jobEntry: JobEntry): Unit = {
+  private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, jobEntry: JobEntry): Unit = {
     val defaultArguments = orderEntry.instruction match {
       case o: Execute.Named => o.defaultArguments
       case _ => NamedValues.empty
     }
     //assertThat(job.jobPath == jobEntry.jobPath)
-    orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, job, jobEntry.actor, defaultArguments)
+    orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, jobEntry.actor, defaultArguments)
   }
 
   private def removeOrder(orderId: OrderId): Unit =

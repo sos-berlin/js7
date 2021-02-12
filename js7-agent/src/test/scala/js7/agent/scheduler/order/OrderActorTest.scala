@@ -111,6 +111,14 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     val result: Result = terminated await 99.s  // Continues when the nested actor has terminated. CatchingActor may still run for some microseconds.
     (testActor, result)
   }
+
+  "combineStringsAndSplit" in {
+    assert(OrderActor.combineStringsAndSplit(Nil, 7) == Nil)
+    assert(OrderActor.combineStringsAndSplit(List(""), 7) == Nil)
+    assert(OrderActor.combineStringsAndSplit(List("A"), 7) == List("A"))
+    assert(OrderActor.combineStringsAndSplit(List("a", "bc", "def", "ghij", "klmnopqr"), 7) ==
+      List("abcdefg", "hijklmn", "opqr"))
+  }
 }
 
 private object OrderActorTest {
@@ -172,7 +180,7 @@ private object OrderActorTest {
         executablesDirectory = (dir / "config" / "executables").toRealPath(),
         sigkillProcessesAfter = 5.s,
         scriptInjectionAllowed = false,
-        blockingJobScheduler = globalIOX.testScheduler)))
+        blockingJobScheduler = globalIOX.scheduler)))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
         journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
@@ -208,7 +216,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed =>
-        orderActor ! OrderActor.Input.StartProcessing(jobKey, workflowJob, defaultArguments = Map.empty, jobActor = jobActor)
+        orderActor ! OrderActor.Input.StartProcessing(jobKey, defaultArguments = Map.empty, jobActor = jobActor)
         become(processing)
     }
 

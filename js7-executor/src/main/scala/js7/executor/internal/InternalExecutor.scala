@@ -1,5 +1,6 @@
 package js7.executor.internal
 
+import cats.syntax.flatMap._
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.problem.Checked.CheckedOption
@@ -14,7 +15,10 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.control.NonFatal
 
-final class InternalExecutor(executable: InternalExecutable, blockingJobScheduler: Scheduler)
+final class InternalExecutor(
+  executable: InternalExecutable,
+  blockingJobScheduler: Scheduler)
+  (implicit scheduler: Scheduler)
 {
   private lazy val runningJob: Checked[InternalJob] =
     toInstantiator(executable.className)
@@ -35,6 +39,12 @@ final class InternalExecutor(executable: InternalExecutable, blockingJobSchedule
       .flatMapT(_ => Task {
         runningJob.map(_.processOrder(context))
       })
+      .map(_.map(orderProcess =>
+        orderProcess.copy(
+          completed = orderProcess.completed.flatTap(_ => Task {
+            context.out.onComplete()
+            context.err.onComplete()
+          }))))
       .tapEval {
         case Left(problem) => Task(logger.debug(s"${executable.className} " +
           s"processOrder(${context.order.id.string}): $problem", problem.throwableOption.orNull))
@@ -67,7 +77,7 @@ final class InternalExecutor(executable: InternalExecutable, blockingJobSchedule
   }
 
   private def toJobContext(cls: Class[_]) =
-    JobContext(cls, executable.jobArguments, blockingJobScheduler)
+    JobContext(cls, executable.jobArguments, scheduler, blockingJobScheduler)
 
   override def toString = s"InternalExecutor(${executable.className})"
 }
@@ -87,29 +97,35 @@ object InternalExecutor
         Left(Problem.pure(t.toStringWithCauses))
     }
 
+  private val isAllowedConstructorParamameterClass = Set[Class[_]](
+    classOf[InternalJob.JobContext])
+
   private def getConstructor(clas: Class[_ <: InternalJob]): Checked[Constructor[InternalJob]] =
     Checked.catchNonFatal {
       val constructors = clas
         .getConstructors.asInstanceOf[Array[Constructor[InternalJob]]]
         .filter(o => isPublic(o.getModifiers))
       constructors
-        .find(_.getParameterTypes sameElements Array(classOf[InternalJob.JobContext]))
-        .orElse(constructors.find(_.getParameterTypes.isEmpty))
+        .find(_.getParameterTypes.forall(isAllowedConstructorParamameterClass))
         .toChecked(Problem.pure(
           s"Class '${clas.getName}' does not have an appropriate constructor (empty or InternalJob.Context)"))
     }.flatten
 
-  private def construct(constructor: Constructor[InternalJob], startJob: JobContext)
-  : Checked[InternalJob] =
+  private def construct(constructor: Constructor[InternalJob], jobContext: JobContext)
+  : Checked[InternalJob] = {
+    val args = constructor.getParameterTypes
+      .map(cls =>
+        if (cls isAssignableFrom classOf[InternalJob.JobContext])
+          jobContext
+        else
+          sys.error(s"Unsupported constructor parameter: ${cls.getName}"))  // Should not happen
     try
-      Right(constructor.getParameterCount match {
-        case 0 => constructor.newInstance()
-        case 1 => constructor.newInstance(startJob)
-      })
+      Right(constructor.newInstance(args: _*))
     catch {
       case t @ (_: InvocationTargetException | _: ExceptionInInitializerError) =>
         Left(Problem.fromThrowable(Option(t.getCause) getOrElse t))
       case NonFatal(t) =>
         Problem.fromThrowable(t)
     }
+  }
 }

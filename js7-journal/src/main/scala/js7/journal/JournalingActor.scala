@@ -70,18 +70,13 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     }
 
   /** Fast lane for events not affecting the journaled state. */
-  protected final def persistKeyedEventAcceptEarly[EE <: E](
+  protected final def persistKeyedEventAcceptEarlyTask[EE <: E](
     keyedEvent: KeyedEvent[EE],
     timestampMillis: Option[Long] = None,
     delay: FiniteDuration = Duration.Zero)
-  : Future[Checked[Accepted]] =
-    promiseFuture[Checked[Accepted]] { promise =>
-      start(async = true, "persistKeyedEventAcceptEarly")
-      val timestamped = Timestamped(keyedEvent, timestampMillis) :: Nil
-      journalActor.forward(
-        JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
-          delay = delay, alreadyDelayed = Duration.Zero, since = now,
-          Deferred(async = true, checked => promise.success(checked))))
+  : Task[Checked[Accepted]] =
+    promiseTask[Checked[Accepted]] { promise =>
+      self ! PersistAcceptEarly(keyedEvent, timestampMillis, delay, promise)
     }
 
   protected final def persistKeyedEvent[EE <: E, A](
@@ -157,6 +152,14 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
             case ProblemException(problem) => Left(problem)
             case t: Throwable => throw t.appendCurrentStackTrace
           }))
+
+    case PersistAcceptEarly(keyedEvent, timestampMillis, delay, promise) =>
+      start(async = true, "persistKeyedEventAcceptEarlyTask")
+      val timestamped = Timestamped(keyedEvent, timestampMillis) :: Nil
+      journalActor.forward(
+        JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
+          delay = delay, alreadyDelayed = Duration.Zero, since = now,
+          Deferred(async = true, checked => promise.success(checked))))
 
     case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
@@ -260,6 +263,12 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     keyedEvent: KeyedEvent[E],
     async: Boolean = false,
     callback: (Stamped[KeyedEvent[E]], S) => A,
+    promise: Promise[Checked[A]])
+
+  private case class PersistAcceptEarly[A](
+    keyedEvent: KeyedEvent[E],
+    timestampMillis: Option[Long],
+    delay: FiniteDuration,
     promise: Promise[Checked[A]])
 
   private class PersistStatistics {

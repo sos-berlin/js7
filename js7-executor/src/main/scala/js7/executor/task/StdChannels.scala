@@ -1,8 +1,11 @@
 package js7.executor.task
 
-import java.io.Writer
+import monix.reactive.Observer
 
 /**
   * @author Joacim Zschimmer
   */
-final class StdChannels(val charBufferSize: Int, val stdoutWriter: Writer, val stderrWriter: Writer)
+final case class StdChannels(
+  charBufferSize: Int,
+  out: Observer[String],
+  err: Observer[String])

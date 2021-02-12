@@ -161,7 +161,7 @@ extends Actor with Stash
     case cmd: Command.ProcessOrder if waitingForNextOrder =>
       waitingForNextOrder = false
       if (cmd.jobKey != jobKey) {
-        replyWithOrderProcessed(Response.OrderProcessed(
+        replyWithOrderProcessed(cmd.stdChannels, Response.OrderProcessed(
           cmd.order.id,
           Outcome.Disrupted(Problem.pure(
             s"Internal error: requested jobKey=${cmd.jobKey} ≠ JobActor's $jobKey")), isKilled = false))
@@ -170,6 +170,7 @@ extends Actor with Stash
         checkedExecutable.flatMap(_(cmd.order, cmd.defaultArguments, cmd.workflow)) match {
           case Left(problem) =>
             replyWithOrderProcessed(
+              cmd.stdChannels,
               Response.OrderProcessed(cmd.order.id, Outcome.Disrupted(problem), killed))  // Exception.toString is published !!!
 
           case Right(execute: ProcessExecute) =>
@@ -177,14 +178,17 @@ extends Actor with Stash
               val msg = s"Execute '${execute.file}' not found"
               logger.error(s"Order '${cmd.order.id.string}' step failed: $msg")
               replyWithOrderProcessed(
+                cmd.stdChannels,
                 Response.OrderProcessed(cmd.order.id, Outcome.Disrupted(Problem.pure(msg)), killed))
             } else
               Try(execute.file.toRealPath()) match {
                 case Failure(t) =>
-                  replyWithOrderProcessed(Response.OrderProcessed(
-                    cmd.order.id,
-                    Outcome.Disrupted(Problem.pure(
-                      s"Execute '$execute': ${t.toStringWithCauses}")), killed))  // Exception.toString is published !!!
+                  replyWithOrderProcessed(
+                    cmd.stdChannels,
+                    Response.OrderProcessed(
+                      cmd.order.id,
+                      Outcome.Disrupted(Problem.pure(
+                        s"Execute '$execute': ${t.toStringWithCauses}")), killed))  // Exception.toString is published !!!
                 case Success(executableFile) =>
                   assertThat(taskCount < workflowJob.taskLimit, "Task limit exceeded")
                   if (!execute.isTemporary && !conf.scriptInjectionAllowed) {
@@ -210,7 +214,7 @@ extends Actor with Stash
                   processOrder(cmd.order.id, execute.commandLine, v1Env ++ execute.env,
                     v1Compatible = execute.v1Compatible, cmd.stdChannels
                   ) .onComplete { triedCheckedCompleted =>
-                      self.!(Internal.TaskFinished(cmd.order.id, triedCheckedCompleted))(sender)
+                      self.!(Internal.TaskFinished(cmd.order.id, cmd.stdChannels, triedCheckedCompleted))(sender)
                     }
                   handleIfReadyForOrder()
               }
@@ -221,8 +225,9 @@ extends Actor with Stash
               kill = _ => {}))
             val scope = toScope(order, arguments, workflow)
             val sender = this.sender()
-            executor.processOrder(InternalJob.OrderContext(order, workflow, arguments, scope))
-              .flatMapT(_.completed)
+            executor.processOrder(InternalJob.OrderContext(order, workflow, arguments, scope,
+              cmd.stdChannels.out, cmd.stdChannels.err
+            )).flatMapT(_.completed)
               .map(_.map(_.namedValues))
               .runToFuture
               .onComplete { tried_ =>
@@ -230,15 +235,15 @@ extends Actor with Stash
                   case Left(problem) => Outcome.Failed(Some(problem.toString))
                   case Right(namedValues) => Outcome.Succeeded(namedValues)
                 }
-                self.!(Internal.TaskFinished(cmd.order.id, tried))(sender)
+                self.!(Internal.TaskFinished(cmd.order.id, cmd.stdChannels, tried))(sender)
               }
         }
       }
 
-    case Internal.TaskFinished(orderId, triedNamedValues) =>
+    case Internal.TaskFinished(orderId, stdChannels, triedNamedValues) =>
       val run = orderToRun(orderId)
       orderToRun -= orderId
-      replyWithOrderProcessed(
+      replyWithOrderProcessed(stdChannels,
         Response.OrderProcessed(orderId, recoverFromFailure(triedNamedValues), isKilled = run.isKilled))
 
     case Input.Terminate(maybeSignal) =>
@@ -272,7 +277,9 @@ extends Actor with Stash
       killOrder(orderId, SIGKILL)
   }
 
-  private def replyWithOrderProcessed(msg: Response.OrderProcessed): Unit = {
+  private def replyWithOrderProcessed(stdChannels: StdChannels, msg: Response.OrderProcessed): Unit = {
+    stdChannels.out.onComplete()
+    stdChannels.err.onComplete()
     sender() ! msg
     continueTermination()
     handleIfReadyForOrder()
@@ -380,7 +387,8 @@ object JobActor
   }
 
   private object Internal {
-    final case class TaskFinished(orderId: OrderId, triedCheckedCompleted: Try[Outcome.Completed])
+    final case class TaskFinished(orderId: OrderId, stdChannels: StdChannels,
+      triedCheckedCompleted: Try[Outcome.Completed])
     final case object KillAll extends DeadLetterSuppression
     final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression
   }
