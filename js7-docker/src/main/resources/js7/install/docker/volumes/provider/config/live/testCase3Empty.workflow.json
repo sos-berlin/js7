@@ -502,6 +502,7 @@
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
+        "jobArguments": {},
         "arguments": {}
       },
       "returnCodeMeaning": {
