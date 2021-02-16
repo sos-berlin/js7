@@ -59,7 +59,6 @@ object BuildUtils
             .filter(c => c != '-' && c != ':')
             .take(13)
             .replace('T', '.')
-          + "Z"
       else if (version.value endsWith "-SNAPSHOT")
         // "2.0.0-SNAPSHOT+9abcdef"
         version.value + commitHash.value.fold("")("+" + _.take(CommitHashLength))
