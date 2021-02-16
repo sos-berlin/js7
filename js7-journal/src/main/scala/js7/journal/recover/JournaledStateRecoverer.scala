@@ -74,8 +74,7 @@ object JournaledStateRecoverer
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
     val fileJournaledStateBuilder = new FileJournaledStateBuilder(
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
-      expectedJournalId)
-    val eventWatch = new JournalEventWatch(journalMeta, config)  // Closed with `Recovered#close`
+      expectedJournalId = None)
 
     file match {
       case Some(file) =>
@@ -89,7 +88,8 @@ object JournaledStateRecoverer
             file,
             length = recoverer.position,
             lastProperEventPosition = recoverer.lastProperEventPosition,
-            fileJournaledStateBuilder.fileJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
+            journalHeader = fileJournaledStateBuilder.fileJournalHeader
+              .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
             calculatedJournalHeader,
             firstEventPosition = recoverer.firstEventPosition
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),

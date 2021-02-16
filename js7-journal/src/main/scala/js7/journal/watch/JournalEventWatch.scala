@@ -22,7 +22,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
 import js7.common.scalautil.Logger
-import js7.data.event.{Event, EventId, JournalId, JournalInfo, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.data.problems.UnknownEventIdProblem
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.listJournalFiles
@@ -266,20 +266,20 @@ with JournalingObserver
       afterEventIdToHistoric.keys.toSeq.sorted ++ currentEventReaderOption.map(_.tornEventId)
     }
 
-  def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
+  def observeFile(maybeJournalPosition: Option[JournalPosition], timeout: FiniteDuration,
+    markEOF: Boolean, onlyAcks: Boolean)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]] =
-    Task(checkedCurrentEventReader)  // FIXME Implement for historic journal files, too
-      .flatMapT(current =>
-        // Use defaults for manual request of the current journal file stream, just to show something
-        observeFile(
-          fileEventId = fileEventId getOrElse current.tornEventId,
-          position = position getOrElse current.committedLength,
-          timeout,
-          markEOF = markEOF,
-          onlyAcks = onlyAcks))
+    Task.pure(maybeJournalPosition)
+      .map {
+        case Some(journalPosition: JournalPosition) => Right(journalPosition)
+        case None => checkedCurrentEventReader.map(_.journalPosition)
+      }
+      .flatMapT(journalPosition =>
+        observeFile(journalPosition, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
 
-  private def observeFile(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
+  private def observeFile(journalPosition: JournalPosition, timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]] = {
+    import journalPosition.{fileEventId, position}
     (nextEventReaderPromise match {
       case Some((`fileEventId`, promise)) =>
         if (!promise.isCompleted) {

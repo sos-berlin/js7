@@ -3,6 +3,8 @@ package js7.controller.web.controller.api
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import cats.instances.option._
+import cats.syntax.semigroupal._
 import js7.base.auth.ValidUserPermission
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
@@ -22,7 +24,7 @@ import js7.common.scalautil.Logger
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.JournalRoute._
 import js7.data.event.JournalSeparators.HeartbeatMarker
-import js7.data.event.{EventId, JournalSeparators}
+import js7.data.event.{EventId, JournalPosition, JournalSeparators}
 import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -60,25 +62,26 @@ trait JournalRoute extends ControllerRouteProvider
                       parameter("return" ? "") { returnType =>
                         accept(JournalContentType) {
                           complete(
-                            Task.pure(parseReturnAckParameter(returnType)).flatMapT(returnAck =>
-                              eventWatch.observeFile(fileEventId = maybeFileEventId, position = maybePosition, timeout,
-                                                      markEOF = markEOF, onlyAcks = returnAck)
-                                .flatMapT { observable =>
-                                  val f = if (returnAck) toLength _ else toContent _
-                                  Task.pure(Right(
-                                    HttpEntity(
-                                      JournalContentType,
-                                      observable
-                                        .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
-                                          logger.debug("whenShuttingDown completed")
-                                        })
-                                        .map(f)
-                                        .pipeIf(heartbeat.isDefined)(_
-                                          .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
-                                        .map(_.toByteString)
-                                        .toAkkaSourceForHttpResponse)))
-                                  })
-                          .runToFuture)
+                            Task.pure(parseReturnAckParameter(returnType))
+                              .flatMapT { returnAck =>
+                                val maybeJournalPosition = maybeFileEventId.product(maybePosition)
+                                  .map((JournalPosition.apply _).tupled)
+                                eventWatch.observeFile(maybeJournalPosition, timeout,
+                                  markEOF = markEOF, onlyAcks = returnAck
+                                ).map(_.map(observable =>
+                                  HttpEntity(
+                                    JournalContentType,
+                                    observable
+                                      .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
+                                        logger.debug("whenShuttingDown completed")
+                                      })
+                                      .map(if (returnAck) toLength else toContent)
+                                      .pipeIf(heartbeat.isDefined)(_
+                                        .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
+                                      .map(_.toByteString)
+                                      .toAkkaSourceForHttpResponse)))
+                              }
+                              .runToFuture)
                         }
                       }
                     }

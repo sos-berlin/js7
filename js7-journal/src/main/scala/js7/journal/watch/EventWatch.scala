@@ -6,7 +6,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
 import js7.common.jsonseq.PositionAnd
-import js7.data.event.{Event, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -64,8 +64,11 @@ trait EventWatch
     predicate: E => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E]]
 
-  /** Returns None as last element iff timeout has elapsed. */
-  def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration,
+  /** Returns None as last element iff timeout has elapsed.
+    * @param journalPosition None to use defaults for manual request of the current journal file stream,
+    *                        just to show something.
+    */
+  def observeFile(journalPosition: Option[JournalPosition], timeout: FiniteDuration,
     markEOF: Boolean = false, onlyAcks: Boolean = false)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]]
 

@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import js7.base.monixutils.MonixDeadline
 import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
-import js7.data.event.{EventId, JournalId}
+import js7.data.event.{EventId, JournalId, JournalPosition}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 
@@ -34,7 +34,8 @@ extends EventReader
   @volatile private var _committedLength = flushedLengthAndEventId.position
   @volatile private var _lastEventId = flushedLengthAndEventId.value
 
-  protected[journal] def committedLength = _committedLength
+  /*protected[journal]*/ def committedLength = _committedLength
+  protected[journal] def journalPosition = JournalPosition(tornEventId, _committedLength)
 
   protected def isEOF(position: Long) = journalingEnded && position >= _committedLength
 

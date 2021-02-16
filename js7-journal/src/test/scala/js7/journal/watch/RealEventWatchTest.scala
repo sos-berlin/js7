@@ -4,7 +4,7 @@ import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
-import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.journal.watch.RealEventWatchTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -25,7 +25,7 @@ final class RealEventWatchTest extends AnyFreeSpec
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotAfter(after: EventId) = None
       def rawSnapshotAfter(after: EventId) = None
-      def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
+      def observeFile(journalPosition: Option[JournalPosition], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
         throw new NotImplementedError
       onEventsCommitted(events.last.eventId)
       def journalInfo = throw new NotImplementedError
@@ -88,7 +88,7 @@ object RealEventWatchTest {
           toStampedEvent(after + i)
         }))
 
-    def observeFile(fileEventId: Option[EventId], position: Option[Long], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
+    def observeFile(journalPosition: Option[JournalPosition], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
       Task(Left(Problem("EndlessEventWatch.observeFile is not implemented")))
   }
 }
