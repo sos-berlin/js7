@@ -17,6 +17,18 @@ final class EventIdTest extends AnyFreeSpec
     assert(timestamp == MaximumJsonLosslessEventIdInstant)
   }
 
+  "Compatible with floating-point" in {
+    for (i <- 0 to 2000) {
+      val eventId = EventId.JavascriptMaxValue - i
+      assert(eventId.toDouble.toLong == eventId)
+    }
+  }
+
+  "But not over the limit" in {
+    val overflowedEventId = EventId.JavascriptMaxValue + 1
+    assert(overflowedEventId.toDouble.toLong != overflowedEventId)
+  }
+
   "toString" in {
     assert(EventId.toString(EventId(      0)) ==       "0/BeforeFirst")
     assert(EventId.toString(EventId(      1)) ==       "1/1970-01-01T00:00:00.000Z.001")
