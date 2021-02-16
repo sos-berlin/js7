@@ -7,6 +7,7 @@ import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFac
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
+import js7.base.log.Logger
 import js7.base.utils.AutoClosing._
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.mutable
@@ -29,7 +30,7 @@ import scala.util.control.NonFatal
   */
 object Https
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
   private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
 
   def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {

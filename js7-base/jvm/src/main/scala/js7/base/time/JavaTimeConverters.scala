@@ -2,12 +2,13 @@ package js7.base.time
 
 import java.time.{Duration, Instant}
 import java.util.concurrent.TimeUnit.NANOSECONDS
+import js7.base.log.Logger
 import js7.base.time.ScalaTime._
 import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}
 
 object JavaTimeConverters
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
   private val MaxDuration = Duration.ofNanos(Long.MaxValue)
   private val MinDuration = Duration.ofNanos(Long.MinValue + 1)
   private lazy val useJava8Workaround =

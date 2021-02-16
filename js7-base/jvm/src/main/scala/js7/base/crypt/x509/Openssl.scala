@@ -8,6 +8,7 @@ import js7.base.crypt.x509.Openssl.{openssl, _}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.runProcess
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.system.OperatingSystem.isMac
@@ -117,7 +118,7 @@ final class Openssl(dir: Path)
 
 object Openssl
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
   private val PrivateKeyPem = Pem("PRIVATE KEY")
 
   private val useHomebrew = true

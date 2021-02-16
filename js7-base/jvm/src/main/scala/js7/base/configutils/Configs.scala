@@ -10,6 +10,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
 import js7.base.io.JavaResource
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import scala.jdk.CollectionConverters._
@@ -22,7 +23,7 @@ object Configs
   private val InternalOriginDescription = "JS7"
   private val SecretOriginDescription = "JS7 Secret"
   private val Required = ConfigParseOptions.defaults.setAllowMissing(false)
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def configIf(predicate: Boolean, config: => Config): Config =
     if (predicate) config

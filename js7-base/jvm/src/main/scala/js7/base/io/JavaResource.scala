@@ -9,6 +9,7 @@ import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsE
 import java.util.Objects.requireNonNull
 import js7.base.data.ByteSequence
 import js7.base.io.JavaResource._
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
@@ -104,7 +105,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
 }
 
 object JavaResource {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def apply(classLoader: ClassLoader, path: String): JavaResource =
     new JavaResource(classLoader, path)

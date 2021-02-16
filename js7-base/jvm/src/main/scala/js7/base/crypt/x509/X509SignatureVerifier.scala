@@ -8,8 +8,10 @@ import java.security.{PublicKey, Signature, SignatureException}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.auth.DistinguishedName
 import js7.base.crypt.x509.X509Cert.CertificatePem
+import js7.base.crypt.x509.X509SignatureVerifier.logger
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
@@ -85,8 +87,8 @@ extends SignatureVerifier
       Right(())
     } catch { case NonFatal(t) =>
       t match {
-        case _: SignatureException => scribe.debug(t.toStringWithCauses)
-        case _ => scribe.warn(t.toString)
+        case _: SignatureException => logger.debug(t.toStringWithCauses)
+        case _ => logger.warn(t.toString)
       }
       Left(MessageSignedByUnknownProblem)
     }
@@ -97,6 +99,7 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
   protected type MySignature = X509Signature
   protected type MySignatureVerifier = X509SignatureVerifier
 
+  private val logger = Logger[this.type]
   val typeName = X509Signature.TypeName
   val filenameExtension = ".pem"
   val recommendedKeyDirectoryName = "trusted-x509-keys"
@@ -115,9 +118,9 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
           .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
           .map { signerDNToTrustedCertificate =>
             val rootCertificates = trustedCertificates.filter(_.isCA)
-            for (o <- rootCertificates) scribe.debug(
+            for (o <- rootCertificates) logger.debug(
               s"Trusting signatures signed with a certificate which is signed with root $o")
-            for (o <- signerDNToTrustedCertificate.values) scribe.debug(
+            for (o <- signerDNToTrustedCertificate.values) logger.debug(
               s"Trusting signatures signed with $o")
             new X509SignatureVerifier(
               trustedCertificates,

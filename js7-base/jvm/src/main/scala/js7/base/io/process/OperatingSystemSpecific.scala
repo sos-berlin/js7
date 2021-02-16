@@ -5,6 +5,7 @@ import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, Path}
 import js7.base.io.process.OperatingSystemSpecific._
+import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 
 /**
@@ -40,7 +41,7 @@ private[process] sealed trait OperatingSystemSpecific {
 
 private object OperatingSystemSpecific
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   private[process] val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
 

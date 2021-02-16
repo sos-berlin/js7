@@ -2,6 +2,7 @@ package js7.base.thread
 
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ThreadPoolExecutor}
+import js7.base.log.Logger
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor._
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
@@ -39,7 +40,7 @@ final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
 
 object IOExecutor
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
   val globalIOX = new IOExecutor(name = "JS7 global I/O")
 
   object Implicits {

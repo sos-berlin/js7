@@ -2,6 +2,7 @@ package js7.base.io.process
 
 import javax.lang.model.SourceVersion
 import js7.base.io.process.Processes.Pid
+import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
 
@@ -14,7 +15,10 @@ import js7.base.utils.ScalaUtils.syntax._
  */
 object ProcessPidRetriever
 {
+  private val logger = Logger[this.type]
+
   private[process] val hasJava9 = SourceVersion.values.map(_.toString) contains "RELEASE_9"
+
   lazy val maybeOwnPid: Option[Pid] =
     if (!hasJava9)
       None
@@ -32,7 +36,6 @@ object ProcessPidRetriever
           logger.debug(s"maybeOwnPid => ${t.toStringWithCauses}")
           None
       }
-  private val logger = scribe.Logger[this.type]
 
   private[process] val processToPid: Process => Option[Pid] =
     if (hasJava9)

@@ -2,6 +2,8 @@ package js7.base.io.https
 
 import java.security.cert.{CertificateException, X509Certificate}
 import javax.net.ssl.X509TrustManager
+import js7.base.io.https.CompositeX509TrustManager._
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
 import scala.util.{Failure, Success}
 
@@ -41,7 +43,7 @@ extends X509TrustManager
 
     tries.collectFirst { case Success(a) => a }
       .getOrElse {
-        for (t <- tries.map(_.failed.get)) scribe.debug(t.toStringWithCauses)
+        for (t <- tries.map(_.failed.get)) logger.debug(t.toStringWithCauses)
         throw new CertificateException("None of the TrustManagers trust this certificate chain")
       }
   }
@@ -52,6 +54,8 @@ extends X509TrustManager
 
 object CompositeX509TrustManager
 {
+  private val logger = Logger[this.type]
+
   def apply(trustManagers: Seq[X509TrustManager]): X509TrustManager =
     trustManagers match {
       case Seq(single) => single

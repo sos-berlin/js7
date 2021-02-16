@@ -7,6 +7,7 @@ import js7.base.data.ByteArray
 import js7.base.generic.GenericLong
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
+import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime._
@@ -17,7 +18,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 object Processes
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def processToString(process: Process): String = processToString(process, processToPidOption(process))
 

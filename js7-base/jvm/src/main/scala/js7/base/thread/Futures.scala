@@ -1,6 +1,7 @@
 package js7.base.thread
 
 import java.util.concurrent.TimeoutException
+import js7.base.log.Logger
 import js7.base.time.ScalaTime._
 import js7.base.utils.StackTraces._
 import scala.collection.BuildFrom
@@ -15,7 +16,7 @@ import scala.util.{Failure, Success}
  */
 object Futures {
 
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   /**
    * Like [[Await]]`.result` - in case of exception, own stack trace is added.
