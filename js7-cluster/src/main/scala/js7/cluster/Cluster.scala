@@ -89,7 +89,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
         val workingClusterNode = new WorkingClusterNode(persistence, eventWatch, common, clusterConf)
         assertThat(!_passiveOrWorkingNode.exists(_.isRight))
         _passiveOrWorkingNode = Some(Right(workingClusterNode))
-        workingClusterNode.startIfNonEmpty(followUp.recovered.clusterState)
+        workingClusterNode.startIfNonEmpty(followUp.recovered.clusterState, followUp.recovered.eventId)
           .map(_.map((_: Completed) => followUp))
       }
     currentPassiveReplicatedState -> workingFollowUp

@@ -16,8 +16,8 @@ import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
-import js7.data.event.JournaledState
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{EventId, JournaledState}
 import js7.data.node.NodeId
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.RealEventWatch
@@ -45,10 +45,10 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
   private val activeClusterNodeTask = Task { _activeClusterNode.checked }
   private val currentClusterState = persistence.clusterState
 
-  def startIfNonEmpty(clusterState: ClusterState): Task[Checked[Completed]] =
+  def startIfNonEmpty(clusterState: ClusterState, eventId: EventId): Task[Checked[Completed]] =
     clusterState match {
       case ClusterState.Empty => Task.pure(Right(Completed))
-      case clusterState: HasNodes => startActiveClusterNode(clusterState)
+      case clusterState: HasNodes => startActiveClusterNode(clusterState, eventId)
     }
 
   def close(): Unit =
@@ -111,7 +111,7 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
           .flatMapT { case (_, state) =>
             state.clusterState match {
               case clusterState: HasNodes =>
-                startActiveClusterNode(clusterState)
+                startActiveClusterNode(clusterState, state.eventId)
               case clusterState => Task.pure(Left(Problem.pure(
                 s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
             }
@@ -122,10 +122,10 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
           .flatMapT(_.appointNodes(setting))
     }
 
-  private def startActiveClusterNode(clusterState: HasNodes) = {
+  private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId) = {
     val activeClusterNode = new ActiveClusterNode(clusterState, persistence, eventWatch, common, clusterConf)
     if (_activeClusterNode.trySet(activeClusterNode))
-      activeClusterNode.start
+      activeClusterNode.start(eventId)
     else
       Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
   }

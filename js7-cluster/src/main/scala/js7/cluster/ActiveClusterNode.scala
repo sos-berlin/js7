@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.syntax.flatMap._
+import cats.syntax.monoid._
 import com.softwaremill.diffx
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
@@ -37,6 +38,7 @@ import monix.execution.cancelables.SerialCancelable
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.Promise
+import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
 
@@ -65,16 +67,37 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   import clusterConf.ownId
 
-  def start: Task[Checked[Completed]] =
+  def start(eventId: EventId): Task[Checked[Completed]] =
     Task.defer {
       logger.info("Asking ClusterWatch")
       assertThat(initialClusterState.activeId == ownId)
       clusterStateLock.lock(
-        clusterWatchSynchronizer.doAHeartbeatAndStart(initialClusterState)
-          .flatMapT { _ =>
-            logger.info("ClusterWatch agreed that this is the active cluster node")
-            proceed(initialClusterState) map Right.apply
-          })
+        Task.parMap2(
+          doAHeartbeatAndStart(initialClusterState),
+          requestAcknowledgmentIfCoupled(eventId)
+        )(_ |+| _)
+          .flatMapT(_ => proceed(initialClusterState) map Right.apply))
+    }
+
+  private def doAHeartbeatAndStart(clusterState: HasNodes): Task[Checked[Completed]] =
+    clusterWatchSynchronizer.doACheckedHeartbeat(clusterState)
+      .flatMapT(_ => Task.defer {
+        logger.info("ClusterWatch agreed that this is the active cluster node")
+        clusterWatchSynchronizer.startHeartbeating(clusterState)
+          .map(Right.apply)
+      })
+
+  private def requestAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
+    initialClusterState match {
+      case coupled: Coupled =>
+        Task(logger.info("Requesting acknowledgement for the last recovered event")) >>
+          awaitAcknowledgement(coupled, eventId)
+            .logWhenItTakesLonger("acknowledgement")
+            .flatTap {
+              case Left(problem) => Task(logger.debug(problem.toString))
+              case Right(Completed) => Task(logger.info("Passive node acknowledged the recovered state"))
+            }
+      case _ => Task.pure(Right(Completed))
     }
 
   def stop: Task[Completed] =
@@ -400,7 +423,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         .fromResource(
           common.clusterContext.clusterNodeApi(passiveUri, "acknowledgements"))
         .flatMap(api =>
-          observeEventIds(api, timing)
+          observeEventIds(api, Some(timing.heartbeat))
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .detectPauses(timing.longHeartbeatTimeout)
             .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
@@ -430,7 +453,21 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         .guaranteeCase(exitCase => Task(
           logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
 
-  private def observeEventIds(api: ClusterNodeApi, timing: ClusterTiming): Observable[EventId] =
+  private def awaitAcknowledgement(clusterState: ClusterState.Coupled, eventId: EventId)
+  : Task[Checked[Completed]] =
+    Observable
+      .fromResource(
+        common.clusterContext.clusterNodeApi(clusterState.passiveUri, "awaitAcknowledgement"))
+      .flatMap(api => observeEventIds(api, heartbeat = None))
+      .doOnNext(eventId => Task(logger.debug(s"awaitAcknowledgement => $eventId")))
+      .dropWhile(_ != eventId)
+      .headOptionL
+      .map {
+        case Some(`eventId`) => Right(Completed)
+        case _ => Left(Problem.pure(s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))
+      }
+
+  private def observeEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration]): Observable[EventId] =
     RecouplingStreamReader
       .observe[EventId, EventId, ClusterNodeApi](
         toIndex = identity,
@@ -439,7 +476,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         after = -1L/*unused, web service returns always the newest EventIds*/,
         getObservable = (_: EventId) =>
           HttpClient.liftProblem(
-            api.eventIdObservable(heartbeat = Some(timing.heartbeat))),
+            api.eventIdObservable(heartbeat = heartbeat)),
         stopRequested = () => stopRequested)
 
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =

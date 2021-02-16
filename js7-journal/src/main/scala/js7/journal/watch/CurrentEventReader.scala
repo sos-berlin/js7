@@ -34,7 +34,7 @@ extends EventReader
   @volatile private var _committedLength = flushedLengthAndEventId.position
   @volatile private var _lastEventId = flushedLengthAndEventId.value
 
-  /*protected[journal]*/ def committedLength = _committedLength
+  protected def committedLength = _committedLength
   protected[journal] def journalPosition = JournalPosition(tornEventId, _committedLength)
 
   protected def isEOF(position: Long) = journalingEnded && position >= _committedLength

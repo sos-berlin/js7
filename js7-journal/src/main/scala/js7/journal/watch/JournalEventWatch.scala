@@ -343,9 +343,7 @@ with JournalingObserver
     def eventReader: EventReader =
       _eventReader.get() match {
         case null =>
-          val r = new HistoricEventReader(journalMeta,
-            Some(journalId.getOrElse(throw JournalIsNotYetReadyProblem(file).throwable)),
-            tornEventId = afterEventId, file, config)
+          val r = new HistoricEventReader(journalMeta, journalIdOnce.get, tornEventId = afterEventId, file, config)
           if (_eventReader.compareAndSet(null, r)) {
             logger.debug(s"Using HistoricEventReader(${file.getFileName})")
             r
@@ -381,14 +379,14 @@ with JournalingObserver
   }
 
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
-    currentEventReaderOption.toChecked(JournalIsNotYetReadyProblem(journalMeta.fileBase))
+    currentEventReaderOption.toChecked(JournalFileIsNotYetReadyProblem(journalMeta.fileBase))
 }
 
 object JournalEventWatch
 {
   private val logger = Logger(getClass)
 
-  private case class JournalIsNotYetReadyProblem(file: Path) extends Problem.Coded {
+  private case class JournalFileIsNotYetReadyProblem(file: Path) extends Problem.Coded {
     def arguments = Map("file" -> file.getFileName.toString)
   }
 

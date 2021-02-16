@@ -48,12 +48,6 @@ private final class ClusterWatchSynchronizer(
             }
           }
 
-  def doAHeartbeatAndStart(clusterState: HasNodes): Task[Checked[Completed]] =
-    doACheckedHeartbeat(clusterState)
-      .flatMapT(_ =>
-        startHeartbeating(clusterState)
-          .map(Right.apply))
-
   def startHeartbeating(clusterState: HasNodes, dontWait: Boolean = false): Task[Completed] =
     Task.defer {
       val h = new Heartbeat(clusterState)
@@ -140,7 +134,7 @@ private final class ClusterWatchSynchronizer(
       }
   }
 
-  private def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
+  def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
     clusterWatch.heartbeat(from = ownId, clusterState)
       .materializeIntoChecked
 
