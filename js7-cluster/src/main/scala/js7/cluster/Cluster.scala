@@ -201,8 +201,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
       yield recoverFromTruncated(file, otherFailedOver.failedAt)
 
   private def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
-    // TODO May recovering be omitted when the truncated parts was incomplete ?
-    logger.info("Recovering again from properly truncated journal file")
+    logger.info("Recovering again after unacknowledged events have been deleted properly from journal file")
 
     // May take a long time !!!
     val recovered = JournaledStateRecoverer.recover[S](journalMeta, config)

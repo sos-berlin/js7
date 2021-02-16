@@ -1,6 +1,6 @@
 package js7.journal.recover
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils._
@@ -11,6 +11,7 @@ import js7.journal.recover.FileJournaledStateBuilder._
 import js7.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 /**
   * @author Joacim Zschimmer
@@ -145,7 +146,8 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
 
   def isAcceptingEvents = _progress.isAcceptingEvents
 
-  def logStatistics() = builder.logStatistics()
+  def logStatistics(): Unit =
+    builder.logStatistics(Try(Files.size(journalFileForInfo)).toOption)
 }
 
 object FileJournaledStateBuilder

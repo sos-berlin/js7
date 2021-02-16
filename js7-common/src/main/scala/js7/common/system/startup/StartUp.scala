@@ -22,8 +22,7 @@ object StartUp
   // Initialize class and object for possibly quicker emergency stop
   Halt
 
-  /** Log Java version, config and data directory, and classpath. */
-  def logStartUp(): Unit = {
+  def logJavaSettings(): Unit = {
     if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.length} libraries:")

@@ -82,7 +82,6 @@ extends Actor with Stash
   private var waitingForAcknowledgeSince = now
   private var switchedOver = false
 
-  logger.debug(s"fileBase=${journalMeta.fileBase}")
   for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
 

@@ -70,7 +70,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   protected def trustStoreRefs: Seq[TrustStoreRef]
 
   private lazy val httpsConnectionContext = {
-    logger.debug(s"keyStoreRef=$keyStoreRef trustStoreRefs=$trustStoreRefs")
+    logger.trace(s"keyStoreRef=$keyStoreRef trustStoreRefs=$trustStoreRefs")
     if (keyStoreRef.isEmpty && trustStoreRefs.isEmpty)
       http.defaultClientHttpsContext
     else

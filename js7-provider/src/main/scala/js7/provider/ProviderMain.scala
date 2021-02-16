@@ -9,7 +9,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.common.system.startup.JavaMain.{runMain, withShutdownHooks}
-import js7.common.system.startup.StartUp.logStartUp
+import js7.common.system.startup.StartUp.logJavaSettings
 import js7.provider.configuration.ProviderConfiguration
 import monix.eval.Task
 import monix.execution.CancelableFuture
@@ -30,9 +30,9 @@ object ProviderMain
     logger.info(s"Provider ${BuildInfo.longVersion}")
     runMain {
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
-      logStartUp()
       logger.info(s"config=${conf.configDirectory}")
       logConfig(conf.config)
+      logJavaSettings()
       val stop = Promise[Unit]()
       val terminated = Provider.observe(Task.fromFuture(stop.future), conf)
         .orThrow

@@ -78,25 +78,23 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
 
   def unsafeWrap(bytes: Array[Byte]): ByteSeq
 
-  def show(byteSeq: ByteSeq) =
-    if (isEmpty(byteSeq))
-      s"$typeName.empty"
-    else {
-      val len = length(byteSeq)
-      val prefix = take(byteSeq, maxShowLength)
-      typeName +
-        "(length=" + len + " " +
-        (if (iterator(prefix).forall(o => o >= ' ' && o < '\u007f'))
-          "»" + utf8String(byteSeq) + "«"
-         else
-          toStringAndHexRaw(prefix, maxShowLength, withEllipsis = len > maxShowLength)) +
+  def show(byteSeq: ByteSeq) = {
+    val len = length(byteSeq)
+    val prefix = take(byteSeq, maxShowLength)
+    if (iterator(prefix).forall(o => o >= ' ' && o < '\u007f' || o == '\n' || o == '\r'))
+      "»" + unsafeArray(byteSeq).map(byteToPrintable).mkString + "«" +
+        (len > maxShowLength) ?? (s" ($len bytes)")
+     else
+      typeName + "(" +
+        toStringAndHexRaw(prefix, maxShowLength, withEllipsis = len > maxShowLength) +
+        (len > maxShowLength) ?? (s", $len bytes") +
         ")"
     }
 
   def toStringAndHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false) =
     nonEmpty(byteSeq) ??
       ("»" +
-        iterator(byteSeq).take(n).grouped(8).map(_.map(byteToPrintable).mkString).mkString(" ") +
+        iterator(byteSeq).take(n).grouped(8).map(_.map(byteToPrintable).mkString).mkString +
         ((withEllipsis || n < length(byteSeq)) ?? "…") +
         "« " +
         toHexRaw(byteSeq, n, withEllipsis))
@@ -214,8 +212,8 @@ object ByteSequence
   private def byteToPrintable(byte: Byte): Char =
     byte match {
       case byte if byte >= 0x20 && byte < 0x7f => byte.toChar
-      case byte if byte >= 0 && byte < 0x20 => ('\u2400' + byte).toChar
-      case 0x7f => '\u2401'
-      case _ => '�'
+      case byte if byte >= 0 && byte < 0x20 => ('\u2400' + byte).toChar  // Control character representation
+      case 0x7f => '\u2421'
+      case _ => '�' // or ␦
     }
 }

@@ -34,7 +34,7 @@ final class ByteArrayTest extends ByteSequenceTester[ByteArray]
   }
 
   "toString" in {
-    assert(ByteArray.empty.toString == "ByteArray.empty")
+    assert(ByteArray.empty.toString == "»«")
     // For more tests, see ByteSequenceTester "show"
   }
 }

@@ -29,12 +29,12 @@ final class AgentMain
 
   def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
     logger.info(s"JS7 JobScheduler Agent Server ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
-    logger.info(StartUp.startUpLine())
     logger.info(s"config=${agentConfiguration.configDirectory} data=${agentConfiguration.dataDirectory}")
-    StartUp.logStartUp()
     logConfig(agentConfiguration.config)
+    StartUp.logJavaSettings()
     var terminated = AgentTermination.Terminate()
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
       withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {

@@ -9,15 +9,18 @@ import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces._
 import js7.data.cluster.ClusterState
 import JournaledStateBuilder._
+import js7.base.time.Stopwatch.{itemsPerSecondString, perSecondStringOnly}
+import js7.base.utils.ByteUnits.toKBGB
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import monix.eval.Task
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
 trait JournaledStateBuilder[S <: JournaledState[S]]
 {
-  private val stopwatch = new Stopwatch
+  private val since = now
   private var _snapshotCount = 0L
   private var _firstEventId = EventId.BeforeFirst
   private var _eventId = EventId.BeforeFirst
@@ -98,15 +101,24 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
       _eventId = stamped.eventId
     }
 
-  def logStatistics(): Unit = {
-    if (stopwatch.duration >= 1.s) {
-      scribe.debug(stopwatch.itemsPerSecondString(_snapshotCount + eventCount, "snapshots+events") + " read")
+  def logStatistics(byteCount: Option[Long]): Unit = {
+    val elapsed = since.elapsed
+    if (elapsed >= 1.s) {
+      scribe.debug(
+        itemsPerSecondString(elapsed, _snapshotCount + eventCount, "snapshots+events") +
+        byteCount.fold("")(byteCount =>
+          ", " + perSecondStringOnly(elapsed, byteCount / 1_000_000, "MB", gap = false) +
+          " " + toKBGB(byteCount)
+        ) + " read")
     }
-    if (eventCount > 0) {
+    if (snapshotCount + eventCount > 0) {
       val age = (Timestamp.now - EventId.toTimestamp(eventId)).withMillis(0).pretty
-      val t = (stopwatch.duration >= 10.s) ?? s" in ${stopwatch.duration.pretty}"
       scribe.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
-        s"($snapshotCount snapshot objects and $eventCount events read$t)")
+        s"($snapshotCount snapshot objects and $eventCount events" +
+        (byteCount.fold("")(o => ", " + toKBGB(o))) +
+        " read" +
+        ((elapsed >= 10.s) ?? s" in ${elapsed.pretty}") +
+        ")")
     }
   }
 

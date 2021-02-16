@@ -10,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.common.system.startup.StartUp.{logStartUp, printlnWithClock, startUpLine}
+import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
 
@@ -25,12 +25,12 @@ final class ControllerMain
 
   def run(arguments: CommandLineArguments): ControllerTermination.Terminate = {
     logger.info(s"JS7 JobScheduler Controller ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(startUpLine())
     logger.debug(arguments.toString)
     val controllerConfiguration = ControllerConfiguration.fromCommandLine(arguments)
-    logger.info(startUpLine())
     logger.info(s"config=${controllerConfiguration.configDirectory} data=${controllerConfiguration.dataDirectory}")
-    logStartUp()
     logConfig(controllerConfiguration.config)
+    logJavaSettings()
     var restartInProcess = false
     var terminate = ControllerTermination.Terminate()
     /** val restartJvmWhenDeactivated = controllerConfiguration.config.getBoolean("js7.journal.cluster.when-deactivated-restart-jvm")

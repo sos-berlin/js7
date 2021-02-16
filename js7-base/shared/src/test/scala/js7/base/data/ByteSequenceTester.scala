@@ -101,16 +101,20 @@ extends AnyFreeSpec
   }
 
   "show" in {
-    assert(ByteSeq.empty.show == s"${ByteSeq.typeName}.empty")
+    assert(ByteSeq.empty.show == "»«")
+    assert(ByteSeq("SHORT").show == "»SHORT«")
+    assert(ByteSeq("SHORT\n").show == "»SHORT␊«")
+    assert(ByteSeq("SHORT\r\n").show == "»SHORT␍␊«")
+    assert(ByteSeq(0x41, 0xf0, 0xf1, 0xf2, 0xf3).show == ByteSeq.typeName + "(»A����« 41f0f1f2 f3)")
     assert(ByteSeq("abcdefghijklmnopqrstuvwxyzÄÖ\nABCDEFGHIJKLMNOPQRSTUVWXYZ").show ==
-      ByteSeq.typeName +
-        "(length=57 »abcdefgh ijklmnop qrstuvwx yz����␊A…« " +
-        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797ac384 c3960a41...)")
+      ByteSeq.typeName + "(" +
+        "»abcdefghijklmnopqrstuvwxyz����␊A…« " +
+        "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797ac384 c3960a41..., 57 bytes)")
   }
 
   "toStringAndHexRaw" in {
     assert(ByteSeq("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").toStringAndHexRaw() ==
-      s"»abcdefgh ijklmnop qrstuvwx yzABCDEF GHIJKLMN OPQRSTUV WXYZ« " +
+      "»abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ« " +
         "61626364 65666768 696a6b6c 6d6e6f70 71727374 75767778 797a4142 43444546 4748494a 4b4c4d4e 4f505152 53545556 5758595a")
   }
 
