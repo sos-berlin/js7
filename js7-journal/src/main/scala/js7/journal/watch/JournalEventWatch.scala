@@ -320,14 +320,9 @@ with JournalingObserver
         tornEventId = tornEventId,
         (afterEventIdToHistoric.values.view
           .map(h =>
-            JournalInfo.JournalFileInfo(
-              eventId = h.afterEventId,
-              size = Try(Files.size(h.file)) getOrElse -1)
+            JournalPosition(h.afterEventId, Try(Files.size(h.file)) getOrElse -1)
           ) ++
-            currentEventReaderOption
-              .map(o => JournalInfo.JournalFileInfo(
-                eventId = o.tornEventId,
-                size = o.committedLength))
+            currentEventReaderOption.map(_.journalPosition)
         ).toVector)
     }
 

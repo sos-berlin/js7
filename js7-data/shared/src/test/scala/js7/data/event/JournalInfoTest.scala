@@ -11,16 +11,16 @@ final class JournalInfoTest extends AnyFreeSpec
       JournalInfo(
         lastEventId = 1L,
         tornEventId = 2L,
-        journalFiles = Seq(JournalInfo.JournalFileInfo(
-          eventId = 3L,
-          size = 4L))),
+        journalFiles = Seq(JournalPosition(
+          fileEventId = 3L,
+          position = 4L))),
       json"""{
         "lastEventId": 1,
         "tornEventId": 2,
         "journalFiles": [
           {
-            "eventId": 3,
-            "size": 4
+            "fileEventId": 3,
+            "position": 4
           }
         ]
       }""")
