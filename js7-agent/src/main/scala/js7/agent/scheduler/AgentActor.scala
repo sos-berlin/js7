@@ -271,7 +271,8 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
           blockingJobScheduler)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$controllerId"))
-    controllerToOrderKeeper.insert(controllerId -> ControllerRegister.Entry(controllerId, agentRunId, persistence, actor, recovered.eventWatch))
+    controllerToOrderKeeper.insert(controllerId ->
+      ControllerRegister.Entry(controllerId, agentRunId, persistence, actor, recovered.eventWatch))
     watch(actor)
   }
 

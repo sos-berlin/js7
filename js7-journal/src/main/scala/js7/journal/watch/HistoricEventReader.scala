@@ -13,7 +13,7 @@ import monix.eval.Task
   */
 private[journal] final class HistoricEventReader(
   protected val journalMeta: JournalMeta,
-  protected val expectedJournalId: Option[JournalId],
+  protected val expectedJournalId: JournalId,
   val tornEventId: EventId,
   protected val journalFile: Path,
   protected val config: Config)

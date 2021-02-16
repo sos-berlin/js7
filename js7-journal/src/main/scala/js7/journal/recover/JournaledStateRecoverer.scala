@@ -9,13 +9,12 @@ import js7.base.utils.SetOnce
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
-import js7.data.event.{EventId, JournalId, JournaledState}
+import js7.data.event.{EventId, JournaledState}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import js7.journal.recover.JournaledStateRecoverer._
-import js7.journal.watch.JournalEventWatch
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
@@ -69,8 +68,7 @@ object JournaledStateRecoverer
   def recover[S <: JournaledState[S]](
     journalMeta: JournalMeta,
     config: Config,
-    runningSince: Deadline = now,
-    expectedJournalId: Option[JournalId] = None)
+    runningSince: Deadline = now)
     (implicit S: JournaledState.Companion[S])
   : Recovered[S] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
@@ -81,14 +79,11 @@ object JournaledStateRecoverer
 
     file match {
       case Some(file) =>
-        val recoverer = new JournaledStateRecoverer(file, journalMeta,
-          () => fileJournaledStateBuilder)
+        val recoverer = new JournaledStateRecoverer(file, journalMeta, () => fileJournaledStateBuilder)
         recoverer.recoverAll()
         val calculatedJournalHeader = fileJournaledStateBuilder.calculatedJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
-        val state = fileJournaledStateBuilder.state
         Recovered(
-          S,
           journalMeta,
           Some(RecoveredJournalFile(
             file,
@@ -96,14 +91,16 @@ object JournaledStateRecoverer
             lastProperEventPosition = recoverer.lastProperEventPosition,
             fileJournaledStateBuilder.fileJournalHeader getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
             calculatedJournalHeader,
-            firstEventPosition = recoverer.firstEventPosition getOrElse sys.error(s"Missing JournalHeader in file '${file.getFileName}'"),
-            state)),
+            firstEventPosition = recoverer.firstEventPosition
+              .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
+            fileJournaledStateBuilder.state)),
           totalRunningSince = runningSince - calculatedJournalHeader.totalRunningTime,
-          eventWatch,
           config)
 
       case None =>
-        Recovered(S, journalMeta, None, runningSince, eventWatch, config)
+        // An active cluster node will start a new journal
+        // A passive cluster node will provide the JournalId later
+        Recovered[S](journalMeta, None, runningSince, config)
     }
   }
 }

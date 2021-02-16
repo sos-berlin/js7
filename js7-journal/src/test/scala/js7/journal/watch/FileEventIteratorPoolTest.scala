@@ -20,7 +20,7 @@ final class FileEventIteratorPoolTest extends AnyFreeSpec
       val journalMeta = JournalMeta(TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
       val journalFile = journalMeta.file(after = After)
       writeJournal(journalMeta, after = After, TestEvents)
-      val pool = new FileEventIteratorPool(journalMeta, Some(journalId),
+      val pool = new FileEventIteratorPool(journalMeta, journalId,
         journalFile, tornEventId = After, () => Files.size(journalFile))
 
       assert(pool.firstEventPosition > 0)

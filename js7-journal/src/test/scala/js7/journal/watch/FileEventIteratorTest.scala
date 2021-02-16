@@ -25,7 +25,7 @@ final class FileEventIteratorTest extends AnyFreeSpec
       val journalFile = journalMeta.file(after = After)
       writeJournal(journalMeta, after = After, TestEvents)
 
-      val iterator = new FileEventIterator(journalMeta, journalFile, Some(journalId), tornEventId = After,
+      val iterator = new FileEventIterator(journalMeta, journalFile, journalId, tornEventId = After,
         () => Files.size(journalFile))
       iterator.firstEventPosition  // Must be called before reading
       iterator.next()

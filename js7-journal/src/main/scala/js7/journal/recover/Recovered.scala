@@ -2,6 +2,7 @@ package js7.journal.recover
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
 import com.typesafe.config.Config
+import js7.base.utils.SetOnce
 import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalHeader, JournalId, JournaledState}
@@ -12,24 +13,28 @@ import js7.journal.watch.JournalEventWatch
 import scala.concurrent.duration.Deadline
 import shapeless.tag.@@
 
-final case class Recovered[S <: JournaledState[S]](
-  journaledStateCompanion: JournaledState.Companion[S],
+final class Recovered[S <: JournaledState[S]] private(
   journalMeta: JournalMeta,
-  recoveredJournalFile: Option[RecoveredJournalFile[S]],
-  totalRunningSince: Deadline,
-  eventWatch: JournalEventWatch,
-  config: Config)
+  val recoveredJournalFile: Option[RecoveredJournalFile[S]],
+  val totalRunningSince: Deadline,
+  config: Config,
+  val eventWatch: JournalEventWatch,
+  journalId_ : Option[JournalId])
+  (implicit S: JournaledState.Companion[S])
 extends AutoCloseable
 {
-  private implicit def S = journaledStateCompanion
+  private val journalIdOnce = SetOnce.fromOption(journalId_)
 
   def close() =
     eventWatch.close()
 
+  def changeRecoveredJournalFile(recoveredJournalFile: Option[RecoveredJournalFile[S]]) =
+    new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config, eventWatch, journalIdOnce)
+
+  def maybeJournalId = recoveredJournalFile.map(_.journalId)
+
   def eventId: EventId =
     recoveredJournalFile.fold(EventId.BeforeFirst)(_.eventId)
-
-  def journalId: Option[JournalId] = recoveredJournalFile.map(_.journalId)
 
   def clusterState: ClusterState =
     state.clusterState
@@ -43,11 +48,17 @@ extends AutoCloseable
   // Suppresses Config (which may contain secrets)
   override def toString = s"Recovered($journalMeta,$recoveredJournalFile,$eventWatch,Config)"
 
-  def startJournalAndFinishRecovery(
-    journalActor: ActorRef @@ JournalActor.type,
-    initialJournalIdForTest: Option[JournalId] = None)
+  def onJournalIdReplicated(journalId: JournalId): Unit =
+    journalIdOnce := journalId
+
+  def startJournalAndFinishRecovery(journalActor: ActorRef @@ JournalActor.type)
     (implicit actorRefFactory: ActorRefFactory)
-  =
+  : ActorRef = {
+    val journalId = journalIdOnce.getOrElse {
+      logger.info("Starting a new empty journal")
+      val journalId = JournalId.random()
+      journalId
+    }
     actorRefFactory.actorOf(
       Props {
         new Actor {
@@ -55,8 +66,7 @@ extends AutoCloseable
             state, Some(eventWatch),
             recoveredJournalFile
               .map(_.calculatedJournalHeader)
-              .getOrElse(JournalHeader.initial(
-                recoveredJournalFile.map(_.journalId) orElse initialJournalIdForTest getOrElse JournalId.random())),
+              .getOrElse(JournalHeader.initial(journalId)),
             totalRunningSince)
 
           def receive = {
@@ -68,11 +78,22 @@ extends AutoCloseable
         }
       },
       name = "JournalActorRecoverer")
+  }
 }
 
 object Recovered
 {
   private val logger = Logger(getClass)
+
+  def apply[S <: JournaledState[S]](
+    journalMeta: JournalMeta,
+    recoveredJournalFile: Option[RecoveredJournalFile[S]],
+    totalRunningSince: Deadline,
+    config: Config)
+    (implicit S: JournaledState.Companion[S])
+  = new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config,
+    new JournalEventWatch(journalMeta, config),
+    recoveredJournalFile.map(_.journalId))
 
   object Output {
     final case class JournalIsReady(journalHeader: JournalHeader)

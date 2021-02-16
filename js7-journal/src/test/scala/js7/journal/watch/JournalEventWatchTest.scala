@@ -11,7 +11,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked._
-import js7.base.problem.{Problem, ProblemException}
+import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -19,9 +19,8 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.jsonseq.PositionAnd
-import js7.data.event.JournalHeader.JournalIdMismatchProblem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -45,14 +44,13 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "JournalId is checked" in {
     withJournalMeta { journalMeta =>
-      val myJournalId = JournalId(UUID.randomUUID)
-      val file = writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1, journalId = myJournalId)
-      withJournal(journalMeta, MyEvents1.last.eventId) { (_, eventWatch) =>
-        intercept[ProblemException] {
-          // Read something to open the first journal file and to check its header
-          eventWatch.snapshotAfter(EventId.BeforeFirst).map(_.completedL await 99.s)
-        } .problem == JournalIdMismatchProblem(file, expectedJournalId = myJournalId, foundJournalId = journalId)
+      val myJournalId = JournalId.random()
+      writeJournal(journalMeta, EventId.BeforeFirst, MyEvents1, journalId = myJournalId)
+      val exception = intercept[IllegalArgumentException] {
+        withJournal(journalMeta, MyEvents1.last.eventId) { (_, eventWatch) =>
+        }
       }
+      assert(exception.getMessage startsWith "requirement failed: JournalId ")
     }
   }
 
@@ -62,8 +60,8 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
       withJournal(journalMeta, MyEvents1.last.eventId) { (writer, eventWatch) =>
         def when(after: EventId) =
           eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
-        def observeFile(fileEventId: EventId, position: Long): List[Json] =
-          eventWatch.observeFile(Some(fileEventId), position = Some(position), timeout = 0.s)
+        def observeFile(journalPosition: JournalPosition): List[Json] =
+          eventWatch.observeFile(Some(journalPosition), timeout = 0.s)
             .await(99.s)
             .orThrow
             .map(o => o.value.utf8String.parseJson.orThrow)
@@ -72,14 +70,14 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
             .await(99.s)
 
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1))
-        assert(observeFile(MyEvents1.last.eventId, position = 0L) == JournalSeparators.EventHeader :: Nil)
+        assert(observeFile(JournalPosition(MyEvents1.last.eventId, 0L)) == JournalSeparators.EventHeader :: Nil)
 
         writer.writeEvents(MyEvents2)
-        assert(observeFile(MyEvents1.last.eventId, position = 0L) == JournalSeparators.EventHeader :: Nil)
+        assert(observeFile(JournalPosition(MyEvents1.last.eventId, 0L)) == JournalSeparators.EventHeader :: Nil)
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1))
 
         writer.flush(sync = false)
-        assert(observeFile(MyEvents1.last.eventId, position = 0L) == JournalSeparators.EventHeader :: MyEvents2.map(_.asJson))
+        assert(observeFile(JournalPosition(MyEvents1.last.eventId, 0L)) == JournalSeparators.EventHeader :: MyEvents2.map(_.asJson))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1))
 
         writer.onCommitted(writer.fileLengthAndEventId, MyEvents2.length)
@@ -343,11 +341,11 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "observeFile" in {
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.observeFile(fileEventId = Some(123L), position = Some(0), timeout = 99.s).await(99.s)
+      assert(eventWatch.observeFile(Some(JournalPosition(123L, 0)), timeout = 99.s).await(99.s)
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()
-      eventWatch.observeFile(fileEventId = Some(EventId.BeforeFirst), position = Some(0), timeout = 99.s)
+      eventWatch.observeFile(Some(JournalPosition(EventId.BeforeFirst, 0)), timeout = 99.s)
         .await(99.s)
         .orThrow
         .onErrorRecoverWith {

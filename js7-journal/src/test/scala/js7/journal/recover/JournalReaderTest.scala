@@ -3,9 +3,10 @@ package js7.journal.recover
 import akka.pattern.ask
 import io.circe.Encoder
 import io.circe.syntax.EncoderOps
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.util.UUID
-import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
@@ -32,7 +33,10 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
   "Journal file without snapshots or events" in {
     withTestActor() { (_, _ ) => }
     val file = currentFile
-    autoClosing(new JournalReader(journalMeta, Some(journalId), file)) { journalReader =>
+    val journalId =
+      autoClosing(scala.io.Source.fromFile(file.toFile)(UTF_8))(_.getLines().next())
+        .parseJsonAs[JournalHeader].orThrow.journalId
+    autoClosing(new JournalReader(journalMeta, journalId, file)) { journalReader =>
       assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000000)
@@ -50,7 +54,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       writer.beginEventSection(sync = false)
       writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
     }
-    autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+    autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
       assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000)
@@ -72,7 +76,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
     }
-    autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+    autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
       assert(journalReader.tornEventId == 0)
       assert(journalReader.eventId == EventId.BeforeFirst)
       assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
@@ -89,7 +93,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       execute(actorSystem, actor, "X", TestAggregateActor.Command.Add("(X)")) await 99.s
       execute(actorSystem, actor, "Y", TestAggregateActor.Command.Add("(Y)")) await 99.s
     }
-    autoClosing(new JournalReader(journalMeta, Some(journalId), currentFile)) { journalReader =>
+    autoClosing(new JournalReader(journalMeta, journalId, currentFile)) { journalReader =>
       assert(journalReader.readSnapshot.toL(Set).await(99.s) == Set(
         journalReader.journalHeader,
         TestAggregate("TEST-A","(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
@@ -121,12 +125,12 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
         writer.writeEvents(last :: Nil)
         writer.endEventSection(sync = false)
       }
-      autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+      autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
         assert(journalReader.readEvents().toList == first :: ta ::: last :: Nil)
         assert(journalReader.eventId == 1004)
         assert(journalReader.totalEventCount == 5)
       }
-      autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+      autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
         assert(journalReader.nextEvent() == Some(first))
         assert(journalReader.eventId == 1000)
         assert(journalReader.nextEvent() == Some(ta(0)))
@@ -158,7 +162,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
         writeEvent(ta(1))
         writeEvent(ta(2))
       }
-      autoClosing(new JournalReader(journalMeta, Some(journalId), JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+      autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
         assert(journalReader.readEvents().toList == first :: Nil)  // Uncommitted transaction is not read
         assert(journalReader.eventId == 1000)
         assert(journalReader.totalEventCount == 1)

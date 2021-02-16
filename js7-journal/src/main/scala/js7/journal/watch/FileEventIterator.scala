@@ -19,7 +19,7 @@ import scala.concurrent.duration.Deadline.now
 private[watch] class FileEventIterator(
   journalMeta: JournalMeta,
   val journalFile: Path,
-  expectedJournalId: Option[JournalId],
+  expectedJournalId: JournalId,
   tornEventId: EventId,
   committedLength: () => Long)
 extends CloseableIterator[Stamped[KeyedEvent[Event]]]

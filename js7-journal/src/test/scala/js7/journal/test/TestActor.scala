@@ -6,12 +6,10 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.Config
-import java.util.UUID
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.scalautil.Logger
-import js7.data.event.JournalId
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
@@ -44,18 +42,14 @@ extends Actor with Stash
   override def preStart() = {
     super.preStart()
     JournaledStateRecoverer.recover[TestState](journalMeta, config)
-    val recovered = JournaledStateRecoverer.recover[TestState](
-      journalMeta,
-      config,
-      expectedJournalId = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))))
+    val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, config)
     val state = recovered.state
     for (aggregate <- state.keyToAggregate.values) {
       val actor = newAggregateActor(aggregate.key)
       actor ! TestAggregateActor.Input.RecoverFromSnapshot(aggregate)
       keyToAggregate += aggregate.key -> actor
     }
-    recovered.startJournalAndFinishRecovery(journalActor,
-      initialJournalIdForTest = Some(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))))
+    recovered.startJournalAndFinishRecovery(journalActor)
   }
 
   def receive = {

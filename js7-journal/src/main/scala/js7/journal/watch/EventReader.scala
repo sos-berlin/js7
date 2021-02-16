@@ -35,7 +35,7 @@ extends AutoCloseable
 {
   /** `committedLength` does not grow if `isOwnJournalIndex`. */
   protected def journalMeta: JournalMeta
-  protected def expectedJournalId: Option[JournalId]
+  protected def expectedJournalId: JournalId
   protected def isHistoric: Boolean
   protected def journalFile: Path
   protected def tornEventId: EventId

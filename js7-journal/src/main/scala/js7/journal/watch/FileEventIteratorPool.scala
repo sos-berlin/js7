@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
   */
 private[watch] final class FileEventIteratorPool(
   journalMeta: JournalMeta,
-  expectedJournalId: Option[JournalId],
+  expectedJournalId: JournalId,
   journalFile: Path,
   tornEventId: EventId,
   committedLength: () => Long)

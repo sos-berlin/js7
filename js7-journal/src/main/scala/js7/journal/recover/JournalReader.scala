@@ -13,7 +13,6 @@ import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
-import js7.common.scalautil.Logger
 import js7.common.utils.untilNoneIterator
 import js7.data.event.JournalSeparators.{Commit, EventHeader, EventHeaderLine, SnapshotFooterLine, SnapshotHeaderLine, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
@@ -29,7 +28,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReader(journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path)
+final class JournalReader(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
 extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
@@ -275,16 +274,15 @@ extends AutoCloseable
 
 object JournalReader
 {
-  private val logger = Logger(getClass)
 
-  def snapshot(journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path): Observable[Any] =
+  def snapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path): Observable[Any] =
     snapshot_(_.readSnapshot)(journalMeta, expectedJournalId, journalFile)
 
-  def rawSnapshot(journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path): Observable[ByteArray] =
+  def rawSnapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path): Observable[ByteArray] =
     snapshot_(_.readSnapshotRaw)(journalMeta, expectedJournalId, journalFile)
 
   private def snapshot_[A](f: JournalReader => Observable[A])
-    (journalMeta: JournalMeta, expectedJournalId: Option[JournalId], journalFile: Path): Observable[A] =
+    (journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path): Observable[A] =
     Observable.fromResource(
       Resource.fromAutoCloseable(Task(
         new JournalReader(journalMeta, expectedJournalId, journalFile)))

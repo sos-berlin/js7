@@ -130,11 +130,11 @@ extends Actor with Stash
         sender ! Output.Ready(journalHeader)
       }
 
-    case Input.StartWithoutRecovery(emptyState, observer_) =>  // Testing only
-      uncommittedJournaledState = emptyState.asInstanceOf[S]
+    case Input.StartWithoutRecovery(journalId, observer_) =>  // Testing only
+      uncommittedJournaledState = S.empty
       journaledState = uncommittedJournaledState
       journalingObserver := observer_
-      journalHeader = JournalHeader.initial(JournalId.random()).copy(generation = 1)
+      journalHeader = JournalHeader.initial(journalId).copy(generation = 1)
       eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
       eventWriter.writeHeader(journalHeader)
       eventWriter.beginEventSection(sync = conf.syncOnCommit)
@@ -699,7 +699,9 @@ object JournalActor
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
-    final case class StartWithoutRecovery[S <: JournaledState[S]](emptyState: S, journalingObserver: Option[JournalingObserver] = None)
+    final case class StartWithoutRecovery[S <: JournaledState[S]](
+      journalId: JournalId,
+      journalingObserver: Option[JournalingObserver] = None)
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],
       journalingActor: ActorRef,

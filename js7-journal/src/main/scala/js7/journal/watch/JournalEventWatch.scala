@@ -1,9 +1,12 @@
 package js7.journal.watch
 
+import cats.syntax.semigroup._
 import com.typesafe.config.Config
 import java.io.IOException
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.{Files, Path}
+import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs._
 import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -13,6 +16,7 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{CloseableIterator, SetOnce}
@@ -46,13 +50,25 @@ with JournalingObserver
   private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")
   private val releaseEventsDelay = config.getDuration("js7.journal.release-events-delay").toFiniteDuration max 0.s
   // Read journal file names from directory while constructing
-  private val journalId = SetOnce[JournalId]
-  @volatile
-  private var afterEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
+
+  @volatile private var afterEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
     SortedMap.empty[EventId, HistoricJournalFile] ++
       listJournalFiles(journalMeta.fileBase)
-      .map(o => new HistoricJournalFile(o.afterEventId, o.file))
-      .toKeyedMap(_.afterEventId)
+        .map(o => new HistoricJournalFile(o.afterEventId, o.file))
+        .toKeyedMap(_.afterEventId)
+
+  private val journalIdOnce = SetOnce.fromOption[JournalId](
+    afterEventIdToHistoric
+      .lastOption
+      .map(_._2.file.toFile)
+      .map(file => Checked
+        .catchNonFatal(
+          autoClosing(scala.io.Source.fromFile(file)(UTF_8))(_.getLines().next()))
+        .flatMap(_.parseJsonAs[JournalHeader])
+        .map(_.journalId)
+        .mapProblem(Problem.pure(s"Invalid journal file '$file': ") |+| _)
+        .orThrow))
+
   private val startedPromise = Promise[this.type]()
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader] = None
@@ -83,9 +99,10 @@ with JournalingObserver
     logger.debug(s"onJournalingStarted ${file.getFileName}, torn length=${tornLengthAndEventId.position}, " +
       s"torn eventId=${tornLengthAndEventId.value}, flushed length=${flushedLengthAndEventId.position}, " +
       s"flushed eventId=${flushedLengthAndEventId.value}")
-    journalId.toOption match {
-      case None => journalId := expectedJournalId
-      case Some(o) => require(expectedJournalId == o, s"JournalId $journalId does not match expected $expectedJournalId")
+    journalIdOnce.toOption match {
+      case None => journalIdOnce := expectedJournalId
+      case Some(o) => require(expectedJournalId == o, s"JournalId $o does not match expected $expectedJournalId")
+        //throw JournalIdMismatchProblem(journalMeta.fileBase, expectedJournalId = expectedJournalId, o).throwable
     }
     synchronized {
       this._isActiveNode = isActiveNode
@@ -103,7 +120,7 @@ with JournalingObserver
           current.journalFile,
           Some(current)/*Reuse built-up JournalIndex*/)
       }
-      val currentEventReader = new CurrentEventReader(journalMeta, Some(expectedJournalId),
+      val currentEventReader = new CurrentEventReader(journalMeta, expectedJournalId,
         tornLengthAndEventId, flushedLengthAndEventId, isActiveNode = isActiveNode, config)
       currentEventReaderOption = Some(currentEventReader)
       for ((eventId, promise) <- nextEventReaderPromise if eventId == tornLengthAndEventId.value)

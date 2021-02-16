@@ -27,7 +27,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.agent.AgentId
-import js7.data.event.{EventRequest, KeyedEvent, Stamped}
+import js7.data.event.{EventRequest, JournalId, KeyedEvent, Stamped}
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, RelativePathExecutable}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
@@ -192,7 +192,8 @@ private object OrderActorTest {
     private var orderDetached = false
     private var orderActorTerminated = false
 
-    (journalActor ? JournalActor.Input.StartWithoutRecovery(AgentState.empty, Some(eventWatch))) pipeTo self
+    (journalActor ? JournalActor.Input.StartWithoutRecovery(JournalId.random(), Some(eventWatch)))
+      .pipeTo(self)
     eventWatch.observe(EventRequest.singleClass[OrderEvent](timeout = Some(999.s))) foreach self.!
     val runningSince = now
 

@@ -83,14 +83,14 @@ object JournalHeader
       Subtype.named(deriveCodec[JournalHeader], "JS7.Journal"))
   }
 
-  def checkedHeader(json: Json, journalFileForInfo: Path, expectedJournalId: Option[JournalId]): Checked[JournalHeader] =
+  def checkedHeader(json: Json, journalFileForInfo: Path, expectedJournalId: JournalId): Checked[JournalHeader] =
     for {
       header <-
         json.as[JournalHeader].toChecked.mapProblem(problem =>
           Problem.pure(
             s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader instead of ${json.compactPrint}:"
           ) |+| problem)
-      _ <- checkedHeader(header, journalFileForInfo, expectedJournalId)
+      _ <- checkedHeader(header, journalFileForInfo, Some(expectedJournalId))
     } yield header
 
   def checkedHeader(header: JournalHeader, journalFileForInfo: Path, expectedJournalId: Option[JournalId]): Checked[Unit] =

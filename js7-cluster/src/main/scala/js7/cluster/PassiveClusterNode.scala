@@ -182,8 +182,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
               case Right(continuation) if shouldActivate(continuation.clusterState) =>
                 logger.info(s"Activating because ClusterState has become ${continuation.clusterState}")
                 Right(Right(ClusterFollowUp.BecomeActive(
-                  recovered.copy[S](
-                    recoveredJournalFile = continuation.maybeRecoveredJournalFile))))
+                  recovered.changeRecoveredJournalFile(continuation.maybeRecoveredJournalFile))))
 
               case Right(continuation) =>
                 Left(continuation)

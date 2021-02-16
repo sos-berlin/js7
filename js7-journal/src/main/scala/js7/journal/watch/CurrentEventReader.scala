@@ -13,7 +13,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
   */
 private[watch] final class CurrentEventReader(
   protected val journalMeta: JournalMeta,
-  protected val expectedJournalId: Option[JournalId],
+  protected val expectedJournalId: JournalId,
   /** Length and after-EventId of initialized and empty journal. */
   tornLengthAndEventId: PositionAnd[EventId],
   flushedLengthAndEventId: PositionAnd[EventId],
