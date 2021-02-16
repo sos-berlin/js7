@@ -2,6 +2,7 @@ package js7.common.akkahttp.web.data
 
 import akka.http.scaladsl.model.{Uri => AkkaUri}
 import cats.syntax.either._
+import cats.syntax.show._
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked._
@@ -10,6 +11,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils._
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpUtils.RichAkkaAsUri
+import js7.common.internet.IP.inetSocketAddressShow
 
 /**
   * @author Joacim Zschimmer
@@ -20,6 +22,8 @@ sealed trait WebServerBinding
   def scheme: WebServerBinding.Scheme
 
   def toWebServerPort: WebServerPort
+
+  override def toString = s"$scheme://${address.show}"
 }
 
 object WebServerBinding
@@ -34,7 +38,6 @@ object WebServerBinding
     def scheme = Http
     def toWebServerPort = WebServerPort.Http(address)
 
-    override def toString = s"http://${address.getAddress.getHostAddress}:${address.getPort}"
   }
   object Http extends Scheme {
     override def toString = "http"
@@ -48,8 +51,8 @@ object WebServerBinding
     def scheme = Https
     def toWebServerPort = WebServerPort.Https(address)
 
-    override def toString = s"https://${address.getAddress.getHostAddress}:${address.getPort} ($keyStoreRef" +
-      ", " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
+    override def toString = super.toString +
+      s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
   }
   object Https extends Scheme {
     override def toString = "https"

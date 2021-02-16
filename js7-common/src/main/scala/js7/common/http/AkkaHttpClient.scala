@@ -283,7 +283,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
               logger.debug(s"$responseLogPrefix => Still waiting for response" + (closed ?? " (closed)"))
             })
             .tapEval(response => Task {
-              logger.debug(s"$responseLogPrefix => ${response.status}${response.status.isFailure ?? " (failure)"}")
+              logger.debug(s"$responseLogPrefix => ${response.status}")
             }))
       })
 

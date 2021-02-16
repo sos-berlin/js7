@@ -1,7 +1,8 @@
 package js7.common.akkahttp.web.data
 
+import cats.syntax.show._
 import java.net.InetSocketAddress
-import js7.base.utils.ScalaUtils.syntax._
+import js7.common.internet.IP.inetSocketAddressShow
 
 /**
   * @author Joacim Zschimmer
@@ -9,6 +10,8 @@ import js7.base.utils.ScalaUtils.syntax._
 sealed trait WebServerPort {
   def scheme: WebServerBinding.Scheme
   def address: InetSocketAddress
+
+  override def toString = s"$scheme://${address.show}"
 }
 
 object WebServerPort
@@ -18,11 +21,9 @@ object WebServerPort
 
   final case class Http(address: InetSocketAddress) extends WebServerPort {
     def scheme = WebServerBinding.Http
-    override def toString = s"http://${address.getAddress.getHostAddress}:${address.getPort}"
   }
 
   final case class Https(address: InetSocketAddress) extends WebServerPort {
     def scheme = WebServerBinding.Https
-    override def toString = s"https://${address.getAddress.getHostAddress}:${address.getPort}"
   }
 }

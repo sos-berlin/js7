@@ -7,9 +7,9 @@ import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.TLSClientAuth
 import cats.effect.Resource
 import cats.instances.vector._
+import cats.syntax.show._
 import cats.syntax.traverse._
 import com.typesafe.config.{Config, ConfigFactory}
-import java.net.InetSocketAddress
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
@@ -21,6 +21,7 @@ import js7.base.utils.SetOnce
 import js7.common.akkahttp.web.AkkaWebServer._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.http.JsonStreamingSupport
+import js7.common.internet.IP.inetSocketAddressShow
 import js7.common.scalautil.Logger
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
@@ -100,8 +101,7 @@ trait AkkaWebServer extends AutoCloseable
         whenTerminating.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
         whenBound
       } .map { serverBinding =>
-          logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.getAddress.getHostAddress}:${serverBinding.localAddress.getPort}" +
-            ((binding.scheme == WebServerBinding.Https && httpsClientAuthRequired) ?? ", client certificate required") +
+          logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.show}" +
             boundRoute.boundMessageSuffix)
           serverBinding
         }
@@ -210,9 +210,7 @@ object AkkaWebServer
   }
 
   def actorName(prefix: String, binding: WebServerBinding) =
-    s"$prefix-${binding.scheme}-${inetSocketAddressToName(binding.address)}"
-
-  private def inetSocketAddressToName(o: InetSocketAddress): String = o.getAddress.getHostAddress + s":${o.getPort}"
+    s"$prefix-${binding.scheme}-${binding.address.getAddress.getHostAddress}:${binding.address.getPort}"
 
   trait BoundRoute {
     def webServerRoute: Route

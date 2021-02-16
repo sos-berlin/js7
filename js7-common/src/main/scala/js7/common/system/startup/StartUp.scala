@@ -1,7 +1,6 @@
 package js7.common.system.startup
 
 import java.io.File
-import java.nio.file.Path
 import java.time.LocalDateTime
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.utils.ByteUnits.toKiBGiB
@@ -24,8 +23,7 @@ object StartUp
   Halt
 
   /** Log Java version, config and data directory, and classpath. */
-  def logStartUp(configDir: Option[Path] = None, dataDir: Option[Path] = None): Unit = {
-    logger.info(startUpLine(configDir, dataDir))
+  def logStartUp(): Unit = {
     if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.length} libraries:")
@@ -39,18 +37,16 @@ object StartUp
   }
 
   /** Log Java version, config and data directory, and classpath. */
-  def startUpLine(configDir: Option[Path] = None, dataDir: Option[Path] = None): String = {
-    s"Java " + JavaInformations.implementationVersion + " " +
-    "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
-    sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
-    cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
-    totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
-    " · " +
-    maybeOwnPid.fold("")(pid => s"pid=${pid.number} ") +
-    (hostname.nonEmpty ?? s"host=$hostname ") +
-    configDir.fold("")(o => s"config=$o ") +
-    dataDir.fold("")("data=".+)
-  }
+  def startUpLine(): String =
+    sys.props.getOrElse("java.runtime.name", "Java") + " " +
+      JavaInformations.implementationVersion + " " +
+      "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
+      sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
+      cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
+      totalPhysicalMemory.fold("")(o => " " + toKiBGiB(o)) +
+      " · " +
+      maybeOwnPid.fold("")(pid => s"pid=${pid.number} ") +
+      (hostname.nonEmpty ?? s"host=$hostname ")
 
   def printlnWithClockIgnoringException(line: String) =
     try printlnWithClock(line)

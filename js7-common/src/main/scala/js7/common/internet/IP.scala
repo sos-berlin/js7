@@ -1,5 +1,6 @@
 package js7.common.internet
 
+import cats.Show
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.convert.As
 import js7.base.convert.As.convert
@@ -9,8 +10,8 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-object IP {
-
+object IP
+{
   implicit object StringToInetAddress extends As[String, InetAddress] {
     def apply(o: String) = {
       if (o.isEmpty) throw new IllegalArgumentException("Missing IP address")
@@ -62,4 +63,7 @@ object IP {
       new InetSocketAddress(host, port.toInt)
     }
   }
+
+  implicit val inetSocketAddressShow: Show[InetSocketAddress] =
+    a => s"${a.getAddress.getHostAddress}:${a.getPort}"
 }

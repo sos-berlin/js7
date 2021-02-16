@@ -30,7 +30,8 @@ object ProviderMain
     logger.info(s"Provider ${BuildInfo.longVersion}")
     runMain {
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
-      logStartUp(configDir = Some(conf.configDirectory))
+      logStartUp()
+      logger.info(s"config=${conf.configDirectory}")
       logConfig(conf.config)
       val stop = Promise[Unit]()
       val terminated = Provider.observe(Task.fromFuture(stop.future), conf)

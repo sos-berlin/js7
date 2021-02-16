@@ -55,7 +55,6 @@ extends Actor with Stash
 {
   import context.{become, stop}
 
-  private val logger = Logger.withPrefix[this.type](journalMeta.fileBase.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
   private var snapshotSchedule: Cancelable = null
@@ -546,11 +545,15 @@ extends Actor with Stash
     journalHeader = journalHeader.nextGeneration(eventId = lastWrittenEventId, totalEventCount = totalEventCount,
       totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms)
     val file = journalMeta.file(after = lastWrittenEventId)
+
     logger.info(s"Starting new journal file #${journalHeader.generation} '${file.getFileName}' with a snapshot")
+    logger.debug(journalHeader.toString)
+
     snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
       simulateSync = conf.simulateSync)(scheduler)
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
+
     takeSnapshotNow(
       snapshotWriter,
       () => onSnapshotFinished(snapshotTaken, since, () => andThen(journalHeader)))
@@ -672,6 +675,7 @@ extends Actor with Stash
 
 object JournalActor
 {
+  private val logger = Logger[this.type]
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
   //private val DispatcherName = "js7.journal.dispatcher"  // Config setting; name is used for thread names
 

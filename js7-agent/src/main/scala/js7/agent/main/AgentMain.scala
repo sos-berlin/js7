@@ -15,6 +15,7 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.scalautil.Logger
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
+import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.printlnWithClock
 
 /**
@@ -30,6 +31,9 @@ final class AgentMain
     logger.info(s"JS7 JobScheduler Agent Server ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
+    logger.info(StartUp.startUpLine())
+    logger.info(s"config=${agentConfiguration.configDirectory} data=${agentConfiguration.dataDirectory}")
+    StartUp.logStartUp()
     logConfig(agentConfiguration.config)
     var terminated = AgentTermination.Terminate()
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>

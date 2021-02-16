@@ -147,9 +147,7 @@ object RunningAgent {
     // Run under scheduler from start (and let debugger show Controller's thread names)
     Future {
       val agentConfiguration = injector.instance[AgentConfiguration]
-
       if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
-      StartUp.logStartUp(Some(agentConfiguration.configDirectory), Some(agentConfiguration.dataDirectory))
 
       val actorSystem = injector.instance[ActorSystem]
       val closer = injector.instance[Closer]

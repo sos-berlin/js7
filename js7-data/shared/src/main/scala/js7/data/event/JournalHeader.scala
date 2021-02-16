@@ -43,7 +43,8 @@ final case class JournalHeader private[data](
       buildId = BuildInfo.buildId)
 
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
-    s"$timestamp, ${totalRunningTime.pretty}, $startedAt, $version, $softwareVersion, $buildId)"
+    s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $startedAt, " +
+    s"$version, $softwareVersion, $buildId)"
 }
 
 object JournalHeader
