@@ -268,16 +268,16 @@ with JournalingObserver
 
   def observeFile(maybeJournalPosition: Option[JournalPosition], timeout: FiniteDuration,
     markEOF: Boolean, onlyAcks: Boolean)
-  : Task[Checked[Observable[PositionAnd[ByteArray]]]] =
-    Task.pure(maybeJournalPosition)
-      .map {
-        case Some(journalPosition: JournalPosition) => Right(journalPosition)
-        case None => checkedCurrentEventReader.map(_.journalPosition)
-      }
-      .flatMapT(journalPosition =>
-        observeFile(journalPosition, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
+  = resolveDefaultJournalPosition(maybeJournalPosition)
+      .flatMapT(observeFile2(_, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
 
-  private def observeFile(journalPosition: JournalPosition, timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
+  private def resolveDefaultJournalPosition(maybeJournalPosition: Option[JournalPosition]) =
+    Task.pure(maybeJournalPosition).map {
+      case Some(journalPosition: JournalPosition) => Right(journalPosition)
+      case None => checkedCurrentEventReader.map(_.journalPosition)
+    }
+
+  private def observeFile2(journalPosition: JournalPosition, timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]] = {
     import journalPosition.{fileEventId, position}
     (nextEventReaderPromise match {
