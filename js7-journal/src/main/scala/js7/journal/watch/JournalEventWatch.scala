@@ -37,12 +37,11 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 
-/**
-  * Watches a complete journal consisting of n `JournalFile`.
+/** Watches a complete journal consisting of n `JournalFile`.
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
-  * @author Joacim Zschimmer
   */
-final class JournalEventWatch(val journalMeta: JournalMeta, config: Config)
+final class JournalEventWatch(val journalMeta: JournalMeta, config: Config,
+  announceNextEventId: Option[EventId] = None)
 extends AutoCloseable
 with RealEventWatch
 with JournalingObserver
@@ -72,8 +71,15 @@ with JournalingObserver
   private val startedPromise = Promise[this.type]()
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader] = None
+
+  // announceNextEventId, the recovered EventId, optionally announces the next journal file
+  // to avoid "Unknown journal file" if PassiveClusterNode starts replication of the next
+  // journal file before this active node call onJournalingStarted.
+  // This may happen especially when the node starts with a big snapshot
+  // which delays onJournalingStarted.
   @volatile
-  private var nextEventReaderPromise: Option[(EventId, Promise[Option[CurrentEventReader]])] = None
+  private var nextEventReaderPromise: Option[(EventId, Promise[Option[CurrentEventReader]])] =
+    announceNextEventId.map(_ -> Promise())
   @volatile
   private var _isActiveNode = false
 

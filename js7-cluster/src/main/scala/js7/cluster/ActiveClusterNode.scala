@@ -89,9 +89,9 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   private def requestAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
     initialClusterState match {
-      case coupled: Coupled =>
+      case clusterState @ (_: Coupled | _: ActiveShutDown) =>
         Task(logger.info("Requesting acknowledgement for the last recovered event")) >>
-          awaitAcknowledgement(coupled, eventId)
+          awaitAcknowledgement(clusterState.passiveUri, eventId)
             .logWhenItTakesLonger("acknowledgement")
             .flatTap {
               case Left(problem) => Task(logger.debug(problem.toString))
@@ -112,7 +112,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
     Task.defer {
       logger.trace("beforeJournalingStarts")
       initialClusterState match {
-        case clusterState: ClusterState.Coupled =>
+        case clusterState: Coupled =>
           // Inhibit activation of peer again. If recovery or asking ClusterWatch took a long time,
           // peer may have activated itself.
           common.inhibitActivationOfPeer(clusterState) map {
@@ -186,7 +186,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
                     case _: Decoupled =>
                       Right(Some(ClusterCouplingPrepared(activeId)))
 
-                    case _: PreparedToBeCoupled | _: Coupled =>
+                    case _: PreparedToBeCoupled | _: Coupled | _: ActiveShutDown =>
                       logger.debug(s"ClusterPrepareCoupling command ignored in clusterState=$clusterState")
                       Right(None)
                   }
@@ -453,13 +453,12 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
         .guaranteeCase(exitCase => Task(
           logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
 
-  private def awaitAcknowledgement(clusterState: ClusterState.Coupled, eventId: EventId)
+  private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId)
   : Task[Checked[Completed]] =
     Observable
       .fromResource(
-        common.clusterContext.clusterNodeApi(clusterState.passiveUri, "awaitAcknowledgement"))
+        common.clusterContext.clusterNodeApi(passiveUri, "awaitAcknowledgement"))
       .flatMap(api => observeEventIds(api, heartbeat = None))
-      .doOnNext(eventId => Task(logger.debug(s"awaitAcknowledgement => $eventId")))
       .dropWhile(_ != eventId)
       .headOptionL
       .map {

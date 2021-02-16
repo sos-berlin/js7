@@ -112,7 +112,6 @@ extends Actor with Stash
       journalHeader = header
       totalRunningSince = totalRunningSince_
       lastWrittenEventId = header.eventId
-      lastAcknowledgedEventId = header.eventId  // FIXME Möglicherweise ist die EventId noch nicht bestätigt ?  optional header.acknowledgedEventId ?
       totalEventCount = header.totalEventCount
       eventIdGenerator.updateLastEventId(lastWrittenEventId)
       val sender = this.sender()

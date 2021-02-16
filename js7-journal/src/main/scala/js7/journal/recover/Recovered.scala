@@ -95,9 +95,13 @@ object Recovered
     totalRunningSince: Deadline,
     config: Config)
     (implicit S: JournaledState.Companion[S])
-  = new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config,
-    new JournalEventWatch(journalMeta, config),
-    recoveredJournalFile.map(_.journalId))
+  : Recovered[S] = {
+    val recoveredEventId = recoveredJournalFile.fold(EventId.BeforeFirst)(_.eventId)
+    new Recovered(
+      journalMeta, recoveredJournalFile, totalRunningSince, config,
+      new JournalEventWatch(journalMeta, config, Some(recoveredEventId)),
+      recoveredJournalFile.map(_.journalId))
+  }
 
   object Output {
     final case class JournalIsReady(journalHeader: JournalHeader)
