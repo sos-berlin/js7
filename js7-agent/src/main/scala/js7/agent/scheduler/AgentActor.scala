@@ -21,6 +21,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkautils.{Akkas, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
@@ -252,6 +253,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
 
     // May take minutes !!!
     val recovered = JournaledStateRecoverer.recover[AgentState](journalMeta, agentConfiguration.config)
+      .closeWithCloser
 
     val journalActor = tag[JournalActor.type](actorOf(
       JournalActor.props[AgentState](journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler, eventIdGenerator),

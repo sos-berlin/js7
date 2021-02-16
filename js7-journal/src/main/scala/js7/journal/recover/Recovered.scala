@@ -28,6 +28,10 @@ extends AutoCloseable
   def close() =
     eventWatch.close()
 
+  /** Replace this Recovered.
+    * The caller must not close the old one
+    * because JournalEventWatch remains the same.
+    */
   def changeRecoveredJournalFile(recoveredJournalFile: Option[RecoveredJournalFile[S]]) =
     new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config, eventWatch, journalIdOnce)
 
