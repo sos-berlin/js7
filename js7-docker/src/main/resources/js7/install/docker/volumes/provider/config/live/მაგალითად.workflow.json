@@ -13,7 +13,8 @@
       "agentId": "agent-1",
       "executable": {
         "TYPE": "PathExecutable",
-        "path": "test"
+        "path": "test",
+        "env": { "HELLO": "'მაგალითად'"}
       },
       "taskLimit": 3
     },
