@@ -476,7 +476,6 @@ lazy val `js7-executor-for-java` = project
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      "io.projectreactor" % "reactor-core" % reactorVersion ++
       "io.vavr" % "vavr" % vavrVersion ++
       hamcrest % "test" ++
       scalaTest % "test" ++
