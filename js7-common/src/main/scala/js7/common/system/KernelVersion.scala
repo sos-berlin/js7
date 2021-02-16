@@ -1,8 +1,8 @@
 package js7.common.system
 
+import js7.base.log.Logger
 import js7.base.utils.Collections.implicits.RichTraversableOnce
 import js7.base.utils.SideEffect.ImplicitSideEffect
-import js7.common.scalautil.Logger
 import scala.util.control.NonFatal
 
 /**

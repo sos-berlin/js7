@@ -10,10 +10,10 @@ import js7.base.auth.{SessionToken, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters._
 import js7.common.akkahttp.web.session.SessionRegister._
-import js7.common.scalautil.Logger
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task
 import monix.execution.Scheduler

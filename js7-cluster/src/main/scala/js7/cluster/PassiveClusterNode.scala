@@ -12,6 +12,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
+import js7.base.log.Logger
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -28,7 +29,6 @@ import js7.cluster.ObservablePauseDetector.RichPauseObservable
 import js7.cluster.PassiveClusterNode._
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
-import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}

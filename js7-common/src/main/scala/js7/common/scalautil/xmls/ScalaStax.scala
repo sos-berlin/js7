@@ -3,7 +3,7 @@ package js7.common.scalautil.xmls
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{Attribute, StartElement}
-import js7.common.scalautil.Logger
+import js7.base.log.Logger
 import js7.common.scalautil.ScalaThreadLocal._
 import scala.jdk.CollectionConverters._
 

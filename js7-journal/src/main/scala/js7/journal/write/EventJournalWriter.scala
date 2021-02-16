@@ -3,9 +3,9 @@ package js7.journal.write
 import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
+import js7.base.log.Logger
 import js7.base.utils.Assertions.assertThat
 import js7.common.jsonseq.PositionAnd
-import js7.common.scalautil.Logger
 import js7.data.event.JournalSeparators.{Commit, Transaction}
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta

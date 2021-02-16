@@ -1,14 +1,14 @@
 package js7.journal.watch
 
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline
-import scala.concurrent.duration.Deadline.now
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Logger
 import js7.journal.watch.EventSync._
 import monix.eval.Task
 import scala.collection.mutable
 import scala.concurrent.Promise
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**

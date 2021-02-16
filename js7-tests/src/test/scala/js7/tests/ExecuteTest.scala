@@ -5,11 +5,11 @@ import java.util.regex.Pattern
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ReturnCode
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.common.scalautil.Logger
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, InternalExecutable, RelativePathExecutable, ScriptExecutable}

@@ -15,6 +15,7 @@ import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
@@ -27,8 +28,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits._
-import js7.common.scalautil.Logger
-import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
 import monix.eval.Task
 import monix.execution.Scheduler

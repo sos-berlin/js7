@@ -7,6 +7,7 @@ import cats.syntax.flatMap._
 import cats.syntax.monoid._
 import com.softwaremill.diffx
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -20,7 +21,6 @@ import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.ObservablePauseDetector._
 import js7.cluster.Problems.{ClusterCommandInapplicableProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.common.http.RecouplingStreamReader
-import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt.haltJava
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}

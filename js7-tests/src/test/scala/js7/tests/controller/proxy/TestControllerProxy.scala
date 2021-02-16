@@ -6,6 +6,7 @@ import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -14,7 +15,6 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, jsonSeqMarshaller}
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId}

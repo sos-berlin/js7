@@ -1,8 +1,8 @@
 package js7.common.tcp
 
 import akka.util.ByteString
+import js7.base.log.Logger
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Logger
 import js7.common.tcp.LengthHeaderMessageCollector.intToBytesString
 import js7.common.tcp.LengthHeaderMessageCollectorTest._
 import org.scalatest.freespec.AnyFreeSpec

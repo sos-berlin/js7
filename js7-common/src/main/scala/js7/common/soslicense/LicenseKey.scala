@@ -2,7 +2,7 @@ package js7.common.soslicense
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter.BASIC_ISO_DATE
-import js7.common.scalautil.Logger
+import js7.base.log.Logger
 import js7.common.soslicense.LicenseKey._
 import js7.common.soslicense.Parameters._
 import js7.common.soslicense.UnsignedInt32._

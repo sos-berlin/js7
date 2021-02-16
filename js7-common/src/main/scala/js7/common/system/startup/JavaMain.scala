@@ -2,11 +2,10 @@ package js7.common.system.startup
 
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.{Log4j, Logger}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.log.Log4j
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
-import js7.common.scalautil.Logger
 import js7.common.system.startup.StartUp.printlnWithClock
 import js7.common.utils.JavaShutdownHook
 

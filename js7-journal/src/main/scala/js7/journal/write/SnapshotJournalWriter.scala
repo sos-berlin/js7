@@ -3,9 +3,9 @@ package js7.journal.write
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
+import js7.base.log.Logger
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.common.scalautil.Logger
 import js7.data.event.EventId
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.journal.data.JournalMeta

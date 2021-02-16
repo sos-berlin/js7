@@ -6,12 +6,12 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.LazyScalaLogger.AsLazyScalaLogger
+import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.HasCloser
-import js7.common.log.LazyScalaLogger.AsLazyScalaLogger
-import js7.common.scalautil.Logger
 import js7.common.utils.Exceptions.ignoreException
 import js7.executor.configuration.ProcessKillScript
 import js7.executor.process.ProcessKillScriptProvider._

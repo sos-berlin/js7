@@ -3,11 +3,11 @@ package js7.provider
 import java.util.concurrent.CancellationException
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
+import js7.base.log.Logger
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
-import js7.common.scalautil.Logger
 import js7.common.system.startup.JavaMain.{runMain, withShutdownHooks}
 import js7.common.system.startup.StartUp.logStartUp
 import js7.provider.configuration.ProviderConfiguration

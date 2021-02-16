@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeader
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import js7.base.auth.{Permission, SessionToken, UserId}
 import js7.base.generic.SecretString
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.ExceptionHandling
@@ -14,7 +15,6 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.RouteProvider._
 import js7.common.akkahttp.web.session.{Session => Session_}
 import js7.common.http.AkkaHttpClient.`x-js7-session`
-import js7.common.scalautil.Logger
 import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task
 import monix.execution.Scheduler

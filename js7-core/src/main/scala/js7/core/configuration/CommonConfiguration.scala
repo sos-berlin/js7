@@ -5,12 +5,12 @@ import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
+import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
 import js7.common.internet.IP.StringToServerInetSocketAddress
-import js7.common.scalautil.Logger
 import js7.core.configuration.CommonConfiguration._
 
 /**

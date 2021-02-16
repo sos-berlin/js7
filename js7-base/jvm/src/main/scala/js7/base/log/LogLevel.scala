@@ -1,4 +1,4 @@
-package js7.common.log
+package js7.base.log
 
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import js7.base.convert.As

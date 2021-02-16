@@ -1,4 +1,4 @@
-package js7.common.log
+package js7.base.log
 
 import java.util.concurrent.ConcurrentHashMap
 import scribe.format.Formatter

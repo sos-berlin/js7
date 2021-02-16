@@ -17,6 +17,8 @@ import js7.agent.scheduler.order.JobRegister.JobEntry
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
 import js7.base.crypt.SignatureVerifier
 import js7.base.generic.Completed
+import js7.base.log.Logger
+import js7.base.log.Logger.ops._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.promiseFuture
@@ -27,8 +29,6 @@ import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.http.CirceToYaml.ToYamlString
-import js7.common.scalautil.Logger
-import js7.common.scalautil.Logger.ops._
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.agent.AgentId

@@ -9,11 +9,11 @@ import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.auth.UserId
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.common.scalautil.Logger
 import js7.core.command.CommandMeta
 import monix.execution.Scheduler
 import scala.concurrent.Promise

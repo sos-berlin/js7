@@ -1,8 +1,7 @@
-package js7.common.log
+package js7.base.log
 
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{durationOf, measureTimeOfSingleRun}
-import js7.common.scalautil.Logger
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.FiniteDuration
 

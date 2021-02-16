@@ -11,6 +11,7 @@ import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -26,7 +27,6 @@ import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.http.RecouplingStreamReader
-import js7.common.scalautil.Logger
 import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration

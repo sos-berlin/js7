@@ -10,6 +10,7 @@ import js7.agent.data.commands.AgentCommand._
 import js7.agent.web.CommandWebServerTest._
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs._
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
@@ -17,7 +18,6 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
 import js7.data.agent.{AgentId, AgentRunId}

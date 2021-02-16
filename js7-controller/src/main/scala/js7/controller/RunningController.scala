@@ -17,6 +17,7 @@ import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -34,7 +35,6 @@ import js7.cluster.{Cluster, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.common.scalautil.Logger
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController._
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}

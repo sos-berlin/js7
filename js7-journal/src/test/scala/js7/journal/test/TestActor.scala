@@ -6,10 +6,10 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.Config
+import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.SupervisorStrategies
-import js7.common.scalautil.Logger
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}

@@ -11,6 +11,7 @@ import js7.agent.scheduler.order.OrderActor._
 import js7.base.generic.{Accepted, Completed}
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -18,7 +19,6 @@ import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.Logger
 import js7.data.command.CancelMode
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent._

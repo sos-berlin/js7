@@ -2,12 +2,12 @@ package js7.cluster
 
 import akka.actor.ActorSystem
 import cats.effect.ExitCase
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.cluster.ActivationInhibitor._
-import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
 import js7.data.cluster.ClusterSetting
 import js7.data.cluster.ClusterState.FailedOver

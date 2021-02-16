@@ -14,6 +14,8 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
+import js7.base.log.Logger
+import js7.base.log.Logger.ops._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
@@ -31,8 +33,6 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.cluster.WorkingClusterNode
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
-import js7.common.scalautil.Logger
-import js7.common.scalautil.Logger.ops._
 import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.configuration.ControllerConfiguration

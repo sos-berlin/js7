@@ -6,13 +6,13 @@ import java.nio.file.Paths
 import java.util.Comparator
 import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
 import js7.common.files.DirectoryReader.Entry
 import js7.common.files.DirectoryReaderTest._
-import js7.common.scalautil.Logger
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 

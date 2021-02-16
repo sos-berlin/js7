@@ -12,6 +12,7 @@ import js7.base.configutils.Configs._
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
@@ -20,7 +21,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon._
-import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}

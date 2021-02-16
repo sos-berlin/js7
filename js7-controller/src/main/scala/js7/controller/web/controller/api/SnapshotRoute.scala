@@ -9,6 +9,7 @@ import akka.util.ByteString
 import io.circe.syntax._
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked
 import js7.base.utils.FutureCompletion
@@ -18,7 +19,6 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
-import js7.common.scalautil.Logger
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.SnapshotRoute._

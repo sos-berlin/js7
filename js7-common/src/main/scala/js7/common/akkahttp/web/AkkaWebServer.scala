@@ -13,6 +13,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
+import js7.base.log.Logger
 import js7.base.thread.Futures.implicits._
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
@@ -22,7 +23,6 @@ import js7.common.akkahttp.web.AkkaWebServer._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow
-import js7.common.scalautil.Logger
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler

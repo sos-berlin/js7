@@ -4,11 +4,11 @@ import cats.Show
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.closeOnError
-import js7.common.scalautil.Logger
 import js7.provider.DirectoryWatcher._
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{Ack, Cancelable, Scheduler}

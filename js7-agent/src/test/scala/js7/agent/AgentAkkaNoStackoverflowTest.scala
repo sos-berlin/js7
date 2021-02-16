@@ -4,8 +4,8 @@ import js7.agent.AgentAkkaNoStackoverflowTest._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
+import js7.base.log.Logger
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Logger
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 

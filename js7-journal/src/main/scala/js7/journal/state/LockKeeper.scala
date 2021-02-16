@@ -1,9 +1,9 @@
 package js7.journal.state
 
 import cats.effect.Resource
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.deferFutureAndLog
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.Logger
 import js7.journal.state.LockKeeper._
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean

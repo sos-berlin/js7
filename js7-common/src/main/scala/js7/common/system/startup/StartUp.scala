@@ -3,9 +3,9 @@ package js7.common.system.startup
 import java.io.File
 import java.time.LocalDateTime
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
+import js7.base.log.Logger
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.Logger
 import js7.common.system.JavaInformations
 import js7.common.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.common.system.SystemInformations.totalPhysicalMemory

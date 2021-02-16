@@ -17,6 +17,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.BuildInfo
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
@@ -36,7 +37,6 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import js7.common.akkahttp.web.session.RouteProvider
 import js7.common.http.JsonStreamingSupport._
-import js7.common.scalautil.Logger
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest

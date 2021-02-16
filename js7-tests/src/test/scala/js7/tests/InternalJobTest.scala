@@ -2,12 +2,12 @@ package js7.tests
 
 import js7.base.auth.Admission
 import js7.base.configutils.Configs._
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.common.scalautil.Logger
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, KeyedEvent}

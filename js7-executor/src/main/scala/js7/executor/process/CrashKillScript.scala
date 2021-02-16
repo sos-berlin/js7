@@ -6,9 +6,9 @@ import java.nio.file.Files.{createFile, deleteIfExists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.base.io.process.Processes.Pid
+import js7.base.log.LazyScalaLogger.AsLazyScalaLogger
+import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
-import js7.common.log.LazyScalaLogger.AsLazyScalaLogger
-import js7.common.scalautil.Logger
 import js7.common.utils.Exceptions.ignoreException
 import js7.data.job.TaskId
 import js7.executor.configuration.ProcessKillScript

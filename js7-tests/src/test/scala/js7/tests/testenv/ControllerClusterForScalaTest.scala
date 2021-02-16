@@ -5,6 +5,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
@@ -13,7 +14,6 @@ import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
 import js7.common.auth.SecretStringGenerator
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.{ControllerTermination, RunningController}

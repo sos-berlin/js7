@@ -12,6 +12,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.configutils.Configs._
 import js7.base.generic.GenericString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
@@ -20,7 +21,6 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.ProvideActorSystem
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}

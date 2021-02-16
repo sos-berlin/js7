@@ -14,6 +14,8 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.https.TrustStoreRef
+import js7.base.log.Logger
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
@@ -25,8 +27,6 @@ import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.crypt.pgp.PgpSigner
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
-import js7.common.scalautil.Logger
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController

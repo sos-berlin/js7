@@ -6,9 +6,9 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.tests.AgentClientMainTest._
 import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.common.guice.ScalaAbstractModule
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
 import monix.eval.Task

@@ -1,10 +1,10 @@
 package js7.journal.recover
 
 import java.nio.file.Path
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax.RichString
-import js7.common.scalautil.Logger
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.journal.recover.FileJournaledStateBuilder._

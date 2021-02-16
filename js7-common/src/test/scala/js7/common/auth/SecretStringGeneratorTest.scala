@@ -1,11 +1,11 @@
 package js7.common.auth
 
 import js7.base.generic.SecretString
+import js7.base.log.Logger
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.measureTime
 import js7.common.auth.SecretStringGenerator.newSecretString
 import js7.common.auth.SecretStringGeneratorTest._
-import js7.common.scalautil.Logger
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

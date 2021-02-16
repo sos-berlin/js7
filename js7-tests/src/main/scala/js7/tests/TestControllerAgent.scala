@@ -10,6 +10,7 @@ import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.log.{Log4j, Logger}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
@@ -23,8 +24,6 @@ import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.base.utils.{Closer, DecimalPrefixes}
 import js7.common.commandline.CommandLineArguments
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.common.log.Log4j
-import js7.common.scalautil.Logger
 import js7.common.utils.JavaShutdownHook
 import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}

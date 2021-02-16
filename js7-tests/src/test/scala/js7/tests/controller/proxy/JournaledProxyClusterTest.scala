@@ -5,6 +5,7 @@ import io.circe.syntax._
 import js7.base.circeutils.CirceUtils._
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
@@ -17,7 +18,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.web.HttpClient
 import js7.common.http.AkkaHttpClient
-import js7.common.scalautil.Logger
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerState

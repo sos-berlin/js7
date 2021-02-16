@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.generic.{Completed, SecretString}
+import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
@@ -20,7 +21,6 @@ import js7.common.akkahttp.web.session.SessionRouteTest._
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.CirceJsonSupport._
-import js7.common.scalautil.Logger
 import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
 import monix.eval.Task

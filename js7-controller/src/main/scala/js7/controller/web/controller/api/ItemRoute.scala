@@ -10,6 +10,7 @@ import io.circe.Json
 import js7.base.auth.{Permission, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -20,7 +21,6 @@ import js7.base.utils.{ByteArrayToLinesObservable, FutureCompletion}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.StreamingSupport._
-import js7.common.scalautil.Logger
 import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ItemRoute._

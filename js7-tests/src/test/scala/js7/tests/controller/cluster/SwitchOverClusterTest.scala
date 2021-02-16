@@ -2,12 +2,12 @@ package js7.tests.controller.cluster
 
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.common.scalautil.Logger
 import js7.controller.RunningController
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
 import js7.data.controller.ControllerCommand.ClusterSwitchOver

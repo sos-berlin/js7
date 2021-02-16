@@ -9,10 +9,10 @@ import js7.agent.data.commands.AgentCommand.{Batch, CoupleController, EmergencyS
 import js7.agent.scheduler.AgentHandle
 import js7.base.auth.UserId
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.common.scalautil.Logger
 import js7.common.system.startup.Halt
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}

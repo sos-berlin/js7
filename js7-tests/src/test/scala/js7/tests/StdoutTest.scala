@@ -1,10 +1,10 @@
 package js7.tests
 
 import js7.base.configutils.Configs._
+import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.common.scalautil.Logger
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.{Executable, ScriptExecutable}

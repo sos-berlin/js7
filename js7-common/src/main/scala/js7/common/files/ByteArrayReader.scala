@@ -5,8 +5,8 @@ import java.nio.channels.FileChannel
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption.READ
 import js7.base.data.ByteArray
+import js7.base.log.Logger
 import js7.common.files.ByteArrayReader._
-import js7.common.scalautil.Logger
 
 final class ByteArrayReader(file: Path, fromEnd: Boolean = false)
 extends AutoCloseable

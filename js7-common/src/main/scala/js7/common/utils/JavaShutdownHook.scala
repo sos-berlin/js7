@@ -1,6 +1,6 @@
 package js7.common.utils
 
-import js7.common.scalautil.Logger
+import js7.base.log.Logger
 import js7.common.utils.JavaShutdownHook._
 import scala.util.control.NonFatal
 

@@ -1,11 +1,11 @@
 package js7.core.cluster
 
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.monixutils.MonixDeadline
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem, ProblemCode}
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Logger
 import js7.core.cluster.ClusterWatch._
 import js7.data.cluster.ClusterEvent.ClusterSwitchedOver
 import js7.data.cluster.ClusterState.HasNodes

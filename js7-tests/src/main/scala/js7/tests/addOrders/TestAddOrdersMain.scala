@@ -1,8 +1,8 @@
 package js7.tests.addOrders
 
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.Stopwatch.durationAndPerSecondString
-import js7.common.log.ScribeUtils.coupleScribeWithSlf4j
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 

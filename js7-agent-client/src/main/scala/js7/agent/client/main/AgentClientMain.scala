@@ -5,11 +5,10 @@ import js7.agent.client.AkkaHttpAgentTextApi
 import js7.base.auth.SessionToken
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
+import js7.base.log.{Log4j, Logger}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.log.Log4j
-import js7.common.scalautil.Logger
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 

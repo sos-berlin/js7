@@ -8,6 +8,7 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As._
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -19,7 +20,6 @@ import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.crypt.generic.MessageSigners
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
-import js7.common.scalautil.Logger
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, TypedSourceReader}

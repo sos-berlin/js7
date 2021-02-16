@@ -1,13 +1,12 @@
 package js7.common.akkautils
 
 import akka.actor.{Actor, ActorSystem, DeadLetter, DeadLetterSuppression, Props, UnhandledMessage}
+import js7.base.log.LogLevel.syntax._
+import js7.base.log.LogLevel.{Debug, Warn}
+import js7.base.log.{LogLevel, Logger}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas._
 import js7.common.akkautils.DeadLetterActor._
-import js7.common.log.LogLevel
-import js7.common.log.LogLevel.syntax._
-import js7.common.log.LogLevel.{Debug, Warn}
-import js7.common.scalautil.Logger
 import scala.util.control.NonFatal
 
 /**

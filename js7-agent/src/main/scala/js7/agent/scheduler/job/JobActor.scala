@@ -13,13 +13,13 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.ShellFileAttributes
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
-import js7.common.scalautil.Logger
 import js7.data.execution.workflow.context.StateView
 import js7.data.job.{AbsolutePathExecutable, CommandLine, CommandLineEvaluator, CommandLineExecutable, InternalExecutable, JobKey, RelativePathExecutable, ScriptExecutable}
 import js7.data.order.{Order, OrderId, Outcome}

@@ -268,6 +268,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings {
     import Dependencies._
     libraryDependencies ++=
+      scalaLogging ++
       guava ++
       typesafeConfig
   }
@@ -334,7 +335,6 @@ lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test
     import Dependencies._
     libraryDependencies ++=
       scalaXml ++
-      scalaLogging ++
       typesafeConfig ++
       bouncyCastle ++
       akkaHttp ++

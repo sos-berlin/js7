@@ -1,8 +1,8 @@
 package js7.tests.https
 
+import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Logger
 import js7.tests.https.ControllerClientSideHttpsWithoutCertificateTest._
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.TimeoutException

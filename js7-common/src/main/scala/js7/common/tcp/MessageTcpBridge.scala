@@ -3,8 +3,8 @@ package js7.common.tcp
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props}
 import akka.io.Tcp
 import akka.util.ByteString
+import js7.base.log.Logger
 import js7.common.akkautils.Akkas._
-import js7.common.scalautil.Logger
 import js7.common.tcp.LengthHeaderMessageCollector._
 import js7.common.tcp.MessageTcpBridge._
 

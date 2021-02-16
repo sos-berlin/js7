@@ -11,6 +11,7 @@ import cats.syntax.flatMap._
 import io.circe.Json
 import js7.base.auth.{SimpleUser, ValidUserPermission}
 import js7.base.circeutils.CirceUtils._
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -24,7 +25,6 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport._
-import js7.common.scalautil.Logger
 import js7.controller.OrderApi
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.order.OrderRoute._

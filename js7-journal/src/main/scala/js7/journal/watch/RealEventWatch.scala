@@ -2,6 +2,7 @@ package js7.journal.watch
 
 import cats.syntax.option._
 import java.util.concurrent.TimeoutException
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
@@ -12,7 +13,6 @@ import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.Logger
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.RealEventWatch._
 import monix.eval.Task

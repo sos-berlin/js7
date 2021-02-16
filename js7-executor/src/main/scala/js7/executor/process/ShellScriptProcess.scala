@@ -5,12 +5,12 @@ import java.io.{InputStream, InputStreamReader}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes._
 import js7.base.io.process.ReturnCode
+import js7.base.log.Logger
 import js7.base.monixutils.UnbufferedReaderObservable
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.common.scalautil.Logger
 import js7.data.job.CommandLine
 import js7.executor.process.RichProcess.{startProcessBuilder, tryDeleteFile}
 import js7.executor.task.StdChannels

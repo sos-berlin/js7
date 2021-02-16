@@ -12,6 +12,7 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.log.Log4j
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer
@@ -19,7 +20,6 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.common.guice.GuiceImplicits.RichInjector
-import js7.common.log.Log4j
 import js7.common.utils.JavaShutdownHook
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration

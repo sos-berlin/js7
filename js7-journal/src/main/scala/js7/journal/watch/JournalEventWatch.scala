@@ -9,6 +9,7 @@ import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs._
 import js7.base.data.ByteArray
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
@@ -21,7 +22,6 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
-import js7.common.scalautil.Logger
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.data.problems.UnknownEventIdProblem
 import js7.journal.data.JournalMeta

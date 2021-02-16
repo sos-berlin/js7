@@ -1,9 +1,9 @@
 package js7.journal.watch
 
 import java.nio.file.Path
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.jsonseq.PositionAnd
-import js7.common.scalautil.Logger
 import js7.data.event.{EventId, JournalId}
 import js7.journal.data.JournalMeta
 import js7.journal.watch.FileEventIteratorPool._

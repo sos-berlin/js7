@@ -1,7 +1,7 @@
 package js7.executor.process
 
 import java.nio.file.Path
-import js7.common.scalautil.Logger
+import js7.base.log.Logger
 import js7.data.job.JobKey
 import js7.executor.process.FilePool._
 import js7.executor.process.RichProcess.tryDeleteFiles

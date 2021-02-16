@@ -2,8 +2,8 @@ package js7.journal.recover
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
 import com.typesafe.config.Config
+import js7.base.log.Logger
 import js7.base.utils.SetOnce
-import js7.common.scalautil.Logger
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalHeader, JournalId, JournaledState}
 import js7.journal.JournalActor

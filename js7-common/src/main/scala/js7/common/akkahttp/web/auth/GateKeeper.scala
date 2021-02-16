@@ -13,6 +13,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.security.cert.X509Certificate
 import js7.base.auth.{DistinguishedName, GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.configutils.Configs._
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
@@ -21,7 +22,6 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
-import js7.common.scalautil.Logger
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Set

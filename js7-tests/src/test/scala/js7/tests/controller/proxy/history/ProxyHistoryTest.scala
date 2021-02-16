@@ -7,6 +7,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
 import js7.base.thread.MonixBlocking.syntax._
@@ -15,7 +16,6 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
 import js7.common.akkautils.ProvideActorSystem
-import js7.common.scalautil.Logger
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.TakeSnapshot

@@ -4,7 +4,7 @@ import java.math.BigInteger
 import java.security.SecureRandom
 import js7.base.crypt.SignerId
 import js7.base.generic.SecretString
-import js7.common.scalautil.Logger
+import js7.base.log.Logger
 import org.bouncycastle.bcpg.sig.{Features, KeyFlags}
 import org.bouncycastle.bcpg.{HashAlgorithmTags, PublicKeyAlgorithmTags, SymmetricKeyAlgorithmTags}
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair

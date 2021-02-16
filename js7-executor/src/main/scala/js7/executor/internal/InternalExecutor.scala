@@ -3,11 +3,11 @@ package js7.executor.internal
 import cats.syntax.flatMap._
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
+import js7.base.log.Logger
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.Logger
 import js7.data.job.InternalExecutable
 import js7.executor.internal.InternalExecutor._
 import js7.executor.internal.InternalJob.{JobContext, OrderContext, OrderProcess}

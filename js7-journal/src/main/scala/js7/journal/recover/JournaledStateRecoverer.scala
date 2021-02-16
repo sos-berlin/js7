@@ -2,12 +2,12 @@ package js7.journal.recover
 
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.SetOnce
 import js7.common.jsonseq.InputStreamJsonSeqReader
-import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.{EventId, JournaledState}
 import js7.journal.data.JournalMeta

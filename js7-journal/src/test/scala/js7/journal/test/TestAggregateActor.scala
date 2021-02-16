@@ -3,8 +3,8 @@ package js7.journal.test
 import akka.Done
 import akka.actor.{ActorRef, Status}
 import js7.base.generic.Accepted
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.Logger
 import js7.journal.configuration.JournalConf
 import js7.journal.test.TestAggregateActor._
 import js7.journal.{JournalActor, KeyedJournalingActor}

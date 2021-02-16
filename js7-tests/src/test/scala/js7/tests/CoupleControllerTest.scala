@@ -4,8 +4,8 @@ import java.nio.file.Files.{delete, move}
 import java.nio.file.Paths
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.time.ScalaTime._
-import js7.common.scalautil.Logger
 import js7.data.agent.AgentId
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}

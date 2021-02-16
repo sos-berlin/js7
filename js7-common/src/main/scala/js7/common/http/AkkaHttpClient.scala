@@ -23,6 +23,7 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -39,7 +40,6 @@ import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decompressResp
 import js7.common.http.CirceJsonSupport._
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.StreamingSupport._
-import js7.common.scalautil.Logger
 import monix.eval.Task
 import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable

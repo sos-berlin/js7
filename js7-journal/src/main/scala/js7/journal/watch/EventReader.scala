@@ -4,6 +4,7 @@ import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.memoryLeakLimitedObservableTailRecM
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline
@@ -16,7 +17,6 @@ import js7.base.utils.Collections.implicits.RichIterator
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.jsonseq.InputStreamJsonSeqReader.JsonSeqFileClosedProblem
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
-import js7.common.scalautil.Logger
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.{Event, EventId, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta

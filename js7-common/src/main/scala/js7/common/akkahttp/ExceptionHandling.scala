@@ -5,11 +5,11 @@ import akka.http.scaladsl.model.{HttpRequest, StatusCode}
 import akka.http.scaladsl.server.Directives.{complete, extractRequest}
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import com.typesafe.config.Config
+import js7.base.log.Logger
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.ExceptionHandling._
 import js7.common.akkahttp.StandardMarshallers._
-import js7.common.scalautil.Logger
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
 
