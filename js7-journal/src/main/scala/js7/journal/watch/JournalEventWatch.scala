@@ -41,7 +41,7 @@ import scala.util.Try
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   */
 final class JournalEventWatch(val journalMeta: JournalMeta, config: Config,
-  announceNextEventId: Option[EventId] = None)
+  announceNextJournalFileEventId: Option[EventId] = None)
 extends AutoCloseable
 with RealEventWatch
 with JournalingObserver
@@ -72,14 +72,15 @@ with JournalingObserver
   @volatile
   private var currentEventReaderOption: Option[CurrentEventReader] = None
 
-  // announceNextEventId, the recovered EventId, optionally announces the next journal file
+  // announceNextJournalFileEventId, the recovered EventId, optionally announces the next journal file
   // to avoid "Unknown journal file" if PassiveClusterNode starts replication of the next
   // journal file before this active node call onJournalingStarted.
   // This may happen especially when the node starts with a big snapshot
   // which delays onJournalingStarted.
   @volatile
   private var nextEventReaderPromise: Option[(EventId, Promise[Option[CurrentEventReader]])] =
-    announceNextEventId.map(_ -> Promise())
+    announceNextJournalFileEventId.map(_ -> Promise())
+
   @volatile
   private var _isActiveNode = false
 
@@ -297,7 +298,11 @@ with JournalingObserver
           currentEventReaderOption
             .filter(_.tornEventId == fileEventId)
             .orElse(afterEventIdToHistoric.get(fileEventId).map(_.eventReader))
-            .toRight(Problem(s"Unknown journal file=$fileEventId"))
+            .toRight {
+              logger.debug(s"observeFile($journalPosition): nextEventReaderPromise=$nextEventReaderPromise " +
+                s"afterEventIdToHistoric=${afterEventIdToHistoric.keys.mkString(",")}")
+              Problem(s"Unknown journal file=$fileEventId")
+            }
             .map(Some.apply))
     }).flatMap(checked => Task(checked flatMap {
       case None => Right(Observable.empty)  // JournalEventWatch has been closed

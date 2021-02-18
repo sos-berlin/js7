@@ -99,8 +99,11 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
       // Delete obsolete journal files left by last run
       if (journalConf.deleteObsoleteFiles) {
-        eventWatch.releaseEvents(
-          recoveredState.journalState.toReleaseEventId(recovered.eventId, journalConf.releaseEventsUserIds))
+        for (f <- recovered.recoveredJournalFile) {
+          val eventId = f.fileEventId/*release files before the recovered file*/
+          eventWatch.releaseEvents(
+            recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds))
+        }
       }
 
       for (o <- recovered.recoveredJournalFile) {
@@ -223,7 +226,8 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
       continuation match {
         case FirstPartialFile(recoveredJournalFile) =>
-          logger.info(s"Start replicating '${file.getFileName()}' file after ${EventId.toString(recoveredJournalFile.eventId)}")
+          logger.info(s"Start replicating '${file.getFileName()}' file after " +
+            s"${EventId.toString(recoveredJournalFile.eventId)}, position ${recoveredJournalFile.length}")
           builder.startWithState(JournalProgress.InCommittedEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
             totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount,
@@ -387,7 +391,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
           case Right((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
             // fileLength may be advanced to end of file when file's last record is truncated
-            logger.debug(s"End of replicated journal file reached: " +
+            logger.debug("End of replicated journal file reached: " +
               s"${file.getFileName} eventId=${builder.eventId} fileLength=$fileLength")
             _eof = true
             Observable.pure(Left(EndOfJournalFileMarker))
@@ -514,7 +518,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
               }
             }
         }
-        .takeWhile(_.left.forall(_ != EndOfJournalFileMarker))
+        .takeWhile(_.left.forall(_ ne EndOfJournalFileMarker))
         .takeWhileInclusive(_ => !shouldActivate(builder.clusterState))
         .collect {
           case Left(problem) => problem

@@ -77,7 +77,7 @@ extends Actor with Stash
   private var totalEventCount = 0L
   private var fileEventCount = 0L
   private var requireClusterAcknowledgement = false
-  private var releaseEventIdsDueToClusterCoupled = false
+  private var releaseEventIdsAfterClusterCoupled = false
   private val waitingForAcknowledgeTimer = SerialCancelable()
   private var waitingForAcknowledgeSince = now
   private var switchedOver = false
@@ -195,7 +195,7 @@ extends Actor with Stash
                 commit()
                 logger.info(s"Cluster is coupled: Start requiring acknowledgements from passive cluster node")
                 requireClusterAcknowledgement = true
-                releaseEventIdsDueToClusterCoupled = true
+                releaseEventIdsAfterClusterCoupled = true
 
               case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
                 commit()
@@ -247,8 +247,7 @@ extends Actor with Stash
       // The passive node does not know Persist bundles (maybe transactions) and acknowledges events as they arrive.
       // We take only complete Persist bundles as acknowledged.
       onCommitAcknowledged(n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length)
-      if (releaseEventIdsDueToClusterCoupled) {
-        releaseEventIdsDueToClusterCoupled = false
+      if (releaseEventIdsAfterClusterCoupled) {
         releaseObsoleteEvents()
       }
 
@@ -640,15 +639,27 @@ extends Actor with Stash
     }
 
   private def releaseObsoleteEvents(): Unit =
-    if (conf.deleteObsoleteFiles &&
-      (journaledState.clusterState == ClusterState.Empty ||
-        (journaledState.clusterState.isInstanceOf[ClusterState.Coupled] ||
-         journaledState.clusterState.isInstanceOf[ClusterState.ActiveShutDown]
-        ) &&
-          requireClusterAcknowledgement/*ClusterPassiveLost after SnapshotTaken in the same commit chunk
-           has reset requireClusterAcknowledgement. We must not delete the file when cluster is being decoupled.*/))
-    {
-      releaseObsoleteEvents(journaledState.journalState.toReleaseEventId(lastAcknowledgedEventId, conf.releaseEventsUserIds))
+    if (conf.deleteObsoleteFiles) {
+      if (journaledState.clusterState == ClusterState.Empty ||
+          requireClusterAcknowledgement
+            // ClusterPassiveLost after SnapshotTaken in the same commit chunk has reset
+            // requireClusterAcknowledgement. We must not delete the file when cluster is being decoupled.
+          && (journaledState.clusterState.isInstanceOf[ClusterState.Coupled] ||
+              journaledState.clusterState.isInstanceOf[ClusterState.ActiveShutDown]))
+      {
+        val eventId =
+          if (journaledState.clusterState == ClusterState.Empty)
+            lastWrittenEventId
+          else {
+            // Do not release the just acknowledged last Event of a journal file
+            // (i.e. the last acknowledged event is the last event of a journal file)
+            // because after restart, the passive node continues reading the journal file
+            // (only to get end-of-file). Subtract 1 to avoid this.
+            (lastAcknowledgedEventId - 1) max EventId.BeforeFirst
+          }
+        releaseObsoleteEvents(journaledState.journalState.toReleaseEventId(eventId, conf.releaseEventsUserIds))
+        releaseEventIdsAfterClusterCoupled = false
+      }
     }
 
   private def releaseObsoleteEvents(untilEventId: EventId): Unit = {
