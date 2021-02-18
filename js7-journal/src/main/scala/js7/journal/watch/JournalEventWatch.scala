@@ -4,8 +4,8 @@ import cats.syntax.semigroup._
 import com.typesafe.config.Config
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.delete
-import java.nio.file.{Files, Path}
+import java.nio.file.Files.{delete, exists, size}
+import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs._
 import js7.base.data.ByteArray
@@ -18,6 +18,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{CloseableIterator, SetOnce}
@@ -25,7 +26,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.data.problems.UnknownEventIdProblem
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.files.JournalFiles
 import js7.journal.watch.JournalEventWatch._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -52,7 +53,7 @@ with JournalingObserver
 
   @volatile private var afterEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
     SortedMap.empty[EventId, HistoricJournalFile] ++
-      listJournalFiles(journalMeta.fileBase)
+      JournalFiles.listJournalFiles(journalMeta.fileBase)
         .map(o => new HistoricJournalFile(o.afterEventId, o.file))
         .toKeyedMap(_.afterEventId)
 
@@ -171,28 +172,46 @@ with JournalingObserver
     }
   }
 
-  private def releaseEventsNow(untilEventId: EventId): Unit =
-    synchronized {
-      logger.debug(s"releaseEventsNow($untilEventId)")
-      val keepFileAfter = currentEventReaderOption match {
-        case Some(current) if current.tornEventId <= untilEventId =>
-          current.tornEventId
-        case _ =>
-          historicJournalFileAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)  // Delete only journal files before the file containing `after`
-      }
-      var continue = true
-      for (historic <- afterEventIdToHistoric.values.toVector.sortBy(_.afterEventId).takeWhile(_.afterEventId < keepFileAfter)
-           if continue) {
-        logger.info(s"Deleting obsolete journal file '$historic'")
-        historic.close()
-        try {
-          delete(historic.file)
+  private def releaseEventsNow(untilEventId: EventId): Unit = {
+    logger.debug(s"releaseEventsNow($untilEventId)")
+    val keepFileAfter = currentEventReaderOption match {
+      case Some(current) if current.tornEventId <= untilEventId =>
+        current.tornEventId
+      case _ =>
+        // Delete only journal files before the file containing `untilEventId`
+        historicJournalFileAfter(untilEventId).fold(EventId.BeforeFirst)(_.afterEventId)
+    }
+    deleteJournalFiles(keepFileAfter)
+    deleteGarbageFiles(keepFileAfter)
+  }
+
+  private def deleteJournalFiles(keepFileAfter: EventId): Unit = {
+    val obsoletes = afterEventIdToHistoric.values.filter(_.afterEventId < keepFileAfter)
+    for (historic <- obsoletes) {
+      logger.info(s"Delete obsolete journal file '$historic' " +
+        s"(${Try(toKBGB(size(historic.file))).fold(identity, identity)})")
+      historic.close()
+      try {
+        delete(historic.file)
+        synchronized {
           afterEventIdToHistoric -= historic.afterEventId
-        } catch { case e: IOException =>
-          continue = false
-          if (Files.exists(historic.file)) {
+        }
+      } catch {
+        case e: IOException =>
+          if (exists(historic.file)) {
             logger.warn(s"Cannot delete obsolete journal file '$historic': ${e.toStringWithCauses}")
           }
+      }
+    }
+  }
+
+  private def deleteGarbageFiles(untilEventId: EventId): Unit =
+    for (file <- JournalFiles.listGarbageFiles(journalMeta.fileBase, untilEventId = untilEventId)) {
+      logger.info(s"Delete garbage journal file '${file.getFileName}'")
+      try delete(file)
+      catch { case e: IOException =>
+        if (exists(file)) {
+          logger.warn(s"Cannot delete garbage journal file '$file': ${e.toStringWithCauses}")
         }
       }
     }
@@ -319,8 +338,7 @@ with JournalingObserver
     synchronized {
       currentEventReaderOption match {
         case Some(o) => o.lastEventId
-        case None if afterEventIdToHistoric.nonEmpty => afterEventIdToHistoric.keys.max
-        case None => EventId.BeforeFirst
+        case None => afterEventIdToHistoric.keys.maxOption getOrElse EventId.BeforeFirst
       }
     }
 
@@ -331,7 +349,7 @@ with JournalingObserver
         tornEventId = tornEventId,
         (afterEventIdToHistoric.values.view
           .map(h =>
-            JournalPosition(h.afterEventId, Try(Files.size(h.file)) getOrElse -1)
+            JournalPosition(h.afterEventId, Try(size(h.file)) getOrElse -1)
           ) ++
             currentEventReaderOption.map(_.journalPosition)
         ).toVector)

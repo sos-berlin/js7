@@ -1,8 +1,9 @@
 package js7.journal.files
 
 import java.nio.file.Files.{createTempFile, delete, size}
-import java.nio.file.Paths
+import java.nio.file.{Path, Paths}
 import js7.base.io.file.FileUtils.syntax._
+import js7.journal.files.JournalFile.garbagePattern
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -40,5 +41,17 @@ final class JournalFileTest extends AnyFreeSpec
     assert(matcher.checkedEventId(Paths.get("NAME--.journal")).isLeft)
     assert(matcher.checkedEventId(Paths.get("OTHER--0.journal")).isLeft)
     assert(matcher.checkedEventId(Paths.get("--0.journal")).isLeft)
+  }
+
+  "garbagePattern" in {
+    assert(!garbagePattern(Paths.get("A")).matcher("A--0.journal").matches)
+    assert(garbagePattern(Paths.get("A")).matcher("A--0.journal.tmp").matches)
+    //assert(garbagePattern(Paths.get("A")).matcher("A--0.journal~").matches)
+    //assert(garbagePattern(Paths.get("A")).matcher("A--0.journal~XX").matches)
+
+    assert(!garbagePattern(Paths.get("A")).matcher("A--123456789.journal").matches)
+    assert(garbagePattern(Paths.get("A")).matcher("A--123456789.journal.tmp").matches)
+    //assert(garbagePattern(Paths.get("A")).matcher("A--123456789.journal~").matches)
+    //assert(garbagePattern(Paths.get("A")).matcher("A--123456789.journal~XX").matches)
   }
 }

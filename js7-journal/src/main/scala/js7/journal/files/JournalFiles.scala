@@ -20,20 +20,35 @@ object JournalFiles
   def currentFile(journalFileBase: Path): Checked[Path] =
     listJournalFiles(journalFileBase).lastOption.map(_.file) toChecked Problem(s"No journal under '$journalFileBase'")
 
-  def listJournalFiles(journalFileBase: Path): Vector[JournalFile] = {
+  def listJournalFiles(journalFileBase: Path): Vector[JournalFile] =
+    listFiles(journalFileBase) { iterator =>
+      val matcher = new JournalFile.Matcher(journalFileBase.getFileName)
+      iterator
+        .flatMap(file => matcher.checkedJournalFile(file).toOption)
+        .toVector.sortBy(_.afterEventId)
+    }
+
+  def listGarbageFiles(journalFileBase: Path, untilEventId: EventId): Vector[Path] =
+    listFiles(journalFileBase) { iterator =>
+      val pattern = JournalFile.garbagePattern(journalFileBase.getFileName)
+      iterator.filter { file =>
+        val matcher = pattern.matcher(file.getFileName.toString)
+        matcher.matches &&
+          Try(matcher.group(1).toLong < untilEventId).getOrElse(false)
+      }
+      .toVector
+      .sorted
+    }
+
+  private def listFiles[A](journalFileBase: Path)(body: Iterator[Path] => Vector[A]): Vector[A] = {
     val directory = journalFileBase.getParent
     if (!exists(directory))
       Vector.empty
+    else if (journalFileBase.getFileName == null)
+      Vector.empty
     else
-      journalFileBase.getFileName match {
-        case null => Vector.empty
-        case baseFilename =>
-          autoClosing(Files.list(directory)) { stream =>
-            val matcher = new JournalFile.Matcher(baseFilename)
-            stream.iterator.asScala
-              .flatMap(file => matcher.checkedJournalFile(file).toOption)
-              .toVector.sortBy(_.afterEventId)
-          }
+      autoClosing(Files.list(directory)) { stream =>
+        body(stream.iterator.asScala)
       }
   }
 

@@ -40,6 +40,11 @@ object JournalFile
   def checkedEventId(fileBase: Path, file: Path): Checked[EventId] =
     new Matcher(fileBase).checkedEventId(file)
 
+  private[files] def garbagePattern(fileBase: Path): Pattern =
+    Pattern.compile(Pattern.quote(fileBase.toString) +
+    """--([0-9]+)\.journal.tmp""")
+    // Keep truncated data: """--([0-9]+)\.journal(?:\.tmp|~.*)""")
+
   final class Matcher(fileBase: Path) {
     private val pattern = Pattern.compile(Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal""")
 
