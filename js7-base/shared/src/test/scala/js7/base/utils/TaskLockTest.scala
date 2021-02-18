@@ -15,23 +15,23 @@ final class TaskLockTest extends AsyncFreeSpec
   private val initial = 1
 
   "TaskLock" in {
-    doTest(TaskLock("TEST", logWorryDurations = Nil).resource)
+    val lock = TaskLock("TEST", logWorryDurations = Nil)
+    doTest(task => lock.lock(task))
       .map(o => assert(o == Vector.fill(n)(initial)))
       .runToFuture
   }
 
   "Other Resource does not lock" in {
-    val nonLockingResource = Resource.make(Task.unit)(_ => Task.unit)
-    doTest(nonLockingResource)
+    doTest(task => task)
       .map(o => assert(o != Vector.fill(n)(initial)))
       .runToFuture
   }
 
-  private def doTest(lockResource: Resource[Task, Unit]): Task[Seq[Int]] = {
+  private def doTest(body: Task[Int] => Task[Int]): Task[Seq[Int]] = {
     @volatile var guardedVariable = initial
     Task.parSequence(
       for (_ <- 1 to n) yield
-        lockResource.use { _ =>
+        body {
           Task {
             val found = guardedVariable
             guardedVariable += 1

@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import cats.effect.Resource
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.time.ScalaTime._
@@ -8,45 +7,46 @@ import monix.catnap.MVar
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 
-final class TaskLock private(val resource: Resource[Task, Unit])
+final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDuration])
 {
-  def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] = {
-    resource.use(_ => Task.defer {
-      scribe.trace(src.value + " locked")
-      task.tapEval(_ =>
-        Task { scribe.trace(src.value + " released") })
-    })
-  }
+  private val lockM = MVar[Task].of(()).memoize
+
+  def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
+    acquire.bracket(_ => Task.defer {
+      scribe.trace(s"$toString acquired by ${src.value}")
+      task.tapEval(_ => Task(
+        scribe.trace(s"$toString released by ${src.value}")))
+    })(_ => release)
+      // Because cancel() is asynchronous the use part may continue even thought the lock is released.
+      // Better we make the whole operation uncancelable.
+      .uncancelable
+
+  private def acquire(implicit src: sourcecode.Enclosing) =
+    lockM.flatMap(mvar =>
+      mvar.tryTake
+        .flatMap {
+          case None =>
+            scribe.debug(s"${src.value} is waiting for $toString")
+            mvar.take
+              .whenItTakesLonger(warnTimeouts)(duration => Task {
+                scribe.info(s"${src.value} is still waiting for $toString for ${duration.pretty} ...")
+              })
+          case Some(()) =>
+            scribe.trace(s"$toString acquired by ${src.value}")
+            Task.unit
+        })
+
+  private def release(implicit src: sourcecode.Enclosing) =
+    Task.defer {
+      scribe.trace(s"$toString released by ${src.value}")
+      lockM.flatMap(_.put(()))
+    }
+
+  override def toString = s"TaskLock($name)"
 }
 
 object TaskLock
 {
   def apply(name: String, logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations) =
-    new TaskLock(resource(name, logWorryDurations))
-
-  def resource(name: String, warnTimeouts: IterableOnce[FiniteDuration] = DefaultWorryDurations)
-  : Resource[Task, Unit] = {
-    val lock = MVar[Task].of(()).memoize
-
-    val acquire = lock
-      .flatMap(mvar =>
-        mvar.tryTake
-          .flatMap {
-            case None =>
-              scribe.debug(s"Waiting for '$name' lock")
-              mvar.take
-                .whenItTakesLonger(warnTimeouts)(duration => Task {
-                  scribe.info(s"Still waiting for '$name' lock for ${duration.pretty} ...")
-                })
-            case Some(()) =>
-              scribe.trace(s"Lock '$name' acquired")
-              Task.unit
-          })
-
-    val release =
-      Task(scribe.trace(s"Lock '$name' released")) >>
-        lock.flatMap(_.put(()))
-
-    Resource.make(acquire)(_ => release)
-  }
+    new TaskLock(name, logWorryDurations)
 }
