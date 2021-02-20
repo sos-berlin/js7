@@ -243,7 +243,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     _passiveOrWorkingNode
       .flatMap(_.toOption)
-      .toRight(Problem.pure("This cluster node is not active"))
+      .toRight(Problem.pure(s"This cluster node '$ownId' is not active"))
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {

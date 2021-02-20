@@ -55,7 +55,7 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken -> session)
-      logger.info(s"Session #${session.sessionNumber} for User '${user.id}' added${session.isEternal ?? " (eternal)"}")
+      logger.info(s"Session:${session.sessionNumber} for User '${user.id}' added${session.isEternal ?? " (eternal)"}")
       sender() ! token
       scheduleNextCleanup()
 
@@ -113,10 +113,10 @@ extends Actor {
     if (session.sessionInit.loginUser.isAnonymous &&
         session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
     {
-      logger.info(s"Session #${session.sessionNumber} for User '${session.sessionInit.loginUser.id}' switched to User '${newUser.id}'")
+      logger.info(s"Session:${session.sessionNumber} for User '${session.sessionInit.loginUser.id}' switched to User '${newUser.id}'")
       Some(session)
     } else {
-      logger.debug(s"Rejecting session token #${session.sessionNumber} belonging to user '${session.currentUser.id}' but sent by user '${newUser.id.string}'")
+      logger.debug(s"Rejecting session token ${session.sessionNumber} belonging to user '${session.currentUser.id}' but sent by user '${newUser.id.string}'")
       None
     }
   }
@@ -137,7 +137,7 @@ extends Actor {
 
   private def delete(token: SessionToken, reason: String): Unit =
     tokenToSession.remove(token) foreach { session =>
-      logger.info(s"Session #${session.sessionNumber} for User '${session.currentUser.id}' deleted due to $reason")
+      logger.info(s"Session:${session.sessionNumber} for User '${session.currentUser.id}' deleted due to $reason")
     }
 }
 

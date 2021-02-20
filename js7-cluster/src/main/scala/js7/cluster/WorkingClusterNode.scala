@@ -40,8 +40,10 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler, actorSystem: ActorSystem, journalActorAskTimeout: Timeout)
 {
+  import clusterConf.ownId
+
   private val _activeClusterNode = SetOnce[ActiveClusterNode[S]](
-    Problem.pure("This cluster node is not active now"))
+    Problem.pure(s"This cluster node '$ownId' is not active now"))
   private val activeClusterNodeTask = Task { _activeClusterNode.checked }
   private val currentClusterState = persistence.clusterState
 

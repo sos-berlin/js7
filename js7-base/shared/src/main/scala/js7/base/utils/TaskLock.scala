@@ -12,11 +12,7 @@ final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDura
   private val lockM = MVar[Task].of(()).memoize
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
-    acquire.bracket(_ => Task.defer {
-      scribe.trace(s"$toString acquired by ${src.value}")
-      task.tapEval(_ => Task(
-        scribe.trace(s"$toString released by ${src.value}")))
-    })(_ => release)
+    acquire.bracket(_ => task)(_ => release)
       // Because cancel() is asynchronous the use part may continue even thought the lock is released.
       // Better we make the whole operation uncancelable.
       .uncancelable
@@ -32,17 +28,17 @@ final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDura
                 scribe.info(s"${src.value} is still waiting for $toString for ${duration.pretty} ...")
               })
           case Some(()) =>
-            scribe.trace(s"$toString acquired by ${src.value}")
+            scribe.trace(s"${src.value} acquired $toString")
             Task.unit
         })
 
   private def release(implicit src: sourcecode.Enclosing) =
     Task.defer {
-      scribe.trace(s"$toString released by ${src.value}")
+      scribe.trace(s"${src.value} released $toString")
       lockM.flatMap(_.put(()))
     }
 
-  override def toString = s"TaskLock($name)"
+  override def toString = s"TaskLock:$name"
 }
 
 object TaskLock

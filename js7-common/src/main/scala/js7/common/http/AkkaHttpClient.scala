@@ -49,6 +49,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.Success
+import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
@@ -231,7 +232,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         @volatile var canceled = false
         var responseFuture: Future[HttpResponse] = null
         val since = now
-        lazy val logPrefix = s"$toString: ${sessionToken.fold(SessionToken.PrefixChar)(_.short)}#$number"
+        lazy val logPrefix = s"$toString: ${sessionToken.fold("")(_.short + " ")}#$number"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
         logger.trace(s"$logPrefix: ${requestToString(req, logData)}")
@@ -450,7 +451,7 @@ object AkkaHttpClient
     val uri: Uri,
     httpResponse: HttpResponse,
     val dataAsString: String)
-  extends HttpClient.HttpException
+  extends HttpClient.HttpException with NoStackTrace
   {
     def statusInt = status.intValue
 

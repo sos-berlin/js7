@@ -16,14 +16,13 @@ import js7.base.log.{LogLevel, Logger}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.bytesPerSecondString
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.common.akkahttp.WebLogDirectives._
 import js7.common.http.AkkaHttpClient.{`x-js7-request-id`, `x-js7-session`}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -71,23 +70,24 @@ trait WebLogDirectives extends ExceptionHandling
 
   private def meterTime(request: HttpRequest, response: HttpResponse, start: Long): HttpResponse = {
     val since = now
+    var chunkCount = 0L
     var byteCount = 0L
     response.entity match {
       case entity: HttpEntity.Chunked =>
         response.withEntity(
           entity.copy(chunks =
             entity.chunks.wireTap { part =>
+              chunkCount += 1
               byteCount += part.data.size
             }
             .watchTermination() { (mat, future) =>
               future.onComplete { tried =>
-                if (tried.isFailure || since.elapsed >= 1.s) {
-                  log(request, Some(response), logLevel, nanoTime - start,
-                    hasRemoteAddress = hasRemoteAddress,
-                    timingSuffix = // Timing of the stream, after response header has been sent
-                      bytesPerSecondString(since.elapsed, byteCount) +
-                        tried.fold(t => " " + t.toStringWithCauses, _ => ""))
-                }
+                log(request, Some(response), logLevel, nanoTime - start,
+                  hasRemoteAddress = hasRemoteAddress,
+                  streamSuffix = // Timing of the stream, after response header has been sent
+                    chunkCount + " chunks, " +
+                    bytesPerSecondString(since.elapsed, byteCount) +
+                      tried.fold(t => " " + t.toStringWithCauses, _ => ""))
               }(actorSystem.dispatcher)
               mat
             }))
@@ -96,11 +96,11 @@ trait WebLogDirectives extends ExceptionHandling
   }
 
   private def log(request: HttpRequest, response: Option[HttpResponse], logLevel: LogLevel,
-    nanos: Long, hasRemoteAddress: Boolean, timingSuffix: String = ""): Unit
+    nanos: Long, hasRemoteAddress: Boolean, streamSuffix: String = ""): Unit
   =
     webLogger.log(
       logLevel,
-      requestResponseToLine(request, response, nanos, hasRemoteAddress = hasRemoteAddress, timingSuffix))
+      requestResponseToLine(request, response, nanos, hasRemoteAddress = hasRemoteAddress, streamSuffix))
 
   private def statusToLogLevel(statusCode: StatusCode): LogLevel =
     statusCode match {
@@ -110,7 +110,7 @@ trait WebLogDirectives extends ExceptionHandling
     }
 
   private def requestResponseToLine(request: HttpRequest, maybeResponse: Option[HttpResponse],
-    nanos: Long, hasRemoteAddress: Boolean, timingSuffix: String)
+    nanos: Long, hasRemoteAddress: Boolean, streamSuffix: String)
   = {
     val sb = new StringBuilder(256)
 
@@ -131,7 +131,8 @@ trait WebLogDirectives extends ExceptionHandling
       .collectFirst {
         case `x-js7-session`(secret) => SessionToken.stringToShort(secret)
       }
-      .getOrElse(SessionToken.PrefixChar))
+      .getOrElse("-"))
+    sb.append(' ')
     sb.append(request.headers.collectFirst { case `x-js7-request-id`(id) => id } getOrElse "#")
     sb.append(' ')
     sb.append(request.attribute(AttributeKeys.remoteAddress).flatMap(_.toIP)
@@ -168,16 +169,17 @@ trait WebLogDirectives extends ExceptionHandling
         else response.entity match {
           case entity: HttpEntity.Strict =>
             sb.append(' ')
-            sb.append(entity.data.length)
+            sb.append(toKBGB(entity.data.length))
+            sb.append(' ')
+            sb.append(nanos.nanoseconds.pretty)
           case _ =>
-            sb.append(" STREAM")
-        }
-        if (timingSuffix.nonEmpty) {
-          sb.append(" ended: ")  // Follows "STREAM"
-          sb.append(timingSuffix)
-        } else {
-          sb.append(' ')
-          sb.append(nanos.nanoseconds.pretty)
+            if (streamSuffix.isEmpty) {
+              sb.append(" STREAM... ")
+              sb.append(nanos.nanoseconds.pretty)
+            } else {
+              sb.append(' ')
+              sb.append(streamSuffix)
+            }
         }
     }
     sb.toString

@@ -21,10 +21,9 @@ final case class SessionToken(secret: SecretString)
 
 object SessionToken
 {
-  val PrefixChar = "▶"
   private val nextNumber = AtomicInt(0)
   private val NoNumber = 0L
-  private val NoNumberShort = s"$PrefixChar?"
+  private val NoNumberShort = s"Session:?"
 
   def generateFromSecretString(secretString: SecretString): SessionToken = {
     val nr = nextNumber.incrementAndGet()
@@ -43,5 +42,5 @@ object SessionToken
     }
 
   private def numberToShort(number: Long): String =
-    if (number == NoNumber) NoNumberShort else s"$PrefixChar$number"
+    if (number == NoNumber) NoNumberShort else s"Session:$number"
 }
