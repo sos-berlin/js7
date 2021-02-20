@@ -7,7 +7,7 @@ import js7.base.web.Uri
 import js7.common.http.Uris.{encodePath, encodeQuery}
 import js7.controller.client.ControllerUris._
 import js7.data.agent.AgentId
-import js7.data.event.{Event, EventId, EventRequest}
+import js7.data.event.{Event, EventId, EventRequest, JournalPosition}
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
 import scala.concurrent.duration.FiniteDuration
@@ -48,7 +48,9 @@ final class ControllerUris private(controllerUri: Uri)
 
   def clusterNodeState = api("/cluster?return=ClusterNodeState")
 
-  def journal(fileEventId: EventId, position: Long, heartbeat: Option[FiniteDuration] = None,
+  def journal(
+    journalPosition: JournalPosition,
+    heartbeat: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None, markEOF: Boolean = false, returnAck: Boolean = false)
   = Uri(
     api("/journal").string + encodeQuery(
@@ -56,8 +58,8 @@ final class ControllerUris private(controllerUri: Uri)
       (heartbeat.map("heartbeat" -> _.toDecimalString)).toList :::
       (timeout.map("timeout" -> _.toDecimalString)).toList :::
       (markEOF.thenList("markEOF" -> "true")) :::
-      ("file" -> fileEventId.toString) ::
-      ("position" -> position.toString) :: Nil))
+      ("file" -> journalPosition.fileEventId.toString) ::
+      ("position" -> journalPosition.position.toString) :: Nil))
 
   object order {
     def overview = api("/order")

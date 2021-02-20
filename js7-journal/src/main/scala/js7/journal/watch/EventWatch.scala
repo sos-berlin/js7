@@ -68,13 +68,15 @@ trait EventWatch
     * @param journalPosition None to use defaults for manual request of the current journal file stream,
     *                        just to show something.
     */
-  def observeFile(journalPosition: Option[JournalPosition], timeout: FiniteDuration,
-    markEOF: Boolean = false, onlyAcks: Boolean = false)
+  def observeFile(journalPosition: JournalPosition,
+    timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]]
 
   def snapshotAfter(after: EventId): Option[Observable[Any]]
 
   def rawSnapshotAfter(after: EventId): Option[Observable[ByteArray]]
+
+  def journalPosition: Checked[JournalPosition]
 
   def journalInfo: JournalInfo
 

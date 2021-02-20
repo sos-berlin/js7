@@ -61,7 +61,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         def when(after: EventId) =
           eventWatch.when(EventRequest.singleClass[MyEvent](after = after, timeout = Some(30.s))).await(99.s).strict
         def observeFile(journalPosition: JournalPosition): List[Json] =
-          eventWatch.observeFile(Some(journalPosition), timeout = 0.s)
+          eventWatch.observeFile(journalPosition, timeout = 0.s)
             .await(99.s)
             .orThrow
             .map(o => o.value.utf8String.parseJson.orThrow)
@@ -341,11 +341,11 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "observeFile" in {
     withJournalEventWatch(lastEventId = EventId.BeforeFirst) { (writer, eventWatch) =>
-      assert(eventWatch.observeFile(Some(JournalPosition(123L, 0)), timeout = 99.s).await(99.s)
+      assert(eventWatch.observeFile(JournalPosition(123L, 0), timeout = 99.s).await(99.s)
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()
-      eventWatch.observeFile(Some(JournalPosition(EventId.BeforeFirst, 0)), timeout = 99.s)
+      eventWatch.observeFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
         .await(99.s)
         .orThrow
         .onErrorRecoverWith {

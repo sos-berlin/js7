@@ -25,9 +25,10 @@ final class RealEventWatchTest extends AnyFreeSpec
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
       def snapshotAfter(after: EventId) = None
       def rawSnapshotAfter(after: EventId) = None
-      def observeFile(journalPosition: Option[JournalPosition], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
-        throw new NotImplementedError
+      def observeFile(journalPosition: JournalPosition,
+        timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) = throw new NotImplementedError
       onEventsCommitted(events.last.eventId)
+      def journalPosition = throw new NotImplementedError
       def journalInfo = throw new NotImplementedError
     }
     val a = eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 1)).toListL.runToFuture await 99.s
@@ -77,6 +78,8 @@ object RealEventWatchTest {
 
     def rawSnapshotAfter(after: EventId) = None
 
+    def journalPosition = throw new NotImplementedError
+
     def journalInfo = throw new NotImplementedError
 
     onEventsCommitted(1L)
@@ -88,7 +91,8 @@ object RealEventWatchTest {
           toStampedEvent(after + i)
         }))
 
-    def observeFile(journalPosition: Option[JournalPosition], timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
+    def observeFile(journalPosition: JournalPosition,
+      timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
       Task(Left(Problem("EndlessEventWatch.observeFile is not implemented")))
   }
 }

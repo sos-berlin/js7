@@ -35,33 +35,44 @@ extends EventReader
   @volatile private var _lastEventId = flushedLengthAndEventId.value
 
   protected def committedLength = _committedLength
-  protected[journal] def journalPosition = JournalPosition(tornEventId, _committedLength)
 
-  protected def isEOF(position: Long) = journalingEnded && position >= _committedLength
+  protected[journal] def journalPosition: JournalPosition =
+    synchronized {
+      JournalPosition(tornEventId, _committedLength)
+    }
+
+  protected def isEOF(position: Long) =
+    synchronized {
+      journalingEnded && position >= _committedLength
+    }
 
   protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline) =
     flushedLengthSync.whenAvailable(position, until = Some(until))
 
   protected def isFlushedAfterPosition(position: Long) =
-    journalingEnded || position < flushedLengthSync.last
+    synchronized {
+      journalingEnded || position < flushedLengthSync.last
+    }
 
-  private[journal] def onJournalingEnded(fileLength: Long) = {
-    flushedLengthSync.onAdded(fileLength + 1)  // Plus one, to allow EOF detection
-    _committedLength = fileLength
-    journalingEnded = true
-  }
+  private[journal] def onJournalingEnded(fileLength: Long) =
+    synchronized {
+      flushedLengthSync.onAdded(fileLength + 1)  // Plus one, to allow EOF detection
+      _committedLength = fileLength
+      journalingEnded = true
+    }
 
   private[journal] def onFileWritten(flushedPosition: Long): Unit =
     if (flushedPosition > flushedLengthSync.last) {
       flushedLengthSync.onAdded(flushedPosition)
     }
 
-  private[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit = {
-    val PositionAnd(pos, eventId) = positionAndEventId
-    journalIndex.addAfter(eventId = eventId, position = pos, n = n)
-    _committedLength = pos
-    _lastEventId = eventId
-  }
+  private[journal] def onEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit =
+    synchronized {
+      val PositionAnd(pos, eventId) = positionAndEventId
+      journalIndex.addAfter(eventId = eventId, position = pos, n = n)
+      _committedLength = pos
+      _lastEventId = eventId
+    }
 
   protected def reverseEventsAfter(after: EventId) =
     CloseableIterator.empty  // Not implemented

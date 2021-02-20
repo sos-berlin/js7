@@ -3,8 +3,6 @@ package js7.controller.web.controller.api
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import cats.instances.option._
-import cats.syntax.semigroupal._
 import js7.base.auth.ValidUserPermission
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
@@ -54,39 +52,39 @@ trait JournalRoute extends ControllerRouteProvider
       pathEnd {
         handleExceptions(exceptionHandler) {
           authorizedUser(ValidUserPermission) { _ =>
-            parameter("file".as[EventId].?) { maybeFileEventId =>
-              parameter("position".as[Long].?) { maybePosition =>
-                parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
-                  parameter("markEOF" ? false) { markEOF =>
-                    parameter("heartbeat".as[FiniteDuration].?) { heartbeat =>
-                      parameter("return" ? "") { returnType =>
-                        accept(JournalContentType) {
-                          complete(
-                            Task.pure(parseReturnAckParameter(returnType))
-                              .flatMapT { returnAck =>
-                                val maybeJournalPosition = maybeFileEventId.product(maybePosition)
-                                  .map((JournalPosition.apply _).tupled)
-                                eventWatch.observeFile(maybeJournalPosition, timeout,
-                                  markEOF = markEOF, onlyAcks = returnAck
-                                ).map(_.map(observable =>
-                                  HttpEntity(
-                                    JournalContentType,
-                                    observable
-                                      .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
-                                        logger.debug("whenShuttingDown completed")
-                                      })
-                                      .map(if (returnAck) toLength else toContent)
-                                      .pipeIf(heartbeat.isDefined)(_
-                                        .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
-                                      .map(_.toByteString)
-                                      .toAkkaSourceForHttpResponse)))
-                              }
-                              .runToFuture)
-                        }
-                      }
-                    }
-                  }
-                }
+            parameter(
+              "file".as[EventId].?,
+              "position".as[Long].?,
+              "timeout" ? defaultJsonSeqChunkTimeout,
+              "markEOF" ? false,
+              "heartbeat".as[FiniteDuration].?,
+              "return" ? ""
+            ) { (maybeFileEventId, maybePosition, timeout, markEOF, heartbeat, returnType) =>
+              accept(JournalContentType) {
+                complete(Task
+                  .pure((maybeFileEventId, maybePosition) match {
+                    case (None, None) => eventWatch.journalPosition  // Convenient for manual tests
+                    case (Some(f), Some(p)) => Right(JournalPosition(f, p))
+                    case _ => Left(Problem("Missing one of the arguments: file, position, eventId"))
+                  })
+                  .flatMapT(journalPosition =>
+                    Task.pure(parseReturnAckParameter(returnType)).flatMapT(returnAck =>
+                      eventWatch
+                        .observeFile(journalPosition, timeout,
+                          markEOF = markEOF, onlyAcks = returnAck)
+                        .map(_.map(observable =>
+                          HttpEntity(
+                            JournalContentType,
+                            observable
+                              .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
+                                logger.debug("whenShuttingDown completed")
+                              })
+                              .map(if (returnAck) toLength else toContent)
+                              .pipeIf(heartbeat.isDefined)(_
+                                .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
+                              .map(_.toByteString)
+                              .toAkkaSourceForHttpResponse)))))
+                  .runToFuture)
               }
             }
           }

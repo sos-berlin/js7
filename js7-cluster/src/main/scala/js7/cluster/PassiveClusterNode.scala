@@ -62,7 +62,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 {
   import setting.{activeId, idToUri}
 
-  assertThat(activeId != ownId)
+  assertThat(activeId != ownId && setting.passiveId == ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
 
   import recovered.eventWatch
@@ -77,7 +77,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
     common.clusterContext.clusterNodeApi(setting.activeUri, "ClusterPassiveDown")
       .use(api =>
         (api.login(onlyIfNotLoggedIn = true) >>
-          api.executeClusterCommand(ClusterPassiveDown(setting.activeId, setting.passiveId)).as(())
+          api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)).as(())
         ).onErrorHandle(throwable => Task {
           logger.debug(s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
             throwable.nullIfNoStackTrace)
@@ -245,14 +245,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
         toIndex = _.position,
         clusterConf.recouplingStreamReader)
       {
-        protected def getObservable(api: ClusterNodeApi, after: EventId) =
+        protected def getObservable(api: ClusterNodeApi, position: Long) =
           HttpClient.liftProblem(
             api.journalObservable(
-              fileEventId = continuation.fileEventId,
-              position = after,
+              JournalPosition(continuation.fileEventId, position),
               heartbeat = Some(setting.timing.heartbeat),
               markEOF = true
-            ).map(_.scan(PositionAnd(after, ByteArray.empty/*unused*/))((s, line) =>
+            ).map(_.scan(PositionAnd(position, ByteArray.empty/*unused*/))((s, line) =>
               PositionAnd(s.position + (if (line == JournalSeparators.HeartbeatMarker) 0 else line.length), line))))
 
         protected def stopRequested = stopped

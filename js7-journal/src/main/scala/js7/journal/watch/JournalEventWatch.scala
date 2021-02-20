@@ -113,7 +113,7 @@ with JournalingObserver
         //throw JournalIdMismatchProblem(journalMeta.fileBase, expectedJournalId = expectedJournalId, o).throwable
     }
     synchronized {
-      this._isActiveNode = isActiveNode
+      _isActiveNode = isActiveNode
       val after = flushedLengthAndEventId.value
       if (after < lastEventId) throw new IllegalArgumentException(s"Invalid onJournalingStarted(after=$after), must be ≥ $lastEventId")
       for (current <- currentEventReaderOption) {
@@ -292,47 +292,45 @@ with JournalingObserver
       afterEventIdToHistoric.keys.toSeq.sorted ++ currentEventReaderOption.map(_.tornEventId)
     }
 
-  def observeFile(maybeJournalPosition: Option[JournalPosition], timeout: FiniteDuration,
-    markEOF: Boolean, onlyAcks: Boolean)
-  = resolveDefaultJournalPosition(maybeJournalPosition)
-      .flatMapT(observeFile2(_, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
+  def journalPosition =
+    checkedCurrentEventReader.map(_.journalPosition)
 
-  private def resolveDefaultJournalPosition(maybeJournalPosition: Option[JournalPosition]) =
-    Task.pure(maybeJournalPosition).map {
-      case Some(journalPosition: JournalPosition) => Right(journalPosition)
-      case None => checkedCurrentEventReader.map(_.journalPosition)
-    }
+  def observeFile(journalPosition: JournalPosition,
+    timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
+  : Task[Checked[Observable[PositionAnd[ByteArray]]]] =
+    Task.defer {
+      import journalPosition.{fileEventId, position}
 
-  private def observeFile2(journalPosition: JournalPosition, timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean)
-  : Task[Checked[Observable[PositionAnd[ByteArray]]]] = {
-    import journalPosition.{fileEventId, position}
-    (nextEventReaderPromise match {
-      case Some((`fileEventId`, promise)) =>
-        if (!promise.isCompleted) {
-          logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
-        }
-        Task.fromFuture(promise.future) map Right.apply
-      case _ =>
-        Task(
-          currentEventReaderOption
-            .filter(_.tornEventId == fileEventId)
-            .orElse(afterEventIdToHistoric.get(fileEventId).map(_.eventReader))
-            .toRight {
-              logger.debug(s"observeFile($journalPosition): nextEventReaderPromise=$nextEventReaderPromise " +
-                s"afterEventIdToHistoric=${afterEventIdToHistoric.keys.mkString(",")}")
-              Problem(s"Unknown journal file=$fileEventId")
+      if (onlyAcks && _isActiveNode)
+        Task.pure(Left(Problem.pure(
+          "Acknowledgements cannot be requested from an active cluster node (two active cluster nodes?)")))
+      else
+        nextEventReaderPromise match {
+          case Some((`fileEventId`, promise)) =>
+            if (!promise.isCompleted) {
+              logger.debug(s"observeFile($fileEventId): waiting for this new journal file")
             }
-            .map(Some.apply))
-    }).flatMap(checked => Task(checked flatMap {
-      case None => Right(Observable.empty)  // JournalEventWatch has been closed
-      case Some(o: CurrentEventReader) if onlyAcks && o.isActiveNode =>
-        // Guard against double cluster node activation:
-        // The passive node acknowledgement request is rejected.
-        Left(Problem.pure("Acknowledgements cannot be requested from an active cluster node (two active cluster nodes?)"))
-      case Some(o) =>
-        Right(o.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
-    }))
-  }
+            Task.fromFuture(promise.future).map {
+              case None =>
+                Right(Observable.empty) // JournalEventWatch has been closed
+              case Some(currentEventReader) =>
+                Right(currentEventReader.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks))
+            }
+
+          case _ =>
+            val maybeEventReader = currentEventReaderOption
+              .filter(_.tornEventId == fileEventId)
+              .orElse(afterEventIdToHistoric.get(fileEventId).map(_.eventReader))
+            maybeEventReader match {
+              case None =>
+                logger.debug(s"observeFile($journalPosition): nextEventReaderPromise=$nextEventReaderPromise " +
+                  s"afterEventIdToHistoric=${ afterEventIdToHistoric.keys.mkString(",") }")
+                Task.pure(Left(Problem(s"Unknown journal file=$fileEventId")))
+              case Some(eventReader) =>
+                Task(Right(eventReader.observeFile(position, timeout, markEOF = markEOF, onlyAcks = onlyAcks)))
+            }
+        }
+    }
 
   private def lastEventId =
     synchronized {

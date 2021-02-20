@@ -16,7 +16,7 @@ import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
 import js7.data.controller.ControllerCommand.{InternalClusterCommand, RemoveOrdersWhenTerminated}
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
-import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
 import js7.data.workflow.Workflow
@@ -112,24 +112,30 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
     httpClient.getDecodedLinesObservable[EventId](uris.eventIds(timeout, heartbeat = heartbeat))
 
   /** Observable for a journal file.
-    * @param fileEventId denotes the journal file
+    * @param journalPosition start of observation
     * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`
     */
-  final def journalObservable(fileEventId: EventId, position: Long,
+  final def journalObservable(
+    journalPosition: JournalPosition,
     heartbeat: Option[FiniteDuration] = None, timeout: Option[FiniteDuration] = None,
     markEOF: Boolean = false, returnAck: Boolean = false)
   : Task[Observable[ByteArray]] =
     httpClient.getRawLinesObservable(
-      uris.journal(fileEventId = fileEventId, position = position,
-        heartbeat = heartbeat, timeout = timeout, markEOF = markEOF, returnAck = returnAck))
+      uris.journal(journalPosition, heartbeat = heartbeat,
+        timeout = timeout, markEOF = markEOF, returnAck = returnAck))
 
   /** Observable for the growing flushed (and maybe synced) length of a journal file.
-    * @param fileEventId denotes the journal file
+    * @param journalPosition start of observation
     * @param markEOF prepend every line with a space and return a last line "TIMEOUT\n" in case of timeout
     */
-  final def journalLengthObservable(fileEventId: EventId, position: Long, timeout: FiniteDuration, markEOF: Boolean = false): Task[Observable[Long]] =
-    journalObservable(fileEventId, position, timeout = Some(timeout), markEOF = markEOF, returnAck = true)
-      .map(_.map(_.utf8String.stripSuffix("\n").toLong))
+  final def journalLengthObservable(
+    journalPosition: JournalPosition,
+    timeout: FiniteDuration,
+    markEOF: Boolean = false)
+  : Task[Observable[Long]] =
+    journalObservable(journalPosition,
+      timeout = Some(timeout), markEOF = markEOF, returnAck = true
+    ).map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
   final def journalInfo: Task[JournalInfo] =
       httpClient.get[JournalInfo](uris.api("/journalInfo"))
