@@ -8,7 +8,7 @@ mkdir -p volumes/{controller,backup-controller,provider,agent-1,agent-2}/data/{l
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/agent-{1,2}/config/executables
 
-cp -Rnv build/volumes . || true
+cp -Rrnv build/volumes/* volumes || true
 ( umask go-rwx
   cp -nv volumes/controller/config/private/* volumes/backup-controller/config/private || true
 )
