@@ -275,7 +275,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .enablePlugins(BuildInfoPlugin)
   .settings(
     buildInfoPackage := "js7.base",
-    buildInfoKeys := buildInfoMap.value.map(BuildInfoKey(_)).toSeq)
+    buildInfoKeys := BuildInfos.buildInfoMap.value.map(BuildInfoKey(_)).toSeq)
 
 /** js7-build-info provides version info in a Scala-free jar. */
 lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
@@ -288,7 +288,7 @@ lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
       val file = (Compile / resourceManaged).value / "js7/build-info/build-info.properties"
       IO.write(
         file,
-        buildInfoMap.value
+        BuildInfos.buildInfoMap.value
           .mapValues {
             case v: Option[_] => v.fold("")(_.toString)
             case v => v.toString
@@ -454,7 +454,7 @@ lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester
   .settings(
     resourceGenerators in Compile += Def.task {
       val versionFile = (resourceManaged in Compile).value / "js7/core/installation/VERSION"
-      IO.write(versionFile, BuildUtils.longVersion.value + "\n")
+      IO.write(versionFile, BuildInfos.longVersion.value + "\n")
       Seq(versionFile)
     }.taskValue)
 
@@ -592,7 +592,8 @@ def doNotInstallJar(path: String) = false
 // RELEASE
 
 val isStandardRelease: Def.Initialize[Boolean] =
-  Def.setting(gitBranch.value == "main" || gitBranch.value.startsWith("release/"))
+  Def.setting(BuildInfos.gitBranch.value == "main" ||
+              BuildInfos.gitBranch.value.startsWith("release/"))
 
 releaseTagComment        := s"Version ${version.value}"
 releaseCommitMessage     := s"Version ${version.value}"
@@ -604,7 +605,7 @@ releaseVersion := (
   else v =>
     Version(v).fold(versionFormatError(v)) { currentVersion =>
       val prelease = {
-        val commitDate = committedAt.value
+        val commitDate = BuildInfos.committedAt.value
           .getOrElse(sys.error("gitHeadCommitDate returned None (no Git?)"))
           .take(10)/*yyyy-mm-dd*/
         // Remove hypens according to Semantic Versioning pre-release syntax
