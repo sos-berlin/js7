@@ -37,7 +37,7 @@ import monix.execution.{Cancelable, Scheduler}
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.{Await, Promise, blocking}
 import scala.util.control.NonFatal
 
 /**
@@ -121,11 +121,11 @@ extends Actor with Stash
           delete(file)
         }
       }
-      becomeTakingSnapshotThen() { journalHeader =>
-        unstashAll()
-        becomeReady()
-        sender ! Output.Ready(journalHeader)
-      }
+      takeSnapshot()
+      unstashAll()
+      become(ready)
+      logReady()
+      sender ! Output.Ready(journalHeader)
 
     case Input.StartWithoutRecovery(journalId, observer_) =>  // Testing only
       uncommittedJournaledState = S.empty
@@ -137,17 +137,16 @@ extends Actor with Stash
       eventWriter.beginEventSection(sync = conf.syncOnCommit)
       eventWriter.onJournalingStarted()
       unstashAll()
-      becomeReady()
+      become(ready)
+      logReady()
       sender() ! Output.Ready(journalHeader)
 
     case _ =>
       stash()
   }
 
-  private def becomeReady(): Unit = {
-    become(ready)
+  private def logReady() =
     logger.info(s"Ready, writing ${if (conf.syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
-  }
 
   private def ready: Receive = receiveGet orElse {
     case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, since, callersItem) =>
@@ -513,9 +512,8 @@ extends Actor with Stash
       } else if (lastAcknowledgedEventId < lastWrittenEventId) {
         logger.debug(s"Delaying snapshot until last event has been committed and acknowledged (lastAcknowledgedEventId=$lastAcknowledgedEventId lastWrittenEventId=$lastWrittenEventId)")
       } else
-        becomeTakingSnapshotThen() { _ =>
-          becomeReady()
-        }
+        takeSnapshot()
+        logReady()
     }
 
   private def responseAfterSnapshotTaken(): Unit = {
@@ -523,7 +521,7 @@ extends Actor with Stash
     snapshotRequesters.clear()
   }
 
-  private def becomeTakingSnapshotThen()(andThen: JournalHeader => Unit) = {
+  private def takeSnapshot() = {
     val since = now
     val snapshotTaken = eventIdGenerator.stamp(KeyedEvent(JournalEvent.SnapshotTaken))
 
@@ -551,42 +549,29 @@ extends Actor with Stash
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
 
-    takeSnapshotNow(
-      snapshotWriter,
-      () => onSnapshotFinished(snapshotTaken, since, () => andThen(journalHeader)))
-  }
+    blocking {  // TODO Do not block the thread
+      Await.result(
+        journaledState.toSnapshotObservable
+          .filter {
+            case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
+            case _  => true
+          }
+          .mapParallelOrderedBatch() { snapshotObject =>
+            // TODO Crash with SerializationException like EventSnapshotWriter ?
+            snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
+          }
+          .foreach { case (snapshotObject, byteArray) =>
+            snapshotWriter.writeSnapshot(byteArray)
+            logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
+          }(scheduler),
+        999.s)
+    }
 
-  private def takeSnapshotNow(snapshotWriter: SnapshotJournalWriter, andThen: () => Unit): Unit = {
-    Await.result(
-      journaledState.toSnapshotObservable
-        .filter {
-          case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
-          case _  => true
-        }
-        .mapParallelOrderedBatch() { snapshotObject =>
-          // TODO Crash with SerializationException like EventSnapshotWriter ?
-          snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
-        }
-        .foreach { case (snapshotObject, byteArray) =>
-          snapshotWriter.writeSnapshot(byteArray)
-          logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
-        }(scheduler),
-      999.s)  // TODO Do not block the thread
-
-    andThen()
-  }
-
-  private def onSnapshotFinished(
-    snapshotTaken: Stamped[KeyedEvent[JournalEvent.SnapshotTaken]],
-    since: Deadline,
-    andThen: () => Unit
-  ): Unit = {
     snapshotWriter.endSnapshotSection()
     // Write a SnapshotTaken event to increment EventId and force a new filename
     snapshotWriter.beginEventSection(sync = false)
     val (fileLengthBeforeEvents, fileEventId) = (snapshotWriter.fileLength, lastWrittenEventId)
 
-    // TODO Similar code
     snapshotWriter.writeEvent(snapshotTaken)
     snapshotWriter.flush(sync = conf.syncOnCommit)
     locally {
@@ -605,16 +590,13 @@ extends Actor with Stash
     lastSnapshotTakenEventId = snapshotTaken.eventId
     snapshotWriter.closeAndLog()
 
-    val file = journalMeta.file(after = fileEventId)
-    move(snapshotWriter.file, file, ATOMIC_MOVE)
+    move(snapshotWriter.file, journalMeta.file(after = fileEventId), ATOMIC_MOVE)
     snapshotWriter = null
 
     eventWriter = newEventJsonWriter(after = fileEventId)
     eventWriter.onJournalingStarted(fileLengthBeforeEvents = fileLengthBeforeEvents)
 
     onReadyForAcknowledgement()
-    // Only when acknowledged: releaseObsoleteEvents()
-    andThen()
   }
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
