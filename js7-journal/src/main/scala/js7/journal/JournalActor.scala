@@ -77,7 +77,7 @@ extends Actor with Stash
   private var totalEventCount = 0L
   private var fileEventCount = 0L
   private var requireClusterAcknowledgement = false
-  private var releaseEventIdsAfterClusterCoupled = false
+  private var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None
   private val waitingForAcknowledgeTimer = SerialCancelable()
   private var waitingForAcknowledgeSince = now
   private var switchedOver = false
@@ -190,12 +190,12 @@ extends Actor with Stash
             fileEventCount += stampedEvents.size
 
             stampedEvents.lastOption match {
-              case Some(Stamped(_, _, KeyedEvent(_, _: ClusterCoupled))) =>
+              case Some(Stamped(eventId, _, KeyedEvent(_, _: ClusterCoupled))) =>
                 // Commit now to let Coupled event take effect on following events (avoids deadlock)
                 commit()
                 logger.info(s"Cluster is coupled: Start requiring acknowledgements from passive cluster node")
                 requireClusterAcknowledgement = true
-                releaseEventIdsAfterClusterCoupled = true
+                releaseEventIdsAfterClusterCoupledAck = Some(eventId)
 
               case Some(Stamped(_, _, KeyedEvent(_, _: ClusterSwitchedOver))) =>
                 commit()
@@ -247,7 +247,7 @@ extends Actor with Stash
       // The passive node does not know Persist bundles (maybe transactions) and acknowledges events as they arrive.
       // We take only complete Persist bundles as acknowledged.
       onCommitAcknowledged(n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length)
-      if (releaseEventIdsAfterClusterCoupled) {
+      if (releaseEventIdsAfterClusterCoupledAck.isDefined) {
         releaseObsoleteEvents()
       }
 
@@ -645,7 +645,8 @@ extends Actor with Stash
             // ClusterPassiveLost after SnapshotTaken in the same commit chunk has reset
             // requireClusterAcknowledgement. We must not delete the file when cluster is being decoupled.
           && (journaledState.clusterState.isInstanceOf[ClusterState.Coupled] ||
-              journaledState.clusterState.isInstanceOf[ClusterState.ActiveShutDown]))
+              journaledState.clusterState.isInstanceOf[ClusterState.ActiveShutDown])
+          && releaseEventIdsAfterClusterCoupledAck.forall(_ <= lastAcknowledgedEventId))
       {
         val eventId =
           if (journaledState.clusterState == ClusterState.Empty)
@@ -657,12 +658,12 @@ extends Actor with Stash
             // (only to get end-of-file). Subtract 1 to avoid this.
             (lastAcknowledgedEventId - 1) max EventId.BeforeFirst
           }
-        releaseObsoleteEvents(journaledState.journalState.toReleaseEventId(eventId, conf.releaseEventsUserIds))
-        releaseEventIdsAfterClusterCoupled = false
+        releaseObsoleteEventsUntil(journaledState.journalState.toReleaseEventId(eventId, conf.releaseEventsUserIds))
+        releaseEventIdsAfterClusterCoupledAck = None
       }
     }
 
-  private def releaseObsoleteEvents(untilEventId: EventId): Unit = {
+  private def releaseObsoleteEventsUntil(untilEventId: EventId): Unit = {
     logger.debug(s"releaseObsoleteEvents($untilEventId) ${journaledState.journalState}, clusterState=${journaledState.clusterState}")
     journalingObserver.orThrow match {
       case Some(o) =>
