@@ -105,11 +105,11 @@ private[cluster] object ActivationInhibitor
 {
   private val logger = Logger(getClass)
 
-  def inhibitActivationOfPassiveNode(setting: ClusterSetting, clusterX: ClusterContext)
+  def inhibitActivationOfPassiveNode(setting: ClusterSetting, ctx: ClusterContext)
     (implicit actorSystem: ActorSystem): Task[Option[FailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
-      clusterX.clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")
+      ctx.clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")
         .evalTap(_.loginUntilReachable())
         .use(_
           .executeClusterCommand(ClusterInhibitActivation(2 * setting.timing.heartbeat/*???*/))

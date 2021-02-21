@@ -316,7 +316,7 @@ object MonixBase
           logger.debug(s"Waiting for Future '$name' ...")
           Task.deferAction { implicit s =>
             Task.fromFuture(future)
-              .whenItTakesLonger(DefaultWorryDurations)(duration => Task {
+              .whenItTakesLonger()(duration => Task {
                 logger.info(s"Still waiting for '$name' for ${duration.pretty} ...")
               })
               .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))

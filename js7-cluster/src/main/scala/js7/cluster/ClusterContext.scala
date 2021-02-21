@@ -5,7 +5,7 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterNodeApi
 import monix.eval.Task
 
-private[cluster] trait ClusterContext
+trait ClusterContext
 {
   def clusterNodeApi(uri: Uri, name: String): Resource[Task, ClusterNodeApi]
 }

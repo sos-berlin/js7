@@ -30,8 +30,9 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, SetOnce}
+import js7.base.web.Uri
 import js7.cluster.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem}
-import js7.cluster.{Cluster, ClusterFollowUp, WorkingClusterNode}
+import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -379,7 +380,10 @@ object RunningController
           journalMeta,
           persistence,
           recovered.eventWatch,
-          (uri, name) => AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
+          new ClusterContext {
+            def clusterNodeApi(uri: Uri, name: String) =
+              AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)
+          },
           controllerId,
           journalConf,
           clusterConf,
