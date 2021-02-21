@@ -80,7 +80,7 @@ object JournaledStateRecoverer
       case Some(file) =>
         val recoverer = new JournaledStateRecoverer(file, journalMeta, () => fileJournaledStateBuilder)
         recoverer.recoverAll()
-        val calculatedJournalHeader = fileJournaledStateBuilder.calculatedJournalHeader
+        val nextJournalHeader = fileJournaledStateBuilder.nextJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
         Recovered(
           journalMeta,
@@ -90,11 +90,11 @@ object JournaledStateRecoverer
             lastProperEventPosition = recoverer.lastProperEventPosition,
             journalHeader = fileJournaledStateBuilder.fileJournalHeader
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
-            calculatedJournalHeader,
+            nextJournalHeader,
             firstEventPosition = recoverer.firstEventPosition
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
             fileJournaledStateBuilder.state)),
-          totalRunningSince = runningSince - calculatedJournalHeader.totalRunningTime,
+          totalRunningSince = runningSince - nextJournalHeader.totalRunningTime,
           config)
 
       case None =>

@@ -230,7 +230,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
             s"${EventId.toString(recoveredJournalFile.eventId)}, position ${recoveredJournalFile.length}")
           builder.startWithState(JournalProgress.InCommittedEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
-            totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount,
+            totalEventCount = recoveredJournalFile.nextJournalHeader.totalEventCount,
             recoveredJournalFile.state)
           eventWatch.onJournalingStarted(file,
             recoveredJournalFile.journalId,
@@ -339,7 +339,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                           builder.startWithState(JournalProgress.InCommittedEventsSection,
                             journalHeader = Some(recoveredJournalFile.journalHeader),
                             eventId = failedOverStamped.eventId,
-                            totalEventCount = recoveredJournalFile.calculatedJournalHeader.totalEventCount + 1,
+                            totalEventCount = recoveredJournalFile.nextJournalHeader.totalEventCount + 1,
                             recoveredJournalFile.state.applyEvent(failedOver).orThrow)
                           replicatedFirstEventPosition := recoveredJournalFile.firstEventPosition
                           replicatedFileLength = fileSize
@@ -538,12 +538,12 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
               out.truncate(lastProperEventPosition)
               eventWatch.onJournalingEnded(lastProperEventPosition)
             }
-            (builder.fileJournalHeader, builder.calculatedJournalHeader) match {
-              case (Some(header), Some(calculatedHeader)) =>
+            (builder.fileJournalHeader, builder.nextJournalHeader) match {
+              case (Some(header), Some(nextHeader)) =>
                 Right(NextFile(
                   RecoveredJournalFile(file, length = replicatedFileLength,
                     lastProperEventPosition = lastProperEventPosition,
-                    header, calculatedHeader, replicatedFirstEventPosition.orThrow, builder.state)))
+                    header, nextHeader, replicatedFirstEventPosition.orThrow, builder.state)))
               case _ =>
                 Left(Problem.pure(s"JournalHeader could not be replicated " +
                   s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))

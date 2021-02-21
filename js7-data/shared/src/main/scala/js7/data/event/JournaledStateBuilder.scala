@@ -3,14 +3,14 @@ package js7.data.event
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.time.{Stopwatch, Timestamp}
+import js7.base.time.Stopwatch.{itemsPerSecondString, perSecondStringOnly}
+import js7.base.time.Timestamp
+import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces._
 import js7.data.cluster.ClusterState
-import JournaledStateBuilder._
-import js7.base.time.Stopwatch.{itemsPerSecondString, perSecondStringOnly}
-import js7.base.utils.ByteUnits.toKBGB
+import js7.data.event.JournaledStateBuilder._
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
@@ -129,12 +129,12 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
   final def fileJournalHeader = _journalHeader.toOption
 
   /** Calculated next JournalHeader. */
-  final def recoveredJournalHeader: Option[JournalHeader] =
+  final def nextJournalHeader: Option[JournalHeader] =
     _journalHeader.map(_.copy(
       eventId = eventId,
       totalEventCount = totalEventCount,
       totalRunningTime = _journalHeader.fold(Duration.Zero) { header =>
-        val lastJournalDuration = EventId.toTimestamp(_eventId) - EventId.toTimestamp(_firstEventId)
+        val lastJournalDuration = lastEventIdTimestamp - header.timestamp
         header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
       },
       timestamp = lastEventIdTimestamp))
@@ -155,7 +155,6 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
   private def lastEventIdTimestamp: Timestamp =
     if (eventId == EventId.BeforeFirst) Timestamp.now
     else EventId.toTimestamp(eventId)
-
 }
 
 object JournaledStateBuilder

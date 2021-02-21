@@ -128,7 +128,8 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
 
   def fileJournalHeader = builder.fileJournalHeader
 
-  def calculatedJournalHeader = builder.recoveredJournalHeader
+  /** Calculated next JournalHeader. */
+  def nextJournalHeader = builder.nextJournalHeader
 
   def eventId = builder.eventId
 

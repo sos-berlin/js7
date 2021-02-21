@@ -69,7 +69,7 @@ extends AutoCloseable
           journalActor ! JournalActor.Input.Start(
             state, Some(eventWatch),
             recoveredJournalFile
-              .map(_.calculatedJournalHeader)
+              .map(_.nextJournalHeader)
               .getOrElse(JournalHeader.initial(journalId)),
             totalRunningSince)
 

@@ -12,23 +12,23 @@ final case class RecoveredJournalFile[S <: JournaledState[S]](
   /** File's JournalHeader. */
   journalHeader: JournalHeader,
   /** The calculated recovered JournalHeader to continue with. */
-  calculatedJournalHeader: JournalHeader,
+  nextJournalHeader: JournalHeader,
   /** File's position before the events. */
   firstEventPosition: Long,
   /** The recovered state */
   state: S)
 {
-  assertThat(journalHeader.journalId == calculatedJournalHeader.journalId)
-  assertThat(journalHeader.eventId < calculatedJournalHeader.eventId)
-  assertThat(journalHeader.totalEventCount < calculatedJournalHeader.totalEventCount)
+  assertThat(journalHeader.journalId == nextJournalHeader.journalId)
+  assertThat(journalHeader.eventId < nextJournalHeader.eventId)
+  assertThat(journalHeader.totalEventCount < nextJournalHeader.totalEventCount)
 
   def journalId = journalHeader.journalId
 
   def fileEventId = journalHeader.eventId
 
-  def eventId = calculatedJournalHeader.eventId
+  def eventId = nextJournalHeader.eventId
 
   def journalPosition = JournalPosition(fileEventId, length)
 
-  override def toString = s"RecoveredJournalFile($file ($length bytes),$journalHeader,$firstEventPosition,$state,$calculatedJournalHeader)"
+  override def toString = s"RecoveredJournalFile($file ($length bytes),$journalHeader,$firstEventPosition,$state,$nextJournalHeader)"
 }

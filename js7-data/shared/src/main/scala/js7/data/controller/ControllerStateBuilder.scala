@@ -61,7 +61,7 @@ extends JournaledStateBuilder[ControllerState]
       standards = standards.copy(clusterState = o)
   }
 
-  def onOnAllSnapshotsAdded() = {
+  protected def onOnAllSnapshotsAdded() = {
     val (added, removed) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], idToOrder.toMap)
     idToOrder ++= added.map(o => o.id -> o)
     idToOrder --= removed

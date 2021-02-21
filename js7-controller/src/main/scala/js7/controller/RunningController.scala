@@ -55,7 +55,7 @@ import js7.data.item.{ItemOperation, SimpleItem, VersionedItem}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, OrderEvent}
 import js7.journal.JournalActor.Output
-import js7.journal.recover.Recovered
+import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
@@ -275,7 +275,7 @@ object RunningController
 
     private[RunningController] def start(): Future[RunningController] = {
       val whenRecovered = Future {  // May take several seconds !!!
-        ControllerJournalRecoverer.recover(journalMeta, controllerConfiguration.config)
+        JournaledStateRecoverer.recover[ControllerState](journalMeta, controllerConfiguration.config)
       }
       val testEventBus = injector.instance[StandardEventBus[Any]]
       val whenReady = Promise[Unit]()
