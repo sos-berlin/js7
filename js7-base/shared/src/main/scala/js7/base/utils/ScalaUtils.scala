@@ -198,6 +198,13 @@ object ScalaUtils
       def pipeIf[B >: A](condition: => Boolean)(f: A => B): B =
         if (condition) f(delegate) else delegate
 
+      /** Apply the function conditionally. */
+      def pipeMaybe[O, B >: A](maybe: => Option[O])(f: (A, O) => B): B =
+        maybe match {
+          case Some(o) => f(delegate, o)
+          case None => delegate
+        }
+
       def narrow[B <: A: ClassTag]: Checked[B] =
         checkedCast[B](delegate)
 

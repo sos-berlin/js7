@@ -239,6 +239,13 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(3.pipeIf(false)(_ * 7) == 3)
   }
 
+  "pipeMaybe" in {
+    val none: Option[String] = None
+    val some: Option[String] = Some("B")
+    assert("A".pipeMaybe(none)(_ + _) == "A")
+    assert("A".pipeMaybe(some)(_ + _) == "AB")
+  }
+
   "AtomicBoolean.switchOn" in {
     val a = new AtomicBoolean
     var x = 0
