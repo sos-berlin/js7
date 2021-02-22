@@ -37,10 +37,14 @@ extends JJournaledState[JControllerState, ControllerState]
     JClusterState(asScala.clusterState)
 
   @Nonnull
+  @Deprecated
+  @deprecated("Please use repo.idToWorkflow", "2021-02-22")
   def idToWorkflow(@Nonnull workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
     repo.idToWorkflow(workflowId)
 
   @Nonnull
+  @Deprecated
+  @deprecated("Please use repo.pathToWorkflow", "2021-02-22")
   def pathToWorkflow(@Nonnull workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
     repo.pathToWorkflow(workflowPath)
 

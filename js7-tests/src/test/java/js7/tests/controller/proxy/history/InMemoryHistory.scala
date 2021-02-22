@@ -112,7 +112,7 @@ private[history] final class InMemoryHistory
         }
         val agentPath = getOrThrow(order.attached)
         val agentUri = getOrThrow(eventAndState.state.idToAgentRef(agentPath)).uri
-        val maybeJobName = eventAndState.state.idToWorkflow(order.workflowId)
+        val maybeJobName = eventAndState.state.repo.idToWorkflow(order.workflowId)
           .flatMap(_.checkedJobName(order.workflowPosition.position))
           .fold(_ => Optional.empty[String], (jobName: WorkflowJob.Name) => Optional.of(jobName.string))
         _idToOrderEntry(orderId) = entry.copy(

@@ -82,7 +82,7 @@ final class JControllerProxyRepoTester
     {
         // The specific workflow version should be unknown
         JWorkflowId workflowId = JWorkflowId.of(bWorkflowPath, versionId);
-        assertThat(proxy.currentState().idToWorkflow(workflowId).mapLeft(Problem::codeOrNull),
+        assertThat(proxy.currentState().repo().idToWorkflow(workflowId).mapLeft(Problem::codeOrNull),
             equalTo(Either.left(ProblemCode.of("UnknownKey"/*may change*/))));
 
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowAdded =
@@ -98,7 +98,7 @@ final class JControllerProxyRepoTester
         addItemsOnly(simpleItems, signedItemJsons);
 
         whenWorkflowAdded.get(99, SECONDS);
-        assertThat(proxy.currentState().idToWorkflow(workflowId).map(o -> o.id().path()),
+        assertThat(proxy.currentState().repo().idToWorkflow(workflowId).map(o -> o.id().path()),
             equalTo(Either.right(bWorkflowPath)));
     }
 
@@ -115,7 +115,7 @@ final class JControllerProxyRepoTester
         VersionId versionId = VersionId.of("MY-VERSION-2");  // Must match the versionId in added or replaced objects
 
         // The workflow shoud be known (latest version)
-        assertThat(proxy.currentState().pathToWorkflow(bWorkflowPath).isRight(), equalTo(true));
+        assertThat(proxy.currentState().repo().pathToWorkflow(bWorkflowPath).isRight(), equalTo(true));
 
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowDeleted =
             awaitEvent(keyedEvent -> isItemDeleted(keyedEvent, bWorkflowPath));
@@ -127,7 +127,7 @@ final class JControllerProxyRepoTester
         whenWorkflowDeleted.get(99, SECONDS);
 
         // The workflow should be deleted (latest version)
-        assertThat(proxy.currentState().pathToWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
+        assertThat(proxy.currentState().repo().pathToWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
             equalTo(Either.left(ProblemCode.of("VersionedItemDeleted"))));
     }
 
