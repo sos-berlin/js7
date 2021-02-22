@@ -37,7 +37,7 @@ object StartUp
 
   /** Log Java version, config and data directory, and classpath. */
   def startUpLine(): String =
-    sys.props.getOrElse("java.runtime.name", "Java") + " " +
+    sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "Java")) + " " +
       JavaInformations.implementationVersion + " " +
       "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
       sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
