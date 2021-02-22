@@ -21,6 +21,7 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked._
+import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
@@ -715,18 +716,19 @@ with MainJournalingActor[ControllerState, Event]
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
-  private def persistItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] = {
+  private def persistItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] =
     // Precheck events
-    _controllerState.repo.applyEvents(events.collect { case o: VersionedEvent => o }) match {
+    _controllerState.applyEvents(events.map(NoKey <-: _)) match {
+      case Left(Problem.Combined(Seq(_, problem: DuplicateKey))) =>
+        Future.successful(Left(problem))
+
       case Left(problem) =>
-        // For example DuplicateVersionProblem
         Future.successful(Left(problem))
 
       case Right(_) =>
         persistTransactionAndSubsequentEvents(events.map(KeyedEvent(_)))(handleEvents)
           .map(_ => Right(Completed))
     }
-  }
 
   private def logEvent(event: Event): Unit =
     event match {

@@ -10,6 +10,7 @@ import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
+import scala.collection.immutable
 import scala.language.implicitConversions
 
 /**
@@ -31,9 +32,10 @@ sealed trait Problem
 
   def head: Problem = this
 
-  def withKey(key: Any): Problem = withPrefix(s"Problem with '$key':")
+  final def withKey(key: Any): Problem = withPrefix(s"Problem with '$key':")
 
-  def withPrefix(prefix: String): Problem = Problem.pure(prefix) |+| this
+  final def withPrefix(prefix: String): Problem =
+    Problem.pure(prefix) |+| this
 
   final def is(companion: Coded.Companion): Boolean =
     maybeCode contains companion.code
@@ -99,8 +101,6 @@ object Problem
         case Some(p: FromEagerThrowable) => new ProblemException.NoStackTrace(this, p.throwable)
         case _ => new ProblemException.NoStackTrace(this)
       }
-
-    override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + toString)
   }
 
   trait HasCode extends Simple {
@@ -173,10 +173,10 @@ object Problem
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
 
-  def combined(problems: Iterable[String]): Combined =
+  def combined(problems: immutable.Iterable[String]): Combined =
     Combined(problems.map(o => new Lazy(o)))
 
-  final case class Combined private[problem](problems: Iterable[Problem]) extends Problem {
+  final case class Combined private[problem](problems: immutable.Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
     def throwable = throwableOption getOrElse new ProblemException.NoStackTrace(this)

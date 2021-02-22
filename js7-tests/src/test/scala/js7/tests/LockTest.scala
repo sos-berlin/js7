@@ -12,6 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
 import js7.data.event.EventSeq
+import js7.data.item.ItemOperation.{AddVersion, SimpleDelete}
 import js7.data.item.VersionId
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockId, LockState}
@@ -334,6 +335,14 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
       LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+  }
+
+  "Lock deletion is still not supported" in {
+    val v = VersionId("DELETE")
+    assert(controllerApi.updateItems(Observable(
+      AddVersion(v),
+      SimpleDelete(lockId)
+    )).await(99.s) == Left(Problem("Event 'SimpleItemDeleted(Lock:LOCK)' cannot be applied: Locks are not deletable (in this version)")))
   }
 
   private def defineWorkflow(workflowNotation: String): Workflow =
