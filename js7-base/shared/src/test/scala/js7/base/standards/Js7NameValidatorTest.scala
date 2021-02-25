@@ -23,6 +23,7 @@ final class Js7NameValidatorTest extends AnyFreeSpec
     assert(isValid("a-"))
     assert(isValid("1"))
     assert(isValid("åäöüÅÄÖÜßµπæç"))
+    assert(isValid("𐌰𐌹𐌽𐍃"))       // Gotisch
     assert(isValid("български")) // Bulgarisch
     assert(isValid("ქართული")) // Georgisch
     assert(isValid("片仮名"))     // Japanisch: Katakana
