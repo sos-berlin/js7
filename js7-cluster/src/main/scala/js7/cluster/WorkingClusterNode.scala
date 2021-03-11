@@ -69,7 +69,7 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
       case Some(o) => o.beforeJournalingStarts
     }
 
-  def afterJounalingStarted: Task[Checked[Completed]] =
+  def afterJournalingStarted: Task[Checked[Completed]] =
     automaticallyAppointConfiguredBackupNode >>
       (_activeClusterNode.toOption match {
         case None => Task.pure(Right(Completed))

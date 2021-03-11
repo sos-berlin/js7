@@ -336,7 +336,7 @@ with MainJournalingActor[ControllerState, Event]
 
         persistMultiple(maybeControllerInitialized ++ Some(controllerReady)) { (_, updatedState) =>
           _controllerState = updatedState
-          clusterNode.afterJounalingStarted
+          clusterNode.afterJournalingStarted
             .materializeIntoChecked
             .runToFuture
             .map(Internal.Ready.apply)
