@@ -36,6 +36,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Map.empty,
     Map.empty,
+    Map.empty,
     Repo.empty,
     Map.empty)))
   protected def totalRunningSince = now - 1.hour

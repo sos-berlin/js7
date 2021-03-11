@@ -2,7 +2,9 @@ package js7.data.controller
 
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentId, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -14,6 +16,7 @@ import js7.data.item.{Repo, SimpleItemEvent, VersionedEvent}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.ordersource.{OrderSource, OrderSourceId, OrderSourceState, SourceOrderKey}
 import js7.data.workflow.Workflow
 import scala.collection.mutable
 
@@ -26,6 +29,7 @@ extends JournaledStateBuilder[ControllerState]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToAgentRefState = mutable.Map.empty[AgentId, AgentRefState]
   private val idToLockState = mutable.Map.empty[LockId, LockState]
+  private val idToOrderSourceState = mutable.Map.empty[OrderSourceId, OrderSourceState]
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -40,7 +44,7 @@ extends JournaledStateBuilder[ControllerState]
 
   protected def onAddSnapshotObject = {
     case order: Order[Order.State] =>
-      idToOrder.insert(order.id -> order)
+      addOrder(order)
 
     case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
@@ -50,6 +54,13 @@ extends JournaledStateBuilder[ControllerState]
 
     case lockState: LockState =>
       idToLockState.insert(lockState.lock.id -> lockState)
+
+    case snapshot: OrderSourceState.Snapshot =>
+      snapshot match {
+        case snapshot: OrderSourceState.HeaderSnapshot =>
+          idToOrderSourceState.insert(snapshot.orderSource.id ->
+            OrderSourceState.fromSnapshot(snapshot))
+      }
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -82,25 +93,43 @@ extends JournaledStateBuilder[ControllerState]
 
     case Stamped(_, _, KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
       event match {
-        case SimpleItemAdded(lock: Lock) =>
-          idToLockState.insert(lock.id -> LockState(lock))
+        case SimpleItemAdded(item) =>
+          item match {
+            case lock: Lock =>
+              idToLockState.insert(lock.id -> LockState(lock))
 
-        case SimpleItemChanged(lock: Lock) =>
-          idToLockState(lock.id) = idToLockState(lock.id).copy(
-            lock = lock)
+            case agentRef: AgentRef =>
+              idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
 
-        case SimpleItemDeleted(_: LockId) =>
-          throw Problem("Locks are not deletable (in this version)").throwable  // TODO
+            case orderSource: OrderSource =>
+              idToOrderSourceState.insert(orderSource.id -> OrderSourceState(orderSource))
+          }
 
-        case SimpleItemAdded(agentRef: AgentRef) =>
-          idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
+        case SimpleItemChanged(item) =>
+          item match {
+            case lock: Lock =>
+              idToLockState(lock.id) = idToLockState(lock.id).copy(
+                lock = lock)
 
-        case SimpleItemChanged(agentRef: AgentRef) =>
-          idToAgentRefState(agentRef.id) = idToAgentRefState(agentRef.id).copy(
-            agentRef = agentRef)
+            case agentRef: AgentRef =>
+              idToAgentRefState(agentRef.id) = idToAgentRefState(agentRef.id).copy(
+                agentRef = agentRef)
 
-        case SimpleItemDeleted(_: AgentId) =>
-          throw Problem("AgentRefs are not deletable (in this version)").throwable  // TODO
+            case orderSource: OrderSource =>
+              throw Problem("OrderSources are not changable (in this version)").throwable  // TODO
+              //idToOrderSourceState(orderSource.id).copy(
+              //  orderSource = orderSource,
+              //  itemRevision = ItemRevision.random())
+          }
+
+        case SimpleItemDeleted(itemId) =>
+          throw Problem("SimpeItems are not deletable (in this version)").throwable  // TODO
+
+        case SimpleItemEvent.SimpleItemAttachedStateChanged(id: OrderSourceId, agentId, attachedState) =>
+          val orderSourceState = idToOrderSourceState.checked(id).orThrow
+          assertThat(agentId == orderSourceState.orderSource.agentId)
+          idToOrderSourceState += id -> orderSourceState.copy(
+            attached = attachedState)
       }
 
     case Stamped(_, _, KeyedEvent(name: AgentId, event: AgentRefStateEvent)) =>
@@ -109,10 +138,10 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
         case event: OrderAdded =>
-          idToOrder += orderId -> Order.fromOrderAdded(orderId, event)
+          addOrder(Order.fromOrderAdded(orderId, event))
 
         case OrderRemoved =>
-          idToOrder -= orderId
+          removeOrder(orderId)
 
         case event: OrderLockEvent =>
           for (lockId <- event.lockIds) {
@@ -138,6 +167,29 @@ extends JournaledStateBuilder[ControllerState]
       standards = standards.copy(
         clusterState = standards.clusterState.applyEvent(event).orThrow)
   }
+
+  private def addOrder(order: Order[Order.State]): Unit = {
+    idToOrder.insert(order.id -> order)
+    for (SourceOrderKey(orderSourceId, sourceOrderName) <- order.sourceOrderKey) {
+      val updated = idToOrderSourceState
+        .checked(orderSourceId)
+        .flatMap(_.addOrderId(sourceOrderName, order.id))
+        .orThrow
+      idToOrderSourceState += updated.id -> updated
+    }
+  }
+
+  private def removeOrder(orderId: OrderId): Unit =
+    for (order <- idToOrder.remove(orderId)) {
+      for (SourceOrderKey(orderSourceId, sourceOrderName) <- order.sourceOrderKey) {
+        idToOrderSourceState
+          .checked(orderSourceId)
+          .map(_.removeOrderId(sourceOrderName, order.id))
+          .foreach { updated =>
+            idToOrderSourceState += updated.id -> updated
+          }
+      }
+    }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
     event match {
@@ -167,15 +219,18 @@ extends JournaledStateBuilder[ControllerState]
       case _ =>
     }
 
-  def state =
+  def state = {
+    for (o <- idToOrderSourceState.view.values) o.assertUniqueness()
     ControllerState(
       eventId = eventId,
       standards,
       controllerMetaState,
       idToAgentRefState.toMap,
       idToLockState.toMap,
+      idToOrderSourceState.toMap,
       repo,
       idToOrder.toMap)
+  }
 
   def journalState = standards.journalState
 

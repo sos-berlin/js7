@@ -1,5 +1,6 @@
 package js7.agent.data
 
+import js7.agent.data.ordersource.{FileOrderSourceState, FileOrderSourcesState}
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
 import js7.data.cluster.ClusterState
@@ -15,6 +16,7 @@ extends JournaledStateBuilder[AgentState]
   private var _eventId = EventId.BeforeFirst
   private var idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private var idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
+  private var fileOrderSourcesState = new FileOrderSourcesState.Builder
   private var _state = AgentState.empty
 
   protected def onInitializeState(state: AgentState) = {
@@ -32,6 +34,9 @@ extends JournaledStateBuilder[AgentState]
 
     case workflow: Workflow =>
       idToWorkflow.insert(workflow.id -> workflow)
+
+    case snapshot: FileOrderSourceState.Snapshot =>
+      fileOrderSourcesState.addSnapshot(snapshot)
   }
 
   protected def onOnAllSnapshotsAdded() = {
@@ -39,13 +44,14 @@ extends JournaledStateBuilder[AgentState]
       _eventId,
       JournaledState.Standards(_journalState, ClusterState.Empty),
       idToOrder.toMap,
-      idToWorkflow.toMap)
+      idToWorkflow.toMap,
+      fileOrderSourcesState.result())
   }
 
   protected def onAddEvent = {
     case Stamped(eventId, _, keyedEvent) =>
       _eventId = eventId
-      _state = state.applyEvent(keyedEvent).orThrow
+      _state = _state.applyEvent(keyedEvent).orThrow
   }
 
   def state = _state.copy(eventId = _eventId)

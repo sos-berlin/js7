@@ -17,7 +17,8 @@ final class LockStateTest extends AnyFreeSpec
       {
         "lock": {
           "id": "LOCK",
-          "limit": 1
+          "limit": 1,
+          "itemRevision": 0
         },
         "acquired": {
           "TYPE": "Available"

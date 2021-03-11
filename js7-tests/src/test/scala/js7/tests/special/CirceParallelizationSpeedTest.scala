@@ -37,7 +37,7 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
         workflowPosition,
         Order.Forked(List(Order.Forked.Child("A", OrderId("A")), Order.Forked.Child("B", OrderId("B")))),
         namedValues,
-        (1 to 50).map(_ => historicOutcome))
+        historicOutcomes = (1 to 50).map(_ => historicOutcome))
       scribe.info(s"Big has ${fakeOrder.asJson.compactPrint.size} JSON bytes or ${fakeOrder.asJson.toPrettyString.count(_ == '\n')} JSON lines")
       scribe.debug(fakeOrder.asJson.toPrettyString)
       for (i <- 1 to n / 10) yield Big(fakeOrder.copy(id = OrderId(i.toString)))

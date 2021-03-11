@@ -1,11 +1,12 @@
 package js7.base.standards
 
 import js7.base.generic.GenericString
-import js7.base.generic.GenericString.{Checked_, EmptyStringProblem}
+import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem
 
-trait Js7PathValidating[A <: GenericString] extends Checked_[A]
+trait Js7PathValidating[A <: GenericString]
+extends GenericString.Checked_[A]
 {
   private lazy val nameValidator = new Js7PathValidator(name)
 

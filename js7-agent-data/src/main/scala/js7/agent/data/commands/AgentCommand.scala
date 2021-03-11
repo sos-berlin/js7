@@ -3,6 +3,7 @@ package js7.agent.data.commands
 import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.{Decoder, Encoder, Json, JsonObject}
+import js7.agent.data.AgentState
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
@@ -18,6 +19,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
+import js7.data.item.SimpleItem
 import js7.data.order.{Order, OrderId, OrderMark}
 
 /**
@@ -129,6 +131,12 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait OrderCommand extends AgentCommand
 
+  final case class AttachSimpleItem(item: SimpleItem)
+  extends AgentCommand
+  {
+    type Response = Response.Accepted
+  }
+
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady], signedWorkflow: SignedString)
@@ -169,7 +177,9 @@ object AgentCommand extends CommonCommand.Companion
     final case class Response(orders: Seq[Order[Order.State]]) extends AgentCommand.Response with Big
   }
 
-  implicit val jsonCodec: TypedJsonCodec[AgentCommand] =
+  implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
+    import AgentState.simpleItemJsonCodec
+    intelliJuseImport(simpleItemJsonCodec)
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[MarkOrder]),
@@ -179,12 +189,14 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[RegisterAsController]),
       Subtype(deriveCodec[CoupleController]),
       Subtype[ShutDown],
+      Subtype(deriveCodec[AttachSimpleItem]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),
       Subtype(GetOrders),
       Subtype(TakeSnapshot),
       Subtype(GetOrderIds))
+  }
 
   implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
     TypedJsonCodec[AgentCommand.Response](

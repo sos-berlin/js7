@@ -5,6 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Big
 import js7.data.event.KeyedEvent
+import js7.data.item.SimpleItemState
 import js7.data.lock.Acquired.Available
 import js7.data.lock.LockRefusal.{InvalidCount, IsInUse, LimitReached}
 import js7.data.order.OrderEvent.{OrderFailedEvent, OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}
@@ -15,9 +16,11 @@ final case class LockState(
   lock: Lock,
   acquired: Acquired = Available,
   queue: Queue[OrderId] = Queue.empty)
-extends Big/*acquired and queue get big with many orders*/
+extends SimpleItemState with Big/*acquired and queue get big with many orders*/
 {
   import lock.limit
+
+  def item = lock
 
   def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
     assertThat(keyedEvent.event.lockIds contains lock.id)
@@ -103,6 +106,8 @@ extends Big/*acquired and queue get big with many orders*/
         copy(acquired = acquired))
 
   private def lockId = lock.id
+
+  //TODO Break snapshot into smaller parts: private def toSnapshot: Observable[Any] = ...
 }
 
 object LockState

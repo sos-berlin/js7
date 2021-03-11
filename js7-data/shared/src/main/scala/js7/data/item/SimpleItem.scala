@@ -5,17 +5,24 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor}
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.circeutils.typed.Subtype
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
 import js7.data.item.SimpleItem._
+import scala.reflect.ClassTag
 
 trait SimpleItem
 {
+  protected type Self <: SimpleItem
+
+  def withRevision(revision: ItemRevision): Self
+
   val companion: Companion
 
   def id: companion.Id
+
+  val itemRevision: ItemRevision
 }
 
 object SimpleItem
@@ -26,11 +33,20 @@ object SimpleItem
     type Id <: SimpleItemId
 
     val idCompanion: SimpleItemId.Companion[Id]
-
-    implicit def jsonEncoder: Encoder.AsObject[Item]
-    implicit def jsonDecoder: Decoder[Item]
-
     val name = getClass.simpleScalaName
+
+    def cls: Class[Item]
+
+    implicit def jsonCodec: CirceObjectCodec[Item]
+
+    final def subtype: Subtype[Item] =
+      Subtype(jsonCodec)(ClassTag(cls))
+
+    final def jsonEncoder: Encoder.AsObject[Item] =
+      jsonCodec
+
+    final def jsonDecoder: Decoder[Item] =
+      jsonCodec
   }
 
   def jsonCodec(companions: Seq[Companion]): CirceObjectCodec[SimpleItem] = {

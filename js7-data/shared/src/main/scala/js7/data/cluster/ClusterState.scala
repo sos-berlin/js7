@@ -73,6 +73,9 @@ extends EventDrivenState[ClusterState, ClusterEvent]
         eventNotApplicable(keyedEvent)
     }
 
+  def estimatedSnapshotSize =
+    if (this != Empty) 1 else 0
+
   def toSnapshotObservable =
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
 }

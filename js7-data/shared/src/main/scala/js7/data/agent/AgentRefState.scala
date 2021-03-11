@@ -6,6 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState}
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentEventsObserved, AgentReady, AgentRegisteredController}
 import js7.data.event.EventId
+import js7.data.item.SimpleItemState
 
 final case class AgentRefState(
   agentRef: AgentRef,
@@ -13,7 +14,10 @@ final case class AgentRefState(
   timezone: Option[String],
   couplingState: CouplingState,
   eventId: EventId)
+extends SimpleItemState
 {
+  def item = agentRef
+
   def agentId = agentRef.id
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =

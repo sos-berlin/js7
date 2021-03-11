@@ -6,6 +6,7 @@ import js7.base.auth.{UpdateItemPermission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.RichFutures
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -15,8 +16,9 @@ import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
-import js7.data.item.VersionId
+import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.RelativePathExecutable
+import js7.data.lock.{Lock, LockId}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -65,7 +67,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.httpApi.login_(Some(userAndPassword)) await 99.s
   }
 
-  "ControllerCommand.UpdateRepo" in {
+  "ControllerCommand.UpdateRepo with VersionedItem" in {
     val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
     controllerApi.updateItems(Observable(AddVersion(V1), VersionedAddOrChange(sign(workflow1)))).await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(orderIds(0), TestWorkflowPath))
@@ -100,6 +102,18 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
         VersionedAddOrChange(sign(workflow2).copy(string = "TAMPERED"))
       )).await(99.s) == Left(TamperedWithSignedMessageProblem))
     }
+  }
+
+  "SimpleItem's ItemRevision must not be supplied" in {
+    // itemRevision is set only be the Controller
+    val lock = Lock(LockId("LOCK"))
+    assert(controllerApi.updateSimpleItems(Seq(lock.copy(itemRevision = ItemRevision(1)))).await(99.s) ==
+      Left(Problem("SimpleItem's ItemRevision must be zero")))
+
+    controllerApi.updateSimpleItems(Seq(lock)).await(99.s).orThrow
+
+    assert(controllerApi.updateSimpleItems(Seq(lock.copy(limit = 7, itemRevision = ItemRevision(1)))).await(99.s) ==
+      Left(Problem("SimpleItem's ItemRevision must be zero")))
   }
 
   "Divergent VersionId is rejected" in {

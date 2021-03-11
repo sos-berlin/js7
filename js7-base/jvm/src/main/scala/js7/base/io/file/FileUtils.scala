@@ -49,6 +49,8 @@ object FileUtils
 
   object syntax
   {
+    implicit val PathOrdering: Ordering[Path] = (a, b) => a compareTo b
+
     implicit final class RichPath(private val delegate: Path) extends AnyVal
     {
       /** Must be a relative path without backslashes or single or double dot directories. */

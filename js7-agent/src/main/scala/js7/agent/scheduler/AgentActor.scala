@@ -20,6 +20,7 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
+import js7.base.thread.IOExecutor
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Closer, SetOnce}
@@ -54,7 +55,7 @@ private[agent] final class AgentActor private(
   newTaskRunner: TaskRunner.Factory,
   eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
-  (implicit closer: Closer, protected val scheduler: Scheduler)
+  (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentServerState, AgentServerEvent] {
 
   import agentConfiguration.{akkaAskTimeout, stateDirectory}
@@ -187,7 +188,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
           ).value
             .runToFuture)
 
-      case command @ (_: AgentCommand.OrderCommand | _: AgentCommand.TakeSnapshot.type) =>
+      case command @ (_: AgentCommand.OrderCommand | _: AgentCommand.TakeSnapshot.type | _: AgentCommand.AttachSimpleItem) =>
         controllerToOrderKeeper.checked(controllerId) match {
           case Right(entry) =>
             entry.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
@@ -321,7 +322,7 @@ object AgentActor
     newTaskRunner: TaskRunner.Factory,
     eventIdGenerator: EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus)
-    (implicit closer: Closer, scheduler: Scheduler)
+    (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
       new AgentActor(terminatePromise, agentConfiguration, newTaskRunner, eventIdGenerator, keyedEventBus)

@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.AkkaHttpUtils._
 import js7.common.http.CirceJsonSupport._

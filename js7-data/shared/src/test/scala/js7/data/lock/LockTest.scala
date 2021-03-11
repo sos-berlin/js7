@@ -10,7 +10,8 @@ final class LockTest extends AnyFreeSpec
     testJson(Lock(LockId("LOCK"), limit = 3), json"""
       {
         "id": "LOCK",
-        "limit": 3
+        "limit": 3,
+        "itemRevision": 0
       }""")
   }
 }

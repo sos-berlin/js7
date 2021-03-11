@@ -21,7 +21,8 @@ final class AgentRefStateTest extends AnyFreeSpec
       json"""{
         "agentRef": {
           "id": "AGENT",
-          "uri": "https://URI"
+          "uri": "https://URI",
+          "itemRevision": 0
         },
         "couplingState": {
           "TYPE": "Decoupled"
@@ -41,7 +42,8 @@ final class AgentRefStateTest extends AnyFreeSpec
       json"""{
         "agentRef": {
           "id": "AGENT",
-          "uri": "https://URI"
+          "uri": "https://URI",
+          "itemRevision": 0
         },
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
         "couplingState": {
@@ -50,8 +52,8 @@ final class AgentRefStateTest extends AnyFreeSpec
         "eventId": 123
       }""")
 
-    testJson[AgentRefState.CouplingState](AgentRefState.Decoupled, json"""{ "TYPE": "Decoupled"}""")
-    testJson[AgentRefState.CouplingState](AgentRefState.Coupled, json"""{ "TYPE": "Coupled"}""")
+    testJson[AgentRefState.CouplingState](AgentRefState.Decoupled, json"""{ "TYPE": "Decoupled" }""")
+    testJson[AgentRefState.CouplingState](AgentRefState.Coupled, json"""{ "TYPE": "Coupled" }""")
 
     testJson[AgentRefState.CouplingState](
       AgentRefState.CouplingFailed(Problem("PROBLEM")),

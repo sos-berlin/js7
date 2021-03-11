@@ -254,7 +254,7 @@ final case class Repo private(
     } yield signedItem.copy(signedItem.value.cast[A])
 
   lazy val estimatedEventCount: Int = {
-    var sum = 1  // VersionAdded
+    var sum = versions.size  // VersionAdded
     for (o <- pathToVersionToSignedItems.values) sum += o.size
     sum
   }
