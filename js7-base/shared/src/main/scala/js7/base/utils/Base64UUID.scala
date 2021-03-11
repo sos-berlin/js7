@@ -11,6 +11,10 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
 {
   def apply(uuid: UUID) = new Base64UUID(uuid, uuidToBase64(uuid))
 
+  def random() = apply(UUID.randomUUID())
+
+  def randomString(): String = uuidToBase64(UUID.randomUUID())
+
   protected def unchecked(string: String) = throw new NotImplementedError
 
   override def checked(string: String) =

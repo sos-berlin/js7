@@ -28,4 +28,10 @@ final class Base64UUIDTest extends AnyFreeSpec
     assert(uuidToBase64(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")) == "ABEiM0RVZneImaq7zN3u_w")
     forAll(Gen.uuid)((uuid: UUID) => assert(base64ToUUID(uuidToBase64(uuid)) == Right(uuid)))
   }
+
+  "random" in {
+    val n = 10000
+    assert(Set.fill(n)(Base64UUID.random()).size == n)
+    assert(Set.fill(n)(Base64UUID.randomString()).size == n)
+  }
 }
