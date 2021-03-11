@@ -162,9 +162,9 @@ final class CollectionsTest extends AnyFreeSpec
     assert(r(Seq(a1, a2)) == Left(Problem("Unexpected duplicates: 2×1")))
     assert(r(Seq(a1, a2, a1)) == Left(Problem("Unexpected duplicates: 3×1")))
 
-    assert(List.empty[Int].checkUniqueness(identity) == Right(Nil))
-    assert(List(1, 1).checkUniqueness(identity) == Left(Problem("Unexpected duplicates: 2×1")))
-    assert(List(1, 2).checkUniqueness(identity) == Right(List(1, 2)))
+    assert(List.empty[Int].checkUniqueness == Right(Nil))
+    assert(List(1, 1).checkUniqueness == Left(Problem("Unexpected duplicates: 2×1")))
+    assert(List(1, 2).checkUniqueness == Right(List(1, 2)))
   }
 
   "toSeqMultiMap" in {

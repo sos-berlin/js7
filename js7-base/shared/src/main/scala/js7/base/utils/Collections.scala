@@ -63,6 +63,9 @@ object Collections
       def uniqueToSet: Set[A] =
         underlying.requireUniqueness.toSet
 
+      def checkUniqueness: Checked[Iterable[A]] =
+        checkUniqueness(identity[A])
+
       def checkUniqueness[K](
         key: A => K,
         duplicatesToProblem: Map[K, Iterable[A]] => Problem = defaultDuplicatesToProblem[K](_))
