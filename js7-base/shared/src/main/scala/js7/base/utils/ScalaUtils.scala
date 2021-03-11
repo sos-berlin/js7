@@ -2,7 +2,7 @@ package js7.base.utils
 
 import cats.data.NonEmptyList
 import cats.syntax.option._
-import cats.{Functor, Monad, Semigroup}
+import cats.{Functor, Monad, Monoid, Semigroup}
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
@@ -24,6 +24,18 @@ object ScalaUtils
 
   object syntax
   {
+    implicit final class RichF_[F[_], A](private val underlying: F[A]) extends AnyVal
+    {
+      def unless(condition: Boolean)(implicit F: Monoid[F[A]]): F[A] =
+        when(!condition)
+
+      def when(condition: Boolean)(implicit F: Monoid[F[A]]): F[A] =
+        if (condition)
+          underlying
+        else
+          F.empty
+    }
+
     implicit final class RichEitherF[F[_], L, R](private val underlying: F[Either[L, R]]) extends AnyVal
     {
       def rightAs[R1](newRight: => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
