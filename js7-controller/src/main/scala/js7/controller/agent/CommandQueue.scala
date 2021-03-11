@@ -177,7 +177,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
           sys.error(s"Unexpected response from Agent: $o")
         case QueuedInputResponse(input, Left(problem)) =>
           // MarkOrder(FreshOnly) fails if order has started !!!
-          logger.error(s"Agent has rejected ${input.toShortString}: $problem")
+          logger.error(s"Agent rejected ${input.toShortString}: $problem")
           // Agent's state does not match controller's state ???
           // TODO: But "Agent is shutting down" is okay
           None

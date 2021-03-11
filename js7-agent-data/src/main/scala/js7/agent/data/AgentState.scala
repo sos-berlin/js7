@@ -86,7 +86,7 @@ extends JournaledState[AgentState]
                 //    idToOrder = idToOrder +
                 //      (order.id -> order) --
                 //      order.state.childOrderIds))
-                Left(Problem.pure("OrderJoinded not applicable on AgentState"))
+                Left(Problem.pure("OrderJoined not applicable on AgentState"))
 
               case _: OrderCoreEvent =>
                 Right(copy(

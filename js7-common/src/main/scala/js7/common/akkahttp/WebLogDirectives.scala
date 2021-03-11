@@ -85,7 +85,7 @@ trait WebLogDirectives extends ExceptionHandling
                 log(request, Some(response), logLevel, nanoTime - start,
                   hasRemoteAddress = hasRemoteAddress,
                   streamSuffix = // Timing of the stream, after response header has been sent
-                    chunkCount + " chunks, " +
+                    chunkCount.toString + " chunks, " +
                     bytesPerSecondString(since.elapsed, byteCount) +
                       tried.fold(t => " " + t.toStringWithCauses, _ => ""))
               }(actorSystem.dispatcher)

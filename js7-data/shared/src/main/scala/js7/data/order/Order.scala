@@ -589,6 +589,7 @@ object Order
 
   final case class OrderEventProblem(event: OrderEvent, order: Order[State]) extends Problem.Coded {
     def arguments = Map(
+      "orderId" -> order.id.string,
       "event" -> event.toString,
       "workflowPosition" -> order.workflowPosition.toString,
       "state" -> order.state.getClass.simpleScalaName,
