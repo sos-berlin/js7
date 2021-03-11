@@ -531,6 +531,11 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert((true ?? "STRING") == "STRING")
   }
 
+  "Boolean !! Problem" in {
+    assert((false !! Problem("PROBLEM")) == Left(Problem("PROBLEM")))
+    assert((true !! Problem("PROBLEM")) == Right(()))
+  }
+
   "Array[Byte]" - {
     "indexOfByte" in {
       assert(Array.empty[Byte].indexOfByte(7) == -1)

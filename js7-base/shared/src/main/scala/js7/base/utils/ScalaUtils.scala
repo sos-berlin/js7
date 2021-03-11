@@ -319,6 +319,13 @@ object ScalaUtils
       /** The string on the right side if true, otherwise the empty string. */
       def ??(string: => String): String =
         if (underlying) string else ""
+
+      def !!(problem: => Problem): Checked[Unit] =
+        if (!underlying) Left(problem)
+        else RightUnit
+
+      def toInt: Int =
+        if (underlying) 1 else 0
     }
 
     implicit final class RichEither[L, R](private val either: Either[L, R]) extends AnyVal
