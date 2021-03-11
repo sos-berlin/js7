@@ -20,6 +20,7 @@ import scala.collection.{IterableFactory, IterableOps}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success, Try}
 
 object MonixBase
@@ -27,7 +28,7 @@ object MonixBase
   private val FalseTask = Task.pure(false)
   private val TrueTask = Task.pure(true)
   private val CompletedTask = Task.pure(Completed)
-  val DefaultBatchSize = 200
+  val DefaultBatchSize = 256
   val DefaultWorryDurations = Seq(3.s, 7.s, 10.s)
   private val logger = scribe.Logger(getClass.scalaName)
 
@@ -149,15 +150,20 @@ object MonixBase
 
       def mapParallelOrderedBatch[B](
         batchSize: Int = DefaultBatchSize,
+        delay: FiniteDuration = FiniteDuration.MaxValue,
         parallelism: Int = sys.runtime.availableProcessors)
         (f: A => B)
         (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
       : Observable[B] =
-        if (parallelism == 1)
+        if (!delay.isPositive || parallelism == 1)
           underlying.map(f)
         else
           underlying
-            .bufferTumbling(batchSize)
+            .pipe(obs =>
+              if (delay < FiniteDuration.MaxValue)
+                obs.buffer(Some(delay), batchSize)
+              else
+                obs.bufferTumbling(batchSize))
             .mapParallelOrdered(parallelism)(seq => Task(seq map f))
             .flatMap(Observable.fromIterable)
 
