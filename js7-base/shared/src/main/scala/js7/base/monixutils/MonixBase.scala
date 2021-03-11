@@ -42,11 +42,14 @@ object MonixBase
 
     implicit class RichMonixTask[A](private val task: Task[A]) extends AnyVal
     {
-      def unless(condition: Boolean)(implicit A: Monoid[A]): Task[A] =
+      def when(condition: Boolean)(implicit A: Monoid[A]): Task[A] =
         if (condition)
-          Task.pure(A.empty)
-        else
           task
+        else
+          Task.pure(A.empty)
+
+      def unless(condition: Boolean)(implicit A: Monoid[A]): Task[A] =
+        when(!condition)
 
       def maybeTimeout(duration: Duration): Task[A] =
         duration match {

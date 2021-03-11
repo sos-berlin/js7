@@ -269,14 +269,17 @@ final class MonixBaseTest extends AsyncFreeSpec
   }
 
   "Task" - {
-    "unless" in {
+    "when, unless" in {
       val list = List(1, 2, 3)
       val task =
         for {
+          whenTrue <- Task(list) when true
+          whenFalse <- Task(list) when false
           unlessTrue <- Task(list) unless true
           unlessFalse <- Task(list) unless false
         } yield
-          assert(unlessTrue == Nil && unlessFalse == list)
+          assert(whenTrue == list && whenFalse == Nil &&
+            unlessTrue == Nil && unlessFalse == list)
       task.runToFuture
     }
 
