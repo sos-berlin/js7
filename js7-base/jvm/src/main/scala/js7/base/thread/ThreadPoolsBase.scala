@@ -40,7 +40,7 @@ object ThreadPoolsBase
       MILLISECONDS,
       queueSize match {
         case None => new LinkedBlockingQueue[Runnable]
-        case Some(0) => new SynchronousQueue[Runnable]
+        case Some(0) => new SynchronousQueue[Runnable](false)  // Like Monix Scheduler.io
         case Some(n) => new ArrayBlockingQueue[Runnable](n)
       },
       myThreadFactory(name))
