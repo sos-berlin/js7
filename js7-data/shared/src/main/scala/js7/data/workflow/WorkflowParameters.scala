@@ -8,7 +8,7 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue, Value, ValueType}

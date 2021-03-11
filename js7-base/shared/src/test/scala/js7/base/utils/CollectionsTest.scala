@@ -27,7 +27,14 @@ final class CollectionsTest extends AnyFreeSpec
 
   "countEquals" in {
     Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 -> 1, 22 -> 2, 33 -> 3)
-    Map.empty[Int, Int].countEquals shouldEqual Map()
+  }
+
+  "when" in {
+    assert(Seq(1, 2, 3).when(true) == List(1, 2, 3))
+    assert(Seq(1, 2, 3).unless(true) == Nil)
+    assert((List(1, 2, 3).unless(true): List[Int]) == Nil)
+    assert(Iterator(1, 2, 3).when(true).toList == List(1, 2, 3))
+    assert(Iterator(1, 2, 3).unless(true).toList == Nil)
   }
 
   "foldFast" in {
@@ -76,16 +83,6 @@ final class CollectionsTest extends AnyFreeSpec
         2 * i
       }
     }
-
-    //"Scala's mapValues is lazy" in {
-    //  val f = newF
-    //  val a = Map(1 -> 10).mapValues(f).toMap
-    //  assert(f.called == 0)
-    //  a(1)
-    //  assert(f.called == 1)
-    //  a(1)
-    //  assert(f.called == 2)
-    //}
 
     "mapValuesStrict is strict" in {
       val f = newF

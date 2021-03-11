@@ -4,7 +4,7 @@ import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
-import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerState

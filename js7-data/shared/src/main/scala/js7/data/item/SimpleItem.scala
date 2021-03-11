@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
-import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
 import js7.data.item.SimpleItem._
 

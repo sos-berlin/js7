@@ -8,7 +8,7 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
 import scala.jdk.CollectionConverters._

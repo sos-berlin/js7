@@ -8,7 +8,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.standards.Js7PathValidating
-import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.ItemPath._

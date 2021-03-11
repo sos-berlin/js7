@@ -5,7 +5,7 @@ import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
-import scala.collection.{BufferedIterator, mutable}
+import scala.collection.{BufferedIterator, Factory, mutable}
 
 object Collections
 {
@@ -27,16 +27,27 @@ object Collections
       }
     }
 
-    implicit final class RichTraversableOnce[A](private val delegate: IterableOnce[A]) extends AnyVal
+    implicit final class RichIterableOnce[CC[x] <: IterableOnce[x], A](private val iterableOnce: CC[A])
+    extends AnyVal
     {
       def countEquals: Map[A, Int] =
-        delegate.iterator.to(Iterable) groupBy identity map { case (k, v) => k -> v.size }
+        iterableOnce.iterator.to(Iterable) groupBy identity map { case (k, v) => k -> v.size }
 
       def compareElementWise(other: IterableOnce[A])(implicit ordering: Ordering[A]): Int =
-        compareIteratorsElementWise(delegate.iterator, other.iterator)
+        compareIteratorsElementWise(iterableOnce.iterator, other.iterator)
+
+      def unless(condition: Boolean)(implicit factory: Factory[A, CC[A]]): CC[A] =
+        when(!condition)
+
+      def when(condition: Boolean)(implicit factory: Factory[A, CC[A]]): CC[A] =
+        if (condition)
+          iterableOnce
+        else
+          factory.fromSpecific(Nil)
     }
 
-    implicit final class RichTraversable[CC[x] <: Iterable[x], A](private val underlying: CC[A]) extends AnyVal
+    implicit final class RichIterable[CC[x] <: Iterable[x], A](private val underlying: CC[A])
+    extends AnyVal
     {
       /**
         * Like `fold` but uses `neutral` only when `operation` cannot be applied, that is size &lt; 2.

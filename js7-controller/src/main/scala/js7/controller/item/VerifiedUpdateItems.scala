@@ -4,7 +4,7 @@ import js7.base.auth.{SimpleUser, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.implicits.RichTraversable
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.crypt.VersionedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}
