@@ -2,7 +2,6 @@ package js7.tests.controller.load
 
 import js7.base.auth.Admission
 import js7.base.configutils.Configs._
-import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -12,7 +11,6 @@ import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.event.{EventId, EventRequest}
-import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
@@ -20,7 +18,6 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.proxy.ControllerApi
 import js7.tests.controller.load.ManyOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -29,9 +26,14 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = agentId :: Nil
   protected val versionedItems = workflow :: Nil
+
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false"""
+
+  override protected val agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = yes
+    """
 
   private lazy val controllerApi = new ControllerApi(Seq(
     admissionToApiResource(Admission(controller.localUri, None))(controller.actorSystem)))
@@ -43,13 +45,6 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
       (a.toInt, b.drop(1).toInt)
 
     case _ => sys.error("Invalid number of arguments in property test.speed")
-  }
-
-  override def beforeAll() = {
-    for (a <- directoryProvider.agents) {
-      a.writeExecutable(RelativePathExecutable(s"TEST$sh"), script(0.ms))
-    }
-    super.beforeAll()
   }
 
   override def afterAll() = {
@@ -100,7 +95,7 @@ object ManyOrdersTest
   private val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "1", s"""
       define workflow {
-        execute executable="TEST$sh", agent="AGENT", taskLimit=1000, v1Compatible=false;
+        execute agent="AGENT", internalJobClass="js7.tests.jobs.EmptyJob", taskLimit=32;
       }"""
   ).orThrow
 }
