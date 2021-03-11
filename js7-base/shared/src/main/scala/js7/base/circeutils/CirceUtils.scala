@@ -16,6 +16,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable.SeqMap
+import scala.util.control.NonFatal
 import shapeless.Lazy
 
 /**
@@ -39,7 +40,11 @@ object CirceUtils
     o => Json.fromString(to(o))
 
   def stringDecoder[A](from: String => A): Decoder[A] =
-    _.as[String] map from
+    c => c.as[String].flatMap(string =>
+      try Right(from(string))
+      catch { case NonFatal(t) =>
+        Left(DecodingFailure(t.toStringWithCauses, c.history))
+      })
 
   def objectCodec[A <: AnyRef: Encoder.AsObject: Decoder]: CirceObjectCodec[A] =
     new Encoder.AsObject[A] with Decoder[A] {

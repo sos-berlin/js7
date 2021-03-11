@@ -117,4 +117,11 @@ final class CirceUtilsTest extends AnyFreeSpec
     assert(decoder.decodeJson(json"""{ "number": true }""").toChecked == Left(Problem("JSON DecodingFailure at .number: Int")))
     assert(decoder.decodeJson(json"""{ "x": true }""").toChecked == Left(Problem("JSON DecodingFailure at .number: Attempt to decode value on failed cursor")))
   }
+
+  "stringDecoder catches exceptions" in {
+    val decoder = stringDecoder(_.toInt)
+    assert(decoder.decodeJson(json""""7"""").toChecked == Right(7))
+    assert(decoder.decodeJson(json""""X"""").toChecked == Left(Problem(
+      """JSON DecodingFailure at : NumberFormatException: For input string: "X"""")))
+  }
 }
