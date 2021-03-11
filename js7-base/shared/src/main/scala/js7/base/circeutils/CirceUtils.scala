@@ -6,7 +6,7 @@ import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.generic.extras.decoding.ConfiguredDecoder
 import io.circe.generic.extras.encoding.ConfiguredAsObjectEncoder
 import io.circe.syntax.EncoderOps
-import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
+import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
 import java.io.{OutputStream, OutputStreamWriter}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
@@ -30,10 +30,10 @@ object CirceUtils
   def parseJsonByteBuffer(bytes: ByteBuffer): Either[ParsingFailure, Json] =
     CirceUtilsForPlatform.parseJsonByteBuffer(bytes)
 
-  def toStringJsonCodec[A](from: String => A): CirceCodec[A] =
+  def toStringJsonCodec[A](from: String => A): Codec[A] =
     stringJsonCodec(_.toString, from)
 
-  def stringJsonCodec[A](to: A => String, from: String => A): CirceCodec[A] =
+  def stringJsonCodec[A](to: A => String, from: String => A): Codec[A] =
     circeCodec(stringEncoder(to), stringDecoder(from))
 
   def stringEncoder[A](to: A => String): Encoder[A] =
@@ -46,14 +46,14 @@ object CirceUtils
         Left(DecodingFailure(t.toStringWithCauses, c.history))
       })
 
-  def objectCodec[A <: AnyRef: Encoder.AsObject: Decoder]: CirceObjectCodec[A] =
-    new Encoder.AsObject[A] with Decoder[A] {
+  def objectCodec[A <: AnyRef: Encoder.AsObject: Decoder]: Codec.AsObject[A] =
+    new Codec.AsObject[A] {
       def encodeObject(a: A) = implicitly[Encoder.AsObject[A]].encodeObject(a)
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
 
-  def circeCodec[A: Encoder: Decoder]: CirceCodec[A] =
-    new Encoder[A] with Decoder[A] {
+  def circeCodec[A: Encoder: Decoder]: Codec[A] =
+    new Codec[A] {
       def apply(a: A) = implicitly[Encoder[A]].apply(a)
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
@@ -182,8 +182,8 @@ object CirceUtils
   }
 
   final def deriveCodec[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]])
-  : CirceObjectCodec[A] = {
-    new Encoder.AsObject[A] with Decoder[A] {
+  : Codec.AsObject[A] = {
+    new Codec.AsObject[A] {
       def encodeObject(a: A) = encode.value.encodeObject(a)
       def apply(c: HCursor) = decode.value.tryDecode(c)
     }
@@ -205,22 +205,27 @@ object CirceUtils
   //    def apply(c: HCursor) = decodeWithDefaults.tryDecode(c)
   //  }
 
-  final def deriveConfiguredCodec[A](implicit encode: Lazy[ConfiguredAsObjectEncoder[A]], decode: Lazy[ConfiguredDecoder[A]])
-  : CirceObjectCodec[A] =
-    new Encoder.AsObject[A] with Decoder[A] {
+  final def deriveConfiguredCodec[A](
+    implicit encode: Lazy[ConfiguredAsObjectEncoder[A]],
+    decode: Lazy[ConfiguredDecoder[A]])
+  : Codec.AsObject[A] =
+    new Codec.AsObject[A] {
       def encodeObject(a: A) = encode.value.encodeObject(a)
       def apply(c: HCursor) = decode.value.tryDecode(c)
     }
 
-  def singletonCodec[A](singleton: A): CirceObjectCodec[A] =
-    new Encoder.AsObject[A] with Decoder[A] {
+  def singletonCodec[A](singleton: A): Codec.AsObject[A] =
+    new Codec.AsObject[A] {
       def encodeObject(a: A) = JsonObject.empty
 
       def apply(c: HCursor) = Right(singleton)
     }
 
-  def listMapCodec[K: Encoder: Decoder, V: Encoder: Decoder](keyName: String = "key", valueName: String = "value"): CirceCodec[SeqMap[K, V]] =
-    new Encoder[SeqMap[K, V]] with Decoder[SeqMap[K, V]] {
+  def listMapCodec[K: Encoder: Decoder, V: Encoder: Decoder](
+    keyName: String = "key",
+    valueName: String = "value")
+  : Codec[SeqMap[K, V]] =
+    new Codec[SeqMap[K, V]] {
       def apply(listMap: SeqMap[K, V]) =
         Json.fromValues(
           for ((key, value) <- listMap) yield
@@ -240,7 +245,7 @@ object CirceUtils
         cursor.as[Seq[(K, V)]].map(SeqMap.empty.++)
     }
 
-  //def delegateCodec[A, B: Encoder: Decoder](toB: A => B, fromB: B => A): CirceCodec[A] =
+  //def delegateCodec[A, B: Encoder: Decoder](toB: A => B, fromB: B => A): Codec[A] =
   //  new Encoder[A] with Decoder[A] {
   //    def apply(a: A) = toB(a).asJson
   //    def apply(c: HCursor) = c.as[B] flatMap caught(fromB)
