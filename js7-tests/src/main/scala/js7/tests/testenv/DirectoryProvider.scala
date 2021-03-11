@@ -8,6 +8,7 @@ import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
@@ -183,8 +184,13 @@ extends HasCloser
       runningController
     }
 
-  def runAgents[A]()(body: IndexedSeq[RunningAgent] => A): A =
-    multipleAutoClosing(agents.map(_.agentConfiguration) map RunningAgent.startForTest await 99.s) { agents =>
+  def runAgents[A](agentIds: Seq[AgentId] = DirectoryProvider.this.agentIds)(body: IndexedSeq[RunningAgent] => A): A =
+    multipleAutoClosing(agents
+      .filter(o => agentIds.contains(o.agentId))
+      .map(_.agentConfiguration)
+      .map(RunningAgent.startForTest)
+      .await(99.s))
+    { agents =>
       val result =
         try body(agents)
         catch { case NonFatal(t) =>
@@ -303,6 +309,7 @@ object DirectoryProvider
       .copy(name = name)
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
+    lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
     lazy val executables = configDir / "executables"
 
     override def createDirectoriesAndFiles(): Unit = {
