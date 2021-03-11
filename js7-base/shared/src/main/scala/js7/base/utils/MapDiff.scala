@@ -2,36 +2,48 @@ package js7.base.utils
 
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder}
+import js7.base.utils.MapDiff._
 
-/**
-  * @author Joacim Zschimmer
-  */
-final case class MapDiff[K, V](changed: Map[K, V], deleted: Set[K] = Set.empty) {
-  require((deleted & changed.keySet).isEmpty, "MapDiff: changed and deleted are not disjunct")
+final case class MapDiff[K, V] private(
+  added: Map[K, V],
+  updated: Map[K, V],
+  deleted: Set[K])
+{
+  if ((added.keySet & updated.keySet).nonEmpty ||
+      (added.keySet & deleted).nonEmpty ||
+      (updated.keySet & deleted).nonEmpty)
+    throw new IllegalArgumentException("MapDiff: duplicate keys")
 
-  def applyTo(variables: Map[K, V]): Map[K, V] =
-    variables -- deleted ++ changed
+  def applyTo(other: Map[K, V]): Map[K, V] =
+    if (isEmpty)
+      other
+    else
+      (other.view.filterKeys(deleted) ++ updated ++ added).toMap
+
+  def isEmpty =
+    this == Empty
 }
 
 object MapDiff {
-  private val Empty = new MapDiff(Map(), Set())
+  private val Empty = new MapDiff(Map.empty, Map.empty, Set.empty)
 
   def empty[K, V]: MapDiff[K, V] =
     Empty.asInstanceOf[MapDiff[K, V]]
 
-  def apply[K, V](changed: Map[K, V] = Map.empty[K, V]) =
-    new MapDiff[K, V](changed, deleted = Set.empty[K])
+  def added[K, V](added: Map[K, V]) =
+    apply(added, Map.empty, Set.empty)
 
-  def apply[K, V](changed: Map[K, V], deleted: Set[K]): MapDiff[K, V] =
-    if (changed.isEmpty && deleted.isEmpty)
+  def apply[K, V](added: Map[K, V], updated: Map[K, V], deleted: Set[K]): MapDiff[K, V] =
+    if (added.isEmpty && updated.isEmpty && deleted.isEmpty)
       empty
     else
-      new MapDiff(changed, deleted)
+      new MapDiff(added, updated, deleted)
 
-  def diff[K, V](from: Map[K, V], to: Map[K, V]): MapDiff[K, V] =
+  def diff[K, V](from: collection.Map[K, V], to: collection.Map[K, V]): MapDiff[K, V] =
     MapDiff(
-      changed = to filter { case (k, v) => from.get(k) forall v.!= },
-      deleted = from.keySet -- to.keySet)
+      added = to.view.filter { case (k, v) => !from.contains(k) }.toMap,
+      updated = to.view.filter { case (k, v) => from.get(k) exists v.!= }.toMap,
+      deleted = (from.keySet -- to.keySet).toSet)
 
   implicit val StringDiffJsonEncoder: Encoder[MapDiff[String, String]] = deriveEncoder[MapDiff[String, String]]
   implicit val StringDiffJsonDecoder: Decoder[MapDiff[String, String]] = deriveDecoder[MapDiff[String, String]]
