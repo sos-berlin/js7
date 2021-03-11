@@ -32,4 +32,12 @@ final class CompletedTest extends AnyFreeSpec
   "reverse.combineAll" in {
     assert(Monoid[Completed].reverse.combineAll(List(Completed, Completed)) eq Completed)
   }
+
+  //"fold" in {
+  //  assert(List(Completed, Completed).fold == Completed)
+  //}
+
+  "unorderedFold" in {
+    assert(List(Completed, Completed).unorderedFold == Completed)
+  }
 }

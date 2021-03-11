@@ -1,6 +1,6 @@
 package js7.base.generic
 
-import cats.Monoid
+import cats.kernel.CommutativeMonoid
 
 /**
   * May be used for Future[Completed].
@@ -14,8 +14,8 @@ object Completed
 
   override def toString = "Completed"
 
-  implicit val CompletedMonoid: Monoid[Completed] =
-    new Monoid[Completed]
+  implicit val CompletedMonoid: CommutativeMonoid[Completed] =
+    new CommutativeMonoid[Completed]
     {
       val empty = Completed
 
@@ -28,7 +28,7 @@ object Completed
       override def combineAll(iterable: IterableOnce[Completed]) =
         Completed
 
-      override def reverse: Monoid[Completed] =
+      override def reverse: CommutativeMonoid[Completed] =
         this
     }
 
