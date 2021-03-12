@@ -591,16 +591,14 @@ def doNotInstallJar(path: String) = false
 //--------------------------------------------------------------------------------------------------
 // RELEASE
 
-val isStandardRelease: Def.Initialize[Boolean] =
-  Def.setting(BuildInfos.gitBranch.value == "main" ||
-              BuildInfos.gitBranch.value.startsWith("release/"))
+val isStandardRelease = false
 
 releaseTagComment        := s"Version ${version.value}"
 releaseCommitMessage     := s"Version ${version.value}"
 releaseNextCommitMessage := s"Version ${version.value}"
 
 releaseVersion := (
-  if (isStandardRelease.value)
+  if (isStandardRelease)
     releaseVersion.value
   else v =>
     Version(v).fold(versionFormatError(v)) { currentVersion =>
@@ -624,14 +622,14 @@ releaseVersion := (
     })
 
 releaseNextVersion := (
-  if (isStandardRelease.value)
+  if (isStandardRelease)
     releaseNextVersion.value
   else v =>
     Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT"))
 
 releaseProcess := {
   import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, pushChanges, runClean, runTest, setNextVersion, setReleaseVersion, tagRelease}
-  if (isStandardRelease.value)
+  if (isStandardRelease)
     releaseProcess.value
   else
     // See https://github.com/sbt/sbt-release#can-we-finally-customize-that-release-process-please
