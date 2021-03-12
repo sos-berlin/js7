@@ -33,7 +33,7 @@ import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
 @javaApi
-final class JControllerApi private[javaapi](val asScala: ControllerApi)(implicit scheduler: Scheduler)
+final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Scheduler)
 extends AutoCloseable
 {
   def close() =
