@@ -1,5 +1,6 @@
 package js7.data.ordersource
 
+import js7.base.annotation.javaApi
 import js7.data.item.SimpleItemId
 
 final case class OrderSourceId(string: String) extends SimpleItemId
@@ -17,4 +18,7 @@ object OrderSourceId extends SimpleItemId.Companion[OrderSourceId]
 
   override protected def unchecked(string: String) =
     new OrderSourceId(string)
+
+  @javaApi
+  def of(id: String) = apply(id)
 }
