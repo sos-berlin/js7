@@ -16,7 +16,7 @@ import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{Repo, VersionId, VersionedItemSigner}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
-import js7.data.ordersource.AllOrderSourcesState
+import js7.data.orderwatch.AllOrderWatchesState
 import js7.data.value.StringValue
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -93,7 +93,7 @@ private object JControllerStateTest
     Map(AgentId("AGENT") ->
       AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7))),
     Map.empty,
-    AllOrderSourcesState.empty,
+    AllOrderWatchesState.empty,
     Repo.empty
       .applyEvents(List(
         VersionAdded(v1),

@@ -37,7 +37,7 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, 
 import js7.data.item.{SimpleItem, SimpleItemEvent}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
-import js7.data.ordersource.OrderSourceEvent
+import js7.data.orderwatch.OrderWatchEvent
 import js7.data.workflow.Workflow
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.eval.Task
@@ -464,7 +464,7 @@ private[controller] object AgentDriver
     classOf[OrderEvent],
     classOf[AgentControllerEvent.AgentReadyForController],
     classOf[SimpleItemEvent],
-    classOf[OrderSourceEvent])
+    classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
   def props(agentId: AgentId, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,

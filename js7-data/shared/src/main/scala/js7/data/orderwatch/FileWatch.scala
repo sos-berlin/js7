@@ -1,4 +1,4 @@
-package js7.data.ordersource
+package js7.data.orderwatch
 
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveCodec
@@ -12,21 +12,21 @@ import js7.data.item.ItemRevision
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
 
-final case class FileOrderSource(
-  id: OrderSourceId,
+final case class FileWatch(
+  id: OrderWatchId,
   workflowPath: WorkflowPath,
   agentId: AgentId,
   directory: String,
   pattern: Option[Pattern] = None,
   itemRevision: ItemRevision = ItemRevision.Initial)
-extends OrderSource
+extends OrderWatch
 {
-  protected type Self = FileOrderSource
-  val companion = FileOrderSource
+  protected type Self = FileWatch
+  val companion = FileWatch
 
   override def equals(other: Any) =
     other match {
-      case o: FileOrderSource =>
+      case o: FileWatch =>
         id == o.id &&
         workflowPath == o.workflowPath &&
         agentId == o.agentId &&
@@ -39,22 +39,22 @@ extends OrderSource
   def withRevision(revision: ItemRevision) =
     copy(itemRevision = revision)
 
-  def generateOrderId(sourceOrderName: SourceOrderName): Checked[OrderId] =
-    OrderId.checked(s"FileOrderSource:${id.string}:${sourceOrderName.string}")  // TODO Syntax?
+  def generateOrderId(externalOrderName: ExternalOrderName): Checked[OrderId] =
+    OrderId.checked(s"FileWatch:${id.string}:${externalOrderName.string}")  // TODO Syntax?
 }
 
-object FileOrderSource extends OrderSource.Companion
+object FileWatch extends OrderWatch.Companion
 {
-  type Item = FileOrderSource
-  type Id = OrderSourceId
+  type Item = FileWatch
+  type Id = OrderWatchId
 
-  val cls = classOf[FileOrderSource]
-  val idCompanion = OrderSourceId
+  val cls = classOf[FileWatch]
+  val idCompanion = OrderWatchId
   val FileArgumentName = "file"
 
-  implicit val jsonCodec: CirceObjectCodec[FileOrderSource] = {
+  implicit val jsonCodec: CirceObjectCodec[FileWatch] = {
     implicit val configuration = withDefaults
-    deriveCodec[FileOrderSource]
+    deriveCodec[FileWatch]
   }
 
   intelliJuseImport(PatternJsonCodec)

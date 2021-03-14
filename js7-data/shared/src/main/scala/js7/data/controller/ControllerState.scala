@@ -23,7 +23,7 @@ import js7.data.item.{ItemPath, Repo, SimpleItem, SimpleItemEvent, SimpleItemId,
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.ordersource.{AllOrderSourcesState, FileOrderSource, OrderSource, OrderSourceEvent, OrderSourceId, OrderSourceState}
+import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchId, OrderWatchState}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
@@ -37,7 +37,7 @@ final case class ControllerState(
   controllerMetaState: ControllerMetaState,
   idToAgentRefState: Map[AgentId, AgentRefState],
   idToLockState: Map[LockId, LockState],
-  allOrderSourcesState: AllOrderSourcesState,
+  allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
@@ -49,7 +49,7 @@ extends JournaledState[ControllerState]
     repo.estimatedEventCount +
     idToAgentRefState.size +
     idToLockState.size +
-    allOrderSourcesState.estimatedSnapshotSize +
+    allOrderWatchesState.estimatedSnapshotSize +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -59,7 +59,7 @@ extends JournaledState[ControllerState]
     Observable.fromIterable(repo.eventsFor(itemPathCompanions)) ++
     Observable.fromIterable(idToAgentRefState.values) ++
     Observable.fromIterable(idToLockState.values) ++
-    allOrderSourcesState.toSnapshot ++
+    allOrderWatchesState.toSnapshot ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
@@ -97,9 +97,9 @@ extends JournaledState[ControllerState]
                 yield copy(
                   idToAgentRefState = o)
 
-            case orderSource: OrderSource =>
-              for (o <- allOrderSourcesState.addOrderSource(orderSource)) yield
-                copy(allOrderSourcesState = o)
+            case orderWatch: OrderWatch =>
+              for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
+                copy(allOrderWatchesState = o)
           }
 
         case SimpleItemChanged(item) =>
@@ -116,9 +116,9 @@ extends JournaledState[ControllerState]
                   idToAgentRefState = idToAgentRefState + (agentRef.id -> agentRefState.copy(
                     agentRef = agentRef)))
 
-            case orderSource: OrderSource =>
-              for (o <- allOrderSourcesState.changeOrderSource(orderSource)) yield
-                copy(allOrderSourcesState = o)
+            case orderWatch: OrderWatch =>
+              for (o <- allOrderWatchesState.changeOrderWatch(orderWatch)) yield
+                copy(allOrderWatchesState = o)
           }
 
         case SimpleItemDeleted(itemId) =>
@@ -126,9 +126,9 @@ extends JournaledState[ControllerState]
 
         case SimpleItemAttachedStateChanged(id, agentId, attachedState) =>
           id match {
-            case orderSourceId: OrderSourceId =>
-              allOrderSourcesState.updatedAttachedState(orderSourceId, agentId, attachedState)
-                .map(o => copy(allOrderSourcesState = o))
+            case orderWatchId: OrderWatchId =>
+              allOrderWatchesState.updatedAttachedState(orderWatchId, agentId, attachedState)
+                .map(o => copy(allOrderWatchesState = o))
 
             case _ =>
               eventNotApplicable(keyedEvent)
@@ -150,10 +150,10 @@ extends JournaledState[ControllerState]
       event match {
         case orderAdded: OrderAdded =>
           idToOrder.checkNoDuplicate(orderId) >>
-            allOrderSourcesState.onOrderAdded(orderId <-: orderAdded)
+            allOrderWatchesState.onOrderAdded(orderId <-: orderAdded)
               .map(updated => copy(
                 idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, orderAdded)),
-          allOrderSourcesState = updated))
+          allOrderWatchesState = updated))
 
         case event: OrderCoreEvent =>
           for {
@@ -197,23 +197,23 @@ extends JournaledState[ControllerState]
                       idToLockState = idToLockState ++ (lockStates.map(o => o.lock.id -> o))))
 
               case OrderRemoveMarked =>
-                previousOrder.sourceOrderKey match {
+                previousOrder.externalOrderKey match {
                   case None => Right(copy(idToOrder = updatedIdToOrder))
-                  case Some(sourceOrderKey) =>
-                    allOrderSourcesState.onOrderEvent(sourceOrderKey, orderId <-: OrderRemoveMarked)
+                  case Some(externalOrderKey) =>
+                    allOrderWatchesState.onOrderEvent(externalOrderKey, orderId <-: OrderRemoveMarked)
                       .map(o => copy(
                         idToOrder = updatedIdToOrder,
-                        allOrderSourcesState = o))
+                        allOrderWatchesState = o))
                 }
 
               case OrderRemoved =>
-                previousOrder.sourceOrderKey match {
+                previousOrder.externalOrderKey match {
                   case None => Right(copy(idToOrder = idToOrder - orderId))
-                  case Some(sourceOrderKey) =>
-                    allOrderSourcesState.onOrderEvent(sourceOrderKey, orderId <-: OrderRemoved)
+                  case Some(externalOrderKey) =>
+                    allOrderWatchesState.onOrderEvent(externalOrderKey, orderId <-: OrderRemoved)
                       .map(o => copy(
                         idToOrder = idToOrder - orderId,
-                        allOrderSourcesState = o))
+                        allOrderWatchesState = o))
                 }
 
               case _ => Right(copy(idToOrder = updatedIdToOrder))
@@ -224,9 +224,9 @@ extends JournaledState[ControllerState]
           Right(this)
       }
 
-    case KeyedEvent(orderSourceId: OrderSourceId, event: OrderSourceEvent) =>
-      allOrderSourcesState.onOrderSourceEvent(orderSourceId <-: event)
-        .map(o => copy(allOrderSourcesState = o))
+    case KeyedEvent(orderWatchId: OrderWatchId, event: OrderWatchEvent) =>
+      allOrderWatchesState.onOrderWatchEvent(orderWatchId <-: event)
+        .map(o => copy(allOrderWatchesState = o))
 
     case KeyedEvent(_, _: ControllerShutDown) =>
       Right(this)
@@ -246,12 +246,12 @@ extends JournaledState[ControllerState]
         itemId match {
           case id: AgentId => idToAgentRefState.get(id)
           case id: LockId => idToLockState.get(id)
-          case id: OrderSourceId => allOrderSourcesState.idToOrderSourceState.get(id)
+          case id: OrderWatchId => allOrderWatchesState.idToOrderWatchState.get(id)
         }
       }
 
       def iterator: Iterator[(SimpleItemId, SimpleItemState)] =
-        Iterator(idToAgentRefState, idToLockState, allOrderSourcesState.idToOrderSourceState)
+        Iterator(idToAgentRefState, idToLockState, allOrderWatchesState.idToOrderWatchState)
           .flatMap(_.view.iterator)
     }
 
@@ -267,14 +267,14 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     ControllerMetaState.Undefined,
     Map.empty,
     Map.empty,
-    AllOrderSourcesState.empty,
+    AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty)
 
   val empty = Undefined
 
   private val simpleItemCompanions = Seq[SimpleItem.Companion](
-    AgentRef, Lock, FileOrderSource)
+    AgentRef, Lock, FileWatch)
 
   private val itemPathCompanions = Set[ItemPath.AnyCompanion](
     WorkflowPath)
@@ -309,7 +309,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[LockState],
       Subtype[VersionedEvent],  // These events describe complete objects
       Subtype[Order[Order.State]],
-      Subtype[OrderSourceState.Snapshot])
+      Subtype[OrderWatchState.Snapshot])
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
@@ -319,6 +319,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],
-      KeyedSubtype[OrderSourceEvent],
+      KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent])
 }

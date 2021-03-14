@@ -1,4 +1,4 @@
-package js7.data.ordersource
+package js7.data.orderwatch
 
 import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
@@ -7,16 +7,16 @@ import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class FileOrderSourceTest extends AnyFreeSpec
+final class FileWatchTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson[OrderSource](
-      FileOrderSource(
-        OrderSourceId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "/DIRECTORY",
+    testJson[OrderWatch](
+      FileWatch(
+        OrderWatchId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "/DIRECTORY",
         Some(Pattern.compile("[a-z]+.csv"))
       ),
       json"""{
-        "TYPE": "FileOrderSource",
+        "TYPE": "FileWatch",
         "id": "ID",
         "workflowPath": "WORKFLOW",
         "agentId": "AGENT",

@@ -5,7 +5,7 @@ import java.nio.file.Files.deleteIfExists
 import java.nio.file.{Path, Paths}
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.ordersource.FileOrderSource.FileArgumentName
+import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.value.NamedValues
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}

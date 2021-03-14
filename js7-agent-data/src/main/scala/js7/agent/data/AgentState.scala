@@ -1,7 +1,7 @@
 package js7.agent.data
 
 import js7.agent.data.event.AgentControllerEvent
-import js7.agent.data.ordersource.{AllFileOrderSourcesState, FileOrderSourceState}
+import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils._
@@ -13,7 +13,7 @@ import js7.data.item.SimpleItemEvent.SimpleItemAttachedToAgent
 import js7.data.item.{SimpleItem, SimpleItemEvent}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.ordersource.{FileOrderSource, OrderSourceEvent, OrderSourceId}
+import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchId}
 import js7.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
 import monix.reactive.Observable
 
@@ -25,20 +25,20 @@ final case class AgentState(
   standards: JournaledState.Standards,
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow],
-  allFileOrderSourcesState: AllFileOrderSourcesState)
+  allFileWatchesState: AllFileWatchesState)
 extends JournaledState[AgentState]
 {
   def estimatedSnapshotSize =
     standards.snapshotSize +
       idToWorkflow.size +
       idToOrder.size +
-      allFileOrderSourcesState.estimatedSnapshotSize
+      allFileWatchesState.estimatedSnapshotSize
 
   def toSnapshotObservable =
     standards.toSnapshotObservable ++
       Observable.fromIterable(idToWorkflow.values) ++
       Observable.fromIterable(idToOrder.values) ++
-      allFileOrderSourcesState.toSnapshot
+      allFileWatchesState.toSnapshot
 
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)
@@ -60,13 +60,13 @@ extends JournaledState[AgentState]
       case KeyedEvent(_, _: AgentControllerEvent.AgentReadyForController) =>
         Right(this)
 
-      case KeyedEvent(orderSourceId: OrderSourceId, event: OrderSourceEvent) =>
-        allFileOrderSourcesState.applyEvent(orderSourceId <-: event)
-          .map(o => copy(allFileOrderSourcesState = o))
+      case KeyedEvent(orderWatchId: OrderWatchId, event: OrderWatchEvent) =>
+        allFileWatchesState.applyEvent(orderWatchId <-: event)
+          .map(o => copy(allFileWatchesState = o))
 
-      case KeyedEvent(_: NoKey, SimpleItemAttachedToAgent(fos: FileOrderSource)) =>
+      case KeyedEvent(_: NoKey, SimpleItemAttachedToAgent(fos: FileWatch)) =>
         Right(copy(
-          allFileOrderSourcesState = allFileOrderSourcesState.attach(fos)))
+          allFileWatchesState = allFileWatchesState.attach(fos)))
 
       case keyedEvent => applyStandardEvent(keyedEvent)
     }
@@ -119,10 +119,10 @@ extends JournaledState[AgentState]
 object AgentState extends JournaledState.Companion[AgentState]
 {
   val empty = AgentState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty, Map.empty,
-    AllFileOrderSourcesState.empty)
+    AllFileWatchesState.empty)
 
   private val simpleItemCompanions = Seq[SimpleItem.Companion](
-    FileOrderSource)
+    FileWatch)
 
   implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] =
     TypedJsonCodec(simpleItemCompanions.map(_.subtype): _*)
@@ -135,9 +135,9 @@ object AgentState extends JournaledState.Companion[AgentState]
       Subtype[JournalState],
       Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder),
       Subtype[Order[Order.State]],
-      Subtype[FileOrderSourceState.Snapshot])
+      Subtype[FileWatchState.Snapshot])
 
-  //import generic.orderSourceIdJsonCodec
+  //import generic.orderWatchIdJsonCodec
   override implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
@@ -145,7 +145,7 @@ object AgentState extends JournaledState.Companion[AgentState]
       KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached],
       KeyedSubtype[AgentControllerEvent],
       KeyedSubtype[SimpleItemEvent],
-      KeyedSubtype[OrderSourceEvent])
+      KeyedSubtype[OrderWatchEvent])
 
   def newBuilder() = new AgentStateBuilder
 }

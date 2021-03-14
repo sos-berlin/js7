@@ -1,27 +1,27 @@
-package js7.agent.data.ordersource
+package js7.agent.data.orderwatch
 
 import java.nio.file.{Path, Paths}
-import js7.agent.data.ordersource.FileOrderSourceState._
+import js7.agent.data.orderwatch.FileWatchState._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.JavaJsonCodecs.PathJsonCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.watch.DirectoryState
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
-import js7.data.ordersource.OrderSourceEvent.{OrderSourceOrderArised, OrderSourceOrderVanished}
-import js7.data.ordersource.{FileOrderSource, OrderSourceEvent, OrderSourceId, SourceOrderName}
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchId}
 import monix.reactive.Observable
 import scala.collection.mutable
 
-final case class FileOrderSourceState(
-  fileOrderSource: FileOrderSource,
+final case class FileWatchState(
+  fileWatch: FileWatch,
   directoryState: DirectoryState)
 {
-  def id = fileOrderSource.id
+  def id = fileWatch.id
 
-  def applyEvent(event: OrderSourceEvent): FileOrderSourceState =
+  def applyEvent(event: OrderWatchEvent): FileWatchState =
     event match {
-      case OrderSourceOrderArised(SourceOrderName(relativePath_), arguments) =>
+      case ExternalOrderArised(ExternalOrderName(relativePath_), arguments) =>
         val relativePath = Paths.get(relativePath_)
         copy(
           directoryState =
@@ -29,7 +29,7 @@ final case class FileOrderSourceState(
               pathToEntry = directoryState.pathToEntry +
                 (relativePath -> DirectoryState.Entry(relativePath))))
 
-      case OrderSourceOrderVanished(SourceOrderName(relativePath_)) =>
+      case ExternalOrderVanished(ExternalOrderName(relativePath_)) =>
         val relativePath = Paths.get(relativePath_)
         copy(
           directoryState =
@@ -41,30 +41,30 @@ final case class FileOrderSourceState(
     1 + directoryState.pathToEntry.size
 
   def toSnapshot: Observable[Snapshot] =
-    Observable.pure(HeaderSnapshot(fileOrderSource)) ++
+    Observable.pure(HeaderSnapshot(fileWatch)) ++
       Observable.fromIterable(directoryState.pathToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
 }
 
-object FileOrderSourceState
+object FileWatchState
 {
   sealed trait Snapshot {
-    def orderSourceId: OrderSourceId
+    def orderWatchId: OrderWatchId
   }
 
-  final case class HeaderSnapshot(orderSource: FileOrderSource)
+  final case class HeaderSnapshot(orderWatch: FileWatch)
   extends Snapshot {
-    def orderSourceId = orderSource.id
+    def orderWatchId = orderWatch.id
   }
 
   final case class EntrySnapshot(
-    orderSourceId: OrderSourceId,
+    orderWatchId: OrderWatchId,
     path: Path)
   extends Snapshot
 
   implicit val jsonCodec = TypedJsonCodec[Snapshot](
-    Subtype.named(deriveCodec[HeaderSnapshot], "FileOrderSource.Header"),
-    Subtype.named(deriveCodec[EntrySnapshot], "FileOrderSource.File"))
+    Subtype.named(deriveCodec[HeaderSnapshot], "FileWatch.Header"),
+    Subtype.named(deriveCodec[EntrySnapshot], "FileWatch.File"))
 
   final class Builder {
     private val header = SetOnce[HeaderSnapshot]
@@ -78,8 +78,8 @@ object FileOrderSourceState
           entries += DirectoryState.Entry(o.path)
       }
 
-    def result() = FileOrderSourceState(
-      header.get.orderSource,
+    def result() = FileWatchState(
+      header.get.orderWatch,
       DirectoryState.fromIterable(entries))
   }
 

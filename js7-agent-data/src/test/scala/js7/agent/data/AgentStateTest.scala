@@ -4,7 +4,7 @@ import com.softwaremill.diffx
 import com.softwaremill.diffx.generic.auto._
 import io.circe.syntax.EncoderOps
 import java.nio.file.Paths
-import js7.agent.data.ordersource.{AllFileOrderSourcesState, FileOrderSourceState}
+import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.io.file.watch.DirectoryState
@@ -16,7 +16,7 @@ import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
-import js7.data.ordersource.{FileOrderSource, OrderSourceId}
+import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.position._
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -38,10 +38,10 @@ final class AgentStateTest extends AsyncFreeSpec
       ClusterState.Empty),
     Map(OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflowId))),
     Map(workflowId -> Workflow.of(workflowId)),
-    AllFileOrderSourcesState.fromIterable(Seq(
-      FileOrderSourceState(
-        FileOrderSource(
-          OrderSourceId("ORDER-SOURCE-ID"),
+    AllFileWatchesState.fromIterable(Seq(
+      FileWatchState(
+        FileWatch(
+          OrderWatchId("ORDER-SOURCE-ID"),
           WorkflowPath("WORKFLOW"),
           AgentId("AGENT"),
         "/DIRECTORY",
@@ -88,8 +88,8 @@ final class AgentStateTest extends AsyncFreeSpec
             }
           }""",
           json"""{
-            "TYPE": "FileOrderSource.Header",
-            "orderSource": {
+            "TYPE": "FileWatch.Header",
+            "orderWatch": {
               "id": "ORDER-SOURCE-ID",
               "workflowPath": "WORKFLOW",
               "agentId": "AGENT",
@@ -99,13 +99,13 @@ final class AgentStateTest extends AsyncFreeSpec
             }
           }""",
           json"""{
-            "TYPE": "FileOrderSource.File",
-            "orderSourceId": "ORDER-SOURCE-ID",
+            "TYPE": "FileWatch.File",
+            "orderWatchId": "ORDER-SOURCE-ID",
             "path": "/DIRECTORY/1.csv"
           }""",
           json"""{
-            "TYPE": "FileOrderSource.File",
-            "orderSourceId": "ORDER-SOURCE-ID",
+            "TYPE": "FileWatch.File",
+            "orderWatchId": "ORDER-SOURCE-ID",
             "path": "/DIRECTORY/2.csv"
           }"""))
 
@@ -151,6 +151,6 @@ final class AgentStateTest extends AsyncFreeSpec
           Order(childOrderId, workflowId /: (Position(0) / "fork+BRANCH" % 0), Ready,
             attachedState = Some(Order.Attached(agentId)), parent = Some(orderId))),
       Map(workflowId -> workflow),
-      AllFileOrderSourcesState.empty))
+      AllFileWatchesState.empty))
   }
 }

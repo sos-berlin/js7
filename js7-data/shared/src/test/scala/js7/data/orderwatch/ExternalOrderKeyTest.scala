@@ -1,16 +1,16 @@
-package js7.data.ordersource
+package js7.data.orderwatch
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SourceOrderKeyTest extends AnyFreeSpec
+final class ExternalOrderKeyTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(
-      SourceOrderKey(OrderSourceId("SOURCE"), SourceOrderName("NAME")),
+      ExternalOrderKey(OrderWatchId("SOURCE"), ExternalOrderName("NAME")),
       json"""{
-        "orderSourceId": "SOURCE",
+        "orderWatchId": "SOURCE",
         "name": "NAME"
       }""")
   }

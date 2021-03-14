@@ -8,8 +8,8 @@ import com.typesafe.config.Config
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import java.nio.file.{Path, Paths}
 import js7.agent.data.AgentState
-import js7.agent.data.ordersource.FileOrderSourceState
-import js7.agent.scheduler.order.FileOrderSourceManager._
+import js7.agent.data.orderwatch.FileWatchState
+import js7.agent.scheduler.order.FileWatchManager._
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
@@ -22,9 +22,9 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.SimpleItemEvent.SimpleItemAttachedToAgent
 import js7.data.item.SimpleItemId
-import js7.data.ordersource.FileOrderSource.FileArgumentName
-import js7.data.ordersource.OrderSourceEvent.{OrderSourceOrderArised, OrderSourceOrderVanished}
-import js7.data.ordersource.{FileOrderSource, OrderSourceEvent, OrderSourceId, SourceOrderName}
+import js7.data.orderwatch.FileWatch.FileArgumentName
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.{JournaledStatePersistence, LockKeeper}
 import monix.eval.Task
@@ -33,16 +33,16 @@ import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
 
-/** Persists, recovers and runs FileOrderSources. */
-final class FileOrderSourceManager(
+/** Persists, recovers and runs FileWatches. */
+final class FileWatchManager(
   persistence: JournaledStatePersistence[AgentState],
   config: Config)
   (implicit scheduler: Scheduler, iox: IOExecutor)
 {
-  private val pollDuration = config.getDuration("js7.fileordersource.poll-duration").toFiniteDuration
-  private val watchDelay = config.getDuration("js7.fileordersource.watch-delay").toFiniteDuration
+  private val pollDuration = config.getDuration("js7.filewatch.poll-duration").toFiniteDuration
+  private val watchDelay = config.getDuration("js7.filewatch.watch-delay").toFiniteDuration
   private val lockKeeper = new LockKeeper[SimpleItemId]
-  private val idToStopper = AsyncMap(Map.empty[OrderSourceId, Task[Unit]])
+  private val idToStopper = AsyncMap(Map.empty[OrderWatchId, Task[Unit]])
 
   def stop: Task[Unit] =
     idToStopper.removeAll
@@ -51,32 +51,32 @@ final class FileOrderSourceManager(
 
   def start(): Task[Unit] = {
     persistence.currentState
-      .map(_.allFileOrderSourcesState)
-      .map(fileOrderSourcesState => fileOrderSourcesState.idToFileOrderSource.values)
+      .map(_.allFileWatchesState)
+      .map(_.idToFileWatch.values)
       .flatMap(_
         .toVector
-        .traverse(startObserving)
+        .traverse(startWatching)
         .map(_.foldMap(identity)))
   }
 
-  def update(orderSource: FileOrderSource): Task[Checked[Unit]] =
-    lockKeeper.lock(orderSource.id) {
+  def update(orderWatch: FileWatch): Task[Checked[Unit]] =
+    lockKeeper.lock(orderWatch.id) {
       persistence
         // TODO No Transaction required here
         .persistTransaction[SimpleItemAttachedToAgent](NoKey)(agentState =>
           Right(
-            !agentState.allFileOrderSourcesState.contains(orderSource) thenList
-              SimpleItemAttachedToAgent(orderSource)))
+            !agentState.allFileWatchesState.contains(orderWatch) thenList
+              SimpleItemAttachedToAgent(orderWatch)))
         .flatMapT { case (_, agentState) =>
-          startObserving(agentState.allFileOrderSourcesState.idToFileOrderSource(orderSource.id))
+          startWatching(agentState.allFileWatchesState.idToFileWatch(orderWatch.id))
             .map(Right(_))
         }
     }
 
-  private def startObserving(fosState: FileOrderSourceState): Task[Unit] =
+  private def startWatching(fosState: FileWatchState): Task[Unit] =
     Task.defer {
       val stop = PublishSubject[Unit]()
-      val observable = observeFileOrderSource(fosState, stop).memoize
+      val observable = watch(fosState, stop).memoize
 
       // Execute previously registered stopper (which awaits completion),
       // and start our observable as a fiber.
@@ -96,24 +96,24 @@ final class FileOrderSourceManager(
         .as(())
     }
 
-  private def observeFileOrderSource(orderSourceState: FileOrderSourceState, stop: Observable[Unit])
+  private def watch(fileWatchState: FileWatchState, stop: Observable[Unit])
   : Task[Unit] = {
-    import orderSourceState.{directoryState, fileOrderSource}
+    import fileWatchState.{directoryState, fileWatch}
 
     val directoryToEvents =
       DirectoryWatcher
         .observe(
           directoryState,
           WatchOptions(
-            Paths.get(fileOrderSource.directory),
+            Paths.get(fileWatch.directory),
             Set(ENTRY_CREATE, ENTRY_DELETE),
             pollDuration = pollDuration,
             delay = watchDelay))
         .takeUntil(stop)
-        .map(directoryEventsToPersistableEvents(fileOrderSource, _))
+        .map(directoryEventsToPersistableEvents(fileWatch, _))
         .mapEval(events =>
           // TODO Transaction not required
-          persistence.persistTransaction[OrderSourceEvent](fileOrderSource.id)(_ => Right(events)))
+          persistence.persistTransaction[OrderWatchEvent](fileWatch.id)(_ => Right(events)))
         .foreachL {
           case Left(problem) => logger.error(problem.toString)
           case Right(_) =>
@@ -134,16 +134,16 @@ final class FileOrderSourceManager(
   }
 
   private def directoryEventsToPersistableEvents(
-    fileOrderSource: FileOrderSource,
+    filewatch: FileWatch,
     directoryEvents: Seq[DirectoryEvent])
-  : Seq[OrderSourceEvent] = {
-    val directory = Paths.get(fileOrderSource.directory)
+  : Seq[OrderWatchEvent] = {
+    val directory = Paths.get(filewatch.directory)
     directoryEvents.flatMap {
       case FileAdded(path) =>
-        OrderSourceOrderArised(SourceOrderName(path.toString), toOrderArguments(directory, path)) :: Nil
+        ExternalOrderArised(ExternalOrderName(path.toString), toOrderArguments(directory, path)) :: Nil
 
       case FileDeleted(path) =>
-        OrderSourceOrderVanished(SourceOrderName(path.toString)) :: Nil
+        ExternalOrderVanished(ExternalOrderName(path.toString)) :: Nil
 
       case FileModified(_) =>
         sys.error("Unexpected FileModified")
@@ -154,7 +154,7 @@ final class FileOrderSourceManager(
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))
 }
 
-object FileOrderSourceManager
+object FileWatchManager
 {
   private val logger = Logger(getClass)
 }

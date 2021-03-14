@@ -14,7 +14,7 @@ import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
-import js7.data.ordersource.SourceOrderKey
+import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
@@ -28,7 +28,7 @@ final case class Order[+S <: Order.State](
   workflowPosition: WorkflowPosition,
   state: S,
   arguments: NamedValues = Map.empty,
-  sourceOrderKey: Option[SourceOrderKey] = None,
+  externalOrderKey: Option[ExternalOrderKey] = None,
   historicOutcomes: Seq[HistoricOutcome] = Vector.empty,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
@@ -423,11 +423,11 @@ final case class Order[+S <: Order.State](
 object Order
 {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
-    Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments, event.sourceOrderKey)
+    Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments, event.externalOrderKey)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments,
-      event.sourceOrderKey,
+      event.externalOrderKey,
       historicOutcomes = event.historicOutcomes,
       Some(Attached(event.agentId)),
       event.parent, event.mark,
@@ -561,7 +561,7 @@ object Order
       "workflowPosition" -> order.workflowPosition.asJson,
       "state" -> order.state.asJson,
       "arguments" -> order.arguments.??.asJson,
-      "sourceOrderKey" -> order.sourceOrderKey.asJson,
+      "externalOrderKey" -> order.externalOrderKey.asJson,
       "attachedState" -> order.attachedState.asJson,
       "parent" -> order.parent.asJson,
       "mark" -> order.mark.asJson,
@@ -575,7 +575,7 @@ object Order
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
-      sourceOrderKey <- cursor.get[Option[SourceOrderKey]]("sourceOrderKey")
+      externalOrderKey <- cursor.get[Option[ExternalOrderKey]]("externalOrderKey")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
       mark <- cursor.get[Option[OrderMark]]("mark")
@@ -583,7 +583,7 @@ object Order
       removeWhenTerminated <- cursor.getOrElse[Boolean]("removeWhenTerminated")(false)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     } yield
-      Order(id, workflowPosition, state, arguments, sourceOrderKey, historicOutcomes,
+      Order(id, workflowPosition, state, arguments, externalOrderKey, historicOutcomes,
         attachedState, parent, mark, isSuspended, removeWhenTerminated)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)

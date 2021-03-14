@@ -1,4 +1,4 @@
-package js7.tests.fileordersource
+package js7.tests.filewatch
 
 import cats.instances.vector._
 import cats.syntax.traverse._
@@ -17,19 +17,19 @@ import js7.data.event.EventRequest
 import js7.data.item.SimpleItemEvent.SimpleItemAttached
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.OrderRemoved
-import js7.data.ordersource.FileOrderSource.FileArgumentName
-import js7.data.ordersource.{FileOrderSource, OrderSourceId, SourceOrderName}
+import js7.data.orderwatch.FileWatch.FileArgumentName
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchId}
 import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.fileordersource.FileOrderSourceTest._
+import js7.tests.filewatch.FileWatchTest._
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
-final class FileOrderSourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Seq(aAgentId)
   protected val versionedItems = Seq(workflow)
@@ -44,8 +44,8 @@ final class FileOrderSourceTest extends AnyFreeSpec with ControllerAgentForScala
 
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
-  private lazy val fileOrderSource = FileOrderSource(
-    OrderSourceId("TEST-SOURCE"),
+  private lazy val fileWatch = FileWatch(
+    OrderWatchId("TEST-SOURCE"),
     workflow.path,
     aAgentId,
     sourceDirectory.toString)
@@ -53,17 +53,17 @@ final class FileOrderSourceTest extends AnyFreeSpec with ControllerAgentForScala
   "Start with existing file" in {
     createDirectory(sourceDirectory)
     val file = sourceDirectory / "1"
-    val orderId = fileOrderSource.generateOrderId(SourceOrderName("1")).orThrow
+    val orderId = fileWatch.generateOrderId(ExternalOrderName("1")).orThrow
     file := ""
-    controller.updateSimpleItemsAsSystemUser(Seq(fileOrderSource)).await(99.s).orThrow
-    controller.eventWatch.await[SimpleItemAttached](_.event.id == fileOrderSource.id)
+    controller.updateSimpleItemsAsSystemUser(Seq(fileWatch)).await(99.s).orThrow
+    controller.eventWatch.await[SimpleItemAttached](_.event.id == fileWatch.id)
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
   }
 
   "Add a file" in {
     val file = sourceDirectory / "2"
-    val orderId = fileOrderSource.generateOrderId(SourceOrderName("2")).orThrow
+    val orderId = fileWatch.generateOrderId(ExternalOrderName("2")).orThrow
     file := ""
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
@@ -72,7 +72,7 @@ final class FileOrderSourceTest extends AnyFreeSpec with ControllerAgentForScala
   "Add many files, forcing an overflow" in {
     val since = now
     val filenames = (1 to 1000).map(_.toString).toVector
-    val orderIds = filenames.map(SourceOrderName(_)).traverse(fileOrderSource.generateOrderId).orThrow.toSet
+    val orderIds = filenames.map(ExternalOrderName(_)).traverse(fileWatch.generateOrderId).orThrow.toSet
     val whenAllRemoved = controller.eventWatch
       .observe(EventRequest.singleClass[OrderRemoved](
         after = controller.eventWatch.lastAddedEventId,
@@ -91,7 +91,7 @@ final class FileOrderSourceTest extends AnyFreeSpec with ControllerAgentForScala
   }
 }
 
-object FileOrderSourceTest
+object FileWatchTest
 {
   private val logger = Logger(getClass)
   private val aAgentId = AgentId("AGENT-A")

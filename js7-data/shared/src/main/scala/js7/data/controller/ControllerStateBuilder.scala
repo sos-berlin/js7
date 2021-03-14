@@ -14,7 +14,7 @@ import js7.data.item.{Repo, SimpleItemEvent, VersionedEvent}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.ordersource.{AllOrderSourcesState, OrderSource, OrderSourceEvent, OrderSourceId, OrderSourceState}
+import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchId, OrderWatchState}
 import js7.data.workflow.Workflow
 import scala.collection.mutable
 
@@ -27,7 +27,7 @@ extends JournaledStateBuilder[ControllerState]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToAgentRefState = mutable.Map.empty[AgentId, AgentRefState]
   private val idToLockState = mutable.Map.empty[LockId, LockState]
-  private var allOrderSourcesState = AllOrderSourcesState.empty
+  private var allOrderWatchesState = AllOrderWatchesState.empty
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -53,8 +53,8 @@ extends JournaledStateBuilder[ControllerState]
     case lockState: LockState =>
       idToLockState.insert(lockState.lock.id -> lockState)
 
-    case snapshot: OrderSourceState.Snapshot =>
-      allOrderSourcesState = allOrderSourcesState.applySnapshot(snapshot).orThrow
+    case snapshot: OrderWatchState.Snapshot =>
+      allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -70,7 +70,7 @@ extends JournaledStateBuilder[ControllerState]
     val (added, removed) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], idToOrder.toMap)
     idToOrder ++= added.map(o => o.id -> o)
     idToOrder --= removed
-    allOrderSourcesState = allOrderSourcesState.onEndOfRecovery.orThrow
+    allOrderWatchesState = allOrderWatchesState.onEndOfRecovery.orThrow
   }
 
   protected def onAddEvent = {
@@ -96,8 +96,8 @@ extends JournaledStateBuilder[ControllerState]
             case agentRef: AgentRef =>
               idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
 
-            case orderSource: OrderSource =>
-              allOrderSourcesState = allOrderSourcesState.addOrderSource(orderSource).orThrow
+            case orderWatch: OrderWatch =>
+              allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
           }
 
         case SimpleItemChanged(item) =>
@@ -110,8 +110,8 @@ extends JournaledStateBuilder[ControllerState]
               idToAgentRefState(agentRef.id) = idToAgentRefState(agentRef.id).copy(
                 agentRef = agentRef)
 
-            case orderSource: OrderSource =>
-              allOrderSourcesState = allOrderSourcesState.changeOrderSource(orderSource).orThrow
+            case orderWatch: OrderWatch =>
+              allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
           }
 
         case SimpleItemDeleted(itemId) =>
@@ -119,9 +119,9 @@ extends JournaledStateBuilder[ControllerState]
 
         case SimpleItemEvent.SimpleItemAttachedStateChanged(id, agentId, attachedState) =>
           id match {
-            case orderSourceId: OrderSourceId =>
-              allOrderSourcesState = allOrderSourcesState
-                .updatedAttachedState(orderSourceId, agentId, attachedState)
+            case orderWatchId: OrderWatchId =>
+              allOrderWatchesState = allOrderWatchesState
+                .updatedAttachedState(orderWatchId, agentId, attachedState)
                 .orThrow
 
             case _ =>
@@ -139,9 +139,9 @@ extends JournaledStateBuilder[ControllerState]
 
         case OrderRemoved =>
           for (order <- idToOrder.remove(orderId)) {
-            for (sourceOrderKey <- order.sourceOrderKey)
-              allOrderSourcesState = allOrderSourcesState
-                .onOrderEvent(sourceOrderKey, orderId <-: OrderRemoved)
+            for (externalOrderKey <- order.externalOrderKey)
+              allOrderWatchesState = allOrderWatchesState
+                .onOrderEvent(externalOrderKey, orderId <-: OrderRemoved)
                 .orThrow
           }
 
@@ -156,17 +156,17 @@ extends JournaledStateBuilder[ControllerState]
           val order = idToOrder(orderId)
           idToOrder(orderId) = order.applyEvent(event).orThrow
 
-          for (sourceOrderKey <- order.sourceOrderKey) {
-            allOrderSourcesState = allOrderSourcesState
-              .onOrderEvent(sourceOrderKey, orderId <-: OrderRemoved)
+          for (externalOrderKey <- order.externalOrderKey) {
+            allOrderWatchesState = allOrderWatchesState
+              .onOrderEvent(externalOrderKey, orderId <-: OrderRemoved)
               .orThrow
           }
 
         case _: OrderStdWritten =>
       }
 
-    case Stamped(_, _, KeyedEvent(orderSourceId: OrderSourceId, event: OrderSourceEvent)) =>
-      allOrderSourcesState = allOrderSourcesState.onOrderSourceEvent(orderSourceId <-: event).orThrow
+    case Stamped(_, _, KeyedEvent(orderWatchId: OrderWatchId, event: OrderWatchEvent)) =>
+      allOrderWatchesState = allOrderWatchesState.onOrderWatchEvent(orderWatchId <-: event).orThrow
 
     case Stamped(_, _, KeyedEvent(_, _: ControllerShutDown)) =>
     case Stamped(_, _, KeyedEvent(_, ControllerTestEvent)) =>
@@ -215,7 +215,7 @@ extends JournaledStateBuilder[ControllerState]
       controllerMetaState,
       idToAgentRefState.toMap,
       idToLockState.toMap,
-      allOrderSourcesState,
+      allOrderWatchesState,
       repo,
       idToOrder.toMap)
 

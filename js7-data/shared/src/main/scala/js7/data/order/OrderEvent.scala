@@ -14,7 +14,7 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
 import js7.data.lock.LockId
 import js7.data.order.Order._
-import js7.data.ordersource.SourceOrderKey
+import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
@@ -37,7 +37,7 @@ object OrderEvent
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
-    sourceOrderKey: Option[SourceOrderKey] = None)
+    externalOrderKey: Option[ExternalOrderKey] = None)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
   }
@@ -47,15 +47,15 @@ object OrderEvent
         "workflowId" -> o.workflowId.asJson,
         "scheduledFor" -> o.scheduledFor.asJson,
         "arguments" -> o.arguments.??.asJson,
-        "sourceOrderKey" -> o.sourceOrderKey.asJson)
+        "externalOrderKey" -> o.externalOrderKey.asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
       c => for {
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
-        sourceOrderKey <- c.get[Option[SourceOrderKey]]("sourceOrderKey")
-      } yield OrderAdded(workflowId, arguments, scheduledFor, sourceOrderKey)
+        externalOrderKey <- c.get[Option[ExternalOrderKey]]("externalOrderKey")
+      } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey)
   }
 
   /** Agent-only event. */
@@ -63,7 +63,7 @@ object OrderEvent
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
     arguments: NamedValues,
-    sourceOrderKey: Option[SourceOrderKey],
+    externalOrderKey: Option[ExternalOrderKey],
     historicOutcomes: Seq[HistoricOutcome],
     agentId: AgentId,
     parent: Option[OrderId],

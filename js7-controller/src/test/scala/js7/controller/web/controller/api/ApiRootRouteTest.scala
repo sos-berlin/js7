@@ -13,7 +13,7 @@ import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.Repo
-import js7.data.ordersource.AllOrderSourcesState
+import js7.data.orderwatch.AllOrderWatchesState
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -37,7 +37,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Map.empty,
     Map.empty,
-    AllOrderSourcesState.empty,
+    AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty)))
   protected def totalRunningSince = now - 1.hour

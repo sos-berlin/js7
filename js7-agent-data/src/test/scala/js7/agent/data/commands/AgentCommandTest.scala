@@ -12,7 +12,7 @@ import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
 import js7.data.order.{Order, OrderId, OrderMark}
-import js7.data.ordersource.{FileOrderSource, OrderSourceId}
+import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -170,11 +170,11 @@ final class AgentCommandTest extends AnyFreeSpec
   "AttachSimpleItem" in {
     check(
       AgentCommand.AttachSimpleItem(
-        FileOrderSource(OrderSourceId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "DIRECTORY")),
+        FileWatch(OrderWatchId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "DIRECTORY")),
       json"""{
         "TYPE": "AttachSimpleItem",
         "item": {
-          "TYPE": "FileOrderSource",
+          "TYPE": "FileWatch",
           "id": "ID",
           "workflowPath": "WORKFLOW",
           "agentId": "AGENT",

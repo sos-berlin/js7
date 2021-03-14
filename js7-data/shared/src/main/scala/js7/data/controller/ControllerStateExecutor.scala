@@ -33,7 +33,7 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
   }
 
   def nextOrderEvents: Seq[KeyedEvent[OrderCoreEvent]] =
-    _controllerState.allOrderSourcesState.nextEvents(workflowPathToVersionId)
+    _controllerState.allOrderWatchesState.nextEvents(workflowPathToVersionId)
 
   def nextOrderEventsByOrderId(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] = {
     val queue = mutable.Queue.empty[OrderId] ++= orderIds

@@ -58,7 +58,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, Versioned
 import js7.data.item.{ItemEvent, ItemRevision, SimpleItem, SimpleItemEvent, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
-import js7.data.ordersource.{FileOrderSource, OrderSourceEvent, OrderSourceId}
+import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchId}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
@@ -346,11 +346,11 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
 
-      for (orderSourceState <- _controllerState.allOrderSourcesState.idToOrderSourceState.values) {
-        import orderSourceState.orderSource
-        for (agentEntry <- agentRegister.get(orderSource.agentId)) {
+      for (orderSourceState <- _controllerState.allOrderWatchesState.idToOrderWatchState.values) {
+        import orderSourceState.orderWatch
+        for (agentEntry <- agentRegister.get(orderWatch.agentId)) {
           if (!orderSourceState.attached.contains(Attached)) {
-            agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(orderSource)
+            agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(orderWatch)
           }
         }
       }
@@ -485,7 +485,7 @@ with MainJournalingActor[ControllerState, Event]
                 // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                 Timestamped(NoKey <-: SimpleItemAttached(item.id, agentId)) :: Nil
 
-              case KeyedEvent(_: OrderSourceId, _: OrderSourceEvent) =>
+              case KeyedEvent(_: OrderWatchId, _: OrderWatchEvent) =>
                 Timestamped(keyedEvent) :: Nil
 
               case _ =>
@@ -868,7 +868,7 @@ with MainJournalingActor[ControllerState, Event]
               val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
               entry.actor ! AgentDriver.Input.StartFetchingEvents
 
-            case SimpleItemAddedOrChanged(fos: FileOrderSource) =>
+            case SimpleItemAddedOrChanged(fos: FileWatch) =>
               persistKeyedEvent(NoKey <-: SimpleItemAttachable(fos.id, fos.agentId)) { (_, _) =>
                 for (agentEntry <- agentRegister.get(fos.agentId)) {
                   agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(fos)

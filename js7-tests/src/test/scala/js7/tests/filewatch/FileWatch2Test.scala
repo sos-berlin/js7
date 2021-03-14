@@ -1,6 +1,6 @@
-package js7.tests.fileordersource
+package js7.tests.filewatch
 
-import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
+import java.nio.file.Files.{createDirectories, createDirectory, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.base.configutils.Configs._
@@ -17,16 +17,16 @@ import js7.data.item.{ItemRevision, SimpleItemEvent}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderRemoved, OrderStarted, OrderStdoutWritten}
 import js7.data.order.OrderId
-import js7.data.ordersource.FileOrderSource.FileArgumentName
-import js7.data.ordersource.OrderSourceEvent.{OrderSourceOrderArised, OrderSourceOrderVanished}
-import js7.data.ordersource.{FileOrderSource, OrderSourceId, SourceOrderKey, SourceOrderName}
+import js7.data.orderwatch.FileWatch.FileArgumentName
+import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
+import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
-import js7.tests.fileordersource.FileOrderSource2Test._
+import js7.tests.filewatch.FileWatch2Test._
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.catnap.Semaphore
@@ -35,7 +35,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
-final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentIds = Seq(aAgentId, bAgentId)
   protected val versionedItems = Seq(workflow)
@@ -52,25 +52,25 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
   private val aDirectory = directoryProvider.agents(0).dataDir / "tmp/a-files"
   private val bDirectory = directoryProvider.agents(0).dataDir / "tmp/b-files"
 
-  val orderSourceId = OrderSourceId("TEST-SOURCE")
-  private lazy val aFileOrderSource = FileOrderSource(
-    orderSourceId,
+  val orderWatchId = OrderWatchId("TEST-SOURCE")
+  private lazy val aFileWatch = FileWatch(
+    orderWatchId,
     workflow.path,
     aAgentId,
     aDirectory.toString)
-  private lazy val bFileOrderSource = aFileOrderSource.copy(
+  private lazy val bFileWatch = aFileWatch.copy(
     directory = bDirectory.toString)
 
-  private val orderId1 = OrderId("FileOrderSource:TEST-SOURCE:1")
-  private val orderId2 = OrderId("FileOrderSource:TEST-SOURCE:2")
-  private val orderId3 = OrderId("FileOrderSource:TEST-SOURCE:3")
-  private val orderId4 = OrderId("FileOrderSource:TEST-SOURCE:4")
-  private val orderId5 = OrderId("FileOrderSource:TEST-SOURCE:5")
-  private val orderId6 = OrderId("FileOrderSource:TEST-SOURCE:6")
-  private val orderId7 = OrderId("FileOrderSource:TEST-SOURCE:7")
+  private val orderId1 = OrderId("FileWatch:TEST-SOURCE:1")
+  private val orderId2 = OrderId("FileWatch:TEST-SOURCE:2")
+  private val orderId3 = OrderId("FileWatch:TEST-SOURCE:3")
+  private val orderId4 = OrderId("FileWatch:TEST-SOURCE:4")
+  private val orderId5 = OrderId("FileWatch:TEST-SOURCE:5")
+  private val orderId6 = OrderId("FileWatch:TEST-SOURCE:6")
+  private val orderId7 = OrderId("FileWatch:TEST-SOURCE:7")
 
   private def fileToOrderId(filename: String): OrderId =
-    aFileOrderSource.generateOrderId(SourceOrderName(filename)).orThrow
+    aFileWatch.generateOrderId(ExternalOrderName(filename)).orThrow
 
   "Start with some files" in {
     createDirectories(aDirectory)
@@ -79,8 +79,8 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
     val initialOrderId = fileToOrderId("1")
 
     directoryProvider.runController() { controller =>
-      controller.updateSimpleItemsAsSystemUser(Seq(aFileOrderSource)).await(99.s).orThrow
-      // OrderSource will be attached to the agent after next restart
+      controller.updateSimpleItemsAsSystemUser(Seq(aFileWatch)).await(99.s).orThrow
+      // OrderWatch will be attached to the agent after next restart
     }
 
     directoryProvider.runController(dontWaitUntilReady = true) { controller =>
@@ -89,7 +89,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
 
       directoryProvider.runAgents(Seq(bAgentId)) { _ =>
         directoryProvider.runAgents(Seq(aAgentId)) { _ =>
-          await[SimpleItemAttached](_.event.id == orderSourceId)
+          await[SimpleItemAttached](_.event.id == orderWatchId)
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == initialOrderId)
           await[OrderRemoved](_.key == initialOrderId)
@@ -119,11 +119,11 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
           aDirectory / "4" := ""
           await[OrderStarted](_.key == fileToOrderId("4"))
           createDirectory(bDirectory)
-          // The OrderSource watches now the bDirectory,
+          // The OrderWatch watches now the bDirectory,
           // but the running Order points to aDirectory.
           val beforeAttached = eventWatch.lastAddedEventId
-          controller.updateSimpleItemsAsSystemUser(Seq(bFileOrderSource)).await(99.s).orThrow
-          await[SimpleItemAttached](_.event.id == orderSourceId, after = beforeAttached)
+          controller.updateSimpleItemsAsSystemUser(Seq(bFileWatch)).await(99.s).orThrow
+          await[SimpleItemAttached](_.event.id == orderWatchId, after = beforeAttached)
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == fileToOrderId("4"))
           await[OrderRemoved](_.key == fileToOrderId("4"))
@@ -139,9 +139,9 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
           bDirectory / "6" := ""
           await[OrderStarted](_.key == fileToOrderId("6"))
           semaphore.flatMap(_.releaseN(1)).runSyncUnsafe()
-          await[OrderSourceOrderVanished](_.event.sourceOrderName == SourceOrderName("6"))
+          await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("6"))
           bDirectory / "6" := ""
-          await[OrderSourceOrderArised](_.event.sourceOrderName == SourceOrderName("6"))
+          await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("6"))
           semaphore.flatMap(_.releaseN(1)).runSyncUnsafe()
           val firstRemoved6 = await[OrderRemoved](_.key == fileToOrderId("6")).head.eventId
 
@@ -159,7 +159,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
           //sleep(3.s)
           //createDirectory(bDirectory)
           //bDirectory / "7" := ""
-          //await[OrderSourceOrderArised](_.event.sourceOrderName == SourceOrderName("7"))
+          //await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("7"))
           //semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           //await[OrderFinished](_.key == fileToOrderId("7"))
           //await[OrderRemoved](_.key == fileToOrderId("7"))
@@ -175,7 +175,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
     }
 
     // TODO Snapshot prüfen
-    // TODO Verzeichnis löschen und wieder anlegen. FileOrderSourceFailed event?
+    // TODO Verzeichnis löschen und wieder anlegen. FileWatchFailed event?
     // TODO frequent SimpleItemChanged
   }
 
@@ -184,7 +184,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
       .filter(_
         .event match {
           case _: ControllerShutDown => true
-          case event: SimpleItemEvent if event.id.isInstanceOf[OrderSourceId] => true
+          case event: SimpleItemEvent if event.id.isInstanceOf[OrderWatchId] => true
           case _: OrderAdded => true
           case _: OrderStarted => true
           case _: OrderStdoutWritten => true
@@ -193,14 +193,14 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
           case _ => false
         })
     assert(filteredLeyedEvents == Seq[AnyKeyedEvent](
-      NoKey <-: SimpleItemAdded(aFileOrderSource),
-      NoKey <-: SimpleItemAttachable(orderSourceId, aAgentId),
+      NoKey <-: SimpleItemAdded(aFileWatch),
+      NoKey <-: SimpleItemAttachable(orderWatchId, aAgentId),
       NoKey <-: ControllerShutDown(None),
-      NoKey <-: SimpleItemAttached(orderSourceId, aAgentId),
+      NoKey <-: SimpleItemAttached(orderWatchId, aAgentId),
       orderId1 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/1")),
         None,
-        Some(SourceOrderKey(orderSourceId, SourceOrderName("1")))),
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("1")))),
       orderId1 <-: OrderStarted,
       orderId1 <-: OrderStdoutWritten(s"Deleted $aDirectory/1\n"),
       orderId1 <-: OrderFinished,
@@ -209,7 +209,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
       orderId2 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/2")),
         None,
-        Some(SourceOrderKey(orderSourceId, SourceOrderName("2")))),
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("2")))),
       orderId2 <-: OrderStarted,
       orderId2 <-: OrderStdoutWritten(s"Deleted $aDirectory/2\n"),
       orderId2 <-: OrderFinished,
@@ -218,7 +218,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
       orderId3 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/3")),
         None,
-        Some(SourceOrderKey(orderSourceId, SourceOrderName("3")))),
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("3")))),
       orderId3 <-: OrderStarted,
       orderId3 <-: OrderStdoutWritten(s"Deleted $aDirectory/3\n"),
       orderId3 <-: OrderFinished,
@@ -227,11 +227,11 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
       orderId4 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/4")),
         None,
-        Some(SourceOrderKey(orderSourceId, SourceOrderName("4")))),
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("4")))),
       orderId4 <-: OrderStarted,
-      NoKey <-: SimpleItemChanged(bFileOrderSource.copy(itemRevision = ItemRevision(1))),
-      NoKey <-: SimpleItemAttachable(orderSourceId,aAgentId),
-      NoKey <-: SimpleItemAttached(orderSourceId, aAgentId),
+      NoKey <-: SimpleItemChanged(bFileWatch.copy(itemRevision = ItemRevision(1))),
+      NoKey <-: SimpleItemAttachable(orderWatchId,aAgentId),
+      NoKey <-: SimpleItemAttached(orderWatchId, aAgentId),
       orderId4 <-: OrderStdoutWritten(s"Deleted $aDirectory/4\n"),
       orderId4 <-: OrderFinished,
       orderId4 <-: OrderRemoved,
@@ -239,7 +239,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
       orderId5 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$bDirectory/5")),
         None,
-        Some(SourceOrderKey(orderSourceId, SourceOrderName("5")))),
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("5")))),
       orderId5 <-: OrderStarted,
       orderId5 <-: OrderStdoutWritten(s"Deleted $bDirectory/5\n"),
       orderId5 <-: OrderFinished,
@@ -248,7 +248,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
       orderId6 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$bDirectory/6")),
         None,
-        Some(SourceOrderKey(orderSourceId, SourceOrderName("6")))),
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStdoutWritten(s"Deleted $bDirectory/6\n"),
       orderId6 <-: OrderFinished,
@@ -257,7 +257,7 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
       orderId6 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$bDirectory/6")),
         None,
-        Some(SourceOrderKey(orderSourceId, SourceOrderName("6")))),
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStdoutWritten(s"Deleted $bDirectory/6\n"),
       orderId6 <-: OrderFinished,
@@ -272,48 +272,48 @@ final class FileOrderSource2Test extends AnyFreeSpec with DirectoryProviderForSc
         .collect {
           case e: AgentReadyForController => e.copy(timezone = "UTC", totalRunningTime = 1.s)
           case e: SimpleItemAttachedToAgent => e
-          case e: OrderSourceOrderArised => e
-          case e: OrderSourceOrderVanished => e
+          case e: ExternalOrderArised => e
+          case e: ExternalOrderVanished => e
         }
         .map(e => ke.copy(event = e))))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
       NoKey <-: AgentReadyForController("UTC", 1.s),
-      NoKey <-: SimpleItemAttachedToAgent(aFileOrderSource),
+      NoKey <-: SimpleItemAttachedToAgent(aFileWatch),
 
-      orderSourceId <-: OrderSourceOrderArised(SourceOrderName("1"),
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("1"),
         Map("file" -> StringValue(s"$aDirectory/1"))),
-      orderSourceId <-: OrderSourceOrderVanished(SourceOrderName("1")),
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("1")),
 
-      orderSourceId <-: OrderSourceOrderArised(SourceOrderName("2"),
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("2"),
         Map("file" -> StringValue(s"$aDirectory/2"))),
-      orderSourceId <-: OrderSourceOrderVanished(SourceOrderName("2")),
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("2")),
 
-      orderSourceId <-: OrderSourceOrderArised(SourceOrderName("3"),
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("3"),
         Map("file" -> StringValue(s"$aDirectory/3"))),
       NoKey <-: AgentReadyForController("UTC", 1.s),
-      orderSourceId <-: OrderSourceOrderVanished(SourceOrderName("3")),
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("3")),
 
-      orderSourceId <-: OrderSourceOrderArised(SourceOrderName("4"),
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("4"),
         Map("file" -> StringValue(s"$aDirectory/4"))),
-      NoKey <-: SimpleItemAttachedToAgent(bFileOrderSource.copy(itemRevision = ItemRevision(1))),
-      orderSourceId <-: OrderSourceOrderVanished(SourceOrderName("4")),
+      NoKey <-: SimpleItemAttachedToAgent(bFileWatch.copy(itemRevision = ItemRevision(1))),
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("4")),
 
-      orderSourceId <-: OrderSourceOrderArised(SourceOrderName("5"),
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("5"),
         Map("file" -> StringValue(s"$bDirectory/5"))),
-      orderSourceId <-: OrderSourceOrderVanished(SourceOrderName("5")),
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("5")),
 
-      orderSourceId <-: OrderSourceOrderArised(SourceOrderName("6"),
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("6"),
         Map("file" -> StringValue(s"$bDirectory/6"))),
-      orderSourceId <-: OrderSourceOrderVanished(SourceOrderName("6")),
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("6")),
       // and again
-      orderSourceId <-: OrderSourceOrderArised(SourceOrderName("6"),
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("6"),
         Map("file" -> StringValue(s"$bDirectory/6"))),
-      orderSourceId <-: OrderSourceOrderVanished(SourceOrderName("6"))))
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("6"))))
   }
 }
 
-object FileOrderSource2Test
+object FileWatch2Test
 {
   private val aAgentId = AgentId("AGENT-A")
   private val bAgentId = AgentId("AGENT-B")
