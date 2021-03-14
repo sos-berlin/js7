@@ -179,7 +179,7 @@ final case class Order[+S <: Order.State](
           })
 
       case OrderRemoveMarked =>
-        check(!isState[IsTerminated] && parent.isEmpty,
+        check(parent.isEmpty,
           copy(removeWhenTerminated = true))
 
       case OrderRemoved =>

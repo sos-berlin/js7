@@ -442,11 +442,11 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "FailedInFork" in {
-      checkAllEvents(Order(orderId, workflowId, FailedInFork,
+      checkAllEvents(Order(orderId, workflowId, FailedInFork, parent = Some(OrderId("PARENT")),
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
-        markable[FailedInFork] orElse
         detachingAllowed[FailedInFork] orElse {
-          case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+          case (_: OrderSuspendMarked, IsSuspended(_), _) => _.isInstanceOf[FailedInFork]
+          case (_: OrderResumeMarked, IsSuspended(_), _) => _.isInstanceOf[FailedInFork]
         })
     }
 
@@ -510,15 +510,17 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Cancelled" in {
-      checkAllEvents(Order(orderId, workflowId, Cancelled), {
-        case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
-      })
+      checkAllEvents(Order(orderId, workflowId, Cancelled),
+        removeMarkable[Cancelled] orElse {
+          case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+        })
     }
 
     "Finished" in {
-      checkAllEvents(Order(orderId, workflowId, Finished), {
-        case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
-      })
+      checkAllEvents(Order(orderId, workflowId, Finished),
+        removeMarkable[Finished] orElse {
+          case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+        })
     }
 
     "attachedState" - {
