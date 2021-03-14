@@ -14,6 +14,7 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.Event
 import js7.data.lock.LockId
 import js7.data.order.Order._
+import js7.data.ordersource.SourceOrderKey
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
@@ -26,12 +27,17 @@ sealed trait OrderEvent extends Event {
   type Key = OrderId
 }
 
-object OrderEvent {
+object OrderEvent
+{
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
   sealed trait OrderTerminated extends OrderEvent
 
-  final case class OrderAdded(workflowId: WorkflowId, arguments: NamedValues = Map.empty, scheduledFor: Option[Timestamp] = None)
+  final case class OrderAdded(
+    workflowId: WorkflowId,
+    arguments: NamedValues = Map.empty,
+    scheduledFor: Option[Timestamp] = None,
+    sourceOrderKey: Option[SourceOrderKey] = None)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
   }
@@ -40,14 +46,16 @@ object OrderEvent {
       o => JsonObject(
         "workflowId" -> o.workflowId.asJson,
         "scheduledFor" -> o.scheduledFor.asJson,
-        "arguments" -> o.arguments.??.asJson)
+        "arguments" -> o.arguments.??.asJson,
+        "sourceOrderKey" -> o.sourceOrderKey.asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
       c => for {
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
-      } yield OrderAdded(workflowId, arguments, scheduledFor)
+        sourceOrderKey <- c.get[Option[SourceOrderKey]]("sourceOrderKey")
+      } yield OrderAdded(workflowId, arguments, scheduledFor, sourceOrderKey)
   }
 
   /** Agent-only event. */
@@ -55,6 +63,7 @@ object OrderEvent {
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
     arguments: NamedValues,
+    sourceOrderKey: Option[SourceOrderKey],
     historicOutcomes: Seq[HistoricOutcome],
     agentId: AgentId,
     parent: Option[OrderId],

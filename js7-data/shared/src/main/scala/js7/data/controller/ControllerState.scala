@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import cats.instances.list._
+import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
@@ -17,11 +18,12 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.{ItemPath, Repo, SimpleItem, SimpleItemEvent, SimpleItemId, VersionedEvent, VersionedItem}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAttachedStateChanged, SimpleItemChanged, SimpleItemDeleted}
+import js7.data.item.{ItemPath, Repo, SimpleItem, SimpleItemEvent, SimpleItemId, SimpleItemState, VersionedEvent, VersionedItem}
 import js7.data.lock.{Lock, LockId, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.ordersource.{AllOrderSourcesState, FileOrderSource, OrderSource, OrderSourceEvent, OrderSourceId, OrderSourceState}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
@@ -35,16 +37,19 @@ final case class ControllerState(
   controllerMetaState: ControllerMetaState,
   idToAgentRefState: Map[AgentId, AgentRefState],
   idToLockState: Map[LockId, LockState],
+  allOrderSourcesState: AllOrderSourcesState,
   repo: Repo,
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
   def estimatedSnapshotSize: Int =
-    2 +
+    1 +
     standards.snapshotSize +
+    controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
     idToAgentRefState.size +
     idToLockState.size +
+    allOrderSourcesState.estimatedSnapshotSize +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -54,6 +59,7 @@ extends JournaledState[ControllerState]
     Observable.fromIterable(repo.eventsFor(itemPathCompanions)) ++
     Observable.fromIterable(idToAgentRefState.values) ++
     Observable.fromIterable(idToLockState.values) ++
+    allOrderSourcesState.toSnapshot ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
@@ -80,32 +86,53 @@ extends JournaledState[ControllerState]
 
     case KeyedEvent(_: NoKey, event: SimpleItemEvent) =>
       event match {
-        case SimpleItemAdded(lock: Lock) =>
-          for (o <- idToLockState.insert(lock.id -> LockState(lock))) yield
-            copy(idToLockState = o)
+        case SimpleItemAdded(item) =>
+          item match {
+            case lock: Lock =>
+              for (o <- idToLockState.insert(lock.id -> LockState(lock))) yield
+                copy(idToLockState = o)
 
-        case SimpleItemChanged(lock: Lock) =>
-          for (lockState <- idToLockState.checked(lock.id))
-            yield copy(
-              idToLockState = idToLockState + (lock.id -> lockState.copy(
-                lock = lock)))
+            case agentRef: AgentRef =>
+              for (o <- idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef)))
+                yield copy(
+                  idToAgentRefState = o)
 
-        case SimpleItemDeleted(_: LockId) =>
-          Left(Problem("Locks are not deletable (in this version)"))  // TODO
+            case orderSource: OrderSource =>
+              for (o <- allOrderSourcesState.addOrderSource(orderSource)) yield
+                copy(allOrderSourcesState = o)
+          }
 
-        case SimpleItemAdded(agentRef: AgentRef) =>
-          for (o <- idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef)))
-            yield copy(
-              idToAgentRefState = o)
+        case SimpleItemChanged(item) =>
+          item match {
+            case lock: Lock =>
+              for (lockState <- idToLockState.checked(lock.id))
+                yield copy(
+                  idToLockState = idToLockState + (lock.id -> lockState.copy(
+                    lock = lock)))
 
-        case SimpleItemChanged(agentRef: AgentRef) =>
-          for (agentRefState <- idToAgentRefState.checked(agentRef.id))
-            yield copy(
-              idToAgentRefState = idToAgentRefState + (agentRef.id -> agentRefState.copy(
-                agentRef = agentRef)))
+            case agentRef: AgentRef =>
+              for (agentRefState <- idToAgentRefState.checked(agentRef.id))
+                yield copy(
+                  idToAgentRefState = idToAgentRefState + (agentRef.id -> agentRefState.copy(
+                    agentRef = agentRef)))
 
-        case SimpleItemDeleted(_: AgentId) =>
-          Left(Problem("AgentRefs are not deletable (in this version)"))  // TODO
+            case orderSource: OrderSource =>
+              for (o <- allOrderSourcesState.changeOrderSource(orderSource)) yield
+                copy(allOrderSourcesState = o)
+          }
+
+        case SimpleItemDeleted(itemId) =>
+          Left(Problem(s"A '${itemId.companion.name}' is not deletable (in this version)"))  // TODO
+
+        case SimpleItemAttachedStateChanged(id, agentId, attachedState) =>
+          id match {
+            case orderSourceId: OrderSourceId =>
+              allOrderSourcesState.updatedAttachedState(orderSourceId, agentId, attachedState)
+                .map(o => copy(allOrderSourcesState = o))
+
+            case _ =>
+              eventNotApplicable(keyedEvent)
+          }
       }
 
     case KeyedEvent(_: NoKey, event: VersionedEvent) =>
@@ -121,12 +148,12 @@ extends JournaledState[ControllerState]
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
-        case event: OrderAdded =>
-          idToOrder.checkNoDuplicate(orderId).map(_ =>
-            copy(idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, event))))
-
-        case OrderRemoved =>
-          Right(copy(idToOrder = idToOrder - orderId))
+        case orderAdded: OrderAdded =>
+          idToOrder.checkNoDuplicate(orderId) >>
+            allOrderSourcesState.onOrderAdded(orderId <-: orderAdded)
+              .map(updated => copy(
+                idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, orderAdded)),
+          allOrderSourcesState = updated))
 
         case event: OrderCoreEvent =>
           for {
@@ -169,6 +196,26 @@ extends JournaledState[ControllerState]
                       idToOrder = updatedIdToOrder,
                       idToLockState = idToLockState ++ (lockStates.map(o => o.lock.id -> o))))
 
+              case OrderRemoveMarked =>
+                previousOrder.sourceOrderKey match {
+                  case None => Right(copy(idToOrder = updatedIdToOrder))
+                  case Some(sourceOrderKey) =>
+                    allOrderSourcesState.onOrderEvent(sourceOrderKey, orderId <-: OrderRemoveMarked)
+                      .map(o => copy(
+                        idToOrder = updatedIdToOrder,
+                        allOrderSourcesState = o))
+                }
+
+              case OrderRemoved =>
+                previousOrder.sourceOrderKey match {
+                  case None => Right(copy(idToOrder = idToOrder - orderId))
+                  case Some(sourceOrderKey) =>
+                    allOrderSourcesState.onOrderEvent(sourceOrderKey, orderId <-: OrderRemoved)
+                      .map(o => copy(
+                        idToOrder = idToOrder - orderId,
+                        allOrderSourcesState = o))
+                }
+
               case _ => Right(copy(idToOrder = updatedIdToOrder))
             }
           } yield updatedControllerState
@@ -176,6 +223,10 @@ extends JournaledState[ControllerState]
         case _: OrderStdWritten =>
           Right(this)
       }
+
+    case KeyedEvent(orderSourceId: OrderSourceId, event: OrderSourceEvent) =>
+      allOrderSourcesState.onOrderSourceEvent(orderSourceId <-: event)
+        .map(o => copy(allOrderSourcesState = o))
 
     case KeyedEvent(_, _: ControllerShutDown) =>
       Right(this)
@@ -187,16 +238,21 @@ extends JournaledState[ControllerState]
   }
 
   def idToItem: MapView[SimpleItemId, SimpleItem] =
-    new MapView[SimpleItemId, SimpleItem] {
-      override def get(itemId: SimpleItemId): Option[SimpleItem] =
-        itemId match {
-          case agentId: AgentId => idToAgentRefState.get(agentId).map(_.agentRef)
-          case lockId: LockId => idToLockState.get(lockId).map(_.lock)
-        }
+    idToItemState.mapValues(_.item)
 
-      override def iterator: Iterator[(SimpleItemId, SimpleItem)] =
-        idToLockState.view.mapValues(_.lock).iterator ++
-          idToAgentRefState.view.mapValues(_.agentRef).iterator
+  private def idToItemState: MapView[SimpleItemId, SimpleItemState] =
+    new MapView[SimpleItemId, SimpleItemState] {
+      def get(itemId: SimpleItemId): Option[SimpleItemState] = {
+        itemId match {
+          case id: AgentId => idToAgentRefState.get(id)
+          case id: LockId => idToLockState.get(id)
+          case id: OrderSourceId => allOrderSourcesState.idToOrderSourceState.get(id)
+        }
+      }
+
+      def iterator: Iterator[(SimpleItemId, SimpleItemState)] =
+        Iterator(idToAgentRefState, idToLockState, allOrderSourcesState.idToOrderSourceState)
+          .flatMap(_.view.iterator)
     }
 
   override def toString =
@@ -211,29 +267,28 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     ControllerMetaState.Undefined,
     Map.empty,
     Map.empty,
+    AllOrderSourcesState.empty,
     Repo.empty,
     Map.empty)
 
   val empty = Undefined
 
-  def newBuilder() = new ControllerStateBuilder
+  private val simpleItemCompanions = Seq[SimpleItem.Companion](
+    AgentRef, Lock, FileOrderSource)
 
-  val simpleItemCompanions = Seq[SimpleItem.Companion](
-    AgentRef, Lock)
-  val simpleItemIdCompanions = simpleItemCompanions.map(_.idCompanion)
+  private val itemPathCompanions = Set[ItemPath.AnyCompanion](
+    WorkflowPath)
 
-  implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] = TypedJsonCodec(
-    Subtype[AgentRef],
-    Subtype[Lock])
+  implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] =
+    TypedJsonCodec(simpleItemCompanions.map(_.subtype): _*)
 
   implicit val simpleItemEventJsonCodec = SimpleItemEvent.jsonCodec(simpleItemCompanions)
 
-  val itemPathCompanions = Set[ItemPath.AnyCompanion](
-    WorkflowPath)
+  def newBuilder() = new ControllerStateBuilder
 
   trait GenericImplicits {
     implicit val simpleItemIdJsonCodec: CirceCodec[SimpleItemId] =
-      SimpleItemId.jsonCodec(simpleItemIdCompanions)
+      SimpleItemId.jsonCodec(simpleItemCompanions.map(_.idCompanion))
 
     implicit val itemPathJsonCodec: CirceCodec[ItemPath] =
       ItemPath.jsonCodec(itemPathCompanions)
@@ -253,7 +308,8 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[AgentRefState],
       Subtype[LockState],
       Subtype[VersionedEvent],  // These events describe complete objects
-      Subtype[Order[Order.State]])
+      Subtype[Order[Order.State]],
+      Subtype[OrderSourceState.Snapshot])
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
@@ -263,5 +319,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],
+      KeyedSubtype[OrderSourceEvent],
       KeyedSubtype[OrderEvent])
 }

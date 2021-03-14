@@ -9,7 +9,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSimpleItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper._
@@ -22,6 +22,7 @@ import js7.base.log.Logger.ops._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.promiseFuture
+import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
@@ -41,10 +42,12 @@ import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.ordersource.FileOrderSource
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.instructions.Execute
+import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.task.TaskRunner
 import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
@@ -70,8 +73,8 @@ final class AgentOrderKeeper(
   persistence: JournaledStatePersistence[AgentState],
   implicit private val askTimeout: Timeout,
   conf: AgentConfiguration,
-  blockingJobScheduler: Scheduler)(
-  implicit protected val scheduler: Scheduler)
+  blockingJobScheduler: Scheduler)
+  (implicit protected val scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentState, Event]
 with Stash {
 
@@ -86,6 +89,7 @@ with Stash {
   private val workflowVerifier = new VersionedItemVerifier(signatureVerifier, Workflow.topJsonDecoder)
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
+  private val fileOrderSourceManager = new FileOrderSourceManager(persistence, conf.config)
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
   private val orderEventSource = new OrderEventSource(
@@ -112,6 +116,7 @@ with Stash {
       if (!shuttingDown) {
         shutDownCommand = Some(terminate)
         since := now
+        fileOrderSourceManager.stop.runAsyncAndForget
         journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
         stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
           self ! Internal.StillTerminating
@@ -163,6 +168,7 @@ with Stash {
   // Do not use recovered_ after here to allow release of the big object
 
   override def postStop() = {
+    fileOrderSourceManager.stop.runAsyncAndForget
     shutdown.close()
     super.postStop()
     logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
@@ -187,14 +193,14 @@ with Stash {
         }
       persistence.start(state)
       recovered.startJournalAndFinishRecovery(journalActor)
-      become("Recovering")(recovering(state.idToOrder.size))
+      become("Recovering")(recovering(state))
       unstashAll()
 
     case _ => stash()
   }
 
-  private def recovering(recoveredOrderCount: Int): Receive = {
-    var remainingOrders = recoveredOrderCount
+  private def recovering(recoveredState: AgentState): Receive = {
+    var remainingOrders = recoveredState.idToOrder.size
     var _journalHeader: Option[JournalHeader] = None
 
     def continue() =
@@ -214,6 +220,9 @@ with Stash {
             unstashAll()
             logger.info("Ready")
           }
+          fileOrderSourceManager.start()
+            .runAsyncAndForget
+
         case _ =>
       }
 
@@ -281,6 +290,16 @@ with Stash {
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
     case cmd: OrderCommand => processOrderCommand(cmd)
+
+    case AttachSimpleItem(orderSource: FileOrderSource) =>
+      if (!conf.scriptInjectionAllowed)
+        Future.successful(Left(SignedInjectionNotAllowed))
+      else
+        fileOrderSourceManager.update(orderSource)
+          .map(_.rightAs(AgentCommand.Response.Accepted))
+          .runToFuture
+
+    // TODO case DetachSimpleItem(itemId) =>
 
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)

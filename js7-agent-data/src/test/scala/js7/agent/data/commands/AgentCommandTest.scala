@@ -12,7 +12,9 @@ import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
 import js7.data.order.{Order, OrderId, OrderMark}
+import js7.data.ordersource.{FileOrderSource, OrderSourceId}
 import js7.data.value.StringValue
+import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
@@ -165,6 +167,23 @@ final class AgentCommandTest extends AnyFreeSpec
     }
   }
 
+  "AttachSimpleItem" in {
+    check(
+      AgentCommand.AttachSimpleItem(
+        FileOrderSource(OrderSourceId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "DIRECTORY")),
+      json"""{
+        "TYPE": "AttachSimpleItem",
+        "item": {
+          "TYPE": "FileOrderSource",
+          "id": "ID",
+          "workflowPath": "WORKFLOW",
+          "agentId": "AGENT",
+          "directory": "DIRECTORY",
+          "itemRevision": 0
+        }
+      }""")
+  }
+
   "OrderCommand" - {
     "AttachOrder" in {
       check(AgentCommand.AttachOrder(
@@ -195,8 +214,7 @@ final class AgentCommandTest extends AnyFreeSpec
             "attachedState": {
               "TYPE": "Attached",
               "agentId": "AGENT"
-            },
-            "historicOutcomes": []
+            }
           },
           "signedWorkflow": {
             "string": "{\"TYPE\":\"Workflow\",...}",

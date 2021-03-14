@@ -14,6 +14,7 @@ import js7.data.item.{Repo, SimpleItemEvent, VersionedEvent}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.ordersource.{AllOrderSourcesState, OrderSource, OrderSourceEvent, OrderSourceId, OrderSourceState}
 import js7.data.workflow.Workflow
 import scala.collection.mutable
 
@@ -26,6 +27,7 @@ extends JournaledStateBuilder[ControllerState]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToAgentRefState = mutable.Map.empty[AgentId, AgentRefState]
   private val idToLockState = mutable.Map.empty[LockId, LockState]
+  private var allOrderSourcesState = AllOrderSourcesState.empty
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -51,6 +53,9 @@ extends JournaledStateBuilder[ControllerState]
     case lockState: LockState =>
       idToLockState.insert(lockState.lock.id -> lockState)
 
+    case snapshot: OrderSourceState.Snapshot =>
+      allOrderSourcesState = allOrderSourcesState.applySnapshot(snapshot).orThrow
+
     case o: ControllerMetaState =>
       controllerMetaState = o
 
@@ -65,6 +70,7 @@ extends JournaledStateBuilder[ControllerState]
     val (added, removed) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], idToOrder.toMap)
     idToOrder ++= added.map(o => o.id -> o)
     idToOrder --= removed
+    allOrderSourcesState = allOrderSourcesState.onEndOfRecovery.orThrow
   }
 
   protected def onAddEvent = {
@@ -80,27 +86,47 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(_: NoKey, event: VersionedEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
-    case Stamped(_, _, KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
+    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
       event match {
-        case SimpleItemAdded(lock: Lock) =>
-          idToLockState.insert(lock.id -> LockState(lock))
+        case SimpleItemAdded(item) =>
+          item match {
+            case lock: Lock =>
+              idToLockState.insert(lock.id -> LockState(lock))
 
-        case SimpleItemChanged(lock: Lock) =>
-          idToLockState(lock.id) = idToLockState(lock.id).copy(
-            lock = lock)
+            case agentRef: AgentRef =>
+              idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
 
-        case SimpleItemDeleted(_: LockId) =>
-          throw Problem("Locks are not deletable (in this version)").throwable  // TODO
+            case orderSource: OrderSource =>
+              allOrderSourcesState = allOrderSourcesState.addOrderSource(orderSource).orThrow
+          }
 
-        case SimpleItemAdded(agentRef: AgentRef) =>
-          idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
+        case SimpleItemChanged(item) =>
+          item match {
+            case lock: Lock =>
+              idToLockState(lock.id) = idToLockState(lock.id).copy(
+                lock = lock)
 
-        case SimpleItemChanged(agentRef: AgentRef) =>
-          idToAgentRefState(agentRef.id) = idToAgentRefState(agentRef.id).copy(
-            agentRef = agentRef)
+            case agentRef: AgentRef =>
+              idToAgentRefState(agentRef.id) = idToAgentRefState(agentRef.id).copy(
+                agentRef = agentRef)
 
-        case SimpleItemDeleted(_: AgentId) =>
-          throw Problem("AgentRefs are not deletable (in this version)").throwable  // TODO
+            case orderSource: OrderSource =>
+              allOrderSourcesState = allOrderSourcesState.changeOrderSource(orderSource).orThrow
+          }
+
+        case SimpleItemDeleted(itemId) =>
+          throw Problem("SimpeItems are not deletable (in this version)").throwable  // TODO
+
+        case SimpleItemEvent.SimpleItemAttachedStateChanged(id, agentId, attachedState) =>
+          id match {
+            case orderSourceId: OrderSourceId =>
+              allOrderSourcesState = allOrderSourcesState
+                .updatedAttachedState(orderSourceId, agentId, attachedState)
+                .orThrow
+
+            case _ =>
+              throw Problem(s"Unexpected event: $keyedEvent").throwable
+          }
       }
 
     case Stamped(_, _, KeyedEvent(name: AgentId, event: AgentRefStateEvent)) =>
@@ -109,10 +135,15 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
         case event: OrderAdded =>
-          idToOrder += orderId -> Order.fromOrderAdded(orderId, event)
+          idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, event))
 
         case OrderRemoved =>
-          idToOrder -= orderId
+          for (order <- idToOrder.remove(orderId)) {
+            for (sourceOrderKey <- order.sourceOrderKey)
+              allOrderSourcesState = allOrderSourcesState
+                .onOrderEvent(sourceOrderKey, orderId <-: OrderRemoved)
+                .orThrow
+          }
 
         case event: OrderLockEvent =>
           for (lockId <- event.lockIds) {
@@ -122,10 +153,20 @@ extends JournaledStateBuilder[ControllerState]
 
         case event: OrderCoreEvent =>
           handleForkJoinEvent(orderId, event)
-          idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
+          val order = idToOrder(orderId)
+          idToOrder(orderId) = order.applyEvent(event).orThrow
+
+          for (sourceOrderKey <- order.sourceOrderKey) {
+            allOrderSourcesState = allOrderSourcesState
+              .onOrderEvent(sourceOrderKey, orderId <-: OrderRemoved)
+              .orThrow
+          }
 
         case _: OrderStdWritten =>
       }
+
+    case Stamped(_, _, KeyedEvent(orderSourceId: OrderSourceId, event: OrderSourceEvent)) =>
+      allOrderSourcesState = allOrderSourcesState.onOrderSourceEvent(orderSourceId <-: event).orThrow
 
     case Stamped(_, _, KeyedEvent(_, _: ControllerShutDown)) =>
     case Stamped(_, _, KeyedEvent(_, ControllerTestEvent)) =>
@@ -174,6 +215,7 @@ extends JournaledStateBuilder[ControllerState]
       controllerMetaState,
       idToAgentRefState.toMap,
       idToLockState.toMap,
+      allOrderSourcesState,
       repo,
       idToOrder.toMap)
 

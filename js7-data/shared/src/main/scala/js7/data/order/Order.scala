@@ -14,6 +14,7 @@ import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
+import js7.data.ordersource.SourceOrderKey
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
@@ -27,6 +28,7 @@ final case class Order[+S <: Order.State](
   workflowPosition: WorkflowPosition,
   state: S,
   arguments: NamedValues = Map.empty,
+  sourceOrderKey: Option[SourceOrderKey] = None,
   historicOutcomes: Seq[HistoricOutcome] = Vector.empty,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
@@ -41,8 +43,8 @@ final case class Order[+S <: Order.State](
         workflowPosition.copy(position = workflowPosition.position / child.branchId.toBranchId % InstructionNr.First),
         Ready,
         arguments,
-        historicOutcomes,
-        attachedState,
+        historicOutcomes = historicOutcomes,
+        attachedState = attachedState,
         parent = Some(id))
 
   def newOfferedOrder(event: OrderOffered): Order[Offering] = copy(
@@ -420,13 +422,17 @@ final case class Order[+S <: Order.State](
 
 object Order
 {
-  def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] = {
-    Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments)
-  }
+  def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
+    Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments, event.sourceOrderKey)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
-    Order(id, event.workflowPosition, event.state, event.arguments, event.historicOutcomes, Some(Attached(event.agentId)),
-      event.parent, event.mark, isSuspended = event.isSuspended, removeWhenTerminated = event.removeWhenTerminated)
+    Order(id, event.workflowPosition, event.state, event.arguments,
+      event.sourceOrderKey,
+      historicOutcomes = event.historicOutcomes,
+      Some(Attached(event.agentId)),
+      event.parent, event.mark,
+      isSuspended = event.isSuspended,
+      removeWhenTerminated = event.removeWhenTerminated)
 
   sealed trait AttachedState
   object AttachedState {
@@ -552,31 +558,33 @@ object Order
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
     JsonObject(
       "id" -> order.id.asJson,
-      "arguments" -> order.arguments.??.asJson,
       "workflowPosition" -> order.workflowPosition.asJson,
       "state" -> order.state.asJson,
+      "arguments" -> order.arguments.??.asJson,
+      "sourceOrderKey" -> order.sourceOrderKey.asJson,
       "attachedState" -> order.attachedState.asJson,
       "parent" -> order.parent.asJson,
-      "historicOutcomes" -> order.historicOutcomes.asJson,
       "mark" -> order.mark.asJson,
       "isSuspended" -> order.isSuspended.?.asJson,
-      "removeWhenTerminated" -> order.removeWhenTerminated.?.asJson)
+      "removeWhenTerminated" -> order.removeWhenTerminated.?.asJson,
+      "historicOutcomes" -> order.historicOutcomes.??.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
     for {
       id <- cursor.get[OrderId]("id")
-      arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
+      arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
+      sourceOrderKey <- cursor.get[Option[SourceOrderKey]]("sourceOrderKey")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
-      historicOutcomes <- cursor.get[Vector[HistoricOutcome]]("historicOutcomes")
       mark <- cursor.get[Option[OrderMark]]("mark")
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
       removeWhenTerminated <- cursor.getOrElse[Boolean]("removeWhenTerminated")(false)
+      historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     } yield
-      Order(id, workflowPosition, state, arguments, historicOutcomes, attachedState, parent, mark,
-        isSuspended, removeWhenTerminated)
+      Order(id, workflowPosition, state, arguments, sourceOrderKey, historicOutcomes,
+        attachedState, parent, mark, isSuspended, removeWhenTerminated)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[IsFreshOrReady]] = cursor =>

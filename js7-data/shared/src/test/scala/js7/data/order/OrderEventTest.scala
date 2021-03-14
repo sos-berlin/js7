@@ -12,6 +12,7 @@ import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockId
 import js7.data.order.OrderEvent._
+import js7.data.ordersource.{OrderSourceId, SourceOrderKey, SourceOrderName}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -29,7 +30,8 @@ final class OrderEventTest extends AnyFreeSpec
       OrderAdded(
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
-        Some(Timestamp("2021-01-01T00:00:00Z"))),
+        Some(Timestamp("2021-01-01T00:00:00Z")),
+        Some(SourceOrderKey(OrderSourceId("ORDER-SOURCE"), SourceOrderName("ORDER-NAME")))),
       json"""
       {
         "TYPE": "OrderAdded",
@@ -40,6 +42,10 @@ final class OrderEventTest extends AnyFreeSpec
         "scheduledFor": 1609459200000,
         "arguments": {
           "VAR": "VALUE"
+        },
+        "sourceOrderKey": {
+          "orderSourceId": "ORDER-SOURCE",
+          "name": "ORDER-NAME"
         }
       }""")
   }
@@ -59,6 +65,7 @@ final class OrderEventTest extends AnyFreeSpec
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
         Map("KEY" -> StringValue("VALUE")),
+        Some(SourceOrderKey(OrderSourceId("ORDER-SOURCE"), SourceOrderName("ORDER-NAME"))),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
         AgentId("AGENT"),
         Some(OrderId("PARENT")),
@@ -79,6 +86,10 @@ final class OrderEventTest extends AnyFreeSpec
         },
         "arguments": {
           "KEY": "VALUE"
+        },
+        "sourceOrderKey": {
+          "orderSourceId": "ORDER-SOURCE",
+          "name": "ORDER-NAME"
         },
         "historicOutcomes": [
           {

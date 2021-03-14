@@ -11,7 +11,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.lock.LockId
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, InapplicableOrderEventProblem, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -36,7 +36,8 @@ final class OrderTest extends AnyFreeSpec
     arguments = Map(
       "key1" -> StringValue("value1"),
       "key2" -> StringValue("value2")),
-    HistoricOutcome(Position(123), Outcome.Succeeded(NamedValues.rc(0))) :: Nil)
+    historicOutcomes = Seq(
+      HistoricOutcome(Position(123), Outcome.Succeeded(NamedValues.rc(0)))))
 
   "JSON" - {
     "Order" - {
@@ -97,7 +98,6 @@ final class OrderTest extends AnyFreeSpec
             "state": {
               "TYPE": "Fresh"
             },
-            "historicOutcomes": [],
             "mark": {
               "TYPE": "Cancelling",
               "mode": {
@@ -250,7 +250,7 @@ final class OrderTest extends AnyFreeSpec
       OrderRemoved,
 
       OrderAttachable(agentId),
-      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), Map.empty, Nil, agentId, None, None, false, false),
+      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), Map.empty, None, Nil, agentId, None, None, false, false),
       OrderAttached(agentId),
 
       OrderStarted,

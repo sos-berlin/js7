@@ -1,7 +1,7 @@
 package js7.common.system
 
 import js7.base.log.Logger
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import scala.util.control.NonFatal
 

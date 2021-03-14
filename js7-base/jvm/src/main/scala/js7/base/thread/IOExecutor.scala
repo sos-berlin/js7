@@ -8,6 +8,7 @@ import js7.base.thread.IOExecutor._
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import monix.eval.Task
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.{Scheduler, UncaughtExceptionReporter}
 import scala.concurrent.duration._
@@ -59,6 +60,9 @@ object IOExecutor
     catch {
       case NonFatal(t) => Future.failed(t)
     }
+
+  def ioTask[A](body: => A)(implicit iox: IOExecutor): Task[A] =
+    Task(body) executeOn iox.scheduler
 
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
     def msg = s"Uncaught exception in thread ${currentThread.getId} '${currentThread.getName}': ${throwable.toStringWithCauses}"

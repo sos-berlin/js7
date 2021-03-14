@@ -1,16 +1,23 @@
 package js7.data.lock
 
-import io.circe.{Decoder, Encoder}
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.extras.Configuration.default.withDefaults
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.utils.Assertions.assertThat
-import js7.data.item.SimpleItem
+import js7.data.item.{ItemRevision, SimpleItem}
 
-final case class Lock(id: LockId, limit: Int = 1) extends SimpleItem
+final case class Lock(
+  id: LockId,
+  limit: Int = 1,
+  itemRevision: ItemRevision = ItemRevision.Initial)
+extends SimpleItem
 {
   protected type Self = Lock
   val companion = Lock
 
   assertThat(limit >= 0)
+
+  def withRevision(revision: ItemRevision) =
+    copy(itemRevision = revision)
 }
 
 object Lock extends SimpleItem.Companion
@@ -18,10 +25,11 @@ object Lock extends SimpleItem.Companion
   type Item = Lock
   type Id = LockId
 
-  val jsonCodec = deriveCodec[Lock]
-
-  implicit val jsonEncoder: Encoder.AsObject[Lock] = jsonCodec
-  implicit val jsonDecoder: Decoder[Lock] = jsonCodec
-
+  val cls = classOf[Lock]
   val idCompanion = LockId
+
+  val jsonCodec = {
+    implicit val configuration = withDefaults
+    deriveConfiguredCodec[Lock]
+  }
 }

@@ -44,6 +44,7 @@ import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
+import js7.data.agent.AttachedState.Attached
 import js7.data.agent.{AgentId, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{liveOrderEventHandler, liveOrderEventSource}
@@ -52,12 +53,12 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAddedOrChanged, SimpleItemAttachable, SimpleItemAttached, SimpleItemAttachedToAgent, SimpleItemChanged, SimpleItemDeleted}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
-import js7.data.item.{ItemEvent, SimpleItemEvent, VersionedEvent}
-import js7.data.lock.Lock
+import js7.data.item.{ItemEvent, ItemRevision, SimpleItem, SimpleItemEvent, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
+import js7.data.ordersource.{FileOrderSource, OrderSourceEvent, OrderSourceId}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
@@ -334,13 +335,23 @@ with MainJournalingActor[ControllerState, Event]
           ZoneId.systemDefault.getId,
           totalRunningTime = journalHeader.totalRunningTime)
 
-        persistMultiple(maybeControllerInitialized ++ Some(controllerReady)) { (_, updatedState) =>
+        val nextEvents = new ControllerStateExecutor(_controllerState).nextOrderEvents
+        persistMultiple(maybeControllerInitialized ++ Some(controllerReady) ++ nextEvents) { (_, updatedState) =>
           _controllerState = updatedState
           clusterNode.afterJournalingStarted
             .materializeIntoChecked
             .runToFuture
             .map(Internal.Ready.apply)
             .pipeTo(self)
+        }
+      }
+
+      for (orderSourceState <- _controllerState.allOrderSourcesState.idToOrderSourceState.values) {
+        import orderSourceState.orderSource
+        for (agentEntry <- agentRegister.get(orderSource.agentId)) {
+          if (!orderSourceState.attached.contains(Attached)) {
+            agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(orderSource)
+          }
         }
       }
 
@@ -420,7 +431,7 @@ with MainJournalingActor[ControllerState, Event]
     case Command.VerifiedUpdateItemsCmd(VerifiedUpdateItems(simple, maybeVersioned)) =>
       val sender = this.sender()
       val t = now
-      val simpleItemEvents = simpleItemsToEvent(simple)
+      val checkedSimpleItemEvents = simpleItemsToEvent(simple)
       val whenPersisted = maybeVersioned
         .map(versionedItemsToEvent)
         .getOrElse(Success(Right(Nil)))
@@ -428,14 +439,16 @@ with MainJournalingActor[ControllerState, Event]
           case Failure(t) => Future.failed(t)
           case Success(Left(problem)) => Future.successful(Left(problem))
           case Success(Right(versionedEvents)) =>
-            persistItemEvents(simpleItemEvents ++ versionedEvents)
-              .map(_.map { o =>
-                if (t.elapsed > 1.s) logger.debug("VersionedEvents calculated - " +
-                  itemsPerSecondString(t.elapsed,
-                    simple.items.size + maybeVersioned.fold(0)(_.verifiedItems.size),
-                    "items"))
-                o
-              })
+            Future.successful(checkedSimpleItemEvents)
+              .flatMapT(simpleItemEvents =>
+                persistItemEvents(simpleItemEvents ++ versionedEvents)
+                  .map(_.map { o =>
+                    if (t.elapsed > 1.s) logger.debug("VersionedEvents calculated - " +
+                      itemsPerSecondString(t.elapsed,
+                        simple.items.size + maybeVersioned.fold(0)(_.verifiedItems.size),
+                        "items"))
+                    o
+                  }))
         }
       whenPersisted.onComplete {
         case Failure(t) => sender ! Status.Failure(t)
@@ -450,27 +463,34 @@ with MainJournalingActor[ControllerState, Event]
           case Stamped(_, timestampMillis, keyedEvent) =>
             keyedEvent match {
               case KeyedEvent(orderId: OrderId, _: OrderCancelMarked) =>
-                Some(Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestampMillis)))
+                Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestampMillis)) :: Nil
 
               case KeyedEvent(orderId: OrderId, _: OrderSuspendMarked) =>
-                Some(Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestampMillis)))
+                Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestampMillis)) :: Nil
 
               case KeyedEvent(_, _: OrderResumeMarked) =>
-                None /*Agent does not emit OrderResumeMarked*/
+                Nil /*Agent does not emit OrderResumeMarked*/
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                 val ownEvent = event match {
                   case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentId) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ => event
                 }
-                Some(Timestamped(orderId <-: ownEvent, Some(timestampMillis)))
+                Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
 
               case KeyedEvent(_: NoKey, AgentControllerEvent.AgentReadyForController(timezone, _)) =>
-                Some(Timestamped(agentEntry.agentId <-: AgentReady(timezone), Some(timestampMillis)))
+                Timestamped(agentEntry.agentId <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
+
+              case KeyedEvent(_: NoKey, SimpleItemAttachedToAgent(item)) =>
+                // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                Timestamped(NoKey <-: SimpleItemAttached(item.id, agentId)) :: Nil
+
+              case KeyedEvent(_: OrderSourceId, _: OrderSourceEvent) =>
+                Timestamped(keyedEvent) :: Nil
 
               case _ =>
                 logger.error(s"Unknown event received from ${agentEntry.agentId}: $keyedEvent")
-                None
+                Nil
             }
         }.toVector
 
@@ -495,7 +515,9 @@ with MainJournalingActor[ControllerState, Event]
               Some(agentEventId)
           })
 
-        persistMultiple(subsequentEvents(timestampedEvents.map(_.keyedEvent)))(
+        val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
+        orderQueue.enqueue(subseqEvents.view.map(_.key))  // For OrderSourceEvents
+        persistMultiple(subseqEvents)(
           handleEvents)
       }
 
@@ -536,16 +558,22 @@ with MainJournalingActor[ControllerState, Event]
       }
   }
 
-  private def simpleItemsToEvent(simple: VerifiedUpdateItems.Simple): Seq[SimpleItemEvent] =
+  private def simpleItemsToEvent(simple: VerifiedUpdateItems.Simple): Checked[Seq[SimpleItemEvent]] =
     simple.items
-      .map { item =>
-        val exists = item match {
-          case item: AgentRef => _controllerState.idToAgentRefState contains item.id
-          case item: Lock => _controllerState.idToLockState contains item.id
-        }
-        if (exists) SimpleItemChanged(item) else SimpleItemAdded(item)
-      } ++
-        simple.delete.map(SimpleItemDeleted.apply)
+      .toVector
+      .traverse(simpleItemToEvent)
+      .map(_ ++
+        simple.delete.map(SimpleItemDeleted))
+
+  private def simpleItemToEvent(item: SimpleItem): Checked[SimpleItemAddedOrChanged] =
+    if (item.itemRevision != ItemRevision.Initial)
+      Left(Problem("SimpleItem's ItemRevision must be zero"))
+    else
+      Right(
+        _controllerState.idToItem.get(item.id) match {
+          case None => SimpleItemAdded(item)
+          case Some(existing) => SimpleItemChanged(item.withRevision(existing.itemRevision.next))
+        })
 
   private def versionedItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
   : Try[Checked[Seq[VersionedEvent]]] =
@@ -622,12 +650,7 @@ with MainJournalingActor[ControllerState, Event]
           .flatten
           .map(_
             .filterNot(_.removeWhenTerminated)
-            .map(order =>
-              order.id <-: (
-                if (order.isState[Order.IsTerminated])
-                  OrderRemoved
-                else
-                  OrderRemoveMarked)))
+            .map(orderRemovedEvent))
           .traverse(keyedEvents =>
             persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
               .map(_ => ControllerCommand.Response.Accepted))
@@ -697,6 +720,13 @@ with MainJournalingActor[ControllerState, Event]
         Future.failed(new NotImplementedError)
     }
 
+  private def orderRemovedEvent(order: Order[Order.State]): KeyedEvent[OrderCoreEvent] =
+    order.id <-: (
+      if (order.isState[Order.IsTerminated])
+        OrderRemoved
+      else
+        OrderRemoveMarked)
+
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])(toEvent: OrderId => Checked[Option[OrderActorEvent]])
   : Future[Checked[ControllerCommand.Response]] =
     if (orderIds.distinct.sizeIs < orderIds.size)
@@ -716,19 +746,22 @@ with MainJournalingActor[ControllerState, Event]
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
-  private def persistItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] =
+  private def persistItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] = {
+    val keyedEvents = events.map(NoKey <-: _)
     // Precheck events
-    _controllerState.applyEvents(events.map(NoKey <-: _)) match {
-      case Left(Problem.Combined(Seq(_, problem: DuplicateKey))) =>
+    _controllerState.applyEvents(keyedEvents) match {
+      case Left(prblm @ Problem.Combined(Seq(_, problem: DuplicateKey))) =>
+        logger.debug(prblm.toString)
         Future.successful(Left(problem))
 
       case Left(problem) =>
         Future.successful(Left(problem))
 
       case Right(_) =>
-        persistTransactionAndSubsequentEvents(events.map(KeyedEvent(_)))(handleEvents)
+        persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
           .map(_ => Right(Completed))
     }
+  }
 
   private def logEvent(event: Event): Unit =
     event match {
@@ -817,7 +850,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] =
     delayOrderRemoved(
-      new ControllerStateExecutor(_controllerState).nextOrderEvents(orderIds))
+      new ControllerStateExecutor(_controllerState).nextOrderEventsByOrderId(orderIds))
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
     val orderIds = mutable.Buffer.empty[OrderId]
@@ -834,6 +867,13 @@ with MainJournalingActor[ControllerState, Event]
             case SimpleItemAdded(agentRef: AgentRef) =>
               val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
               entry.actor ! AgentDriver.Input.StartFetchingEvents
+
+            case SimpleItemAddedOrChanged(fos: FileOrderSource) =>
+              persistKeyedEvent(NoKey <-: SimpleItemAttachable(fos.id, fos.agentId)) { (_, _) =>
+                for (agentEntry <- agentRegister.get(fos.agentId)) {
+                  agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(fos)
+                }
+              }
 
             case SimpleItemChanged(agentRef: AgentRef) =>
               agentRegister.update(agentRef)

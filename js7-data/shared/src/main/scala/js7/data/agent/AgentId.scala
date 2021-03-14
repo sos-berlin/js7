@@ -17,6 +17,8 @@ final case class AgentId private(string: String) extends SimpleItemId
 
 object AgentId extends SimpleItemId.Companion[AgentId]
 {
+  def itemName = AgentRef.name
+
   protected def unchecked(string: String) = new AgentId(string)
 
   @javaApi

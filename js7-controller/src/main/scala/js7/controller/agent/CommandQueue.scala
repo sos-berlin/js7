@@ -147,10 +147,16 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     input match {
       case Input.AttachOrder(order, agentId, signedWorkflow) =>
         AgentCommand.AttachOrder(order, agentId, signedWorkflow.signedString)
+
       case Input.DetachOrder(orderId) =>
         AgentCommand.DetachOrder(orderId)
+
       case Input.MarkOrder(orderId, mark) =>
         AgentCommand.MarkOrder(orderId, mark)
+
+      case Input.AttachSimpleItem(item) =>
+        AgentCommand.AttachSimpleItem(item)
+
       case ReleaseEventsQueueable(untilEventId) =>
         AgentCommand.ReleaseEvents(untilEventId)
     }
@@ -173,8 +179,10 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       responses.flatMap {
         case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
           Some(input)
+
         case QueuedInputResponse(_, Right(o)) =>
           sys.error(s"Unexpected response from Agent: $o")
+
         case QueuedInputResponse(input, Left(problem)) =>
           // MarkOrder(FreshOnly) fails if order has started !!!
           logger.error(s"Agent rejected ${input.toShortString}: $problem")
@@ -199,5 +207,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
 object CommandQueue
 {
-  private[agent] final case class QueuedInputResponse(input: Queueable, response: Checked[AgentCommand.Response])
+  private[agent] final case class QueuedInputResponse(
+    input: Queueable,
+    response: Checked[AgentCommand.Response])
 }

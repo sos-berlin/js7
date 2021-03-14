@@ -25,9 +25,9 @@ final class AgentServerStateTest extends AsyncFreeSpec
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))))))
 
   "estimatedSnapshotSize" in {
-    assert(agentServerState.estimatedSnapshotSize == 3)
+    assert(agentServerState.estimatedSnapshotSize == 1)
     for (n <- agentServerState.toSnapshotObservable.countL.runToFuture)
-      yield assert(n == agentServerState.estimatedSnapshotSize - 2)
+      yield assert(n == agentServerState.estimatedSnapshotSize)
   }
 
   "toSnapshotObservable" in {

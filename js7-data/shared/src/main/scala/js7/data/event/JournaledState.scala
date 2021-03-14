@@ -64,7 +64,8 @@ object JournaledState
 {
   final case class Standards(journalState: JournalState, clusterState: ClusterState)
   {
-    def snapshotSize = 2
+    def snapshotSize =
+      journalState.estimatedSnapshotSize + clusterState.estimatedSnapshotSize
 
     def toSnapshotObservable: Observable[Any] =
       journalState.toSnapshotObservable ++
@@ -94,7 +95,10 @@ object JournaledState
       Task.defer {
         val builder = newBuilder()
         snapshotObjects.foreachL(builder.addSnapshotObject)
-          .map(_ => builder.state)
+          .map { _ =>
+            builder.onAllSnapshotsAdded()
+            builder.state
+          }
       }
 
     implicit def snapshotObjectJsonCodec: TypedJsonCodec[Any]

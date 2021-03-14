@@ -16,6 +16,7 @@ import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{Repo, VersionId, VersionedItemSigner}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
+import js7.data.ordersource.AllOrderSourcesState
 import js7.data.value.StringValue
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -89,8 +90,10 @@ private object JControllerStateTest
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    (AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7)) :: Nil).toKeyedMap(_.agentId),
+    Map(AgentId("AGENT") ->
+      AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7))),
     Map.empty,
+    AllOrderSourcesState.empty,
     Repo.empty
       .applyEvents(List(
         VersionAdded(v1),

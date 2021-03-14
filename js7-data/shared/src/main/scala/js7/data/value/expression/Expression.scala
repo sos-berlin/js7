@@ -197,6 +197,9 @@ object Expression
     }
   }
   object NamedValue {
+    def apply(name: String): NamedValue =
+      last(name)
+
     def last(name: String) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name))
     def last(name: String, default: Expression) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name), Some(default))
     def argument(name: String) = NamedValue(NamedValue.Argument, NamedValue.KeyValue(name))

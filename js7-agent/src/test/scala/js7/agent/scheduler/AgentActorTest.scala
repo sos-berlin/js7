@@ -80,7 +80,7 @@ final class AgentActorTest extends AnyFreeSpec
             historicOutcomes = TestOrder.historicOutcomes :+
               HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-")))) :+
               HistoricOutcome(Position(1), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-B-VALUE")))),
-            Some(Order.Detaching(TestAgentId))
+            attachedState = Some(Order.Detaching(TestAgentId))
           )).toSet)
 
         (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s

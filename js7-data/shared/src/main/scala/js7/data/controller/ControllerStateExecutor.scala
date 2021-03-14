@@ -4,30 +4,38 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.controller.ControllerStateExecutor._
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
+import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderForked, OrderLockEvent}
 import js7.data.order.{OrderEvent, OrderId}
-import js7.data.workflow.Workflow
+import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.collection.{View, mutable}
 
-final class ControllerStateExecutor(initialControllerState: ControllerState)
+final class ControllerStateExecutor(private var _controllerState: ControllerState)
 {
-  private var _controllerState = initialControllerState
   private val orderEventSource = liveOrderEventSource(() => _controllerState)
 
   def controllerState = _controllerState
 
-  def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[OrderCoreEvent]] = {
+  private def workflowPathToVersionId(workflowPath: WorkflowPath): Option[VersionId] =
+    _controllerState.repo.pathTo[Workflow](workflowPath).toOption.map(_.id.versionId)
+
+  def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
+  : Seq[KeyedEvent[OrderCoreEvent]] = {
     _controllerState.applyEvents(keyedEvents) match {
       case Left(problem) => scribe.error(problem.toString)  // ???
       case Right(o) => _controllerState = o
     }
     val eventOrderIds = keyedEvents.view.map(_.key).collect { case o: OrderId => o }.toSeq.distinct
-    nextOrderEvents(eventOrderIds)
+    nextOrderEventsByOrderId(eventOrderIds) ++
+      nextOrderEvents
   }
 
-  def nextOrderEvents(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] = {
+  def nextOrderEvents: Seq[KeyedEvent[OrderCoreEvent]] =
+    _controllerState.allOrderSourcesState.nextEvents(workflowPathToVersionId)
+
+  def nextOrderEventsByOrderId(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] = {
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
     val _keyedEvents = new VectorBuilder[KeyedEvent[OrderCoreEvent]]
     @tailrec def loop(): Unit = {
