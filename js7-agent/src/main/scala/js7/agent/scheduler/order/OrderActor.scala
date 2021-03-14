@@ -245,7 +245,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case _: Order.FailedInFork => become("failedInFork")(failedOrBroken)
         case _: Order.Broken     => become("broken")(failedOrBroken)
         case Order.WaitingForLock | _: Order.Awaiting | Order.Finished | Order.Cancelled | Order.Removed =>
-          sys.error(s"Order is expected to be on Controller, not on Agent: ${order.state}")   // A Finished order must be at Controller
+          sys.error(s"Order is expected to be at the Controller, not on Agent: ${order.state}")   // A Finished order must be at Controller
       }
     }
   }

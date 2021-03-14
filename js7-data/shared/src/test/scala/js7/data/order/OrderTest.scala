@@ -11,7 +11,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.lock.LockId
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, OrderEventProblem, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, IsFreshOrReady, Offering, InapplicableOrderEventProblem, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -612,11 +612,11 @@ final class OrderTest extends AnyFreeSpec
                 val maybePredicate = toPredicate.lift((event, order, a))
                 (maybeState, maybePredicate) match {
                   case (Right(state), Some(predicate)) =>
-                    assert(predicate(state), s"- for  ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
+                    assert(predicate(state), s"- for  ${templateOrder.state} state ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
                   case (Right(state), None) =>
-                    fail(s"Missing test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
+                    fail(s"Missing test case for ${templateOrder.state} state ($mString, isSuspended=$isSuspended, $aString) -> $event -> $state\n  $order")
                   case (Left(problem), Some(_)) =>
-                    fail(s"Non-matching test case for ${templateOrder.state} ($mString, isSuspended=$isSuspended, $aString) -> $event -> ?  $problem\n  $order")
+                    fail(s"Failed test case for ${templateOrder.state} state ($mString, isSuspended=$isSuspended, $aString) -> $event -> 💥 $problem\n  $order")
                   case (Left(_), None) =>
                 }
               }
@@ -679,7 +679,7 @@ final class OrderTest extends AnyFreeSpec
 
   "Error message when updated failed" in {
     assert(testOrder.applyEvent(OrderDetachable) ==
-      Left(OrderEventProblem(OrderDetachable, testOrder))) // "Order 'ID' at position 'WORKFLOW~VERSION:0' in state 'Ready', on Controller, received an inapplicable event: OrderDetachable")))
+      Left(InapplicableOrderEventProblem(OrderDetachable, testOrder))) // "Order 'ID' at position 'WORKFLOW~VERSION:0' in state 'Ready', at Controller, received an inapplicable event: OrderDetachable")))
   }
 
   if (sys.props contains "test.speed") "Speed" in {

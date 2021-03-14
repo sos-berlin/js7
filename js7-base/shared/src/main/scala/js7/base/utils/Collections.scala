@@ -3,6 +3,7 @@ package js7.base.utils
 import javax.annotation.Nullable
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.collection.{BufferedIterator, Factory, mutable}
@@ -213,7 +214,7 @@ object Collections
 
     def insert(kv: (K, V)): Checked[Map[K, V]] =
       if (underlying contains kv._1)
-        Left(DuplicateKey(kv.getClass.toString, kv._1))
+        Left(DuplicateKey(kv._1.getClass.simpleScalaName, kv._1))
       else
         Right(underlying + kv)
   }

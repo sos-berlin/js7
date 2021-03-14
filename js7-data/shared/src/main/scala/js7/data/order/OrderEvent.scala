@@ -204,7 +204,7 @@ object OrderEvent {
     def unapply(event: OrderKillMarked) = Some(event.kill)
   }
 
-  /** A OrderCancelMarked on Agent is different from same Event on Controller.
+  /** A OrderCancelMarked on Agent is different from same Event at the Controller.
     * Controller will ignore the Agent's OrderCancelMarked.
     * Controller should have emitted the event independendly.
     **/

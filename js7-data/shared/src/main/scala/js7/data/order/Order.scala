@@ -75,7 +75,7 @@ final case class Order[+S <: Order.State](
     applyEvent2(event, force = true)
 
   private def applyEvent2(event: OrderEvent.OrderCoreEvent, force: Boolean): Checked[Order[State]] = {
-    def inapplicable = Left(OrderEventProblem(event, this))
+    def inapplicable = Left(InapplicableOrderEventProblem(event, this))
 
     def check[A](okay: => Boolean, updated: A) =
       if (force || okay) Right(updated) else inapplicable
@@ -326,7 +326,7 @@ final case class Order[+S <: Order.State](
 
   def attachedStateString: String =
     attachedState match {
-      case None => "on Controller"
+      case None => "at Controller"
       case Some(Attaching(agentId)) => s"attachable to $agentId"
       case Some(Attached(agentId)) => s"attached to $agentId"
       case Some(Detaching(agentId)) => s"detaching from $agentId"
@@ -344,7 +344,7 @@ final case class Order[+S <: Order.State](
   def isDetaching: Boolean =
     attachedState.exists(_.isInstanceOf[Detaching])
 
-  /** `true` iff order is processable on Controller.. */
+  /** `true` iff order is processable at Controller.. */
   def isDetached: Boolean =
     attachedState.isEmpty
 
@@ -587,7 +587,8 @@ object Order
       }
     }
 
-  final case class OrderEventProblem(event: OrderEvent, order: Order[State]) extends Problem.Coded {
+  final case class InapplicableOrderEventProblem(event: OrderEvent, order: Order[State])
+  extends Problem.Coded {
     def arguments = Map(
       "orderId" -> order.id.string,
       "event" -> event.toString,
