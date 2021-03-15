@@ -1,11 +1,12 @@
 package js7.tests.filewatch
 
-import java.nio.file.Files.{createDirectories, createDirectory, exists}
+import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
+import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
@@ -44,7 +45,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""
+  private val pollTimeout = if (isMac) "2.5s" else "1s"
   override protected def agentConfig = config"""
+    js7.filewatch.poll-timeout = $pollTimeout
     js7.journal.remove-obsolete-files = false
     js7.job.execution.signed-script-injection-allowed = on
     """
@@ -119,11 +122,10 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
           aDirectory / "4" := ""
           await[OrderStarted](_.key == fileToOrderId("4"))
           createDirectory(bDirectory)
-          // The OrderWatch watches now the bDirectory,
-          // but the running Order points to aDirectory.
           val beforeAttached = eventWatch.lastAddedEventId
           controller.updateSimpleItemsAsSystemUser(Seq(bFileWatch)).await(99.s).orThrow
           await[SimpleItemAttached](_.event.id == orderWatchId, after = beforeAttached)
+          // The OrderWatch watches now the bDirectory, but the running Order points to aDirectory.
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == fileToOrderId("4"))
           await[OrderRemoved](_.key == fileToOrderId("4"))
@@ -152,18 +154,18 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
           await[OrderRemoved](_.key == fileToOrderId("6"), after = firstRemoved6)
           assert(!exists(bDirectory / "6"))
 
-          // TODO DELETE DIRECTORY
+          // DELETE DIRECTORY
           // The DirectoryWatch keeps observing the directory because only the name is deleted.
-          // It must periodically reestablish the watch.
-          //delete(bDirectory)
-          //sleep(3.s)
-          //createDirectory(bDirectory)
-          //bDirectory / "7" := ""
-          //await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("7"))
-          //semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
-          //await[OrderFinished](_.key == fileToOrderId("7"))
-          //await[OrderRemoved](_.key == fileToOrderId("7"))
-          //assert(!exists(bDirectory / "7"))
+          // So it periodically rereads the directory and restarts the watch.
+          delete(bDirectory)
+          sleep(500.ms)
+          createDirectory(bDirectory)
+          bDirectory / "7" := ""
+          await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("7"))
+          semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+          await[OrderFinished](_.key == fileToOrderId("7"))
+          await[OrderRemoved](_.key == fileToOrderId("7"))
+          assert(!exists(bDirectory / "7"))
 
           val client = AgentClient(agentUri = aAgent.localUri,
             directoryProvider.agents.head.userAndPassword)(aAgent.actorSystem)
@@ -173,10 +175,6 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
 
       checkControllerEvents(eventWatch.keyedEvents[Event](after = EventId.BeforeFirst))
     }
-
-    // TODO Snapshot prüfen
-    // TODO Verzeichnis löschen und wieder anlegen. FileWatchFailed event?
-    // TODO frequent SimpleItemChanged
   }
 
   private def checkControllerEvents(keyedEvents: Seq[AnyKeyedEvent]): Unit = {
@@ -261,7 +259,16 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStdoutWritten(s"Deleted $bDirectory/6\n"),
       orderId6 <-: OrderFinished,
-      orderId6 <-: OrderRemoved))
+      orderId6 <-: OrderRemoved,
+
+      orderId7 <-: OrderAdded(workflow.id,
+        Map(FileArgumentName -> StringValue(s"$bDirectory/7")),
+        None,
+        Some(ExternalOrderKey(orderWatchId, ExternalOrderName("7")))),
+      orderId7 <-: OrderStarted,
+      orderId7 <-: OrderStdoutWritten(s"Deleted $bDirectory/7\n"),
+      orderId7 <-: OrderFinished,
+      orderId7 <-: OrderRemoved))
   }
 
   private def checkAgentEvents(client: AgentClient): Unit = {
@@ -309,7 +316,11 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       // and again
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("6"),
         Map("file" -> StringValue(s"$bDirectory/6"))),
-      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("6"))))
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("6")),
+
+      orderWatchId <-: ExternalOrderArised(ExternalOrderName("7"),
+        Map("file" -> StringValue(s"$bDirectory/7"))),
+      orderWatchId <-: ExternalOrderVanished(ExternalOrderName("7"))))
   }
 }
 

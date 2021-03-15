@@ -1,11 +1,12 @@
 package js7.base.io.file.watch
 
 import com.google.common.io.MoreFiles.touch
+import java.nio.file.Files.{createDirectory, delete}
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.withTemporaryDirectory
-import js7.base.io.file.watch.DirectoryEvent.FileAdded
+import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -81,7 +82,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
 
   "observe" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
-      val options = WatchOptions(dir, Set(ENTRY_CREATE, ENTRY_DELETE), pollDuration = 99.s)
+      val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
       val buffer = mutable.Buffer[Set[DirectoryEvent]]()
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
@@ -99,9 +100,40 @@ final class DirectoryWatcherTest extends AnyFreeSpec
     }
   }
 
+  "Observing a deleted and recreated directory" in {
+    withTemporaryDirectory("DirectoryWatcherTest-") { mainDir =>
+      val dir = mainDir / "DIRECTORY"
+      val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE), pollTimeout = 100.ms)
+      val buffer = mutable.Buffer[DirectoryEvent]()
+      val subscribed = Promise[Unit]()
+      val stop = PublishSubject[Unit]()
+      val whenObserved = DirectoryWatcher.observe(DirectoryState.empty, options)
+        .doOnSubscribe(Task(subscribed.success(())))
+        .takeUntil(stop)
+        .foreach(buffer ++= _)
+      sleep(500.ms)  // Delay directory creation
+      createDirectory(dir)
+      subscribed.future await 99.s
+      assert(buffer.isEmpty)
+      touch(dir / "1")
+      waitForCondition(11.s, 10.ms)(buffer contains FileAdded(Paths.get("1")))
+      assert(buffer contains FileAdded(Paths.get("1")))
+      delete(dir / "1")
+
+      delete(dir)
+      sleep(300.ms)
+      createDirectory(dir)
+      touch(dir / "2")
+      waitForCondition(11.s, 10.ms)(buffer.contains(FileDeleted(Paths.get("1"))) && buffer.contains(FileAdded(Paths.get("2"))))
+      assert(buffer.contains(FileDeleted(Paths.get("1"))) && buffer.contains(FileAdded(Paths.get("2"))))
+      stop.onComplete()
+      whenObserved.await(99.s)
+    }
+  }
+
   "Starting observation under load" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
-      val options = WatchOptions(dir, Set(ENTRY_CREATE, ENTRY_DELETE), pollDuration = 99.s)
+      val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
       val buffer = mutable.Buffer[Seq[DirectoryEvent]]()
       val whenObserved = DirectoryWatcher.observe(DirectoryState.empty, options)
         .foreach { buffer += _ }

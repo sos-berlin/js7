@@ -32,6 +32,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
+import scala.jdk.CollectionConverters._
 
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(
@@ -39,8 +40,13 @@ final class FileWatchManager(
   config: Config)
   (implicit scheduler: Scheduler, iox: IOExecutor)
 {
-  private val pollDuration = config.getDuration("js7.filewatch.poll-duration").toFiniteDuration
-  private val watchDelay = config.getDuration("js7.filewatch.watch-delay").toFiniteDuration
+  private val retryDelays = config.getDurationList("js7.filewatch.retry-delays")
+    .asScala.map(_.toFiniteDuration).toVector match {
+    case Vector() => 1.s :: Nil
+    case o => o
+  }
+  private val pollTimeout = config.getDuration("js7.filewatch.poll-timeout").toFiniteDuration max 1.s
+  private val watchDelay = config.getDuration("js7.filewatch.watch-delay").toFiniteDuration min 0.s
   private val lockKeeper = new LockKeeper[SimpleItemId]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchId, Task[Unit]])
 
@@ -49,7 +55,7 @@ final class FileWatchManager(
       .flatMap(_.values.toVector.parUnorderedSequence)
       .map(_.unorderedFold)
 
-  def start(): Task[Unit] = {
+  def start(): Task[Unit] =
     persistence.currentState
       .map(_.allFileWatchesState)
       .map(_.idToFileWatch.values)
@@ -57,7 +63,6 @@ final class FileWatchManager(
         .toVector
         .traverse(startWatching)
         .map(_.foldMap(identity)))
-  }
 
   def update(orderWatch: FileWatch): Task[Checked[Unit]] =
     lockKeeper.lock(orderWatch.id) {
@@ -107,7 +112,8 @@ final class FileWatchManager(
           WatchOptions(
             Paths.get(fileWatch.directory),
             Set(ENTRY_CREATE, ENTRY_DELETE),
-            pollDuration = pollDuration,
+            retryDelays = retryDelays,
+            pollTimeout = pollTimeout,
             delay = watchDelay))
         .takeUntil(stop)
         .map(directoryEventsToPersistableEvents(fileWatch, _))
@@ -119,18 +125,17 @@ final class FileWatchManager(
           case Right(_) =>
         }
 
-    def loop: Task[Unit] =
-      Task.defer {
-        val since = now
-        directoryToEvents
-          .onErrorHandleWith { throwable =>
-            logger.error(throwable.toStringWithCauses)
+    Task.defer {
+      val delayIterator = retryDelays.iterator ++ Iterator.continually(retryDelays.last)
+      directoryToEvents
+        .onErrorRestartLoop(now) {
+          (throwable, since, restart) =>
+            val delay = (since + delayIterator.next()).timeLeftOrZero
+            logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
             for (t <- throwable.ifNoStackTrace) logger.debug(t.toString, t)
-            loop.delayExecution((since + DirectoryWatcher.hotLoopBrake).elapsedOrZero)
-          }
-      }
-
-    loop
+            Task.sleep(delay) >> restart(now)
+        }
+    }
   }
 
   private def directoryEventsToPersistableEvents(

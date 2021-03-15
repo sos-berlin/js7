@@ -2,15 +2,15 @@ package js7.base.io.file.watch
 
 import cats.Show
 import cats.effect.{ExitCase, Resource}
-import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
+import java.io.IOException
+import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
 import java.util.concurrent.TimeUnit.MILLISECONDS
-import js7.base.io.file.watch.DirectoryWatchEvent.DirectoryWatchOverflow
 import js7.base.io.file.watch.BasicDirectoryWatcher._
+import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor
-import js7.base.time.ScalaTime.{RichDeadline, RichDuration}
-import js7.base.utils.AutoClosing.closeOnError
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowable}
 import monix.eval.Task
 import monix.reactive.Observable
@@ -21,20 +21,13 @@ import scala.util.control.NonFatal
 final class BasicDirectoryWatcher(options: WatchOptions)(implicit iox: IOExecutor)
 extends AutoCloseable
 {
-  import options.{directory, kinds, pollDuration}
+  import options.{directory, kinds, pollTimeout}
 
-  // TODO Use a single thread (or single poll) for all directories of the same file system!
+  // TODO Use a single WatchService with central polling for all directories, any occupy only one thread!
   private val watchService = directory.getFileSystem.newWatchService()
-  @volatile private var canceled = false
-
-  closeOnError(watchService) {
-    logger.debug(s"register watchService $kinds, ${highSensitivity.mkString(",")}")
-    directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[_]], highSensitivity: _*)
-  }
 
   def stop(canceled: Boolean = false): Task[Unit] =
     Task {
-      this.canceled |= canceled
       close()
     }
 
@@ -43,22 +36,35 @@ extends AutoCloseable
     watchService.close()
   }
 
-  private[watch] def observe: Observable[Seq[DirectoryEvent]] =
-    (true +: Observable.repeat(false))
-      .map(isFirst => poll
-        .pipeIf(!isFirst)(_.delayExecution(options.delay)/*collect more events per context switch*/))
-      .flatMap(Observable.fromTask)
-      .takeWhile(events => !events.contains(DirectoryWatchOverflow))
-      .map(_.asInstanceOf[Seq[DirectoryEvent]])
-      .onErrorRecoverWith {
-        case _: ClosedWatchServiceException => Observable.empty
-      }
+  private[watch] def startObservable: Resource[Task, Observable[Seq[DirectoryEvent]]] =
+    directoryWatchResource.map(_ => Observable.defer {
+      @volatile var canceled = false
+      (true +: Observable.repeat(false))
+        .doOnSubscriptionCancel(Task { canceled = true })
+        .map(isFirst => poll(canceled)
+          .pipeIf(!isFirst)(_.delayExecution(options.delay)/*collect more events per context switch*/))
+        .flatMap(Observable.fromTask)
+        .takeWhile(events => !events.contains(Overflow))
+        .map(_.asInstanceOf[Seq[DirectoryEvent]])
+        .onErrorRecoverWith {
+          case _: ClosedWatchServiceException => Observable.empty
+        }
+    })
 
-  private val poll: Task[Seq[DirectoryWatchEvent]] =
+  private def directoryWatchResource: Resource[Task, WatchKey] =
+    Resource.make(
+      repeatWhileIOException(options, Task {
+        logger.debug(s"register watchService $kinds, ${highSensitivity.mkString(",")}")
+        directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[_]], highSensitivity: _*)
+      })
+    )(release = watchKey => Task(
+      watchKey.cancel()))
+
+  private def poll(canceled: => Boolean): Task[Seq[DirectoryWatchEvent]] =
     Task.defer {
       lazy val msg = s"Blocking '${Thread.currentThread.getName}' thread for '$directory' ..."
-      val since = now
       logger.trace(msg)
+      val since = now
       try {
         val events = pollWatchKey()
         logger.trace(s"$msg ${since.elapsed.pretty} => ${events.mkString(", ")}")
@@ -71,7 +77,7 @@ extends AutoCloseable
     }.executeOn(iox.scheduler)
 
   private def pollWatchKey(): Seq[DirectoryWatchEvent] =
-    watchService.poll(pollDuration.toMillis, MILLISECONDS) match {
+    watchService.poll(pollTimeout.toMillis, MILLISECONDS) match {
       case null => Nil
       case watchKey =>
         try watchKey.pollEvents().asScala.view
@@ -107,4 +113,19 @@ object BasicDirectoryWatcher
 
   private implicit val watchEventShow: Show[WatchEvent[_]] = e =>
     s"${e.kind.name} ${e.count}× ${e.context}"
+
+  def repeatWhileIOException[A](options: WatchOptions, task: Task[A]): Task[A] =
+    Task.defer {
+      val delayIterator = options.retryDelays.iterator ++ Iterator.continually(options.retryDelays.last)
+      task
+        .onErrorRestartLoop(now) {
+          case (t @ (_: IOException | _: NotDirectoryException), since, restart) =>
+            Task.defer {
+              val delay = (since + delayIterator.next()).timeLeftOrZero
+              logger.warn(s"${options.directory}: delay ${delay.pretty} after error: ${t.toStringWithCauses} ")
+              Task.sleep(delay) >> restart(now)
+            }
+          case (t, _, _) => Task.raiseError(t)
+        }
+    }
 }

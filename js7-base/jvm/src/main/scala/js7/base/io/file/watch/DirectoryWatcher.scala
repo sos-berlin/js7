@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import js7.base.io.file.watch.BasicDirectoryWatcher.repeatWhileIOException
 import js7.base.io.file.watch.DirectoryWatcher.hotLoopBrake
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.thread.IOExecutor
@@ -31,7 +32,11 @@ private final class DirectoryWatcher(
     Observable
       .fromTask(readDirectory map state.diffTo)
       .filter(_.nonEmpty)
-      .appendAll(directoryEventObservable)
+      .appendAll(directoryEventObservable
+        // BasicDirectoryWatch yield Nil when poll() timed out.
+        // Then we end, allowing the caller to restart and
+        // to handle an exchanged directory.
+        .takeWhile(_.nonEmpty))
       .scan(state -> Seq.empty[DirectoryEvent])((pair, events) =>
         pair._1.applyAndReduceEvents(events).swap)
       .map(_.swap)
@@ -47,13 +52,18 @@ object DirectoryWatcher
     Observable
       .fromResource(
         BasicDirectoryWatcher.resource(options))
-      .flatMap { simpleWatcher =>
+      .flatMap { basicWatcher =>
+        import options.directory
         // BasicDirectoryWatcher has been started before reading directory,
         // so that no directory change will be overlooked.
         // TODO Race condition when a file is added or deleted now?
-        val readDirectory = ioTask(DirectoryState.readDirectory(options.directory))
-        new DirectoryWatcher(readDirectory, simpleWatcher.observe)
-          .readDirectoryAndObserveForever(state)
-          .map(_._1)
+        val readDirectory = repeatWhileIOException(
+          options,
+          ioTask(DirectoryState.readDirectory(directory)))
+        Observable.fromResource(basicWatcher.startObservable)
+          .flatMap(observable =>
+            new DirectoryWatcher(readDirectory, observable)
+              .readDirectoryAndObserveForever(state)
+              .map(_._1))
       }
 }
