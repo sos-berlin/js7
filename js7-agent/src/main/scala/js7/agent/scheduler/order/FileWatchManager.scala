@@ -132,7 +132,7 @@ final class FileWatchManager(
           (throwable, since, restart) =>
             val delay = (since + delayIterator.next()).timeLeftOrZero
             logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
-            for (t <- throwable.ifNoStackTrace) logger.debug(t.toString, t)
+            for (t <- throwable.ifStackTrace) logger.debug(t.toString, t)
             Task.sleep(delay) >> restart(now)
         }
     }

@@ -40,7 +40,7 @@ trait ExceptionHandling
       case e: ProblemException =>
         // TODO Better use Checked instead of ProblemException
         extractRequest { request =>
-          for (t <- e.ifNoStackTrace) webLogger.debug(toLogMessage(request, e), t)
+          for (t <- e.ifStackTrace) webLogger.debug(toLogMessage(request, e), t)
           complete(e.problem.httpStatusCode -> e.problem)
         }
 

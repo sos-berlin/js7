@@ -188,7 +188,7 @@ object ScalaUtils
       def nullIfNoStackTrace: Throwable =
         if (throwable.getStackTrace.isEmpty) null else throwable
 
-      def ifNoStackTrace: Option[Throwable] =
+      def ifStackTrace: Option[Throwable] =
         Option(nullIfNoStackTrace)
 
       def dropTopMethodsFromStackTrace(methodName: String): A = {
