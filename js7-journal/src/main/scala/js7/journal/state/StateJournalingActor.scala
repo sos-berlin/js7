@@ -29,23 +29,24 @@ extends MainJournalingActor[S, E]
 
   override def preStart() = {
     super.preStart()
-    persistPromise.success(stateToEvent => persistStateToEvents(stateToEvent))
+    persistPromise.success((stateToEvent, transaction) => persistStateToEvents(stateToEvent, transaction))
   }
 
-  private def persistStateToEvents(stateToEvents: StateToEvents[S, E]): Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+  private def persistStateToEvents(stateToEvents: StateToEvents[S, E], transaction: Boolean)
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     promiseTask[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] { promise =>
-      self ! Persist(stateToEvents, promise)
+      self ! Persist(stateToEvents, promise, transaction)
     }
 
   def receive = {
-    case Persist(stateToEvent, promise) =>
+    case Persist(stateToEvent, promise, transaction) =>
       val tried = Try(stateToEvent(state).flatMap(keyedEvent => state.applyEvents(keyedEvent).map(_ => keyedEvent)))
       tried match {
         case Failure(t) => promise.failure(t)
         case Success(Left(problem)) => promise.success(Left(problem))
         case Success(Right(keyedEvents)) =>
           promise.completeWith(
-            persistKeyedEvents(toTimestamped(keyedEvents), transaction = true, async = true) { (stampedKeyedEvents, journaledState) =>
+            persistKeyedEvents(toTimestamped(keyedEvents), transaction = transaction, async = true) { (stampedKeyedEvents, journaledState) =>
               val updated = applyPersistedEvents(stampedKeyedEvents)
               state = updated
               Right(stampedKeyedEvents -> updated)
@@ -58,13 +59,18 @@ extends MainJournalingActor[S, E]
 
   override lazy val toString = s"StateJournalingActor[${S.tpe.toString.replaceAll("""^.*\.""", "")}]"
 
-  private case class Persist(stateToEvents: StateToEvents[S, E], promise: Promise[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]])
+  private case class Persist(
+    stateToEvents: StateToEvents[S, E],
+    promise: Promise[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]],
+    transaction: Boolean)
 }
 
 private[state] object StateJournalingActor
 {
   type StateToEvents[S <: JournaledState[S], E <: Event] = S => Checked[Seq[KeyedEvent[E]]]
-  type PersistFunction[S <: JournaledState[S], E <: Event] = StateToEvents[S, E] => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
+  type PersistFunction[S <: JournaledState[S], E <: Event] =
+    (StateToEvents[S, E], /*transaction:*/Boolean) =>
+      Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   def props[S <: JournaledState[S], E <: Event](
     initialState: S,

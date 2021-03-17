@@ -73,11 +73,10 @@ final class FileWatchManager(
   def update(orderWatch: FileWatch): Task[Checked[Unit]] =
     lockKeeper.lock(orderWatch.id) {
       persistence
-        // TODO No Transaction required here
-        .persistTransaction[SimpleItemAttachedToAgent](NoKey)(agentState =>
+        .persist(agentState =>
           Right(
             !agentState.allFileWatchesState.contains(orderWatch) thenList
-              SimpleItemAttachedToAgent(orderWatch)))
+              NoKey <-: SimpleItemAttachedToAgent(orderWatch)))
         .flatMapT { case (_, agentState) =>
           startWatching(agentState.allFileWatchesState.idToFileWatch(orderWatch.id))
             .map(Right(_))
@@ -127,8 +126,7 @@ final class FileWatchManager(
         .takeUntil(stop)
         .map(directoryEventsToPersistableEvents(fileWatch, _))
         .mapEval(events =>
-          // TODO Transaction not required
-          persistence.persistTransaction[OrderWatchEvent](fileWatch.id)(_ => Right(events)))
+          persistence.persist(_ => Right(events.map(fileWatch.id <-: _))))
         .foreachL {
           case Left(problem) => logger.error(problem.toString)
           case Right((_, agentState)) =>

@@ -61,27 +61,34 @@ extends AutoCloseable
 
   private def persistEventUnlocked[E <: Event](stateToEvent: S => Checked[KeyedEvent[E]]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistTask.flatMap(
-      _(state => stateToEvent(state).map(_ :: Nil))
+      _(state => stateToEvent(state).map(_ :: Nil), /*transaction=*/false)
     ).map(_ map {
       case (stampedKeyedEvents, state) =>
         assertThat(stampedKeyedEvents.lengthIs == 1)
         stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
     })
 
+  def persist[E <: Event]: (S => Checked[Seq[KeyedEvent[E]]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
+    requireStarted()
+    stateToEvents => persistUnlocked(stateToEvents, transaction = false)
+  }
+
   /** Persist multiple events in a transaction. */
   def persistTransaction[E <: Event](key: E#Key): (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     stateToEvents =>
       lock(key)(
-        persistTransactionUnlocked(state =>
-          stateToEvents(state)
-            .map(_.map(KeyedEvent[E](key, _)))))
+        persistUnlocked(
+          state => stateToEvents(state)
+            .map(_.map(KeyedEvent[E](key, _))),
+          transaction = true))
   }
 
-  private def persistTransactionUnlocked[E <: Event](stateToEvents: StateToEvents[S, E]): Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
+  private def persistUnlocked[E <: Event](stateToEvents: StateToEvents[S, E], transaction: Boolean)
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     persistTask.flatMap(
-      _(stateToEvents)
+      _(stateToEvents, transaction)
         .map(_.map { case (stampedKeyedEvents, state) =>
           stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
   }
