@@ -9,6 +9,6 @@ final class CommandLineEvaluator(evaluator: Evaluator)
 {
   def eval(commandLineExpression: CommandLineExpression): Checked[CommandLine] =
     commandLineExpression.expressions
-      .traverse(expr => evaluator.eval(expr).flatMap(_.toStringValue).map(_.string))
+      .traverse(expr => evaluator.eval(expr).map(_.convertToString))
       .flatMap(CommandLine.checked)
 }

@@ -136,7 +136,7 @@ extends Actor with Stash
 
   private def evalEnv(evaluator: Evaluator, envExpr: ObjectExpression): Checked[Map[String, String]] =
     evaluator.evalObjectExpression(envExpr)
-      .flatMap(_.nameToValue.toVector.traverse { case (k, v) => v.toStringValue.map(k -> _.string) })
+      .flatMap(_.nameToValue.toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
       .map(_.toMap)
 
   private def warnIfNotExecutable(file: Path): Unit =

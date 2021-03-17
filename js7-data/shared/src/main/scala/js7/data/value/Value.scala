@@ -19,7 +19,11 @@ sealed trait Value
 {
   def valueType: ValueType
 
-  def toStringValue: Checked[StringValue]
+  final def toStringValueString: Checked[String] =
+    toStringValue.map(_.string)
+
+  def toStringValue: Checked[StringValue] =
+    Left(InvalidExpressionTypeProblem(NumberValue, this))
 
   def toNumber: Checked[NumberValue] =
     Left(InvalidExpressionTypeProblem(NumberValue, this))
@@ -104,7 +108,7 @@ final case class StringValue(string: String) extends Value
 {
   def valueType = StringValue
 
-  def toStringValue = Right(this)
+  override def toStringValue = Right(this)
 
   override def toNumber =
     try Right(NumberValue(BigDecimal(string)))
@@ -133,7 +137,7 @@ final case class NumberValue(number: BigDecimal) extends Value
 {
   def valueType = NumberValue
 
-  def toStringValue = Right(StringValue(number.toString))
+  override def toStringValue = Right(StringValue(number.toString))
 
   override def toNumber = Right(this)
 
@@ -186,7 +190,7 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
 
   def toJava = java.lang.Boolean.valueOf(booleanValue)
 
-  def toStringValue = Right(StringValue(convertToString))
+  override def toStringValue = Right(StringValue(convertToString))
 
   def convertToString = booleanValue.toString
 
@@ -210,8 +214,6 @@ final case class ListValue(list: Seq[Value]) extends Value
 
   def toJava = list.asJava
 
-  def toStringValue = Right(StringValue(convertToString))
-
   def convertToString = list.mkString("[", ", ", "]")
 
   override def toString = convertToString
@@ -230,8 +232,6 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
   def valueType = ObjectValue
 
   override def toObject = Right(this)
-
-  def toStringValue = Right(StringValue(convertToString))
 
   def toJava = ???
 

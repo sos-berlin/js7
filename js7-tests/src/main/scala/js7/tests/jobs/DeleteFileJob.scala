@@ -23,7 +23,7 @@ final class DeleteFileJob extends InternalJob
     OrderProcess(
       orderContext.arguments.checked("file")
         .orElse(orderContext.order.arguments.checked(FileArgumentName))
-        .map(_.convertToString)
+        .flatMap(_.toStringValueString)
         .map(Paths.get(_))
         .traverse(deleteFile(_, orderContext.out))
         .rightAs(Result(NamedValues.empty)))
