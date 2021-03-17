@@ -32,6 +32,10 @@ extends JJsonable[JAgentRef] with JSimpleItem
 object JAgentRef extends JJsonable.Companion[JAgentRef]
 {
   @Nonnull
+  def of(@Nonnull id: AgentId, @Nonnull uri: Uri) =
+    JAgentRef(AgentRef(id, uri))
+
+  @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JAgentRef] =
     super.fromJson(jsonString)
 
