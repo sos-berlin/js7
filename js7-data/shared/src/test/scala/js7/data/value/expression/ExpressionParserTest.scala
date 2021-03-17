@@ -196,6 +196,22 @@ final class ExpressionParserTest extends AnyFreeSpec
       NamedValue.last("result"),
       StringConstant("A.*")))
 
+  "FunctionCall" - {
+    testExpression("myFunction()", FunctionCall("myFunction"))
+    testExpression("myFunction(1)", FunctionCall("myFunction", Seq(Argument(NumericConstant(1)))))
+    testExpression("myFunction(named=1, 'STRING')",
+      FunctionCall(
+        "myFunction",
+        Seq(
+          Argument(NumericConstant(1), Some("named")),
+          Argument(StringConstant("STRING")))))
+    testExpression("myFunction(nested())",
+      FunctionCall(
+        "myFunction",
+        Seq(
+          Argument(FunctionCall("nested")))))
+  }
+
   "Unknown numeric function" in {
     def parser[_: P] = expression ~ End
     assert(checkedParse(""""123".toNumber""", parser(_)) ==

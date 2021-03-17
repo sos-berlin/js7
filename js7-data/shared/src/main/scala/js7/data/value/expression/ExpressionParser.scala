@@ -7,6 +7,7 @@ import js7.data.parser.BasicParsers
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
+import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 import js7.data.workflow.instructions.executable.WorkflowJob
 
 /**
@@ -114,6 +115,14 @@ object ExpressionParser
         default <- kv.get[Expression]("default")
       } yield NamedValue(where, NamedValue.KeyValue(key), default)))
 
+  private def functionCall[_: P] = P[FunctionCall](
+    (identifier ~/ w ~/ inParentheses(commaSequence((identifier ~ w ~ "=").? ~ w ~ expression)))
+      .map { case (name, arguments) =>
+        FunctionCall(
+          name,
+          arguments.map { case (maybeName, expr) => Argument(expr, maybeName) })
+      })
+
   private def namedValueKeyValue[_: P] = P[(String, Any)](
     keyValueConvert("label", identifier)(o => Right(NamedValue.ByLabel(o))) |
     keyValueConvert("job", identifier)(o => Right(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
@@ -122,7 +131,8 @@ object ExpressionParser
   private def factorOnly[_: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | dollarNamedValue |
-      catchCount | argumentFunctionCall | variableFunctionCall)
+      catchCount | argumentFunctionCall | variableFunctionCall |
+      functionCall)
 
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {

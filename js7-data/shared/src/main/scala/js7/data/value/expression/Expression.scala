@@ -217,9 +217,9 @@ object Expression
     def last(name: String, default: Expression) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name), Some(default))
     def argument(name: String) = NamedValue(NamedValue.Argument, NamedValue.KeyValue(name))
 
-    def isSimpleName(name: String) = isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
-    def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
-    def isSimpleNamePart(c: Char) = isUnicodeIdentifierPart(c)
+    private[Expression] def isSimpleName(name: String) = name.nonEmpty && isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
+    private[expression] def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
+    private[expression] def isSimpleNamePart(c: Char) = isUnicodeIdentifierPart(c)
 
     sealed trait Where
     case object LastOccurred extends Where
@@ -233,6 +233,16 @@ object Expression
     object KeyValue {
       def apply(key: String) = new KeyValue(StringConstant(key))
     }
+  }
+
+  final case class FunctionCall(name: String, arguments: Seq[Argument] = Nil)
+  extends Expression {
+    protected def precedence = Precedence.Factor
+    override def toString = s"$name(${arguments.mkString(", ")})"
+  }
+
+  final case class Argument(expression: Expression, maybeName: Option[String] = None) {
+    override def toString = maybeName.fold("")(_ + "=") + expression
   }
 
   val LastReturnCode: NamedValue = NamedValue.last("returnCode")

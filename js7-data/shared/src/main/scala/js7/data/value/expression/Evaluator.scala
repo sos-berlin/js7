@@ -77,8 +77,13 @@ final class Evaluator(scope: Scope)
 
       case StripMargin(a) => evalString(a).map(o => StringValue(o.string.stripMargin))
 
+      case call: FunctionCall => evalFunctionCall(call)
+
       case _ => Left(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
+
+  private def evalFunctionCall(functionCall: Expression.FunctionCall): Checked[Value] =
+    scope.evalFunctionCall(functionCall)
 
   private def evalListExpression(expr: ListExpression): Checked[ListValue] =
     expr.expressions.traverse(eval).map(ListValue.apply)

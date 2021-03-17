@@ -22,11 +22,14 @@ final class EvaluatorTest extends AnyFreeSpec
   "NamedValue expressions" - {
     implicit val evaluator = new Evaluator(
       new Scope {
+        import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
+        import ValueSearch.{LastExecuted, Name}
+
         private val symbols = Map[String, Value]("catchCount" -> NumberValue(3))
         val symbolToValue = name => symbols.checked(name)
 
         val findValue = {
-          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
+          case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
             Right(
               Map(
                 "ASTRING" -> StringValue("AA"),
@@ -34,25 +37,38 @@ final class EvaluatorTest extends AnyFreeSpec
                 "ABOOLEAN" -> BooleanValue(true),
                 "returnCode" -> NumberValue(1)
               ).get(name))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByPrefix("PREFIX")), ValueSearch.Name(name)) =>
+
+          case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
             Right(Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply)
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByLabel(Label("LABEL"))), ValueSearch.Name(name)) =>
+
+          case ValueSearch(LastExecuted(ByLabel(Label("LABEL"))), Name(name)) =>
             Right(
               Map(
                 "KEY" -> StringValue("LABEL-VALUE"),
                 "returnCode" -> NumberValue(2)
               ).get(name))
-          case ValueSearch(ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(WorkflowJob.Name("JOB"))), ValueSearch.Name(name)) =>
+
+          case ValueSearch(LastExecuted(ByWorkflowJob(WorkflowJob.Name("JOB"))), Name(name)) =>
             Right(
               Map(
                 "KEY" -> StringValue("JOB-VALUE"),
                 "returnCode" -> NumberValue(3)
               ).get(name))
-          case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
+
+          case ValueSearch(ValueSearch.Argument, Name(name)) =>
             Right(Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply)
+
           case o =>
             Left(Problem(s"UNEXPECTED CASE: $o"))
         }
+
+        override def evalFunctionCall(functionCall: FunctionCall): Checked[Value] =
+          functionCall match {
+            case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
+             evaluator.eval(expr).flatMap(_.toNumber).map(o => NumberValue(o.number * 3))
+
+            case _ => super.evalFunctionCall(functionCall)
+          }
       })
     val eval = evaluator.eval _
     val booleanError: BooleanExpression = LessThan(ToNumber(StringConstant("X")), NumericConstant(7))
@@ -291,6 +307,9 @@ final class EvaluatorTest extends AnyFreeSpec
       Right(
         In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
 
+    testEval(""" myFunction(7) """,
+      result = 21,
+      Right(FunctionCall("myFunction", Seq(Argument(NumericConstant(7))))))
 
     "objectExpression" in {
       val expr = ObjectExpression(Map(

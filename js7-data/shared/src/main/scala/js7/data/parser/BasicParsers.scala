@@ -196,13 +196,13 @@ object BasicParsers
   def inParentheses[A](parser: => P[A])(implicit ctx: P[_]) = P[A](
     h ~ "(" ~ w ~/ parser ~ w ~ ")")
 
-  def bracketCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
+  def bracketCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[Seq[A]](
     "[" ~ w ~/ commaSequence(parser) ~ w ~ "]")
 
-  def commaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
+  def commaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[Seq[A]](
     nonEmptyCommaSequence(parser).?.map(_ getOrElse Nil))
 
-  def nonEmptyCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[collection.Seq[A]](
+  def nonEmptyCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[Seq[A]](
     parser ~ (comma ~/ parser).rep map {
       case (head, tail) => head +: tail
     })

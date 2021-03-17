@@ -2,6 +2,7 @@ package js7.data.value.expression
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.checkedCast
+import js7.data.value.expression.Expression.FunctionCall
 import js7.data.value.{NumberValue, Value}
 
 /**
@@ -9,7 +10,7 @@ import js7.data.value.{NumberValue, Value}
   */
 trait Scope
 {
-  private lazy val evaluator = new Evaluator(this)
+  protected final lazy val evaluator = new Evaluator(this)
 
   val symbolToValue: String => Checked[Value]
 
@@ -20,6 +21,9 @@ trait Scope
 
   final def evalString(expression: Expression): Checked[String] =
     evaluator.evalString(expression).map(_.string)
+
+  def evalFunctionCall(functionCall: FunctionCall): Checked[Value] =
+    Left(Problem(s"Unknown function: ${functionCall.name}"))
 
   def variable(name: String): Checked[Option[Value]] =
     findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
