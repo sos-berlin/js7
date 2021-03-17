@@ -3,6 +3,7 @@ package js7.data.orderwatch
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.event.Event
+import js7.data.order.OrderId
 import js7.data.value.NamedValues
 
 sealed trait OrderWatchEvent extends Event
@@ -17,6 +18,7 @@ object OrderWatchEvent
   /** External Order arised, Controller is expected to add it. */
   final case class ExternalOrderArised(
     externalOrderName: ExternalOrderName,
+    orderId: OrderId,
     arguments: NamedValues = Map.empty)
   extends OrderWatchEvent
 

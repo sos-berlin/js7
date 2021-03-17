@@ -17,7 +17,7 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModifi
 import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
@@ -108,10 +108,13 @@ final class FileWatchManager(
     }
 
   private def watch(fileWatchState: FileWatchState, stop: Observable[Unit])
-  : Task[Unit] = {
-    import fileWatchState.{directoryState, fileWatch}
+  : Task[Unit] =
+    Task.defer {
+      import fileWatchState.fileWatch
 
-    val directoryToEvents =
+      val delayIterator = retryDelays.iterator ++ Iterator.continually(retryDelays.last)
+      var directoryState = fileWatchState.directoryState
+
       DirectoryWatcher
         .observe(
           directoryState,
@@ -128,12 +131,9 @@ final class FileWatchManager(
           persistence.persistTransaction[OrderWatchEvent](fileWatch.id)(_ => Right(events)))
         .foreachL {
           case Left(problem) => logger.error(problem.toString)
-          case Right(_) =>
+          case Right((_, agentState)) =>
+            directoryState = agentState.allFileWatchesState.idToFileWatch(fileWatch.id).directoryState
         }
-
-    Task.defer {
-      val delayIterator = retryDelays.iterator ++ Iterator.continually(retryDelays.last)
-      directoryToEvents
         .onErrorRestartLoop(now) {
           (throwable, since, restart) =>
             val delay = (since + delayIterator.next()).timeLeftOrZero
@@ -141,23 +141,34 @@ final class FileWatchManager(
             for (t <- throwable.ifStackTrace) logger.debug(t.toString, t)
             Task.sleep(delay) >> restart(now)
         }
-    }
   }
 
   private def directoryEventsToPersistableEvents(
-    filewatch: FileWatch,
+    fileWatch: FileWatch,
     directoryEvents: Seq[DirectoryEvent])
   : Seq[OrderWatchEvent] = {
-    val directory = Paths.get(filewatch.directory)
-    directoryEvents.flatMap {
-      case FileAdded(path) =>
-        ExternalOrderArised(ExternalOrderName(path.toString), toOrderArguments(directory, path)) :: Nil
+    val directory = Paths.get(fileWatch.directory)
+    directoryEvents.flatMap { directoryEvent =>
+      val relativePath = directoryEvent.relativePath.toString
+      relativePathToOrderId(fileWatch, relativePath)
+        .flatMap { checkedOrderId =>
+          for (problem <- checkedOrderId.left) logger.error(s"${fileWatch.id} $relativePath: $problem")
+          checkedOrderId.toOption
+        }
+        .map(orderId =>
+          directoryEvent match {
+            case FileAdded(path) =>
+              ExternalOrderArised(
+                ExternalOrderName(path.toString),
+                orderId,
+                toOrderArguments(directory, path))
 
-      case FileDeleted(path) =>
-        ExternalOrderVanished(ExternalOrderName(path.toString)) :: Nil
+            case FileDeleted(path) =>
+              ExternalOrderVanished(ExternalOrderName(path.toString))
 
-      case FileModified(_) =>
-        sys.error("Unexpected FileModified")
+            case FileModified(_) =>
+              sys.error("Unexpected FileModified")
+          })
     }
   }
 
@@ -167,5 +178,69 @@ final class FileWatchManager(
 
 object FileWatchManager
 {
+  private val NumberRegex = "([0-9]+)".r
   private val logger = Logger(getClass)
+
+  def relativePathToOrderId(fileWatch: FileWatch, relativePath: String)
+  : Option[Checked[OrderId]] = {
+    lazy val default = OrderId.checked(s"file:${fileWatch.id.string}:$relativePath")
+    fileWatch.pattern match {
+      case None =>
+        Some(default)
+      case Some(pattern) =>
+        val matcher = pattern.matcher(relativePath)
+        matcher.matches() ? {
+          fileWatch.orderIdExpression match {
+            case None => default
+            case Some(expr) =>
+              eval(fileWatch.id, expr, matcher)
+                .flatMap(_.toStringValueString)
+                .flatMap(OrderId.checked)
+          }
+        }
+    }
+  }
+
+  private def eval(orderWatchId: OrderWatchId, expression: Expression, matcher: Matcher) =
+    Evaluator.eval(expression, new FileWatchScope(orderWatchId, matcher))
+
+  private final class FileWatchScope(orderWatchId: OrderWatchId, matcher: Matcher) extends Scope {
+    import ValueSearch.{LastOccurred, Name}
+
+    val symbolToValue = symbol => Left(Problem(s"Unknown symbol: $symbol"))
+
+    val findValue = {
+      case ValueSearch(LastOccurred, Name("yyyy-mm-dd")) =>
+        Right(Some(StringValue(LocalDate.now.toString)))
+
+      case ValueSearch(LastOccurred, Name("orderWatchId")) =>
+        Right(Some(StringValue(orderWatchId.string)))
+
+      case ValueSearch(LastOccurred, Name(NumberRegex(nr))) =>
+        Checked.catchNonFatal(nr.toInt).flatMap(index =>
+          if (index < 0 || index > matcher.groupCount)
+            Left(Problem(s"Unknown index in regular expression group: $index"))
+          else
+            Right(Some(StringValue(matcher.group(index)))))
+
+      case _ => Right(None)
+    }
+
+    override def evalFunctionCall(functionCall: Expression.FunctionCall): Checked[Value] =
+      functionCall match {
+        case FunctionCall("now", Seq(
+          Argument(formatExpr, None | Some("format")),
+          Argument(timezoneExpr, None | Some("timezone")))) =>
+          for {
+            format <- evaluator.eval(formatExpr).flatMap(_.toStringValueString)
+            timezone <- evaluator.eval(timezoneExpr).flatMap(_.toStringValueString)
+          } yield
+            StringValue(
+              ZonedDateTime.now
+                .withZoneSameInstant(ZoneId.of(timezone))
+                .format(DateTimeFormatter.ofPattern(format)))
+
+        case _ => super.evalFunctionCall(functionCall)
+      }
+  }
 }

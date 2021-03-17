@@ -3,6 +3,7 @@ package js7.tests.filewatch
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
+import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
@@ -55,25 +56,25 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
   private val aDirectory = directoryProvider.agents(0).dataDir / "tmp/a-files"
   private val bDirectory = directoryProvider.agents(0).dataDir / "tmp/b-files"
 
-  val orderWatchId = OrderWatchId("TEST-SOURCE")
+  val orderWatchId = OrderWatchId("FILE-WATCH")
+
   private lazy val aFileWatch = FileWatch(
     orderWatchId,
     workflow.path,
     aAgentId,
     aDirectory.toString)
-  private lazy val bFileWatch = aFileWatch.copy(
-    directory = bDirectory.toString)
-
-  private val orderId1 = OrderId("FileWatch:TEST-SOURCE:1")
-  private val orderId2 = OrderId("FileWatch:TEST-SOURCE:2")
-  private val orderId3 = OrderId("FileWatch:TEST-SOURCE:3")
-  private val orderId4 = OrderId("FileWatch:TEST-SOURCE:4")
-  private val orderId5 = OrderId("FileWatch:TEST-SOURCE:5")
-  private val orderId6 = OrderId("FileWatch:TEST-SOURCE:6")
-  private val orderId7 = OrderId("FileWatch:TEST-SOURCE:7")
+  private lazy val bFileWatch = aFileWatch.copy(directory = bDirectory.toString)
 
   private def fileToOrderId(filename: String): OrderId =
-    aFileWatch.generateOrderId(ExternalOrderName(filename)).orThrow
+    FileWatchManager.relativePathToOrderId(aFileWatch, filename).get.orThrow
+
+  private val orderId1 = OrderId("file:FILE-WATCH:1")
+  private val orderId2 = OrderId("file:FILE-WATCH:2")
+  private val orderId3 = OrderId("file:FILE-WATCH:3")
+  private val orderId4 = OrderId("file:FILE-WATCH:4")
+  private val orderId5 = OrderId("file:FILE-WATCH:5")
+  private val orderId6 = OrderId("file:FILE-WATCH:6")
+  private val orderId7 = OrderId("file:FILE-WATCH:7")
 
   "Start with some files" in {
     createDirectories(aDirectory)
@@ -289,36 +290,44 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       NoKey <-: SimpleItemAttachedToAgent(aFileWatch),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("1"),
+        OrderId("file:FILE-WATCH:1"),
         Map("file" -> StringValue(s"$aDirectory/1"))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("1")),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("2"),
+        OrderId("file:FILE-WATCH:2"),
         Map("file" -> StringValue(s"$aDirectory/2"))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("2")),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("3"),
+        OrderId("file:FILE-WATCH:3"),
         Map("file" -> StringValue(s"$aDirectory/3"))),
       NoKey <-: AgentReadyForController("UTC", 1.s),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("3")),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("4"),
+        OrderId("file:FILE-WATCH:4"),
         Map("file" -> StringValue(s"$aDirectory/4"))),
       NoKey <-: SimpleItemAttachedToAgent(bFileWatch.copy(itemRevision = ItemRevision(1))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("4")),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("5"),
+        OrderId("file:FILE-WATCH:5"),
         Map("file" -> StringValue(s"$bDirectory/5"))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("5")),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("6"),
+        OrderId("file:FILE-WATCH:6"),
         Map("file" -> StringValue(s"$bDirectory/6"))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("6")),
       // and again
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("6"),
+        OrderId("file:FILE-WATCH:6"),
         Map("file" -> StringValue(s"$bDirectory/6"))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("6")),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("7"),
+        OrderId("file:FILE-WATCH:7"),
         Map("file" -> StringValue(s"$bDirectory/7"))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("7"))))
   }

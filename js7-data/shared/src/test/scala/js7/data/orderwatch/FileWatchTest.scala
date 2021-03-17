@@ -2,7 +2,9 @@ package js7.data.orderwatch
 
 import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentId
+import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -13,7 +15,9 @@ final class FileWatchTest extends AnyFreeSpec
     testJson[OrderWatch](
       FileWatch(
         OrderWatchId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "/DIRECTORY",
-        Some(Pattern.compile("[a-z]+.csv"))
+        Some(Pattern.compile("[a-z]+.csv")),
+        Some(ExpressionParser.parse(
+          """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F-$orderWatchId:$1"""").orThrow)
       ),
       json"""{
         "TYPE": "FileWatch",
@@ -22,7 +26,8 @@ final class FileWatchTest extends AnyFreeSpec
         "agentId": "AGENT",
         "directory": "/DIRECTORY",
         "pattern": "[a-z]+.csv",
-        "itemRevision": 0
+        "itemRevision": 0,
+        "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F-$$orderWatchId:$$1\""
       }""")
   }
 }

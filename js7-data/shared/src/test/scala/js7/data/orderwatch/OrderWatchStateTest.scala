@@ -9,6 +9,7 @@ import js7.data.agent.AttachedState.Attached
 import js7.data.item.ItemRevision
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchState.{Arised, ExternalOrderSnapshot, HasOrder, Vanished, VanishedAck}
+import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
@@ -22,12 +23,13 @@ final class OrderWatchStateTest extends AnyFreeSpec
       OrderWatchId("SOURCE"),
       WorkflowPath("WORKFLOW"),
       AgentId("AGENT"),
-    "DIRECTORY",
-    Some("PATTERN.*\\.csv".r.pattern),
-    ItemRevision(7)),
+      "DIRECTORY",
+      Some("PATTERN.*\\.csv".r.pattern),
+      Some(NamedValue("1")),
+      ItemRevision(7)),
     Some(Attached),
     Map( // Not in snapshot, because its duplicate to Order.orderSourceKey
-      ExternalOrderName("A-NAME") -> Arised(NamedValues("K" -> StringValue("V"))),
+      ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
       ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), Some(Vanished))))
 
   "recoverQueues" in {
@@ -41,13 +43,14 @@ final class OrderWatchStateTest extends AnyFreeSpec
         ExternalOrderSnapshot(
           OrderWatchId("WATCH"),
           ExternalOrderName("FILE"),
-          Arised(NamedValues("file" -> StringValue("FILE")))),
+          Arised(OrderId("ORDER"), NamedValues("file" -> StringValue("FILE")))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
           "orderWatchId": "WATCH",
           "state": {
             "TYPE": "Arised",
+            "orderId": "ORDER",
             "arguments": { "file": "FILE" }
           }
         }""")
@@ -107,7 +110,11 @@ final class OrderWatchStateTest extends AnyFreeSpec
         ExternalOrderSnapshot(
           OrderWatchId("WATCH"),
           ExternalOrderName("FILE"),
-          HasOrder(OrderId("ORDER"), Some(Arised(NamedValues("file" -> StringValue("FILE")))))),
+          HasOrder(
+            OrderId("ORDER"),
+            Some(Arised(
+              OrderId("NEXT"),
+              NamedValues("file" -> StringValue("FILE")))))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
@@ -117,6 +124,7 @@ final class OrderWatchStateTest extends AnyFreeSpec
             "orderId": "ORDER",
             "queued": {
               "TYPE": "Arised",
+              "orderId": "NEXT",
               "arguments": { "file": "FILE" }
             }
           }
@@ -134,6 +142,7 @@ final class OrderWatchStateTest extends AnyFreeSpec
             "agentId": "AGENT",
             "directory": "DIRECTORY",
             "pattern": "PATTERN.*\\.csv",
+            "orderIdExpression": "$$1",
             "itemRevision": 7
           },
           "attached": {
@@ -145,6 +154,7 @@ final class OrderWatchStateTest extends AnyFreeSpec
           "externalOrderName": "A-NAME",
           "state": {
             "TYPE": "Arised",
+            "orderId": "A-ORDER",
             "arguments": {
               "K": "V"
             }

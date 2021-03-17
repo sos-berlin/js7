@@ -5,11 +5,10 @@ import io.circe.generic.semiauto.deriveCodec
 import java.util.regex.Pattern
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.StandardJsonCodecs.PatternJsonCodec
-import js7.base.problem.Checked
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.AgentId
 import js7.data.item.ItemRevision
-import js7.data.order.OrderId
+import js7.data.value.expression.Expression
 import js7.data.workflow.WorkflowPath
 
 final case class FileWatch(
@@ -18,6 +17,7 @@ final case class FileWatch(
   agentId: AgentId,
   directory: String,
   pattern: Option[Pattern] = None,
+  orderIdExpression: Option[Expression] = None,
   itemRevision: ItemRevision = ItemRevision.Initial)
 extends OrderWatch
 {
@@ -38,9 +38,6 @@ extends OrderWatch
 
   def withRevision(revision: ItemRevision) =
     copy(itemRevision = revision)
-
-  def generateOrderId(externalOrderName: ExternalOrderName): Checked[OrderId] =
-    OrderId.checked(s"FileWatch:${id.string}:${externalOrderName.string}")  // TODO Syntax?
 }
 
 object FileWatch extends OrderWatch.Companion

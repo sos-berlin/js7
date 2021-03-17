@@ -29,7 +29,7 @@ final class JFileWatchTester
                     WorkflowPath.of("WORKFLOW"), AgentId.of("AGENT"), directory)))));
 
             Path file = directory.resolve("TEST-FILE");
-            OrderId orderId = OrderId.of("FileWatch:ORDER-SOURCE:TEST-FILE");
+            OrderId orderId = OrderId.of("file:ORDER-SOURCE:TEST-FILE");
 
             Future<?> whenOrderRemoved = api.when(es ->
                 es.stampedEvent().value().key().equals(orderId) &&

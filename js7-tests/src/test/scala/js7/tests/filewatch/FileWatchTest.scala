@@ -1,8 +1,7 @@
 package js7.tests.filewatch
 
-import cats.instances.vector._
-import cats.syntax.traverse._
 import java.nio.file.Files.{createDirectory, exists}
+import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
@@ -17,8 +16,9 @@ import js7.data.event.EventRequest
 import js7.data.item.SimpleItemEvent.SimpleItemAttached
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.OrderRemoved
+import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
-import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchId}
+import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -50,10 +50,13 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     aAgentId,
     sourceDirectory.toString)
 
+  private def fileToOrderId(filename: String): OrderId =
+    FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
+
   "Start with existing file" in {
     createDirectory(sourceDirectory)
     val file = sourceDirectory / "1"
-    val orderId = fileWatch.generateOrderId(ExternalOrderName("1")).orThrow
+    val orderId = fileToOrderId("1")
     file := ""
     controller.updateSimpleItemsAsSystemUser(Seq(fileWatch)).await(99.s).orThrow
     controller.eventWatch.await[SimpleItemAttached](_.event.id == fileWatch.id)
@@ -63,7 +66,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Add a file" in {
     val file = sourceDirectory / "2"
-    val orderId = fileWatch.generateOrderId(ExternalOrderName("2")).orThrow
+    val orderId = fileToOrderId("2")
     file := ""
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
@@ -72,7 +75,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Add many files, forcing an overflow" in {
     val since = now
     val filenames = (1 to 1000).map(_.toString).toVector
-    val orderIds = filenames.map(ExternalOrderName(_)).traverse(fileWatch.generateOrderId).orThrow.toSet
+    val orderIds = filenames.map(fileToOrderId).toSet
     val whenAllRemoved = controller.eventWatch
       .observe(EventRequest.singleClass[OrderRemoved](
         after = controller.eventWatch.lastAddedEventId,
@@ -95,7 +98,6 @@ object FileWatchTest
 {
   private val logger = Logger(getClass)
   private val aAgentId = AgentId("AGENT-A")
-  private val bAgentId = AgentId("AGENT-B")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

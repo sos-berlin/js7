@@ -21,7 +21,7 @@ final case class FileWatchState(
 
   def applyEvent(event: OrderWatchEvent): FileWatchState =
     event match {
-      case ExternalOrderArised(ExternalOrderName(relativePath_), arguments) =>
+      case ExternalOrderArised(ExternalOrderName(relativePath_), _, _) =>
         val relativePath = Paths.get(relativePath_)
         copy(
           directoryState =

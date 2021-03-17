@@ -50,7 +50,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       for (event <- events) aoss = aoss.onOrderWatchEvent(event).orThrow
       assert(aoss
         .idToOrderWatchState(aOrderWatch.id)
-        .externalToState(ExternalOrderName("A")) == Arised(arguments("A")))
+        .externalToState(ExternalOrderName("A")) == Arised(orderId("A"), arguments("A")))
       assert(aoss.nextEvents(toVersionId) == Seq(orderAdded("A"), orderAdded("B")))
     }
 
@@ -160,6 +160,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   private def arised(name: String) =
     aOrderWatch.id <-: ExternalOrderArised(
       ExternalOrderName(name),
+      orderId(name),
       NamedValues("file" -> StringValue(s"/DIR/$name")))
 
   private def vanished(name: String) =
@@ -169,7 +170,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
     ExternalOrderKey(aOrderWatch.id, ExternalOrderName(name))
 
   private def orderId(name: String) =
-    OrderId(s"FileWatch:A-SOURCE:$name")
+    OrderId(s"file:A-SOURCE:$name")
 
   private def orderAdded(name: String) =
     orderId(name) <-:

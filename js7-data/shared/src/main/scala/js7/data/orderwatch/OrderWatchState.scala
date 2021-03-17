@@ -36,7 +36,7 @@ extends SimpleItemState
     copy(
       arisedQueue = externalToState.view
         .collect {
-          case (externalOrderName, Arised(_)) => externalOrderName
+          case (externalOrderName, Arised(_, _)) => externalOrderName
         }
         .toSet,
       vanishedQueue = externalToState.view
@@ -47,17 +47,17 @@ extends SimpleItemState
 
   def applyOrderWatchEvent(event: OrderWatchEvent): Checked[OrderWatchState] =
     event match {
-      case ExternalOrderArised(externalOrderName, arguments) =>
-        onExternalOrderArised(externalOrderName, arguments)
+      case ExternalOrderArised(externalOrderName, orderId, arguments) =>
+        onExternalOrderArised(externalOrderName, orderId, arguments)
 
       case ExternalOrderVanished(externalOrderName) =>
         onExternalOrderVanished(externalOrderName)
     }
 
-  private def onExternalOrderArised(externalOrderName: ExternalOrderName, arguments: NamedValues)
+  private def onExternalOrderArised(externalOrderName: ExternalOrderName, orderId: OrderId, arguments: NamedValues)
   : Checked[OrderWatchState] =
     externalToState.get(externalOrderName) match {
-      case Some(Arised(_) | HasOrder(_, None | Some(Arised(_)))) =>
+      case Some(Arised(_, _) | HasOrder(_, None | Some(Arised(_, _)))) =>
         Left(Problem(s"Duplicate onExternalOrderArised($externalOrderName, $arguments)"))
 
       case Some(HasOrder(_, Some(Vanished))) =>
@@ -65,18 +65,18 @@ extends SimpleItemState
 
       case None =>
         Right(copy(
-          externalToState = externalToState + (externalOrderName -> Arised(arguments)),
+          externalToState = externalToState + (externalOrderName -> Arised(orderId, arguments)),
           arisedQueue = arisedQueue + externalOrderName))
 
       case Some(HasOrder(orderId, Some(VanishedAck))) =>
         Right(copy(
           externalToState = externalToState +
-            (externalOrderName -> HasOrder(orderId, Some(Arised(arguments))))))
+            (externalOrderName -> HasOrder(orderId, Some(Arised(orderId, arguments))))))
     }
 
   private def onExternalOrderVanished(externalOrderName: ExternalOrderName): Checked[OrderWatchState] =
     externalToState.checked(externalOrderName) flatMap {
-      case Arised(_) =>
+      case Arised(_, _) =>
         Right(copy(
           externalToState = externalToState - externalOrderName,
           arisedQueue = arisedQueue - externalOrderName))
@@ -94,7 +94,7 @@ extends SimpleItemState
         logger.debug(s"ExternalOrderVanished($externalOrderName) but state=$state")
         Right(this)
 
-      case HasOrder(orderId, Some(Arised(_))) =>
+      case HasOrder(orderId, Some(Arised(_, _))) =>
         Right(copy(
           externalToState = externalToState +
             (externalOrderName -> HasOrder(orderId, None)),
@@ -104,13 +104,13 @@ extends SimpleItemState
 
   def onOrderAdded(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
     externalToState.checked(externalOrderName) flatMap {
-      case Arised(_) =>
+      case Arised(`orderId`, _) =>
         Right(copy(
           externalToState = externalToState + (externalOrderName -> HasOrder(orderId)),
           arisedQueue = arisedQueue - externalOrderName))
 
       case _ =>
-        Left(Problem(s"$orderId <-: OrderAdded($externalOrderName) but not Arised"))
+        Left(Problem(s"$orderId <-: OrderAdded($externalOrderName) but not Arised($orderId)"))
     }
 
   def applyOrderEvent(externalOrderName: ExternalOrderName, keyedEvent: KeyedEvent[OrderCoreEvent]) = {
@@ -162,15 +162,11 @@ extends SimpleItemState
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
         .flatMap {
-          case Arised(arguments) =>
-            workflowPathToVersionId(orderWatch.workflowPath).flatMap { v =>
+          case Arised(orderId, arguments) =>
+            workflowPathToVersionId(orderWatch.workflowPath).map { v =>
               val workflowId = orderWatch.workflowPath ~ v
-              val checked = for (orderId <- orderWatch.generateOrderId(externalOrderName)) yield
-                orderId <-: OrderAdded(workflowId, arguments,
+              orderId <-: OrderAdded(workflowId, arguments,
                   externalOrderKey = Some(ExternalOrderKey(id, externalOrderName)))
-              for (problem <- checked.left) logger.error(
-                s"${orderWatch.id} $externalOrderName: $problem")
-              checked.toOption
             }
 
           case _ => None
@@ -243,7 +239,7 @@ object OrderWatchState
   sealed trait ArisedOrHasOrder
   sealed trait VanishedOrArised
 
-  final case class Arised(arguments: NamedValues)
+  final case class Arised(orderId: OrderId, arguments: NamedValues)
   extends ArisedOrHasOrder with VanishedOrArised
 
   final case class HasOrder(
