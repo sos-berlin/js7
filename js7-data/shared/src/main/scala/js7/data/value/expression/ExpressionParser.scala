@@ -47,11 +47,37 @@ object ExpressionParser
   private def stringConstant[_: P] = P[StringConstant](quotedString
     .map(StringConstant.apply))
 
+  private def singleQuotedStringConstant[_: P] = P[StringConstant](singleQuoted
+    .map(StringConstant.apply))
+
   def quotedString[_: P] = P[String](BasicParsers.quotedString)  // Public
 
+  def interpolatedString[_: P] = P[StringExpression](
+    "\"" ~~/
+    interpolatedStringContent ~~/
+    "\"")
+
+  private def interpolatedStringContent[_: P] = P[StringExpression] {
+    def simpleConstant = P(CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$').!)
+    def constant = P(((simpleConstant | escapedCharInString).rep.map(_.mkString)).map(StringConstant(_)))
+
+    def number = P(CharsWhile(c => c >= '0' && c <= '9').!)
+    def curlyName = P("{" ~~/ simpleName ~~/ "}")
+    def namedValue = (simpleName | number/*regex group*/ | curlyName).map(NamedValue(_))
+    def expr = P("$" ~~/ (namedValue | ("(" ~~/ expression ~~/ ")")))
+
+    (constant ~~/ (expr ~~/ constant).rep)
+      .map {
+        case (o: StringConstant, Nil) => o
+        case (first, pairs) =>
+          optimizeExpression(InterpolatedString(
+            (Some(first) ++ pairs.flatMap { case (expr, constant) => expr :: constant :: Nil})
+              .toList)
+          ).asInstanceOf[StringExpression]
+      }
+  }
+
   def dollarNamedValue[_: P] = P[NamedValue] {
-    def simpleName = P[String](
-      (CharPred(NamedValue.isSimpleNameStart) ~ CharsWhile(NamedValue.isSimpleNamePart, 0)).!)
     def nameOnly(p: P[String]) = P[NamedValue](
       p.map(o => NamedValue.last(o)))
     //def arg = P[NamedValue](("arg::" ~~/ identifier)
@@ -66,6 +92,9 @@ object ExpressionParser
 
     "$" ~~ (nameOnly(simpleName) | curlyName)
   }
+
+  private def simpleName[_: P] = P[String](
+    (CharPred(NamedValue.isSimpleNameStart) ~ CharsWhile(NamedValue.isSimpleNamePart, 0)).!)
 
   private def argumentFunctionCall[_: P] = P[NamedValue](
     keyword("argument") ~ w ~
@@ -91,8 +120,9 @@ object ExpressionParser
     keyValue("default", expression))
 
   private def factorOnly[_: P] = P(
-    parenthesizedExpression | booleanConstant | numericConstant | stringConstant | catchCount |
-      argumentFunctionCall | variableFunctionCall | dollarNamedValue)
+    parenthesizedExpression | booleanConstant | numericConstant |
+      singleQuotedStringConstant | interpolatedString | dollarNamedValue |
+      catchCount | argumentFunctionCall | variableFunctionCall)
 
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {

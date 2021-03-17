@@ -73,8 +73,14 @@ final class EvaluatorTest extends AnyFreeSpec
       result = "\\",
       Right(StringConstant("\\")))
 
-    testSyntaxError(""""$var"""",
-      """Expected properly terminated "…"-quoted string:1:2, found "$var\""""")
+    testEval(""""-->$ASTRING${ABOOLEAN}$(100 + $ANUMBER)<--"""",
+      result = "-->AAtrue107<--",
+      Right(InterpolatedString(List(
+        StringConstant("-->"),
+        NamedValue("ASTRING"),
+        NamedValue("ABOOLEAN"),
+        Add(NumericConstant(100), NamedValue("ANUMBER")),
+        StringConstant("<--")))))
 
     testEval(""" "x" """,
       result = "x",

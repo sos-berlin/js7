@@ -41,6 +41,12 @@ final class Evaluator(scope: Scope)
       case NumericConstant(o) => Right(NumberValue(o))
       case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.toNumber)
       case ToNumber(e) => eval(e) flatMap toNumber
+
+      case InterpolatedString(expressions) =>
+        expressions
+          .traverse(e => eval(e).map(_.convertToString))
+          .map(seq => StringValue(seq.mkString))
+
       case MkString(e) => eval(e) flatMap mkString
       case StringConstant(o) => Right(StringValue(o))
 

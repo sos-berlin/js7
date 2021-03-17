@@ -56,6 +56,13 @@ object ValuePrinter
       sb.append('\'')
     } else {
       sb.append('"')
+      appendQuotedContent(sb, string)
+      sb.append('"')
+    }
+  }
+
+  def appendQuotedContent(sb: StringBuilder, string: String): Unit =
+    if (string.nonEmpty) {
       string foreach {
         case '\\' => sb.append("\\\\")
         case '"' => sb.append("\\\"")
@@ -65,7 +72,5 @@ object ValuePrinter
         case '\t' => sb.append("\\t")
         case c => sb.append(c)
       }
-      sb.append('"')
     }
-  }
 }

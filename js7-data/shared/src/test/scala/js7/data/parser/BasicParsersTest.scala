@@ -101,7 +101,7 @@ final class BasicParsersTest extends AnyFreeSpec
   "String in double-quotes" - {
     "Unknown backslash combination" in {
       assert(checkedParse(""""x\x"""", quotedString(_)) == Left(Problem(
-        """Expected blackslash (\) and one of the following characters: [\"nt]:1:5, found "\""""")))
+        """Expected blackslash (\) and one of the following characters: [\"trn$]:1:5, found "\""""")))
     }
 
     "String interpolation is not supported" in {

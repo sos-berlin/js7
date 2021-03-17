@@ -5,10 +5,10 @@ import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
-import js7.base.utils.Identifier.isIdentifier
+import js7.base.utils.Identifier.{isIdentifier, isIdentifierPart}
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.parser.Parsers.checkedParse
-import js7.data.value.ValuePrinter.quoteString
+import js7.data.value.ValuePrinter.{appendQuotedContent, quoteString}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.collection.mutable
@@ -163,9 +163,14 @@ object Expression
     import NamedValue._
     def precedence = Precedence.Factor
     override def toString = (where, what, default) match {
-      case (LastOccurred, KeyValue(StringConstant(key)), None) if isSimpleName(key) => "$" + key
-      case (LastOccurred, KeyValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$key}"
+      case (LastOccurred, KeyValue(StringConstant(key)), None)
+        if isSimpleName(key) || key.forall(c => c >= '0' && c <= '9') => "$" + key
+
+      case (LastOccurred, KeyValue(StringConstant(key)), None)
+        if isIdentifier(key) => s"$${$key}"
+
       case (LastOccurred, KeyValue(expression), None) => s"variable($expression)"
+
       //case (Argument, NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${arg::$key}"
       //case (LastOccurredByPrefix(prefix), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$prefix.$key}"
       //case (ByLabel(Label(label)), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${label::$label.$key}"
@@ -245,6 +250,45 @@ object Expression
   final case class MkString(expression: Expression) extends StringExpression {
     def precedence = Precedence.Factor
     override def toString = Precedence.inParentheses(expression, precedence) + ".mkString"
+  }
+
+  /** Like MkString, but with a different toString representation. */
+  final case class InterpolatedString(expressions: List[Expression]) extends StringExpression {
+    def precedence = Precedence.Factor
+
+    override def toString = {
+      val sb = new StringBuilder
+      sb.append('"')
+      expressions.tails foreach {
+        case StringConstant(string) :: _ =>
+          appendQuotedContent(sb, string)
+
+        case NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(StringConstant(name)), None) :: next =>
+          val noBraces = next match {
+            case StringConstant(next) :: Nil =>
+              !next.headOption.forall(isIdentifierPart)
+            case _ =>
+              isIdentifier(name) || name.forall(c => c >= '0' && c <= '9')
+          }
+          if (noBraces) {
+            sb.append('$')
+            sb.append(name)
+          } else {
+            sb.append("${")
+            sb.append(name)
+            sb.append("}")
+          }
+
+        case expr :: _ =>
+          sb.append("$(")
+          sb.append(expr)
+          sb.append(")")
+
+        case Nil =>
+      }
+      sb += '"'
+      sb.toString
+    }
   }
 
   sealed trait Precedence {

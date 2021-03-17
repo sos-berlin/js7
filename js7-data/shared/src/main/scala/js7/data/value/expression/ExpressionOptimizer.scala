@@ -1,6 +1,6 @@
 package js7.data.value.expression
 
-import js7.data.value.expression.Expression.{ListExpression, MkString, StringConstant, StringExpression}
+import js7.data.value.expression.Expression.{InterpolatedString, ListExpression, MkString, StringConstant, StringExpression}
 import scala.util.chaining.scalaUtilChainingOps
 
 object ExpressionOptimizer
@@ -8,31 +8,41 @@ object ExpressionOptimizer
   def optimizeExpression(expression: Expression): Expression =
     expression match {
       case o: MkString => optimizeMkString(o)
+      case o: InterpolatedString => optimizeInterpolated(o)
       case o => o
     }
 
-  def optimizeMkString(mkString: MkString): StringExpression = {
+  private def optimizeMkString(mkString: MkString): StringExpression =
     optimizeExpression(mkString.expression) match {
       case ListExpression(list) =>
-        list
-          .map(optimizeExpression)
-          .filter(_ != StringConstant.empty)
-          .flatMap {
-            case MkString(ListExpression(expressions)) => expressions
-            case MkString(expr) => expr :: Nil
-            case expr => expr :: Nil
-          }
-          .pipe(mergeStringConstants) match {
-            case Nil => StringConstant.empty
-            case (string: StringExpression) :: Nil => string
-            case o :: Nil => MkString(o)
-            case list => MkString(ListExpression(list))
-          }
+        optimizeConcatList(list).pipe(mergeStringConstants) match {
+          case Nil => StringConstant.empty
+          case (string: StringExpression) :: Nil => string
+          case o :: Nil => MkString(o)
+          case list => MkString(ListExpression(list))
+        }
 
       case o: StringExpression => o
       case o => MkString(o)
     }
-  }
+
+  private def optimizeInterpolated(interpolated: InterpolatedString): StringExpression =
+    optimizeConcatList(interpolated.expressions).pipe(mergeStringConstants) match {
+      case Nil => StringConstant.empty
+      case (string: StringExpression) :: Nil => string
+      case list => InterpolatedString(list)
+    }
+
+  private def optimizeConcatList(exprs: List[Expression]): List[Expression] =
+    exprs
+      .map(optimizeExpression)
+      .filter(_ != StringConstant.empty)
+      .flatMap {
+        case MkString(ListExpression(expressions)) => expressions
+        case MkString(expr) => expr :: Nil
+        case expr => expr :: Nil
+      }
+      .pipe(mergeStringConstants)
 
   private def mergeStringConstants(expressions: List[Expression]): List[Expression] =
     expressions

@@ -85,6 +85,23 @@ final class ExpressionParserTest extends AnyFreeSpec
     testExpression(""" "x" """.trim, StringConstant("x"))
     testExpression(""" "ö" """.trim, StringConstant("ö"))
 
+    testExpression(""""A"""", StringConstant("A"))
+    testExpression(""""$A$B"""", InterpolatedString(List(NamedValue("A"), NamedValue("B"))))
+    testExpression(""""${A}B"""", InterpolatedString(List(NamedValue("A"), StringConstant("B"))))
+    testExpression(""""$A-B"""", InterpolatedString(List(NamedValue("A"), StringConstant("-B"))))
+
+    "Interpolated string" in {
+      assert(checkedParse(""""$A"""", expression(_)) == Right(InterpolatedString(NamedValue("A") :: Nil)))
+      assert(checkedParse(""""-->$A$BB<--"""", expression(_)) ==
+        Right(InterpolatedString(List(StringConstant("-->"), NamedValue("A"), NamedValue("BB"), StringConstant("<--")))))
+      assert(checkedParse(""""-->${AB}${CD}<--"""", expression(_)) ==
+        Right(InterpolatedString(List(StringConstant("-->"), NamedValue("AB"), NamedValue("CD"), StringConstant("<--")))))
+      assert(checkedParse(""""-->$("A")<--"""", expression(_)) ==
+        Right(StringConstant("-->A<--")))
+      assert(checkedParse("""""""", expression(_)) == Right(StringConstant.empty))
+      assert(checkedParse(""""\\\t\"\r\n"""", expression(_)) == Right(StringConstant("\\\t\"\r\n")))
+    }
+
     "Invalid strings" in {
       assert(checkedParse("''", expression(_)).isLeft)
       assert(checkedParse(""" "\" """.trim, expression(_)).isLeft)

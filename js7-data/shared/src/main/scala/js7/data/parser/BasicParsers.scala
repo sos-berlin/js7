@@ -76,22 +76,23 @@ object BasicParsers
       "\"".opaque("""properly terminated "…"-quoted string"""))
 
   private def doubleQuotedContent[_: P] = P[String](
-    (doubleQuotedContentPart ~~/ ("\\" ~~/ escapedChar ~~ doubleQuotedContentPart).rep(0))
+    (doubleQuotedContentPart ~~/ (escapedCharInString ~~ doubleQuotedContentPart).rep(0))
       .map { case (a, pairs) => a + pairs.map(o => o._1 + o._2).mkString })
 
   private def doubleQuotedContentPart[_: P] = P[String](
     CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$'/*reserved for interpolation*/ /*&& ch >= ' '*/, 0).!)
 
-  private def escapedChar[_: P] = P[String](
-    SingleChar.!.flatMap {
-      case "\\" => valid("\\")
-      case "\"" => valid("\"")
-      case "r" => valid("\r")
-      case "n" => valid("\n")
-      case "t" => valid("\t")
-      case "$" => valid("$")
-      case _ => invalid("""blackslash (\) and one of the following characters: [\"nt]""")
-    })
+  def escapedCharInString[_: P] = P[String](
+    "\\" ~~/
+      SingleChar.flatMap {
+        case '\\' => valid("\\")
+        case '"' => valid("\"")
+        case 't' => valid("\t")
+        case 'r' => valid("\r")
+        case 'n' => valid("\n")
+        case '$' => valid("$")
+        case _ => invalid("""blackslash (\) and one of the following characters: [\"trn$]""")
+      })
 
   def pathString[_: P] = P[String](quotedString)
 
