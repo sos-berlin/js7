@@ -100,18 +100,18 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         WorkflowPath.NoId,
         Vector(
           Execute.Named(WorkflowJob.Name("A")),
-          Execute.Named(WorkflowJob.Name("B"))),
+          Execute.Named(WorkflowJob.Name("B-JOB"))),
         Map(
           WorkflowJob.Name("A") -> WorkflowJob(AgentId("AGENT"), PathExecutable("a-script"), Map("KEY" -> StringValue("VALUE")), ReturnCodeMeaning.Success.of(0, 1)),
-          WorkflowJob.Name("B") -> WorkflowJob(AgentId("AGENT"), PathExecutable("b-script")))),
+          WorkflowJob.Name("B-JOB") -> WorkflowJob(AgentId("AGENT"), PathExecutable("b-script")))),
       """define workflow {
         |  job A;
-        |  job B;
+        |  job `B-JOB`;
         |
         |  define job A {
         |    execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], executable="a-script"
         |  }
-        |  define job B {
+        |  define job `B-JOB` {
         |    execute agent="AGENT", executable="b-script"
         |  }
         |}

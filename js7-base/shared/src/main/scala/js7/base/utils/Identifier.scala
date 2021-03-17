@@ -26,13 +26,13 @@ object Identifier
     string.nonEmpty &&
       string.last != '-' &&
       isIdentifierStart(string.charAt(0)) &&
-      (1 until string.length forall { i => isIdentifierPart(string.charAt(i)) })
+      (1 until string.length).forall(i => isIdentifierPart(string.charAt(i)))
 
   def isIdentifierStart(c: Char): Boolean =
     isUnicodeIdentifierStart(c) || isHighSurrogate(c)
 
   def isIdentifierPart(c: Char): Boolean =
-    isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-' || isSurrogate(c)
+    isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || /*??? c == '-' ||*/ isSurrogate(c)
 
   // Corresponding Java methods are not implemented in Scala.js
   private def isHighSurrogate(c: Char) = c >= '\uD800' && c <= '\uDBFF'

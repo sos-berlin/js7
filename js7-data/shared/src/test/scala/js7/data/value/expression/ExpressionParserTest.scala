@@ -34,7 +34,7 @@ final class ExpressionParserTest extends AnyFreeSpec
     testExpression("""$Schlüssel""", NamedValue.last("Schlüssel"))
     testExpression("""$clé""", NamedValue.last("clé"))
     testExpression("""$A""", NamedValue.last("A"))
-    testExpression("""${SOME-KEY}""", NamedValue.last("SOME-KEY"))
+    testExpression("""${SOME_KEY}""", NamedValue("SOME_KEY"))
     //testExpression("""${arg::SOME-KEY}""", NamedValue(NamedValue.Argument, NamedValue.KeyValue("SOME-KEY")))
     //testExpression("""${label::LABEL.SOME-KEY}""", NamedValue(NamedValue.ByLabel(Label("LABEL")), NamedValue.KeyValue("SOME-KEY")))
     //testExpression("""${job::JOB.SOME-KEY}""", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("SOME-KEY")))

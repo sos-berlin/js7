@@ -35,8 +35,9 @@ object BasicParsers
   private def digits[_: P] = P(CharsWhile(c => c >= '0' && c <= '9'))
   def identifierEnd[_: P] = P(&(CharPred(c => !isIdentifierPart(c))) | End)
   def identifier[_: P] = P[String](  // TODO Compare and test code with Identifier.isIdentifier
-    (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).! ~
-      identifierEnd)
+    ("`" ~/ CharsWhile(c => c != '`' && c != '\n').! ~/ "`") |
+      (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).! ~
+        identifierEnd)
 
   def quotedString[_: P] = P[String](
     doubleQuoted | singleQuoted)

@@ -132,7 +132,7 @@ object VersionedItemsTest {
   private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("C"), "define workflow { /*EMPTY*/ }").orThrow
   private[tests] val DWorkflow = Workflow(WorkflowPath("D"), Vector("D-END" @: ExplicitEnd()))
   private[tests] val EWorkflow = Workflow(WorkflowPath("E"), Vector(Fail(None)))
-  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("D"), "define workflow { CHANGED-D-END: end; }").orThrow
+  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("D"), "define workflow { `CHANGED-D-END`: end; }").orThrow
   private[tests] val ATestItem = TestItem(TestPath("A"), "A")
   private[tests] val BTestItem = TestItem(TestPath("folder/B"), "B")
 

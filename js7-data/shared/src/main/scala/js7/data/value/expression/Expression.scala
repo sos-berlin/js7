@@ -182,9 +182,17 @@ object Expression
           case NamedValue.LastOccurredByPrefix(prefix) =>
             args += "prefix=" + prefix   // Not used
           case NamedValue.LastExecutedJob(jobName) =>
-            args += "job=" + jobName.string
+            if (isIdentifier(jobName.string)) {
+              args += "job=" + jobName.string
+            } else {
+              args += "job=`" + jobName.string + '`'
+            }
           case NamedValue.ByLabel(label) =>
-            args += "label=" + label.string
+            if (isIdentifier(label.string)) {
+              args += "label=" + label.string
+            } else {
+              args += "label=`" + label.string + '`'
+            }
         }
         for (d <- default) args += "default=" + d.toString
         (where, what) match {

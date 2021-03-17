@@ -2,6 +2,7 @@ package js7.data.workflow
 
 import cats.Show
 import js7.base.time.ScalaTime._
+import js7.base.utils.Identifier
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockId
@@ -110,7 +111,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
     for ((name, job) <- workflow.nameToJob) {
       indent(nesting)
       sb ++= "define job "
-      sb ++= name.string
+      appendIdentifier(name.string)
       sb ++= " {\n"
       indent(nesting + 1)
       sb ++= "execute "
@@ -124,7 +125,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
   def appendLabeledInstruction(nesting: Int, labeled: Instruction.Labeled): Unit = {
     indent(nesting)
     for (label <- labeled.maybeLabel) {
-      sb ++= label.string
+      appendIdentifier(label.string)
       sb ++= ": "
     }
     labeled.instruction match {
@@ -147,7 +148,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
 
       case Execute.Named(name, defaultArguments, _) =>
         sb ++= "job "
-        sb ++= name.string
+        appendIdentifier(name.string)
         if (defaultArguments.nonEmpty) {
           sb ++= ", defaultArguments="
           appendNamedValues(defaultArguments)
@@ -205,10 +206,14 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= "/*gap*/\n"
 
       case Goto(label, _) =>
-        sb ++= "goto "++= label.string ++= ";\n"
+        sb.append("goto ")
+        appendIdentifier(label.string)
+        sb.append(";\n")
 
       case IfFailedGoto(label, _) =>
-        sb ++= "ifFailedGoto " ++= label.string ++= ";\n"
+        sb.append("ifFailedGoto ")
+        appendIdentifier(label.string)
+        sb.append(";\n")
 
       case If(predicate, thenWorkflow, elseWorkflowOption, _) =>
         sb ++= "if (" ++= predicate.toString ++= ") {\n"
@@ -250,6 +255,15 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= ";\n"
     }
   }
+
+  private def appendIdentifier(identifier: String): Unit =
+    if (Identifier.isIdentifier(identifier)) {
+      sb.append(identifier)
+    } else {
+      sb.append('`')
+      sb.append(identifier)
+      sb.append('`')
+    }
 }
 
 object WorkflowPrinter

@@ -16,7 +16,6 @@ final class IdentifierTest extends AnyFreeSpec {
     assert(isIdentifier("a_"))
     assert(isIdentifier("a___"))
     assert(isIdentifier("a_b"))
-    assert(isIdentifier("a-b"))
     assert(isIdentifier("åäöüÅÄÖÜßµπæç"))
     assert(isIdentifier("български")) // Bulgarisch
     assert(isIdentifier("ქართული")) // Georgisch
@@ -34,6 +33,8 @@ final class IdentifierTest extends AnyFreeSpec {
     assert(!isIdentifier("$"))
     assert(!isIdentifier("_"))
     assert(!isIdentifier("1"))
+    assert(!isIdentifier("a b"))
+    assert(!isIdentifier("a-b"))
     assert(!isIdentifier("-a"))
     assert(!isIdentifier("a-"))
     assert(!isIdentifier("a$"))
