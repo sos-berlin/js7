@@ -63,8 +63,8 @@ object FileWatchState
   extends Snapshot
 
   implicit val jsonCodec = TypedJsonCodec[Snapshot](
-    Subtype.named(deriveCodec[HeaderSnapshot], "FileWatch.Header"),
-    Subtype.named(deriveCodec[EntrySnapshot], "FileWatch.File"))
+    Subtype.named(deriveCodec[HeaderSnapshot], "FileWatchState"),
+    Subtype.named(deriveCodec[EntrySnapshot], "FileWatchState.File"))
 
   final class Builder {
     private val header = SetOnce[HeaderSnapshot]

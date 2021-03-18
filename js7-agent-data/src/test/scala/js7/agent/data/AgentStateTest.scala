@@ -88,7 +88,7 @@ final class AgentStateTest extends AsyncFreeSpec
             }
           }""",
           json"""{
-            "TYPE": "FileWatch.Header",
+            "TYPE": "FileWatchState",
             "orderWatch": {
               "id": "ORDER-SOURCE-ID",
               "workflowPath": "WORKFLOW",
@@ -99,12 +99,12 @@ final class AgentStateTest extends AsyncFreeSpec
             }
           }""",
           json"""{
-            "TYPE": "FileWatch.File",
+            "TYPE": "FileWatchState.File",
             "orderWatchId": "ORDER-SOURCE-ID",
             "path": "/DIRECTORY/1.csv"
           }""",
           json"""{
-            "TYPE": "FileWatch.File",
+            "TYPE": "FileWatchState.File",
             "orderWatchId": "ORDER-SOURCE-ID",
             "path": "/DIRECTORY/2.csv"
           }"""))
