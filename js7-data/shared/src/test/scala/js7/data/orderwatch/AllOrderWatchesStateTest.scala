@@ -18,16 +18,16 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   private val v1 = VersionId("1")
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val workflowId = workflowPath ~ v1
-  private val aOrderWatch = FileWatch(OrderWatchId("A-SOURCE"),
+  private val aOrderWatch = FileWatch(OrderWatchId("A-WATCH"),
     workflowPath, AgentId("AGENT"), "DIRECTORY")
-  private val bOrderWatch = aOrderWatch.copy(id = OrderWatchId("B-SOURCE"))
+  private val bOrderWatch = aOrderWatch.copy(id = OrderWatchId("B-WATCH"))
   private var aoss = AllOrderWatchesState.empty
 
   "addOrderWatch" in {
     aoss = aoss.addOrderWatch(aOrderWatch).orThrow
     aoss = aoss.addOrderWatch(bOrderWatch).orThrow
     assert(aoss.addOrderWatch(aOrderWatch) ==
-      Left(DuplicateKey("OrderWatchId", "OrderWatch:A-SOURCE")))
+      Left(DuplicateKey("OrderWatchId", "OrderWatch:A-WATCH")))
   }
 
   "removeOrderWatch" in {

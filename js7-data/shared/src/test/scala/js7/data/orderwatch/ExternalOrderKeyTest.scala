@@ -8,9 +8,9 @@ final class ExternalOrderKeyTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(
-      ExternalOrderKey(OrderWatchId("SOURCE"), ExternalOrderName("NAME")),
+      ExternalOrderKey(OrderWatchId("WATCH"), ExternalOrderName("NAME")),
       json"""{
-        "orderWatchId": "SOURCE",
+        "orderWatchId": "WATCH",
         "name": "NAME"
       }""")
   }

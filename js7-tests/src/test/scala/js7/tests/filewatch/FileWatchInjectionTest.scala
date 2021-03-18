@@ -25,7 +25,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
   private lazy val fileWatch = FileWatch(
-    OrderWatchId("TEST-SOURCE"),
+    OrderWatchId("TEST-WATCH"),
     WorkflowPath("WORKFLOW"),
     aAgentId,
     sourceDirectory.toString)

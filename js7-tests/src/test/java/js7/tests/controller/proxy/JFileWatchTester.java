@@ -25,11 +25,11 @@ final class JFileWatchTester
         Path directory = createTempDirectory("JFileWatchTester-");
         try {
             await(api.updateItems(Flux.just(addOrChangeSimple(
-                JFileWatch.of(OrderWatchId.of("ORDER-SOURCE"),
+                JFileWatch.of(OrderWatchId.of("FILE-WATCH"),
                     WorkflowPath.of("WORKFLOW"), AgentId.of("AGENT"), directory)))));
 
             Path file = directory.resolve("TEST-FILE");
-            OrderId orderId = OrderId.of("file:ORDER-SOURCE:TEST-FILE");
+            OrderId orderId = OrderId.of("file:FILE-WATCH:TEST-FILE");
 
             Future<?> whenOrderRemoved = api.when(es ->
                 es.stampedEvent().value().key().equals(orderId) &&

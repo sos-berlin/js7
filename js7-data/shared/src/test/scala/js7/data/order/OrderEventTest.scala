@@ -31,7 +31,7 @@ final class OrderEventTest extends AnyFreeSpec
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
         Some(Timestamp("2021-01-01T00:00:00Z")),
-        Some(ExternalOrderKey(OrderWatchId("ORDER-SOURCE"), ExternalOrderName("ORDER-NAME")))),
+        Some(ExternalOrderKey(OrderWatchId("ORDER-WATCH"), ExternalOrderName("ORDER-NAME")))),
       json"""
       {
         "TYPE": "OrderAdded",
@@ -44,7 +44,7 @@ final class OrderEventTest extends AnyFreeSpec
           "VAR": "VALUE"
         },
         "externalOrderKey": {
-          "orderWatchId": "ORDER-SOURCE",
+          "orderWatchId": "ORDER-WATCH",
           "name": "ORDER-NAME"
         }
       }""")
@@ -65,7 +65,7 @@ final class OrderEventTest extends AnyFreeSpec
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
         Map("KEY" -> StringValue("VALUE")),
-        Some(ExternalOrderKey(OrderWatchId("ORDER-SOURCE"), ExternalOrderName("ORDER-NAME"))),
+        Some(ExternalOrderKey(OrderWatchId("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
         AgentId("AGENT"),
         Some(OrderId("PARENT")),
@@ -88,7 +88,7 @@ final class OrderEventTest extends AnyFreeSpec
           "KEY": "VALUE"
         },
         "externalOrderKey": {
-          "orderWatchId": "ORDER-SOURCE",
+          "orderWatchId": "ORDER-WATCH",
           "name": "ORDER-NAME"
         },
         "historicOutcomes": [

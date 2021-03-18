@@ -45,7 +45,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
   private lazy val fileWatch = FileWatch(
-    OrderWatchId("TEST-SOURCE"),
+    OrderWatchId("TEST-WATCH"),
     workflow.path,
     aAgentId,
     sourceDirectory.toString)

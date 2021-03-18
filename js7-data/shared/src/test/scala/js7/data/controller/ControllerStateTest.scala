@@ -49,9 +49,9 @@ final class ControllerStateTest extends AsyncFreeSpec
     Map(LockId("LOCK") ->
       LockState(Lock(LockId("LOCK"), limit = 1))),
     AllOrderWatchesState(Map(
-      OrderWatchId("SOURCE") -> OrderWatchState(
+      OrderWatchId("WATCH") -> OrderWatchState(
         FileWatch(
-          OrderWatchId("SOURCE"),
+          OrderWatchId("WATCH"),
           WorkflowPath("WORKFLOW"),
           AgentId("AGENT"),
           "/tmp/directory"),
@@ -60,7 +60,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(VanishedAck)))))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh(None),
-      externalOrderKey = Some(ExternalOrderKey(OrderWatchId("SOURCE"), ExternalOrderName("ORDER-NAME")))
+      externalOrderKey = Some(ExternalOrderKey(OrderWatchId("WATCH"), ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))
 
   "estimatedSnapshotSize" in {
@@ -99,13 +99,13 @@ final class ControllerStateTest extends AsyncFreeSpec
           Seq(
             OrderWatchState.HeaderSnapshot(
               FileWatch(
-                OrderWatchId("SOURCE"),
+                OrderWatchId("WATCH"),
                 WorkflowPath("WORKFLOW"),
                 AgentId("AGENT"),
                 "/tmp/directory"),
               Some(Attached)),
             OrderWatchState.ExternalOrderSnapshot(
-              OrderWatchId("SOURCE"),
+              OrderWatchId("WATCH"),
               ExternalOrderName("ORDER-NAME"),
               HasOrder(OrderId("ORDER"), Some(VanishedAck)))) ++
           controllerState.idToOrder.values)
@@ -186,14 +186,14 @@ final class ControllerStateTest extends AsyncFreeSpec
               "TYPE": "FileWatch",
               "agentId": "AGENT",
               "directory": "/tmp/directory",
-              "id": "SOURCE",
+              "id": "WATCH",
               "workflowPath": "WORKFLOW",
               "itemRevision": 0
             },
             "attached": { "TYPE": "Attached" }
           }, {
             "TYPE": "ExternalOrder",
-            "orderWatchId": "SOURCE",
+            "orderWatchId": "WATCH",
             "externalOrderName": "ORDER-NAME",
             "state": {
               "TYPE": "HasOrder",
@@ -209,7 +209,7 @@ final class ControllerStateTest extends AsyncFreeSpec
               "TYPE": "Fresh"
             },
             "externalOrderKey": {
-              "orderWatchId": "SOURCE",
+              "orderWatchId": "WATCH",
               "name": "ORDER-NAME"
             },
             "workflowPosition": {
