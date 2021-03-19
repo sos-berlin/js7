@@ -18,12 +18,12 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.ProvideActorSystem
-import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{Event, EventId, JournalEvent, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.JournaledStateRecoverer
@@ -36,7 +36,6 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
 
@@ -176,37 +175,6 @@ private object JournaledStatePersistenceTest
       js7.journal.dispatcher.type = PinnedDispatcher
       """)
 
-  private class TestStateBuilder extends JournaledStateBuilder[TestState]
-  {
-    private val numberThings = mutable.Map[NumberKey, NumberThing]()
-    private var _state = TestState.empty
-
-    protected def onInitializeState(state: TestState) = throw new NotImplementedError
-
-    protected def onAddSnapshotObject = {
-      case numberThing: NumberThing =>
-        if (numberThings.contains(numberThing.key)) throw Problem(s"Duplicate NumberThing: ${numberThing.key}").throwable
-        numberThings += numberThing.key -> numberThing
-    }
-
-    def onOnAllSnapshotsAdded() =
-      _state = TestState(EventId.BeforeFirst, NumberThingCollection(numberThings.toMap))
-
-    protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit] = {
-      case Stamped(_, _, KeyedEvent(k: NumberKey, e: NumberEvent)) =>
-        _state = _state.applyEvent(k <-: e).orThrow
-
-      case Stamped(_, _, KeyedEvent(_, _: JournalEvent)) =>
-    }
-
-    def state =
-      _state.copy(eventId = eventId)
-
-    def journalState = JournalState.empty
-
-    def clusterState = ClusterState.Empty
-  }
-
   private def testJournalMeta(fileBase: Path) =
     JournalMeta(TestState, fileBase)
 
@@ -310,7 +278,14 @@ private object JournaledStatePersistenceTest
     val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
 
     def newBuilder(): JournaledStateBuilder[TestState] =
-      new TestStateBuilder
+      new JournaledStateBuilder.Simple(TestState) {
+        protected def onAddSnapshotObject = {
+          case numberThing: NumberThing =>
+            updateState(result().copy(numberThingCollection = result().numberThingCollection.copy(
+              numberThings =
+                result().numberThingCollection.numberThings.insert(numberThing.key -> numberThing).orThrow)))
+        }
+      }
 
     override def fromObservable(snapshotObjects: Observable[Any]): Task[TestState] =
       throw new NotImplementedError  // Require for HTTP EventApi only

@@ -404,7 +404,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
               case _ => false
             })
             if (isSnapshotTaken) {
-              ensureEqualState(continuation, builder.state)
+              ensureEqualState(continuation, builder.result())
             }
             builder.put(journalRecord)  // throws on invalid event
             if (isSnapshotTaken) {
@@ -543,7 +543,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                 Right(NextFile(
                   RecoveredJournalFile(file, length = replicatedFileLength,
                     lastProperEventPosition = lastProperEventPosition,
-                    header, nextHeader, replicatedFirstEventPosition.orThrow, builder.state)))
+                    header, nextHeader, replicatedFirstEventPosition.orThrow, builder.result())))
               case _ =>
                 Left(Problem.pure(s"JournalHeader could not be replicated " +
                   s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
@@ -568,9 +568,12 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
   private def ensureEqualState(continuation: Continuation.Replicatable, snapshot: S): Unit =
     for (recoveredJournalFile <- continuation.maybeRecoveredJournalFile if recoveredJournalFile.state != snapshot) {
-      val msg = s"State from recovered journal file ${recoveredJournalFile.fileEventId} does not match snapshot in next journal file"
+      var msg = s"Calculated '$S' from recovered or replicated journal file" +
+        s" ${recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
+      // msg may get very big
       logger.error(msg)
-      logger.info(diffx.compare(recoveredJournalFile.state, snapshot).show)
+      msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show
+      logger.info(msg)  // Without colors because msg is already colored
       sys.error(msg)
     }
 

@@ -93,7 +93,7 @@ object JournaledStateRecoverer
             nextJournalHeader,
             firstEventPosition = recoverer.firstEventPosition
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
-            fileJournaledStateBuilder.state)),
+            fileJournaledStateBuilder.result())),
           totalRunningSince = runningSince - nextJournalHeader.totalRunningTime,
           config)
 

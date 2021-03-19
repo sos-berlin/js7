@@ -1,7 +1,6 @@
 import BuildInfos.prettyVersion
 import java.lang.ProcessBuilder.Redirect
 import java.security.Security
-import java.util.Base64
 import sbt.ModuleID
 import scala.jdk.CollectionConverters._
 
@@ -29,6 +28,8 @@ object BuildUtils
   if (sys.props("java.runtime.version") startsWith "1.8.0_15") {  // Special for Java 8u151 or Java 8u152 (delete this)
     Security.setProperty("crypto.policy", "unlimited")
   }
+
+  System.setProperty("js7.journal.slow-check-state", "on")
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] =
     o :: Nil

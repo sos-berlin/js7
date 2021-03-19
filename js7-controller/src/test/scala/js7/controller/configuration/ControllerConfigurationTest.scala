@@ -4,6 +4,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.time.ZoneId
 import js7.base.configutils.Configs._
+import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.time.ScalaTime._
 import js7.cluster.ClusterConf
@@ -45,7 +46,8 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 1.h,
-      journalConf = JournalConf.fromConfig(DefaultConfig),
+      journalConf = JournalConf.fromConfig(DefaultConfig)
+        .copy(slowCheckState = sys.props.get("js7.journal.slow-check-state").fold(false)(StringAsBoolean(_))),
       clusterConf = ClusterConf(NodeId("Primary"), isBackup = false, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s

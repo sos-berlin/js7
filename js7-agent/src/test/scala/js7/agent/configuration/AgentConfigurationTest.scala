@@ -6,6 +6,7 @@ import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration.DefaultConfig
 import js7.agent.configuration.AgentConfigurationTest._
 import js7.base.configutils.Configs._
+import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.system.OperatingSystem.isWindows
@@ -37,7 +38,8 @@ final class AgentConfigurationTest extends AnyFreeSpec
         defaultJobSigkillDelay = 15.s,
         killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
         akkaAskTimeout = 1.hour,
-        JournalConf.fromConfig(DefaultConfig),
+        journalConf = JournalConf.fromConfig(DefaultConfig)
+          .copy(slowCheckState = sys.props.get("js7.journal.slow-check-state").fold(false)(StringAsBoolean(_))),
         name = AgentConfiguration.DefaultName,
         DefaultConfig))
     }

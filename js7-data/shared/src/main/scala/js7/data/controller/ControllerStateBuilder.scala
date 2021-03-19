@@ -38,6 +38,7 @@ extends JournaledStateBuilder[ControllerState]
     idToAgentRefState.clear()
     idToAgentRefState ++= state.idToAgentRefState
     idToLockState ++= state.idToLockState
+    allOrderWatchesState = state.allOrderWatchesState
   }
 
   protected def onAddSnapshotObject = {
@@ -66,9 +67,9 @@ extends JournaledStateBuilder[ControllerState]
       standards = standards.copy(clusterState = o)
   }
 
-  protected def onOnAllSnapshotsAdded() = {
+  override protected def onOnAllSnapshotsAdded() = {
     val (added, removed) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], idToOrder.toMap)
-    idToOrder ++= added.map(o => o.id -> o)
+    idToOrder ++= added
     idToOrder --= removed
     allOrderWatchesState = allOrderWatchesState.onEndOfRecovery.orThrow
   }
@@ -209,7 +210,7 @@ extends JournaledStateBuilder[ControllerState]
       case _ =>
     }
 
-  def state =
+  def result() =
     ControllerState(
       eventId = eventId,
       standards,

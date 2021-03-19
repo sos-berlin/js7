@@ -14,16 +14,14 @@ extends JournaledStateBuilder[AgentServerState]
 
   protected def onAddSnapshotObject = {
     case snapshot: RegisteredController =>
-      _state = state.applySnapshot(snapshot).orThrow
+      _state = _state.applySnapshot(snapshot).orThrow
   }
-
-  protected def onOnAllSnapshotsAdded() = {}
 
   protected def onAddEvent = {
-    case stamped => _state = state.applyStampedEvents(stamped :: Nil).orThrow
+    case stamped => _state = _state.applyStampedEvents(stamped :: Nil).orThrow
   }
 
-  def state = _state
+  def result() = _state
 
   def journalState = JournalState.empty
 

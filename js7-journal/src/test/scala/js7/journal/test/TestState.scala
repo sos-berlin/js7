@@ -54,7 +54,7 @@ object TestState extends JournaledState.Companion[TestState]
 
   def newBuilder() = new JournaledStateBuilder.Simple(TestState)
   {
-    override def onAddSnapshotObject = {
+    def onAddSnapshotObject = {
       case o: TestAggregate =>
         updateState(state.copy(keyToAggregate =
           state.keyToAggregate + (o.key -> o)))

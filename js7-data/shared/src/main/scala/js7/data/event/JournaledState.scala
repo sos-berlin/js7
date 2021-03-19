@@ -97,7 +97,7 @@ object JournaledState
         snapshotObjects.foreachL(builder.addSnapshotObject)
           .map { _ =>
             builder.onAllSnapshotsAdded()
-            builder.state
+            builder.result()
           }
       }
 

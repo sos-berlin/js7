@@ -16,14 +16,11 @@ extends JournaledStateBuilder[AgentState]
   private var _eventId = EventId.BeforeFirst
   private var idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private var idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
-  private var fileWatchesState = new AllFileWatchesState.Builder
+  private var allFileWatchesState = new AllFileWatchesState.Builder
   private var _state = AgentState.empty
 
-  protected def onInitializeState(state: AgentState) = {
-    _eventId = state.eventId
-    idToOrder = mutable.Map() ++ state.idToOrder
-    idToWorkflow = mutable.Map() ++ state.idToWorkflow
-  }
+  protected def onInitializeState(state: AgentState) =
+    _state = state
 
   protected def onAddSnapshotObject = {
     case o: JournalState =>
@@ -36,16 +33,16 @@ extends JournaledStateBuilder[AgentState]
       idToWorkflow.insert(workflow.id -> workflow)
 
     case snapshot: FileWatchState.Snapshot =>
-      fileWatchesState.addSnapshot(snapshot)
+      allFileWatchesState.addSnapshot(snapshot)
   }
 
-  protected def onOnAllSnapshotsAdded() = {
+  override protected def onOnAllSnapshotsAdded() = {
     _state = AgentState(
       _eventId,
       JournaledState.Standards(_journalState, ClusterState.Empty),
       idToOrder.toMap,
       idToWorkflow.toMap,
-      fileWatchesState.result())
+      allFileWatchesState.result())
   }
 
   protected def onAddEvent = {
@@ -54,7 +51,7 @@ extends JournaledStateBuilder[AgentState]
       _state = _state.applyEvent(keyedEvent).orThrow
   }
 
-  def state = _state.copy(eventId = _eventId)
+  def result() = _state.copy(eventId = _eventId)
 
   def journalState = JournalState.empty
 

@@ -133,17 +133,11 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
 
   def eventId = builder.eventId
 
-  def state = builder.state
+  def result() = builder.result()
 
   def journalState = builder.journalState
 
   def clusterState = builder.clusterState
-
-  def result: S =
-    _progress match {
-      case InCommittedEventsSection => builder.state
-      case _ => throw new IllegalStateException(s"Journal file '$journalFileForInfo' is truncated in state '$journalProgress'")
-    }
 
   def isAcceptingEvents = _progress.isAcceptingEvents
 

@@ -61,7 +61,7 @@ extends Actor with Stash
 
   private var uncommittedJournaledState: S = null.asInstanceOf[S]
   private var journaledState: S = null.asInstanceOf[S]
-
+  private val journaledStateBuilder = S.newBuilder()
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
   private var totalRunningSince = now
@@ -106,6 +106,9 @@ extends Actor with Stash
     case Input.Start(journaledState_, observer_, header, totalRunningSince_) =>
       uncommittedJournaledState = journaledState_.asInstanceOf[S]
       journaledState = uncommittedJournaledState
+      if (conf.slowCheckState) {
+        journaledStateBuilder.initializeState(None, journaledState_.eventId, totalEventCount = 0, uncommittedJournaledState)
+      }
       requireClusterAcknowledgement = journaledState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
       journalHeader = header
@@ -130,6 +133,9 @@ extends Actor with Stash
     case Input.StartWithoutRecovery(journalId, observer_) =>  // Testing only
       uncommittedJournaledState = S.empty
       journaledState = uncommittedJournaledState
+      if (conf.slowCheckState) {
+        journaledStateBuilder.initializeState(None, uncommittedJournaledState.eventId, totalEventCount = 0, uncommittedJournaledState)
+      }
       journalingObserver := observer_
       journalHeader = JournalHeader.initial(journalId).copy(generation = 1)
       eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
@@ -169,6 +175,12 @@ extends Actor with Stash
 
           case Right(updatedState) =>
             uncommittedJournaledState = updatedState
+            if (conf.slowCheckState) {
+              stampedEvents.foreach(journaledStateBuilder.addEvent)
+              assertEqualSnapshotState("JournaledStateBuilder.result()",
+                journaledStateBuilder.result().withEventId(uncommittedJournaledState.eventId),
+                stampedEvents)
+            }
             eventWriter.writeEvents(stampedEvents, transaction = transaction)
             val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
             for (o <- lastFileLengthAndEventId) {
@@ -550,6 +562,7 @@ extends Actor with Stash
     snapshotWriter.beginSnapshotSection()
 
     blocking {  // TODO Do not block the thread
+      val builder = S.newBuilder()
       Await.result(
         journaledState.toSnapshotObservable
           .filter {
@@ -561,10 +574,17 @@ extends Actor with Stash
             snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
           }
           .foreach { case (snapshotObject, byteArray) =>
+            if (conf.slowCheckState) builder.addSnapshotObject(snapshotObject)
             snapshotWriter.writeSnapshot(byteArray)
             logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
           }(scheduler),
         999.s)
+
+      if (conf.slowCheckState) {
+        builder.onAllSnapshotsAdded()
+        assertEqualSnapshotState("Written snapshot",
+          builder.result().withEventId(journalHeader.eventId), Nil)
+      }
     }
 
     snapshotWriter.endSnapshotSection()
@@ -598,6 +618,18 @@ extends Actor with Stash
 
     onReadyForAcknowledgement()
   }
+
+  private def assertEqualSnapshotState(what: String, snapshotState: S, stampedSeq: Seq[Stamped[AnyKeyedEvent]])
+  : Unit =
+    if (snapshotState != uncommittedJournaledState) {
+      var msg = s"$what does not match actual '$S'"
+      logger.error(msg)
+      for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
+      // msg may get very big
+      msg ++= s":\n" ++ diffx.compare(snapshotState, uncommittedJournaledState).show
+      logger.info(msg)  // Without colors because msg is already colored
+      throw new AssertionError(msg)
+    }
 
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
     assertThat(journalHeader != null)

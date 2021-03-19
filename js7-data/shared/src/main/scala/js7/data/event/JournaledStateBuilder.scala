@@ -40,11 +40,11 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   protected def onAddSnapshotObject: PartialFunction[Any, Unit]
 
-  protected def onOnAllSnapshotsAdded(): Unit
+  protected def onOnAllSnapshotsAdded(): Unit = {}
 
   protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
 
-  def state: S
+  def result(): S
 
   def journalState: JournalState
 
@@ -81,7 +81,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
   private def onStateIsAvailable(): Unit =
     getStatePromise.success(Task {
       synchronized {
-        state
+        result()
       }
     })
 
@@ -178,17 +178,17 @@ object JournaledStateBuilder
       case o => super.addSnapshotObject(o)
     }
 
-    protected def onOnAllSnapshotsAdded() = {}
-
     protected def onAddEvent = {
       case stamped =>
         _state = _state.applyEvent(stamped.value).orThrow
         updateEventId(stamped.eventId)
     }
 
-    def state = _state withEventId eventId
+    def result() = _state withEventId eventId
 
-    protected def updateState(state: S) = _state = state
+    protected final def state = _state
+
+    protected final def updateState(state: S) = _state = state
 
     def journalState = _state.journalState
 

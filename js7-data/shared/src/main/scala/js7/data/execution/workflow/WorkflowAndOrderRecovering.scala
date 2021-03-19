@@ -2,7 +2,6 @@ package js7.data.execution.workflow
 
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.event.KeyedEvent
@@ -20,8 +19,8 @@ object WorkflowAndOrderRecovering
   // TODO Some events (OrderForked, OrderFinished, OrderOffered) handled by OrderActor let AgentOrderKeeper add or remove orders. This should be done in a single transaction.
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
   final def followUpRecoveredWorkflowsAndOrders(idToWorkflow: WorkflowId => Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
-  : (Iterable[Order[Order.State]], Iterable[OrderId]) = {
-    val added = mutable.Map.empty[OrderId, Order[Order.State]]
+  : (Map[OrderId, Order[Order.State]], Set[OrderId]) = {
+    val added = Map.newBuilder[OrderId, Order[Order.State]]
     val removed = mutable.Buffer.empty[OrderId]
     val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder.checked)
     for (order <- idToOrder.values;
@@ -32,7 +31,7 @@ object WorkflowAndOrderRecovering
       followUps foreach {
         case FollowUp.AddChild(childOrder) =>  // OrderForked
           if (!idToOrder.contains(childOrder.id)) {  // Snapshot of child order is missing? Add the child now!
-            added.insert(childOrder.id -> childOrder)
+            added += childOrder.id -> childOrder
           }
 
         case FollowUp.Remove(removeOrderId) =>  // OrderRemoved, OrderJoined
@@ -41,7 +40,7 @@ object WorkflowAndOrderRecovering
         case _ =>
       }
     }
-    (added.values.toVector, removed.toVector)
+    (added.result(), removed.toSet)
   }
 
   private def snapshotToEvent(order: Order[Order.State]): Option[KeyedEvent[OrderEvent]] =
