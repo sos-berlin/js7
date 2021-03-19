@@ -147,8 +147,8 @@ extends SimpleItemState
         Right(copy(
           externalToState = externalToState - externalOrderName))
 
-      case _ =>
-        Left(Problem(s"onOrderRemoved($externalOrderName, $orderId) but not HasOder"))
+      case state =>
+        Left(Problem(s"onOrderRemoved($externalOrderName, $orderId) but state=$state"))
     }
 
   def nextEvents(workflowPathToVersionId: WorkflowPath => Option[VersionId])

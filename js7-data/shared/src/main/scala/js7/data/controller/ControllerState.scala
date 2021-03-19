@@ -198,7 +198,8 @@ extends JournaledState[ControllerState]
 
               case OrderRemoveMarked =>
                 previousOrder.externalOrderKey match {
-                  case None => Right(copy(idToOrder = updatedIdToOrder))
+                  case None =>
+                    Right(copy(idToOrder = updatedIdToOrder))
                   case Some(externalOrderKey) =>
                     allOrderWatchesState.onOrderEvent(externalOrderKey, orderId <-: OrderRemoveMarked)
                       .map(o => copy(
@@ -208,9 +209,11 @@ extends JournaledState[ControllerState]
 
               case OrderRemoved =>
                 previousOrder.externalOrderKey match {
-                  case None => Right(copy(idToOrder = idToOrder - orderId))
+                  case None =>
+                    Right(copy(idToOrder = idToOrder - orderId))
                   case Some(externalOrderKey) =>
-                    allOrderWatchesState.onOrderEvent(externalOrderKey, orderId <-: OrderRemoved)
+                    allOrderWatchesState
+                      .onOrderEvent(externalOrderKey, orderId <-: OrderRemoved)
                       .map(o => copy(
                         idToOrder = idToOrder - orderId,
                         allOrderWatchesState = o))
@@ -225,7 +228,8 @@ extends JournaledState[ControllerState]
       }
 
     case KeyedEvent(orderWatchId: OrderWatchId, event: OrderWatchEvent) =>
-      allOrderWatchesState.onOrderWatchEvent(orderWatchId <-: event)
+      allOrderWatchesState
+        .onOrderWatchEvent(orderWatchId <-: event)
         .map(o => copy(allOrderWatchesState = o))
 
     case KeyedEvent(_, _: ControllerShutDown) =>

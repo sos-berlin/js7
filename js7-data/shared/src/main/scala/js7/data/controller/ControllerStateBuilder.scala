@@ -134,14 +134,15 @@ extends JournaledStateBuilder[ControllerState]
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
-        case event: OrderAdded =>
-          idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, event))
+        case orderAdded: OrderAdded =>
+          idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, orderAdded))
+          allOrderWatchesState = allOrderWatchesState.onOrderAdded(orderId <-: orderAdded).orThrow
 
-        case OrderRemoved =>
+        case orderRemoved: OrderRemoved =>
           for (order <- idToOrder.remove(orderId)) {
             for (externalOrderKey <- order.externalOrderKey)
               allOrderWatchesState = allOrderWatchesState
-                .onOrderEvent(externalOrderKey, orderId <-: OrderRemoved)
+                .onOrderEvent(externalOrderKey, orderId <-: orderRemoved)
                 .orThrow
           }
 
@@ -158,7 +159,7 @@ extends JournaledStateBuilder[ControllerState]
 
           for (externalOrderKey <- order.externalOrderKey) {
             allOrderWatchesState = allOrderWatchesState
-              .onOrderEvent(externalOrderKey, orderId <-: OrderRemoved)
+              .onOrderEvent(externalOrderKey, orderId <-: event)
               .orThrow
           }
 

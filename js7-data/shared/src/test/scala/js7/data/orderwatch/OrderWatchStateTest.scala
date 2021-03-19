@@ -28,7 +28,7 @@ final class OrderWatchStateTest extends AnyFreeSpec
       Some(NamedValue("1")),
       ItemRevision(7)),
     Some(Attached),
-    Map( // Not in snapshot, because its duplicate to Order.orderSourceKey
+    Map( // Not in snapshot, because its duplicate to Order.externalOrderKey
       ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
       ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), Some(Vanished))))
 

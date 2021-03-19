@@ -23,19 +23,18 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
     copy(idToOrderWatchState = idToOrderWatchState - orderWatchId)
 
   def changeOrderWatch(orderWatch: OrderWatch): Checked[AllOrderWatchesState] =
-    for (orderSourceState <- idToOrderWatchState.checked(orderWatch.id))
+    for (watchState <- idToOrderWatchState.checked(orderWatch.id))
       yield copy(
-        idToOrderWatchState = idToOrderWatchState + (orderWatch.id -> orderSourceState.copy(
+        idToOrderWatchState = idToOrderWatchState + (orderWatch.id -> watchState.copy(
           orderWatch = orderWatch)))
 
   def onOrderWatchEvent(keyedEvent: KeyedEvent[OrderWatchEvent])
-  : Checked[AllOrderWatchesState] = {
-    val id = keyedEvent.key
-    idToOrderWatchState.checked(id)
+  : Checked[AllOrderWatchesState] =
+    idToOrderWatchState
+      .checked(keyedEvent.key)
       .flatMap(_.applyOrderWatchEvent(keyedEvent.event))
       .map(updated => copy(
-        idToOrderWatchState = idToOrderWatchState + (id -> updated)))
-  }
+        idToOrderWatchState = idToOrderWatchState + (updated.id -> updated)))
 
   def updatedAttachedState(
     orderWatchId: OrderWatchId,
@@ -44,14 +43,14 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
   : Checked[AllOrderWatchesState] =
     idToOrderWatchState
       .checked(orderWatchId)
-      .flatMap(orderSourceState =>
-        if (orderSourceState.orderWatch.agentId != agentId)
+      .flatMap(watchState =>
+        if (watchState.orderWatch.agentId != agentId)
           Left(Problem(
-            s"updatedAttachedState $orderWatchId: agentId=${orderSourceState.orderWatch.agentId} != agentId"))
+            s"updatedAttachedState $orderWatchId: agentId=${watchState.orderWatch.agentId} != agentId"))
         else Right(copy(
           idToOrderWatchState = idToOrderWatchState +
             (orderWatchId ->
-              orderSourceState.copy(
+              watchState.copy(
                 attached = attachedState)))))
 
   def onOrderAdded(keyedEvent: KeyedEvent[OrderAdded]): Checked[AllOrderWatchesState] =
@@ -65,8 +64,8 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
     idToOrderWatchState
       .checked(orderWatchId)
       .flatMap(_.onOrderAdded(externalOrderKey.name, orderId))
-      .map(orderSourceState => copy(
-        idToOrderWatchState = idToOrderWatchState + (orderWatchId -> orderSourceState)))
+      .map(watchState => copy(
+        idToOrderWatchState = idToOrderWatchState + (orderWatchId -> watchState)))
   }
 
   def onOrderEvent(externalOrderKey: ExternalOrderKey, keyedEvent: KeyedEvent[OrderCoreEvent])
@@ -93,17 +92,17 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
   def applySnapshot(snapshot: OrderWatchState.Snapshot): Checked[AllOrderWatchesState] =
     snapshot match {
       case snapshot: OrderWatchState.HeaderSnapshot =>
-        val orderSourceState = OrderWatchState.fromSnapshot(snapshot)
-        idToOrderWatchState.insert(orderSourceState.id -> orderSourceState)
+        val watchState = OrderWatchState.fromSnapshot(snapshot)
+        idToOrderWatchState.insert(watchState.id -> watchState)
           .map(o => copy(
             idToOrderWatchState = o))
 
       case snapshot: OrderWatchState.ExternalOrderSnapshot =>
         idToOrderWatchState.checked(snapshot.orderWatchId)
-          .flatMap(orderSourceState => orderSourceState
+          .flatMap(_
             .applySnapshot(snapshot)
-            .map(orderSourceState => copy(
-              idToOrderWatchState = idToOrderWatchState + (orderSourceState.id -> orderSourceState))))
+            .map(watchState => copy(
+              idToOrderWatchState = idToOrderWatchState + (watchState.id -> watchState))))
   }
 
   // TODO How about a Builder class ?

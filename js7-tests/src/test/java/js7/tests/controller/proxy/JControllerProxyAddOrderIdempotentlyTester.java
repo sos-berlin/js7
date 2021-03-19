@@ -49,7 +49,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
 
     private final JControllerApi api;
     private final JControllerProxy proxy;
-    private final TestOrderSource orderSource = new TestOrderSource();
+    private final TestOrderSource orderWatch = new TestOrderSource();
 
     JControllerProxyAddOrderIdempotentlyTester(JControllerProxy proxy) {
         this.api = proxy.api();
@@ -86,9 +86,9 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
     }
 
     void testRunOrders() throws InterruptedException, ExecutionException, TimeoutException {
-        assertThat(orderSource.nextOrderCount(), equalTo(3));
+        assertThat(orderWatch.nextOrderCount(), equalTo(3));
         addOrdersIdempotently();
-        assertThat(orderSource.nextOrderCount(), equalTo(0));
+        assertThat(orderWatch.nextOrderCount(), equalTo(0));
 
         addOrdersIdempotently();
         addOrdersIdempotently();
@@ -114,7 +114,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
     }
 
     private void addOrdersIdempotently() {
-        List<JFreshOrder> freshOrders = orderSource.nextOrders();
+        List<JFreshOrder> freshOrders = orderWatch.nextOrders();
 
         // Using proxy.addOrders (instead of api.addOrders) synchronizes the proxy so that it mirrors the added events.
         await(proxy.addOrders(Flux.fromIterable(freshOrders)));
@@ -127,9 +127,9 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
             .collect(toList());
 
         assertThat(new HashSet<>(activeOrderIds), equalTo(
-            orderSource.nextOrders().stream().map(o -> o.id()).collect(toSet())));
+            orderWatch.nextOrders().stream().map(o -> o.id()).collect(toSet())));
 
-        orderSource.markOrdersAsAdded(activeOrderIds);
+        orderWatch.markOrdersAsAdded(activeOrderIds);
 
         await(api.removeOrdersWhenTerminated(activeOrderIds));
     }

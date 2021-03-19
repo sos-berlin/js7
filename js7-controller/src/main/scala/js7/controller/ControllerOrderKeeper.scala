@@ -346,10 +346,10 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
 
-      for (orderSourceState <- _controllerState.allOrderWatchesState.idToOrderWatchState.values) {
-        import orderSourceState.orderWatch
+      for (orderWatchState <- _controllerState.allOrderWatchesState.idToOrderWatchState.values) {
+        import orderWatchState.orderWatch
         for (agentEntry <- agentRegister.get(orderWatch.agentId)) {
-          if (!orderSourceState.attached.contains(Attached)) {
+          if (!orderWatchState.attached.contains(Attached)) {
             agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(orderWatch)
           }
         }
