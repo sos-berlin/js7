@@ -12,6 +12,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
 import monix.reactive.Observable
+import scala.collection.View
 
 final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, OrderWatchState])
 {
@@ -78,10 +79,9 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
   }
 
   def nextEvents(workflowPathToVersionId: WorkflowPath => Option[VersionId])
-  : Seq[KeyedEvent[OrderEvent.OrderCoreEvent]] =
+  : View[KeyedEvent[OrderEvent.OrderCoreEvent]] =
     idToOrderWatchState.values.view
       .flatMap(_.nextEvents(workflowPathToVersionId))
-      .toVector
 
   def estimatedSnapshotSize =
     idToOrderWatchState.view.values.map(_.estimatedSnapshotSize).sum

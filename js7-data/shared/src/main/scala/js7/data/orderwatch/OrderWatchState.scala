@@ -22,8 +22,8 @@ final case class OrderWatchState(
   orderWatch: OrderWatch,
   attached: Option[AttachedState],
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder],
-  arisedQueue: Set[ExternalOrderName],
-  vanishedQueue: Set[ExternalOrderName])
+  private[orderwatch] val arisedQueue: Set[ExternalOrderName],
+  private[orderwatch] val vanishedQueue: Set[ExternalOrderName])
 extends SimpleItemState
 {
   def item = orderWatch
@@ -57,21 +57,18 @@ extends SimpleItemState
   private def onExternalOrderArised(externalOrderName: ExternalOrderName, orderId: OrderId, arguments: NamedValues)
   : Checked[OrderWatchState] =
     externalToState.get(externalOrderName) match {
-      case Some(Arised(_, _) | HasOrder(_, None | Some(Arised(_, _)))) =>
-        Left(Problem(s"Duplicate onExternalOrderArised($externalOrderName, $arguments)"))
-
-      case Some(HasOrder(_, Some(Vanished))) =>
-        Left(Problem(s"onExternalOrderArised($externalOrderName, $arguments) before OrderRemoveMarked"))
-
       case None =>
         Right(copy(
           externalToState = externalToState + (externalOrderName -> Arised(orderId, arguments)),
           arisedQueue = arisedQueue + externalOrderName))
 
-      case Some(HasOrder(orderId, Some(VanishedAck))) =>
+      case Some(HasOrder(orderId, None | Some(Vanished | VanishedAck))) =>
         Right(copy(
           externalToState = externalToState +
             (externalOrderName -> HasOrder(orderId, Some(Arised(orderId, arguments))))))
+
+      case Some(state @ (Arised(_, _) | HasOrder(_, Some(Arised(_, _))))) =>
+        Left(Problem(s"Duplicate ExternalOrderArised($externalOrderName, $arguments): $state"))
     }
 
   private def onExternalOrderVanished(externalOrderName: ExternalOrderName): Checked[OrderWatchState] =
@@ -83,23 +80,20 @@ extends SimpleItemState
 
       case HasOrder(orderId, None) =>
         Right(copy(
-          externalToState = externalToState +
-            (externalOrderName -> HasOrder(orderId, Some(Vanished))),
+          externalToState = externalToState + (externalOrderName -> HasOrder(orderId, Some(Vanished))),
           vanishedQueue = vanishedQueue + externalOrderName))
-
-      case HasOrder(_, Some(Vanished)) =>
-        Left(Problem(s"onExternalOrderVanished($externalOrderName) but not Arised"))
-
-      case state @ HasOrder(_, Some(VanishedAck)) =>
-        logger.debug(s"ExternalOrderVanished($externalOrderName) but state=$state")
-        Right(this)
 
       case HasOrder(orderId, Some(Arised(_, _))) =>
         Right(copy(
-          externalToState = externalToState +
-            (externalOrderName -> HasOrder(orderId, None)),
-          arisedQueue = arisedQueue - externalOrderName,
-          vanishedQueue = vanishedQueue - externalOrderName))
+          externalToState = externalToState + (externalOrderName -> HasOrder(orderId, None)),
+          arisedQueue = arisedQueue - externalOrderName))
+
+      case state @ HasOrder(_, Some(Vanished | VanishedAck)) =>
+        Left(Problem(s"Duplicate ExternalOrderVanished($externalOrderName), state=$state"))
+
+      //case state @ HasOrder(_, Some(VanishedAck)) =>
+      //  logger.debug(s"ExternalOrderVanished($externalOrderName) but state=$state")
+      //  Right(this)
     }
 
   def onOrderAdded(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
@@ -130,7 +124,8 @@ extends SimpleItemState
           vanishedQueue = vanishedQueue - externalOrderName))
 
       case HasOrder(_, _) =>
-        Left(Problem(s"$orderId <-: OrderRemoveMarked ($externalOrderName) but watched order has not vanished"))
+        logger.debug(s"$orderId <-: OrderRemoveMarked ($externalOrderName) but watched order has not vanished")
+        Right(this)
 
       case _ =>
         Left(Problem(s"$orderId <-: OrderRemoveMarked ($externalOrderName) but not HasOrder"))
@@ -176,11 +171,8 @@ extends SimpleItemState
     vanishedQueue.view
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
-        .flatMap {
-          case HasOrder(orderId, _) =>
-            Some(orderId <-: OrderRemoveMarked)
-
-          case _ => None
+        .collect {
+          case HasOrder(orderId, _) => orderId <-: OrderRemoveMarked  // may be filtered later
         })
 
   def estimatedSnapshotSize =

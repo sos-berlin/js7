@@ -4,31 +4,41 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.nio.file.{Files, Path, Paths}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryState._
+import js7.base.log.Logger
+import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.JavaCollections.syntax._
 import js7.base.utils.MapDiff
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.{View, mutable}
+import scala.concurrent.duration.Deadline.now
 
 final case class DirectoryState(pathToEntry: Map[Path, Entry])
 {
   def applyAndReduceEvents(events: Seq[DirectoryEvent]): (Seq[DirectoryEvent], DirectoryState) = {
     val added = mutable.Map.empty[Path, Entry]
     val deleted = mutable.Set.empty[Path]
+    val modified = mutable.Set.empty[Path]
 
     events foreach {
       case FileAdded(path) =>
         added += path -> Entry(path)
         deleted -= path
+        modified -= path
+
+      case FileModified(path) =>
+        modified += path
 
       case FileDeleted(path) =>
         added -= path
         deleted += path
+        modified -= path
     }
 
     val updatedState = copy(pathToEntry -- deleted ++ added)
-    val reducedEvents = diffTo(updatedState)
+    val reducedEvents = diffTo(updatedState) ++
+      modified.filter(updatedState.pathToEntry.keySet).map(FileModified)
     reducedEvents -> updatedState
   }
 
@@ -43,12 +53,14 @@ final case class DirectoryState(pathToEntry: Map[Path, Entry])
 object DirectoryState
 {
   val empty = new DirectoryState(Map.empty)
+  private val logger = Logger[this.type]
 
   def fromIterable(entries: Iterable[Entry]): DirectoryState =
     new DirectoryState(entries.toKeyedMap(_.path))
 
-  def readDirectory(directory: Path): DirectoryState =
-    DirectoryState(
+  def readDirectory(directory: Path): DirectoryState = {
+    val since = now
+    val result = DirectoryState(
       autoClosing(Files.list(directory))(_
         .asScala
         .flatMap(file =>
@@ -57,6 +69,9 @@ object DirectoryState
         .filterNot(_.toString.startsWith("."))  // No ".", ".." or hidden files
         .map(path => path -> DirectoryState.Entry(path))
         .toMap))
+    logger.debug(s"readDirectory '$directory' in ${since.elapsed.pretty}")
+    result
+  }
 
   final case class Entry(path: Path)
 

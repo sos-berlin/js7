@@ -26,6 +26,7 @@ final class OrderWatchStateTest extends AnyFreeSpec
       "DIRECTORY",
       Some("PATTERN.*\\.csv".r.pattern),
       Some(NamedValue("1")),
+      delay = 2.s,
       ItemRevision(7)),
     Some(Attached),
     Map( // Not in snapshot, because its duplicate to Order.externalOrderKey
@@ -143,6 +144,7 @@ final class OrderWatchStateTest extends AnyFreeSpec
             "directory": "DIRECTORY",
             "pattern": "PATTERN.*\\.csv",
             "orderIdExpression": "$$1",
+            "delay": 2,
             "itemRevision": 7
           },
           "attached": {

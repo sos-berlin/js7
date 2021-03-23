@@ -5,7 +5,7 @@ import js7.data.controller.ControllerStateExecutor._
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.VersionId
-import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderForked, OrderLockEvent}
+import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderForked, OrderLockEvent, OrderRemoveMarked}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.annotation.tailrec
@@ -32,8 +32,15 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
       nextOrderEvents
   }
 
-  def nextOrderEvents: Seq[KeyedEvent[OrderCoreEvent]] =
-    _controllerState.allOrderWatchesState.nextEvents(workflowPathToVersionId)
+  def nextOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
+    _controllerState.allOrderWatchesState
+      .nextEvents(workflowPathToVersionId)
+      .filter {
+        case KeyedEvent(orderId: OrderId, OrderRemoveMarked) =>
+          // OrderWatchState emits OrderRemovedMarked without knowledge of the order
+          controllerState.idToOrder.get(orderId).exists(o => !o.removeWhenTerminated)
+        case _ => true
+      }
 
   def nextOrderEventsByOrderId(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] = {
     val queue = mutable.Queue.empty[OrderId] ++= orderIds

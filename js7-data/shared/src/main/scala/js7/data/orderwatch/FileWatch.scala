@@ -1,15 +1,17 @@
 package js7.data.orderwatch
 
+import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.semiauto.deriveCodec
 import java.util.regex.Pattern
-import js7.base.circeutils.CirceObjectCodec
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.StandardJsonCodecs.PatternJsonCodec
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.AgentId
 import js7.data.item.ItemRevision
 import js7.data.value.expression.Expression
 import js7.data.workflow.WorkflowPath
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 final case class FileWatch(
   id: OrderWatchId,
@@ -18,6 +20,7 @@ final case class FileWatch(
   directory: String,
   pattern: Option[Pattern] = None,
   orderIdExpression: Option[Expression] = None,
+  delay: FiniteDuration = Duration.Zero,
   itemRevision: ItemRevision = ItemRevision.Initial)
 extends OrderWatch
 {
@@ -49,10 +52,10 @@ object FileWatch extends OrderWatch.Companion
   val idCompanion = OrderWatchId
   val FileArgumentName = "file"
 
-  implicit val jsonCodec: CirceObjectCodec[FileWatch] = {
+  implicit val jsonCodec: Codec.AsObject[FileWatch] = {
     implicit val configuration = withDefaults
-    deriveCodec[FileWatch]
+    deriveConfiguredCodec[FileWatch]
   }
 
-  intelliJuseImport(PatternJsonCodec)
+  intelliJuseImport((PatternJsonCodec, FiniteDurationJsonEncoder))
 }

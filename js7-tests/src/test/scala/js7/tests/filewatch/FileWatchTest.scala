@@ -48,7 +48,8 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     OrderWatchId("TEST-WATCH"),
     workflow.path,
     aAgentId,
-    sourceDirectory.toString)
+    sourceDirectory.toString,
+    delay = 100.ms)
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow

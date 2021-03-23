@@ -55,7 +55,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
     }
 
     def toDirectoryState(names: String*) =
-      DirectoryState.fromIterable(names.map(Paths.get(_)).map(Entry))
+      DirectoryState.fromIterable(names.map(Paths.get(_)).map(Entry(_)))
 
     def readDirectory() =
       toDirectoryState(files: _*)
@@ -86,7 +86,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
       val buffer = mutable.Buffer[Set[DirectoryEvent]]()
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
-      val whenObserved = DirectoryWatcher.observe(DirectoryState.empty, options)
+      val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
         .doOnSubscribe(Task(subscribed.success(())))
         .takeUntil(stop)
         .foreach(buffer += _.toSet)
@@ -107,7 +107,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
       val buffer = mutable.Buffer[DirectoryEvent]()
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
-      val whenObserved = DirectoryWatcher.observe(DirectoryState.empty, options)
+      val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
         .doOnSubscribe(Task(subscribed.success(())))
         .takeUntil(stop)
         .foreach(buffer ++= _)
@@ -135,7 +135,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
       val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
       val buffer = mutable.Buffer[Seq[DirectoryEvent]]()
-      val whenObserved = DirectoryWatcher.observe(DirectoryState.empty, options)
+      val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
         .foreach { buffer += _ }
       var first = 0
 

@@ -184,10 +184,11 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "OrderWatchState.Header",
             "orderWatch": {
               "TYPE": "FileWatch",
-              "agentId": "AGENT",
-              "directory": "/tmp/directory",
               "id": "WATCH",
               "workflowPath": "WORKFLOW",
+              "agentId": "AGENT",
+              "directory": "/tmp/directory",
+              "delay": 0,
               "itemRevision": 0
             },
             "attached": { "TYPE": "Attached" }

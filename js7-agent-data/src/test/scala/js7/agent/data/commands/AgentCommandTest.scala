@@ -179,6 +179,7 @@ final class AgentCommandTest extends AnyFreeSpec
           "workflowPath": "WORKFLOW",
           "agentId": "AGENT",
           "directory": "DIRECTORY",
+          "delay": 0,
           "itemRevision": 0
         }
       }""")

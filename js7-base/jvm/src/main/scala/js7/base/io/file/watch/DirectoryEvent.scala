@@ -14,11 +14,10 @@ object DirectoryWatchEvent
     watchEvent.kind match {
       case PathOverflow => Overflow
       case ENTRY_CREATE => FileAdded(watchEvent.context)
-      case ENTRY_DELETE => FileDeleted(watchEvent.context)
       case ENTRY_MODIFY => FileModified(watchEvent.context)
+      case ENTRY_DELETE => FileDeleted(watchEvent.context)
     }
 
-  final case object Started extends DirectoryWatchEvent
   final case object Overflow extends DirectoryWatchEvent
 }
 
@@ -28,8 +27,7 @@ sealed trait DirectoryEvent extends DirectoryWatchEvent {
 
 object DirectoryEvent
 {
-  //final case object Started extends DirectoryEvent
   final case class FileAdded(relativePath: Path) extends DirectoryEvent
-  final case class FileDeleted(relativePath: Path) extends DirectoryEvent
   final case class FileModified(relativePath: Path) extends DirectoryEvent
+  final case class FileDeleted(relativePath: Path) extends DirectoryEvent
 }

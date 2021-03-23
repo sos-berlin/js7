@@ -1,7 +1,8 @@
 package js7.base.io.file.watch
 
 import js7.base.io.file.watch.BasicDirectoryWatcher.repeatWhileIOException
-import js7.base.io.file.watch.DirectoryWatcher.hotLoopBrake
+import js7.base.io.file.watch.DirectoryWatcher._
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioTask
@@ -22,7 +23,9 @@ private final class DirectoryWatcher(
       readDirectoryAndObserve(state)
         .tapEach { case (_, state) =>
           lastState = state
-        } ++
+        }
+        .guaranteeCase(exitCase => Task(
+          logger.debug(s"readDirectoryAndObserveForever: $exitCase"))) ++
         readDirectoryAndObserveForever(lastState)
           .delayExecution((since + hotLoopBrake).timeLeftOrZero)
     }
@@ -33,21 +36,22 @@ private final class DirectoryWatcher(
       .fromTask(readDirectory map state.diffTo)
       .filter(_.nonEmpty)
       .appendAll(directoryEventObservable
-        // BasicDirectoryWatch yield Nil when poll() timed out.
+        // BasicDirectoryWatch yields Nil when poll() timed out.
         // Then we end, allowing the caller to restart and
         // to handle an exchanged directory.
         .takeWhile(_.nonEmpty))
       .scan(state -> Seq.empty[DirectoryEvent])((pair, events) =>
         pair._1.applyAndReduceEvents(events).swap)
       .map(_.swap)
-      .filterNot(_._1.isEmpty)
+      .filter(_._1.nonEmpty)
 }
 
 object DirectoryWatcher
 {
   val hotLoopBrake = 1.s
+  private val logger = Logger[this.type]
 
-  def observe(state: DirectoryState, options: WatchOptions)(implicit iox: IOExecutor)
+  def observable(state: DirectoryState, options: WatchOptions)(implicit iox: IOExecutor)
   : Observable[Seq[DirectoryEvent]] =
     Observable
       .fromResource(
@@ -60,7 +64,7 @@ object DirectoryWatcher
         val readDirectory = repeatWhileIOException(
           options,
           ioTask(DirectoryState.readDirectory(directory)))
-        Observable.fromResource(basicWatcher.startObservable)
+        Observable.fromResource(basicWatcher.observableResource)
           .flatMap(observable =>
             new DirectoryWatcher(readDirectory, observable)
               .readDirectoryAndObserveForever(state)

@@ -327,7 +327,7 @@ with MainJournalingActor[ControllerState, Event]
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
       locally {
-        val maybeControllerInitialized = !_controllerState.controllerMetaState.isDefined ?
+        val maybeControllerInitialized = !_controllerState.controllerMetaState.isDefined thenVector
           (NoKey <-: ControllerEvent.ControllerInitialized(
             controllerConfiguration.controllerId,
             journalHeader.startedAt))
@@ -335,8 +335,10 @@ with MainJournalingActor[ControllerState, Event]
           ZoneId.systemDefault.getId,
           totalRunningTime = journalHeader.totalRunningTime)
 
-        val nextEvents = new ControllerStateExecutor(_controllerState).nextOrderEvents
-        persistMultiple(maybeControllerInitialized ++ Some(controllerReady) ++ nextEvents) { (_, updatedState) =>
+        val events = maybeControllerInitialized :+ controllerReady :++
+          new ControllerStateExecutor(_controllerState).nextOrderEvents
+
+        persistMultiple(events) { (_, updatedState) =>
           _controllerState = updatedState
           clusterNode.afterJournalingStarted
             .materializeIntoChecked

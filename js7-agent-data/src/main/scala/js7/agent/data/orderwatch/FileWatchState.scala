@@ -37,6 +37,9 @@ final case class FileWatchState(
               pathToEntry = directoryState.pathToEntry - relativePath))
     }
 
+  def containsPath(path: Path) =
+    directoryState.pathToEntry.contains(path)
+
   def estimatedSnapshotSize =
     1 + directoryState.pathToEntry.size
 

@@ -5,7 +5,7 @@ import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import com.typesafe.config.Config
-import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
+import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, Paths}
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneId, ZonedDateTime}
@@ -13,8 +13,9 @@ import java.util.regex.Matcher
 import js7.agent.data.AgentState
 import js7.agent.data.orderwatch.FileWatchState
 import js7.agent.scheduler.order.FileWatchManager._
-import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
-import js7.base.io.file.watch.{DirectoryEvent, DirectoryWatcher, WatchOptions}
+import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
+import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
+import js7.base.io.file.watch.{DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
 import js7.base.problem.{Checked, Problem}
@@ -28,10 +29,9 @@ import js7.data.item.SimpleItemId
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchId}
-import js7.data.value.expression.Expression.{Argument, FunctionCall}
-import js7.data.value.expression.{Evaluator, Expression, Scope, ValueSearch}
-import js7.data.value.{NamedValues, StringValue, Value}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchId}
+import js7.data.value.expression.{Evaluator, Expression}
+import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.{JournaledStatePersistence, LockKeeper}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -106,69 +106,77 @@ final class FileWatchManager(
         .as(())
     }
 
-  private def watch(fileWatchState: FileWatchState, stop: Observable[Unit])
-  : Task[Unit] =
+  private def watch(fileWatchState: FileWatchState, stop: Observable[Unit]): Task[Unit] =
     Task.defer {
       import fileWatchState.fileWatch
 
+      val directory = Paths.get(fileWatch.directory)
       val delayIterator = retryDelays.iterator ++ Iterator.continually(retryDelays.last)
       var directoryState = fileWatchState.directoryState
 
       DirectoryWatcher
-        .observe(
+        .observable(
           directoryState,
           WatchOptions(
             Paths.get(fileWatch.directory),
-            Set(ENTRY_CREATE, ENTRY_DELETE),
+            Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
             retryDelays = retryDelays,
             pollTimeout = pollTimeout,
             delay = watchDelay))
         .takeUntil(stop)
-        .map(directoryEventsToPersistableEvents(fileWatch, _))
-        .mapEval(events =>
-          persistence.persist(_ => Right(events.map(fileWatch.id <-: _))))
+        .flatMap(Observable.fromIterable)
+        .delayFileAdded(fileWatch.delay)  // buffers without limit all incoming event
+        .bufferIntrospective(1024/*TODO?*/)
+        .mapEval(dirEventSeqs =>
+          persistence.persist { agentState =>
+            val isKnownPath = agentState.allFileWatchesState.idToFileWatch(fileWatch.id).containsPath _
+            Right(
+              dirEventSeqs
+                .view
+                .flatten
+                .flatMap { dirEvent =>
+                  val maybeOrderId = pathToOrderId(fileWatch, dirEvent.relativePath)
+                  if (maybeOrderId.isEmpty) logger.debug(s"Ignore $dirEvent")
+                  maybeOrderId.map(dirEvent -> _)
+                }
+                // In case of DirectoryWatcher error recovery, duplicate DirectoryEvent may occur.
+                // We check this here.
+                .flatMap {
+                  case (FileAdded(path), orderId) if !isKnownPath(path) =>
+                    Some(ExternalOrderArised(
+                      ExternalOrderName(path.toString),
+                      orderId,
+                      toOrderArguments(directory, path)))
+
+                  case (FileDeleted(path), _) if isKnownPath(path) =>
+                    Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
+
+                  case (event, orderId) =>
+                    logger.debug(s"Ignore $orderId $event")
+                    None
+                }
+                .map(fileWatch.id <-: _)
+                .toVector)
+          })
         .foreachL {
           case Left(problem) => logger.error(problem.toString)
           case Right((_, agentState)) =>
             directoryState = agentState.allFileWatchesState.idToFileWatch(fileWatch.id).directoryState
         }
-        .onErrorRestartLoop(now) {
-          (throwable, since, restart) =>
-            val delay = (since + delayIterator.next()).timeLeftOrZero
-            logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
-            for (t <- throwable.ifStackTrace) logger.debug(t.toString, t)
-            Task.sleep(delay) >> restart(now)
+        .onErrorRestartLoop(now) { (throwable, since, restart) =>
+          val delay = (since + delayIterator.next()).timeLeftOrZero
+          logger.error(s"Delay ${delay.pretty} after error: ${throwable.toStringWithCauses}")
+          for (t <- throwable.ifStackTrace) logger.debug(t.toString, t)
+          Task.sleep(delay) >> restart(now)
         }
-  }
-
-  private def directoryEventsToPersistableEvents(
-    fileWatch: FileWatch,
-    directoryEvents: Seq[DirectoryEvent])
-  : Seq[OrderWatchEvent] = {
-    val directory = Paths.get(fileWatch.directory)
-    directoryEvents.flatMap { directoryEvent =>
-      val relativePath = directoryEvent.relativePath.toString
-      relativePathToOrderId(fileWatch, relativePath)
-        .flatMap { checkedOrderId =>
-          for (problem <- checkedOrderId.left) logger.error(s"${fileWatch.id} $relativePath: $problem")
-          checkedOrderId.toOption
-        }
-        .map(orderId =>
-          directoryEvent match {
-            case FileAdded(path) =>
-              ExternalOrderArised(
-                ExternalOrderName(path.toString),
-                orderId,
-                toOrderArguments(directory, path))
-
-            case FileDeleted(path) =>
-              ExternalOrderVanished(ExternalOrderName(path.toString))
-
-            case FileModified(_) =>
-              sys.error("Unexpected FileModified")
-          })
     }
-  }
+
+  private def pathToOrderId(fileWatch: FileWatch, relativePath: Path): Option[OrderId] =
+    relativePathToOrderId(fileWatch, relativePath.toString)
+      .flatMap { checkedOrderId =>
+        for (problem <- checkedOrderId.left) logger.error(s"${fileWatch.id} $relativePath: $problem")
+        checkedOrderId.toOption
+      }
 
   private def toOrderArguments(directory: Path, path: Path) =
     NamedValues(FileArgumentName -> StringValue(directory.resolve(path).toString))
@@ -176,7 +184,6 @@ final class FileWatchManager(
 
 object FileWatchManager
 {
-  private val NumberRegex = "([0-9]+)".r
   private val logger = Logger(getClass)
 
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String)

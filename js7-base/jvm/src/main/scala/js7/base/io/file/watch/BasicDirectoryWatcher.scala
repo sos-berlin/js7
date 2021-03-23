@@ -36,7 +36,7 @@ extends AutoCloseable
     watchService.close()
   }
 
-  private[watch] def startObservable: Resource[Task, Observable[Seq[DirectoryEvent]]] =
+  private[watch] def observableResource: Resource[Task, Observable[Seq[DirectoryEvent]]] =
     directoryWatchResource.map(_ => Observable.defer {
       @volatile var canceled = false
       (true +: Observable.repeat(false))
@@ -54,11 +54,13 @@ extends AutoCloseable
   private def directoryWatchResource: Resource[Task, WatchKey] =
     Resource.make(
       repeatWhileIOException(options, Task {
-        logger.debug(s"register watchService $kinds, ${highSensitivity.mkString(",")}")
+        logger.debug(s"register watchService $kinds, ${highSensitivity.mkString(",")} $directory")
         directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[_]], highSensitivity: _*)
       })
-    )(release = watchKey => Task(
-      watchKey.cancel()))
+    )(release = watchKey => Task {
+      logger.debug(s"watchKey.cancel() $directory")
+      watchKey.cancel()
+    })
 
   private def poll(canceled: => Boolean): Task[Seq[DirectoryWatchEvent]] =
     Task.defer {

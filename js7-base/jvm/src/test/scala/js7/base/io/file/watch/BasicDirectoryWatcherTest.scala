@@ -28,7 +28,7 @@ final class BasicDirectoryWatcherTest extends AnyFreeSpec
         WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)))
       autoClosing(watcher) { _ =>
         for (i <- 2 to 4) {
-          watcher.startObservable.use(observable => Task {
+          watcher.observableResource.use(observable => Task {
             val observed = observable.take(1).toListL
             // File is detected before observable starts
             val file = dir / i.toString
@@ -36,7 +36,7 @@ final class BasicDirectoryWatcherTest extends AnyFreeSpec
             assert(observed.await(99.s) == List(Seq(FileAdded(file.getFileName))))
           }).await(99.s)
         }
-        watcher.startObservable.use(observable => Task {
+        watcher.observableResource.use(observable => Task {
           val observed = observable.take(1).toListL
           dir / "2" := "MODIFIED"
           assert(observed.await(99.s) == List(Seq(FileModified(Paths.get("2")))))
@@ -53,7 +53,7 @@ final class BasicDirectoryWatcherTest extends AnyFreeSpec
         pollTimeout = 50.ms, retryDurations = Seq(50.ms)))
       autoClosing(watcher) { _ =>
         val events = mutable.Buffer.empty[DirectoryEvent]
-        val future = watcher.startObservable
+        val future = watcher.observableResource
           .use(observable => Task {
             val observed = observable foreach { events ++= _ }
             var file = dir / "1"

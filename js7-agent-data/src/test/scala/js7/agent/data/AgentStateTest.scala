@@ -95,6 +95,7 @@ final class AgentStateTest extends AsyncFreeSpec
               "agentId": "AGENT",
               "directory": "/DIRECTORY",
               "pattern": "\\.csv",
+              "delay": 0,
               "itemRevision": 0
             }
           }""",
