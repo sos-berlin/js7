@@ -33,7 +33,7 @@ object JournalFiles
       val pattern = JournalFile.garbagePattern(journalFileBase.getFileName)
       iterator.filter { file =>
         val matcher = pattern.matcher(file.getFileName.toString)
-        matcher.matches &&
+        matcher.matches() &&
           Try(matcher.group(1).toLong < untilEventId).getOrElse(false)
       }
       .toVector

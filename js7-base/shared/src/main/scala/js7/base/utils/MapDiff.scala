@@ -24,7 +24,8 @@ final case class MapDiff[K, V] private(
     this == Empty
 }
 
-object MapDiff {
+object MapDiff
+{
   private val Empty = new MapDiff(Map.empty, Map.empty, Set.empty)
 
   def empty[K, V]: MapDiff[K, V] =
@@ -43,7 +44,7 @@ object MapDiff {
     MapDiff(
       added = to.view.filter { case (k, v) => !from.contains(k) }.toMap,
       updated = to.view.filter { case (k, v) => from.get(k) exists v.!= }.toMap,
-      deleted = (from.keySet -- to.keySet).toSet)
+      deleted = from.keySet.toSet diff to.keySet)
 
   implicit val StringDiffJsonEncoder: Encoder[MapDiff[String, String]] = deriveEncoder[MapDiff[String, String]]
   implicit val StringDiffJsonDecoder: Decoder[MapDiff[String, String]] = deriveDecoder[MapDiff[String, String]]

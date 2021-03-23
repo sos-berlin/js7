@@ -56,7 +56,7 @@ object JournalFile
         case null => Left(EmptyStringProblem("File"))
         case filename =>
           val matcher = pattern.matcher(filename.toString)
-          (matcher.matches ? matcher.group(1).toLong)
+          (matcher.matches() ? matcher.group(1).toLong)
             .toChecked(Problem(s"Filename does not match a journal filename: $filename"))
       }
   }
