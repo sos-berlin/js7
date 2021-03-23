@@ -26,7 +26,7 @@ final class FeedMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "test" in {
     val ops = Vector[Any](SimpleAddOrChange(Lock(LockId("TEST"))))
     implicit val opJsonCodec = Feed.opJsonCodec
-    val in = Resource.liftF(Task.pure(ByteArray(ops.asJson.compactPrint).toInputStream))
+    val in = Resource.eval(Task.pure(ByteArray(ops.asJson.compactPrint).toInputStream))
     FeedMain.run(Array(s"--controller=${controller.localUri}", "--user="), in)
       .await(99.s).orThrow
   }

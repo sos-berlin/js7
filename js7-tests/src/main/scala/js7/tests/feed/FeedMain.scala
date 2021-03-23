@@ -17,7 +17,7 @@ object FeedMain
     if (args.isEmpty || args.sameElements(Array("--help"))) {
       println("Usage: testAddOrders --workflow=WORKFLOWPATH --order-count=1 --user=USER:PASSWORD")
     } else {
-      run(args, Resource.liftF(Task.pure(System.in)))
+      run(args, Resource.eval(Task.pure(System.in)))
         .runToFuture
         .awaitInfinite
         match {

@@ -4,19 +4,19 @@ import scala.language.implicitConversions
 //noinspection TypeAnnotation
 object Dependencies
 {
-  val scalaVersion = "2.13.4"
+  val scalaVersion = "2.13.5"
 
-  val akkaVersion = "2.6.11"
-  val akkaHttpVersion = "10.2.2"
+  val akkaVersion = "2.6.13"
+  val akkaHttpVersion = "10.2.4"
   val slf4jVersion = "1.7.30"  // See also plugins.sbt
-  val log4jVersion = "2.14.0"  // See also plugins.sbt
-  val catsVersion = "2.3.1"
-  val catsEffectVersion = "2.3.1"
+  val log4jVersion = "2.14.1"  // See also plugins.sbt
+  val catsVersion = "2.4.2"
+  val catsEffectVersion = "2.4.0"
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.13.0"
   val scalaJava8Version = "0.9.1"
-  val scalaTestVersion = "3.2.2"
+  val scalaTestVersion = "3.2.5"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
@@ -24,11 +24,11 @@ object Dependencies
   val disciplineScalaTestVersion = "2.0.0"
   val monixVersion = "3.3.0"
   val monocleVersion = "1.5.0"
-  val scribeVersion = "3.2.0"
+  val scribeVersion = "3.4.0"
   val scalaJsDomVersion = "1.1.0"
   val shapelessVersion = "2.3.3"
   val diffxVersion = "0.4.0"
-  val reactorVersion = "3.3.7.RELEASE"
+  val reactorVersion = "3.4.4"
   val vavrVersion = "0.10.3"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
@@ -72,10 +72,10 @@ object Dependencies
   val fastparse           = "com.lihaoyi" %% "fastparse" % fastparseVersion
 
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
-  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.27"
+  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.28"
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
-  val guava               = "com.google.guava" % "guava" % "30.1-jre"
+  val guava               = "com.google.guava" % "guava" % "30.1.1-jre"
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.68"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
                             "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil
