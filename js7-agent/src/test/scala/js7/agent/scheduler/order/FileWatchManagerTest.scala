@@ -19,7 +19,9 @@ final class FileWatchManagerTest extends AnyFreeSpec
     AgentId("AGENT"),
     "DIRECTORY",
     Some("""file-(.+)\.csv""".r.pattern),
-    Some(ExpressionParser.parse(""""#" ++ now(format="yyyy-MM-dd", timezone="Pacific/Tahiti") ++ "#F-$orderWatchId:$1"""").orThrow))
+    Some(ExpressionParser.parse(
+      """"#" ++ now(format="yyyy-MM-dd", timezone="Pacific/Tahiti") ++ "#F-$orderWatchId:$1""""
+    ).orThrow))
 
   private lazy val yyyymmdd = ZonedDateTime.now
     .withZoneSameInstant(ZoneId.of("Pacific/Tahiti"))

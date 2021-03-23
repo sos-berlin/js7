@@ -7,8 +7,6 @@ import cats.syntax.traverse._
 import com.typesafe.config.Config
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, Paths}
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import java.util.regex.Matcher
 import js7.agent.data.AgentState
 import js7.agent.data.orderwatch.FileWatchState
@@ -18,7 +16,7 @@ import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservab
 import js7.base.io.file.watch.{DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
@@ -206,46 +204,6 @@ object FileWatchManager
     }
   }
 
-  private def eval(orderWatchId: OrderWatchId, expression: Expression, matcher: Matcher) =
-    Evaluator.eval(expression, new FileWatchScope(orderWatchId, matcher))
-
-  private final class FileWatchScope(orderWatchId: OrderWatchId, matcher: Matcher) extends Scope {
-    import ValueSearch.{LastOccurred, Name}
-
-    val symbolToValue = symbol => Left(Problem(s"Unknown symbol: $symbol"))
-
-    val findValue = {
-      case ValueSearch(LastOccurred, Name("yyyy-mm-dd")) =>
-        Right(Some(StringValue(LocalDate.now.toString)))
-
-      case ValueSearch(LastOccurred, Name("orderWatchId")) =>
-        Right(Some(StringValue(orderWatchId.string)))
-
-      case ValueSearch(LastOccurred, Name(NumberRegex(nr))) =>
-        Checked.catchNonFatal(nr.toInt).flatMap(index =>
-          if (index < 0 || index > matcher.groupCount)
-            Left(Problem(s"Unknown index in regular expression group: $index"))
-          else
-            Right(Some(StringValue(matcher.group(index)))))
-
-      case _ => Right(None)
-    }
-
-    override def evalFunctionCall(functionCall: Expression.FunctionCall): Checked[Value] =
-      functionCall match {
-        case FunctionCall("now", Seq(
-          Argument(formatExpr, None | Some("format")),
-          Argument(timezoneExpr, None | Some("timezone")))) =>
-          for {
-            format <- evaluator.eval(formatExpr).flatMap(_.toStringValueString)
-            timezone <- evaluator.eval(timezoneExpr).flatMap(_.toStringValueString)
-          } yield
-            StringValue(
-              ZonedDateTime.now
-                .withZoneSameInstant(ZoneId.of(timezone))
-                .format(DateTimeFormatter.ofPattern(format)))
-
-        case _ => super.evalFunctionCall(functionCall)
-      }
-  }
+  private def eval(orderWatchId: OrderWatchId, expression: Expression, matchedMatcher: Matcher) =
+    Evaluator.eval(expression, new FileWatchScope(orderWatchId, matchedMatcher))
 }
