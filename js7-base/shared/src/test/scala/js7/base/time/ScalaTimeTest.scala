@@ -315,6 +315,8 @@ final class ScalaTimeTest extends AnyFreeSpec
     }
 
     "roundUpToNext" in {
+      assert(7.ms.roundUpToNext(0.s) == 7.ms)
+      assert(7.ms.roundUpToNext(-1.s) == 7.ms)
       assert(0.s.roundUpToNext(1.s) == 0.s)
       assert(1.ns.roundUpToNext(1.s) == 1.s)
       assert(1000.ns.roundUpToNext(1.µs) == 1.µs)

@@ -254,12 +254,15 @@ object ScalaTime
       else
         Duration(duration.toSeconds, SECONDS) - milliseconds.ms
 
-    def roundUpToNext(granularity: FiniteDuration): FiniteDuration = {
-      val nanos = duration.toNanos
-      val sgn = if (nanos >= 0) 1 else -1
-      val gran = granularity.toNanos
-      Duration((nanos + (gran - 1) * sgn) / gran * gran, NANOSECONDS).toCoarsest
-    }
+    def roundUpToNext(granularity: FiniteDuration): FiniteDuration =
+      if (!granularity.isPositive)
+        duration
+      else {
+        val nanos = duration.toNanos
+        val sgn = if (nanos >= 0) 1 else -1
+        val gran = granularity.toNanos
+        Duration((nanos + (gran - 1) * sgn) / gran * gran, NANOSECONDS).toCoarsest
+      }
 
     def toBigDecimalSeconds = duration.unit match {
       case NANOSECONDS  => BigDecimal(duration.length, 9)
