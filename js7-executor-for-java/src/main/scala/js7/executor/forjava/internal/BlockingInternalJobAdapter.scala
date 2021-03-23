@@ -17,8 +17,8 @@ extends InternalJob
   def processOrder(context: OrderContext) = {
     import jobContext.js7Scheduler
     val jOrderContext = BlockingInternalJob.JOrderContext(context,
-      outWriter = new ObserverWriter(context.out),
-      errWriter = new ObserverWriter(context.err))
+      outWriter = new ObserverWriter(context.outObserver),
+      errWriter = new ObserverWriter(context.errObserver))
     val orderProcess = helper.processOrder(jOrderContext)(
       (jInternalJob, jOrderContext) =>
         OrderProcess(

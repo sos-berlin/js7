@@ -25,7 +25,7 @@ final class InternalExecutorTest extends AnyFreeSpec
 
   "InternalExecutor" in {
     val executable = InternalExecutable(classOf[TestInternalJob].getName)
-    val executor = new InternalExecutor(executable, globalIOX.scheduler)
+    val executor = new InternalExecutor(executable, globalIOX.scheduler)(Scheduler.global, globalIOX)
     val out = PublishSubject[String]()
     val err = PublishSubject[String]()
     val whenOutString = out.fold.lastL.runToFuture
@@ -53,10 +53,10 @@ object InternalExecutorTest
   {
     override def processOrder(context: OrderContext) =
       OrderProcess(
-        Task.fromFuture(context.out.onNext("OUT 1/")) >>
-        Task.fromFuture(context.err.onNext("ERR 1/")) >>
-        Task.fromFuture(context.out.onNext("OUT 2")) >>
-        Task.fromFuture(context.err.onNext("ERR 2")) >>
+        Task.fromFuture(context.outObserver.onNext("OUT 1/")) >>
+        Task.fromFuture(context.errObserver.onNext("ERR 1/")) >>
+        Task.fromFuture(context.outObserver.onNext("OUT 2")) >>
+        Task.fromFuture(context.errObserver.onNext("ERR 2")) >>
         Task {
           context.arguments.checked("ARG")
             .flatMap(_.narrow[NumberValue])

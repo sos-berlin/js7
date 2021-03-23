@@ -16,6 +16,7 @@ import js7.base.io.process.Processes.ShellFileAttributes
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
+import js7.base.thread.IOExecutor
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
@@ -42,7 +43,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JobActor private(conf: Conf)(implicit scheduler: Scheduler)
+final class JobActor private(conf: Conf)(implicit scheduler: Scheduler, iox: IOExecutor)
 extends Actor with Stash
 {
   import conf.{jobKey, newTaskRunner, temporaryDirectory, workflowJob}
@@ -349,7 +350,8 @@ object JobActor
 {
   private val V1EnvPrefix = "SCHEDULER_PARAM_"
 
-  def props(conf: Conf)(implicit s: Scheduler) = Props { new JobActor(conf) }
+  def props(conf: Conf)(implicit s: Scheduler, iox: IOExecutor) =
+    Props { new JobActor(conf) }
 
   final case class Conf(
     jobKey: JobKey,  // For integrity check

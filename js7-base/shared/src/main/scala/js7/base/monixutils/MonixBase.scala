@@ -12,8 +12,9 @@ import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
+import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.SerialCancelable
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.{Ack, Cancelable, Scheduler, UncaughtExceptionReporter}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.{IterableFactory, IterableOps}
@@ -222,6 +223,14 @@ object MonixBase
 
       final def buffer(timespan: Option[FiniteDuration], maxCount: Long, toWeight: A => Long = _ => 1): Observable[Seq[A]] =
         new BufferedObservable[A](underlying, timespan, maxCount, toWeight)
+    }
+
+    implicit class RichMonixAckFuture(private val ack: Future[Ack]) extends AnyVal {
+      def syncFlatMapOnContinue(body: => Future[Ack])(implicit u: UncaughtExceptionReporter) =
+        ack.syncTryFlatten.syncFlatMap {
+          case Continue => body
+          case Stop => Stop
+        }
     }
 
     implicit class RichMonixObservableTask[A](private val underlying: Task[Observable[A]]) extends AnyVal

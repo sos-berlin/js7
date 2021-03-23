@@ -3,6 +3,7 @@ package js7.executor.forjava.internal
 import java.lang.System.lineSeparator
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichEitherIterable, RichPartialFunction}

@@ -39,10 +39,10 @@ object JInternalJob
   extends JavaOrderContext
   {
     def sendOut(string: String): CompletionStage[Void] =
-      send(string, asScala.out)
+      send(string, asScala.outObserver)
 
     def sendErr(string: String): CompletionStage[Void] = {
-      send(string, asScala.err)
+      send(string, asScala.errObserver)
     }
 
     private def send(string: String, observer: Observer[String]): CompletionStage[Void] =

@@ -6,6 +6,7 @@ import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.log.Logger
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
+import js7.base.thread.IOExecutor
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.InternalExecutable
@@ -18,7 +19,7 @@ import scala.util.control.NonFatal
 final class InternalExecutor(
   executable: InternalExecutable,
   blockingJobScheduler: Scheduler)
-  (implicit scheduler: Scheduler)
+  (implicit scheduler: Scheduler, iox: IOExecutor)
 {
   private lazy val runningJob: Checked[InternalJob] =
     toInstantiator(executable.className)
@@ -42,8 +43,8 @@ final class InternalExecutor(
       .map(_.map(orderProcess =>
         orderProcess.copy(
           completed = orderProcess.completed.flatTap(_ => Task {
-            context.out.onComplete()
-            context.err.onComplete()
+            context.outObserver.onComplete()
+            context.errObserver.onComplete()
           }))))
       .tapEval {
         case Left(problem) => Task(logger.debug(s"${executable.className} " +
@@ -77,7 +78,7 @@ final class InternalExecutor(
   }
 
   private def toJobContext(cls: Class[_]) =
-    JobContext(cls, executable.jobArguments, scheduler, blockingJobScheduler)
+    JobContext(cls, executable.jobArguments, scheduler, iox, blockingJobScheduler)
 
   override def toString = s"InternalExecutor(${executable.className})"
 }

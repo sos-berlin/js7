@@ -3,6 +3,7 @@ package js7.tests.jobs
 import cats.syntax.traverse._
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.{Path, Paths}
+import js7.base.io.process.Stderr
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
@@ -12,12 +13,11 @@ import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
+import js7.executor.internal.InternalJob.{JobContext, OrderContext, OrderProcess, Result}
 import js7.tests.jobs.DeleteFileJob._
 import monix.eval.Task
-import monix.reactive.Observer
 
-final class DeleteFileJob extends InternalJob
+final class DeleteFileJob(jobContext: JobContext) extends InternalJob
 {
   def processOrder(orderContext: OrderContext) =
     OrderProcess(
@@ -25,20 +25,18 @@ final class DeleteFileJob extends InternalJob
         .orElse(orderContext.order.arguments.checked(FileArgumentName))
         .flatMap(_.toStringValueString)
         .map(Paths.get(_))
-        .traverse(deleteFile(_, orderContext.out))
+        .traverse(deleteFile(_, orderContext.send(Stderr, _)))
         .rightAs(Result(NamedValues.empty)))
 
-  private def deleteFile(file: Path, out: Observer[String]): Task[Unit] =
-    Task(deleteIfExists(file))
-      .flatMap { deleted =>
-        if (deleted)
-          Task.defer {
-            logger.info(s"Deleted $file")
-            Task.deferFuture(out.onNext(s"Deleted $file\n"))
-              .as(())
-          }
-        else
-          Task.unit
+  private def deleteFile(file: Path, out: String => Task[Unit]): Task[Unit] =
+    Task {
+      val deleted = deleteIfExists(file)
+      if (deleted) logger.info(s"Deleted $file")
+      deleted
+    } .executeOn(jobContext.ioExecutor.scheduler)
+      .flatMap {
+        case false => Task.unit
+        case true => out(s"Deleted $file\n")
       }
 }
 
@@ -47,5 +45,8 @@ object DeleteFileJob
   private val logger = Logger[this.type]
 
   def execute(agentId: AgentId) =
-    Execute(WorkflowJob(agentId, InternalExecutable(classOf[DeleteFileJob].getName)))
+    Execute(WorkflowJob(
+      agentId,
+      InternalExecutable(classOf[DeleteFileJob].getName),
+      taskLimit = sys.runtime.availableProcessors))
 }
