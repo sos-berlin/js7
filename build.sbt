@@ -643,6 +643,6 @@ releaseProcess := {
       tagRelease,
     //publishArtifacts,           // checks whether `publishTo` is properly set up
       setNextVersion,
-      commitNextVersion,
-      pushChanges)                // also checks that an upstream branch is properly configured
+      commitNextVersion)
+      //pushChanges)                // also checks that an upstream branch is properly configured
 }
