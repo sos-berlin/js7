@@ -29,7 +29,9 @@ object BuildUtils
     Security.setProperty("crypto.policy", "unlimited")
   }
 
-  System.setProperty("js7.journal.slow-check-state", "on")
+  if (System.getProperty("js7.journal.slow-check-state") == null) {
+    System.setProperty("js7.journal.slow-check-state", "on")
+  }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] =
     o :: Nil
