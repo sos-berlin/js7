@@ -24,7 +24,7 @@ final class ObserverAsTask[A] private(observer: Observer[A])
     Task.deferAction { implicit s =>
       send(a).flatMap {
         case Continue => Task.unit
-        case Stop => Task.raiseError(new RuntimeException("InternalJob out channel closed"))
+        case Stop => Task.raiseError(new RuntimeException("Observer stopped"))
       }
     }
 }
