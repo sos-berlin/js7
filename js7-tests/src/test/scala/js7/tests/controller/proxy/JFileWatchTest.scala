@@ -40,5 +40,6 @@ final class JFileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object JFileWatchTest
 {
   private val agentId = AgentId("AGENT")
-  private val workflow = Workflow.of(WorkflowPath("WORKFLOW"), DeleteFileJob.execute(agentId))
+  private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
+    DeleteFileJob.execute(agentId))
 }
