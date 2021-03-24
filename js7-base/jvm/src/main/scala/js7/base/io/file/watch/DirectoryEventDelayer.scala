@@ -218,9 +218,12 @@ object DirectoryEventDelayer
   object syntax {
     implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])
     extends AnyVal {
-      // TODO if !delay.isPositive shortcut this, AND PROVIDE TESTS
-      def delayFileAdded(delay: FiniteDuration): Observable[Seq[DirectoryEvent]] =
-        new DirectoryEventDelayer(self, delay)
+      def delayFileAdded(delay: FiniteDuration): Observable[Seq[DirectoryEvent]] = {
+        if (delay.isPositive)
+          new DirectoryEventDelayer(self, delay)
+        else
+          self.bufferIntrospective(1024)  // Similar to DirectoryEventDelayer, which buffers without limit
+      }
     }
   }
 }
