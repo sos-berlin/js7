@@ -9,6 +9,7 @@ import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.io.file.watch.DirectoryState
 import js7.base.problem.Checked._
+import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEvent.NoKey
@@ -45,7 +46,7 @@ final class AgentStateTest extends AsyncFreeSpec
           WorkflowPath("WORKFLOW"),
           AgentId("AGENT"),
         "/DIRECTORY",
-        Some("""\.csv""".r.pattern)),
+        Some(SimplePattern("""\.csv""".r.pattern.pattern))),
         DirectoryState.fromIterable(Seq(
           DirectoryState.Entry(Paths.get("/DIRECTORY/1.csv")),
           DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))))

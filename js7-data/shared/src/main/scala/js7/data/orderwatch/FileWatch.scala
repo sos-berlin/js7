@@ -5,8 +5,8 @@ import io.circe.generic.extras.Configuration.default.withDefaults
 import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs._
-import js7.base.circeutils.StandardJsonCodecs.PatternJsonCodec
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.item.ItemRevision
 import js7.data.value.expression.Expression
@@ -18,7 +18,7 @@ final case class FileWatch(
   workflowPath: WorkflowPath,
   agentId: AgentId,
   directory: String,
-  pattern: Option[Pattern] = None,
+  pattern: Option[SimplePattern] = None,
   orderIdExpression: Option[Expression] = None,
   delay: FiniteDuration = Duration.Zero,
   itemRevision: ItemRevision = ItemRevision.Initial)
@@ -57,5 +57,5 @@ object FileWatch extends OrderWatch.Companion
     deriveConfiguredCodec[FileWatch]
   }
 
-  intelliJuseImport((PatternJsonCodec, FiniteDurationJsonEncoder))
+  intelliJuseImport(FiniteDurationJsonEncoder)
 }

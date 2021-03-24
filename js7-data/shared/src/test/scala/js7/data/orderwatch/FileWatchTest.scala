@@ -1,9 +1,9 @@
 package js7.data.orderwatch
 
-import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.WorkflowPath
@@ -28,9 +28,9 @@ final class FileWatchTest extends AnyFreeSpec
       testJson[OrderWatch](
         FileWatch(
           OrderWatchId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "/DIRECTORY",
-          Some(Pattern.compile("[a-z]+.csv")),
+          Some(SimplePattern("[a-z]+.csv")),
           Some(ExpressionParser.parse(
-            """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F-$orderWatchId:$1"""").orThrow),
+            """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$epochSecond-$orderWatchId:$1"""").orThrow),
           2.s),
         json"""{
           "TYPE": "FileWatch",
@@ -40,7 +40,7 @@ final class FileWatchTest extends AnyFreeSpec
           "directory": "/DIRECTORY",
           "pattern": "[a-z]+.csv",
           "itemRevision": 0,
-          "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F-$$orderWatchId:$$1\"",
+          "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$epochSecond-$$orderWatchId:$$1\"",
           "delay": 2
         }""")
     }

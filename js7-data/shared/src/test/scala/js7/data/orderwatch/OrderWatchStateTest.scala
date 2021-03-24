@@ -4,6 +4,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.agent.AttachedState.Attached
 import js7.data.item.ItemRevision
@@ -24,7 +25,7 @@ final class OrderWatchStateTest extends AnyFreeSpec
       WorkflowPath("WORKFLOW"),
       AgentId("AGENT"),
       "DIRECTORY",
-      Some("PATTERN.*\\.csv".r.pattern),
+      Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
       Some(NamedValue("1")),
       delay = 2.s,
       ItemRevision(7)),

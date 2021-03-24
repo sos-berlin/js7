@@ -4,6 +4,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 import js7.agent.scheduler.order.FileWatchManager.relativePathToOrderId
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.order.OrderId
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
@@ -18,7 +19,7 @@ final class FileWatchManagerTest extends AnyFreeSpec
     WorkflowPath("WORKFLOW"),
     AgentId("AGENT"),
     "DIRECTORY",
-    Some("""file-(.+)\.csv""".r.pattern),
+    Some(SimplePattern("""file-(.+)\.csv""".r.pattern.pattern)),
     Some(ExpressionParser.parse(
       """"#" ++ now(format="yyyy-MM-dd", timezone="Pacific/Tahiti") ++ "#F-$orderWatchId:$1""""
     ).orThrow))
