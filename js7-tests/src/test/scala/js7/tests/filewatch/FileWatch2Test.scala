@@ -72,7 +72,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
   private val orderId6 = OrderId("file:FILE-WATCH:6")
   private val orderId7 = OrderId("file:FILE-WATCH:7")
 
-  "Start with some files" in {
+  "Several tests" in {
     createDirectories(aDirectory)
     val initialFile = aDirectory / "1"
     initialFile := ""

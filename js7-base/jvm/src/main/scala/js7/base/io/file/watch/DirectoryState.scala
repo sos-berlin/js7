@@ -58,7 +58,7 @@ object DirectoryState
   def fromIterable(entries: Iterable[Entry]): DirectoryState =
     new DirectoryState(entries.toKeyedMap(_.path))
 
-  def readDirectory(directory: Path): DirectoryState = {
+  def readDirectory(directory: Path, matches: Path => Boolean = _ => true): DirectoryState = {
     val since = now
     val result = DirectoryState(
       autoClosing(Files.list(directory))(_
@@ -66,7 +66,10 @@ object DirectoryState
         .flatMap(file =>
           file.startsWith(directory) ?  // Ignore silently alien paths
             directory.relativize(file))
-        .filterNot(_.toString.startsWith("."))  // No ".", ".." or hidden files
+        .filter { relativePath =>
+          val s = relativePath.toString
+          s != "." && s != ".." && matches(relativePath)
+        }
         .map(path => path -> DirectoryState.Entry(path))
         .toMap))
     logger.debug(s"readDirectory '$directory' in ${since.elapsed.pretty}")

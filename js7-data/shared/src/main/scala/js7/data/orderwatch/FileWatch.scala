@@ -9,6 +9,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.item.ItemRevision
+import js7.data.orderwatch.FileWatch.defaultPattern
 import js7.data.value.expression.Expression
 import js7.data.workflow.WorkflowPath
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -27,17 +28,8 @@ extends OrderWatch
   protected type Self = FileWatch
   val companion = FileWatch
 
-  override def equals(other: Any) =
-    other match {
-      case o: FileWatch =>
-        id == o.id &&
-        workflowPath == o.workflowPath &&
-        agentId == o.agentId &&
-        directory == o.directory &&
-        pattern.map(_.pattern) == o.pattern.map(_.pattern)   // Pattern itself does not compare
-
-      case _ => false
-    }
+  def resolvedPattern: Pattern =
+    pattern.fold(defaultPattern)(_.pattern)
 
   def withRevision(revision: ItemRevision) =
     copy(itemRevision = revision)
@@ -51,6 +43,7 @@ object FileWatch extends OrderWatch.Companion
   val cls = classOf[FileWatch]
   val idCompanion = OrderWatchId
   val FileArgumentName = "file"
+  private val defaultPattern = Pattern.compile("[^.].*")
 
   implicit val jsonCodec: Codec.AsObject[FileWatch] = {
     implicit val configuration = withDefaults

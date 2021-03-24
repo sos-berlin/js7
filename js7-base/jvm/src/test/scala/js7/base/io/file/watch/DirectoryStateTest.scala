@@ -20,17 +20,19 @@ final class DirectoryStateTest extends AnyFreeSpec
         "FILE-1": {},
         "FILE-2": {}
       }""")
+    // In a future version, these empty braces may be filled
   }
 
   "readDirectory" in {
     withTemporaryDirectory("DirectoryStateTest-") { dir =>
       assert(DirectoryState.readDirectory(dir).isEmpty)
-      dir / "1" := ""
-      dir / ".hidden" := ""
-      dir / "2" := ""
-      assert(DirectoryState.readDirectory(dir) == DirectoryState.fromIterable(Seq(
-        Entry(Paths.get("1")),
-        Entry(Paths.get("2")))))
+      dir / "TEST-1" := ""
+      dir / "IGNORE" := ""
+      dir / "TEST-2" := ""
+      assert(DirectoryState.readDirectory(dir, _.toString startsWith "TEST-") ==
+        DirectoryState.fromIterable(Seq(
+          Entry(Paths.get("TEST-1")),
+          Entry(Paths.get("TEST-2")))))
     }
   }
 

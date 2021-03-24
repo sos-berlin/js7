@@ -29,19 +29,19 @@ final class DirectoryWatcherTest extends AnyFreeSpec
 
   "readDirectory, readDirectoryAsEvents" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
-      touch(dir / "1")
-      touch(dir / ".hidden")
-      touch(dir / "2")
-      val state = DirectoryState.readDirectory(dir)
+      touch(dir / "TEST-1")
+      touch(dir / "IGNORED")
+      touch(dir / "TEST-2")
+      val state = DirectoryState.readDirectory(dir, _.toString startsWith "TEST-")
       assert(state == DirectoryState(Map(
-        Paths.get("1") -> DirectoryState.Entry(Paths.get("1")),
-        Paths.get("2") -> DirectoryState.Entry(Paths.get("2")))))
+        Paths.get("TEST-1") -> DirectoryState.Entry(Paths.get("TEST-1")),
+        Paths.get("TEST-2") -> DirectoryState.Entry(Paths.get("TEST-2")))))
 
-      touch(dir / "A")
-      touch(dir / "1")
+      touch(dir / "TEST-A")
+      touch(dir / "TEST-1")
 
-      assert(state.diffTo(DirectoryState.readDirectory(dir)).toSet ==
-        Set(FileAdded(Paths.get("A"))))
+      assert(state.diffTo(DirectoryState.readDirectory(dir, _.toString startsWith "TEST-")).toSet ==
+        Set(FileAdded(Paths.get("TEST-A"))))
     }
   }
 
@@ -67,17 +67,17 @@ final class DirectoryWatcherTest extends AnyFreeSpec
         .take(n).toListL.await(99.s)
 
     var state = readDirectory()
-    addFile("1")
+    addFile("TEST-1")
     assert(observe(state, 1) == Seq(
-      Seq(FileAdded(Paths.get("1"))) -> toDirectoryState("0", "1")))
+      Seq(FileAdded(Paths.get("TEST-1"))) -> toDirectoryState("0", "TEST-1")))
 
     // The duplicate event will be ignored
-    directoryEvents.onNext(Seq(FileAdded(Paths.get("1")))) await 99.s
+    directoryEvents.onNext(Seq(FileAdded(Paths.get("TEST-1")))) await 99.s
 
     state = readDirectory()
-    addFile("2")
+    addFile("TEST-2")
     assert(observe(state, 1) == Seq(
-      Seq(FileAdded(Paths.get("2"))) -> toDirectoryState("0", "1", "2")))
+      Seq(FileAdded(Paths.get("TEST-2"))) -> toDirectoryState("0", "TEST-1", "TEST-2")))
   }
 
   "observe" in {
@@ -92,9 +92,9 @@ final class DirectoryWatcherTest extends AnyFreeSpec
         .foreach(buffer += _.toSet)
       subscribed.future await 99.s
       assert(buffer.isEmpty)
-      touch(dir / "1")
-      waitForCondition(11.s, 10.ms)(buffer == Seq(Set(FileAdded(Paths.get("1")))))
-      assert(buffer == Seq(Set(FileAdded(Paths.get("1")))))
+      touch(dir / "TEST-1")
+      waitForCondition(11.s, 10.ms)(buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
+      assert(buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
       stop.onComplete()
       whenObserved.await(99.s)
     }
@@ -115,17 +115,17 @@ final class DirectoryWatcherTest extends AnyFreeSpec
       createDirectory(dir)
       subscribed.future await 99.s
       assert(buffer.isEmpty)
-      touch(dir / "1")
-      waitForCondition(11.s, 10.ms)(buffer contains FileAdded(Paths.get("1")))
-      assert(buffer contains FileAdded(Paths.get("1")))
-      delete(dir / "1")
+      touch(dir / "TEST-1")
+      waitForCondition(11.s, 10.ms)(buffer contains FileAdded(Paths.get("TEST-1")))
+      assert(buffer contains FileAdded(Paths.get("TEST-1")))
+      delete(dir / "TEST-1")
 
       delete(dir)
       sleep(300.ms)
       createDirectory(dir)
-      touch(dir / "2")
-      waitForCondition(11.s, 10.ms)(buffer.contains(FileDeleted(Paths.get("1"))) && buffer.contains(FileAdded(Paths.get("2"))))
-      assert(buffer.contains(FileDeleted(Paths.get("1"))) && buffer.contains(FileAdded(Paths.get("2"))))
+      touch(dir / "TEST-2")
+      waitForCondition(11.s, 10.ms)(buffer.contains(FileDeleted(Paths.get("TEST-1"))) && buffer.contains(FileAdded(Paths.get("TEST-2"))))
+      assert(buffer.contains(FileDeleted(Paths.get("TEST-1"))) && buffer.contains(FileAdded(Paths.get("TEST-2"))))
       stop.onComplete()
       whenObserved.await(99.s)
     }

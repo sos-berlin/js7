@@ -23,23 +23,25 @@ final class BasicDirectoryWatcherTest extends AnyFreeSpec
 
   "step for step" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
-      dir / "1" := ""
+      dir / "ALIEN-1" := ""
+      dir / "TEST-1" := ""
       val watcher = new BasicDirectoryWatcher(
-        WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)))
+        WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY),
+          fileMatches = _.toString startsWith "TEST-"))
       autoClosing(watcher) { _ =>
         for (i <- 2 to 4) {
           watcher.observableResource.use(observable => Task {
             val observed = observable.take(1).toListL
             // File is detected before observable starts
-            val file = dir / i.toString
+            val file = dir / s"TEST-$i"
             file := ""
             assert(observed.await(99.s) == List(Seq(FileAdded(file.getFileName))))
           }).await(99.s)
         }
         watcher.observableResource.use(observable => Task {
           val observed = observable.take(1).toListL
-          dir / "2" := "MODIFIED"
-          assert(observed.await(99.s) == List(Seq(FileModified(Paths.get("2")))))
+          dir / "TEST-2" := "MODIFIED"
+          assert(observed.await(99.s) == List(Seq(FileModified(Paths.get("TEST-2")))))
         }).await(99.s)
       }
     }

@@ -63,7 +63,7 @@ object DirectoryWatcher
         // TODO Race condition when a file is added or deleted now?
         val readDirectory = repeatWhileIOException(
           options,
-          ioTask(DirectoryState.readDirectory(directory)))
+          ioTask(DirectoryState.readDirectory(directory, options.matches)))
         Observable.fromResource(basicWatcher.observableResource)
           .flatMap(observable =>
             new DirectoryWatcher(readDirectory, observable)

@@ -7,6 +7,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 final case class WatchOptions(
   directory: Path,
   kinds: Set[WatchEvent.Kind[Path]],
+  matches: Path => Boolean,
   retryDelays: Seq[FiniteDuration],
   pollTimeout: FiniteDuration,
   delay: FiniteDuration = Duration.Zero)
@@ -15,8 +16,9 @@ object WatchOptions
 {
   def forTest(  directory: Path,
     kinds: Set[WatchEvent.Kind[Path]],
+    fileMatches: Path => Boolean = _ => true,
     retryDurations: Seq[FiniteDuration] = Seq(100.ms),
     pollTimeout: FiniteDuration = 99.s,
     delay: FiniteDuration = Duration.Zero)
-  = WatchOptions(directory, kinds, retryDurations, pollTimeout, delay)
+  = WatchOptions(directory, kinds, fileMatches, retryDurations, pollTimeout, delay)
 }

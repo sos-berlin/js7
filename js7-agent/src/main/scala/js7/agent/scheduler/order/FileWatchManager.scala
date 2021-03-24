@@ -118,6 +118,8 @@ final class FileWatchManager(
           WatchOptions(
             Paths.get(fileWatch.directory),
             Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
+            // Regular expresion is evaluated twice: here and when deriving OrderId
+            matches = relativePath => fileWatch.resolvedPattern.matcher(relativePath.toString).matches,
             retryDelays = retryDelays,
             pollTimeout = pollTimeout,
             delay = watchDelay))
@@ -132,25 +134,23 @@ final class FileWatchManager(
               dirEventSeqs
                 .view
                 .flatten
-                .flatMap { dirEvent =>
-                  val maybeOrderId = pathToOrderId(fileWatch, dirEvent.relativePath)
-                  if (maybeOrderId.isEmpty) logger.debug(s"Ignore $dirEvent")
-                  maybeOrderId.map(dirEvent -> _)
-                }
                 // In case of DirectoryWatcher error recovery, duplicate DirectoryEvent may occur.
                 // We check this here.
                 .flatMap {
-                  case (FileAdded(path), orderId) if !isKnownPath(path) =>
-                    Some(ExternalOrderArised(
-                      ExternalOrderName(path.toString),
-                      orderId,
-                      toOrderArguments(directory, path)))
+                  case fileAdded @ FileAdded(path) if !isKnownPath(path) =>
+                    val maybeOrderId = pathToOrderId(fileWatch, path)
+                    if (maybeOrderId.isEmpty) logger.debug(s"Ignore $fileAdded (no OrderId)")
+                    for (orderId <- maybeOrderId) yield
+                      ExternalOrderArised(
+                        ExternalOrderName(path.toString),
+                        orderId,
+                        toOrderArguments(directory, path))
 
-                  case (FileDeleted(path), _) if isKnownPath(path) =>
+                  case FileDeleted(path) if isKnownPath(path) =>
                     Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
 
-                  case (event, orderId) =>
-                    logger.debug(s"Ignore $orderId $event")
+                  case event =>
+                    logger.debug(s"Ignore $event")
                     None
                 }
                 .map(fileWatch.id <-: _)
@@ -184,23 +184,17 @@ object FileWatchManager
 {
   private val logger = Logger(getClass)
 
-  def relativePathToOrderId(fileWatch: FileWatch, relativePath: String)
-  : Option[Checked[OrderId]] = {
+  def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] = {
     lazy val default = OrderId.checked(s"file:${fileWatch.id.string}:$relativePath")
-    fileWatch.pattern match {
-      case None =>
-        Some(default)
-      case Some(pattern) =>
-        val matcher = pattern.matcher(relativePath)
-        matcher.matches() ? {
-          fileWatch.orderIdExpression match {
-            case None => default
-            case Some(expr) =>
-              eval(fileWatch.id, expr, matcher)
-                .flatMap(_.toStringValueString)
-                .flatMap(OrderId.checked)
-          }
-        }
+    val matcher = fileWatch.resolvedPattern.matcher(relativePath)
+    matcher.matches() ? {
+      fileWatch.orderIdExpression match {
+        case None => default
+        case Some(expr) =>
+          eval(fileWatch.id, expr, matcher)
+            .flatMap(_.toStringValueString)
+            .flatMap(OrderId.checked)
+      }
     }
   }
 

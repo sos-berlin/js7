@@ -83,7 +83,10 @@ extends AutoCloseable
       case null => Nil
       case watchKey =>
         try watchKey.pollEvents().asScala.view
-          .map(_.asInstanceOf[WatchEvent[Path]])
+          .collect {
+            case o: WatchEvent[Path @unchecked]
+              if o.context.isInstanceOf[Path] && options.matches(o.context) => o
+          }
           .map(DirectoryWatchEvent.fromJava)
           .toVector
         finally watchKey.reset()
