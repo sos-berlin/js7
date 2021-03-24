@@ -81,17 +81,17 @@ final class FileWatchManager(
         }
     }
 
-  private def startWatching(fosState: FileWatchState): Task[Unit] =
+  private def startWatching(fileWatchState: FileWatchState): Task[Unit] =
     Task.defer {
       val stop = PublishSubject[Unit]()
-      val observable = watch(fosState, stop).memoize
+      val observable = watch(fileWatchState, stop).memoize
 
       // Execute previously registered stopper (which awaits completion),
       // and start our observable as a fiber.
       // At the same time, register a stopper in idToStopper.
       // The stopper is a task that stops the observable and awaits its completion.
       idToStopper
-        .update(fosState.id, previous =>
+        .update(fileWatchState.id, previous =>
           // Wait for previous Observable to complete (stop and fiber.join)
           previous.getOrElse(Task.unit) >>
             observable.start

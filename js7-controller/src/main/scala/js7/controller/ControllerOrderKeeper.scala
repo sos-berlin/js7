@@ -870,10 +870,10 @@ with MainJournalingActor[ControllerState, Event]
               val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
               entry.actor ! AgentDriver.Input.StartFetchingEvents
 
-            case SimpleItemAddedOrChanged(fos: FileWatch) =>
-              persistKeyedEvent(NoKey <-: SimpleItemAttachable(fos.id, fos.agentId)) { (_, _) =>
-                for (agentEntry <- agentRegister.get(fos.agentId)) {
-                  agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(fos)
+            case SimpleItemAddedOrChanged(fileWatch: FileWatch) =>
+              persistKeyedEvent(NoKey <-: SimpleItemAttachable(fileWatch.id, fileWatch.agentId)) { (_, _) =>
+                for (agentEntry <- agentRegister.get(fileWatch.agentId)) {
+                  agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(fileWatch)
                 }
               }
 

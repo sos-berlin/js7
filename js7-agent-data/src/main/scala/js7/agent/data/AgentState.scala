@@ -64,9 +64,9 @@ extends JournaledState[AgentState]
         allFileWatchesState.applyEvent(orderWatchId <-: event)
           .map(o => copy(allFileWatchesState = o))
 
-      case KeyedEvent(_: NoKey, SimpleItemAttachedToAgent(fos: FileWatch)) =>
+      case KeyedEvent(_: NoKey, SimpleItemAttachedToAgent(fileWatch: FileWatch)) =>
         Right(copy(
-          allFileWatchesState = allFileWatchesState.attach(fos)))
+          allFileWatchesState = allFileWatchesState.attach(fileWatch)))
 
       case keyedEvent => applyStandardEvent(keyedEvent)
     }

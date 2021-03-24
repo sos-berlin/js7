@@ -15,13 +15,13 @@ final case class AllFileWatchesState(
   def estimatedSnapshotSize =
     idToFileWatch.values.view.map(_.estimatedSnapshotSize).sum
 
-  def attach(fos: FileWatch): AllFileWatchesState =
+  def attach(fileWatch: FileWatch): AllFileWatchesState =
     copy(
       idToFileWatch = idToFileWatch +
-        (fos.id ->
-          (idToFileWatch.get(fos.id) match {
-            case None => FileWatchState(fos, DirectoryState.empty)
-            case Some(fosState) => fosState.copy(fileWatch = fos)
+        (fileWatch.id ->
+          (idToFileWatch.get(fileWatch.id) match {
+            case None => FileWatchState(fileWatch, DirectoryState.empty)
+            case Some(fileWatchState) => fileWatchState.copy(fileWatch = fileWatch)
           })))
 
   def applyEvent(keyedEvent: KeyedEvent[OrderWatchEvent]): Checked[AllFileWatchesState] =
@@ -34,9 +34,9 @@ final case class AllFileWatchesState(
     Observable.fromIterable(idToFileWatch.values)
       .flatMap(_.toSnapshot)
 
-  def contains(orderWatch: FileWatch) =
-    idToFileWatch.get(orderWatch.id)
-      .exists(_.fileWatch == orderWatch)
+  def contains(fileWatch: FileWatch) =
+    idToFileWatch.get(fileWatch.id)
+      .exists(_.fileWatch == fileWatch)
 }
 
 object AllFileWatchesState
