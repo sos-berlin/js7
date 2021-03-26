@@ -1,6 +1,5 @@
 package js7.tests
 
-import js7.base.auth.Admission
 import js7.base.configutils.Configs._
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -8,7 +7,6 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, KeyedEvent}
 import js7.data.item.VersionId
@@ -24,7 +22,6 @@ import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinte
 import js7.executor.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.{JobContext, OrderContext, OrderProcess, Result}
-import js7.proxy.ControllerApi
 import js7.tests.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -41,7 +38,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentIds = agentId :: Nil
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms
@@ -53,9 +50,6 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
   private val testCounter = AtomicInt(0)
-
-  private lazy val controllerApi = new ControllerApi(
-    admissionsToApiResources(Seq(Admission(controller.localUri, None)))(controller.actorSystem))
 
   "One InternalJob.start for multiple InternalJob.processOrder" in {
     val versionId = versionIdIterator.next()

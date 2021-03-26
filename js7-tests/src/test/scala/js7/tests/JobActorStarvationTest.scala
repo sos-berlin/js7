@@ -6,7 +6,6 @@ import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
-import js7.data.controller.ControllerCommand.AddOrders
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
@@ -21,6 +20,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.TimeoutException
 
@@ -28,9 +28,6 @@ final class JobActorStarvationTest extends AnyFreeSpec with ControllerAgentForSc
 {
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Seq(workflow)
-  override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
-    """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
@@ -53,10 +50,10 @@ final class JobActorStarvationTest extends AnyFreeSpec with ControllerAgentForSc
     // AgentOrderKeeper processes these added orders at once
     // but sends only one to the JobActor,
     // letting the other starve until the JobActor requests the next order.
-    controller
-      .executeCommandAsSystemUser(AddOrders(Seq(
+    controllerApi
+      .addOrders(Observable(
         FreshOrder(aOrderId, workflow.path),
-        FreshOrder(bOrderId, workflow.path))))
+        FreshOrder(bOrderId, workflow.path)))
       .await(99.s).orThrow
     val startedOrderId = controller.eventWatch.await[OrderStarted](ke => ke.key == aOrderId || ke.key == bOrderId)
       .head.value.key

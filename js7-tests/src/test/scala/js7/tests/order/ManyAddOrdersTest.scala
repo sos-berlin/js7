@@ -2,10 +2,8 @@ package js7.tests.order
 
 import cats.instances.vector._
 import cats.syntax.traverse._
-import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils._
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.generic.SecretString
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
@@ -46,8 +44,6 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
     }
     super.beforeAll()
     controller.eventWatch.await[AgentReady]()
-    controller.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
-    controller.httpApi.login() await 99.s
   }
 
   "Multiple AddOrders" in {
@@ -62,10 +58,10 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
       .flatMap(orderIds =>
         Observable.fromTask(
           orderIds.toVector.traverse(orderId =>
-            controller.httpApi.addOrders(Seq(FreshOrder(orderId, workflowPath)))
+            controllerApi.addOrders(Observable.pure(FreshOrder(orderId, workflowPath)))
           ).delayExecution(Random.nextInt(2).ms) >>
             orderIds.toVector.traverse(orderId =>
-              controller.httpApi.removeOrdersWhenTerminated(Seq(orderId)))
+              controllerApi.removeOrdersWhenTerminated(Observable(orderId)))
         ))
       .completedL
     val awaitRemoved = controller.eventWatch

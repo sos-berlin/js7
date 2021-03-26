@@ -44,14 +44,14 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   protected val agentIds = agentId :: Nil
   protected val versionedItems = workflow :: Nil
   private lazy val uri = controller.localUri
-  private lazy val controllerApi = new AkkaHttpControllerApi(
+  private lazy val httpControllerApi = new AkkaHttpControllerApi(
     uri,
     Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
     controller.actorSystem
   ).closeWithCloser
-  private lazy val httpClient = controllerApi.httpClient
+  private lazy val httpClient = httpControllerApi.httpClient
 
-  import controllerApi.implicitSessionToken
+  import httpControllerApi.implicitSessionToken
 
   override def beforeAll() = {
     super.beforeAll()
@@ -74,7 +74,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   }
 
   "Login" in {
-    controllerApi.login() await 99.s
+    httpControllerApi.login() await 99.s
   }
 
   "/controller/api/journal" in {
@@ -106,7 +106,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
     // After a snapshot (a new journal file is started),
     // the web services returns the end of the currently read journal file and ends itself.
-    controllerApi.executeCommand(ControllerCommand.TakeSnapshot) await 99.s
+    httpControllerApi.executeCommand(ControllerCommand.TakeSnapshot) await 99.s
 
     whenReplicated await 9.s
     waitForCondition(10.s, 10.ms)(replicated endsWith EndOfJournalFileMarker)
@@ -147,7 +147,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
       }
 
     val orderId = OrderId("🔵")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
+    httpControllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     controller.eventWatch.await[OrderFinished](_.key == orderId)
     waitForCondition(9.s, 10.ms) { lines.exists(_ contains "OrderFinished") }
     for (o <- observeWithHeartbeat.value; t <- o.failed) throw t.appendCurrentStackTrace

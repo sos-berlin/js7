@@ -18,12 +18,12 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScala
   protected val agentIds = Nil
   protected val versionedItems = workflow :: Nil
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
     js7.akka.ask-timeout = 2s
     js7.TEST-ONLY.add-order-delay = 10s
     """
 
   "AddOrder timeout is returned as 403 Service Unavailable" in {
+    controller.httpApi.login().await(99.s)
     val status = intercept[HttpException] {
       controller.httpApi.addOrder(FreshOrder(OrderId("ORDER"), workflow.path)).await(99.s)
     }.status

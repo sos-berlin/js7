@@ -2,7 +2,7 @@ package js7.tests.controller
 
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
-import js7.base.auth.{UpdateItemPermission, UserAndPassword, UserId}
+import js7.base.auth.{UpdateItemPermission, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
@@ -39,13 +39,11 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = TestAgentId :: Nil
   protected val versionedItems = Nil
-  private lazy val controllerApi = controller.newControllerApi(Some(userAndPassword))
 
   override def beforeAll() = {
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
        """js7.auth.users {
-         |  UpdateItemsTest {
-         |    password = "plain:TEST-PASSWORD"
+         |  TEST-USER {
          |    permissions = [ UpdateItem ]
          |  }
          |  without-permission {
@@ -64,7 +62,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controllerApi.updateItems(Observable(AddVersion(V1), VersionedAddOrChange(sign(workflow1)))).await(99.s) ==
       Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateItemPermission)))
 
-    controller.httpApi.login_(Some(userAndPassword)) await 99.s
+    controller.httpApi.login_(Some(directoryProvider.controller.userAndPassword)) await 99.s
   }
 
   "ControllerCommand.UpdateRepo with VersionedItem" in {
@@ -93,7 +91,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(TestWorkflowPath))).await(99.s).orThrow
     controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(TestWorkflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
-    assert(controller.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
+    assert(controllerApi.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
       Left(VersionedItemDeletedProblem(TestWorkflowPath)))
 
     withClue("Tampered with configuration: ") {
@@ -127,7 +125,6 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object UpdateItemsTest
 {
-  private val userAndPassword = UserAndPassword(UserId("UpdateItemsTest"), SecretString("TEST-PASSWORD"))
   private val Tick = 2.s
   private val TestAgentId = AgentId("AGENT")
   private val TestWorkflowPath = WorkflowPath("WORKFLOW")

@@ -2,12 +2,11 @@ package js7.tests.controller.commands
 
 import java.nio.file.Files.createTempDirectory
 import js7.base.Problems.TamperedWithSignedMessageProblem
-import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils._
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.x509.Openssl.openssl
 import js7.base.crypt.x509.X509SignatureVerifier
 import js7.base.crypt.{GenericSignature, SignedString, SignerId}
-import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, withTemporaryDirectory}
 import js7.base.io.process.Processes.runProcess
@@ -20,7 +19,6 @@ import js7.data.item.{VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509Test._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -41,21 +39,7 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
   private lazy val privateKeyFile = workDir / "test.key"
   private lazy val certificateFile = workDir / "test.pem"
 
-  private lazy val controllerApi = controller.newControllerApi(Some(userAndPassword))
-
-  override def beforeAll() = {
-    (directoryProvider.controller.configDir / "private" / "private.conf") ++=
-     """js7.auth.users {
-       |  UpdateRepoX509Test {
-       |    password = "plain:TEST-PASSWORD"
-       |    permissions = [ UpdateItem ]
-       |  }
-       |}
-       |""".stripMargin
-    super.beforeAll()
-    controller.httpApiDefaultLogin(Some(userAndPassword))
-    controller.httpApi.login() await 99.s
-  }
+  override def controllerConfig = config"""js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
   override def afterAll() = {
     deleteDirectoryRecursively(workDir)
@@ -119,6 +103,5 @@ final class UpdateRepoX509Test extends AnyFreeSpec with ControllerAgentForScalaT
 
 object UpdateRepoX509Test
 {
-  private val userAndPassword = UserAndPassword(UserId("UpdateRepoX509Test"), SecretString("TEST-PASSWORD"))
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))
 }

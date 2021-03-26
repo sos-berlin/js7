@@ -30,29 +30,29 @@ final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStanda
 
   "Login without credentials is rejected" in {
     val e = intercept[AkkaHttpClient.HttpException] {
-      controllerApi.login_(None).await(99.s)
+      httpControllerApi.login_(None).await(99.s)
     }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
   }
 
   "Login with non-listed UserId is rejected" in {
     val e = intercept[AkkaHttpClient.HttpException] {
-      controllerApi.login_(Some(otherUserAndPassword)).await(99.s)
+      httpControllerApi.login_(Some(otherUserAndPassword)).await(99.s)
     }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
   }
 
   "Login with listed UserId but wrong password is rejected" in {
     val e = intercept[AkkaHttpClient.HttpException] {
-      controllerApi.login_(Some(otherUserAndPassword.copy(password = SecretString("WRONG")))).await(99.s)
+      httpControllerApi.login_(Some(otherUserAndPassword.copy(password = SecretString("WRONG")))).await(99.s)
     }
     assert(e.status == Unauthorized && e.problem == Some(InvalidLoginProblem))
   }
 
   "HTTP authentication" - {
     def get(headers: List[HttpHeader]) = {
-      import controllerApi.implicitSessionToken
-      controllerApi.httpClient.get[ClusterState](controller.localUri / "controller/api/cluster", headers).await(99.s)
+      import httpControllerApi.implicitSessionToken
+      httpControllerApi.httpClient.get[ClusterState](controller.localUri / "controller/api/cluster", headers).await(99.s)
     }
 
     "Missing authentication is rejected" in {

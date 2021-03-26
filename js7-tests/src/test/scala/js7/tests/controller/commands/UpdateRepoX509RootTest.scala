@@ -2,11 +2,10 @@ package js7.tests.controller.commands
 
 import java.nio.file.Files.{copy, createDirectory, createTempDirectory}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils._
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.x509.Openssl
 import js7.base.crypt.{GenericSignature, SignedString}
-import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
@@ -17,7 +16,6 @@ import js7.data.item.{VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509RootTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -33,7 +31,9 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
   private lazy val workDir = createTempDirectory("UpdateRepoX509RootTest")
   private lazy val openssl = new Openssl(workDir)
   private lazy val root = new openssl.Root("Root")
-  private lazy val controllerApi = controller.newControllerApi(Some(userAndPassword))
+
+  protected override def controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
   override def beforeAll() = {
     createDirectory(directoryProvider.controller.configDir / "private" / "trusted-x509-keys")
@@ -44,17 +44,8 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
       s"""js7.configuration.trusted-signature-keys {
          |  X509 = $${js7.config-directory}"/private/trusted-x509-keys"
          |}
-         |js7.auth.users {
-         |  UpdateRepoX509RootTest {
-         |    password = "plain:TEST-PASSWORD"
-         |    permissions = [ UpdateItem ]
-         |  }
-         |}
          |""".stripMargin
     super.beforeAll()
-
-    controller.httpApiDefaultLogin(Some(userAndPassword))
-    controller.httpApi.login() await 99.s
   }
 
   override def afterAll() = {
@@ -109,5 +100,4 @@ final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForSc
 object UpdateRepoX509RootTest
 {
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"))
-  private val userAndPassword = UserAndPassword(UserId("UpdateRepoX509RootTest"), SecretString("TEST-PASSWORD"))
 }

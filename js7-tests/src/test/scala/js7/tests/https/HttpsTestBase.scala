@@ -131,7 +131,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     (!controllerHttpsMutual || extraDistringuishedNameUserAndPassword.isDefined) ?
       UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD"))
 
-  protected lazy val controllerApi = new AkkaHttpControllerApi(
+  protected lazy val httpControllerApi = new AkkaHttpControllerApi(
     controller.localUri,
     standardUserAndPassword,
     actorSystem,

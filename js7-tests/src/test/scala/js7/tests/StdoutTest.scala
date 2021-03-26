@@ -29,7 +29,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""

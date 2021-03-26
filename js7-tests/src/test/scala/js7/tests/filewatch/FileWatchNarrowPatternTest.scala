@@ -35,7 +35,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Seq(workflow)
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""
@@ -61,7 +61,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
 
   "Add two files" in {
     createDirectory(sourceDirectory)
-    controller.updateSimpleItemsAsSystemUser(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     controller.eventWatch.await[SimpleItemAttached](_.event.id == fileWatch.id)
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobActorStarvationTest)
@@ -77,7 +77,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   "Narrow the pattern" in {
     val eventId = controller.eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(pattern = Some(SimplePattern("NARROW-.+")))
-    controller.updateSimpleItemsAsSystemUser(Seq(changedFileWatch)).await(99.s).orThrow
+    controllerApi.updateSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
     controller.eventWatch.await[SimpleItemAttached](_.event.id == fileWatch.id, after = eventId)
 
     // Now, the A file is not match and out of scope, and a ExternalOrderVanished is emitted.

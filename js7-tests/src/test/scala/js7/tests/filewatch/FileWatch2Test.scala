@@ -41,7 +41,6 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
   protected val agentIds = Seq(aAgentId, bAgentId)
   protected val versionedItems = Seq(workflow)
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""

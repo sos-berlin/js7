@@ -18,7 +18,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class FeedMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected def controllerConfig = config"""
-    js7.web.server.auth.public = on
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
   protected def agentIds = Nil
   protected def versionedItems = Nil
@@ -27,7 +27,7 @@ final class FeedMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val ops = Vector[Any](SimpleAddOrChange(Lock(LockId("TEST"))))
     implicit val opJsonCodec = Feed.opJsonCodec
     val in = Resource.eval(Task.pure(ByteArray(ops.asJson.compactPrint).toInputStream))
-    FeedMain.run(Array(s"--controller=${controller.localUri}", "--user="), in)
+    FeedMain.run(Array(s"--controller=${controller.localUri}", "--user=TEST-USER:TEST-PASSWORD"), in)
       .await(99.s).orThrow
   }
 }

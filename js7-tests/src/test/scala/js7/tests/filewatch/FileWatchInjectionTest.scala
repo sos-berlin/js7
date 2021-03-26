@@ -20,7 +20,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
   protected val agentIds = Seq(aAgentId)
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
@@ -31,7 +31,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
     sourceDirectory.toString)
 
   "Start with existing file" in {
-    controller.updateSimpleItemsAsSystemUser(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     // TODO SimpleItemAttachmentFailed
     intercept[TimeoutException] {
       controller.eventWatch.await[SimpleItemAttached](_.event.id == fileWatch.id, timeout = 1.s)

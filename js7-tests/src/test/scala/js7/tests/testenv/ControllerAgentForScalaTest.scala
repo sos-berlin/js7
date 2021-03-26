@@ -1,12 +1,17 @@
 package js7.tests.testenv
 
 import js7.agent.RunningAgent
+import js7.base.auth.Admission
 import js7.base.configutils.Configs._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.controller.RunningController
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.item.{ItemPath, VersionId, VersionedItem}
+import js7.proxy.ControllerApi
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
 
@@ -18,12 +23,25 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
   protected final lazy val agent: RunningAgent = agents.head
-  protected final lazy val controller: RunningController = directoryProvider.startController(
-    controllerModule,
-    config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
-    httpPort = controllerHttpPort,
-    httpsPort = controllerHttpsPort
-  ) await 99.s
+
+  protected final lazy val controller: RunningController =
+    directoryProvider
+      .startController(
+        controllerModule,
+        config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
+        httpPort = controllerHttpPort,
+        httpsPort = controllerHttpsPort)
+      .tapEval(controller =>
+        Task(controller.httpApiDefaultLogin(Some(directoryProvider.controller.userAndPassword))))
+      .await(99.s)
+
+  protected lazy val controllerAdmission = Admission(
+    controller.localUri,
+    Some(directoryProvider.controller.userAndPassword))
+  protected lazy val controllerApi = new ControllerApi(
+    admissionsToApiResources(Seq(controllerAdmission))(controller.actorSystem)
+  ).closeWithCloser
+
   protected def controllerHttpsMutual = false
 
   protected def waitUntilReady = true

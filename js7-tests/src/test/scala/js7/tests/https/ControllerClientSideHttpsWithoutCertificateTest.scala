@@ -17,7 +17,7 @@ final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBas
 
   "overview" in {
     val exception = intercept[Exception] {
-      controllerApi.overview await 99.s
+      httpControllerApi.overview await 99.s
     }
     assert(!exception.isInstanceOf[TimeoutException])
     logger.info(exception.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
@@ -28,7 +28,7 @@ final class ControllerClientSideHttpsWithoutCertificateTest extends HttpsTestBas
 
   "Login" in {
     val exception = intercept[Exception] {
-      controllerApi.login() await 99.s
+      httpControllerApi.login() await 99.s
     }
     assert(!exception.isInstanceOf[TimeoutException])
     logger.info(exception.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!

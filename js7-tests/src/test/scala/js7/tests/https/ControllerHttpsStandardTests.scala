@@ -40,21 +40,21 @@ private[https] trait ControllerHttpsStandardTests extends HttpsTestBase
 
   protected def addTestsForCredentials(credentials: Option[UserAndPassword]): Unit = {
     "overview" in {
-      val overview = controllerApi.overview await 99.s
+      val overview = httpControllerApi.overview await 99.s
       assert(overview.buildId == BuildInfo.buildId)
     }
 
     "Login" in {
-      controllerApi.login_(credentials) await 99.s
+      httpControllerApi.login_(credentials) await 99.s
     }
 
     "Run a job" in {
-      controllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))) await 99.s
+      httpControllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))) await 99.s
       controller.eventWatch.await[OrderFinished]()
     }
 
     "logout" in {
-      controllerApi.logout() await 99.s
+      httpControllerApi.logout() await 99.s
     }
   }
 

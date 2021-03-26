@@ -30,7 +30,7 @@ import scala.concurrent.duration.Deadline.now
 final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""
@@ -62,7 +62,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
 
   "Start with some files" in {
     createDirectories(watchedDirectory)
-    controller.updateSimpleItemsAsSystemUser(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     await[SimpleItemAttached](_.event.id == orderWatchId)
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.

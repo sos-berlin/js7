@@ -17,7 +17,6 @@ final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgen
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Seq(scriptWorkflow, absolutePathWorkflow)
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false"""
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = off

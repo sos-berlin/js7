@@ -2,14 +2,12 @@ package js7.tests
 
 import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.delete
-import js7.base.auth.Admission
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentId
 import js7.data.event.EventSeq
 import js7.data.item.ItemOperation.{AddVersion, SimpleDelete}
@@ -21,7 +19,6 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
-import js7.proxy.ControllerApi
 import js7.tests.LockTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, waitingForFileScript}
@@ -35,8 +32,12 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Seq(agentId, bAgentId)
   protected val versionedItems = Nil
+  override protected val simpleItems = Seq(
+    Lock(lockId, limit = 1),
+    Lock(lock2Id, limit = 1),
+    Lock(limit2LockId, limit = 2))
   override protected def controllerConfig = config"""
-    js7.web.server.auth.loopback-is-public = on
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 5ms
     """
@@ -44,18 +45,6 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on
     """
   private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
-  private lazy val controllerApi = new ControllerApi(
-    admissionsToApiResources(Seq(Admission(controller.localUri, None)))(controller.actorSystem))
-
-  override def beforeAll() = {
-    super.beforeAll()
-    val items = Seq(
-      Lock(lockId, limit = 1),
-      Lock(lock2Id, limit = 1),
-      Lock(limit2LockId, limit = 2))
-    controllerApi.updateSimpleItems(items).await(99.s).orThrow
-  }
-
 
   "Run some orders at differant agents with a lock with limit=1" in {
     withTemporaryFile("LockTest-", ".tmp") { file =>
@@ -75,12 +64,12 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       delete(file)
       val a = OrderId("🔵")
-      controller.addOrder(FreshOrder(a, workflow.path)).await(99.s).orThrow
+      controllerApi.addOrder(FreshOrder(a, workflow.path)).await(99.s).orThrow
       assert(controller.eventWatch.await[OrderLockAcquired](_.key == a).map(_.value).nonEmpty)
 
       val queuedOrderIds = for (i <- 1 to 10) yield OrderId(s"🟠-$i")
       for (orderId <- queuedOrderIds) {
-        controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
         assert(controller.eventWatch.await[OrderLockQueued](_.key == orderId).map(_.value).nonEmpty)
       }
 
@@ -160,10 +149,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val order2Id = OrderId("🟥-TWO")
     val aOrderId = OrderId("🟥-A")
     val bOrderId = OrderId("🟥-B")
-    controller.addOrder(FreshOrder(order2Id, workflow2.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(order2Id, workflow2.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderLockAcquired](_.key == order2Id)
-    controller.addOrder(FreshOrder(aOrderId, workflow1.path)).await(99.s).orThrow
-    controller.addOrder(FreshOrder(bOrderId, workflow1.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(aOrderId, workflow1.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(bOrderId, workflow1.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
     controller.eventWatch.await[OrderTerminated](_.key == bOrderId)
     val EventSeq.NonEmpty(stampedEvents) = controller.eventWatch.all[OrderLockEvent]
@@ -211,7 +200,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       }""")
 
     val orderId = OrderId("🟦")
-    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
@@ -236,7 +225,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       }""")
 
     val orderId = OrderId("🟨")
-    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
@@ -270,7 +259,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         }
       }""")
     val orderId = OrderId("🟩")
-    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
@@ -300,7 +289,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         }
       }""")
     val orderId = OrderId("🟪")
-    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
@@ -325,7 +314,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         lock (lock = "LOCK", count = 2) {}
       }""")
     val orderId = OrderId("⬛️")
-    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(

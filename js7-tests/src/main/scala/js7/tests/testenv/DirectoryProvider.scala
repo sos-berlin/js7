@@ -35,7 +35,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
-import js7.data.item.{ItemOperation, ItemPath, VersionId, VersionedItem, VersionedItemSigner}
+import js7.data.item.{ItemOperation, ItemPath, SimpleItem, VersionId, VersionedItem, VersionedItemSigner}
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -54,6 +54,7 @@ import scala.util.control.NonFatal
 final class DirectoryProvider(
   agentIds: Seq[AgentId],
   versionedItems: Seq[VersionedItem] = Nil,
+  simpleItems: Seq[SimpleItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
@@ -151,7 +152,8 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    items: Seq[VersionedItem] = versionedItems,
+    simpleItems: Seq[SimpleItem] = simpleItems,
+    versionedItems: Seq[VersionedItem] = versionedItems,
     name: String = controllerName)
   : Task[RunningController]
   =
@@ -160,16 +162,17 @@ extends HasCloser
         RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
           httpPort = httpPort, httpsPort = httpsPort, name = name)))
     .map { runningController =>
-      if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
+      if (!doNotAddItems && (agentRefs.nonEmpty || versionedItems.nonEmpty)) {
         if (!itemHasBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
           runningController.updateSimpleItemsAsSystemUser(agentRefs).await(99.s).orThrow
-          if (items.nonEmpty) {
-            // startController may be called several times. We configure only once.
+          if (simpleItems.nonEmpty || versionedItems.nonEmpty) {
             runningController
               .updateItemsAsSystemUser(
-                ItemOperation.AddVersion(Vinitial) +:
-                  Observable.fromIterable(items)
+                Observable.fromIterable(simpleItems).map(ItemOperation.SimpleAddOrChange) ++
+                  Observable.fromIterable(
+                    versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
+                  Observable.fromIterable(versionedItems)
                     .map(_ withVersion Vinitial)
                     .map(itemSigner.sign)
                     .map(ItemOperation.VersionedAddOrChange.apply))
@@ -257,6 +260,8 @@ object DirectoryProvider
     keyStore: Option[JavaResource], trustStores: Iterable[JavaResource], agentHttpsMutual: Boolean)
   extends Tree
   {
+    val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
+
     override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       super.createDirectoriesAndFiles()
       for (keyStore <- keyStore) {
@@ -278,6 +283,7 @@ object DirectoryProvider
       val trustStore = configDir / "private" / filename
       trustStore := resource.contentBytes
       configDir / "private/private.conf" ++= s"""
+         |js7.auth.users.${userAndPassword.userId.string}.password = "plain:${userAndPassword.password.string}"
          |js7.web.https.truststores += {
          |  file = "$trustStore"
          |  store-password = "jobscheduler"

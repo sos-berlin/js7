@@ -1,13 +1,11 @@
 package js7.tests.controller.load
 
-import js7.base.auth.Admission
 import js7.base.configutils.Configs._
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.ByteUnits.toKBGB
-import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.event.{EventId, EventRequest}
@@ -15,7 +13,6 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.proxy.ControllerApi
 import js7.tests.controller.load.ManyOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
@@ -28,15 +25,12 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val versionedItems = workflow :: Nil
 
   override protected val controllerConfig = config"""
-    js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false"""
 
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """
 
-  private lazy val controllerApi = new ControllerApi(Seq(
-    admissionToApiResource(Admission(controller.localUri, None))(controller.actorSystem)))
   private lazy val (n, orderSize) = sys.props.get("test.speed").map(_.split(" +")) match {
     case None => (defaultN, defaultSize)
 

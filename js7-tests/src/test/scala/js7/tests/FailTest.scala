@@ -23,9 +23,6 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Nil
-  override protected def controllerConfig = config"""
-    js7.web.server.auth.public = on
-    """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
