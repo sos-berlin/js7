@@ -199,7 +199,7 @@ lazy val `js7-install` = project
     universalPluginSettings,
     topLevelDirectory in Universal := Some(s"js7-${version.value}"),
     mappings in Universal :=
-      (((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !doNotInstallJar(path stripPrefix "lib/") }) ++
+      (((mappings in Universal).value filter { case (_, path) => (path startsWith "lib/") && !isExcludedJar(path stripPrefix "lib/") }) ++
         NativePackagerHelper.contentOf((`js7-controller` / Compile / classDirectory).value / "js7/controller/installation") ++
         NativePackagerHelper.contentOf((`js7-provider` / Compile / classDirectory).value / "js7/provider/installation") ++
         NativePackagerHelper.contentOf((`js7-agent`  / Compile / classDirectory).value / "js7/agent/installation") ++
@@ -258,7 +258,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "com.lihaoyi" %%% "sourcecode" % "0.2.1" ++
       "com.outr" %%% "scribe" % scribeVersion ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion % Test ++
-      findbugs % "compile" ++
+      findbugs ++
       intelliJAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
@@ -344,7 +344,7 @@ lazy val `js7-common` = project.dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test
       javaxInject ++
       guice ++
       snakeYaml ++
-      findbugs % "compile" ++
+      findbugs ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -521,7 +521,7 @@ lazy val `js7-agent` = project
     libraryDependencies ++=
       scalaXml ++
       guava ++
-      findbugs % "compile" ++
+      findbugs ++
       akkaActor ++
       akkaStream ++
       akkaSlf4j ++
@@ -559,7 +559,7 @@ lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7
     libraryDependencies ++=
       scalaXml ++
       guava ++
-      findbugs % "compile" ++
+      findbugs ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test" ++
@@ -586,7 +586,12 @@ lazy val `js7-tests` = project
       lmaxDisruptor % "test"
   }
 
-def doNotInstallJar(path: String) = false
+def isExcludedJar(path: String) =
+  path.startsWith("com.google.code.findbugs.jsr305-") ||
+  path.startsWith("com.google.errorprone.error_prone_annotations-") ||
+  path.startsWith("listenablefuture-9999.0-empty-to-avoid-conflict-with-guava-") ||
+  path.startsWith("org.checkerframework.checker-qual-") ||
+  path.startsWith("org.typelevel.simulacrum-scalafix-annotations_")
 
 //--------------------------------------------------------------------------------------------------
 // RELEASE
