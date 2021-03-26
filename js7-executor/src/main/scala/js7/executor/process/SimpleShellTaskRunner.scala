@@ -75,7 +75,7 @@ extends TaskRunner
     Task.deferFuture(
       for {
         richProcess <- startProcess(env, stdChannels) andThen {
-          case Success(richProcess) => logger.info(s"Process '$richProcess' started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
+          case Success(richProcess) => logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
         }
         returnCode <- richProcess.terminated andThen { case tried =>
           logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")

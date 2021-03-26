@@ -69,7 +69,8 @@ extends AutoCloseable
       val since = now
       try {
         val events = pollWatchKey()
-        logger.trace(s"$msg ${since.elapsed.pretty} => ${events.mkString(", ")}")
+        logger.debug(s"$msg ${since.elapsed.pretty} => " +
+          (if (events.isEmpty) "timed out" else events.mkString(", ")))
         Task.pure(events)
       } catch { case NonFatal(t) if canceled =>
         logger.trace(s"$msg ${since.elapsed.pretty} => canceled (${t.toStringWithCauses})")

@@ -16,6 +16,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Await
 import scala.concurrent.duration._
+
 object Processes
 {
   private val logger = Logger[this.type]
@@ -28,6 +29,8 @@ object Processes
 
   final case class Pid(number: Long) extends GenericLong {
     def string = number.toString
+
+    override def toString = s"PID:$number"
   }
 
   object Pid extends GenericLong.Companion[Pid]

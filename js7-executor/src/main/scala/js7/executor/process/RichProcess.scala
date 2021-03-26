@@ -35,7 +35,6 @@ class RichProcess protected[process](val processConfiguration: ProcessConfigurat
   (implicit iox: IOExecutor, ec: ExecutionContext)
 extends HasCloser with ClosedFuture
 {
-  val startedAt = Timestamp.now
   private val runningSince = now
   val pidOption: Option[Pid] = processToPidOption(process)
   @volatile var _killed = false
@@ -114,7 +113,7 @@ extends HasCloser with ClosedFuture
     process.getOutputStream
 
   override def toString =
-    Some(processToString(process, pidOption)) ++ processConfiguration.maybeTaskId mkString " "
+    processToString(process, pidOption)
 }
 
 object RichProcess {

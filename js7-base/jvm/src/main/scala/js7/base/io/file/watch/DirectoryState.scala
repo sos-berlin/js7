@@ -60,7 +60,7 @@ object DirectoryState
 
   def readDirectory(directory: Path, matches: Path => Boolean = _ => true): DirectoryState = {
     val since = now
-    val result = DirectoryState(
+    val directoryState = DirectoryState(
       autoClosing(Files.list(directory))(_
         .asScala
         .flatMap(file =>
@@ -72,8 +72,8 @@ object DirectoryState
         }
         .map(path => path -> DirectoryState.Entry(path))
         .toMap))
-    logger.debug(s"readDirectory '$directory' in ${since.elapsed.pretty}")
-    result
+    logger.debug(s"readDirectory '$directory' (${directoryState.pathToEntry.size} files) in ${since.elapsed.pretty}")
+    directoryState
   }
 
   final case class Entry(path: Path)
