@@ -17,18 +17,18 @@ private final class DirectoryWatcher(
 {
   private def readDirectoryAndObserveForever(state: DirectoryState)
   : Observable[(Seq[DirectoryEvent], DirectoryState)] =
-    Observable.defer {
-      val since = now
-      @volatile var lastState = state
-      readDirectoryAndObserve(state)
-        .tapEach { case (_, state) =>
-          lastState = state
-        }
-        .guaranteeCase(exitCase => Task(
-          logger.debug(s"readDirectoryAndObserveForever: $exitCase"))) ++
-        readDirectoryAndObserveForever(lastState)
-          .delayExecution((since + hotLoopBrake).timeLeftOrZero)
-    }
+    Observable
+      .tailRecM(state) { state =>
+        val since = now
+        @volatile var lastState = state
+        readDirectoryAndObserve(state)
+          .tapEach { case (_, state) => lastState = state }
+          .map(Right(_)) ++
+          Observable.pure(Left(lastState))
+            .delayExecution((since + hotLoopBrake).timeLeftOrZero)
+      }
+      .guaranteeCase(exitCase => Task(
+        logger.debug(s"readDirectoryAndObserveForever: $exitCase")))
 
   private[watch] def readDirectoryAndObserve(state: DirectoryState)
   : Observable[(Seq[DirectoryEvent], DirectoryState)] =
@@ -44,6 +44,8 @@ private final class DirectoryWatcher(
         pair._1.applyAndReduceEvents(events).swap)
       .map(_.swap)
       .filter(_._1.nonEmpty)
+      .guaranteeCase(exitCase => Task(
+        logger.trace(s"readDirectoryAndObserve: $exitCase")))
 }
 
 object DirectoryWatcher

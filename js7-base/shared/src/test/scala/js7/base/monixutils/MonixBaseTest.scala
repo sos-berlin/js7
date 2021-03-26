@@ -397,17 +397,18 @@ final class MonixBaseTest extends AsyncFreeSpec
         } yield assert(a == List(1) && b == List(2))
       }
     }
+  }
 
-    //"takeUntil memory leak" in {
-    //  val promise = Promise[Unit]()
-    //  val stop = Observable.empty //Observable.fromFuture(promise.future)  // Memory leak - doesn't matter if called only once
-    //  val obs = Observable.tailRecM(10000000) {
-    //    case 0 => Observable.pure(Right(()))
-    //    case i => Observable.pure(Left(i - 1)) takeUntilEval Task.never
-    //  }
-    //  obs.completedL
-    //    .map(_ => assert(true))
-    //    .runToFuture
-    //}
+  "No Observable.tailRecM  memory leak" in {
+    def obs(i: Int): Observable[Int] =
+      Observable.pure(-i)
+
+    val observable: Observable[Int] =
+      Observable.tailRecM(0)(i => obs(i).map(Right(_)) ++ Observable.pure(Left(i + 1)))
+
+    val mem = Runtime.getRuntime.totalMemory
+    if (mem >= 50_000_000) pending
+    val n = mem / 4
+    observable.drop(n).headL.map(i => assert(i == -n)).runToFuture
   }
 }
