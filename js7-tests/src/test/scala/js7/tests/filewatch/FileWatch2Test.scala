@@ -48,6 +48,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
   private val pollTimeout = if (isMac) "2.5s" else "1s"
   override protected def agentConfig = config"""
     js7.filewatch.poll-timeout = $pollTimeout
+    js7.filewatch.watch-delay = 1ms
     js7.journal.remove-obsolete-files = false
     js7.job.execution.signed-script-injection-allowed = on
     """
@@ -72,7 +73,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
   private val orderId6 = OrderId("file:FILE-WATCH:6")
   private val orderId7 = OrderId("file:FILE-WATCH:7")
 
-  "Several tests" in {
+  "A sequence of directory changes" in {
     createDirectories(aDirectory)
     val initialFile = aDirectory / "1"
     initialFile := ""

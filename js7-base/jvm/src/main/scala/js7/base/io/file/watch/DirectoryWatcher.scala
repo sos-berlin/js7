@@ -10,10 +10,12 @@ import js7.base.time.ScalaTime._
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.FiniteDuration
 
 private final class DirectoryWatcher(
   readDirectory: Task[DirectoryState],
-  directoryEventObservable: Observable[Seq[DirectoryEvent]])
+  directoryEventObservable: Observable[Seq[DirectoryEvent]],
+  hotLoopBrake: FiniteDuration)
 {
   private def readDirectoryAndObserveForever(state: DirectoryState)
   : Observable[(Seq[DirectoryEvent], DirectoryState)] =
@@ -50,25 +52,23 @@ private final class DirectoryWatcher(
 
 object DirectoryWatcher
 {
-  val hotLoopBrake = 1.s
   private val logger = Logger[this.type]
 
   def observable(state: DirectoryState, options: WatchOptions)(implicit iox: IOExecutor)
   : Observable[Seq[DirectoryEvent]] =
     Observable
-      .fromResource(
-        BasicDirectoryWatcher.resource(options))
+      .fromResource(BasicDirectoryWatcher.resource(options))
       .flatMap { basicWatcher =>
         import options.directory
         // BasicDirectoryWatcher has been started before reading directory,
         // so that no directory change will be overlooked.
-        // TODO Race condition when a file is added or deleted now?
         val readDirectory = repeatWhileIOException(
           options,
           ioTask(DirectoryState.readDirectory(directory, options.matches)))
-        Observable.fromResource(basicWatcher.observableResource)
+        Observable
+          .fromResource(basicWatcher.observableResource)
           .flatMap(observable =>
-            new DirectoryWatcher(readDirectory, observable)
+            new DirectoryWatcher(readDirectory, observable, hotLoopBrake = options.retryDelays.head)
               .readDirectoryAndObserveForever(state)
               .map(_._1))
       }

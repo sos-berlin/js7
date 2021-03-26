@@ -60,7 +60,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
     def readDirectory() =
       toDirectoryState(files: _*)
 
-    val watcher = new DirectoryWatcher(Task(readDirectory()), directoryEvents)
+    val watcher = new DirectoryWatcher(Task(readDirectory()), directoryEvents, 1.s)
 
     def observe(state: DirectoryState, n: Int) =
       watcher.readDirectoryAndObserve(state)
