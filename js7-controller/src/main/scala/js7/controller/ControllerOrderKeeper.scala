@@ -571,11 +571,16 @@ with MainJournalingActor[ControllerState, Event]
     if (item.itemRevision != ItemRevision.Initial)
       Left(Problem("SimpleItem's ItemRevision must be zero"))
     else
-      Right(
-        _controllerState.idToItem.get(item.id) match {
-          case None => SimpleItemAdded(item)
-          case Some(existing) => SimpleItemChanged(item.withRevision(existing.itemRevision.next))
-        })
+      _controllerState.idToItem.get(item.id) match {
+        case None => Right(SimpleItemAdded(item))
+        case Some(existing) =>
+          (existing, item) match {
+            case (existing: FileWatch, changed: FileWatch) if existing.agentId != changed.agentId =>
+              Left(Problem("AgentId of an OrderWatch cannot be changed"))
+            case _ =>
+              Right(SimpleItemChanged(item.withRevision(existing.itemRevision.next)))
+          }
+      }
 
   private def versionedItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
   : Try[Checked[Seq[VersionedEvent]]] =

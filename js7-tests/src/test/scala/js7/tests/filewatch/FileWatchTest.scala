@@ -7,6 +7,7 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -31,7 +32,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(aAgentId)
+  protected val agentIds = Seq(aAgentId, bAgentId)
   protected val versionedItems = Seq(workflow)
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -92,12 +93,24 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(sourceDirectory.directoryContents.isEmpty)
     logger.info(itemsPerSecondString(since.elapsed, filenames.size, "files"))
   }
+
+  "AgentId cannot be changed" in {
+    val changedFileWatch = fileWatch.copy(agentId = bAgentId)
+    assert(controller.updateSimpleItemsAsSystemUser(Seq(changedFileWatch)).await(99.s) ==
+      Left(Problem("AgentId of an OrderWatch cannot be changed")))
+  }
+
+  "Delete a FileWatch" in {
+    pending
+    //controller.updateItems(controller.updateItemsAsSystemUser())
+  }
 }
 
 object FileWatchTest
 {
   private val logger = Logger(getClass)
   private val aAgentId = AgentId("AGENT-A")
+  private val bAgentId = AgentId("AGENT-B")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

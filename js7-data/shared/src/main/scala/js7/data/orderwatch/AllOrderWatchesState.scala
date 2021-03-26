@@ -23,11 +23,16 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
   def removeOrderWatch(orderWatchId: OrderWatchId): AllOrderWatchesState =
     copy(idToOrderWatchState = idToOrderWatchState - orderWatchId)
 
-  def changeOrderWatch(orderWatch: OrderWatch): Checked[AllOrderWatchesState] =
-    for (watchState <- idToOrderWatchState.checked(orderWatch.id))
-      yield copy(
-        idToOrderWatchState = idToOrderWatchState + (orderWatch.id -> watchState.copy(
-          orderWatch = orderWatch)))
+  def changeOrderWatch(changed: OrderWatch): Checked[AllOrderWatchesState] =
+    idToOrderWatchState
+      .checked(changed.id)
+      .flatMap(watchState =>
+        if (watchState.orderWatch.agentId != changed.agentId)
+          Left(Problem("AgentId of an OrderWatch cannot be changed"))
+        else
+          Right(copy(
+            idToOrderWatchState = idToOrderWatchState + (changed.id -> watchState.copy(
+              orderWatch = changed)))))
 
   def onOrderWatchEvent(keyedEvent: KeyedEvent[OrderWatchEvent])
   : Checked[AllOrderWatchesState] =
