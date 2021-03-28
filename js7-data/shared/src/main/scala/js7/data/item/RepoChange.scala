@@ -17,11 +17,11 @@ object RepoChange
   }
 
   sealed trait AddedOrChanged extends Change with Product {
-    def item: VersionedItem
+    val item: VersionedItem
 
-    final def path: VersionedItem#Path = id.path
+    final def path: item.Path = id.path
 
-    def id: VersionedItemId[VersionedItem#Path] = item.id
+    def id: VersionedItemId[item.Path] = item.id
 
     def toShortString = s"$productPrefix($id)"
   }

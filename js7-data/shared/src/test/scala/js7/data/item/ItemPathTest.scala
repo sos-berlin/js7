@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.problem.{Problem, ProblemException}
+import js7.data.item.ItemPathTest.AId
 import js7.data.item.VersionedItemId.VersionSeparator
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -32,7 +33,7 @@ final class ItemPathTest extends AnyFreeSpec
     testJson[ItemPath](BPath("b"), json""" "B:b" """)
   }
 
-  "%" in {
+  "~ operator" in {
     assert(APath("PATH") ~ "VERSION"            == VersionedItemId(APath("PATH"), VersionId("VERSION")))
     assert(APath("PATH") ~ VersionId("VERSION") == VersionedItemId(APath("PATH"), VersionId("VERSION")))
   }
@@ -44,11 +45,6 @@ final class ItemPathTest extends AnyFreeSpec
     intercept[ProblemException] { APath("x//y") }
     intercept[ProblemException] { APath("x,y") }
     intercept[ProblemException] { APath("x~y") }
-  }
-
-  "check" in {
-    assert(APath.checked("?") == Left(InvalidNameProblem("APath", "?")))
-    assert(APath.checked("X") == Right(APath("X")))
   }
 
   "name" in {
@@ -94,6 +90,8 @@ final class ItemPathTest extends AnyFreeSpec
   }
 
   "checked" in {
+    assert(APath.checked("?") == Left(InvalidNameProblem("APath", "?")))
+    assert(APath.checked("X") == Right(APath("X")))
     assert(APath.checked("?/xx") == Left(InvalidNameProblem("APath", "?/xx")))
     assert(APath.checked("/folder/a-b").isLeft)
     assert(APath.checked("folder/a-b") == Right(APath("folder/a-b")))
@@ -102,6 +100,15 @@ final class ItemPathTest extends AnyFreeSpec
     assert(APath.checked("a//b") == Left(InvalidNameProblem("APath", "a//b")))
     assert(APath.checked("🔵") == Right(APath("🔵")))
     assert(APath.checked(s"a${VersionSeparator}b") == Left(InvalidNameProblem("APath", "a~b")))
+  }
+
+  "AId.checked" in {
+    assert(AId.checked("A~1") == Right(APath("A") ~ VersionId("1")))
+    // TODO Restrict VersionId syntax?
+    assert(AId.checked("A~1~2") == Right(APath("A") ~ VersionId("1~2")))
+    assert(AId.checked("A/B~1~2") == Right(APath("A/B") ~ VersionId("1~2")))
+    assert(AId.checked("A~1/B~2") == Right(APath("A") ~ VersionId("1/B~2")))
+    assert(AId.checked("A") == Left(Problem("APath without version (denoted by '~')?: A")))
   }
 
   "Anonymous" in {
@@ -113,6 +120,11 @@ final class ItemPathTest extends AnyFreeSpec
   "name etc." in {
     assert(APath.name == "APath")
     assert(APath.toString == "APath")
-    assert(APath.camelName == "A")
+    assert(APath.itemTypeName == "A")
   }
+}
+
+object ItemPathTest
+{
+  private val AId = APath.versionedItemIdCompanion
 }

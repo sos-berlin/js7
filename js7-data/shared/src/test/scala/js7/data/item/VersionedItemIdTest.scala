@@ -24,4 +24,20 @@ final class VersionedItemIdTest extends AnyFreeSpec {
     assert(!VersionedItemId(APath.Anonymous, VersionId("1")).isAnonymous)
     assert(!VersionedItemId(APath("PATH"), VersionId("1")).isAnonymous)
   }
+
+  "toString" in {
+    assert(((APath("PATH")) ~ "1").toString == "A:PATH~1")
+  }
+
+  "toTypedString" in {
+    assert(((APath("PATH")) ~ "1").toTypedString == "A:PATH~1")
+  }
+
+  "pretty" in {
+    assert(((APath("PATH")) ~ "1").pretty == "A:PATH~1")
+  }
+
+  "toSimpleString" in {
+    assert(((APath("PATH")) ~ "1").toSimpleString == "PATH~1")
+  }
 }

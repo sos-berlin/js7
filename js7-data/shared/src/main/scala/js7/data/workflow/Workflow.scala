@@ -1,7 +1,7 @@
 package js7.data.workflow
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -18,9 +18,8 @@ import js7.data.job.JobKey
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
-import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Instructions, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
@@ -376,12 +375,14 @@ extends VersionedItem
 
 object Workflow extends VersionedItem.Companion[Workflow]
 {
-  type ThisItem = Workflow
+  type Item = Workflow
   type Path = WorkflowPath
 
-  implicit val itemsOverview = WorkflowsOverview
+  val cls = classOf[Workflow]
   val itemPathCompanion = WorkflowPath
   val empty = Workflow(WorkflowPath.NoId, Vector.empty)
+
+  implicit val itemsOverview = WorkflowsOverview
 
   def anonymous(
     labeledInstructions: IndexedSeq[Instruction.Labeled],
@@ -452,29 +453,36 @@ object Workflow extends VersionedItem.Companion[Workflow]
       (labeledInstructions.last.instruction.isInstanceOf[End] ||
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
-  implicit val jsonEncoder: Encoder.AsObject[Workflow] = {
+  implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
+
+  private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
     case Workflow(id, instructions, namedJobs, orderRequirements, source, _) =>
+      implicit val x: Encoder.AsObject[Instruction] = Instructions.jsonCodec
       id.asJsonObject ++
         JsonObject(
           "orderRequirements" -> orderRequirements.??.asJson,
           "instructions" -> instructions
-            .dropLastWhile(labeled => labeled.instruction == ImplicitEnd() && labeled.maybePosition.isEmpty)
+            .dropLastWhile(labeled =>
+              labeled.instruction == ImplicitEnd.empty && labeled.maybePosition.isEmpty)
             .asJson,
           "jobs" -> emptyToNone(namedJobs).asJson,
           "source" -> source.asJson)
   }
 
-  implicit val jsonDecoder: Decoder[Workflow] =
+  private val jsonDecoder_ : Decoder[Workflow] =
     // TODO Differentiate between CompleteWorkflow.completelyChecked and Subworkflow. completeChecked should not be left to the caller.
-    cursor => for {
-      id <- cursor.value.as[WorkflowId]
-      instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
-      namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
-      orderRequirements <- cursor.getOrElse[OrderRequirements]("orderRequirements")(OrderRequirements.empty)
-      source <- cursor.get[Option[String]]("source")
-      workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderRequirements, source)
-        .toDecoderResult(cursor.history)
-    } yield workflow
+    cursor => {
+      implicit val x: Decoder[Instruction] = Instructions.jsonCodec
+      for {
+        id <- cursor.value.as[WorkflowId]
+        instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
+        namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
+        orderRequirements <- cursor.getOrElse[OrderRequirements]("orderRequirements")(OrderRequirements.empty)
+        source <- cursor.get[Option[String]]("source")
+        workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderRequirements, source)
+          .toDecoderResult(cursor.history)
+      } yield workflow
+    }
 
   // TODO Separate plain RawWorkflow, TopWorkflow and Subworkflow
   val topJsonDecoder: Decoder[Workflow] =

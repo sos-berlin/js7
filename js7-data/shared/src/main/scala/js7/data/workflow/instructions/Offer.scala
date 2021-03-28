@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.order.OrderId
@@ -11,7 +11,6 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-@JsonCodec
 final case class Offer(orderId: OrderId, timeout: FiniteDuration, sourcePos: Option[SourcePos] = None) extends Instruction
 {
   def withoutSourcePos = copy(sourcePos = None)
@@ -21,4 +20,5 @@ final case class Offer(orderId: OrderId, timeout: FiniteDuration, sourcePos: Opt
 
 object Offer {
   intelliJuseImport(FiniteDurationJsonEncoder)
+  implicit val jsonCodec = deriveCodec[Offer]
 }

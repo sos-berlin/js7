@@ -2,6 +2,7 @@ package js7.data.item
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.VersionedItemId._
 import scala.language.implicitConversions
@@ -10,20 +11,40 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class VersionedItemId[+P <: ItemPath](path: P, versionId: VersionId)
+extends InventoryItemId
 {
+  def companion = //: InventoryItemId.Companion[VersionedItemId[P]] =
+    path.companion.versionedItemIdCompanion
+      .asInstanceOf[InventoryItemId.Companion[InventoryItemId]]
+
   def requireNonAnonymous(): this.type = {
     path.requireNonAnonymous()
     versionId.requireNonAnonymous()
     this
   }
 
+  def toTypedString: String =
+    path.companion.itemTypeName + ":" + path.string + VersionSeparator + versionId.string
+
   def isAnonymous = path.isAnonymous && versionId.isAnonymous
 
-  def toSimpleString = if (versionId.isAnonymous) path.string else s"${path.string}$VersionSeparator${versionId.string}"
+  def toSimpleString =
+    if (versionId.isAnonymous)
+      path.string
+    else
+      s"${path.string}$VersionSeparator${versionId.string}"
 
-  override def toString = if (versionId.isAnonymous) path.toString else s"${path.toTypedString}$VersionSeparator${versionId.string}"
+  override def toString =
+    if (versionId.isAnonymous)
+      path.toString
+    else
+      s"${path.toTypedString}$VersionSeparator${versionId.string}"
 
-  def pretty = if (versionId.isAnonymous) path.string else s"${path.toTypedString}$VersionSeparator${versionId.string}"
+  def pretty =
+    if (versionId.isAnonymous)
+      path.string
+    else
+      s"${path.toTypedString}$VersionSeparator${versionId.string}"
 }
 
 object VersionedItemId
@@ -49,11 +70,38 @@ object VersionedItemId
         version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
       } yield VersionedItemId(path, version)
 
-  trait Companion[P <: ItemPath] {
-    //def checked(string: String)(implicit P: ItemPath.Companion[P]): Checked[VersionedItemId[P]] =
-    //  string indexOf VersionSeparator match {
-    //    case -1 => Problem(s"ItemIdPath without version (denoted by '$VersionSeparator')?: $string")
-    //    case i => Right(new VersionedItemId(P(string take i), VersionId(string drop i + 1)))
-    //  }
+  trait Companion[P <: ItemPath] extends InventoryItemId.Companion[VersionedItemId[P]]
+  {
+    implicit val pathCompanion: ItemPath.Companion[P]
+    private val P = pathCompanion
+
+    def apply(path: P, versionId: VersionId): VersionedItemId[P]
+
+    final val itemTypeName = P.itemTypeName
+
+    implicit final val implicitCompanion: Companion[P] =
+      this
+
+    final def checked(string: String): Checked[VersionedItemId[P]] =
+      string indexOf VersionSeparator match {
+        case -1 => Problem(s"${P.name} without version (denoted by '$VersionSeparator')?: $string")
+        case i => Right(apply(P(string take i), VersionId(string drop i + 1)))
+      }
+
+    implicit final val jsonEncoder: Encoder.AsObject[VersionedItemId[P]] = {
+      implicit val x: Encoder[P] = P.jsonEncoder
+      o => JsonObject(
+        "path" -> (!o.path.isAnonymous ? o.path).asJson,
+        "versionId" -> (!o.versionId.isAnonymous ? o.versionId).asJson)
+    }
+
+    implicit final val jsonDecoder: Decoder[VersionedItemId[P]] = {
+      implicit val x: Decoder[P] = P.jsonDecoder
+      cursor =>
+        for {
+          path <- cursor.getOrElse[P]("path")(implicitly[ItemPath.Companion[P]].Anonymous)
+          version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
+        } yield path ~ version
+    }
   }
 }

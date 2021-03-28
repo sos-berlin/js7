@@ -1,6 +1,6 @@
 package js7.base.circeutils.typed
 
-import io.circe.{CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
+import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
 import js7.base.circeutils.typed.TypedJsonCodec._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils._
@@ -15,7 +15,7 @@ final class TypedJsonCodec[A](
   val classToEncoder: Map[Class[_], Encoder.AsObject[_ <: A]],
   val nameToDecoder: Map[String, Decoder[_ <: A]],
   val nameToClass: Map[String, Class[_ <: A]])
-extends Encoder.AsObject[A] with Decoder[A]
+extends Codec.AsObject[A]
 {
   private val _classToName: Map[Class[_ <: A], String] =
     nameToClass.map(o => o._2 -> o._1)

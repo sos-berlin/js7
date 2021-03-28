@@ -1,11 +1,10 @@
 package js7.data.item
 
-import js7.base.utils.ScalaUtils.syntax._
-
 /**
   * @author Joacim Zschimmer
   */
-trait VersionedItem {
+trait VersionedItem extends InventoryItem
+{
   type Self <: VersionedItem
   type Path = companion.Path
   type Id = VersionedItemId[Path]
@@ -30,22 +29,19 @@ trait VersionedItem {
   }
 }
 
-object VersionedItem {
+object VersionedItem
+{
   type Companion_ = Companion[_ <: VersionedItem]
 
-  trait Companion[A <: VersionedItem]
+  trait Companion[A <: VersionedItem] extends InventoryItem.Companion
   {
-    type ThisItem <: A
+    type Item <: A
     type Path <: ItemPath
+    type Id = VersionedItemId[Path]
 
-    val name = getClass.simpleScalaName
-
-    def typeName = name
-
-    def itemPathCompanion: ItemPath.Companion[Path]
+    val itemPathCompanion: ItemPath.Companion[Path]
+    final lazy val idCompanion = itemPathCompanion.versionedItemIdCompanion
 
     implicit def self: Companion[A] = this
-
-    override def toString = name
   }
 }

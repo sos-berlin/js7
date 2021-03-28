@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
 
@@ -9,7 +9,6 @@ import js7.data.workflow.Instruction
   */
 sealed trait End extends Instruction
 
-@JsonCodec
 final case class ExplicitEnd(sourcePos: Option[SourcePos] = None) extends End
 {
   def withoutSourcePos = copy(sourcePos = None)
@@ -17,7 +16,10 @@ final case class ExplicitEnd(sourcePos: Option[SourcePos] = None) extends End
   override def toString = "end" + sourcePosToString
 }
 
-@JsonCodec
+object ExplicitEnd {
+  implicit val jsonCodec = deriveCodec[ExplicitEnd]
+}
+
 final case class ImplicitEnd(sourcePos: Option[SourcePos] = None) extends End
 {
   def withoutSourcePos = copy(sourcePos = None)
@@ -27,6 +29,7 @@ final case class ImplicitEnd(sourcePos: Option[SourcePos] = None) extends End
 object ImplicitEnd
 {
   val empty = new ImplicitEnd()
+  implicit val jsonCodec = deriveCodec[ImplicitEnd]
 
   def apply(sourcePos: Option[SourcePos] = None) =
     sourcePos.fold(empty)(_ => new ImplicitEnd(sourcePos))

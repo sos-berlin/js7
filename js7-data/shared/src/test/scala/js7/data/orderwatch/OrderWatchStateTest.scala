@@ -2,7 +2,6 @@ package js7.data.orderwatch
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
@@ -15,9 +14,9 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.freespec.AsyncFreeSpec
 
-final class OrderWatchStateTest extends AnyFreeSpec
+final class OrderWatchStateTest extends AsyncFreeSpec
 {
   private val orderWatchState = OrderWatchState(
     FileWatch(
@@ -134,47 +133,48 @@ final class OrderWatchStateTest extends AnyFreeSpec
     }
 
     "toSnapshot" in {
-      assert(orderWatchState.toSnapshot.toListL.await(99.s).asJson ==json"""[
-        {
-          "TYPE": "OrderWatchState.Header",
-          "orderWatch": {
-            "TYPE": "FileWatch",
-            "id": "FILE-WATCH",
-            "workflowPath": "WORKFLOW",
-            "agentId": "AGENT",
-            "directory": "DIRECTORY",
-            "pattern": "PATTERN.*\\.csv",
-            "orderIdExpression": "$$1",
-            "delay": 2,
-            "itemRevision": 7
-          },
-          "attached": {
-            "TYPE": "Attached"
-          }
-        }, {
-          "TYPE": "ExternalOrder",
-          "orderWatchId": "FILE-WATCH",
-          "externalOrderName": "A-NAME",
-          "state": {
-            "TYPE": "Arised",
-            "orderId": "A-ORDER",
-            "arguments": {
-              "K": "V"
+      for (snapshot <- orderWatchState.toSnapshot.toListL.runToFuture) yield
+        assert(snapshot.asJson ==json"""[
+          {
+            "TYPE": "OrderWatchState.Header",
+            "orderWatch": {
+              "TYPE": "FileWatch",
+              "id": "FILE-WATCH",
+              "workflowPath": "WORKFLOW",
+              "agentId": "AGENT",
+              "directory": "DIRECTORY",
+              "pattern": "PATTERN.*\\.csv",
+              "orderIdExpression": "$$1",
+              "delay": 2,
+              "itemRevision": 7
+            },
+            "attached": {
+              "TYPE": "Attached"
+            }
+          }, {
+            "TYPE": "ExternalOrder",
+            "orderWatchId": "FILE-WATCH",
+            "externalOrderName": "A-NAME",
+            "state": {
+              "TYPE": "Arised",
+              "orderId": "A-ORDER",
+              "arguments": {
+                "K": "V"
+              }
+            }
+          }, {
+            "TYPE": "ExternalOrder",
+            "orderWatchId": "FILE-WATCH",
+            "externalOrderName": "B-NAME",
+            "state": {
+              "TYPE": "HasOrder",
+              "orderId": "B-ORDER",
+              "queued": {
+                "TYPE": "Vanished"
+              }
             }
           }
-        }, {
-          "TYPE": "ExternalOrder",
-          "orderWatchId": "FILE-WATCH",
-          "externalOrderName": "B-NAME",
-          "state": {
-            "TYPE": "HasOrder",
-            "orderId": "B-ORDER",
-            "queued": {
-              "TYPE": "Vanished"
-            }
-          }
-        }
-      ]""")
+        ]""")
     }
   }
 }

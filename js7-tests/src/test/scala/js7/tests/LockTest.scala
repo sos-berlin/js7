@@ -332,7 +332,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       AddVersion(v),
       SimpleDelete(lockId)
     )).await(99.s) == Left(Problem(
-      "Event 'SimpleItemDeleted(Lock:LOCK)' cannot be applied: A 'LockId' is not deletable (in this version)")))
+      "Event 'SimpleItemDeleted(Lock:LOCK)' cannot be applied: A 'Lock' is not deletable (in this version)")))
   }
 
   private def defineWorkflow(workflowNotation: String): Workflow =

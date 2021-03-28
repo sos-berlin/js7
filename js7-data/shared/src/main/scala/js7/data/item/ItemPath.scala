@@ -12,6 +12,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.ItemPath._
+import js7.data.item.VersionedItemId.VersionSeparator
 import scala.reflect.ClassTag
 
 trait ItemPath extends GenericString
@@ -44,9 +45,9 @@ trait ItemPath extends GenericString
 
   override def toString = toTypedString
 
-  final def pretty: String = s"${companion.camelName} $string"
+  final def pretty: String = s"${companion.itemTypeName} $string"
 
-  final def toTypedString: String = s"${companion.camelName}:$string"
+  final def toTypedString: String = s"${companion.itemTypeName}:$string"
 }
 
 object ItemPath
@@ -70,6 +71,9 @@ object ItemPath
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
     final lazy val Anonymous: P = unchecked("⊥")
     final lazy val NoId: VersionedItemId[P] = Anonymous ~ VersionId.Anonymous
+    implicit override final val self: Companion[P] = this
+
+    private def P = this
 
     override def checked(string: String): Checked[P] =
       if (string == Anonymous.string)
@@ -79,10 +83,18 @@ object ItemPath
 
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
-    final implicit val implicitCompanion: Companion[P] = this
-    final val camelName: String = name stripSuffix "Path"
+    object versionedItemIdCompanion extends InventoryItemId.Companion[VersionedItemId[P]] {
+      final def checked(string: String): Checked[VersionedItemId[P]] =
+        string indexOf VersionSeparator match {
+          case -1 => Problem(s"${P.name} without version (denoted by '$VersionSeparator')?: $string")
+          case i => Right(VersionedItemId(P(string take i), VersionId(string drop i + 1)))
+        }
 
-    final def itemPathClass: Class[P] = implicitClass[P]
+      override def itemTypeName = Companion.this.itemTypeName
+    }
+
+    final val itemTypeName: String = name stripSuffix "Path"
+    final val itemPathClass: Class[P] = implicitClass[P]
 
     /** Converts a relative file path with normalized slahes (/) to a `ItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
@@ -92,12 +104,12 @@ object ItemPath
 
     override def toString = name
 
-    override final implicit val jsonEncoder: Encoder[P] = o => {
+    implicit override final val jsonEncoder: Encoder[P] = o => {
       if (o == Anonymous) throw new IllegalArgumentException(s"JSON serialize $name.Anonymous?")
       Json.fromString(o.string)
     }
 
-    override final implicit val jsonDecoder: Decoder[P] =
+    implicit override final val jsonDecoder: Decoder[P] =
       c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
   }
 
@@ -106,7 +118,7 @@ object ItemPath
 
   def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[ItemPath] =
     new Encoder[ItemPath] with Decoder[ItemPath] {
-      private val typeToCompanion = companions.toKeyedMap(_.camelName)
+      private val typeToCompanion = companions.toKeyedMap(_.itemTypeName)
 
       def apply(a: ItemPath) = Json.fromString(a.toTypedString)
 

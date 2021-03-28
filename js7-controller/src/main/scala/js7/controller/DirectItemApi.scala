@@ -15,14 +15,15 @@ extends VersionedItemApi
       for (repo <- checked) yield
         O.itemsToOverview(repo.currentTyped[A].values.toSeq)
 
-  def idTo[A <: VersionedItem: VersionedItem.Companion](id: A#Id) =
-    for (checked <- checkedRepo) yield
-      checked.flatMap(_.idTo[A](id))
+  //def idTo[A <: VersionedItem: VersionedItem.Companion](id: A#Id) =
+  //  for (checked <- checkedRepo) yield
+  //    checked.flatMap(_.idTo[A](id))
 
   def items[A <: VersionedItem: VersionedItem.Companion]: Task[Checked[Seq[A]]] =
     for (checked <- checkedRepo) yield
       for (repo <- checked) yield
-        repo.currentTyped[A].values.toSeq.sortBy/*for determinstic tests*/(_.id: VersionedItemId[ItemPath])
+        repo.currentTyped[A].values.toSeq
+          .sortBy/*for determinstic tests*/(_.id: VersionedItemId[ItemPath])
 
   def pathToCurrentItem[A <: VersionedItem: VersionedItem.Companion](path: A#Path): Task[Checked[A]] =
     for (checked <- checkedRepo) yield

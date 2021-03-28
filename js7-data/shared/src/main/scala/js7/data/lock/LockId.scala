@@ -17,7 +17,7 @@ final case class LockId private(string: String) extends SimpleItemId
 
 object LockId extends SimpleItemId.Companion[LockId]
 {
-  def itemName = Lock.name
+  def itemTypeName = Lock.typeName
 
   protected def unchecked(string: String) = new LockId(string)
 

@@ -23,6 +23,8 @@ final case class VersionId(string: String) extends GenericString
 
 object VersionId extends GenericString.NonEmpty[VersionId]
 {
+  // TODO Restrict VersionId syntax with Js7NameValidator?
+
   val Anonymous: VersionId = unchecked("⊥")
 
   def generate(isKnown: VersionId => Boolean = _ => false): VersionId = {

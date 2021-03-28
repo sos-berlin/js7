@@ -5,14 +5,12 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor}
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.typed.Subtype
 import js7.base.circeutils.typed.TypedJsonCodec.TypeFieldName
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.item.SimpleItem._
-import scala.reflect.ClassTag
 
-trait SimpleItem
+trait SimpleItem extends InventoryItem
 {
   protected type Self <: SimpleItem
 
@@ -27,35 +25,20 @@ trait SimpleItem
 
 object SimpleItem
 {
-  trait Companion
+  trait Companion extends InventoryItem.Companion
   {
     type Item <: SimpleItem
     type Id <: SimpleItemId
 
     val idCompanion: SimpleItemId.Companion[Id]
-    val name = getClass.simpleScalaName
-
-    def cls: Class[Item]
-
-    implicit def jsonCodec: CirceObjectCodec[Item]
-
-    final def subtype: Subtype[Item] =
-      Subtype(jsonCodec)(ClassTag(cls))
-
-    final def jsonEncoder: Encoder.AsObject[Item] =
-      jsonCodec
-
-    final def jsonDecoder: Decoder[Item] =
-      jsonCodec
   }
 
   def jsonCodec(companions: Seq[Companion]): CirceObjectCodec[SimpleItem] = {
-    val typeToCompanion = companions.toKeyedMap(_.name)
+    val typeToCompanion = companions.toKeyedMap(_.typeName)
     new Encoder.AsObject[SimpleItem] with Decoder[SimpleItem] {
-      def encodeObject(item: SimpleItem) = {
-        (TypeFieldName -> item.companion.name.asJson) +:
+      def encodeObject(item: SimpleItem) =
+        (TypeFieldName -> item.companion.typeName.asJson) +:
           item.companion.jsonEncoder.encodeObject(item.asInstanceOf[item.companion.Item])
-      }
 
       def apply(cursor: HCursor): Result[SimpleItem] =
         for {

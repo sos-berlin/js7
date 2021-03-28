@@ -1,10 +1,11 @@
 package js7.controller.tests
 
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Json, JsonObject}
+import io.circe.{Codec, Json, JsonObject}
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
-import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJsonObject, deriveCodec}
+import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJsonObject}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
@@ -155,7 +156,7 @@ object VersionedItemsTest {
   }
 
   private[tests] type TestId = VersionedItemId[TestPath]
-  private[tests] val TestId = new VersionedItemId.Companion[TestPath] {}
+  //private[tests] val TestId = new VersionedItemId.Companion[TestPath] {}
 
   private[tests] final case class TestItem(id: TestId, content: String) extends VersionedItem {
     type Self = TestItem
@@ -164,10 +165,12 @@ object VersionedItemsTest {
     def withId(id: VersionedItemId[Path]) = copy(id)
   }
   private[tests] object TestItem extends VersionedItem.Companion[TestItem] {
-    type ThisItem = TestItem
+    type Item = TestItem
     type Path = TestPath
-    def itemPathCompanion = TestPath
-    implicit val jsonCodec = deriveCodec[TestItem]
+    override type Id = TestId
+    val cls = classOf[TestItem]
+    val itemPathCompanion = TestPath
+    implicit val jsonCodec: Codec.AsObject[TestItem] = deriveCodec[TestItem]
   }
 
   private[tests] object TestItemReader extends VersionedItemReader

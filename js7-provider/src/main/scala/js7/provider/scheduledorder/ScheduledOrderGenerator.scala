@@ -21,12 +21,16 @@ extends VersionedItem
 
   val companion = ScheduledOrderGenerator
 
-  def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]) = reuseIfEqual(this, copy(id = id))
+  def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]) =
+    reuseIfEqual(this, copy(id = id))
 }
 
 object ScheduledOrderGenerator extends VersionedItem.Companion[ScheduledOrderGenerator] {
-  type ThisItem = ScheduledOrderGenerator
+  type Item = ScheduledOrderGenerator
   type Path = ScheduledOrderGeneratorPath
 
-  def itemPathCompanion = ScheduledOrderGeneratorPath
+  val cls = classOf[ScheduledOrderGenerator]
+  val itemPathCompanion = ScheduledOrderGeneratorPath
+
+  implicit def jsonCodec = ???
 }

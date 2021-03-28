@@ -8,5 +8,6 @@ import js7.data.item.VersionedItemId
 package object workflow
 {
   type WorkflowId = VersionedItemId[WorkflowPath]
-  val WorkflowId = new VersionedItemId.Companion[WorkflowPath] {}
+
+  val WorkflowId = WorkflowPath.versionedItemIdCompanion
 }

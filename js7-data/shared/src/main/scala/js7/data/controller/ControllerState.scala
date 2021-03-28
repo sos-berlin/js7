@@ -122,7 +122,7 @@ extends JournaledState[ControllerState]
           }
 
         case SimpleItemDeleted(itemId) =>
-          Left(Problem(s"A '${itemId.companion.name}' is not deletable (in this version)"))  // TODO
+          Left(Problem(s"A '${itemId.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
 
         case SimpleItemAttachedStateChanged(id, agentId, attachedState) =>
           id match {

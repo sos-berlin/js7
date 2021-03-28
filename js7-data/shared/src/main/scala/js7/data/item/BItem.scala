@@ -1,11 +1,10 @@
 package js7.data.item
 
-import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.deriveCodec
 
 /**
   * @author Joacim Zschimmer
   */
-@JsonCodec
 final case class BItem(id: VersionedItemId[BPath], content: String) extends VersionedItem {
   type Self = BItem
 
@@ -15,10 +14,13 @@ final case class BItem(id: VersionedItemId[BPath], content: String) extends Vers
 }
 
 object BItem extends VersionedItem.Companion[BItem] {
-  type ThisItem = BItem
+  type Item = BItem
   type Path = BPath
 
-  def itemPathCompanion = BPath
+  val cls = classOf[BItem]
+  val itemPathCompanion = BPath
+
+  implicit val jsonCodec = deriveCodec[BItem]
 }
 
 case class BPath(string: String) extends ItemPath {

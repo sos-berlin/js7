@@ -175,7 +175,7 @@ final case class Repo private(
           if (event.path != item.path)
             Problem.pure(s"Error in VersionedItemAddedOrChanged event: path=${event.path} does not equal path=${item.path}")
           else if (item.path.isAnonymous)
-            Problem.pure(s"Adding an anonymous ${item.companion.name} is not allowed")
+            Problem.pure(s"Adding an anonymous ${item.companion.typeName} is not allowed")
           else if (item.id.versionId != versionId)
             EventVersionDoesNotMatchProblem(versionId, event)
           else

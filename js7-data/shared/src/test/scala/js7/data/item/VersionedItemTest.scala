@@ -8,7 +8,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class VersionedItemTest extends AnyFreeSpec
 {
   "Companion" in {
-    assert(AItem.name == "AItem")
+    assert(AItem.typeName == "AItem")
     assert(AItem.toString == "AItem")
     assert(AItem.itemPathCompanion == APath)
   }

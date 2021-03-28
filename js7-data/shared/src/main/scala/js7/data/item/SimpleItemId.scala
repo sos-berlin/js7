@@ -5,27 +5,27 @@ import js7.base.circeutils.CirceCodec
 import js7.base.generic.GenericString
 import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.data.item.SimpleItemId._
 
-trait SimpleItemId extends GenericString
+trait SimpleItemId extends InventoryItemId with GenericString
 {
   protected type Self <: SimpleItemId
-  val companion: Companion[Self]
+
+  //val companion: Companion[Self]
 
   final def toTypedString: String =
-    s"${companion.itemName}:$string"
+    s"${companion.itemTypeName}:$string"
 }
 
 object SimpleItemId
 {
-  trait Companion[A <: SimpleItemId] extends Js7PathValidating[A] {
-    def itemName: String
-  }
+  trait Companion[A <: SimpleItemId]
+  extends InventoryItemId.Companion[A]
+  with Js7PathValidating[A]
 
   type AnyCompanion = Companion[_ <: SimpleItemId]
 
   def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[SimpleItemId] = {
-    val typeToCompanion = companions.toKeyedMap(_.itemName)
+    val typeToCompanion = companions.toKeyedMap(_.itemTypeName)
 
     new Encoder[SimpleItemId] with Decoder[SimpleItemId]
     {
