@@ -83,14 +83,13 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
         sleep(systemWatchDelay + 100.ms)
         file ++= "A"
         assert(!whenArised.isCompleted)
-        val writePause = fileWatch.delay / 2
         for (_ <- 0 to 2 * i) {
-          sleep(writePause)
+          sleep(fileWatch.delay / 2)
           file ++= "+"
           assert(!whenArised.isCompleted)
         }
         whenArised.await(99.s)
-        assert(since.elapsed >= systemWatchDelay + i * writePause)
+        assert(since.elapsed >= systemWatchDelay + i * fileWatch.delay)
         await[OrderFinished](_.key == orderId)
         await[OrderRemoved](_.key == orderId)
         assert(!exists(file))
