@@ -6,7 +6,11 @@ rm -f target/build.log
 if [ "$OSTYPE" = "cygwin" ]; then
   exec cmd /c sbt-batch.cmd "$@"
 else
-  # See also files .sbtopts and .javaopts
-  export JAVA_OPTS="-Dsbt.ci=true ${JAVA_OPTS:-}"
+  # See also .sbtopts and .javaopts files
+  if [[ -t 1 ]]; then
+    export JAVA_OPTS="-Dsbt.ci=true ${JAVA_OPTS:-}"
+  else
+    export JAVA_OPTS="-Dsbt.log.noformat=true ${JAVA_OPTS:-}"
+  fi
   exec sbt -batch "$@"
 fi
