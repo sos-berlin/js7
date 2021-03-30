@@ -36,10 +36,19 @@ extends Scope
     case ValueSearch(LastOccurred, Name(NumberRegex(nr))) =>
       Checked.catchNonFatal {
         val index = nr.toInt
-        if (index < 0 || index > matchedMatcher.groupCount)
-          Left(Problem(s"Unknown index in regular expression group: $index"))
-        else
-          Right(Some(StringValue(matchedMatcher.group(index))))
+        val maybe =
+          if (index >= 0 && index <= matchedMatcher.groupCount)
+            Option(matchedMatcher.group(index))
+          else
+            None
+        maybe match {
+          case None =>
+            Left(Problem(s"Unknown regular expression group index $index" +
+              s" or group does not match " +
+              s"(known groups are $$0...$$${matchedMatcher.groupCount})"))
+          case Some(string) =>
+            Right(Some(StringValue(string)))
+        }
       }.flatten
 
     case _ => Right(None)

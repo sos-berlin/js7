@@ -62,9 +62,8 @@ object ExpressionParser
     def simpleConstant = P(CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$').!)
     def constant = P(((simpleConstant | escapedCharInString).rep.map(_.mkString)).map(StringConstant(_)))
 
-    def number = P(CharsWhile(c => c >= '0' && c <= '9').!)
     def curlyName = P("{" ~~/ simpleName ~~/ "}")
-    def namedValue = (simpleName | number/*regex group*/ | curlyName).map(NamedValue(_))
+    def namedValue = (simpleName | digits/*regex group*/ | curlyName).map(NamedValue(_))
     def expr = P("$" ~~/ (namedValue | ("(" ~~/ expression ~~/ ")")))
 
     (constant ~~/ (expr ~~/ constant).rep)
@@ -91,7 +90,7 @@ object ExpressionParser
     //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), NamedValue.KeyValue(StringConstant(key))) })
     def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
 
-    "$" ~~ (nameOnly(simpleName) | curlyName)
+    "$" ~~ (nameOnly(simpleName | digits/*regex group*/) | curlyName)
   }
 
   private def simpleName[_: P] = P[String](

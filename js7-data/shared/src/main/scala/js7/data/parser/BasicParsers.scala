@@ -32,7 +32,7 @@ object BasicParsers
   //def newline[_: P] = P(h ~ "\r".? ~ "\n" ~ w)
   //def commaOrNewLine[_: P] = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
   def int[_: P] = P[Int](("-".? ~ digits).!.map(_.toInt))
-  private def digits[_: P] = P(CharsWhile(c => c >= '0' && c <= '9'))
+  def digits[_: P] = P[String](CharsWhile(c => c >= '0' && c <= '9').!)
   def identifierEnd[_: P] = P(&(CharPred(c => !isIdentifierPart(c))) | End)
   def identifier[_: P] = P[String](  // TODO Compare and test code with Identifier.isIdentifier
     ("`" ~/ CharsWhile(c => c != '`' && c != '\n').! ~/ "`") |
