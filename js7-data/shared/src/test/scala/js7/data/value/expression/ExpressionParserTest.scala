@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
 import fastparse.NoWhitespace._
-import fastparse.{Parsed, _}
+import fastparse._
 import js7.base.problem.Problem
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._

@@ -101,7 +101,7 @@ object JournaledState
           }
       }
 
-    implicit def snapshotObjectJsonCodec: TypedJsonCodec[Any]
+    def snapshotObjectJsonCodec: TypedJsonCodec[Any]
 
     implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
 

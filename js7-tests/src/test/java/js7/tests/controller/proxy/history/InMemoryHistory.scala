@@ -13,7 +13,7 @@ import js7.data_for_java.order.{JOrder, JOrderEvent}
 import js7.data_for_java.vavr.VavrUtils.getOrThrow
 import js7.data_for_java.workflow.position.JWorkflowPosition
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
-import js7.tests.controller.proxy.history.InMemoryHistory.{terminatedAt, _}
+import js7.tests.controller.proxy.history.InMemoryHistory._
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.{TestOrderId, TestWorkflowId}
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import scala.collection.mutable

@@ -11,7 +11,7 @@ import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.common.crypt.pgp.PgpCommons.{readPublicKeyRingCollection, toPublicKeyRingCollection, writePublicKeyAsAscii, _}
+import js7.common.crypt.pgp.PgpCommons._
 import js7.common.crypt.pgp.PgpTest._
 import org.bouncycastle.openpgp.PGPSignature
 import org.scalatest.freespec.AnyFreeSpec

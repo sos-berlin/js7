@@ -4,7 +4,7 @@ import java.nio.file.Files.{delete, exists}
 import java.nio.file.{Path, Paths}
 import js7.base.auth.Pem
 import js7.base.crypt.SignerId
-import js7.base.crypt.x509.Openssl.{openssl, _}
+import js7.base.crypt.x509.Openssl._
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.runProcess

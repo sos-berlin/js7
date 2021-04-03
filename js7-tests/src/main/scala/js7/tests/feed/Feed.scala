@@ -6,7 +6,6 @@ import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.data.ByteArray
 import js7.base.generic.Completed
-import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas
@@ -34,8 +33,6 @@ final class Feed(controllerApi: ControllerApi, settings: Settings)
 
 object Feed
 {
-  private val logger = Logger(getClass)
-
   def run(in: Resource[Task, InputStream], settings: Settings): Task[Checked[Completed]] = {
     Akkas.actorSystemResource("Feed")
       .flatMap(actorSystem =>
@@ -49,7 +46,6 @@ object Feed
 
   val opJsonCodec = {
     import ControllerState._
-    import ControllerState.generic._
 
     TypedJsonCodec[Any](
       Subtype[ItemOperation])

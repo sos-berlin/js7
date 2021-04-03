@@ -1,7 +1,7 @@
 package js7.data.crypt
 
 import io.circe.Decoder
-import js7.base.circeutils.CirceUtils.{RichCirceString, _}
+import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.{SignatureVerifier, Signed, SignedString, SignerId}
 import js7.base.problem.Checked
 import js7.data.crypt.VersionedItemVerifier.Verified

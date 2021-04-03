@@ -90,10 +90,6 @@ extends SimpleItemState
 
       case state @ HasOrder(_, Some(Vanished | VanishedAck)) =>
         Left(Problem(s"Duplicate ExternalOrderVanished($externalOrderName), state=$state"))
-
-      //case state @ HasOrder(_, Some(VanishedAck)) =>
-      //  logger.debug(s"ExternalOrderVanished($externalOrderName) but state=$state")
-      //  Right(this)
     }
 
   def onOrderAdded(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =

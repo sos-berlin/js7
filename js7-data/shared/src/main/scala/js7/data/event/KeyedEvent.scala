@@ -25,8 +25,8 @@ object KeyedEvent {
 
   type NoKey = NoKey.type
   case object NoKey {
-    implicit val JsonEncoder: Encoder[NoKey] = _ => sys.error("NoKey Encoder")
-    implicit val JsonDecoder: Decoder[NoKey] = _ => sys.error("NoKey Decoder")
+    implicit val jsonEncoder: Encoder[NoKey] = _ => sys.error("NoKey Encoder")
+    implicit val jsonDecoder: Decoder[NoKey] = _ => sys.error("NoKey Decoder")
 
     override def toString = "NoKey"
   }
