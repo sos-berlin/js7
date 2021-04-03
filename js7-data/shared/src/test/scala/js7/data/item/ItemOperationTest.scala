@@ -5,7 +5,6 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson}
 import js7.base.crypt.SignedString
 import js7.base.crypt.silly.SillySignature
 import js7.data.controller.ControllerState._
-import js7.data.controller.ControllerState.generic._
 import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}
 import js7.data.lock.{Lock, LockId}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -24,8 +23,7 @@ final class ItemOperationTest extends AnyFreeSpec
           "item": {
             "TYPE": "Lock",
             "id": "LOCK",
-            "limit": 1,
-            "itemRevision": 0
+            "limit": 1
           }
         }""")
     }

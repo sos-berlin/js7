@@ -188,7 +188,10 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
           ).value
             .runToFuture)
 
-      case command @ (_: AgentCommand.OrderCommand | _: AgentCommand.TakeSnapshot.type | _: AgentCommand.AttachSimpleItem) =>
+      case command @ (_: AgentCommand.OrderCommand |
+                      _: AgentCommand.TakeSnapshot.type |
+                      _: AgentCommand.AttachSimpleItem |
+                      _: AgentCommand.DetachItem) =>
         controllerToOrderKeeper.checked(controllerId) match {
           case Right(entry) =>
             entry.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))

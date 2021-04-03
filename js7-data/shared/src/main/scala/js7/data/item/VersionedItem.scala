@@ -13,6 +13,8 @@ trait VersionedItem extends InventoryItem
   def id: VersionedItemId[Path]
   def withId(id: VersionedItemId[Path]): Self
 
+  final def itemRevision = None
+
   final def path: Path = id.path
 
   final def isAnonymous = id.isAnonymous

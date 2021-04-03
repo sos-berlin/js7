@@ -1,19 +1,27 @@
 package js7.data.item
 
-import js7.base.circeutils.CirceObjectCodec
-import js7.base.circeutils.CirceUtils.deriveCodec
-import js7.data.agent.AgentId
+import io.circe.generic.semiauto.deriveCodec
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 
-final case class ItemAttachedState(agentIds: Set[AgentId])
-{
-  def isAttachedTo(agentId: AgentId) =
-    agentIds(agentId)
-}
+sealed trait ItemAttachedState
 
 object ItemAttachedState
 {
-  def empty = ItemAttachedState(Set.empty)
+  sealed trait NotDetached extends ItemAttachedState
+  object NotDetached {
+    implicit val jsonCodec = TypedJsonCodec[NotDetached](
+      Subtype(Attachable),
+      Subtype(deriveCodec[Attached]),
+      Subtype(Detachable))
+  }
+  case object Attachable
+  extends NotDetached
 
-  implicit val jsonCodec: CirceObjectCodec[ItemAttachedState] =
-    deriveCodec[ItemAttachedState]
+  final case class Attached(itemRevision: Option[ItemRevision])
+  extends NotDetached
+
+  case object Detachable
+  extends NotDetached
+
+  case object Detached extends ItemAttachedState
 }

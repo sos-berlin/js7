@@ -39,7 +39,6 @@ final class FileWatchTest extends AnyFreeSpec
           "agentId": "AGENT",
           "directory": "/DIRECTORY",
           "pattern": "[a-z]+.csv",
-          "itemRevision": 0,
           "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$epochSecond-$$orderWatchId:$$1\"",
           "delay": 2
         }""")

@@ -1,5 +1,6 @@
 package js7.agent.data
 
+import io.circe.Codec
 import js7.agent.data.event.AgentControllerEvent
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -9,8 +10,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
-import js7.data.item.SimpleItemEvent.SimpleItemAttachedToAgent
-import js7.data.item.{SimpleItem, SimpleItemEvent}
+import js7.data.item.CommonItemEvent.{ItemAttachedToAgent, ItemDetached}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchId}
@@ -64,9 +65,13 @@ extends JournaledState[AgentState]
         allFileWatchesState.applyEvent(orderWatchId <-: event)
           .map(o => copy(allFileWatchesState = o))
 
-      case KeyedEvent(_: NoKey, SimpleItemAttachedToAgent(fileWatch: FileWatch)) =>
+      case KeyedEvent(_: NoKey, ItemAttachedToAgent(fileWatch: FileWatch)) =>
         Right(copy(
           allFileWatchesState = allFileWatchesState.attach(fileWatch)))
+
+      case KeyedEvent(_: NoKey, ItemDetached(id: OrderWatchId, agentId/*`ownAgentId`*/)) =>
+        Right(copy(
+          allFileWatchesState = allFileWatchesState.detach(id)))
 
       case keyedEvent => applyStandardEvent(keyedEvent)
     }
@@ -121,31 +126,37 @@ object AgentState extends JournaledState.Companion[AgentState]
   val empty = AgentState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty, Map.empty,
     AllFileWatchesState.empty)
 
-  private val simpleItemCompanions = Seq[SimpleItem.Companion](
-    FileWatch)
+  def newBuilder() = new AgentStateBuilder
 
-  implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] =
-    TypedJsonCodec(simpleItemCompanions.map(_.subtype): _*)
+  private val inventoryItemCompanions = Seq[InventoryItem.Companion](
+    FileWatch, Workflow/*Used only for premature test*/)
 
-  implicit val simpleItemEventJsonCodec =
-    SimpleItemEvent.jsonCodec(simpleItemCompanions)
+  implicit val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
+    TypedJsonCodec(inventoryItemCompanions.map(_.subtype): _*)
 
-  override implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+  implicit val inventoryItemIdJsonCodec: Codec[InventoryItemId] =
+    InventoryItemId.jsonCodec(inventoryItemCompanions.map(_.idCompanion))
+
+  implicit val inventoryItemEventJsonCodec =
+    InventoryItemEvent.jsonCodec(inventoryItemCompanions)
+
+  override val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
       Subtype[JournalState],
       Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder),
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot])
 
-  //import generic.orderWatchIdJsonCodec
   override implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached],
       KeyedSubtype[AgentControllerEvent],
-      KeyedSubtype[SimpleItemEvent],
+      KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[OrderWatchEvent])
 
-  def newBuilder() = new AgentStateBuilder
+  object implicits {
+    implicit val snapshotObjectJsonCodec = AgentState.snapshotObjectJsonCodec
+  }
 }

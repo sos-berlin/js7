@@ -157,6 +157,9 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       case Input.AttachSimpleItem(item) =>
         AgentCommand.AttachSimpleItem(item)
 
+      case Input.DetachItem(id) =>
+        AgentCommand.DetachItem(id)
+
       case ReleaseEventsQueueable(untilEventId) =>
         AgentCommand.ReleaseEvents(untilEventId)
     }

@@ -7,13 +7,13 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.data.agent.AttachedState.Attached
 import js7.data.agent.{AgentId, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.VersionedEvent.VersionAdded
-import js7.data.item.{Repo, VersionId}
+import js7.data.item.{ItemRevision, Repo, VersionId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
@@ -45,17 +45,20 @@ final class ControllerStateTest extends AsyncFreeSpec
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Map(AgentId("AGENT") ->
-      AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7))),
+      AgentRefState(
+        AgentRef(AgentId("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0))),
+        None, None, AgentRefState.Decoupled, EventId(7))),
     Map(LockId("LOCK") ->
-      LockState(Lock(LockId("LOCK"), limit = 1))),
+      LockState(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(7))))),
     AllOrderWatchesState(Map(
       OrderWatchId("WATCH") -> OrderWatchState(
         FileWatch(
           OrderWatchId("WATCH"),
           WorkflowPath("WORKFLOW"),
           AgentId("AGENT"),
-          "/tmp/directory"),
-        Some(Attached),
+          "/tmp/directory",
+          itemRevision = Some(ItemRevision(7))),
+        Map(AgentId("AGENT") -> Attached(Some(ItemRevision(7)))),
         Map(
           ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(VanishedAck)))))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
@@ -69,11 +72,11 @@ final class ControllerStateTest extends AsyncFreeSpec
       assert(controllerState.estimatedSnapshotSize == n)
   }
 
-  "idToItem" in {
+  "idToSimpleItem" in {
     val sum = controllerState.idToAgentRefState ++
       controllerState.idToLockState ++
       controllerState.allOrderWatchesState.idToOrderWatchState
-    assert(controllerState.idToItem.toMap == sum.map(_._2.item).toKeyedMap(_.id))
+    assert(controllerState.idToSimpleItem.toMap == sum.map(_._2.item).toKeyedMap(_.id))
   }
 
   "toSnapshotObservable" in {
@@ -102,8 +105,10 @@ final class ControllerStateTest extends AsyncFreeSpec
                 OrderWatchId("WATCH"),
                 WorkflowPath("WORKFLOW"),
                 AgentId("AGENT"),
-                "/tmp/directory"),
-              Some(Attached)),
+                "/tmp/directory",
+                itemRevision = Some(ItemRevision(7))),
+              Map(AgentId("AGENT") -> Attached(Some(ItemRevision(7)))),
+              delete = false),
             OrderWatchState.ExternalOrderSnapshot(
               OrderWatchId("WATCH"),
               ExternalOrderName("ORDER-NAME"),
@@ -174,7 +179,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             "lock": {
               "id": "LOCK",
               "limit": 1,
-              "itemRevision": 0
+              "itemRevision": 7
             },
             "acquired": {
               "TYPE": "Available"
@@ -189,9 +194,15 @@ final class ControllerStateTest extends AsyncFreeSpec
               "agentId": "AGENT",
               "directory": "/tmp/directory",
               "delay": 0,
-              "itemRevision": 0
+              "itemRevision": 7
             },
-            "attached": { "TYPE": "Attached" }
+            "agentIdToAttachedState": {
+              "AGENT": {
+                "TYPE": "Attached",
+                "itemRevision": 7
+               }
+            },
+            "delete": false
           }, {
             "TYPE": "ExternalOrder",
             "orderWatchId": "WATCH",

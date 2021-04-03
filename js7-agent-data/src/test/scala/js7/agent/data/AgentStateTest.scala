@@ -9,15 +9,18 @@ import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.io.file.watch.DirectoryState
 import js7.base.problem.Checked._
+import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.item.ItemRevision
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
+import js7.data.value.expression.Expression
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.position._
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -45,8 +48,11 @@ final class AgentStateTest extends AsyncFreeSpec
           OrderWatchId("ORDER-SOURCE-ID"),
           WorkflowPath("WORKFLOW"),
           AgentId("AGENT"),
-        "/DIRECTORY",
-        Some(SimplePattern("""\.csv""".r.pattern.pattern))),
+          "/DIRECTORY",
+          Some(SimplePattern("""\.csv""".r.pattern.pattern)),
+          Some(Expression.NamedValue("0")),
+          3.s,
+          Some(ItemRevision(7))),
         DirectoryState.fromIterable(Seq(
           DirectoryState.Entry(Paths.get("/DIRECTORY/1.csv")),
           DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))))
@@ -58,7 +64,7 @@ final class AgentStateTest extends AsyncFreeSpec
   }
 
   "Snapshot JSON" in {
-    import AgentState.snapshotObjectJsonCodec
+    import AgentState.implicits.snapshotObjectJsonCodec
     agentState.toSnapshotObservable.map(_.asJson).map(removeJNull).toListL.runToFuture
       .flatMap { jsons =>
         assert(jsons == List(
@@ -90,14 +96,15 @@ final class AgentStateTest extends AsyncFreeSpec
           }""",
           json"""{
             "TYPE": "FileWatchState",
-            "orderWatch": {
+            "fileWatch": {
               "id": "ORDER-SOURCE-ID",
               "workflowPath": "WORKFLOW",
               "agentId": "AGENT",
               "directory": "/DIRECTORY",
               "pattern": "\\.csv",
-              "delay": 0,
-              "itemRevision": 0
+              "delay": 3,
+              "orderIdExpression": "$$0",
+              "itemRevision": 7
             }
           }""",
           json"""{

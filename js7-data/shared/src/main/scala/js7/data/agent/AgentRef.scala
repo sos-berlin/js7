@@ -8,14 +8,14 @@ import js7.data.item.{ItemRevision, SimpleItem}
 final case class AgentRef(
   id: AgentId,
   uri: Uri,
-  itemRevision: ItemRevision = ItemRevision.Initial)
+  itemRevision: Option[ItemRevision] = None)
 extends SimpleItem
 {
   protected type Self = AgentRef
   val companion = AgentRef
 
   def withRevision(revision: ItemRevision) =
-    copy(itemRevision = revision)
+    copy(itemRevision = Some(revision))
 }
 
 object AgentRef extends SimpleItem.Companion

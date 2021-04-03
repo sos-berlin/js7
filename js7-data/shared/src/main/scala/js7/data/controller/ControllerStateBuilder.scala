@@ -9,8 +9,9 @@ import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEv
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.{Repo, SimpleItemEvent, VersionedEvent}
+import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.{InventoryItemEvent, Repo, VersionedEvent}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -87,7 +88,7 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(_: NoKey, event: VersionedEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
-    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
+    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: InventoryItemEvent)) =>
       event match {
         case SimpleItemAdded(item) =>
           item match {
@@ -115,18 +116,36 @@ extends JournaledStateBuilder[ControllerState]
               allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
           }
 
-        case SimpleItemDeleted(itemId) =>
-          throw Problem("SimpeItems are not deletable (in this version)").throwable  // TODO
-
-        case SimpleItemEvent.SimpleItemAttachedStateChanged(id, agentId, attachedState) =>
+        case ItemAttachedStateChanged(id, agentId, attachedState) =>
           id match {
-            case orderWatchId: OrderWatchId =>
+            case id: OrderWatchId =>
               allOrderWatchesState = allOrderWatchesState
-                .updatedAttachedState(orderWatchId, agentId, attachedState)
+                .updateAttachedState(id, agentId, attachedState)
                 .orThrow
 
             case _ =>
               throw Problem(s"Unexpected event: $keyedEvent").throwable
+          }
+
+        case ItemDeletionMarked(itemId) =>
+          itemId match {
+            case id: OrderWatchId =>
+              allOrderWatchesState = allOrderWatchesState.markAsDeleted(id).orThrow
+
+            case _ =>
+              throw Problem(s"Unexpected event: $keyedEvent").throwable
+          }
+
+        case ItemDestroyed(itemId) =>
+          itemId match {
+            case id: LockId =>
+              idToLockState -= id
+
+            case id: AgentId =>
+              idToAgentRefState -= id
+
+            case id: OrderWatchId =>
+              allOrderWatchesState = allOrderWatchesState.removeOrderWatch(id)
           }
       }
 

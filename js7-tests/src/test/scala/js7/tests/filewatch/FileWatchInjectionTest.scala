@@ -6,7 +6,7 @@ import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
-import js7.data.item.SimpleItemEvent.SimpleItemAttached
+import js7.data.item.CommonItemEvent.ItemAttached
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.workflow.WorkflowPath
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -34,7 +34,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
     controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     // TODO SimpleItemAttachmentFailed
     intercept[TimeoutException] {
-      controller.eventWatch.await[SimpleItemAttached](_.event.id == fileWatch.id, timeout = 1.s)
+      controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id, timeout = 1.s)
     }
   }
 }

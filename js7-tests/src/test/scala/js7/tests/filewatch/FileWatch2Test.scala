@@ -13,14 +13,15 @@ import js7.data.agent.AgentId
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest}
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAttachable, SimpleItemAttached, SimpleItemAttachedToAgent, SimpleItemChanged}
-import js7.data.item.{ItemRevision, SimpleItemEvent}
+import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.{CommonItemEvent, InventoryItemEvent, ItemRevision, SimpleItemEvent}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderRemoved, OrderStarted, OrderStderrWritten}
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchId}
+import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -89,7 +90,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
 
       directoryProvider.runAgents(Seq(bAgentId)) { _ =>
         directoryProvider.runAgents(Seq(aAgentId)) { _ =>
-          await[SimpleItemAttached](_.event.id == orderWatchId)
+          await[ItemAttached](_.event.id == orderWatchId)
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == initialOrderId)
           await[OrderRemoved](_.key == initialOrderId)
@@ -123,12 +124,16 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             val orderId = orderId4
             val file = aDirectory / "4"
             file := ""
+            await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("4"))
             await[OrderStarted](_.key == orderId)
             createDirectory(bDirectory)
             val beforeAttached = eventWatch.lastAddedEventId
             controller.updateSimpleItemsAsSystemUser(Seq(bFileWatch)).await(99.s).orThrow
-            await[SimpleItemAttached](_.event.id == orderWatchId, after = beforeAttached)
+            await[ItemAttached](ke => ke.event.id == orderWatchId && ke.event.itemRevision == Some(ItemRevision(1)),
+              after = beforeAttached)
             // The OrderWatch watches now the bDirectory, but the running Order points to aDirectory.
+            // bDirectory does not contain the file
+            await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("4"))
             semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
             await[OrderFinished](_.key == orderId)
             await[OrderRemoved](_.key == orderId)
@@ -200,6 +205,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       .filter(_
         .event match {
           case _: ControllerShutDown => true
+          case _: CommonItemEvent => true
           case event: SimpleItemEvent if event.id.isInstanceOf[OrderWatchId] => true
           case _: OrderAdded => true
           case _: OrderStarted => true
@@ -209,10 +215,10 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
           case _ => false
         })
     assert(filteredLeyedEvents == Seq[AnyKeyedEvent](
-      NoKey <-: SimpleItemAdded(aFileWatch),
-      NoKey <-: SimpleItemAttachable(orderWatchId, aAgentId),
+      NoKey <-: SimpleItemAdded(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
+      NoKey <-: ItemAttachable(orderWatchId, aAgentId),
       NoKey <-: ControllerShutDown(None),
-      NoKey <-: SimpleItemAttached(orderWatchId, aAgentId),
+      NoKey <-: ItemAttached(orderWatchId, Some(ItemRevision(0)), aAgentId),
       orderId1 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/1")),
         None,
@@ -245,9 +251,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         None,
         Some(ExternalOrderKey(orderWatchId, ExternalOrderName("4")))),
       orderId4 <-: OrderStarted,
-      NoKey <-: SimpleItemChanged(bFileWatch.copy(itemRevision = ItemRevision(1))),
-      NoKey <-: SimpleItemAttachable(orderWatchId,aAgentId),
-      NoKey <-: SimpleItemAttached(orderWatchId, aAgentId),
+      NoKey <-: SimpleItemChanged(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
+      NoKey <-: ItemAttachable(orderWatchId, aAgentId),
+      NoKey <-: ItemAttached(orderWatchId, Some(ItemRevision(1)), aAgentId),
       orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory/4\n"),
       orderId4 <-: OrderFinished,
       orderId4 <-: OrderRemoved,
@@ -296,15 +302,14 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       .flatMap(ke => Observable.fromIterable(Some(ke.event)
         .collect {
           case e: AgentReadyForController => e.copy(timezone = "UTC", totalRunningTime = 1.s)
-          case e: SimpleItemAttachedToAgent => e
-          case e: ExternalOrderArised => e
-          case e: ExternalOrderVanished => e
+          case e: InventoryItemEvent => e
+          case e: OrderWatchEvent => e
         }
         .map(e => ke.copy(event = e))))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
       NoKey <-: AgentReadyForController("UTC", 1.s),
-      NoKey <-: SimpleItemAttachedToAgent(aFileWatch),
+      NoKey <-: ItemAttachedToAgent(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("1"),
         OrderId("file:FILE-WATCH:1"),
@@ -325,7 +330,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("4"),
         OrderId("file:FILE-WATCH:4"),
         Map("file" -> StringValue(s"$aDirectory/4"))),
-      NoKey <-: SimpleItemAttachedToAgent(bFileWatch.copy(itemRevision = ItemRevision(1))),
+      NoKey <-: ItemAttachedToAgent(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
       orderWatchId <-: ExternalOrderVanished(ExternalOrderName("4")),
 
       orderWatchId <-: ExternalOrderArised(ExternalOrderName("5"),

@@ -34,7 +34,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredCo
 import js7.data.agent.{AgentId, AgentRefStateEvent, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
-import js7.data.item.{SimpleItem, SimpleItemEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemId, SimpleItem}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
@@ -463,7 +463,7 @@ private[controller] object AgentDriver
   private val EventClasses = Set[Class[_ <: Event]](
     classOf[OrderEvent],
     classOf[AgentControllerEvent.AgentReadyForController],
-    classOf[SimpleItemEvent],
+    classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
@@ -486,6 +486,9 @@ private[controller] object AgentDriver
     final case class ChangeUri(uri: Uri)
 
     final case class AttachSimpleItem(item: SimpleItem)
+    extends Input with Queueable
+
+    final case class DetachItem(id: InventoryItemId)
     extends Input with Queueable
 
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentId, signedWorkflow: Signed[Workflow]/*TODO Separate this*/)

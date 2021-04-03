@@ -25,8 +25,7 @@ import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ItemRoute._
 import js7.core.web.EntitySizeLimitProvider
-import js7.data.controller.ControllerState.generic.{itemPathJsonCodec, simpleItemIdJsonCodec}
-import js7.data.controller.ControllerState.simpleItemJsonCodec
+import js7.data.controller.ControllerState._
 import js7.data.crypt.VersionedItemVerifier.Verified
 import js7.data.item.{ItemOperation, VersionedItem}
 import monix.execution.Scheduler

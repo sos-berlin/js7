@@ -2,7 +2,7 @@ package js7.agent.data.commands
 
 import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
@@ -19,7 +19,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.event.EventId
-import js7.data.item.SimpleItem
+import js7.data.item.{InventoryItem, InventoryItemId}
 import js7.data.order.{Order, OrderId, OrderMark}
 
 /**
@@ -69,7 +69,7 @@ object AgentCommand extends CommonCommand.Companion
   object EmergencyStop {
     implicit val jsonEncoder: Encoder.AsObject[EmergencyStop] = o =>
       JsonObject.fromIterable(
-        (o.restart).thenList("restart" -> Json.True))
+        o.restart.thenList("restart" -> Json.True))
 
     implicit val jsonDecoder: Decoder[EmergencyStop] = c =>
       for {
@@ -131,12 +131,21 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait OrderCommand extends AgentCommand
 
-  final case class AttachSimpleItem(item: SimpleItem)
+  final case class AttachSimpleItem(item: InventoryItem)
   extends AgentCommand
   {
     type Response = Response.Accepted
   }
 
+  final case class DetachItem(id: InventoryItemId)
+  extends AgentCommand
+  {
+    type Response = Response.Accepted
+  }
+  object DetachItem {
+    implicit def jsonCodec(implicit x: Codec[InventoryItemId]): Codec.AsObject[DetachItem] =
+      deriveCodec[DetachItem]
+  }
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady], signedWorkflow: SignedString)
@@ -178,8 +187,8 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
-    import AgentState.simpleItemJsonCodec
-    intelliJuseImport(simpleItemJsonCodec)
+    import AgentState.{inventoryItemEventJsonCodec, inventoryItemIdJsonCodec, inventoryItemJsonCodec}
+    intelliJuseImport((inventoryItemEventJsonCodec, inventoryItemJsonCodec))
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[MarkOrder]),
@@ -190,6 +199,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[CoupleController]),
       Subtype[ShutDown],
       Subtype(deriveCodec[AttachSimpleItem]),
+      Subtype[DetachItem],
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),

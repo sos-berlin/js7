@@ -1,8 +1,7 @@
 package js7.data.item
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.data.agent.AgentId
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAttachable, SimpleItemAttached, SimpleItemChanged, SimpleItemDeleted}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
 import js7.data.lock.{Lock, LockId}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -13,7 +12,7 @@ final class SimpleItemEventTest extends AnyFreeSpec
 
   "JSON" - {
     "SimpleItemAdded" in {
-    testJson[SimpleItemEvent](SimpleItemAdded(Lock(LockId("LOCK"), limit = 1)), json"""
+    testJson[SimpleItemEvent](SimpleItemAdded(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(0)))), json"""
       {
         "TYPE": "SimpleItemAdded",
         "item": {
@@ -26,42 +25,15 @@ final class SimpleItemEventTest extends AnyFreeSpec
     }
 
     "SimpleItemChanged" in {
-      testJson[SimpleItemEvent](SimpleItemChanged(Lock(LockId("LOCK"), limit = 3)), json"""
+      testJson[SimpleItemEvent](SimpleItemChanged(Lock(LockId("LOCK"), limit = 3, Some(ItemRevision(1)))), json"""
         {
           "TYPE": "SimpleItemChanged",
           "item": {
             "TYPE": "Lock",
             "id": "LOCK",
             "limit": 3,
-            "itemRevision": 0
+            "itemRevision": 1
           }
-        }""")
-    }
-
-    "SimpleItemDeleted" in {
-      testJson[SimpleItemEvent](SimpleItemDeleted(LockId("LOCK")), json"""
-        {
-          "TYPE": "SimpleItemDeleted",
-          "id": "Lock:LOCK"
-        }""")
-    }
-
-    "SimpleItemAttachable" in {
-      testJson[SimpleItemEvent](SimpleItemAttachable(LockId("LOCK"), AgentId("AGENT")), json"""
-        {
-          "TYPE": "SimpleItemAttachable",
-          "id": "Lock:LOCK",
-          "agentId": "AGENT"
-        }""")
-    }
-
-
-    "SimpleItemAttached" in {
-      testJson[SimpleItemEvent](SimpleItemAttached(LockId("LOCK"), AgentId("AGENT")), json"""
-        {
-          "TYPE": "SimpleItemAttached",
-          "id": "Lock:LOCK",
-          "agentId": "AGENT"
         }""")
     }
   }

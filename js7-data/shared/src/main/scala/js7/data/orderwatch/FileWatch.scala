@@ -22,7 +22,7 @@ final case class FileWatch(
   pattern: Option[SimplePattern] = None,
   orderIdExpression: Option[Expression] = None,
   delay: FiniteDuration = Duration.Zero,
-  itemRevision: ItemRevision = ItemRevision.Initial)
+  itemRevision: Option[ItemRevision] = None)
 extends OrderWatch
 {
   protected type Self = FileWatch
@@ -32,7 +32,7 @@ extends OrderWatch
     pattern.fold(defaultPattern)(_.pattern)
 
   def withRevision(revision: ItemRevision) =
-    copy(itemRevision = revision)
+    copy(itemRevision = Some(revision))
 }
 
 object FileWatch extends OrderWatch.Companion

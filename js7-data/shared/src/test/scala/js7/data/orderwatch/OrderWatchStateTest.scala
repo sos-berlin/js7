@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
-import js7.data.agent.AttachedState.Attached
+import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemRevision
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchState.{Arised, ExternalOrderSnapshot, HasOrder, Vanished, VanishedAck}
@@ -27,8 +27,8 @@ final class OrderWatchStateTest extends AsyncFreeSpec
       Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
       Some(NamedValue("1")),
       delay = 2.s,
-      ItemRevision(7)),
-    Some(Attached),
+      Some(ItemRevision(7))),
+    Map(AgentId("AGENT") -> Attached(Some(ItemRevision(7)))),
     Map( // Not in snapshot, because its duplicate to Order.externalOrderKey
       ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
       ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), Some(Vanished))))
@@ -148,9 +148,13 @@ final class OrderWatchStateTest extends AsyncFreeSpec
               "delay": 2,
               "itemRevision": 7
             },
-            "attached": {
-              "TYPE": "Attached"
-            }
+            "agentIdToAttachedState": {
+              "AGENT": {
+                "TYPE": "Attached",
+                "itemRevision": 7
+              }
+            },
+            "delete": false
           }, {
             "TYPE": "ExternalOrder",
             "orderWatchId": "FILE-WATCH",

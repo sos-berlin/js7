@@ -18,7 +18,7 @@ final class AgentRefTest extends AnyFreeSpec
         "uri": "http://127.0.0.1"
       }""")
 
-    testJson(AgentRef(AgentId("AGENT"), Uri("http://127.0.0.1"), ItemRevision(7)),
+    testJson(AgentRef(AgentId("AGENT"), Uri("http://127.0.0.1"), Some(ItemRevision(7))),
       json"""{
         "id": "AGENT",
         "uri": "http://127.0.0.1",

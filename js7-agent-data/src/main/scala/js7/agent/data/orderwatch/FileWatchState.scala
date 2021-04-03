@@ -55,9 +55,9 @@ object FileWatchState
     def orderWatchId: OrderWatchId
   }
 
-  final case class HeaderSnapshot(orderWatch: FileWatch)
+  final case class HeaderSnapshot(fileWatch: FileWatch)
   extends Snapshot {
-    def orderWatchId = orderWatch.id
+    def orderWatchId = fileWatch.id
   }
 
   final case class EntrySnapshot(
@@ -82,7 +82,7 @@ object FileWatchState
       }
 
     def result() = FileWatchState(
-      header.get.orderWatch,
+      header.get.fileWatch,
       DirectoryState.fromIterable(entries))
   }
 

@@ -44,21 +44,22 @@ import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
-import js7.data.agent.AttachedState.Attached
 import js7.data.agent.{AgentId, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{liveOrderEventHandler, liveOrderEventSource}
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAddedOrChanged, SimpleItemAttachable, SimpleItemAttached, SimpleItemAttachedToAgent, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
-import js7.data.item.{ItemEvent, ItemRevision, SimpleItem, SimpleItemEvent, VersionedEvent}
+import js7.data.item.CommonItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
+import js7.data.item.ItemAttachedState.{Attachable, Detachable}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAddedOrChanged, SimpleItemChanged}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SimpleItem, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
-import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchId}
+import js7.data.orderwatch.{OrderWatchEvent, OrderWatchId}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
@@ -348,14 +349,7 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
 
-      for (orderWatchState <- _controllerState.allOrderWatchesState.idToOrderWatchState.values) {
-        import orderWatchState.orderWatch
-        for (agentEntry <- agentRegister.get(orderWatch.agentId)) {
-          if (!orderWatchState.attached.contains(Attached)) {
-            agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(orderWatch)
-          }
-        }
-      }
+      _controllerState.allOrderWatchesState.idToOrderWatchState.keys foreach proceedWithItem
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
       orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now))
@@ -433,7 +427,7 @@ with MainJournalingActor[ControllerState, Event]
     case Command.VerifiedUpdateItemsCmd(VerifiedUpdateItems(simple, maybeVersioned)) =>
       val sender = this.sender()
       val t = now
-      val checkedSimpleItemEvents = simpleItemsToEvent(simple)
+      val checkedEvents = simpleItemsToEvent(simple)
       val whenPersisted = maybeVersioned
         .map(versionedItemsToEvent)
         .getOrElse(Success(Right(Nil)))
@@ -441,16 +435,19 @@ with MainJournalingActor[ControllerState, Event]
           case Failure(t) => Future.failed(t)
           case Success(Left(problem)) => Future.successful(Left(problem))
           case Success(Right(versionedEvents)) =>
-            Future.successful(checkedSimpleItemEvents)
-              .flatMapT(simpleItemEvents =>
-                persistItemEvents(simpleItemEvents ++ versionedEvents)
+            checkedEvents match {
+              case Left(problem) => Future.successful(Left(problem))
+              case Right(simpleItemEvents) =>
+                val keyedEvents = simpleItemEvents.map(NoKey <-: _) ++ versionedEvents.map(NoKey <-: _)
+                persistItemAndVersionedEvents(keyedEvents)
                   .map(_.map { o =>
-                    if (t.elapsed > 1.s) logger.debug("VersionedEvents calculated - " +
+                    if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
                       itemsPerSecondString(t.elapsed,
                         simple.items.size + maybeVersioned.fold(0)(_.verifiedItems.size),
                         "items"))
                     o
-                  }))
+                  })
+            }
         }
       whenPersisted.onComplete {
         case Failure(t) => sender ! Status.Failure(t)
@@ -483,9 +480,12 @@ with MainJournalingActor[ControllerState, Event]
               case KeyedEvent(_: NoKey, AgentControllerEvent.AgentReadyForController(timezone, _)) =>
                 Timestamped(agentEntry.agentId <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
 
-              case KeyedEvent(_: NoKey, SimpleItemAttachedToAgent(item)) =>
+              case KeyedEvent(_: NoKey, ItemAttachedToAgent(item)) =>
                 // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                Timestamped(NoKey <-: SimpleItemAttached(item.id, agentId)) :: Nil
+                Timestamped(NoKey <-: ItemAttached(item.id, item.itemRevision, agentId)) :: Nil
+
+              case KeyedEvent(_: NoKey, _: ItemDetached) =>
+                Timestamped(keyedEvent) :: Nil
 
               case KeyedEvent(_: OrderWatchId, _: OrderWatchEvent) =>
                 Timestamped(keyedEvent) :: Nil
@@ -554,27 +554,45 @@ with MainJournalingActor[ControllerState, Event]
       }
   }
 
-  private def simpleItemsToEvent(simple: VerifiedUpdateItems.Simple): Checked[Seq[SimpleItemEvent]] =
+  private def simpleItemsToEvent(simple: VerifiedUpdateItems.Simple): Checked[Seq[InventoryItemEvent]] =
     simple.items
       .toVector
       .traverse(simpleItemToEvent)
-      .map(_ ++
-        simple.delete.map(SimpleItemDeleted))
+      .flatMap(addedOrChanged =>
+        simple.delete
+          .flatTraverse(id => simpleItemIdToDeletedEvent(id).map(_.toSeq))
+          .map(_ ++ addedOrChanged))
 
   private def simpleItemToEvent(item: SimpleItem): Checked[SimpleItemAddedOrChanged] =
-    if (item.itemRevision != ItemRevision.Initial)
-      Left(Problem("SimpleItem's ItemRevision must be zero"))
+    if (item.itemRevision.isDefined)
+      Left(Problem.pure("ItemRevision is not accepted here"))
     else
-      _controllerState.idToItem.get(item.id) match {
-        case None => Right(SimpleItemAdded(item))
-        case Some(existing) =>
-          (existing, item) match {
-            case (existing: FileWatch, changed: FileWatch) if existing.agentId != changed.agentId =>
-              Left(Problem("AgentId of an OrderWatch cannot be changed"))
-            case _ =>
-              Right(SimpleItemChanged(item.withRevision(existing.itemRevision.next)))
-          }
-      }
+      Right(
+        _controllerState.idToSimpleItem.get(item.id) match {
+          case None =>
+            SimpleItemAdded(item
+              .withRevision(ItemRevision.Initial))
+          case Some(existing) =>
+            SimpleItemChanged(item
+              .withRevision(existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))
+        })
+
+  private def simpleItemIdToDeletedEvent(id: InventoryItemId): Checked[Option[InventoryItemEvent]] =
+    id match {
+      case id: OrderWatchId =>
+        Right(
+          _controllerState.allOrderWatchesState.idToOrderWatchState
+            .get(id)
+            .flatMap(orderWatchState =>
+              !orderWatchState.delete ? (
+                if (orderWatchState.isDestroyable)
+                  ItemDestroyed(id)
+                else
+                  ItemDeletionMarked(id))))
+
+      case _ =>
+        Left(Problem.pure(s"${id.companion.itemTypeName} cannot be deleted"))
+    }
 
   private def versionedItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
   : Try[Checked[Seq[VersionedEvent]]] =
@@ -747,8 +765,7 @@ with MainJournalingActor[ControllerState, Event]
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
-  private def persistItemEvents(events: Seq[ItemEvent]): Future[Checked[Completed]] = {
-    val keyedEvents = events.map(NoKey <-: _)
+  private def persistItemAndVersionedEvents(keyedEvents: Seq[AnyKeyedEvent]): Future[Checked[Completed]] = {
     // Precheck events
     _controllerState.applyEvents(keyedEvents) match {
       case Left(prblm @ Problem.Combined(Seq(_, problem: DuplicateKey))) =>
@@ -766,13 +783,10 @@ with MainJournalingActor[ControllerState, Event]
 
   private def logEvent(event: Event): Unit =
     event match {
-      case o: SimpleItemAdded    => logger.trace(s"${o.id} added")
-      case o: SimpleItemChanged  => logger.trace(s"${o.id} changed")
-      case SimpleItemDeleted(id) => logger.trace(s"$id deleted")
+      case e: InventoryItemEvent => logger.trace(s"${e.id} ${e.getClass.scalaName}")
       case VersionAdded(version) => logger.trace(s"Version '${version.string}' added")
-      case o: VersionedItemAdded => logger.trace(s"${o.path} added")
-      case o: VersionedItemChanged => logger.trace(s"${o.path} changed")
-      case VersionedItemDeleted(path) => logger.trace(s"$path deleted")
+      case e: VersionedItemEvent => logger.trace(s"${e.path} ${e.getClass.scalaName}")
+      case _ =>
     }
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
@@ -844,16 +858,17 @@ with MainJournalingActor[ControllerState, Event]
   : Future[A] =
     persistTransaction(keyedEvents ++ subsequentEvents(keyedEvents))(callback)
 
-  private def subsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[OrderCoreEvent]] =
+  private def subsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[Event]] =
     delayOrderRemoved(
       new ControllerStateExecutor(_controllerState)
         .applyEventsAndReturnSubsequentEvents(keyedEvents))
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] =
     delayOrderRemoved(
-      new ControllerStateExecutor(_controllerState).nextOrderEventsByOrderId(orderIds))
+      new ControllerStateExecutor(_controllerState).nextOrderEventsByOrderId(orderIds).toVector)
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
+    val itemIds = mutable.Buffer.empty[InventoryItemId]
     val orderIds = mutable.Buffer.empty[OrderId]
     for (stamped <- stampedEvents) {
       val keyedEvent = stamped.value
@@ -861,35 +876,63 @@ with MainJournalingActor[ControllerState, Event]
         case KeyedEvent(orderId: OrderId, _: OrderEvent) =>
           orderIds += orderId
           orderIds ++= handleOrderEvent(keyedEvent.asInstanceOf[KeyedEvent[OrderEvent]])
+          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
 
-        case (KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
-          logEvent(event)
-          event match {
-            case SimpleItemAdded(agentRef: AgentRef) =>
-              val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
-              entry.actor ! AgentDriver.Input.StartFetchingEvents
-
-            case SimpleItemAddedOrChanged(fileWatch: FileWatch) =>
-              persistKeyedEvent(NoKey <-: SimpleItemAttachable(fileWatch.id, fileWatch.agentId)) { (_, _) =>
-                for (agentEntry <- agentRegister.get(fileWatch.agentId)) {
-                  agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(fileWatch)
-                }
-              }
-
-            case SimpleItemChanged(agentRef: AgentRef) =>
-              agentRegister.update(agentRef)
-              agentRegister(agentRef.id).reconnect()
-
-            case _ =>
-          }
+        case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
+          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
+          itemIds += event.id
+          handleItemEvent(event)
 
         case _ =>
+        _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
       }
-      _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
     }
     _controllerState = updatedState  // Reduce memory usage (they are equal)
+    itemIds.distinct foreach proceedWithItem
     proceedWithOrders(orderIds.distinct)
   }
+
+  private def handleItemEvent(event: InventoryItemEvent): Unit = {
+    logEvent(event)
+    event match {
+      case SimpleItemAdded(agentRef: AgentRef) =>
+        val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+        entry.actor ! AgentDriver.Input.StartFetchingEvents
+
+      case SimpleItemChanged(agentRef: AgentRef) =>
+        agentRegister.update(agentRef)
+        agentRegister(agentRef.id).reconnect()
+
+      case _ =>
+    }
+  }
+
+  private def proceedWithItem(itemId: InventoryItemId): Unit =
+    itemId match {
+      case agentId: AgentId =>
+        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
+
+      case itemId: OrderWatchId =>
+        for (orderWatchState <- _controllerState.allOrderWatchesState.idToOrderWatchState.get(itemId)) {
+          import orderWatchState.orderWatch
+            for ((agentId, attachedState) <- orderWatchState.agentIdToAttachedState) {
+              // TODO Does nothing if Agent is added later! (should be impossible, anyway)
+              for (agentEntry <- agentRegister.get(agentId)) {
+                attachedState match {
+                  case Attachable =>
+                    agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(orderWatch)
+
+                  case Detachable =>
+                    agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.id)
+
+                  case _ =>
+                }
+              }
+            }
+        }
+
+      case _ =>
+    }
 
   private def handleOrderEvent(keyedEvent: KeyedEvent[OrderEvent]): Seq[OrderId] = {
     val KeyedEvent(orderId, event) = keyedEvent

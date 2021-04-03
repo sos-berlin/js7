@@ -13,8 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
-import js7.data.controller.ControllerState.generic.itemPathJsonCodec
-import js7.data.controller.ControllerState.simpleItemJsonCodec
+import js7.data.controller.ControllerState._
 import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderId}
@@ -34,7 +33,7 @@ object ControllerCommand extends CommonCommand.Companion
 {
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
-    itemPathJsonCodec, simpleItemJsonCodec))
+    itemPathJsonCodec, inventoryItemJsonCodec))
 
   protected type Command = ControllerCommand
 

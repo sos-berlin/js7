@@ -14,8 +14,7 @@ import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrders, ReleaseEvents}
-import js7.data.controller.ControllerState.generic.{itemPathJsonCodec, simpleItemIdJsonCodec}
-import js7.data.controller.ControllerState.simpleItemJsonCodec
+import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}

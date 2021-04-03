@@ -10,32 +10,36 @@ import monix.reactive.Observable
 import scala.collection.mutable
 
 final case class AllFileWatchesState(
-  idToFileWatch: Map[OrderWatchId, FileWatchState])
+  idToFileWatchState: Map[OrderWatchId, FileWatchState])
 {
   def estimatedSnapshotSize =
-    idToFileWatch.values.view.map(_.estimatedSnapshotSize).sum
+    idToFileWatchState.values.view.map(_.estimatedSnapshotSize).sum
 
   def attach(fileWatch: FileWatch): AllFileWatchesState =
     copy(
-      idToFileWatch = idToFileWatch +
+      idToFileWatchState = idToFileWatchState +
         (fileWatch.id ->
-          (idToFileWatch.get(fileWatch.id) match {
+          (idToFileWatchState.get(fileWatch.id) match {
             case None => FileWatchState(fileWatch, DirectoryState.empty)
             case Some(fileWatchState) => fileWatchState.copy(fileWatch = fileWatch)
           })))
 
+  def detach(orderWatchId: OrderWatchId): AllFileWatchesState =
+    copy(
+      idToFileWatchState = idToFileWatchState - orderWatchId)
+
   def applyEvent(keyedEvent: KeyedEvent[OrderWatchEvent]): Checked[AllFileWatchesState] =
-    idToFileWatch
+    idToFileWatchState
       .checked(keyedEvent.key)
       .map(o => copy(
-        idToFileWatch = idToFileWatch + (o.id -> o.applyEvent(keyedEvent.event))))
+        idToFileWatchState = idToFileWatchState + (o.id -> o.applyEvent(keyedEvent.event))))
 
   def toSnapshot: Observable[Any] =
-    Observable.fromIterable(idToFileWatch.values)
+    Observable.fromIterable(idToFileWatchState.values)
       .flatMap(_.toSnapshot)
 
   def contains(fileWatch: FileWatch) =
-    idToFileWatch.get(fileWatch.id)
+    idToFileWatchState.get(fileWatch.id)
       .exists(_.fileWatch == fileWatch)
 }
 

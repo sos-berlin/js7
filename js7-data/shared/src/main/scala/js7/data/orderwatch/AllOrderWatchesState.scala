@@ -2,12 +2,13 @@ package js7.data.orderwatch
 
 import cats.instances.vector._
 import cats.syntax.traverse._
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.{AgentId, AttachedState}
+import js7.data.agent.AgentId
 import js7.data.event.KeyedEvent
-import js7.data.item.VersionId
+import js7.data.item.ItemAttachedState.{Detached, NotDetached}
+import js7.data.item.{ItemAttachedState, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -26,13 +27,10 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
   def changeOrderWatch(changed: OrderWatch): Checked[AllOrderWatchesState] =
     idToOrderWatchState
       .checked(changed.id)
-      .flatMap(watchState =>
-        if (watchState.orderWatch.agentId != changed.agentId)
-          Left(Problem("AgentId of an OrderWatch cannot be changed"))
-        else
-          Right(copy(
-            idToOrderWatchState = idToOrderWatchState + (changed.id -> watchState.copy(
-              orderWatch = changed)))))
+      .map(watchState =>
+        copy(
+          idToOrderWatchState = idToOrderWatchState + (changed.id -> watchState.copy(
+            orderWatch = changed))))
 
   def onOrderWatchEvent(keyedEvent: KeyedEvent[OrderWatchEvent])
   : Checked[AllOrderWatchesState] =
@@ -42,22 +40,28 @@ final case class AllOrderWatchesState(idToOrderWatchState: Map[OrderWatchId, Ord
       .map(updated => copy(
         idToOrderWatchState = idToOrderWatchState + (updated.id -> updated)))
 
-  def updatedAttachedState(
-    orderWatchId: OrderWatchId,
-    agentId: AgentId,
-    attachedState: Option[AttachedState])
+  def updateAttachedState(orderWatchId: OrderWatchId, agentId: AgentId, attachedState: ItemAttachedState)
   : Checked[AllOrderWatchesState] =
     idToOrderWatchState
       .checked(orderWatchId)
-      .flatMap(watchState =>
-        if (watchState.orderWatch.agentId != agentId)
-          Left(Problem(
-            s"updatedAttachedState $orderWatchId: agentId=${watchState.orderWatch.agentId} != agentId"))
-        else Right(copy(
-          idToOrderWatchState = idToOrderWatchState +
-            (orderWatchId ->
-              watchState.copy(
-                attached = attachedState)))))
+      .map { watchState =>
+        val updated = watchState.copy(agentIdToAttachedState =
+          attachedState match {
+            case Detached =>
+              watchState.agentIdToAttachedState - agentId
+            case a: NotDetached =>
+              watchState.agentIdToAttachedState + (agentId -> a)
+          })
+        copy(
+          idToOrderWatchState = idToOrderWatchState + (orderWatchId -> updated))
+      }
+
+  def markAsDeleted(id: OrderWatchId): Checked[AllOrderWatchesState] =
+    idToOrderWatchState
+      .checked(id)
+      .map(o => copy(
+        idToOrderWatchState = idToOrderWatchState + (o.id -> o.copy(
+          delete = true))))
 
   def onOrderAdded(keyedEvent: KeyedEvent[OrderAdded]): Checked[AllOrderWatchesState] =
     keyedEvent.event.externalOrderKey match {

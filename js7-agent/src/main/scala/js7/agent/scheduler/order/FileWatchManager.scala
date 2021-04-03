@@ -21,9 +21,9 @@ import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.agent.AgentId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.SimpleItemEvent.SimpleItemAttachedToAgent
-import js7.data.item.SimpleItemId
+import js7.data.item.CommonItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
@@ -40,6 +40,7 @@ import scala.jdk.CollectionConverters._
 
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(
+  ownAgentId: AgentId,
   persistence: JournaledStatePersistence[AgentState],
   config: Config)
   (implicit scheduler: Scheduler, iox: IOExecutor)
@@ -51,7 +52,7 @@ final class FileWatchManager(
   }
   private val pollTimeout = config.getDuration("js7.filewatch.poll-timeout").toFiniteDuration max 0.ms
   private val watchDelay = config.getDuration("js7.filewatch.watch-delay").toFiniteDuration max 0.s
-  private val lockKeeper = new LockKeeper[SimpleItemId]
+  private val lockKeeper = new LockKeeper[OrderWatchId]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchId, Task[Unit]])
 
   def stop: Task[Unit] =
@@ -62,22 +63,46 @@ final class FileWatchManager(
   def start(): Task[Unit] =
     persistence.currentState
       .map(_.allFileWatchesState)
-      .map(_.idToFileWatch.values)
+      .map(_.idToFileWatchState.values)
       .flatMap(_
         .toVector
         .traverse(startWatching)
         .map(_.foldMap(identity)))
 
-  def update(orderWatch: FileWatch): Task[Checked[Unit]] =
-    lockKeeper.lock(orderWatch.id) {
+  def update(fileWatch: FileWatch): Task[Checked[Unit]] =
+    lockKeeper.lock(fileWatch.id) {
       persistence
         .persist(agentState =>
           Right(
-            !agentState.allFileWatchesState.contains(orderWatch) thenList
-              NoKey <-: SimpleItemAttachedToAgent(orderWatch)))
+            !agentState.allFileWatchesState.contains(fileWatch) thenList
+              NoKey <-: ItemAttachedToAgent(fileWatch)))
         .flatMapT { case (_, agentState) =>
-          startWatching(agentState.allFileWatchesState.idToFileWatch(orderWatch.id))
+          startWatching(agentState.allFileWatchesState.idToFileWatchState(fileWatch.id))
             .map(Right(_))
+        }
+    }
+
+  def remove(orderWatchId: OrderWatchId): Task[Checked[Unit]] =
+    lockKeeper.lock(orderWatchId) {
+      persistence
+        .persist(agentState =>
+          Right(
+            agentState.allFileWatchesState.idToFileWatchState.get(orderWatchId) match {
+              case None => Nil
+              case Some(fileWatchState) =>
+                // When a FileWatch is detached, all arisen files vanishes now,
+                // to allow proper remove of the Controller's orders (after OrderFinished), and
+                // to allow the Controller to move the FileWatch to a different Agent,
+                // because the other Agent will start with an empty FileWatchState.
+                val vanished = fileWatchState.directoryState.pathToEntry.keys.view
+                  .map(file => orderWatchId <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
+                (vanished ++
+                  Seq(NoKey <-: ItemDetached(orderWatchId, ownAgentId))
+                ).toVector
+            }))
+        .flatMapT { case (_, agentState) =>
+          stopWatching(orderWatchId)
+            .map(_ => Right(()))
         }
     }
 
@@ -104,6 +129,11 @@ final class FileWatchManager(
         .as(())
     }
 
+  private def stopWatching(id: OrderWatchId): Task[Unit] =
+    idToStopper
+      .remove(id)
+      .flatMap(_ getOrElse Task.unit)
+
   private def watch(fileWatchState: FileWatchState, stop: Observable[Unit]): Task[Unit] =
     Task.defer {
       import fileWatchState.fileWatch
@@ -128,38 +158,49 @@ final class FileWatchManager(
         .delayFileAdded(fileWatch.delay)  // buffers without limit all incoming event
         .bufferIntrospective(1024/*TODO?*/)
         .mapEval(dirEventSeqs =>
-          persistence.persist { agentState =>
-            val isKnownPath = agentState.allFileWatchesState.idToFileWatch(fileWatch.id).containsPath _
-            Right(
-              dirEventSeqs
-                .view
-                .flatten
-                // In case of DirectoryWatcher error recovery, duplicate DirectoryEvent may occur.
-                // We check this here.
-                .flatMap {
-                  case fileAdded @ FileAdded(path) if !isKnownPath(path) =>
-                    val maybeOrderId = pathToOrderId(fileWatch, path)
-                    if (maybeOrderId.isEmpty) logger.debug(s"Ignore $fileAdded (no OrderId)")
-                    for (orderId <- maybeOrderId) yield
-                      ExternalOrderArised(
-                        ExternalOrderName(path.toString),
-                        orderId,
-                        toOrderArguments(directory, path))
+          lockKeeper.lock(fileWatch.id)(
+            persistence.currentState
+              .flatMap(agentState =>
+                if (!agentState.allFileWatchesState.idToFileWatchState.contains(fileWatch.id))
+                  Task.pure(Right(Nil -> agentState))
+                else
+                  persistence.persist { agentState =>
+                    Right(
+                      dirEventSeqs
+                        .view
+                        .flatten
+                        // In case of DirectoryWatcher error recovery, duplicate DirectoryEvent may occur.
+                        // We check this here.
+                        .flatMap(dirEvent =>
+                          agentState.allFileWatchesState.idToFileWatchState
+                            .get(fileWatch.id)
+                            // Ignore late events after FileWatch has been removed
+                            .flatMap(fileWatchState =>
+                              dirEvent match {
+                                case fileAdded @ FileAdded(path) if !fileWatchState.containsPath(path) =>
+                                  val maybeOrderId = pathToOrderId(fileWatch, path)
+                                  if (maybeOrderId.isEmpty) logger.debug(s"Ignore $fileAdded (no OrderId)")
+                                  for (orderId <- maybeOrderId) yield
+                                    ExternalOrderArised(
+                                      ExternalOrderName(path.toString),
+                                      orderId,
+                                      toOrderArguments(directory, path))
 
-                  case FileDeleted(path) if isKnownPath(path) =>
-                    Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
+                                case FileDeleted(path) if fileWatchState.containsPath(path) =>
+                                  Some(ExternalOrderVanished(ExternalOrderName(path.toString)))
 
-                  case event =>
-                    logger.debug(s"Ignore $event")
-                    None
-                }
-                .map(fileWatch.id <-: _)
-                .toVector)
-          })
+                                case event =>
+                                  logger.debug(s"Ignore $event")
+                                  None
+                              }))
+                        .map(fileWatch.id <-: _)
+                        .toVector)
+                  }
+              )))
         .foreachL {
           case Left(problem) => logger.error(problem.toString)
           case Right((_, agentState)) =>
-            directoryState = agentState.allFileWatchesState.idToFileWatch(fileWatch.id).directoryState
+            directoryState = agentState.allFileWatchesState.idToFileWatchState(fileWatch.id).directoryState
         }
         .onErrorRestartLoop(now) { (throwable, since, restart) =>
           val delay = (since + delayIterator.next()).timeLeftOrZero

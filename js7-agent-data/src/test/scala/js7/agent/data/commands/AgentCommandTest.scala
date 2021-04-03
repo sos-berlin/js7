@@ -11,6 +11,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
+import js7.data.item.VersionId
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.StringValue
@@ -179,9 +180,25 @@ final class AgentCommandTest extends AnyFreeSpec
           "workflowPath": "WORKFLOW",
           "agentId": "AGENT",
           "directory": "DIRECTORY",
-          "delay": 0,
-          "itemRevision": 0
+          "delay": 0
         }
+      }""")
+  }
+
+  "DetachItem" in {
+    check(
+      AgentCommand.DetachItem(OrderWatchId("ID")),
+      json"""{
+        "TYPE": "DetachItem",
+        "id": "OrderWatch:ID"
+      }""")
+
+    // Not yet used:
+    check(
+      AgentCommand.DetachItem(WorkflowPath("WORKFLOW") ~ VersionId("1")),
+      json"""{
+        "TYPE": "DetachItem",
+        "id": "Workflow:WORKFLOW~1"
       }""")
   }
 

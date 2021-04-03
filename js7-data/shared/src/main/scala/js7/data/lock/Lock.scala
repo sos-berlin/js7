@@ -8,7 +8,7 @@ import js7.data.item.{ItemRevision, SimpleItem}
 final case class Lock(
   id: LockId,
   limit: Int = 1,
-  itemRevision: ItemRevision = ItemRevision.Initial)
+  itemRevision: Option[ItemRevision] = None)
 extends SimpleItem
 {
   protected type Self = Lock
@@ -17,7 +17,7 @@ extends SimpleItem
   assertThat(limit >= 0)
 
   def withRevision(revision: ItemRevision) =
-    copy(itemRevision = revision)
+    copy(itemRevision = Some(revision))
 }
 
 object Lock extends SimpleItem.Companion

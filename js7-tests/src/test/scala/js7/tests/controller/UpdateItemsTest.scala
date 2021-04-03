@@ -105,13 +105,13 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "SimpleItem's ItemRevision must not be supplied" in {
     // itemRevision is set only be the Controller
     val lock = Lock(LockId("LOCK"))
-    assert(controllerApi.updateSimpleItems(Seq(lock.copy(itemRevision = ItemRevision(1)))).await(99.s) ==
-      Left(Problem("SimpleItem's ItemRevision must be zero")))
+    assert(controllerApi.updateSimpleItems(Seq(lock.copy(itemRevision = Some(ItemRevision(1))))).await(99.s) ==
+      Left(Problem("ItemRevision is not accepted here")))
 
     controllerApi.updateSimpleItems(Seq(lock)).await(99.s).orThrow
 
-    assert(controllerApi.updateSimpleItems(Seq(lock.copy(limit = 7, itemRevision = ItemRevision(1)))).await(99.s) ==
-      Left(Problem("SimpleItem's ItemRevision must be zero")))
+    assert(controllerApi.updateSimpleItems(Seq(lock.copy(limit = 7, itemRevision = Some(ItemRevision(1))))).await(99.s) ==
+      Left(Problem("ItemRevision is not accepted here")))
   }
 
   "Divergent VersionId is rejected" in {

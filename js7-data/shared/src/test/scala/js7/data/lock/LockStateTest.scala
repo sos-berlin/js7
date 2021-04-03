@@ -3,6 +3,7 @@ package js7.data.lock
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.data.event.KeyedEvent
+import js7.data.item.ItemRevision
 import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}
 import js7.data.order.OrderId
@@ -13,7 +14,7 @@ import scala.collection.immutable.Queue
 final class LockStateTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(LockState(Lock(LockId("LOCK"), limit = 1)), json"""
+    testJson(LockState(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(0)))), json"""
       {
         "lock": {
           "id": "LOCK",

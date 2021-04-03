@@ -5,16 +5,17 @@ import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString}
+import js7.data.event.NoKeyEvent
 
 /**
   * @author Joacim Zschimmer
   */
-sealed trait VersionedEvent extends ItemEvent
+sealed trait VersionedEvent extends NoKeyEvent
 
 object VersionedEvent {
   final case class VersionAdded(versionId: VersionId) extends VersionedEvent
 
-  sealed trait VersionedItemEvent extends VersionedEvent {
+  sealed trait VersionedItemEvent extends VersionedEvent /*with InventoryItemEvent*/ {
     def path: ItemPath
   }
 
@@ -43,7 +44,9 @@ object VersionedEvent {
       } yield (item, signed)
   }
 
-  final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged
+  final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
+    def id = signed.value.id
+  }
   object VersionedItemAdded
   {
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemAdded] =
@@ -57,7 +60,9 @@ object VersionedEvent {
         }
   }
 
-  final case class VersionedItemChanged(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged
+  final case class VersionedItemChanged(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
+    def id = signed.value.id
+  }
   object VersionedItemChanged
   {
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemChanged] =
@@ -70,6 +75,7 @@ object VersionedEvent {
           new VersionedItemChanged(Signed(item, signedString))
         }
   }
+
   final case class VersionedItemDeleted(path: ItemPath) extends VersionedItemEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }

@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
 import js7.data.event.EventSeq
 import js7.data.item.ItemOperation.{AddVersion, SimpleDelete}
-import js7.data.item.VersionId
+import js7.data.item.{ItemRevision, VersionId}
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent._
@@ -129,7 +129,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
                controller.eventWatch.await[OrderLockAcquired](_.key == pair(1)).map(_.eventId).head)
       }
       assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
-        LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+        LockState(
+          Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+          Available,
+          Queue.empty))
     }
   }
 
@@ -163,7 +166,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(aAquired.eventId < bReleased.eventId, "- a acquired lock after b released")
     assert(bAquired.eventId < aReleased.eventId, "- b acquired lock after a released")
     assert(controller.controllerState.await(99.s).idToLockState(limit2LockId) ==
-      LockState(Lock(limit2LockId, limit = 2), Available, Queue.empty))
+      LockState(
+        Lock(limit2LockId, limit = 2, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
   }
 
   "Multiple orders with count=1 and count=2 finish" in {
@@ -186,7 +192,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val terminated = for (order <- orders) yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     for (keyedEvent <- terminated.map(_.last.value))  assert(keyedEvent.event == OrderFinished, s"- ${keyedEvent.key}")
     assert(controller.controllerState.await(99.s).idToLockState(limit2LockId) ==
-      LockState(Lock(limit2LockId, limit = 2), Available, Queue.empty))
+      LockState(
+        Lock(limit2LockId, limit = 2, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
   }
 
   "Failed order" in {
@@ -209,7 +218,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockAcquired(lock2Id, None),
       OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Id, lockId))))
     assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
-      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+      LockState(
+        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Available, Queue.empty))
   }
 
   "Failed order in try/catch" in {
@@ -244,7 +255,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockReleased(lockId),
       OrderFinished))
     assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
-      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+      LockState(
+        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
   }
 
   "Failed forked order" in {
@@ -274,7 +288,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockIds = Seq(lockId))))
 
     assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
-      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+      LockState(
+        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
   }
 
   "Forked order with same lock" in {
@@ -305,7 +322,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         "Lock:LOCK has already been acquired by parent Order:🟪"))))))
 
     assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
-      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+      LockState(
+        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
   }
 
   "Acquire too much" in {
@@ -323,7 +343,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1"))))))
 
     assert(controller.controllerState.await(99.s).idToLockState(lockId) ==
-      LockState(Lock(lockId, limit = 1), Available, Queue.empty))
+      LockState(
+        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
   }
 
   "Lock deletion is still not supported" in {
@@ -332,7 +355,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       AddVersion(v),
       SimpleDelete(lockId)
     )).await(99.s) == Left(Problem(
-      "Event 'SimpleItemDeleted(Lock:LOCK)' cannot be applied: A 'Lock' is not deletable (in this version)")))
+      "Lock cannot be deleted")))
   }
 
   private def defineWorkflow(workflowNotation: String): Workflow =

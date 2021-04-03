@@ -12,14 +12,14 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentId, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerState.generic.itemPathJsonCodec
 import js7.data.controller.ControllerState.itemPathCompanions
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAttachedStateChanged, SimpleItemChanged, SimpleItemDeleted}
-import js7.data.item.{ItemPath, Repo, SimpleItem, SimpleItemEvent, SimpleItemId, SimpleItemState, VersionedEvent, VersionedItem}
+import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId, ItemPath, SimpleItemState, Repo, SimpleItem, SimpleItemId, VersionedEvent, VersionedItem}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -84,7 +84,7 @@ extends JournaledState[ControllerState]
     case KeyedEvent(_: NoKey, ControllerEvent.ControllerTestEvent) =>
       Right(this)
 
-    case KeyedEvent(_: NoKey, event: SimpleItemEvent) =>
+    case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
       event match {
         case SimpleItemAdded(item) =>
           item match {
@@ -117,21 +117,41 @@ extends JournaledState[ControllerState]
                     agentRef = agentRef)))
 
             case orderWatch: OrderWatch =>
-              for (o <- allOrderWatchesState.changeOrderWatch(orderWatch)) yield
-                copy(allOrderWatchesState = o)
+              allOrderWatchesState.changeOrderWatch(orderWatch)
+                .map(o => copy(
+                  allOrderWatchesState = o))
           }
 
-        case SimpleItemDeleted(itemId) =>
-          Left(Problem(s"A '${itemId.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
-
-        case SimpleItemAttachedStateChanged(id, agentId, attachedState) =>
+        case ItemAttachedStateChanged(id, agentId, attachedState) =>
           id match {
-            case orderWatchId: OrderWatchId =>
-              allOrderWatchesState.updatedAttachedState(orderWatchId, agentId, attachedState)
-                .map(o => copy(allOrderWatchesState = o))
+            case id: OrderWatchId =>
+              allOrderWatchesState.updateAttachedState(id, agentId, attachedState)
+                .map(o => copy(
+                  allOrderWatchesState = o))
 
             case _ =>
               eventNotApplicable(keyedEvent)
+          }
+
+        case ItemDeletionMarked(itemId) =>
+          itemId match {
+            case id: OrderWatchId =>
+              allOrderWatchesState.markAsDeleted(id)
+                .map(o => copy(
+                  allOrderWatchesState = o))
+
+            case _ =>
+              Left(Problem(s"A '${itemId.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
+          }
+
+        case ItemDestroyed(id) =>
+          id match {
+            case id: OrderWatchId =>
+              Right(copy(
+                allOrderWatchesState = allOrderWatchesState.removeOrderWatch(id)))
+
+            case _ =>
+              Left(Problem(s"A '${id.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
           }
       }
 
@@ -241,18 +261,17 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def idToItem: MapView[SimpleItemId, SimpleItem] =
-    idToItemState.mapValues(_.item)
+  def idToSimpleItem: MapView[SimpleItemId, SimpleItem] =
+    idToSimpleItemState.mapValues(_.item)
 
-  private def idToItemState: MapView[SimpleItemId, SimpleItemState] =
+  private def idToSimpleItemState: MapView[SimpleItemId, SimpleItemState] =
     new MapView[SimpleItemId, SimpleItemState] {
-      def get(itemId: SimpleItemId): Option[SimpleItemState] = {
+      def get(itemId: SimpleItemId): Option[SimpleItemState] =
         itemId match {
           case id: AgentId => idToAgentRefState.get(id)
           case id: LockId => idToLockState.get(id)
           case id: OrderWatchId => allOrderWatchesState.idToOrderWatchState.get(id)
         }
-      }
 
       def iterator: Iterator[(SimpleItemId, SimpleItemState)] =
         Iterator(idToAgentRefState, idToLockState, allOrderWatchesState.idToOrderWatchState)
@@ -277,8 +296,13 @@ object ControllerState extends JournaledState.Companion[ControllerState]
 
   val empty = Undefined
 
+  def newBuilder() = new ControllerStateBuilder
+
   private val simpleItemCompanions = Seq[SimpleItem.Companion](
     AgentRef, Lock, FileWatch)
+
+  private val inventoryItemCompanions = Seq.empty[InventoryItem.Companion] ++
+    simpleItemCompanions
 
   private val itemPathCompanions = Set[ItemPath.AnyCompanion](
     WorkflowPath)
@@ -286,18 +310,19 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] =
     TypedJsonCodec(simpleItemCompanions.map(_.subtype): _*)
 
-  implicit val simpleItemEventJsonCodec = SimpleItemEvent.jsonCodec(simpleItemCompanions)
+  implicit val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
+    TypedJsonCodec(inventoryItemCompanions.map(_.subtype): _*)
 
-  def newBuilder() = new ControllerStateBuilder
+  implicit val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(inventoryItemCompanions)
 
-  trait GenericImplicits {
-    implicit val simpleItemIdJsonCodec: CirceCodec[SimpleItemId] =
-      SimpleItemId.jsonCodec(simpleItemCompanions.map(_.idCompanion))
+  implicit val inventoryItemIdJsonCodec: CirceCodec[InventoryItemId] =
+    InventoryItemId.jsonCodec(inventoryItemCompanions.map(_.idCompanion))
 
-    implicit val itemPathJsonCodec: CirceCodec[ItemPath] =
-      ItemPath.jsonCodec(itemPathCompanions)
-  }
-  val generic = new GenericImplicits {}
+  implicit val simpleItemIdJsonCodec: CirceCodec[SimpleItemId] =
+    SimpleItemId.jsonCodec(simpleItemCompanions.map(_.idCompanion))
+
+  implicit val itemPathJsonCodec: CirceCodec[ItemPath] =
+    ItemPath.jsonCodec(itemPathCompanions)
 
   implicit val versionedItemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
@@ -318,11 +343,15 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
-      KeyedSubtype[SimpleItemEvent],
+      KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[VersionedEvent],
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent])
+
+  object implicits {
+    implicit val snapshotObjectJsonCodec = ControllerState.snapshotObjectJsonCodec
+  }
 }

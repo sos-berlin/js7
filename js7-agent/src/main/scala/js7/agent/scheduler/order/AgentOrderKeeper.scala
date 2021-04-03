@@ -9,7 +9,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSimpleItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSimpleItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper._
@@ -42,7 +42,7 @@ import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.orderwatch.FileWatch
+import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
@@ -89,7 +89,7 @@ with Stash {
   private val workflowVerifier = new VersionedItemVerifier(signatureVerifier, Workflow.topJsonDecoder)
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
-  private val fileWatchManager = new FileWatchManager(persistence, conf.config)
+  private val fileWatchManager = new FileWatchManager(ownAgentId, persistence, conf.config)
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
   private val orderEventSource = new OrderEventSource(
@@ -291,15 +291,18 @@ with Stash {
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
     case cmd: OrderCommand => processOrderCommand(cmd)
 
-    case AttachSimpleItem(orderWatch: FileWatch) =>
+    case AttachSimpleItem(fileWatch: FileWatch) =>
       if (!conf.scriptInjectionAllowed)
         Future.successful(Left(SignedInjectionNotAllowed))
       else
-        fileWatchManager.update(orderWatch)
+        fileWatchManager.update(fileWatch)
           .map(_.rightAs(AgentCommand.Response.Accepted))
           .runToFuture
 
-    // TODO case DetachSimpleItem(itemId) =>
+    case DetachItem(id: OrderWatchId) =>
+      fileWatchManager.remove(id)
+        .map(_.rightAs(AgentCommand.Response.Accepted))
+        .runToFuture
 
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)
