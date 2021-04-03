@@ -27,8 +27,7 @@ final case class JournalHeader private[data](
   timestamp: Timestamp,
   startedAt: Timestamp,
   version: String,
-  // TODO Rename as js7Version
-  softwareVersion: String,
+  js7Version: String,
   buildId: String)
 {
   def nextGeneration(eventId: EventId, totalEventCount: Long, totalRunningTime: FiniteDuration, timestamp: Timestamp = Timestamp.now) =
@@ -39,17 +38,17 @@ final case class JournalHeader private[data](
       totalRunningTime = totalRunningTime,
       timestamp = timestamp,
       version = Version,
-      softwareVersion = BuildInfo.longVersion,
+      js7Version = BuildInfo.longVersion,
       buildId = BuildInfo.buildId)
 
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
     s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $startedAt, " +
-    s"$version, $softwareVersion, $buildId)"
+    s"$version, $js7Version, $buildId)"
 }
 
 object JournalHeader
 {
-  private[data] val Version = "0.33"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  private[data] val Version = "0.34"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
 
   def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
     new JournalHeader(
@@ -60,7 +59,7 @@ object JournalHeader
       Duration.Zero,
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
-      softwareVersion = BuildInfo.longVersion,
+      js7Version = BuildInfo.longVersion,
       version = Version,
       buildId = BuildInfo.buildId)
 
@@ -74,7 +73,7 @@ object JournalHeader
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
       version = Version,
-      softwareVersion = BuildInfo.longVersion,
+      js7Version = BuildInfo.longVersion,
       buildId = BuildInfo.buildId)
 
   implicit lazy val jsonCodec = {

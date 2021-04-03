@@ -31,7 +31,7 @@ final class JournalHeaderTest extends AnyFreeSpec
         "timestamp": "2019-05-23T22:22:22.222Z",
         "startedAt": "2019-05-22T12:00:00Z",
         "version": "${JournalHeader.Version}",
-        "softwareVersion": "${BuildInfo.longVersion}",
+        "js7Version": "${BuildInfo.longVersion}",
         "buildId": "${BuildInfo.buildId}"
       }""")
   }

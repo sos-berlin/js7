@@ -4,6 +4,7 @@ import cats.instances.vector._
 import cats.syntax.traverse._
 import io.circe.syntax._
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
+import java.util.Objects.requireNonNull
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
@@ -106,6 +107,8 @@ object Value
 
 final case class StringValue(string: String) extends Value
 {
+  requireNonNull(string)
+
   def valueType = StringValue
 
   override def toStringValue = Right(this)

@@ -353,7 +353,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         }
         .foreach(o => jsons += o.value.utf8String.parseJsonOrThrow)
       waitForCondition(99.s, 10.ms) { jsons.size == 2 }
-      assert(jsons(0).as[JournalHeader].orThrow.softwareVersion == BuildInfo.longVersion)
+      assert(jsons(0).as[JournalHeader].orThrow.js7Version == BuildInfo.longVersion)
       assert(jsons(1) == JournalSeparators.EventHeader)
 
       writer.writeEvents(Stamped(1L, "1" <-: A1) :: Stamped(2L, "2" <-: B1) :: Nil)
