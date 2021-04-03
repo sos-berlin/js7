@@ -23,6 +23,15 @@ final class AsyncMap[K: ClassTag, V](initial: Map[K, V])
     mvarTask.flatMap(_.read)
       .map(_.checked(key))
 
+  def remove(key: K): Task[Option[V]] =
+    mvarTask
+      .flatMap(mvar =>
+        mvar.take.flatMap { map =>
+          val removed = map.get(key)
+          mvar.put(map - key).map(_ => removed)
+        })
+      .uncancelable
+
   def update(key: K, update: Option[V] => Task[V]): Task[V] =
     getAndUpdate(key, update)
       .map(_._2)

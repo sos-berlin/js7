@@ -25,6 +25,15 @@ final class AsyncMapTest extends AsyncFreeSpec
       .runToFuture
   }
 
+  "remove" in {
+    asyncMap.update(2, { case None => Task("ZWEI") })
+      .flatMap(_ => asyncMap.remove(2))
+      .flatMap(maybe => Task(assert(maybe == Some("ZWEI"))))
+      .flatMap(_ => asyncMap.remove(2))
+      .flatMap(maybe => Task(assert(maybe == None)))
+      .runToFuture
+  }
+
   "getAndUpdate" in {
     asyncMap.getAndUpdate(0, update)
       .map(pair => assert(pair == (None, "FIRST")))
