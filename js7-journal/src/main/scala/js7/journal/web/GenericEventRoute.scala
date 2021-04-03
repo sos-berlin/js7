@@ -77,7 +77,7 @@ trait GenericEventRoute extends RouteProvider
     protected def filterObservable: StampedEventFilter =
       identity
 
-    private val exceptionHandler = ExceptionHandler {
+    implicit private val exceptionHandler = ExceptionHandler {
       case t: ClosedException if t.getMessage != null =>
         if (whenShuttingDown.isCompleted)
           complete(ServiceUnavailable -> ShuttingDownProblem)
@@ -91,8 +91,8 @@ trait GenericEventRoute extends RouteProvider
     final lazy val route: Route =
       get {
         pathEnd {
-          authorizedUser(ValidUserPermission) { user =>
-            handleExceptions(exceptionHandler) {
+          Route.seal {
+            authorizedUser(ValidUserPermission) { user =>
               routeTask(
                 eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map {
                   case Left(problem) =>
@@ -106,20 +106,25 @@ trait GenericEventRoute extends RouteProvider
                         logger.debug(s"Journal has become ready after ${o.elapsed.pretty}, continuing event web service")
                       }
                       htmlPreferred {
-                        oneShot(eventWatch)
+                        Route.seal(
+                          oneShot(eventWatch))
                       } ~
                       accept(`application/x-ndjson`) {
-                        jsonSeqEvents(eventWatch)(NdJsonStreamingSupport)
+                        Route.seal(
+                          jsonSeqEvents(eventWatch)(NdJsonStreamingSupport))
                       } ~
                       accept(`application/json-seq`) {
-                        jsonSeqEvents(eventWatch)(JsonSeqStreamingSupport)
+                        Route.seal(
+                          jsonSeqEvents(eventWatch)(JsonSeqStreamingSupport))
                       } ~
                       accept(`text/event-stream`) {
-                        serverSentEvents(eventWatch)
+                        Route.seal(
+                          serverSentEvents(eventWatch))
                       } ~
-                      oneShot(eventWatch)
+                      Route.seal(
+                        oneShot(eventWatch))
                     }
-                  })
+                })
             }
           }
         }
