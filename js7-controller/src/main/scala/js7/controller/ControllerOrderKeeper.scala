@@ -505,22 +505,16 @@ with MainJournalingActor[ControllerState, Event]
         val agentEventId = stampedAgentEvents.last.eventId
         timestampedEvents :+= Timestamped(agentId <-: AgentEventsObserved(agentEventId))
 
+        val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
+        orderQueue.enqueue(subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
+        timestampedEvents ++= subseqEvents.map(Timestamped(_))
+
         committedPromise.completeWith(
           persistTransactionTimestamped(timestampedEvents, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
             (stampedEvents, updatedState) =>
-              handleEvents(
-                stampedEvents.collect {
-                  case stamped @ Stamped(_, _, KeyedEvent(_: OrderId, _: OrderEvent)) =>
-                    stamped.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
-                },
-                updatedState)
+              handleEvents(stampedEvents, updatedState)
               Some(agentEventId)
           })
-
-        val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
-        orderQueue.enqueue(subseqEvents.view.map(_.key))  // For OrderSourceEvents
-        persistMultiple(subseqEvents)(
-          handleEvents)
       }
 
     case AgentDriver.Output.OrdersMarked(orderToMark) =>
