@@ -131,7 +131,7 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait OrderCommand extends AgentCommand
 
-  final case class AttachSimpleItem(item: InventoryItem)
+  final case class AttachItem(item: InventoryItem)
   extends AgentCommand
   {
     type Response = Response.Accepted
@@ -198,7 +198,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[RegisterAsController]),
       Subtype(deriveCodec[CoupleController]),
       Subtype[ShutDown],
-      Subtype(deriveCodec[AttachSimpleItem]),
+      Subtype(deriveCodec[AttachItem]),
       Subtype[DetachItem],
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),

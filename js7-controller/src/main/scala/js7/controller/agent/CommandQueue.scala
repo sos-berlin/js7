@@ -155,7 +155,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.MarkOrder(orderId, mark)
 
       case Input.AttachSimpleItem(item) =>
-        AgentCommand.AttachSimpleItem(item)
+        AgentCommand.AttachItem(item)
 
       case Input.DetachItem(id) =>
         AgentCommand.DetachItem(id)

@@ -9,7 +9,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSimpleItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper._
@@ -291,7 +291,7 @@ with Stash {
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
     case cmd: OrderCommand => processOrderCommand(cmd)
 
-    case AttachSimpleItem(fileWatch: FileWatch) =>
+    case AttachItem(fileWatch: FileWatch) =>
       if (!conf.scriptInjectionAllowed)
         Future.successful(Left(SignedInjectionNotAllowed))
       else

@@ -168,12 +168,12 @@ final class AgentCommandTest extends AnyFreeSpec
     }
   }
 
-  "AttachSimpleItem" in {
+  "AttachItem" in {
     check(
-      AgentCommand.AttachSimpleItem(
+      AgentCommand.AttachItem(
         FileWatch(OrderWatchId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "DIRECTORY")),
       json"""{
-        "TYPE": "AttachSimpleItem",
+        "TYPE": "AttachItem",
         "item": {
           "TYPE": "FileWatch",
           "id": "ID",
