@@ -587,10 +587,13 @@ lazy val `js7-tests` = project
   }
 
 def isExcludedJar(path: String) =
+  path.startsWith("org.checkerframework.checker-qual-") ||
   path.startsWith("com.google.code.findbugs.jsr305-") ||
   path.startsWith("com.google.errorprone.error_prone_annotations-") ||
+  path.startsWith("com.google.guava.listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar") ||
+  path.startsWith("com.google.j2objc.j2objc-annotations-") ||
+  //path.startsWith("com.intellij.annotations-") ||  <-- required by TypeTag[RichProcess]
   path.startsWith("listenablefuture-9999.0-empty-to-avoid-conflict-with-guava-") ||
-  path.startsWith("org.checkerframework.checker-qual-") ||
   path.startsWith("org.typelevel.simulacrum-scalafix-annotations_")
 
 //--------------------------------------------------------------------------------------------------
@@ -633,7 +636,7 @@ releaseNextVersion := (
     Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT"))
 
 releaseProcess := {
-  import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, pushChanges, runClean, runTest, setNextVersion, setReleaseVersion, tagRelease}
+  import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, runClean, runTest, setNextVersion, setReleaseVersion, tagRelease}
   if (isStandardRelease)
     releaseProcess.value
   else
