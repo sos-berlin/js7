@@ -1,8 +1,12 @@
 package js7.executor.forjava.internal
 
+import io.vavr.control.{Either => VEither}
 import java.io.{PrintWriter, Writer}
 import javax.annotation.Nonnull
+import js7.base.problem.Problem
 import js7.base.utils.Lazy
+import js7.data_for_java.common.JavaUtils.Void
+import js7.data_for_java.order.JOutcome
 import js7.executor.forjava.internal.BlockingInternalJob._
 import js7.executor.internal.InternalJob.{JobContext, OrderContext}
 import js7.executor.internal.InternalJobAdapter
@@ -13,16 +17,31 @@ import js7.executor.internal.InternalJobAdapter
 @InternalJobAdapter(classOf[BlockingInternalJobAdapter])
 trait BlockingInternalJob
 {
-  /** Reserved. */
-  final def start() = {}
+  /** Called once after construction and before any other call.*/
+  @throws[Exception] @Nonnull
+  final def start(): VEither[Problem, Void] =
+    VEither.right(Void)
 
-  /** Reserved. */
+  /** Called only once after last `start` or `processOrder`.
+    * <ul>
+    *   <li>
+    *     When the constructor has thrown an exception.
+    *   <li>
+    *     When `start` has thrown an exception or returned `Left`.
+    *   <li>
+    *     When the Job (or the surrounding workflow) is being destroyed.
+    *   <li>
+    *     When the Agent is terminating.
+    * </ul>
+    * */
+  @throws[Exception]
   final def stop() = {}
 
-  /** Process the order in a seperate thread. */
-  @throws[Exception]
-  @Nonnull
-  def processOrder(@Nonnull context: JOrderContext): JOrderResult
+  /** Process the order.
+    * <p>
+    * Executed in a seperate thread. */
+  @throws[Exception] @Nonnull
+  def processOrder(@Nonnull context: JOrderContext): JOutcome.Completed
 }
 
 object BlockingInternalJob

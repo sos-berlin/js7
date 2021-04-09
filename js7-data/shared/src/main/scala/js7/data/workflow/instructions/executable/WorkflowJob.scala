@@ -110,8 +110,8 @@ object WorkflowJob
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
-      sigkillProcessesAfter <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
-      job <- checked(agentId, executable, arguments, rc, taskLimit, sigkillProcessesAfter)
+      sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
+      job <- checked(agentId, executable, arguments, rc, taskLimit, sigkillDelay)
         .toDecoderResult(cursor.history)
     } yield job
 }

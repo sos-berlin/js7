@@ -12,8 +12,8 @@ import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.job.CommandLine
+import js7.executor.StdChannels
 import js7.executor.process.RichProcess.{startProcessBuilder, tryDeleteFile}
-import js7.executor.task.StdChannels
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

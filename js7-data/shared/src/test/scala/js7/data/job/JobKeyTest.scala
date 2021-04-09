@@ -39,7 +39,7 @@ final class JobKeyTest extends AnyFreeSpec
   }
 
   "toString" in {
-    assert(JobKey(WorkflowPath("WORKFLOW") ~ "1", WorkflowJob.Name("JOBNAME")).toString == "JobKey(WORKFLOW~1:JOBNAME)")
-    assert(JobKey((WorkflowPath("WORKFLOW") ~ "1") /: (Position(1) / "branch" % 2)).toString == "JobKey(WORKFLOW~1:1/branch:2)")
+    assert(JobKey(WorkflowPath("WORKFLOW") ~ "1", WorkflowJob.Name("JOBNAME")).toString == "Job:WORKFLOW~1:JOBNAME")
+    assert(JobKey((WorkflowPath("WORKFLOW") ~ "1") /: (Position(1) / "branch" % 2)).toString == "Job:WORKFLOW~1:1/branch:2")
   }
 }

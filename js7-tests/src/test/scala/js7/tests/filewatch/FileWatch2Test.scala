@@ -18,16 +18,17 @@ import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
 import js7.data.item.{CommonItemEvent, InventoryItemEvent, ItemRevision, SimpleItemEvent}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderRemoved, OrderStarted, OrderStderrWritten}
-import js7.data.order.OrderId
+import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchId}
-import js7.data.value.{NamedValues, StringValue}
+import js7.data.value.StringValue
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
+import js7.executor.internal.InternalJob.OrderContext
 import js7.tests.filewatch.FileWatch2Test._
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -374,6 +375,6 @@ object FileWatch2Test
     def processOrder(orderContext: OrderContext) =
       OrderProcess(
         semaphore.flatMap(_.acquire)
-          .as(Right(Result(NamedValues.empty))))
+          .as(Outcome.succeeded))
   }
 }

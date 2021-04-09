@@ -1,8 +1,10 @@
 package js7.executor.forjava.internal
 
-import js7.base.problem.Checked
+import java.util.concurrent.CompletionStage
+import js7.data.order.Outcome
 import js7.data_for_java.common.JavaWrapper
-import js7.executor.internal.InternalJob.OrderProcess
+import js7.data_for_java.order.JOutcome
+import js7.executor.OrderProcess
 import monix.eval.Task
 import scala.jdk.FutureConverters._
 
@@ -14,10 +16,10 @@ extends JavaWrapper
 
 object JOrderProcess
 {
-  def of(completed: java.util.concurrent.CompletionStage[JOrderResult]): JOrderProcess =
+  def of(completed: CompletionStage[JOutcome.Completed]): JOrderProcess =
     JOrderProcess(OrderProcess(
       Task.fromFuture(completed.asScala)
         .map(_.asScala)
-        .materialize.map(Checked.fromTry)
-        .memoize))
+        .materialize
+        .map(Outcome.Completed.fromTry)))
 }

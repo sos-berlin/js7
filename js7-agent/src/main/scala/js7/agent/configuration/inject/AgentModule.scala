@@ -15,10 +15,14 @@ import js7.base.utils.Closer.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.system.ThreadPools
+import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.cluster.ClusterWatchRegister
-import js7.executor.configuration.ExecutorConfiguration
+import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
+import js7.executor.process.{RichProcessStartSynchronizer, SimpleShellTaskRunner}
+import js7.executor.task.TaskRunner
 import js7.journal.EventIdGenerator
 import monix.execution.Scheduler
+import monix.execution.schedulers.SchedulerService
 import scala.concurrent.ExecutionContext
 
 /**
@@ -62,8 +66,32 @@ extends AbstractModule
     ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
 
   @Provides @Singleton
-  def executorConfiguration(conf: AgentConfiguration): ExecutorConfiguration =
-    conf.toExecutorConfiguration
+  def shellTaskRunnerFactory(
+    synchronizedStartProcess: RichProcessStartSynchronizer,
+    agentConf: AgentConfiguration)
+    (implicit scheduler: Scheduler, iox: IOExecutor)
+  : TaskRunner.Factory =
+    new TaskRunner.Factory {
+      private val taskIdGenerator = new SimpleShellTaskRunner.TaskIdGenerator
+      def apply(conf: TaskConfiguration) = {
+        val taskId = taskIdGenerator.next()
+        new SimpleShellTaskRunner(conf, taskId, synchronizedStartProcess,
+          temporaryDirectory = agentConf.temporaryDirectory,
+          workingDirectory = agentConf.jobWorkingDirectory,
+          killScript = agentConf.killScript)
+      }
+    }
+
+  @Provides @Singleton
+  def executorConf(conf: AgentConfiguration, newTaskRunner: TaskRunner.Factory, closer: Closer)
+  : JobExecutorConf = {
+    val blockingJobScheduler: SchedulerService = {
+      val scheduler = newUnlimitedScheduler("JS7 blocking job")
+      closer.onClose(scheduler.shutdown())
+      scheduler
+    }
+    conf.toExecutorConf(newTaskRunner, blockingJobScheduler)
+  }
 
   @Provides @Singleton
   def agentConfiguration(): AgentConfiguration = originalAgentConfiguration.finishAndProvideFiles

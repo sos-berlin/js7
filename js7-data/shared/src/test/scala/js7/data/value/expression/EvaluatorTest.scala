@@ -20,7 +20,7 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 final class EvaluatorTest extends AnyFreeSpec
 {
   "NamedValue expressions" - {
-    implicit val evaluator = new Evaluator(
+    implicit val evaluator = Evaluator(
       new Scope {
         import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
         import ValueSearch.{LastExecuted, Name}
@@ -408,7 +408,7 @@ final class EvaluatorTest extends AnyFreeSpec
   }
 
   "Constant expressions" - {
-    implicit val evaluator = new Evaluator(Scope.empty)
+    implicit val evaluator = Evaluator(Scope.empty)
     val eval = evaluator.eval _
 
     val longString =

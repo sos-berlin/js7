@@ -10,7 +10,7 @@ import js7.data.value.{NumberValue, Value}
   */
 trait Scope
 {
-  protected final lazy val evaluator = new Evaluator(this)
+  protected final lazy val evaluator = Evaluator(this)
 
   val symbolToValue: String => Checked[Value]
 

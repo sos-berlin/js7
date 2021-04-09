@@ -1,5 +1,6 @@
 package js7.data.job
 
+import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import java.nio.file.Path
@@ -174,6 +175,8 @@ final case class InternalExecutable(
 
 object Executable
 {
+  private implicit val customConfig = withDefaults
+
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
     Subtype.named(PathExecutable.jsonEncoder, PathExecutable.jsonDecoder,
       Seq(
@@ -182,5 +185,5 @@ object Executable
       aliases = Seq("ExecutablePath")),
     Subtype.named[ScriptExecutable](aliases = Seq("ExecutableScript")),
     Subtype[CommandLineExecutable],
-    Subtype(deriveCodec[InternalExecutable]))
+    Subtype(deriveConfiguredCodec[InternalExecutable]))
 }

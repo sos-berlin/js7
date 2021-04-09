@@ -13,15 +13,15 @@ import js7.data.event.EventId
 import js7.data.item.CommonItemEvent.ItemAttached
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderRemoved, OrderStarted}
-import js7.data.order.OrderId
+import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchId}
-import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
+import js7.executor.internal.InternalJob.OrderContext
 import js7.tests.filewatch.FileWatchNarrowPatternTest._
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -111,6 +111,6 @@ object FileWatchNarrowPatternTest
     def processOrder(orderContext: OrderContext) =
       OrderProcess(
         semaphore.flatMap(_.acquire)
-          .as(Right(Result(NamedValues.empty))))
+          .as(Outcome.succeeded))
   }
 }

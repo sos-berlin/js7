@@ -1,17 +1,23 @@
 package js7.executor.forjava.internal.tests;
 
+import io.vavr.control.Either;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import js7.base.problem.Problem;
 import js7.data.value.NumberValue;
+import js7.data_for_java.order.JOutcome;
 import js7.executor.forjava.internal.JInternalJob;
 import js7.executor.forjava.internal.JOrderProcess;
-import js7.executor.forjava.internal.JOrderResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static io.vavr.control.Either.right;
+import static java.lang.System.lineSeparator;
 import static java.util.Collections.singletonMap;
 import static java.util.concurrent.ForkJoinPool.commonPool;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -22,7 +28,9 @@ public final class TestJInternalJob implements JInternalJob
     private static final Logger logger = LoggerFactory.getLogger(TestBlockingInternalJob.class);
     private static final int delayMillis = 500;
 
-    private final JJobContext jobContext;
+    public static Map<String, Boolean> stoppedCalled = new ConcurrentHashMap<>();
+
+    private final String blockingThreadPoolName;
     private volatile String started = "NOT STARTED";
 
     // Schedule like Java 9:
@@ -32,17 +40,24 @@ public final class TestJInternalJob implements JInternalJob
     }
 
     public TestJInternalJob(JJobContext jobContext) {
-        this.jobContext = jobContext;
+        blockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
     }
 
-    // Not yet possible
-    //public void stop() {
-    //    scheduler.shutdown();
-    //}
+    public CompletionStage<Either<Problem,Void>> start() {
+        return CompletableFuture.supplyAsync(
+            () -> {
+                started = "STARTED";
+                return right(null);
+            });
+    }
 
-    public CompletionStage<Void> start() {
-        return CompletableFuture.runAsync(
-            () -> started = "STARTED");
+    public CompletionStage<Void> stop() {
+        return CompletableFuture.supplyAsync(
+            () -> {
+                stoppedCalled.put(blockingThreadPoolName, true);
+                scheduler.shutdown();
+                return null;
+            });
     }
 
     public JOrderProcess processOrder(JOrderContext context) {
@@ -51,12 +66,12 @@ public final class TestJInternalJob implements JInternalJob
                 .supplyAsync(
                     () -> process(context),
                     delayedExecutor(delayMillis, MILLISECONDS))
-                .thenCombine(context.sendOut("TEST FOR OUT\n"), (a, b) -> a)
-                .thenCombine(context.sendOut("FROM " + TestJInternalJob.class.getName() + "\n"), (a, b) -> a)
-                .thenCombine(context.sendErr("TEST FOR ERR"), (a, b) -> a));
+                .thenCombine(context.sendOut("TEST FOR OUT" + lineSeparator()), (a, b) -> a)
+                .thenCombine(context.sendOut("FROM " + TestJInternalJob.class.getName() + lineSeparator()), (a, b) -> a)
+                .thenCombine(context.sendErr("TEST FOR ERR" + lineSeparator()), (a, b) -> a));
     }
 
-    private JOrderResult process(JOrderContext context) {
+    private JOutcome.Completed process(JOrderContext context) {
         logger.debug("processOrder " + context.order().id());
         // JS7 guarantees having awaited completion of the `start` method
         if (!started.equals("STARTED")) {
@@ -65,7 +80,7 @@ public final class TestJInternalJob implements JInternalJob
         // 💥 May throw NullPointerException or ArithmeticException 💥
         long arg = ((NumberValue)context.arguments().get("arg")).toBigDecimal().longValueExact();
         long result = arg + 1;
-        return JOrderResult.of(
+        return JOutcome.succeeded(
             singletonMap("RESULT", NumberValue.of(result)));
     }
 }

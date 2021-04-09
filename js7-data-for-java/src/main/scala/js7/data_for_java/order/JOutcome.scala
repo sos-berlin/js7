@@ -4,6 +4,7 @@ import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.Outcome
 import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
@@ -18,25 +19,30 @@ sealed trait JOutcome extends JJsonable[JOutcome]
 object JOutcome extends JJsonable.Companion[JOutcome]
 {
   @javaApi
-  val succeeded = JOutcome(Outcome.succeeded)
+  val succeeded = JOutcome.Succeeded(Outcome.succeeded)
 
   @javaApi @Nonnull
   def succeeded(@Nonnull namedValues: java.util.Map[String, Value]) =
-    JOutcome(Outcome.Succeeded(namedValues.asScala.toMap))
+    JOutcome.Succeeded(Outcome.Succeeded(namedValues.asScala.toMap))
 
   @javaApi
-  val failed = JOutcome(Outcome.failed)
+  val failed = JOutcome.Failed(Outcome.failed)
 
   @javaApi @Nonnull
-  def failed(@Nonnull namedValues: java.util.Map[String, Value]) =
-    JOutcome(Outcome.Failed(namedValues.asScala.toMap))
+  def failed(@Nonnull message: String) =
+    JOutcome.Failed(Outcome.Failed(message.nonEmpty ? message))
 
-  def apply(asScala: Outcome) = asScala match {
-    case asScala: Outcome.Succeeded => new Succeeded(asScala)
-    case asScala: Outcome.Failed => new Failed(asScala)
-    case asScala: Outcome.Killed => new Killed(asScala)
-    case asScala: Outcome.Disrupted => new Disrupted(asScala)
-  }
+  @javaApi @Nonnull
+  def failed(@Nonnull message: String, @Nonnull namedValues: java.util.Map[String, Value]) =
+    JOutcome.Failed(Outcome.Failed(message.nonEmpty ? message, namedValues.asScala.toMap))
+
+  def apply(asScala: Outcome): JOutcome =
+    asScala match {
+      case asScala: Outcome.Succeeded => Succeeded(asScala)
+      case asScala: Outcome.Failed => Failed(asScala)
+      case asScala: Outcome.Killed => Killed(asScala)
+      case asScala: Outcome.Disrupted => Disrupted(asScala)
+    }
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JOutcome] =

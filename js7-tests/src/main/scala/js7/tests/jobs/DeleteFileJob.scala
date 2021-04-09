@@ -8,12 +8,13 @@ import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.job.InternalExecutable
+import js7.data.order.Outcome
 import js7.data.orderwatch.FileWatch.FileArgumentName
-import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{JobContext, OrderContext, OrderProcess, Result}
+import js7.executor.internal.InternalJob.{JobContext, OrderContext}
 import js7.tests.jobs.DeleteFileJob._
 import monix.eval.Task
 
@@ -26,7 +27,8 @@ final class DeleteFileJob(jobContext: JobContext) extends InternalJob
         .flatMap(_.toStringValueString)
         .map(Paths.get(_))
         .traverse(deleteFile(_, orderContext.send(Stderr, _)))
-        .rightAs(Result(NamedValues.empty)))
+        .rightAs(Outcome.succeeded)
+        .map(Outcome.Completed.fromChecked))
 
   private def deleteFile(file: Path, out: String => Task[Unit]): Task[Unit] =
     Task {

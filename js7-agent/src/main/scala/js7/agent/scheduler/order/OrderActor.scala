@@ -20,12 +20,11 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.CancelMode
-import js7.data.job.JobKey
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
-import js7.executor.task.StdChannels
+import js7.executor.{ProcessOrder, StdChannels}
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.eval.Task
@@ -110,12 +109,13 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def startable: Receive =
     receiveEvent() orElse {
-      case Input.StartProcessing(jobKey, jobActor, defaultArguments) =>
+      case Input.StartProcessing(jobActor, defaultArguments) =>
         if (order.isProcessable) {
           val out, err = PublishSubject[String]()
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
           def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
             observable
+              // FIXME ? Limit size of chunk to conf.stdouterr.chunkSize even for InternalJob ?
               .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
               .flatMap(strings => Observable.fromIterable(combineStringsAndSplit(strings, conf.stdouterr.chunkSize)))
               .flatMap(chunk => Observable.fromTask(
@@ -126,8 +126,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             writeObservableAsEvents(Stdout, out),
             writeObservableAsEvents(Stderr, err)
           ).void.runToFuture
+          val stdChannels = StdChannels(out, err, charBufferSize = charBufferSize)
           become("processing")(
-            processing(jobKey, jobActor, outErrCompleted,
+            processing(jobActor, stdChannels, outErrCompleted,
               () => (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) ?
                 s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
           context.watch(jobActor)
@@ -135,12 +136,11 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           val orderStarted = order.isState[Order.Fresh] thenList OrderStarted
           persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
             update(events, updatedState)
-            jobActor ! JobActor.Command.ProcessOrder(
-              jobKey,
+            jobActor ! ProcessOrder(
               order.castState[Order.Processing],
               workflow,
               defaultArguments,
-              StdChannels(charBufferSize = charBufferSize, out, err))
+              stdChannels)
           }
         }
 
@@ -151,7 +151,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def failedOrBroken: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-  private def processing(jobKey: JobKey, jobActor: ActorRef, outerrCompleted: Future[Unit],
+  private def processing(jobActor: ActorRef, stdChannels: StdChannels, outerrCompleted: Future[Unit],
     stdoutStderrStatistics: () => Option[String])
   : Receive =
     receiveCommand orElse receiveEvent(jobActor) orElse {
@@ -161,6 +161,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           case o => o
         }
         context.unwatch(jobActor)
+        stdChannels.close()
         outerrCompleted.onComplete { _ =>
           self ! Internal.OutErrCompleted(outcome)
         }
@@ -171,7 +172,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       case Terminated(`jobActor`) =>
         // May occur when JobActor is terminated while receiving JobActor.Command.ProcessOrder
         if (!terminating) {
-          val problem = Problem.pure(s"Job Actor for '$jobKey' terminated unexpectedly")
+          val problem = Problem.pure(s"Job Actor '${jobActor.path}' terminated unexpectedly")
           logger.error(problem.toString)
           finishProcessing(OrderProcessed(Outcome.Disrupted(problem)), stdoutStderrStatistics)
         } else {
@@ -380,8 +381,7 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddOffering(order: Order[Order.Offering]) extends Input
-    final case class StartProcessing(jobKey: JobKey, jobActor: ActorRef,
-      defaultArguments: NamedValues) extends Input
+    final case class StartProcessing(jobActor: ActorRef, defaultArguments: NamedValues) extends Input
     final case class Terminate(processSignal: Option[ProcessSignal] = None)
     extends Input with DeadLetterSuppression
   }

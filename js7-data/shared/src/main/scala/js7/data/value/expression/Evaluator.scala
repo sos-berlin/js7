@@ -157,6 +157,8 @@ final class Evaluator(scope: Scope)
 
 object Evaluator
 {
+  def apply(scope: Scope) = new Evaluator(scope)
+
   def eval(expression: Expression, scope: Scope = Scope.empty): Checked[Value] =
     new Evaluator(scope).eval(expression)
 }

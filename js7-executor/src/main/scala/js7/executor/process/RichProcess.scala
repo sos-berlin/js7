@@ -16,7 +16,6 @@ import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.ClosedFuture

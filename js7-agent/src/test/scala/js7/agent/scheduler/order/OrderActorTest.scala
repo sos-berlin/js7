@@ -29,14 +29,14 @@ import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.agent.AgentId
 import js7.data.event.{EventRequest, JournalId, KeyedEvent, Stamped}
 import js7.data.item.VersionId
-import js7.data.job.{JobKey, RelativePathExecutable}
+import js7.data.job.{JobConf, JobKey, RelativePathExecutable}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.configuration.ExecutorConfiguration
+import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.process.{SimpleShellTaskRunner, StandardRichProcessStartSynchronizer}
 import js7.executor.task.TaskRunner
 import js7.journal.configuration.JournalConf
@@ -163,10 +163,25 @@ private object OrderActorTest {
     import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
     if (!exists(dir / "tmp")) createDirectory(dir / "tmp")
-    private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
-      new SimpleShellTaskRunner.TaskIdGenerator,
-      new StandardRichProcessStartSynchronizer()(context.system),
-      ExecutorConfiguration(temporaryDirectory = dir / "tmp", killScript = None))
+
+    private val taskRunnerFactory: TaskRunner.Factory = new TaskRunner.Factory {
+      private val taskIdGenerator = new SimpleShellTaskRunner.TaskIdGenerator
+      def apply(conf: TaskConfiguration) =
+        new SimpleShellTaskRunner(
+          conf,
+          taskIdGenerator.next(),
+          new StandardRichProcessStartSynchronizer()(context.system),
+          temporaryDirectory = dir / "data" / "tmp",
+          workingDirectory = dir / "data" / "tmp",
+          killScript = None)
+    }
+
+    private val executorConf = JobExecutorConf(
+      executablesDirectory = (dir / "config" / "executables").toRealPath(),
+      temporaryDirectory = dir / "data" / "tmp",
+      scriptInjectionAllowed = false,
+      taskRunnerFactory,
+      blockingJobScheduler = globalIOX.scheduler)
 
     private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
 
@@ -175,12 +190,9 @@ private object OrderActorTest {
       "Journal"))
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = actorOf(
-      JobActor.props(JobActor.Conf(jobKey, workflowJob, taskRunnerFactory,
-        temporaryDirectory = dir / "data" / "tmp",
-        executablesDirectory = (dir / "config" / "executables").toRealPath(),
-        sigkillProcessesAfter = 5.s,
-        scriptInjectionAllowed = false,
-        blockingJobScheduler = globalIOX.scheduler)))
+      JobActor.props(
+        JobConf(jobKey, workflowJob, Workflow.empty, sigKillDelay = 5.s),
+        executorConf))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
         journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
@@ -217,7 +229,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed =>
-        orderActor ! OrderActor.Input.StartProcessing(jobKey, defaultArguments = Map.empty, jobActor = jobActor)
+        orderActor ! OrderActor.Input.StartProcessing(defaultArguments = Map.empty, jobActor = jobActor)
         become(processing)
     }
 

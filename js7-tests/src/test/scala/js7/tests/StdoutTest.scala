@@ -9,13 +9,14 @@ import js7.data.agent.AgentId
 import js7.data.item.VersionId
 import js7.data.job.{Executable, ScriptExecutable}
 import js7.data.order.OrderEvent.OrderStdoutWritten
-import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumberValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
+import js7.executor.internal.InternalJob.OrderContext
 import js7.tests.StdoutTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
@@ -135,11 +136,12 @@ object StdoutTest
 
   private final class TestInternalJob extends InternalJob
   {
-    def processOrder(context: OrderContext) =
+    def processOrder(orderContext: OrderContext) =
       OrderProcess(
         Task {
-          for (number <- context.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
-            Result(NamedValues("RESULT" -> NumberValue(number + 1)))
+          Outcome.Completed.fromChecked(
+            for (number <- orderContext.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
+              Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
   }
 }

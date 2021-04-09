@@ -78,6 +78,10 @@ object Problem
   def pure(message: String, cause: Option[Problem]): Problem =
     apply(message, cause)
 
+  @javaApi
+  def of(message: String): Problem =
+    pure(message)
+
   def fromThrowable(throwable: Throwable): Problem =
     new FromEagerThrowable(throwable)
 

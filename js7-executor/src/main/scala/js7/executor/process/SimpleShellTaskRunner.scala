@@ -1,22 +1,23 @@
 package js7.executor.process
 
-import javax.inject.{Inject, Singleton}
+import java.nio.file.Path
+import javax.inject.Singleton
 import js7.base.generic.Completed
 import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.job.TaskId
 import js7.data.job.TaskId.newGenerator
 import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.executor.configuration.{ExecutorConfiguration, TaskConfiguration}
+import js7.executor.StdChannels
+import js7.executor.configuration.{JobExecutorConf, ProcessKillScript, TaskConfiguration}
 import js7.executor.process.ShellScriptProcess.startPipedShellScript
 import js7.executor.process.SimpleShellTaskRunner._
-import js7.executor.task.{BaseAgentTask, StdChannels, TaskRunner}
+import js7.executor.task.{BaseAgentTask, TaskRunner}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
@@ -30,7 +31,9 @@ final class SimpleShellTaskRunner(
   conf: TaskConfiguration,
   taskId: TaskId,
   synchronizedStartProcess: RichProcessStartSynchronizer,
-  executorConfiguration: ExecutorConfiguration)
+  temporaryDirectory: Path,
+  workingDirectory: Path,
+  killScript: Option[ProcessKillScript])
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends TaskRunner
 {
@@ -47,9 +50,8 @@ extends TaskRunner
   }
 
   private val terminatedPromise = Promise[Completed]()
-  private val startedAt = Timestamp.now
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(
-    executorConfiguration.temporaryDirectory,
+    temporaryDirectory,
     v1Compatible = conf.v1Compatible)
   private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
@@ -102,11 +104,11 @@ extends TaskRunner
     else {
       val processConfiguration = ProcessConfiguration(
         stdFileMap = Map.empty,
-        encoding = ExecutorConfiguration.FileEncoding,
-        workingDirectory = Some(executorConfiguration.jobWorkingDirectory),
+        encoding = JobExecutorConf.FileEncoding,
+        workingDirectory = Some(workingDirectory),
         additionalEnvironment = env + returnValuesProvider.toEnv,
         maybeTaskId = Some(taskId),
-        killScriptOption = executorConfiguration.killScript)
+        killScriptOption = killScript)
       synchronizedStartProcess {
         startPipedShellScript(conf.commandLine, processConfiguration, stdChannels)
       } andThen { case Success(richProcess) =>
@@ -136,19 +138,5 @@ object SimpleShellTaskRunner
     private val generator = newGenerator()
     def hasNext = generator.hasNext
     def next() = generator.next()
-  }
-
-  @Singleton
-  final class Factory @Inject()(
-    taskIdGenerator: TaskIdGenerator,
-    synchronizedStartProcess: RichProcessStartSynchronizer,
-    executorConfiguration: ExecutorConfiguration)
-    (implicit scheduler: Scheduler, iox: IOExecutor)
-  extends TaskRunner.Factory
-  {
-    def apply(conf: TaskConfiguration) = {
-      val taskId = taskIdGenerator.next()
-      new SimpleShellTaskRunner(conf, taskId, synchronizedStartProcess, executorConfiguration)
-    }
   }
 }

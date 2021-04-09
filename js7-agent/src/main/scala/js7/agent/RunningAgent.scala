@@ -72,7 +72,7 @@ extends AutoCloseable {
   def close() = closer.close()
 
   def terminate(processSignal: Option[ProcessSignal] = None): Task[AgentTermination.Terminate] =
-    if (terminated.isCompleted)  // Works only if previous termination has been completed
+    if (terminated.isCompleted)  // Works only if previous termination has been run
       Task.fromFuture(terminated)
     else {
       logger.debug("terminate")

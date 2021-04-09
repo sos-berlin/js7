@@ -12,7 +12,6 @@ import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
-import js7.base.io.process.Processes.ShellFileExtension
 import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
 import js7.common.akkahttp.web.data.WebServerPort
@@ -21,9 +20,11 @@ import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.common.utils.Tests.isTest
 import js7.core.configuration.CommonConfiguration
-import js7.executor.configuration.{ExecutorConfiguration, KillScriptConf, ProcessKillScript}
+import js7.executor.configuration.{JobExecutorConf, ProcessKillScript}
 import js7.executor.process.ProcessKillScriptProvider
+import js7.executor.task.TaskRunner
 import js7.journal.configuration.JournalConf
+import monix.execution.schedulers.SchedulerService
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
@@ -61,7 +62,7 @@ extends CommonConfiguration
     case Some(o) => copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
   }
 
-  def executableDirectory: Path =
+  def executablesDirectory: Path =
     (configDirectory / "executables").toRealPath()
 
   def stateDirectory: Path =
@@ -94,19 +95,21 @@ extends CommonConfiguration
     }
   }
 
-  private def killScriptConf: Option[KillScriptConf] =
-    killScript.map(o => KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
+  //??? private def killScriptConf: Option[KillScriptConf] =
+  //  killScript.map(o => KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
 
   lazy val temporaryDirectory: Path =
     dataDirectory  / "tmp"
 
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  def toExecutorConfiguration =
-    ExecutorConfiguration(
-      jobWorkingDirectory = jobWorkingDirectory,
+  def toExecutorConf(newTaskRunner: TaskRunner.Factory, blockingJobScheduler: SchedulerService) =
+    JobExecutorConf(
+      executablesDirectory = executablesDirectory,
       temporaryDirectory = temporaryDirectory,
-      killScript = killScript)
+      scriptInjectionAllowed = scriptInjectionAllowed,
+      newTaskRunner = newTaskRunner,
+      blockingJobScheduler = blockingJobScheduler)
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +

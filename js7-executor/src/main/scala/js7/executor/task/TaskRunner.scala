@@ -1,10 +1,9 @@
 package js7.executor.task
 
-import com.google.inject.ImplementedBy
 import js7.base.io.process.ProcessSignal
 import js7.data.order.{OrderId, Outcome}
+import js7.executor.StdChannels
 import js7.executor.configuration.TaskConfiguration
-import js7.executor.process.SimpleShellTaskRunner
 import monix.eval.Task
 
 /**
@@ -24,7 +23,6 @@ trait TaskRunner
 
 object TaskRunner
 {
-  @ImplementedBy(classOf[SimpleShellTaskRunner.Factory])
   trait Factory {
     def apply(conf: TaskConfiguration): TaskRunner
   }

@@ -1,34 +1,42 @@
 package js7.executor.forjava.internal
 
+import io.vavr.control.{Either => VEither}
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.SetOnce
-import js7.executor.internal.InternalJob.OrderProcess
+import js7.data.order.Outcome
+import js7.data_for_java.vavr.VavrConverters._
+import js7.executor.OrderProcess
 import monix.eval.Task
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
 private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
 {
   private val checkedJobOnce = SetOnce[Checked[J]]  // SetOnce for late arriving Scheduler
 
-  def start(jJobContext: JavaJobContext, call: J => Task[Unit]): Task[Checked[Unit]] =
+  def callStart(jJobContext: JavaJobContext, call: J => Task[VEither[Problem, Void]]): Task[Checked[Unit]] =
     Task(instantiate(jJobContext))
-      .flatMapT { jInternalJob =>
-        val task = call(jInternalJob)
-          .materialize
-          .map(Checked.fromTry)
+      .flatMapT(jInternalJob =>
+        call(jInternalJob)
+          .map(_.toScala.rightAs(()))
+          .materializeIntoChecked
           .tapEval(checked => Task {
             checkedJobOnce := checked.map(_ => jInternalJob)
             checked
-          })
-        task
-      }
+          }))
+
+  def callStop(call: J => Task[Unit]): Task[Unit] =
+    Task.defer {
+      call(checkedJobOnce.orThrow.orThrow)
+    }
 
   private def instantiate(jJobContext: JavaJobContext): Checked[J] = {
     val cls = jJobContext.asScala.implementationClass
@@ -65,9 +73,16 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
         Problem.fromThrowable(t)
     }
 
-  def processOrder[C <: JavaOrderContext](context: C)(call: (J, C) => OrderProcess): OrderProcess =
+  def processOrder[C <: JavaOrderContext](javaOrderContext: C)(call: (J, C) => OrderProcess): OrderProcess =
     checkedJobOnce.checked.flatten match {
-      case Left(problem) => OrderProcess(Task.pure(Left(problem)))
-      case Right(jInternalJob) => call(jInternalJob, context)
+      case Left(problem) =>
+        OrderProcess(Task.pure(Outcome.Failed.fromProblem(problem)))
+
+      case Right(jInternalJob) =>
+        val orderProcess = call(jInternalJob, javaOrderContext)
+        orderProcess.copy(
+          run = orderProcess.run
+            .materialize
+            .map(Outcome.Completed.fromTry))
     }
 }

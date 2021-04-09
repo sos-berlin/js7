@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.data.lock.{LockId, LockState}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.{Scope, ValueSearch}
-import js7.data.value.{NamedValues, NumberValue, Value}
+import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
@@ -48,13 +48,12 @@ trait StateView
 
   final def makeScope(order: Order[Order.State]): Checked[Scope] =
     idToWorkflow(order.workflowId)
-      .map(StateView.makeScope(NamedValues.empty, order, _))
+      .map(StateView.makeScope(order, _))
 }
 
 object StateView
 {
   final def makeScope(
-    highPriorityArguments: NamedValues,
     order: Order[Order.State],
     workflow: Workflow,
     default: PartialFunction[String, Value] = PartialFunction.empty)
@@ -74,14 +73,13 @@ object StateView
 
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
           Right(
-            highPriorityArguments.get(name)
-              .orElse(
-                order.historicOutcomes.reverseIterator
-                  .collectFirst {
-                    case HistoricOutcome(_, outcome: Outcome.Completed)
-                      if outcome.namedValues.contains(name) =>
-                      outcome.namedValues(name)
-                  })
+            order.historicOutcomes
+              .reverseIterator
+              .collectFirst {
+                case HistoricOutcome(_, outcome: Outcome.Completed)
+                  if outcome.namedValues.contains(name) =>
+                  outcome.namedValues(name)
+              }
               .orElse(argument(name))
               .orElse(nameToMaybeDefault(name)))
 

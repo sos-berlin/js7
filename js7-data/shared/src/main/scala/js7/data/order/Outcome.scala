@@ -5,9 +5,10 @@ import io.circe.syntax._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.ReturnCode
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.NamedValues
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -39,6 +40,18 @@ object Outcome
         Succeeded(namedValues)
       else
         Failed(namedValues)
+
+    def fromChecked(checked: Checked[Outcome.Completed]): Outcome.Completed =
+      checked match {
+        case Left(problem) => Outcome.Failed.fromProblem(problem)
+        case Right(o) => o
+      }
+
+    def fromTry(tried: Try[Outcome.Completed]): Completed =
+      tried match {
+        case Failure(t) => Failed.fromThrowable(t)
+        case Success(o) => o
+      }
 
     private[Outcome] sealed trait Companion[A <: Completed] {
       protected def make(namedValues: NamedValues): A
@@ -94,6 +107,12 @@ object Outcome
 
     def apply(errorMessage: Option[String]): Failed =
       Failed(errorMessage, Map.empty)
+
+    def fromProblem(problem: Problem): Failed =
+      Failed(Some(problem.toString))
+
+    def fromThrowable(throwable: Throwable): Failed =
+      Failed(Some(throwable.toStringWithCauses))
 
     protected def make(namedValues: NamedValues): Failed = {
       if (namedValues.isEmpty)

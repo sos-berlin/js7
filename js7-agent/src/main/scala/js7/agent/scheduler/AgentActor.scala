@@ -28,13 +28,12 @@ import js7.common.akkautils.{Akkas, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.common.ActorRegister
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, KeyedEvent, Stamped}
-import js7.executor.task.TaskRunner
+import js7.executor.configuration.JobExecutorConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
@@ -42,7 +41,6 @@ import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, MainJournalingActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.schedulers.SchedulerService
 import scala.concurrent.{Future, Promise}
 import shapeless.tag
 
@@ -52,7 +50,7 @@ import shapeless.tag
 private[agent] final class AgentActor private(
   terminatePromise: Promise[AgentTermination.Terminate],
   agentConfiguration: AgentConfiguration,
-  newTaskRunner: TaskRunner.Factory,
+  executorConf: JobExecutorConf,
   eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
   (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
@@ -246,12 +244,6 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
     }
   }
 
-  private val blockingJobScheduler: SchedulerService = {
-    val scheduler = newUnlimitedScheduler("JS7 blocking job")
-    closer.onClose(scheduler.shutdown())
-    scheduler
-  }
-
   private def addOrderKeeper(controllerId: ControllerId, agentId: AgentId, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(AgentState, stateDirectory / s"controller-$controllerId")
 
@@ -270,11 +262,10 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
           agentId,
           recovered,
           signatureVerifier,
-          newTaskRunner,
+          executorConf,
           persistence,
           askTimeout = akkaAskTimeout,
-          agentConfiguration,
-          blockingJobScheduler)
+          agentConfiguration)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$controllerId"))
     controllerToOrderKeeper.insert(controllerId ->
@@ -322,12 +313,12 @@ object AgentActor
   @Singleton
   final class Factory @Inject private(
     agentConfiguration: AgentConfiguration,
-    newTaskRunner: TaskRunner.Factory,
+    executorConf: JobExecutorConf,
     eventIdGenerator: EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus)
     (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
-      new AgentActor(terminatePromise, agentConfiguration, newTaskRunner, eventIdGenerator, keyedEventBus)
+      new AgentActor(terminatePromise, agentConfiguration, executorConf, eventIdGenerator, keyedEventBus)
   }
 }

@@ -1,8 +1,10 @@
 package js7.executor.forjava.internal
 
+import io.vavr.control.{Either => VEither}
 import java.io.IOException
 import java.util.concurrent.{CompletableFuture, CompletionStage}
 import javax.annotation.Nonnull
+import js7.base.problem.Problem
 import js7.data_for_java.common.JavaUtils.Void
 import js7.executor.forjava.internal.JInternalJob._
 import js7.executor.internal.InternalJob.{JobContext, OrderContext}
@@ -17,11 +19,10 @@ import scala.concurrent.Future
 trait JInternalJob
 {
   @Nonnull
-  def start: CompletionStage[Void] =
-    CompletableFuture.completedFuture(Void)
+  def start: CompletionStage[VEither[Problem, Void]] =
+    CompletableFuture.completedFuture(VEither.right(Void))
     // Since Java 9: CompletableFuture.completedStage(Void)
 
-  /** Reserved. */
   @Nonnull
   final def stop: CompletionStage[Void] =
     CompletableFuture.completedFuture(Void)

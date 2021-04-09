@@ -14,7 +14,7 @@ sealed trait JobKey
 {
   def keyName: String
 
-  override def toString = s"JobKey($keyName)"
+  override def toString = s"Job:$keyName"
 }
 
 object JobKey

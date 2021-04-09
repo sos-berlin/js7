@@ -19,9 +19,10 @@ import js7.data.workflow.WorkflowPrinter.instructionToString
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.executor.OrderProcess
 import js7.executor.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{JobContext, OrderContext, OrderProcess, Result}
+import js7.executor.internal.InternalJob.{JobContext, OrderContext}
 import js7.tests.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -30,6 +31,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
 import monix.reactive.Observable
 import org.scalactic.source
+import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
@@ -102,6 +104,8 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
+  private val blockingThreadPoolName = "JS7 blocking job"
+
   for (jobClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]))
     jobClass.getName - {
       val n = 10
@@ -111,8 +115,8 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
           agentId,
           InternalExecutable(
             jobClass.getName,
-            Map("expectedThreadPrefix" -> StringValue("JS7 blocking job ")),
-            ObjectExpression(Map("arg" -> NamedValue.last("ARG")))),
+            jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
+            arguments = ObjectExpression(Map("arg" -> NamedValue("ARG")))),
           taskLimit = n)),
         indexedOrderIds
           .map { case (i, orderId) => orderId -> Map("ARG" -> NumberValue(i)) }
@@ -123,6 +127,14 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
           }
           .toMap)
     }
+
+  "stop" in {
+    controller.terminate() await 99.s
+    agent.terminate() await 99.s
+    assert(SimpleJob.stopped)
+    assert(TestJInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
+    assert(TestBlockingInternalJob.stoppedCalled.containsKey(blockingThreadPoolName))
+  }
 
   private def addInternalJobTest(
     execute: Execute,
@@ -218,11 +230,23 @@ object InternalJobTest
 
   private object SimpleJob extends InternalJob
   {
-    def processOrder(context: OrderContext) =
-      OrderProcess(
-        Task {
-          Right(Result(NamedValues.empty))
-        })
+    var started = false
+    var stopped = false
+
+    override def start = Task {
+      started = true
+      Right(())
+    }
+
+    override def stop = Task {
+      assert(started)
+      stopped = true
+    }
+
+    def processOrder(orderContext: OrderContext) = {
+      assert(started)
+      OrderProcess(Task(Outcome.succeeded))
+    }
   }
 
   private final class AddOneJob(jobContext: JobContext) extends InternalJob
@@ -236,15 +260,16 @@ object InternalJobTest
       Right(())
     }
 
-    def processOrder(context: OrderContext) =
+    def processOrder(orderContext: OrderContext) =
       OrderProcess(
         Task {
           processCount += 1
-          for (number <- context.scope.evalToBigDecimal("$ARG")) yield
-            Result(NamedValues(
-              "START" -> NumberValue(startCount.get()),
-              "PROCESS" -> NumberValue(processCount.get()),
-              "RESULT" -> NumberValue(number + 1)))
+          Outcome.Completed.fromChecked(
+            for (number <- orderContext.scope.evalToBigDecimal("$ARG")) yield
+              Outcome.Succeeded(NamedValues(
+                "START" -> NumberValue(startCount.get()),
+                "PROCESS" -> NumberValue(processCount.get()),
+                "RESULT" -> NumberValue(number + 1))))
         })
   }
 }

@@ -8,13 +8,13 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId}
-import js7.data.value.NamedValues
+import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{OrderContext, OrderProcess, Result}
+import js7.executor.internal.InternalJob.OrderContext
 import js7.tests.JobActorStarvationTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.catnap.Semaphore
@@ -88,6 +88,6 @@ object JobActorStarvationTest
     def processOrder(orderContext: OrderContext) =
       OrderProcess(
         semaphore.flatMap(_.acquire)
-          .as(Right(Result(NamedValues.empty))))
+          .as(Outcome.succeeded))
   }
 }

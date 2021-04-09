@@ -1,7 +1,7 @@
 package js7.data.job
 
-import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 import js7.data.value.expression.{Evaluator, Scope, ValueSearch}
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
@@ -54,7 +54,7 @@ final class CommandLineEvaluatorTest extends AnyFreeSpec
 
   private val commandLineEvaluator =
     new CommandLineEvaluator(
-      new Evaluator(
+      Evaluator(
         new Scope {
           val symbolToValue = PartialFunction.empty
 

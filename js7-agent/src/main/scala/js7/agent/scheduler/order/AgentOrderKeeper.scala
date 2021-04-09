@@ -9,7 +9,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper._
@@ -39,7 +39,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
-import js7.data.job.JobKey
+import js7.data.job.JobConf
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
@@ -47,8 +47,8 @@ import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.instructions.Execute
+import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
-import js7.executor.task.TaskRunner
 import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
@@ -69,11 +69,10 @@ final class AgentOrderKeeper(
   ownAgentId: AgentId,
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
-  newTaskRunner: TaskRunner.Factory,
+  executorConf: JobExecutorConf,
   persistence: JournaledStatePersistence[AgentState],
   implicit private val askTimeout: Timeout,
-  conf: AgentConfiguration,
-  blockingJobScheduler: Scheduler)
+  conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentState, Event]
 with Stash {
@@ -436,15 +435,12 @@ with Stash {
   private def startJobActors(workflow: Workflow): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
       if (job.agentId == ownAgentId) {
+        val jobConf = JobConf(
+          jobKey, job, workflow,
+          sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
         val jobActor = watch(actorOf(
-          JobActor.props(JobActor.Conf(
-            jobKey, job, newTaskRunner,
-            temporaryDirectory = conf.temporaryDirectory,
-            executablesDirectory = conf.executableDirectory,
-            scriptInjectionAllowed = conf.scriptInjectionAllowed,
-            sigkillProcessesAfter = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay,
-            blockingJobScheduler = blockingJobScheduler))
-          /*TODO name actor?*/))
+          JobActor.props(jobConf, executorConf),
+          uniqueActorName(encodeAsActorName("Job-" + jobKey.keyName))))
         jobRegister.insert(jobKey, jobActor)
       }
     }
@@ -560,7 +556,7 @@ with Stash {
             logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
 
           case Some(orderEntry) =>
-            startProcessing(orderEntry, jobEntry.jobKey, jobEntry)
+            startProcessing(orderEntry, jobEntry)
             jobEntry.waitingForOrder = false
         }
 
@@ -568,13 +564,13 @@ with Stash {
         jobEntry.waitingForOrder = true
     }
 
-  private def startProcessing(orderEntry: OrderEntry, jobKey: JobKey, jobEntry: JobEntry): Unit = {
+  private def startProcessing(orderEntry: OrderEntry, jobEntry: JobEntry): Unit = {
     val defaultArguments = orderEntry.instruction match {
       case o: Execute.Named => o.defaultArguments
       case _ => NamedValues.empty
     }
     //assertThat(job.jobPath == jobEntry.jobPath)
-    orderEntry.actor ! OrderActor.Input.StartProcessing(jobKey, jobEntry.actor, defaultArguments)
+    orderEntry.actor ! OrderActor.Input.StartProcessing(jobEntry.actor, defaultArguments)
   }
 
   private def removeOrder(orderId: OrderId): Unit =
