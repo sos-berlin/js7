@@ -10,20 +10,21 @@ import js7.data.value.expression.Scope
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.Workflow
 import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observer
 
 trait InternalJob
 {
+  protected type Step = InternalJob.Step
+
   def start: Task[Checked[Unit]] =
     Task.pure(Right(()))
 
   def stop: Task[Unit] =
     Task.unit
 
-  def processOrder(orderContext: OrderContext): OrderProcess
+  def processOrder(step: Step): OrderProcess
 }
 
 object InternalJob
@@ -35,7 +36,7 @@ object InternalJob
     ioExecutor: IOExecutor,
     blockingJobScheduler: Scheduler)
 
-  final case class OrderContext private(
+  final case class Step private(
     arguments: NamedValues,
     order: Order[Processing],
     workflow: Workflow,

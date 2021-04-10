@@ -14,7 +14,6 @@ import js7.data.value.{NamedValues, NumberValue, Value}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.OrderContext
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import org.scalatest.freespec.AnyFreeSpec
@@ -86,11 +85,11 @@ object PlayTest
 
   private final class TestInternalJob extends InternalJob
   {
-    def processOrder(orderContext: OrderContext) =
+    def processOrder(step: Step) =
       OrderProcess(
         Task {
           Outcome.Completed.fromChecked(
-            for (number <- orderContext.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
+            for (number <- step.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
               Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
   }

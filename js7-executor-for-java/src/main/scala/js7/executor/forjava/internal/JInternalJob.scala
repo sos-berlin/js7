@@ -7,8 +7,7 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data_for_java.common.JavaUtils.Void
 import js7.executor.forjava.internal.JInternalJob._
-import js7.executor.internal.InternalJob.{JobContext, OrderContext}
-import js7.executor.internal.InternalJobAdapter
+import js7.executor.internal.{InternalJob, InternalJobAdapter}
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.Scheduler
 import monix.reactive.Observer
@@ -28,16 +27,16 @@ trait JInternalJob
     CompletableFuture.completedFuture(Void)
 
   @Nonnull
-  def processOrder(@Nonnull orderContext: JOrderContext): JOrderProcess
+  def processOrder(@Nonnull step: Step): JOrderProcess
 }
 
 object JInternalJob
 {
-  final case class JJobContext(asScala: JobContext)
+  final case class JobContext(asScala: InternalJob.JobContext)
   extends JavaJobContext
 
-  final case class JOrderContext(asScala: OrderContext)(private implicit val s: Scheduler)
-  extends JavaOrderContext
+  final case class Step(asScala: InternalJob.Step)(private implicit val s: Scheduler)
+  extends JavaJobStep
   {
     def sendOut(string: String): CompletionStage[Void] =
       send(string, asScala.outObserver)

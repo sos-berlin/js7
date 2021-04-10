@@ -22,7 +22,7 @@ import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinte
 import js7.executor.OrderProcess
 import js7.executor.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{JobContext, OrderContext}
+import js7.executor.internal.InternalJob.JobContext
 import js7.tests.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -243,7 +243,7 @@ object InternalJobTest
       stopped = true
     }
 
-    def processOrder(orderContext: OrderContext) = {
+    def processOrder(step: Step) = {
       assert(started)
       OrderProcess(Task(Outcome.succeeded))
     }
@@ -260,12 +260,12 @@ object InternalJobTest
       Right(())
     }
 
-    def processOrder(orderContext: OrderContext) =
+    def processOrder(step: Step) =
       OrderProcess(
         Task {
           processCount += 1
           Outcome.Completed.fromChecked(
-            for (number <- orderContext.scope.evalToBigDecimal("$ARG")) yield
+            for (number <- step.scope.evalToBigDecimal("$ARG")) yield
               Outcome.Succeeded(NamedValues(
                 "START" -> NumberValue(startCount.get()),
                 "PROCESS" -> NumberValue(processCount.get()),

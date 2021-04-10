@@ -22,7 +22,6 @@ import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.OrderContext
 import js7.tests.ExecuteTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
@@ -342,11 +341,11 @@ object ExecuteTest
 
   private final class TestInternalJob extends InternalJob
   {
-    def processOrder(orderContext: OrderContext) =
+    def processOrder(step: Step) =
       OrderProcess(
         Task {
           Outcome.Completed.fromChecked(
-            for (number <- orderContext.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
+            for (number <- step.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
               Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
   }

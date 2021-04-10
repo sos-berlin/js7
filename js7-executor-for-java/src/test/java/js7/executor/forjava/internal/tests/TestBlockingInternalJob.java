@@ -21,13 +21,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 public final class TestBlockingInternalJob implements BlockingInternalJob
 {
+    // Public static for testing
     public static Map<String, Boolean> stoppedCalled = new ConcurrentHashMap<>();
+
     private static final Logger logger = LoggerFactory.getLogger(TestBlockingInternalJob.class);
 
     private final String expectedBlockingThreadPoolName;
     private boolean startCalled = false;
 
-    public TestBlockingInternalJob(JJobContext jobContext) {
+    public TestBlockingInternalJob(JobContext jobContext) {
         expectedBlockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
         assertSpecialThread();
     }
@@ -44,29 +46,29 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         stoppedCalled.put(expectedBlockingThreadPoolName, true);
     }
 
-    public JOutcome.Completed processOrder(JOrderContext context) throws Exception {
+    public JOutcome.Completed processOrder(Step step) throws Exception {
         assertThat(startCalled, equalTo(true));
 
         Either<Problem,WorkflowJob.Name> maybeJobName =
-            context.workflow().checkedJobName(context.order().workflowPosition().position());
+            step.workflow().checkedJobName(step.order().workflowPosition().position());
 
-        logger.debug("processOrder " + context.order().id());
+        logger.debug("processOrder " + step.order().id());
         // Blocking is allowed here, because it is a BlockingInternalJob
         assertSpecialThread();
         Thread.sleep(500);
         doSomethingInParallel();
 
-        context.out().println("TEST FOR OUT");
-        context.out().println("FROM " + getClass().getName());
+        step.out().println("TEST FOR OUT");
+        step.out().println("FROM " + getClass().getName());
 
         // Test many write()
         String string = "TEST FOR ERR";
         for (int i = 0; i < string.length(); i++) {
-            context.errWriter().write(string.charAt(i));
+            step.errWriter().write(string.charAt(i));
         }
-        context.errWriter().write('\n');
+        step.errWriter().write('\n');
 
-        Value maybeValue = context.arguments().get("arg");  // May be null
+        Value maybeValue = step.arguments().get("arg");  // May be null
         // 💥 May throw NullPointerException or ArithmeticException 💥
         long arg = ((NumberValue)maybeValue).toBigDecimal().longValueExact();
         long result = arg + 1;

@@ -14,19 +14,19 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{JobContext, OrderContext}
+import js7.executor.internal.InternalJob.JobContext
 import js7.tests.jobs.DeleteFileJob._
 import monix.eval.Task
 
 final class DeleteFileJob(jobContext: JobContext) extends InternalJob
 {
-  def processOrder(orderContext: OrderContext) =
+  def processOrder(step: Step) =
     OrderProcess(
-      orderContext.arguments.checked("file")
-        .orElse(orderContext.order.arguments.checked(FileArgumentName))
+      step.arguments.checked("file")
+        .orElse(step.order.arguments.checked(FileArgumentName))
         .flatMap(_.toStringValueString)
         .map(Paths.get(_))
-        .traverse(deleteFile(_, orderContext.send(Stderr, _)))
+        .traverse(deleteFile(_, step.send(Stderr, _)))
         .rightAs(Outcome.succeeded)
         .map(Outcome.Completed.fromChecked))
 

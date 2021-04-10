@@ -8,8 +8,7 @@ import js7.base.utils.Lazy
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.order.JOutcome
 import js7.executor.forjava.internal.BlockingInternalJob._
-import js7.executor.internal.InternalJob.{JobContext, OrderContext}
-import js7.executor.internal.InternalJobAdapter
+import js7.executor.internal.{InternalJob, InternalJobAdapter}
 
 /** For non-asynchronous thread-blocking internal Jobs written in Java.
   * Constructor and methods are executed in (from call to call changing) threads
@@ -41,16 +40,16 @@ trait BlockingInternalJob
     * <p>
     * Executed in a seperate thread. */
   @throws[Exception] @Nonnull
-  def processOrder(@Nonnull context: JOrderContext): JOutcome.Completed
+  def processOrder(@Nonnull step: Step): JOutcome.Completed
 }
 
 object BlockingInternalJob
 {
-  final case class JJobContext(asScala: JobContext)
+  final case class JobContext(asScala: InternalJob.JobContext)
   extends JavaJobContext
 
-  final case class JOrderContext(asScala: OrderContext, outWriter: Writer, errWriter: Writer)
-  extends JavaOrderContext
+  final case class Step(asScala: InternalJob.Step, outWriter: Writer, errWriter: Writer)
+  extends JavaJobStep
   {
     private lazy val outLazy = Lazy(new PrintWriter(outWriter, true))
     private lazy val errLazy = Lazy(new PrintWriter(errWriter, true))
@@ -58,9 +57,8 @@ object BlockingInternalJob
     lazy val out: PrintWriter = outLazy()
     lazy val err: PrintWriter = errLazy()
 
-    private[internal] def close(): Unit = {
-      for (o <- outLazy) o.close()
-      for (o <- errLazy) o.close()
-    }
+    private[internal] def close(): Unit =
+      try for (o <- outLazy) o.close()
+      finally for (o <- errLazy) o.close()
   }
 }

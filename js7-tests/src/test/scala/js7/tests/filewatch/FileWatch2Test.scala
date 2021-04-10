@@ -28,7 +28,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.OrderContext
 import js7.tests.filewatch.FileWatch2Test._
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -372,7 +371,7 @@ object FileWatch2Test
 
   final class SemaphoreJob extends InternalJob
   {
-    def processOrder(orderContext: OrderContext) =
+    def processOrder(step: Step) =
       OrderProcess(
         semaphore.flatMap(_.acquire)
           .as(Outcome.succeeded))

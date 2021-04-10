@@ -5,15 +5,15 @@ import js7.data.value.Value
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.order.JOrder
 import js7.data_for_java.workflow.JWorkflow
-import js7.executor.internal.InternalJob.OrderContext
+import js7.executor.internal.InternalJob.Step
 import scala.jdk.CollectionConverters._
 
-trait JavaOrderContext extends JavaWrapper
+trait JavaJobStep extends JavaWrapper
 {
-  type AsScala = OrderContext
+  type AsScala = Step
 
   @Nonnull
-  def asScala: OrderContext
+  def asScala: Step
 
   @Nonnull
   final lazy val order =

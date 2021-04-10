@@ -3,7 +3,7 @@ package js7.executor.forjava.internal
 import js7.base.problem.Checked
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.{JobContext, OrderContext}
+import js7.executor.internal.InternalJob.JobContext
 import monix.eval.Task
 
 private final class BlockingInternalJobAdapter(jobContext: JobContext)
@@ -12,7 +12,7 @@ extends InternalJob
   private val helper = new InternalJobAdapterHelper[BlockingInternalJob]
 
   override def start: Task[Checked[Unit]] =
-    helper.callStart(BlockingInternalJob.JJobContext(jobContext), job => Task(job.start()))
+    helper.callStart(BlockingInternalJob.JobContext(jobContext), job => Task(job.start()))
       .executeOn(jobContext.blockingJobScheduler)
 
   override def stop: Task[Unit] =
@@ -20,19 +20,19 @@ extends InternalJob
       stop()))
       .executeOn(jobContext.blockingJobScheduler)
 
-  def processOrder(orderContext: OrderContext) = {
+  def processOrder(step: Step) = {
     import jobContext.js7Scheduler
-    val jOrderContext = BlockingInternalJob.JOrderContext(orderContext,
-      outWriter = new ObserverWriter(orderContext.outObserver),
-      errWriter = new ObserverWriter(orderContext.errObserver))
-    val orderProcess = helper.processOrder(jOrderContext)(
-      (jInternalJob, jOrderContext) =>
+    val jStep = BlockingInternalJob.Step(step,
+      outWriter = new ObserverWriter(step.outObserver),
+      errWriter = new ObserverWriter(step.errObserver))
+    val orderProcess = helper.processOrder(jStep)(
+      (jInternalJob, jStep) =>
         OrderProcess(
-          Task { jInternalJob.processOrder(jOrderContext) }
+          Task { jInternalJob.processOrder(jStep) }
             .executeOn(jobContext.blockingJobScheduler)
             .map(_.asScala)))
     orderProcess.copy(
-      run = orderProcess.run.guarantee(Task(
-        jOrderContext.close())))
+      run = orderProcess.run
+        .guarantee(Task(jStep.close())))
   }
 }

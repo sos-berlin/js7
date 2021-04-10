@@ -25,10 +25,11 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 // For a simpler example, see TestBlockingInternalJob
 public final class TestJInternalJob implements JInternalJob
 {
+    // Public static for testing
+    public static Map<String, Boolean> stoppedCalled = new ConcurrentHashMap<>();
+
     private static final Logger logger = LoggerFactory.getLogger(TestBlockingInternalJob.class);
     private static final int delayMillis = 500;
-
-    public static Map<String, Boolean> stoppedCalled = new ConcurrentHashMap<>();
 
     private final String blockingThreadPoolName;
     private volatile String started = "NOT STARTED";
@@ -39,7 +40,7 @@ public final class TestJInternalJob implements JInternalJob
       return runnable -> scheduler.schedule(() -> commonPool().execute(runnable), delay, unit);
     }
 
-    public TestJInternalJob(JJobContext jobContext) {
+    public TestJInternalJob(JobContext jobContext) {
         blockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
     }
 
@@ -60,25 +61,25 @@ public final class TestJInternalJob implements JInternalJob
             });
     }
 
-    public JOrderProcess processOrder(JOrderContext context) {
+    public JOrderProcess processOrder(Step step) {
         return JOrderProcess.of(
             CompletableFuture
                 .supplyAsync(
-                    () -> process(context),
+                    () -> process(step),
                     delayedExecutor(delayMillis, MILLISECONDS))
-                .thenCombine(context.sendOut("TEST FOR OUT" + lineSeparator()), (a, b) -> a)
-                .thenCombine(context.sendOut("FROM " + TestJInternalJob.class.getName() + lineSeparator()), (a, b) -> a)
-                .thenCombine(context.sendErr("TEST FOR ERR" + lineSeparator()), (a, b) -> a));
+                .thenCombine(step.sendOut("TEST FOR OUT" + lineSeparator()), (a, b) -> a)
+                .thenCombine(step.sendOut("FROM " + TestJInternalJob.class.getName() + lineSeparator()), (a, b) -> a)
+                .thenCombine(step.sendErr("TEST FOR ERR" + lineSeparator()), (a, b) -> a));
     }
 
-    private JOutcome.Completed process(JOrderContext context) {
-        logger.debug("processOrder " + context.order().id());
+    private JOutcome.Completed process(Step step) {
+        logger.debug("processOrder " + step.order().id());
         // JS7 guarantees having awaited completion of the `start` method
         if (!started.equals("STARTED")) {
             throw new RuntimeException("NOT STARTED");
         }
         // 💥 May throw NullPointerException or ArithmeticException 💥
-        long arg = ((NumberValue)context.arguments().get("arg")).toBigDecimal().longValueExact();
+        long arg = ((NumberValue)step.arguments().get("arg")).toBigDecimal().longValueExact();
         long result = arg + 1;
         return JOutcome.succeeded(
             singletonMap("RESULT", NumberValue.of(result)));

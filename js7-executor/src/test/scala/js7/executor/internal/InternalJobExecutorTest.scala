@@ -14,7 +14,6 @@ import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.internal.InternalJob.OrderContext
 import js7.executor.internal.InternalJobExecutorTest._
 import js7.executor.{OrderProcess, ProcessOrder, StdChannels}
 import monix.eval.Task
@@ -63,15 +62,15 @@ object InternalJobExecutorTest
 
   final class TestInternalJob extends InternalJob
   {
-    override def processOrder(orderContext: OrderContext) =
+    override def processOrder(step: Step) =
       OrderProcess(
-        Task.fromFuture(orderContext.outObserver.onNext("OUT 1/")) >>
-        Task.fromFuture(orderContext.errObserver.onNext("ERR 1/")) >>
-        Task.fromFuture(orderContext.outObserver.onNext("OUT 2")) >>
-        Task.fromFuture(orderContext.errObserver.onNext("ERR 2")) >>
+        Task.fromFuture(step.outObserver.onNext("OUT 1/")) >>
+        Task.fromFuture(step.errObserver.onNext("ERR 1/")) >>
+        Task.fromFuture(step.outObserver.onNext("OUT 2")) >>
+        Task.fromFuture(step.errObserver.onNext("ERR 2")) >>
         Task {
           Outcome.Completed.fromChecked(
-          orderContext.arguments.checked("ARG")
+          step.arguments.checked("ARG")
             .flatMap(_.narrow[NumberValue])
             .map(_.number + 1)
             .map(result => Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(result)))))

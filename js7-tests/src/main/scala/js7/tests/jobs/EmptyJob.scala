@@ -7,12 +7,11 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.OrderContext
 import monix.eval.Task
 
 final class EmptyJob extends InternalJob
 {
-  def processOrder(orderContext: OrderContext) =
+  def processOrder(step: Step) =
     OrderProcess(Task.pure(Outcome.succeeded))
 }
 

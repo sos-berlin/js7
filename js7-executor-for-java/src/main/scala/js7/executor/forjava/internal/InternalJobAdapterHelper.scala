@@ -16,7 +16,6 @@ import monix.eval.Task
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
 
 private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
 {
@@ -73,13 +72,13 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
         Problem.fromThrowable(t)
     }
 
-  def processOrder[C <: JavaOrderContext](javaOrderContext: C)(call: (J, C) => OrderProcess): OrderProcess =
+  def processOrder[St <: JavaJobStep](step: St)(call: (J, St) => OrderProcess): OrderProcess =
     checkedJobOnce.checked.flatten match {
       case Left(problem) =>
         OrderProcess(Task.pure(Outcome.Failed.fromProblem(problem)))
 
       case Right(jInternalJob) =>
-        val orderProcess = call(jInternalJob, javaOrderContext)
+        val orderProcess = call(jInternalJob, step)
         orderProcess.copy(
           run = orderProcess.run
             .materialize

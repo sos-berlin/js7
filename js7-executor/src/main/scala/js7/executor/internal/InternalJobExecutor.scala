@@ -12,7 +12,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{InternalExecutable, JobConf}
 import js7.data.order.Outcome
 import js7.data.value.expression.Evaluator
-import js7.executor.internal.InternalJob.{JobContext, OrderContext}
+import js7.executor.internal.InternalJob.{JobContext, Step}
 import js7.executor.internal.InternalJobExecutor._
 import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
@@ -55,7 +55,7 @@ extends JobExecutor
           OrderProcess(
             run = start
               .map(_.map(_ =>
-                internalJob.processOrder(OrderContext(
+                internalJob.processOrder(Step(
                   arguments = arguments,
                   processOrder.order,
                   processOrder.workflow,

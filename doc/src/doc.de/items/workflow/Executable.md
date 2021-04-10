@@ -8,7 +8,6 @@ Beispiel
   "env": {
     "MY_ENV": "$myOrderArgument"
   }
-
 }
 ````
 Ein Executable wird im WorkflowJob und in der Execute-Anweisung verwendet.
@@ -124,32 +123,31 @@ package js7.executor.forjava.internal.tests;
 import java.util.concurrent.CompletableFuture;
 import js7.executor.forjava.internal.JInternalJob;
 import js7.executor.forjava.internal.JOrderProcess;
-import js7.executor.forjava.internal.JOrderResult;
+import js7.data_for_java.order.JOutcome;
 import static java.util.Collections.emptyMap;
 
 /** Skeleton for a JInternalJob implementation. */
 public final class EmptyJInternalJob implements JInternalJob
 {
-    public JOrderProcess processOrder(JOrderContext context) {
+    public JOrderProcess processOrder(Step step) {
         return JOrderProcess.of(
             CompletableFuture.supplyAsync(
-                () -> JOrderResult.of(emptyMap())));
+                () -> JOutcome.succeeded()));
     }
 }
 ```
 `processOrder` liefert sofort ein `OrderProcess` zurück,
-dessen einziges Element ein `CompletionStage<JOrderResult>` ist,
-dass aus `JOrderContext` ein `JResult` berechnet.
-`processOrder` kann noch in einem Thread des Agenten laufen und soll deshalb nichts anderes tun,
-als eine `Future` (genauer: `CompletableStage`) zu starten und
+dessen einziges Element ein `CompletionStage<JOutcome.Completed>` ist,
+das aus `Step` ein `JOutcome.Completed` berechnet.
+`processOrder` kann noch in einem Thread des Agenten laufen und soll deshalb nichts anderes tun, als eine `Future` (genauer: `CompletableStage`) zu starten und
 ohne deren Ergebnis abzuwarten in `JOrderProces` zurückzugeben.
 
 Die üblichen Regeln für Futures und den betreibenden `Executor` gelten.
 (Dokumentation dazu vielleicht hier: https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html)
 
-Der Parameter `JOrderContext` mit vor allem den Parametern ist unten beschrieben.
+Der Parameter `Step` ist unten beschrieben.
 
-`JResult.of` erwartet eine `Map<String, Value>` mit dem Ergebnis der Ausführung.
+`JOutcome.succeeded` erwartet optional eine `Map<String, Value>` mit dem Ergebnis der Ausführung.
 
 #### JJobContext
 
@@ -158,13 +156,13 @@ der im Wesentlichen das folgende Feld enthält:
 * `jobArguments`, eine `Map<String, Value>` mit den für den Job (nicht Auftragsschritt)
   bestimmten Parametern.
 
-#### JOrderContext
-`JOrderContext` stellt für einen Auftragsschritt bereit:
+#### Step
+`Step` stellt für einen Auftragsschritt bereit:
 * `arguments`, eine `Map<String, Value>` mit den deklarieren Parametern (s.u.),
 * `order`, ein `JOrder`, also der Auftrag, und
 * `workflow`, ein `JWorkflow`, also der Workflow, in dem sich der Auftrag befindet.
 
-In den meisten Fällen wird man mit `arguments` auskommen.
+In den meisten Fällen wird man mit `arguments`, den deklarierenten Parametern, auskommen.
 
 ### BlockingInternalJob
 
@@ -177,6 +175,7 @@ unbegrenzten Threadpool ausführen.
 ⚠️ Viele parallel ausgeführte Auftragsschritte könnten
 den Betrieb des Agenten beeinträchtigen,
 wenn dessen Threads nicht mehr genug CPU zugeteilt bekommen.
+Das `taskLimit` der Jobs sollte mit Bedacht eingestellt sein.
 
 Minimales Beispiel für einen internen Job, der nichts tut:
 
@@ -184,13 +183,13 @@ Minimales Beispiel für einen internen Job, der nichts tut:
 package js7.executor.forjava.internal.tests;
 
 import js7.executor.forjava.internal.BlockingInternalJob;
-import js7.executor.forjava.internal.JOrderResult;
+import js7.data_for_java.order.JOutcome;
 import static java.util.Collections.emptyMap;
 
 public final class EmptyBlockingInternalJob implements BlockingInternalJob
 {
-    public JOrderResult processOrder(JOrderContext context) {
-        return JOrderResult.of(emptyMap());
+    public JOutcome.Completed processOrder(Step step) {
+        return JOutcome.succeeded(emptyMap());
     }
 }
 ```
@@ -202,8 +201,8 @@ der im Wesentlichen das folgende Feld enthält:
 * `jobArguments`, eine `Map<String, Value>` mit den für den Job (nicht Auftragsschritt)
   bestimmten Parametern.
 
-#### JOrderContext
-`JOrderContext` stellt für einen Auftragsschritt bereit:
+#### Step
+`Step` (eigentlich `JBlockingJob.Step`) stellt für einen Auftragsschritt bereit:
 * `arguments`: eine `Map<String, Value>` mit den deklarieren Parametern (s.u.),
 * `order`: ein `JOrder`, also der Auftrag, und
 * `workflow`: ein `JWorkflow`, also der Workflow, in dem sich der Auftrag befindet.
@@ -220,12 +219,20 @@ oder man verwendet einen ausreichend gepufferten `BufferedWriter`.
 
 ### Fehlerbehandlung
 
-Ich habe mich hier gegen die Rückgabe von `Either<Problem, ...>` entschieden.
-Es erscheint mir einfacher, vom positiven Fall keines Fehlers auszugegehen.
-Fehler können traditionell per Exception zurückgegeben werden.
+Bei einer Exception scheitert der Auftragsschritt.
 
-Vielleicht bestimmen wir eine bestimmte Exception für
-vorhergesehene, standardisierte Fehlerfälle.
+`JOutcome.Completed` hat seit Subtypen:
+
+* `JOutcome.Succeeded` für den Erfolgsfall.
+  Die Methoden dafür sind
+  * `JOutcome.succeeded()` und
+  * `JOutcome.succeeded(Map<String, Value>)`
+* `JOutcome.Failed` für den Fehlerfall.
+  Der Typ lässt den Auftragsschritt scheitern.
+  Die Methoden dafür sind
+  * `JOutcome.failed(String message)` und
+  * `JOutcome.failed(String message, Map<String, Value>)`
+
 
 #### JSON
 
