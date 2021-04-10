@@ -2,15 +2,17 @@ package js7.executor.process
 
 import cats.implicits._
 import java.util.Locale.ROOT
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.value.StringValue
 import js7.data.value.expression.Evaluator
 import js7.data.value.expression.Expression.ObjectExpression
-import js7.executor.{OrderProcess, ProcessOrder}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
+import js7.executor.{OrderProcess, ProcessOrder}
+import monix.eval.Task
 
 trait ProcessJobExecutor extends JobExecutor
 {
@@ -20,14 +22,23 @@ trait ProcessJobExecutor extends JobExecutor
   import executable.v1Compatible
   import jobConf.{jobKey, workflowJob}
 
+  final def start = Task.pure(Right(()))
+
   protected final def toOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
     val taskRunner = executorConf.newTaskRunner(
       TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine,
         v1Compatible = v1Compatible))
-    OrderProcess(
-      taskRunner.processOrder(processOrder.order.id, v1Env(processOrder) ++ startProcess.env, processOrder.stdChannels)
-        .guarantee(taskRunner.terminate),
-      taskRunner.kill)
+    new OrderProcess {
+      def run = taskRunner
+        .processOrder(
+          processOrder.order.id,
+          v1Env(processOrder) ++ startProcess.env,
+          processOrder.stdChannels)
+        .guarantee(taskRunner.terminate)
+
+      override def kill(immediately: Boolean) =
+        taskRunner.kill(if (immediately: Boolean) SIGKILL else SIGTERM)
+    }
   }
 
   private def v1Env(processOrder: ProcessOrder): Map[String, String] =

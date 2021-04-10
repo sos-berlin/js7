@@ -18,6 +18,9 @@ object CancelMode
 
   final case class FreshOrStarted(kill: Option[Kill] = None) extends CancelMode
 
+  def kill(immediately: Boolean = false, workflowPosition: Option[WorkflowPosition] = None): FreshOrStarted =
+    FreshOrStarted(Some(Kill(immediately = immediately, workflowPosition = workflowPosition)))
+
   final case class Kill(immediately: Boolean = false, workflowPosition: Option[WorkflowPosition] = None)
   object Kill {
     private implicit val customConfig = withDefaults

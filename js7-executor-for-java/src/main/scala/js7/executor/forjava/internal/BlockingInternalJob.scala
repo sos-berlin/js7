@@ -9,6 +9,7 @@ import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.order.JOutcome
 import js7.executor.forjava.internal.BlockingInternalJob._
 import js7.executor.internal.{InternalJob, InternalJobAdapter}
+import monix.execution.Scheduler
 
 /** For non-asynchronous thread-blocking internal Jobs written in Java.
   * Constructor and methods are executed in (from call to call changing) threads
@@ -60,5 +61,9 @@ object BlockingInternalJob
     private[internal] def close(): Unit =
       try for (o <- outLazy) o.close()
       finally for (o <- errLazy) o.close()
+  }
+  object Step {
+    def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =
+      Step(asScala, new ObserverWriter(asScala.outObserver), new ObserverWriter(asScala.errObserver))
   }
 }

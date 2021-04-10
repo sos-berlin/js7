@@ -23,7 +23,7 @@ extends InternalJob
   def processOrder(step: Step) = {
     import jobContext.js7Scheduler
     val jStep = JInternalJob.Step(step)
-    helper.processOrder(jStep)((jInternalJob, jStep) =>
-      jInternalJob.processOrder(jStep).asScala)
+    helper.callProcessOrder(_
+      .processOrder(jStep).asScala)
   }
 }

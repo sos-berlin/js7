@@ -5,19 +5,20 @@ import js7.agent.scheduler.job.JobActor._
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.JobConf
 import js7.data.order.{OrderId, Outcome}
-import js7.executor.{OrderProcess, ProcessOrder}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.internal.JobExecutor
+import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 final class JobActor private(
@@ -49,38 +50,54 @@ extends Actor with Stash
       handleIfReadyForOrder()
 
     case processOrder: ProcessOrder if waitingForNextOrder =>
+      import processOrder.order
       val sender = this.sender()
       waitingForNextOrder = false
-      val killed = isOrderKilled(processOrder.order.id)
       checkedJobExecutor match {
         case Left(problem) =>
           replyWithOrderProcessed(
-            Response.OrderProcessed(processOrder.order.id, Outcome.Disrupted(problem), killed))
+            Response.OrderProcessed(order.id, Outcome.Disrupted(problem), isOrderKilled(order.id)))
 
         case Right(jobExecutor: JobExecutor) =>
+          jobExecutor.start
+            .materializeIntoChecked
+            .map { checked =>
+              self.!(Internal.Step(processOrder, jobExecutor, checked))(sender)
+            }
+            .runToFuture
+      }
+
+    case Internal.Step(processOrder, jobExecutor, checkedStart) =>
+      import processOrder.order
+      checkedStart match {
+        case Left(problem) =>
+          replyWithOrderProcessed(
+            Response.OrderProcessed(order.id, Outcome.Disrupted(problem), isOrderKilled(order.id)))
+
+        case Right(()) =>
+          val sender = this.sender()
+
           jobExecutor.processOrder(processOrder) match {
             case Left(problem) =>
-              logger.error(s"Order '${processOrder.order.id.string}' step could not be started: $problem")
-              replyWithOrderProcessed(
-                Response.OrderProcessed(processOrder.order.id, Outcome.Disrupted(problem), killed))
+              logger.error(s"Order '${order.id.string}' step could not be started: $problem")
+              self.!(Internal.TaskFinished(order.id, Outcome.Disrupted(problem)))(sender)
 
             case Right(orderProcess) =>
-              assertThat(taskCount < workflowJob.taskLimit, "Task limit exceeded")
-              orderToProcess.insert(processOrder.order.id -> orderProcess)
-              orderProcess.run
-                .materialize
-                .map {
-                  case Failure(t) =>
-                    logger.error(s"${processOrder.order}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                    Outcome.Failed.fromThrowable(t)
-                  case Success(o) => o
+              orderToProcess.insert(order.id -> orderProcess)
+              orderProcess
+                .runToFuture
+                .onComplete { tried =>
+                  val outcome = tried match {
+                    case Success(o) => o
+                    case Failure(t) =>
+                      logger.error(s"${ order }: ${ t.toStringWithCauses }", t.nullIfNoStackTrace)
+                      Outcome.Failed.fromThrowable(t)
+                  }
+                  self.!(Internal.TaskFinished(order.id, outcome))(sender)
                 }
-                .foreach { outcome =>
-                  self.!(Internal.TaskFinished(processOrder.order.id, outcome))(sender)
-                }
-              handleIfReadyForOrder()
           }
       }
+      handleIfReadyForOrder()
 
     case Internal.TaskFinished(orderId, outcome) =>
       orderToProcess -= orderId
@@ -118,7 +135,7 @@ extends Actor with Stash
       killOrder(orderId, SIGKILL)
   }
 
-  private def replyWithOrderProcessed( msg: Response.OrderProcessed): Unit = {
+  private def replyWithOrderProcessed(msg: Response.OrderProcessed): Unit = {
     sender() ! msg
     continueTermination()
     handleIfReadyForOrder()
@@ -142,7 +159,12 @@ extends Actor with Stash
     for (orderProcess <- orderToProcess.get(orderId)) {
       logger.info(s"Kill $signal $orderId")
       isOrderKilled += orderId
-      orderProcess.cancel(signal)
+
+      try orderProcess.kill(immediately = signal == SIGKILL)
+      catch { case NonFatal(t) =>
+        // InternalJob implemenation may throw
+        logger.error(s"Kill $orderId: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      }
     }
 
   private def continueTermination(): Unit =
@@ -185,6 +207,7 @@ object JobActor
   }
 
   private object Internal {
+    final case class Step(processOrder: ProcessOrder, jobExecutor: JobExecutor, checkedStart: Checked[Unit])
     final case class TaskFinished(orderId: OrderId, outcome: Outcome)
     final case object KillAll extends DeadLetterSuppression
     final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression

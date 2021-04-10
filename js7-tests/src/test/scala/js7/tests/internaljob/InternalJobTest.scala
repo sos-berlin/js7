@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.internaljob
 
 import js7.base.configutils.Configs._
 import js7.base.log.Logger
@@ -6,12 +6,15 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentId
+import js7.data.command.CancelMode
+import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventRequest, KeyedEvent}
 import js7.data.item.VersionId
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderCancelMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
@@ -23,17 +26,18 @@ import js7.executor.OrderProcess
 import js7.executor.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.JobContext
-import js7.tests.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import monix.execution.atomic.AtomicInt
+import monix.execution.atomic.{Atomic, AtomicInt}
 import monix.reactive.Observable
 import org.scalactic.source
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
+import scala.reflect.ClassTag
+import InternalJobTest._
 
 final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
@@ -55,7 +59,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "One InternalJob.start for multiple InternalJob.processOrder" in {
     val versionId = versionIdIterator.next()
-    val workflow = Workflow.of(Execute(internalWorkflowJob))
+    val workflow = Workflow.of(execute_[AddOneJob])
       .withId(workflowPathIterator.next() ~ versionId)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
@@ -73,7 +77,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   addInternalJobTest(
-    Execute(internalWorkflowJob),
+    execute_[AddOneJob],
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues(
       "START" -> NumberValue(1),
@@ -81,7 +85,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       "RESULT" -> NumberValue(101))))
 
   addInternalJobTest(
-    Execute(internalWorkflowJob),
+    execute_[AddOneJob],
     orderArguments = Map("ARG" -> NumberValue(200)),
     expectedOutcome = Outcome.Succeeded(NamedValues(
       "START" -> NumberValue(1),
@@ -128,6 +132,30 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
           .toMap)
     }
 
+  "Kill InternalJob" in {
+    val versionId = versionIdIterator.next()
+    val workflow = Workflow.of(execute_[CancelableJob])
+      .withId(workflowPathIterator.next() ~ versionId)
+    directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
+
+    val order = FreshOrder(orderIdIterator.next(), workflow.path)
+    controller.addOrderBlocking(order)
+    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+
+    // Let cancel handler throw its exception
+    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancelMode.kill()))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderCancelMarked](_.key == order.id)
+    sleep(50.ms)
+
+    // Now cancel immediately
+    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancelMode.kill(immediately = true)))
+      .await(99.s).orThrow
+    val outcome = controller.eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
+    assert(outcome == Outcome.Killed(Outcome.Failed(Some("Canceled"))))
+    controller.eventWatch.await[OrderProcessingKilled](_.key == order.id)
+  }
+
   "stop" in {
     controller.terminate() await 99.s
     agent.terminate() await 99.s
@@ -147,6 +175,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       Map(orderId -> orderArguments),
       Map(orderId -> Seq(expectedOutcome)))
   }
+
   private def addInternalJobTestWithMultipleOrders(
     execute: Execute,
     orderArguments: Map[OrderId, Map[String, Value]],
@@ -224,9 +253,12 @@ object InternalJobTest
 {
   private val logger = Logger(getClass)
   private val agentId = AgentId("AGENT")
-  private val internalWorkflowJob = WorkflowJob(
-    agentId,
-    InternalExecutable(classOf[AddOneJob].getName))
+
+  private def execute_[A <: InternalJob: ClassTag] =
+    Execute(
+      WorkflowJob(
+      agentId,
+      InternalExecutable(implicitClass[A].getName)))
 
   private object SimpleJob extends InternalJob
   {
@@ -252,8 +284,8 @@ object InternalJobTest
   private final class AddOneJob(jobContext: JobContext) extends InternalJob
   {
     assertThat(jobContext.implementationClass == getClass)
-    private val startCount = AtomicInt(0)
-    private val processCount = AtomicInt(0)
+    private val startCount = Atomic(0)
+    private val processCount = Atomic(0)
 
     override def start = Task {
       startCount += 1
@@ -261,15 +293,32 @@ object InternalJobTest
     }
 
     def processOrder(step: Step) =
-      OrderProcess(
-        Task {
-          processCount += 1
-          Outcome.Completed.fromChecked(
-            for (number <- step.scope.evalToBigDecimal("$ARG")) yield
-              Outcome.Succeeded(NamedValues(
-                "START" -> NumberValue(startCount.get()),
-                "PROCESS" -> NumberValue(processCount.get()),
-                "RESULT" -> NumberValue(number + 1))))
+      OrderProcess(Task {
+        processCount += 1
+        Outcome.Completed.fromChecked(
+          for (number <- step.scope.evalToBigDecimal("$ARG")) yield
+            Outcome.Succeeded(NamedValues(
+              "START" -> NumberValue(startCount.get()),
+              "PROCESS" -> NumberValue(processCount.get()),
+              "RESULT" -> NumberValue(number + 1))))
         })
+  }
+
+  private class CancelableJob extends InternalJob
+  {
+    def processOrder(step: Step) =
+      new OrderProcess {
+        def run = Task.sleep(9.s)
+          .as(Outcome.succeeded)
+          .guaranteeCase(exitCase => Task {
+            logger.debug(s"CancelableJob $exitCase")
+          })
+
+        override def kill(immediately: Boolean) =
+          if (immediately)
+            future.cancel()
+          else
+            sys.error("TEST EXCEPTION FOR KILL")
+      }
   }
 }

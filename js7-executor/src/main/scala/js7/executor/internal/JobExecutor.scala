@@ -11,10 +11,10 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.StateView
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, RelativePathExecutable, ScriptExecutable}
 import js7.data.value.expression.Scope
-import js7.executor.{OrderProcess, ProcessOrder}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.process.{AbsolutePathJobExecutor, CommandLineJobExecutor, RelativePathJobExecutor, ScriptJobExecutor}
+import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.Try
@@ -22,6 +22,8 @@ import scala.util.Try
 trait JobExecutor
 {
   protected val jobConf: JobConf
+
+  def start: Task[Checked[Unit]]
 
   def stop: Task[Unit]
 

@@ -10,11 +10,10 @@ import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{InternalExecutable, JobConf}
-import js7.data.order.Outcome
 import js7.data.value.expression.Evaluator
+import js7.executor.ProcessOrder
 import js7.executor.internal.InternalJob.{JobContext, Step}
 import js7.executor.internal.InternalJobExecutor._
-import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.control.NonFatal
@@ -30,7 +29,7 @@ extends JobExecutor
     toInstantiator(executable.className)
       .flatMap(_()))
 
-  private val start: Task[Checked[Unit]] =
+  val start: Task[Checked[Unit]] =
     Task { internalJobLazy() }
       .flatMapT(_.start)
       .tapEval {
@@ -45,27 +44,23 @@ extends JobExecutor
       internalJobLazy.fold(_ => Task.unit, _.stop)
     }.memoize
 
-  def processOrder(processOrder: ProcessOrder) = {
+  def processOrder(processOrder: ProcessOrder) =
+    internalJobLazy()
+      .flatMap(internalJob => toStep(processOrder)
+        .map(internalJob.processOrder))
+
+  private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] = {
     val scope = toScope(processOrder)
     Evaluator(scope)
       .evalObjectExpression(executable.arguments)
       .map(_.nameToValue)
-      .flatMap(arguments =>
-        internalJobLazy().map(internalJob =>
-          OrderProcess(
-            run = start
-              .map(_.map(_ =>
-                internalJob.processOrder(Step(
-                  arguments = arguments,
-                  processOrder.order,
-                  processOrder.workflow,
-                  scope,
-                  processOrder.stdChannels.out,
-                  processOrder.stdChannels.err))))
-              .flatMapT(_.run /*process order*/
-                .map(Right(_)))
-              .map(Outcome.Completed.fromChecked),
-            cancel = _ => {})))
+      .map(arguments =>
+        Step(
+          arguments = arguments,
+          processOrder.order,
+          processOrder.workflow,
+          scope,
+          processOrder.stdObservers))
   }
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =

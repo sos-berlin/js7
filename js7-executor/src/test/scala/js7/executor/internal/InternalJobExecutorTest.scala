@@ -3,7 +3,6 @@ package js7.executor.internal
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.globalIOX
-import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichPartialFunction}
 import js7.data.agent.AgentId
@@ -47,7 +46,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
       NamedValues("ARG" -> NumberValue(1)),
       StdChannels(out, err, charBufferSize = 4096))
     ).orThrow
-    val outcome = orderRun.run.await(99.s)
+    val outcome = orderRun.runToFuture.await(99.s)
     assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))
     out.onComplete()
     err.onComplete()

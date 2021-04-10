@@ -72,16 +72,12 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
         Problem.fromThrowable(t)
     }
 
-  def processOrder[St <: JavaJobStep](step: St)(call: (J, St) => OrderProcess): OrderProcess =
+  def callProcessOrder(call: J => OrderProcess): OrderProcess =
     checkedJobOnce.checked.flatten match {
       case Left(problem) =>
         OrderProcess(Task.pure(Outcome.Failed.fromProblem(problem)))
 
       case Right(jInternalJob) =>
-        val orderProcess = call(jInternalJob, step)
-        orderProcess.copy(
-          run = orderProcess.run
-            .materialize
-            .map(Outcome.Completed.fromTry))
+        call(jInternalJob)
     }
 }

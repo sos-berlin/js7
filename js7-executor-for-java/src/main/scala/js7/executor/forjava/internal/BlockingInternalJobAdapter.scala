@@ -22,17 +22,14 @@ extends InternalJob
 
   def processOrder(step: Step) = {
     import jobContext.js7Scheduler
-    val jStep = BlockingInternalJob.Step(step,
-      outWriter = new ObserverWriter(step.outObserver),
-      errWriter = new ObserverWriter(step.errObserver))
-    val orderProcess = helper.processOrder(jStep)(
-      (jInternalJob, jStep) =>
-        OrderProcess(
-          Task { jInternalJob.processOrder(jStep) }
-            .executeOn(jobContext.blockingJobScheduler)
-            .map(_.asScala)))
-    orderProcess.copy(
-      run = orderProcess.run
-        .guarantee(Task(jStep.close())))
+    val jStep = BlockingInternalJob.Step(step)
+    helper.callProcessOrder(jInternalJob =>
+      OrderProcess(
+        Task { jInternalJob.processOrder(jStep) }
+          .executeOn(jobContext.blockingJobScheduler)
+          .guarantee(Task {
+            jStep.close()
+          })
+          .map(_.asScala)))
   }
 }

@@ -16,9 +16,9 @@ extends JavaWrapper
 
 object JOrderProcess
 {
-  def of(completed: CompletionStage[JOutcome.Completed]): JOrderProcess =
+  def of(outcome: CompletionStage[JOutcome.Completed]): JOrderProcess =
     JOrderProcess(OrderProcess(
-      Task.fromFuture(completed.asScala)
+      Task.fromFuture(outcome.asScala)
         .map(_.asScala)
         .materialize
         .map(Outcome.Completed.fromTry)))
