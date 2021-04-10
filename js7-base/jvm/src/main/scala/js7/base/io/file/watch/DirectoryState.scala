@@ -72,7 +72,7 @@ object DirectoryState
         }
         .map(path => path -> DirectoryState.Entry(path))
         .toMap))
-    logger.debug(s"readDirectory '$directory' (${directoryState.pathToEntry.size} files) in ${since.elapsed.pretty}")
+    logger.debug(s"readDirectory '$directory' => ${directoryState.pathToEntry.size} files in ${since.elapsed.pretty}")
     directoryState
   }
 

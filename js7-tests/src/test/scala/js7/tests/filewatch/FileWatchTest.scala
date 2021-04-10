@@ -19,14 +19,9 @@ import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemDeletion
 import js7.data.item.ItemOperation.SimpleDelete
 import js7.data.item.SimpleItemEvent.SimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
-import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.OrderId
-import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
-import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchTest._
 import js7.tests.jobs.DeleteFileJob
@@ -39,11 +34,13 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentIds = Seq(aAgentId, bAgentId)
   protected val versionedItems = Seq(workflow)
+
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""
+
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
@@ -99,18 +96,35 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     logger.info(itemsPerSecondString(since.elapsed, filenames.size, "files"))
   }
 
+  private var itemRevision = ItemRevision(0)
+
+  "Add same FileWatch again" in {
+    for (i <- 1 to 10) withClue(s"#$i") {
+      itemRevision = itemRevision.next
+      val eventId = controller.eventWatch.lastAddedEventId
+      controller.updateSimpleItemsAsSystemUser(Seq(fileWatch)).await(99.s).orThrow
+      controller.eventWatch.await[ItemAttached](after = eventId)
+      assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
+        Seq(
+          NoKey <-: SimpleItemChanged(fileWatch.copy(itemRevision = Some(itemRevision))),
+          NoKey <-: ItemAttachable(fileWatch.id, aAgentId),
+          NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), aAgentId)))
+    }
+  }
+
   "Change Agent" in {
+    itemRevision = itemRevision.next
     val eventId = controller.eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(agentId = bAgentId)
     controller.updateSimpleItemsAsSystemUser(Seq(changedFileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](after = eventId)
     assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(
-        NoKey <-: SimpleItemChanged(changedFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
+        NoKey <-: SimpleItemChanged(changedFileWatch.copy(itemRevision = Some(itemRevision))),
         NoKey <-: ItemDetachable(fileWatch.id, aAgentId),
         NoKey <-: ItemDetached(fileWatch.id, aAgentId),
         NoKey <-: ItemAttachable(fileWatch.id, bAgentId),
-        NoKey <-: ItemAttached(fileWatch.id, Some(ItemRevision(1)), bAgentId)))
+        NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), bAgentId)))
   }
 
   "Delete a FileWatch" in {
@@ -136,10 +150,5 @@ object FileWatchTest
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
-    Vector(
-      Execute(WorkflowJob(aAgentId,
-        InternalExecutable(
-          classOf[DeleteFileJob].getName,
-          arguments = ObjectExpression(Map("file" -> NamedValue(FileArgumentName)))),
-        taskLimit = 100))))
+    Vector(DeleteFileJob.execute(aAgentId)))
 }
