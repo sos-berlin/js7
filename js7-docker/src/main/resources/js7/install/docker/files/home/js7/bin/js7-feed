@@ -7,7 +7,7 @@ declare classpathString java
 
 directory=/var/opt/js7/feed
 log4jXml="js7/tests/log4j2.xml"   # Java resource
-javaOptions=()
+javaOptions=(-XX:MaxJavaStackTraceDepth=999999999)
 args=()
 explicitController=0
 

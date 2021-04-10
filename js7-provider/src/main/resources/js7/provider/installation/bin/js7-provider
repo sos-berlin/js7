@@ -11,7 +11,9 @@ declare classpathString java  # returned by set-context.sh
 config=/var/opt/js7/provider/config
 data=/var/opt/js7/provider/data
 providerOptions=()
-javaOptions=(-XX:+UseStringDeduplication)
+javaOptions=(
+  -XX:+UseStringDeduplication
+  -XX:MaxJavaStackTraceDepth=999999999)
 log4jAsync=false
 
 for arg in "$@"; do :

@@ -7,5 +7,6 @@ declare java classpathString
 "$java"\
   -classpath "$classpathString"\
   -Dlog4j.configurationFile="js7/agent/client/main/log4j2.xml"\
+  -XX:MaxJavaStackTraceDepth=999999999 \
   js7.agent.client.main.AgentClientMain\
   "$@"

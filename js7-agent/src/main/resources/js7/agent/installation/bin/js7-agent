@@ -11,7 +11,9 @@ data=/var/opt/js7/agent/data
 httpPort=127.0.0.1:4444
 httpsPort=4443
 agentOptions=()
-javaOptions=(-XX:+UseStringDeduplication)
+javaOptions=(
+  -XX:+UseStringDeduplication
+  -XX:MaxJavaStackTraceDepth=999999999)
 log4Async=false
 terminateCommand='{ "TYPE": "ShutDown" }'
 

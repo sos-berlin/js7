@@ -8,7 +8,10 @@ declare classpathString java
 
 httpPort=4444
 args=()
-javaOptions=(-Xmx100m -Xms50m)
+javaOptions=(
+  -Xms50m
+  -Xmx100m
+  -XX:MaxJavaStackTraceDepth=999999999)
 
 for arg in "$@"; do :
   case "$arg" in

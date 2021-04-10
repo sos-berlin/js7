@@ -13,7 +13,9 @@ data=/var/opt/js7/controller/data
 httpPort=4444
 httpsPort=4443
 controllerOptions=()
-javaOptions=(-XX:+UseStringDeduplication)
+javaOptions=(
+  -XX:+UseStringDeduplication
+  -XX:MaxJavaStackTraceDepth=999999999)
 log4jAsync=false
 terminateCommand='{ "TYPE": "ShutDown" }'
 
