@@ -7,6 +7,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentId
+import js7.data.command.CancelMode.FreshOrStarted
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
@@ -353,7 +354,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "OrderMark.Cancelling(FreshOnly)" - {
-      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)))
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None),
+        mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)))
 
       "Fresh" - {
         val freshOrder = cancellingOrder
@@ -370,7 +372,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .nextEvents(order.id) == Seq(order.id <-: OrderDetachable))
             assert(controller.cancel(order.id, CancelMode.FreshOnly       ) == Right(None))
             assert(agent     .cancel(order.id, CancelMode.FreshOnly       ) == Right(Some(OrderDetachable)))
-            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(FreshOrStarted(None)))))
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
             assert(agent     .suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
@@ -401,7 +403,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
             assert(agent     .nextEvents(order.id) == Seq(order.id <-: orderForked))
             assert(controller.cancel(order.id, CancelMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(agent     .cancel(order.id, CancelMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
-            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
+            assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(FreshOrStarted(None)))))
             assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderDetachable)))
             assert(controller.suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
             assert(agent     .suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
@@ -420,8 +422,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
           assert(agent     .nextEvents(order.id) == Nil)
           assert(controller.cancel(order.id, CancelMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
           assert(agent     .cancel(order.id, CancelMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
-          assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
-          assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(None))
+          assert(controller.cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(FreshOrStarted(None)))))
+          assert(agent     .cancel(order.id, CancelMode.FreshOrStarted()) == Right(Some(OrderCancelMarked(FreshOrStarted(None)))))
           assert(controller.suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
           assert(agent     .suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
           assert(controller.resume(order.id, None, None) == Left(CannotResumeOrderProblem))
@@ -989,7 +991,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
   }
 }
 
-object OrderEventSourceTest {
+object OrderEventSourceTest
+{
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
   private val TestAgentId = AgentId("AGENT")

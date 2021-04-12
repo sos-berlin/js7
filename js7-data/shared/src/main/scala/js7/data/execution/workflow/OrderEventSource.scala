@@ -238,8 +238,7 @@ final class OrderEventSource(
         Left(CancelStartedOrderProblem(orderId))
       else Right(
         tryCancel(order, mode).orElse(
-          (!order.isCancelling &&
-            !order.isState[IsTerminated] &&
+          ( !order.isState[IsTerminated] &&
             !order.isState[ProcessingKilled] &&
             !order.mark.contains(OrderMark.Cancelling(mode))
           ) ? OrderCancelMarked(mode))))
