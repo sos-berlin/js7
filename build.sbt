@@ -272,6 +272,12 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       guava ++
       typesafeConfig
   }
+  .jvmSettings(
+    resourceGenerators in Compile += Def.task {
+      val versionFile = (resourceManaged in Compile).value / "js7/base/installation/VERSION"
+      IO.write(versionFile, BuildInfos.longVersion.value + "\n")
+      Seq(versionFile)
+    }.taskValue)
   .enablePlugins(BuildInfoPlugin)
   .settings(
     buildInfoPackage := "js7.base",
@@ -451,12 +457,6 @@ lazy val `js7-core` = project.dependsOn(`js7-journal`, `js7-common`, `js7-tester
       scalaCheck % "test" ++ log4j % "test" ++
       lmaxDisruptor % "test"
   }
-  .settings(
-    resourceGenerators in Compile += Def.task {
-      val versionFile = (resourceManaged in Compile).value / "js7/core/installation/VERSION"
-      IO.write(versionFile, BuildInfos.longVersion.value + "\n")
-      Seq(versionFile)
-    }.taskValue)
 
 lazy val `js7-executor` = project
   .dependsOn(`js7-core`, `js7-tester`.jvm % "test")
