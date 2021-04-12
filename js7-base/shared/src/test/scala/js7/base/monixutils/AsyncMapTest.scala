@@ -26,7 +26,11 @@ final class AsyncMapTest extends AsyncFreeSpec
   }
 
   "remove" in {
-    asyncMap.update(2, { case None => Task("ZWEI") })
+    asyncMap
+      .update(2, {
+        case None => Task("ZWEI")
+        case o => fail(s"UNEXPECTED: $o")
+      })
       .flatMap(_ => asyncMap.remove(2))
       .flatMap(maybe => Task(assert(maybe == Some("ZWEI"))))
       .flatMap(_ => asyncMap.remove(2))
