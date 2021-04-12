@@ -40,7 +40,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
     val err = PublishSubject[String]()
     val whenOutString = out.fold.lastL.runToFuture
     val whenErrString = err.fold.lastL.runToFuture
-    val orderRun = executor.processOrder(ProcessOrder(
+    val orderRun = executor.toOrderProcess(ProcessOrder(
       Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
       workflow,
       NamedValues("ARG" -> NumberValue(1)),
@@ -61,7 +61,7 @@ object InternalJobExecutorTest
 
   final class TestInternalJob extends InternalJob
   {
-    override def processOrder(step: Step) =
+    override def toOrderProcess(step: Step) =
       OrderProcess(
         Task.fromFuture(step.outObserver.onNext("OUT 1/")) >>
         Task.fromFuture(step.errObserver.onNext("ERR 1/")) >>

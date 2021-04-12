@@ -26,6 +26,7 @@ import js7.executor.OrderProcess
 import js7.executor.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.JobContext
+import js7.tests.internaljob.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
@@ -37,7 +38,6 @@ import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.reflect.ClassTag
-import InternalJobTest._
 
 final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
@@ -57,7 +57,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
   private val testCounter = AtomicInt(0)
 
-  "One InternalJob.start for multiple InternalJob.processOrder" in {
+  "One InternalJob.start for multiple InternalJob.toOrderProcess" in {
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(execute_[AddOneJob])
       .withId(workflowPathIterator.next() ~ versionId)
@@ -70,7 +70,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
       assert(outcomes == Vector(Outcome.Succeeded(
         NamedValues(
-          "START" -> NumberValue(1),  // One start only for muliple processOrder calls
+          "START" -> NumberValue(1),  // One start only for muliple toOrderProcess calls
           "PROCESS" -> NumberValue(processNumber),
           "RESULT" -> NumberValue(301)))))
     }
@@ -133,8 +133,16 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
   "Kill InternalJob" in {
+    testCancelJob[CancelableJob]()
+  }
+
+  "Kill JavaBlockingJob" in {
+    testCancelJob[JCancelableJob]()
+  }
+
+  private def testCancelJob[J: ClassTag](): Unit = {
     val versionId = versionIdIterator.next()
-    val workflow = Workflow.of(execute_[CancelableJob])
+    val workflow = Workflow.of(execute_[J])
       .withId(workflowPathIterator.next() ~ versionId)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
@@ -254,7 +262,7 @@ object InternalJobTest
   private val logger = Logger(getClass)
   private val agentId = AgentId("AGENT")
 
-  private def execute_[A <: InternalJob: ClassTag] =
+  private def execute_[A: ClassTag] =
     Execute(
       WorkflowJob(
       agentId,
@@ -275,7 +283,7 @@ object InternalJobTest
       stopped = true
     }
 
-    def processOrder(step: Step) = {
+    def toOrderProcess(step: Step) = {
       assert(started)
       OrderProcess(Task(Outcome.succeeded))
     }
@@ -292,7 +300,7 @@ object InternalJobTest
       Right(())
     }
 
-    def processOrder(step: Step) =
+    def toOrderProcess(step: Step) =
       OrderProcess(Task {
         processCount += 1
         Outcome.Completed.fromChecked(
@@ -306,7 +314,7 @@ object InternalJobTest
 
   private class CancelableJob extends InternalJob
   {
-    def processOrder(step: Step) =
+    def toOrderProcess(step: Step) =
       new OrderProcess {
         def run = Task.sleep(9.s)
           .as(Outcome.succeeded)
@@ -314,9 +322,9 @@ object InternalJobTest
             logger.debug(s"CancelableJob $exitCase")
           })
 
-        override def kill(immediately: Boolean) =
+        override def cancel(immediately: Boolean) =
           if (immediately)
-            future.cancel()
+            Task { future.cancel() }
           else
             sys.error("TEST EXCEPTION FOR KILL")
       }

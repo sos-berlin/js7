@@ -27,7 +27,7 @@ trait JobExecutor
 
   def stop: Task[Unit]
 
-  def processOrder(processOrder: ProcessOrder): Checked[OrderProcess]
+  def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess]
 
   protected final def toScope(processOrder: ProcessOrder): Scope =
     StateView.makeScope(processOrder.order, jobConf.workflow,

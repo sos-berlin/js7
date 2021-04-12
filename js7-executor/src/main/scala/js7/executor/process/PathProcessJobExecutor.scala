@@ -21,7 +21,7 @@ trait PathProcessJobExecutor extends ProcessJobExecutor
       case Right(file) => warnIfNotExecutable(file)
     }
 
-  final def processOrder(processOrder: ProcessOrder): Checked[OrderProcess] =
+  final def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess] =
     checkFile
       .flatMap(file =>
         evalEnv(Evaluator(toScope(processOrder)), executable.env)

@@ -20,16 +20,28 @@ extends InternalJob
       stop()))
       .executeOn(jobContext.blockingJobScheduler)
 
-  def processOrder(step: Step) = {
+  def toOrderProcess(step: Step) = {
     import jobContext.js7Scheduler
     val jStep = BlockingInternalJob.Step(step)
-    helper.callProcessOrder(jInternalJob =>
-      OrderProcess(
-        Task { jInternalJob.processOrder(jStep) }
+
+    helper.callProcessOrder { jInternalJob =>
+      val orderProcessTask: Task[BlockingInternalJob.OrderProcess] =
+        Task { jInternalJob.toOrderProcess(jStep) }
           .executeOn(jobContext.blockingJobScheduler)
-          .guarantee(Task {
-            jStep.close()
-          })
-          .map(_.asScala)))
+          .memoize
+
+      new OrderProcess {
+        protected def run =
+          for {
+            orderProcess <- orderProcessTask
+            outcome <- Task(orderProcess.run()) executeOn jobContext.blockingJobScheduler
+          } yield outcome.asScala
+
+        override def cancel(immediately: Boolean) =
+          orderProcessTask.flatMap(orderProcess =>
+            Task(orderProcess.cancel(immediately))
+              .executeOn(jobContext.blockingJobScheduler))
+      }
+    }
   }
 }

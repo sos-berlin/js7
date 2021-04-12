@@ -129,7 +129,7 @@ import static java.util.Collections.emptyMap;
 /** Skeleton for a JInternalJob implementation. */
 public final class EmptyJInternalJob implements JInternalJob
 {
-    public JOrderProcess processOrder(Step step) {
+    public JOrderProcess toProcessOrder(Step step) {
         return JOrderProcess.of(
             CompletableFuture.supplyAsync(
                 () -> JOutcome.succeeded()));
@@ -182,14 +182,46 @@ Minimales Beispiel für einen internen Job, der nichts tut:
 ```java
 package js7.executor.forjava.internal.tests;
 
-import js7.executor.forjava.internal.BlockingInternalJob;
 import js7.data_for_java.order.JOutcome;
-import static java.util.Collections.emptyMap;
+import js7.executor.forjava.internal.BlockingInternalJob;
 
 public final class EmptyBlockingInternalJob implements BlockingInternalJob
 {
-    public JOutcome.Completed processOrder(Step step) {
-        return JOutcome.succeeded(emptyMap());
+    public OrderProcess toProcessOrder(Step step) {
+        return () -> JOutcome.succeeded();
+    }
+}
+```
+
+Beispiel für einen mit `CancelOrder` abbrechenbaren Job:
+
+```java
+package js7.tests.internaljob;
+
+import js7.data_for_java.order.JOutcome;
+import js7.executor.forjava.internal.BlockingInternalJob;
+
+public final class JCancelableJob implements BlockingInternalJob
+{
+    public OrderProcess toProcessOrder(Step step)
+    {
+        // Do nothing but return an OrderProcess
+
+        return new OrderProcess() {
+            volatile boolean canceled = false;
+
+            public JOutcome.Completed run() throws InterruptedException {
+                // Process the order here
+                while (!canceled) {
+                    Thread.sleep(10);
+                }
+                return JOutcome.failed("Canceled");
+            }
+
+            public void cancel(boolean immediately) {
+                canceled = true;
+            }
+        };
     }
 }
 ```
@@ -221,7 +253,7 @@ oder man verwendet einen ausreichend gepufferten `BufferedWriter`.
 
 Bei einer Exception scheitert der Auftragsschritt.
 
-`JOutcome.Completed` hat seit Subtypen:
+`JOutcome.Completed` hat zwei Subtypen:
 
 * `JOutcome.Succeeded` für den Erfolgsfall.
   Die Methoden dafür sind

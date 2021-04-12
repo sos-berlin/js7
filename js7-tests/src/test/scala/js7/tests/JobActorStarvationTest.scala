@@ -85,7 +85,7 @@ object JobActorStarvationTest
 
   final class SemaphoreJob extends InternalJob
   {
-    def processOrder(step: Step) =
+    def toOrderProcess(step: Step) =
       OrderProcess(
         semaphore.flatMap(_.acquire)
           .as(Outcome.succeeded))

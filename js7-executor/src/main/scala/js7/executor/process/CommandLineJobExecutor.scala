@@ -17,7 +17,7 @@ extends ProcessJobExecutor
 {
   override def stop = Task.unit
 
-  def processOrder(processOrder: ProcessOrder): Checked[OrderProcess] = {
+  def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess] = {
     val evaluator = Evaluator(toScope(processOrder))
     new CommandLineEvaluator(evaluator)
       .eval(executable.commandLineExpression)

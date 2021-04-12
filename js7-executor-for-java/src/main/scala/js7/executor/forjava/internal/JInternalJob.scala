@@ -27,7 +27,7 @@ trait JInternalJob
     CompletableFuture.completedFuture(Void)
 
   @Nonnull
-  def processOrder(@Nonnull step: Step): JOrderProcess
+  def toOrderProcess(@Nonnull step: Step): JOrderProcess
 }
 
 object JInternalJob

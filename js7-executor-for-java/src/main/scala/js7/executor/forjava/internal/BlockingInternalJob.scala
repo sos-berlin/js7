@@ -22,7 +22,7 @@ trait BlockingInternalJob
   final def start(): VEither[Problem, Void] =
     VEither.right(Void)
 
-  /** Called only once after last `start` or `processOrder`.
+  /** Called only once after last `start` or `toOrderProcess`.
     * <ul>
     *   <li>
     *     When the constructor has thrown an exception.
@@ -37,11 +37,14 @@ trait BlockingInternalJob
   @throws[Exception]
   final def stop() = {}
 
-  /** Process the order.
+  /** Only returns a OrderProcess for a single order step.
     * <p>
-    * Executed in a seperate thread. */
+    * Should not do anything else.
+    * <p>
+    * May be called multiple times in parallel.
+    */
   @throws[Exception] @Nonnull
-  def processOrder(@Nonnull step: Step): JOutcome.Completed
+  def toOrderProcess(@Nonnull step: Step): OrderProcess
 }
 
 object BlockingInternalJob
@@ -65,5 +68,19 @@ object BlockingInternalJob
   object Step {
     def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =
       Step(asScala, new ObserverWriter(asScala.outObserver), new ObserverWriter(asScala.errObserver))
+  }
+
+  trait OrderProcess
+  {
+    /** Process the order.
+      * <p>
+      * May be called multiple times in parallel.
+      * <p>
+      * Executed in a seperate thread. */
+    @throws[Exception] @Nonnull
+    def run(): JOutcome.Completed
+
+    @throws[Exception] @Nonnull
+    def cancel(immediately: Boolean) = {}
   }
 }

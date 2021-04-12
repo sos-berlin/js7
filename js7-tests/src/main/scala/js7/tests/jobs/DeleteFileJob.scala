@@ -20,7 +20,7 @@ import monix.eval.Task
 
 final class DeleteFileJob(jobContext: JobContext) extends InternalJob
 {
-  def processOrder(step: Step) =
+  def toOrderProcess(step: Step) =
     OrderProcess(
       step.arguments.checked("file")
         .orElse(step.order.arguments.checked(FileArgumentName))

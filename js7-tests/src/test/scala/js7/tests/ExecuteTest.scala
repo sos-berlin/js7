@@ -341,7 +341,7 @@ object ExecuteTest
 
   private final class TestInternalJob extends InternalJob
   {
-    def processOrder(step: Step) =
+    def toOrderProcess(step: Step) =
       OrderProcess(
         Task {
           Outcome.Completed.fromChecked(

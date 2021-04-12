@@ -11,7 +11,7 @@ import monix.eval.Task
 
 final class EmptyJob extends InternalJob
 {
-  def processOrder(step: Step) =
+  def toOrderProcess(step: Step) =
     OrderProcess(Task.pure(Outcome.succeeded))
 }
 

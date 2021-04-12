@@ -46,34 +46,36 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         stoppedCalled.put(expectedBlockingThreadPoolName, true);
     }
 
-    public JOutcome.Completed processOrder(Step step) throws Exception {
-        assertThat(startCalled, equalTo(true));
+    public OrderProcess toOrderProcess(Step step) throws Exception {
+        return () -> {
+            assertThat(startCalled, equalTo(true));
 
-        Either<Problem,WorkflowJob.Name> maybeJobName =
-            step.workflow().checkedJobName(step.order().workflowPosition().position());
+            Either<Problem,WorkflowJob.Name> maybeJobName =
+                step.workflow().checkedJobName(step.order().workflowPosition().position());
 
-        logger.debug("processOrder " + step.order().id());
-        // Blocking is allowed here, because it is a BlockingInternalJob
-        assertSpecialThread();
-        Thread.sleep(500);
-        doSomethingInParallel();
+            logger.debug("toOrderProcess " + step.order().id());
+            // Blocking is allowed here, because it is a BlockingInternalJob
+            assertSpecialThread();
+            Thread.sleep(500);
+            doSomethingInParallel();
 
-        step.out().println("TEST FOR OUT");
-        step.out().println("FROM " + getClass().getName());
+            step.out().println("TEST FOR OUT");
+            step.out().println("FROM " + getClass().getName());
 
-        // Test many write()
-        String string = "TEST FOR ERR";
-        for (int i = 0; i < string.length(); i++) {
-            step.errWriter().write(string.charAt(i));
-        }
-        step.errWriter().write('\n');
+            // Test many write()
+            String string = "TEST FOR ERR";
+            for (int i = 0; i < string.length(); i++) {
+                step.errWriter().write(string.charAt(i));
+            }
+            step.errWriter().write('\n');
 
-        Value maybeValue = step.arguments().get("arg");  // May be null
-        // 💥 May throw NullPointerException or ArithmeticException 💥
-        long arg = ((NumberValue)maybeValue).toBigDecimal().longValueExact();
-        long result = arg + 1;
+            Value maybeValue = step.arguments().get("arg");  // May be null
+            // 💥 May throw NullPointerException or ArithmeticException 💥
+            long arg = ((NumberValue)maybeValue).toBigDecimal().longValueExact();
+            long result = arg + 1;
 
-        return JOutcome.succeeded(singletonMap("RESULT", NumberValue.of(result)));
+            return JOutcome.succeeded(singletonMap("RESULT", NumberValue.of(result)));
+        };
     }
 
     private void assertSpecialThread() {

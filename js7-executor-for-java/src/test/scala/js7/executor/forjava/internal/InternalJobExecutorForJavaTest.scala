@@ -50,7 +50,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
           sigKillDelay = 0.s),
         jobScheduler)
 
-      "processOrder" in {
+      "toOrderProcess" in {
         val (outcomeTask, out, err) = processOrder(NumberValue(1000)).await(99.s).orThrow
         assert(outcomeTask == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
         assertOutErr(out, err)
@@ -102,7 +102,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
       .start
       .flatMapT(_ =>
         Task.deferFuture(
-          executor.processOrder(
+          executor.toOrderProcess(
             ProcessOrder(
               Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
               workflow,

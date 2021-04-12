@@ -36,8 +36,10 @@ trait ProcessJobExecutor extends JobExecutor
           processOrder.stdObservers)
         .guarantee(taskRunner.terminate)
 
-      override def kill(immediately: Boolean) =
-        taskRunner.kill(if (immediately: Boolean) SIGKILL else SIGTERM)
+      override def cancel(immediately: Boolean) =
+        Task {
+          taskRunner.kill(if (immediately: Boolean) SIGKILL else SIGTERM)
+        }
     }
   }
 

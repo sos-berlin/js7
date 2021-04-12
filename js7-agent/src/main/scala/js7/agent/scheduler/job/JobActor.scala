@@ -18,7 +18,6 @@ import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.mutable
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 final class JobActor private(
@@ -77,7 +76,7 @@ extends Actor with Stash
         case Right(()) =>
           val sender = this.sender()
 
-          jobExecutor.processOrder(processOrder) match {
+          jobExecutor.toOrderProcess(processOrder) match {
             case Left(problem) =>
               logger.error(s"Order '${order.id.string}' step could not be started: $problem")
               self.!(Internal.TaskFinished(order.id, Outcome.Disrupted(problem)))(sender)
@@ -160,11 +159,14 @@ extends Actor with Stash
       logger.info(s"Kill $signal $orderId")
       isOrderKilled += orderId
 
-      try orderProcess.kill(immediately = signal == SIGKILL)
-      catch { case NonFatal(t) =>
-        // InternalJob implemenation may throw
-        logger.error(s"Kill $orderId: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-      }
+      Task
+        .defer/*catches exception*/ {
+          orderProcess.cancel(immediately = signal == SIGKILL)
+        }
+        .onErrorHandle { t =>
+          logger.error(s"Kill $orderId: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+        }
+        .runAsyncAndForget
     }
 
   private def continueTermination(): Unit =

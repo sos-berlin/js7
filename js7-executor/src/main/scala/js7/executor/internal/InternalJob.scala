@@ -24,7 +24,7 @@ trait InternalJob
   def stop: Task[Unit] =
     Task.unit
 
-  def processOrder(step: Step): OrderProcess
+  def toOrderProcess(step: Step): OrderProcess
 }
 
 object InternalJob

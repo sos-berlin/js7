@@ -17,9 +17,16 @@ import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.ObjectExpression
 
 sealed trait Executable
+{
+  def arguments: ObjectExpression
+}
 
-sealed trait ProcessExecutable extends Executable {
+sealed trait ProcessExecutable extends Executable
+{
+  final def arguments = ObjectExpression.empty
+
   def v1Compatible: Boolean
+
   def env: ObjectExpression
 }
 

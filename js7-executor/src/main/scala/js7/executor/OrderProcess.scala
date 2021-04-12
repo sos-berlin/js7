@@ -16,8 +16,8 @@ trait OrderProcess
 
   final def future = futureOnce.get
 
-  def kill(immediately: Boolean) =
-    future.cancel()
+  def cancel(immediately: Boolean): Task[Unit] =
+    Task { future.cancel() }
 
   final def runToFuture(implicit s: Scheduler): CancelableFuture[Outcome.Completed] =
     futureOnce getOrUpdate

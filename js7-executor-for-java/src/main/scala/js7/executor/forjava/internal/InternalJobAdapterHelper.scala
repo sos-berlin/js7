@@ -37,6 +37,15 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
       call(checkedJobOnce.orThrow.orThrow)
     }
 
+  def callProcessOrder(call: J => OrderProcess): OrderProcess =
+    checkedJobOnce.checked.flatten match {
+      case Left(problem) =>
+        OrderProcess(Task.pure(Outcome.Failed.fromProblem(problem)))
+
+      case Right(jInternalJob) =>
+        call(jInternalJob)
+    }
+
   private def instantiate(jJobContext: JavaJobContext): Checked[J] = {
     val cls = jJobContext.asScala.implementationClass
     if (!implicitClass[J].isAssignableFrom(cls))
@@ -56,7 +65,7 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
         .find(_.getParameterTypes sameElements Array(jJobContextClass))
         .orElse(constructors.find(_.getParameterTypes.isEmpty))
         .toChecked(Problem.pure(
-          s"Class '${clas.getName}' does not have an appropriate constructor (empty or InternalJob.Context)"))
+          s"Class '${clas.getName}' does not have an appropriate public constructor (empty or BlockingInternalJob.JobContext)"))
     }.flatten
 
   private def construct(constructor: Constructor[J], jobContext: JavaJobContext): Checked[J] =
@@ -70,14 +79,5 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
         Left(Problem.fromThrowable(Option(t.getCause) getOrElse t))
       case NonFatal(t) =>
         Problem.fromThrowable(t)
-    }
-
-  def callProcessOrder(call: J => OrderProcess): OrderProcess =
-    checkedJobOnce.checked.flatten match {
-      case Left(problem) =>
-        OrderProcess(Task.pure(Outcome.Failed.fromProblem(problem)))
-
-      case Right(jInternalJob) =>
-        call(jInternalJob)
     }
 }

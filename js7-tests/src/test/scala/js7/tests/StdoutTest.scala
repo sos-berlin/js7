@@ -165,7 +165,7 @@ object StdoutTest
 
   private final class TestInternalJob extends InternalJob
   {
-    def processOrder(step: Step) = {
+    def toOrderProcess(step: Step) = {
       import Task.sleep
       OrderProcess(
         step.send(Stdout, "A\n") >>

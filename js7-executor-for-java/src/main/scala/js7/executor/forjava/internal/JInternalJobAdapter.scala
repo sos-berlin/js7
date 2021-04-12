@@ -20,10 +20,10 @@ extends InternalJob
     helper.callStop(
       job => Task.fromFuture(job.stop.asScala).as(()))
 
-  def processOrder(step: Step) = {
+  def toOrderProcess(step: Step) = {
     import jobContext.js7Scheduler
     val jStep = JInternalJob.Step(step)
     helper.callProcessOrder(_
-      .processOrder(jStep).asScala)
+      .toOrderProcess(jStep).asScala)
   }
 }

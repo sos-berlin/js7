@@ -44,10 +44,10 @@ extends JobExecutor
       internalJobLazy.fold(_ => Task.unit, _.stop)
     }.memoize
 
-  def processOrder(processOrder: ProcessOrder) =
+  def toOrderProcess(processOrder: ProcessOrder) =
     internalJobLazy()
       .flatMap(internalJob => toStep(processOrder)
-        .map(internalJob.processOrder))
+        .map(internalJob.toOrderProcess))
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] = {
     val scope = toScope(processOrder)
@@ -122,7 +122,7 @@ object InternalJobExecutor
       constructors
         .find(_.getParameterTypes.forall(isAllowedConstructorParamameterClass))
         .toChecked(Problem.pure(
-          s"Class '${clas.getName}' does not have an appropriate constructor (empty or InternalJob.Context)"))
+          s"Class '${clas.getName}' does not have an appropriate public constructor (empty or InternalJob.JobContext)"))
     }.flatten
 
   private def construct(constructor: Constructor[InternalJob], jobContext: JobContext)
