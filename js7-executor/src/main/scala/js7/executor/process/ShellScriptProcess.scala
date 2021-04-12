@@ -12,7 +12,7 @@ import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.job.CommandLine
-import js7.executor.StdChannels
+import js7.executor.StdObservers
 import js7.executor.process.RichProcess.{startProcessBuilder, tryDeleteFile}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -65,7 +65,7 @@ object ShellScriptProcess
     }
   }
 
-  def startPipedShellScript(commandLine: CommandLine, conf: ProcessConfiguration, stdChannels: StdChannels)
+  def startPipedShellScript(commandLine: CommandLine, conf: ProcessConfiguration, stdObservers: StdObservers)
     (implicit scheduler: Scheduler, iox: IOExecutor): ShellScriptProcess =
   {
     val processBuilder = new ProcessBuilder(toShellCommandArguments(
@@ -75,7 +75,7 @@ object ShellScriptProcess
     val process = processBuilder.startRobustly()
 
     def toObservable(in: InputStream, onTerminated: Promise[Unit]): Observable[String] =
-      UnbufferedReaderObservable(Task(new InputStreamReader(in)), stdChannels.charBufferSize)
+      UnbufferedReaderObservable(Task(new InputStreamReader(in)), stdObservers.charBufferSize)
         .executeOn(iox.scheduler)
         .guaranteeCase {
           case ExitCase.Error(t) => Task(onTerminated.failure(t))
@@ -83,8 +83,8 @@ object ShellScriptProcess
         }
 
     val outClosed, errClosed = Promise[Unit]()
-    toObservable(process.getInputStream, outClosed).subscribe(stdChannels.out)
-    toObservable(process.getErrorStream, errClosed).subscribe(stdChannels.err)
+    toObservable(process.getInputStream, outClosed).subscribe(stdObservers.out)
+    toObservable(process.getErrorStream, errClosed).subscribe(stdObservers.err)
 
     new ShellScriptProcess(conf, process, argumentsForLogging = commandLine.toString :: Nil) {
       override def terminated = for {

@@ -113,11 +113,13 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   }
 
   "combineStringsAndSplit" in {
-    assert(OrderActor.combineStringsAndSplit(Nil, 7) == Nil)
-    assert(OrderActor.combineStringsAndSplit(List(""), 7) == Nil)
-    assert(OrderActor.combineStringsAndSplit(List("A"), 7) == List("A"))
-    assert(OrderActor.combineStringsAndSplit(List("a", "bc", "def", "ghij", "klmnopqr"), 7) ==
-      List("abcdefg", "hijklmn", "opqr"))
+    def f(list: List[String]) = OrderActor.combineStringsAndSplit(list, 7)
+    assert(f(Nil) == Nil)
+    assert(f(List("")) == Nil)
+    assert(f(List("A")) == List("A"))
+    assert(f(
+      List("a", "bc", "def", "ghij", "klmnopqr", "1234567890ABCDEFHIJ")) ==
+      List("abcdefg", "hijklmn", "opqr123", "4567890", "ABCDEFH", "IJ"))
   }
 }
 

@@ -26,7 +26,7 @@ final class DeleteFileJob(jobContext: JobContext) extends InternalJob
         .orElse(step.order.arguments.checked(FileArgumentName))
         .flatMap(_.toStringValueString)
         .map(Paths.get(_))
-        .traverse(deleteFile(_, step.send(Stderr, _)))
+        .traverse(deleteFile(_, step.send(Stderr, _).as(())))
         .rightAs(Outcome.succeeded)
         .map(Outcome.Completed.fromChecked))
 

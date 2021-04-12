@@ -1,7 +1,7 @@
 package js7.executor.internal
 
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.monixutils.ObserverAsTask
+import js7.base.monixutils.TaskObserver
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.data.order.Order
@@ -9,9 +9,9 @@ import js7.data.order.Order.Processing
 import js7.data.value.expression.Scope
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.Workflow
-import js7.executor.OrderProcess
+import js7.executor.{OrderProcess, StdObservers}
 import monix.eval.Task
-import monix.execution.Scheduler
+import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observer
 
 trait InternalJob
@@ -41,20 +41,26 @@ object InternalJob
     order: Order[Processing],
     workflow: Workflow,
     scope: Scope,
-    outObserver: Observer[String],
-    errObserver: Observer[String])
+    stdObservers: StdObservers)
   { self =>
-    private val outErrToObserverAsTask = Map(
-      Stdout -> ObserverAsTask(outObserver),
-      Stderr -> ObserverAsTask(errObserver))
+    def outObserver = stdObservers.out
+    def errObserver = stdObservers.err
+    def outTaskObserver = stdObservers.outTaskObserver
+    def errTaskObserver = stdObservers.errTaskObserver
 
-    def send(outErr: StdoutOrStderr, string: String): Task[Unit] =
-      outErrToObserverAsTask(outErr).sendOrRaise(string)
+    def send(outErr: StdoutOrStderr, string: String): Task[Ack] =
+      outErrTaskObserver(outErr).send(string)
 
     def outErrObserver(stdoutOrStderr: StdoutOrStderr): Observer[String] =
       stdoutOrStderr match {
         case Stdout => outObserver
         case Stderr => errObserver
+      }
+
+    private def outErrTaskObserver(outErr: StdoutOrStderr): TaskObserver[String] =
+      outErr match {
+        case Stdout => outTaskObserver
+        case Stderr => errTaskObserver
       }
   }
 }

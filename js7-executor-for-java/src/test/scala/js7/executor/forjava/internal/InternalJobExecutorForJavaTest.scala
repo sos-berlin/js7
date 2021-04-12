@@ -20,7 +20,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.forjava.internal.InternalJobExecutorForJavaTest._
 import js7.executor.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.InternalJobExecutor
-import js7.executor.{ProcessOrder, StdChannels}
+import js7.executor.{ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.subjects.PublishSubject
@@ -107,7 +107,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
               Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
               workflow,
               NamedValues("arg" -> arg),
-              StdChannels(out, err, 4096)))
+              StdObservers(out, err, 4096)))
           .orThrow
           .runToFuture)
         .guarantee(Task {

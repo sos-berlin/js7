@@ -8,4 +8,4 @@ final case class ProcessOrder(
   order: Order[Order.Processing],
   workflow: Workflow,
   defaultArguments: NamedValues,
-  stdChannels: StdChannels)
+  stdObservers: StdObservers)

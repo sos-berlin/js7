@@ -22,7 +22,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
-import js7.executor.StdChannels
+import js7.executor.StdObservers
 import js7.executor.configuration.TaskConfiguration
 import js7.executor.process.RichProcess
 import js7.executor.task.TaskRunner
@@ -63,10 +63,10 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
         historicOutcomes = Seq(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
       val taskRunner = newTaskRunner(taskConfiguration)
       val out, err = PublishSubject[String]()
-      val stdChannels = StdChannels(out, err, charBufferSize = 7)
+      val stdObservers = StdObservers(out, err, charBufferSize = 7)
       val whenOut = out.foldL.runToFuture
       val whenErr = err.foldL.runToFuture
-      val ended = taskRunner.processOrder(order.id, Map("VAR1" -> "VALUE1"), stdChannels)
+      val ended = taskRunner.processOrder(order.id, Map("VAR1" -> "VALUE1"), stdObservers)
         .guarantee(taskRunner.terminate) await 30.s
       assert(ended == Outcome.Succeeded(Map(
         "result" -> StringValue("TEST-RESULT-VALUE1"),

@@ -14,7 +14,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.internal.InternalJobExecutorTest._
-import js7.executor.{OrderProcess, ProcessOrder, StdChannels}
+import js7.executor.{OrderProcess, ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.subjects.PublishSubject
@@ -44,7 +44,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
       Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
       workflow,
       NamedValues("ARG" -> NumberValue(1)),
-      StdChannels(out, err, charBufferSize = 4096))
+      StdObservers(out, err, charBufferSize = 4096))
     ).orThrow
     val outcome = orderRun.runToFuture.await(99.s)
     assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))

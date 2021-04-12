@@ -24,7 +24,7 @@ import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
-import js7.executor.{ProcessOrder, StdChannels}
+import js7.executor.{ProcessOrder, StdObservers}
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.eval.Task
@@ -115,20 +115,21 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
           def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
             observable
-              // FIXME ? Limit size of chunk to conf.stdouterr.chunkSize even for InternalJob ?
+              .doOnNext(string => Task(logger.debug(s"###    ${string.replace("\n", "\\n")}")))
               .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
               .flatMap(strings => Observable.fromIterable(combineStringsAndSplit(strings, conf.stdouterr.chunkSize)))
               .flatMap(chunk => Observable.fromTask(
-                outErrStatistics(outerr).count(chunk.length,
-                  writeStdouterr(outerr, chunk))))
+                outErrStatistics(outerr).count(
+                  chunk.length,
+                  persistStdouterr(outerr, chunk))))
               .completedL
           val outErrCompleted = Task.parZip2(
             writeObservableAsEvents(Stdout, out),
             writeObservableAsEvents(Stderr, err)
           ).void.runToFuture
-          val stdChannels = StdChannels(out, err, charBufferSize = charBufferSize)
+          val stdObservers = StdObservers(out, err, charBufferSize = charBufferSize)
           become("processing")(
-            processing(jobActor, stdChannels, outErrCompleted,
+            processing(jobActor, stdObservers, outErrCompleted,
               () => (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) ?
                 s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
           context.watch(jobActor)
@@ -140,7 +141,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               order.castState[Order.Processing],
               workflow,
               defaultArguments,
-              stdChannels)
+              stdObservers)
           }
         }
 
@@ -151,7 +152,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def failedOrBroken: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-  private def processing(jobActor: ActorRef, stdChannels: StdChannels, outerrCompleted: Future[Unit],
+  private def processing(jobActor: ActorRef, stdObservers: StdObservers, outerrCompleted: Future[Unit],
     stdoutStderrStatistics: () => Option[String])
   : Receive =
     receiveCommand orElse receiveEvent(jobActor) orElse {
@@ -161,10 +162,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           case o => o
         }
         context.unwatch(jobActor)
-        stdChannels.close()
-        outerrCompleted.onComplete { _ =>
-          self ! Internal.OutErrCompleted(outcome)
-        }
+        stdObservers.stop
+          .flatMap(_ => Task.fromFuture(outerrCompleted))
+          .runToFuture
+          .onComplete { _ =>
+            self ! Internal.OutErrCompleted(outcome)
+          }
 
       case Internal.OutErrCompleted(outcome) =>
         finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)
@@ -270,7 +273,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     sender() ! Status.Failure(new IllegalStateException(msg))
   }
 
-  private def writeStdouterr(t: StdoutOrStderr, chunk: String): Task[Accepted] =
+  private def persistStdouterr(t: StdoutOrStderr, chunk: String): Task[Accepted] =
     if (stdoutCommitDelay.isZero)  // slow
       persistTask(OrderStdWritten(t)(chunk)) { (_, _) =>
         Accepted
@@ -324,7 +327,7 @@ private[order] object OrderActor
   private[order] def props(orderId: OrderId, workflow: Workflow, journalActor: ActorRef @@ JournalActor.type, conf: OrderActor.Conf)(implicit s: Scheduler) =
     Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf) }
 
-  private[order] def combineStringsAndSplit(strings: Seq[String], maxSize: Int): Seq[String] = {
+  private[order] def combineStringsAndSplit(strings: Seq[String], maxSize: Int): Iterable[String] = {
     val total = strings.view.map(_.length).sum
     if (total == 0)
       Nil
@@ -336,13 +339,6 @@ private[order] object OrderActor
       for (str <- strings) {
         if (sb.isEmpty && str.length == maxSize) {
           result.append(str)
-        } else
-        if (sb.length + str.length <= maxSize) {
-          sb.append(str)
-          if (sb.length == maxSize) {
-            result.append(sb.toString)
-            sb.clear()
-          }
         } else {
           var start = 0
           while (start < str.length) {
@@ -362,7 +358,7 @@ private[order] object OrderActor
         }
       }
       if (sb.nonEmpty) result.append(sb.toString)
-      result.toSeq
+      result
     }
   }
 

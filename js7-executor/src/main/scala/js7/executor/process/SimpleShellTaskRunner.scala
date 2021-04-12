@@ -13,7 +13,7 @@ import js7.data.job.TaskId
 import js7.data.job.TaskId.newGenerator
 import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.executor.StdChannels
+import js7.executor.StdObservers
 import js7.executor.configuration.{JobExecutorConf, ProcessKillScript, TaskConfiguration}
 import js7.executor.process.ShellScriptProcess.startPipedShellScript
 import js7.executor.process.SimpleShellTaskRunner._
@@ -68,15 +68,15 @@ extends TaskRunner
       }
     }
 
-  def processOrder(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels)
+  def processOrder(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
   : Task[Outcome.Completed] =
-    for (returnCode <- runProcess(orderId, env, stdChannels)) yield
+    for (returnCode <- runProcess(orderId, env, stdObservers)) yield
       conf.toOutcome(fetchReturnValuesThenDeleteFile(), returnCode)
 
-  private def runProcess(orderId: OrderId, env: Map[String, String], stdChannels: StdChannels): Task[ReturnCode] =
+  private def runProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers): Task[ReturnCode] =
     Task.deferFuture(
       for {
-        richProcess <- startProcess(env, stdChannels) andThen {
+        richProcess <- startProcess(env, stdObservers) andThen {
           case Success(richProcess) => logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
         }
         returnCode <- richProcess.terminated andThen { case tried =>
@@ -98,7 +98,7 @@ extends TaskRunner
     result
   }
 
-  private def startProcess(env: Map[String, String], stdChannels: StdChannels): Future[RichProcess] =
+  private def startProcess(env: Map[String, String], stdObservers: StdObservers): Future[RichProcess] =
     if (killedBeforeStart)
       Future.failed(new RuntimeException(s"$taskId killed before start"))
     else {
@@ -110,7 +110,7 @@ extends TaskRunner
         maybeTaskId = Some(taskId),
         killScriptOption = killScript)
       synchronizedStartProcess {
-        startPipedShellScript(conf.commandLine, processConfiguration, stdChannels)
+        startPipedShellScript(conf.commandLine, processConfiguration, stdObservers)
       } andThen { case Success(richProcess) =>
         terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed))
         richProcessOnce := richProcess

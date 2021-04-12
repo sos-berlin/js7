@@ -33,7 +33,7 @@ trait ProcessJobExecutor extends JobExecutor
         .processOrder(
           processOrder.order.id,
           v1Env(processOrder) ++ startProcess.env,
-          processOrder.stdChannels)
+          processOrder.stdObservers)
         .guarantee(taskRunner.terminate)
 
       override def kill(immediately: Boolean) =

@@ -2,8 +2,11 @@ package js7.executor
 
 import js7.base.utils.SetOnce
 import js7.data.order.Outcome
+import js7.executor.OrderProcess._
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
+import scala.util.control.NoStackTrace
+import scala.util.{Failure, Success}
 
 trait OrderProcess
 {
@@ -18,7 +21,14 @@ trait OrderProcess
 
   final def runToFuture(implicit s: Scheduler): CancelableFuture[Outcome.Completed] =
     futureOnce getOrUpdate
-      run.materialize.map(Outcome.Completed.fromTry).runToFuture
+      run
+        .onCancelRaiseError(CanceledException)
+        .materialize.map {
+          case Failure(CanceledException) => Outcome.Failed(Some("Canceled"))
+          case Failure(t) => Outcome.Failed.fromThrowable(t)
+          case Success(o) => o
+        }
+        .runToFuture
 }
 
 object OrderProcess

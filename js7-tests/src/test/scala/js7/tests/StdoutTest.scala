@@ -1,16 +1,16 @@
 package js7.tests
 
 import js7.base.configutils.Configs._
+import js7.base.io.process.Stdout
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
-import js7.data.job.{Executable, ScriptExecutable}
+import js7.data.job.{Executable, InternalExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.OrderStdoutWritten
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.{NamedValues, NumberValue, Value}
+import js7.data.value.Value
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
@@ -42,7 +42,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
 
-  "stdout event compacting" in {
+  "ScriptExecutable OrderStdoutWritten event compacting" in {
     def runTest() =
       testExecutable(
         ScriptExecutable(
@@ -63,10 +63,11 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
             |${sleepCommand(longDelay)}
             |echo .........1........2
             |echo .........3........4
-            |${sleepCommand(shortDelay)}
+            |${sleepCommand(longDelay)}
             |echo .........5........6
             |echo .........7........8
             |echo .........9.......10
+            |echo ........11........12........13........14........15.......16
             |""".stripMargin),
         Seq(
           "A\n",
@@ -74,8 +75,37 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "C\n",
           "D-1\n" + "D-2\n" + "D-3\n",
           ".........1........2\n.........3........4\n",
+          // stdout InputStreamReader is expected to return the strings already properly chunked
+          // - ".........5........6\n.........7........8\n.........9"
+          // - ".......10\n........11........12........13........14"
+          // - "........15.......16\n"
           ".........5........6\n.........7........8\n.........9",
-          ".......10\n"))
+          ".......10\n........11........12........13........14",
+          "........15.......16\n"))
+    Try(runTest())  // Warm-up
+    runTest()
+  }
+
+  "InternalJob OrderStdoutWritten event compacting" in {
+    def runTest() =
+      testExecutable(
+        InternalExecutable(classOf[TestInternalJob].getName),
+        Seq(
+          "A\n",
+          "B-1\n" + "B-2\n" + "B-3\n" + "B-4\n",
+          "C\n",
+          "D-1\n" + "D-2\n" + "D-3\n",
+          ".........1........2\n.........3........4\n",
+          // The InternalJob delivers the strings as is (not prepackaged in chunked)
+          // - ".........5........6\n"
+          // - ".........7........8\n"
+          // - ".........9.......10\n"
+          // - "........11........12........13........14........15.......16\n"
+          ".........5........6\n.........7........8\n",
+          // Break because Observable.buffer limit reached
+          ".........9.......10\n",
+          "........11........12........13........14........15",
+          ".......16\n"))
     Try(runTest())  // Warm-up
     runTest()
   }
@@ -125,9 +155,9 @@ object StdoutTest
   private val logger = Logger(getClass)
   private val agentId = AgentId("AGENT")
   private val chunkSize = 50
-  private val delay = 1000.ms
-  private val shortDelay = 100.ms
-  private val longDelay = delay + 500.ms
+  private val delay = 200.ms
+  private val shortDelay = 10.ms
+  private val longDelay = delay + 200.ms
 
   private def sleepCommand(delay: FiniteDuration) =
     if (isWindows) s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows
@@ -135,12 +165,32 @@ object StdoutTest
 
   private final class TestInternalJob extends InternalJob
   {
-    def processOrder(step: Step) =
+    def processOrder(step: Step) = {
+      import Task.sleep
       OrderProcess(
-        Task {
-          Outcome.Completed.fromChecked(
-            for (number <- step.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
-              Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
-        })
+        step.send(Stdout, "A\n") >>
+          sleep(longDelay) >>
+          step.send(Stdout, "B-1\n") >>
+          step.send(Stdout, "B-2\n") >>
+          sleep(shortDelay) >>
+          step.send(Stdout, "B-3\n") >>
+          step.send(Stdout, "B-4\n") >>
+          sleep(longDelay) >>
+          step.send(Stdout, "C\n") >>
+          sleep(longDelay) >>
+          step.send(Stdout, "D-1\n") >>
+          step.send(Stdout, "D-2\n") >>
+          sleep(shortDelay) >>
+          step.send(Stdout, "D-3\n") >>
+          sleep(longDelay) >>
+          step.send(Stdout, ".........1........2\n") >>
+          step.send(Stdout, ".........3........4\n") >>
+          sleep(longDelay) >>
+          step.send(Stdout, ".........5........6\n") >>
+          step.send(Stdout, ".........7........8\n") >>
+          step.send(Stdout, ".........9.......10\n") >>
+          step.send(Stdout, "........11........12........13........14........15.......16\n") >>
+          Task.pure(Outcome.succeeded))
+    }
   }
 }

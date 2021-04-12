@@ -229,7 +229,9 @@ object MonixBase
       def syncFlatMapOnContinue(body: => Future[Ack])(implicit u: UncaughtExceptionReporter) =
         ack.syncTryFlatten.syncFlatMap {
           case Continue => body
-          case Stop => Stop
+          case Stop =>
+            logger.debug("Ack.syncFlatMapOnContinue ignored because Observable returned Stop")
+            Stop
         }
     }
 
