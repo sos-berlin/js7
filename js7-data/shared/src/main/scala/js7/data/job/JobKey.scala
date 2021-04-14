@@ -12,9 +12,9 @@ import js7.data.workflow.{WorkflowId, WorkflowPath}
   */
 sealed trait JobKey
 {
-  def keyName: String
+  def name: String
 
-  override def toString = s"Job:$keyName"
+  override def toString = s"Job:$name"
 }
 
 object JobKey
@@ -27,14 +27,16 @@ object JobKey
 
   def forTest: JobKey = forTest("TEST")
 
-  def forTest(name: String) = Named(WorkflowBranchPath(WorkflowPath.NoId, Nil), WorkflowJob.Name(name))
+  def forTest(name: String) =
+    Named(WorkflowBranchPath(WorkflowPath.NoId, Nil), WorkflowJob.Name(name))
 
   final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey {
-    def keyName = workflowPosition.toString
+    def name = workflowPosition.toString
   }
 
-  final case class Named(workflowBranchPath: WorkflowBranchPath, jobName: WorkflowJob.Name) extends JobKey {
-    def keyName = s"$workflowBranchPath:${jobName.string}"
+  final case class Named(workflowBranchPath: WorkflowBranchPath, jobName: WorkflowJob.Name)
+  extends JobKey {
+    def name = s"$workflowBranchPath:${jobName.string}"
   }
 
   implicit val jsonEncoder: Encoder.AsObject[JobKey] = {

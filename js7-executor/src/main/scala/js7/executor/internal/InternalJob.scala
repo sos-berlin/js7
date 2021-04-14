@@ -4,10 +4,11 @@ import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.monixutils.TaskObserver
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
+import js7.data.job.{InternalExecutable, JobConf}
 import js7.data.order.Order
 import js7.data.order.Order.Processing
+import js7.data.value.NamedValues
 import js7.data.value.expression.Scope
-import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.Workflow
 import js7.executor.{OrderProcess, StdObservers}
 import monix.eval.Task
@@ -31,7 +32,8 @@ object InternalJob
 {
   final case class JobContext(
     implementationClass: Class[_],
-    jobArguments: Map[String, Value],
+    executable: InternalExecutable,
+    jobConf: JobConf,
     implicit val js7Scheduler: Scheduler,
     ioExecutor: IOExecutor,
     blockingJobScheduler: Scheduler)

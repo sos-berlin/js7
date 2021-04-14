@@ -440,7 +440,7 @@ with Stash {
           sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
         val jobActor = watch(actorOf(
           JobActor.props(jobConf, executorConf),
-          uniqueActorName(encodeAsActorName("Job-" + jobKey.keyName))))
+          uniqueActorName(encodeAsActorName("Job-" + jobKey.name))))
         jobRegister.insert(jobKey, jobActor)
       }
     }

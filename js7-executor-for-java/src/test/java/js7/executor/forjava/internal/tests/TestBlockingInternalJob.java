@@ -33,6 +33,9 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
     public TestBlockingInternalJob(JobContext jobContext) {
         expectedBlockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
         assertSpecialThread();
+        if (!jobContext.jobKey().name().equals("WORKFLOW~1:JOB") &&
+            !jobContext.jobKey().name().equals("WORKFLOW-9~v9:0"))
+            throw new AssertionError("Unexpected jobKey.name");
     }
 
     // Implement optionally

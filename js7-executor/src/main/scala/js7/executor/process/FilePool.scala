@@ -24,7 +24,7 @@ private[process] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) 
         head
       case Nil =>
         val fileSet = FileSet(new ShellReturnValuesProvider(temporaryDirectory))
-        logger.trace(s"Job '${jobKey.keyName}': Using file ${fileSet.shellReturnValuesProvider} for order namedValues")
+        logger.trace(s"Job '${jobKey.name}': Using file ${fileSet.shellReturnValuesProvider} for order namedValues")
         fileSet
     }
     used += fileSet
@@ -33,18 +33,18 @@ private[process] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) 
 
   def release(fileSet: FileSet): Unit = {
     val removed = used.remove(fileSet)
-    require(removed, s"Job '${jobKey.keyName}': Releasing unknown FileSet")
+    require(removed, s"Job '${jobKey.name}': Releasing unknown FileSet")
     free = fileSet :: free
   }
 
   def close() = {
     if (used.nonEmpty) {
-      logger.debug(s"Job '${jobKey.keyName}': Closing while files are in use: $used")
+      logger.debug(s"Job '${jobKey.name}': Closing while files are in use: $used")
     }
     tryDeleteFiles((free ++ used).flatMap(_.files))
   }
 
-  override def toString = s"FilePool(Job '${jobKey.keyName}' ${used.size} used and ${free.size} free file sets)"
+  override def toString = s"FilePool(Job '${jobKey.name}' ${used.size} used and ${free.size} free file sets)"
 }
 
 private[process] object FilePool

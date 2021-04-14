@@ -28,7 +28,7 @@ extends Actor with Stash
 {
   import jobConf.{jobKey, sigKillDelay, workflowJob}
 
-  private val logger = Logger.withPrefix[this.type](jobKey.keyName)
+  private val logger = Logger.withPrefix[this.type](jobKey.name)
   private val orderToProcess = mutable.Map.empty[OrderId, OrderProcess]
   private val isOrderKilled = mutable.Set.empty[OrderId]
   private var waitingForNextOrder = false
