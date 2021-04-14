@@ -79,7 +79,7 @@ public final class TestJInternalJob implements JInternalJob
             throw new RuntimeException("NOT STARTED");
         }
         // 💥 May throw NullPointerException or ArithmeticException 💥
-        long arg = ((NumberValue)step.arguments().get("arg")).toBigDecimal().longValueExact();
+        long arg = ((NumberValue)step.arguments().get("STEP_ARG")).toBigDecimal().longValueExact();
         long result = arg + 1;
         return JOutcome.succeeded(
             singletonMap("RESULT", NumberValue.of(result)));

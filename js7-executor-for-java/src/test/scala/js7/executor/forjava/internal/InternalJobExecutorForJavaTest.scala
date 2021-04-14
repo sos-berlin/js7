@@ -40,7 +40,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
       val executable = InternalExecutable(
         testClass.getName,
         jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
-        arguments = ObjectExpression(Map("arg" -> NamedValue("arg"))))
+        arguments = ObjectExpression(Map("STEP_ARG" -> NamedValue("ORDER_ARG"))))
       implicit val executor = new InternalJobExecutor(
         executable,
         JobConf(
@@ -106,7 +106,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
             ProcessOrder(
               Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
               workflow,
-              NamedValues("arg" -> arg),
+              NamedValues("ORDER_ARG" -> arg),
               StdObservers(out, err, 4096)))
           .orThrow
           .runToFuture)

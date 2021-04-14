@@ -7,7 +7,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
 import js7.data.agent.AgentId
 import js7.data.command.CancelMode
 import js7.data.controller.ControllerCommand.CancelOrders
@@ -64,13 +64,13 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
     for (processNumber <- 1 to 3) withClue(s"#$processNumber ") {
-      val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ARG" -> NumberValue(300)))
+      val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(300)))
       val events = controller.runOrder(order).map(_.value)
 
       val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
       assert(outcomes == Vector(Outcome.Succeeded(
         NamedValues(
-          "START" -> NumberValue(1),  // One start only for muliple toOrderProcess calls
+          "START" -> NumberValue(1),  // One start only for multiple toOrderProcess calls
           "PROCESS" -> NumberValue(processNumber),
           "RESULT" -> NumberValue(301)))))
     }
@@ -78,7 +78,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addInternalJobTest(
     execute_[AddOneJob],
-    orderArguments = Map("ARG" -> NumberValue(100)),
+    orderArguments = Map("ORDER_ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues(
       "START" -> NumberValue(1),
       "PROCESS" -> NumberValue(1),
@@ -86,7 +86,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addInternalJobTest(
     execute_[AddOneJob],
-    orderArguments = Map("ARG" -> NumberValue(200)),
+    orderArguments = Map("ORDER_ARG" -> NumberValue(200)),
     expectedOutcome = Outcome.Succeeded(NamedValues(
       "START" -> NumberValue(1),
       "PROCESS" -> NumberValue(1),  // 1 agein, because it is a different WorkflowJob
@@ -120,10 +120,10 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
           InternalExecutable(
             jobClass.getName,
             jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
-            arguments = ObjectExpression(Map("arg" -> NamedValue("ARG")))),
+            arguments = ObjectExpression(Map("STEP_ARG" -> NamedValue("ORDER_ARG")))),
           taskLimit = n)),
         indexedOrderIds
-          .map { case (i, orderId) => orderId -> Map("ARG" -> NumberValue(i)) }
+          .map { case (i, orderId) => orderId -> Map("ORDER_ARG" -> NumberValue(i)) }
           .toMap,
         expectedOutcomes = indexedOrderIds
           .map { case (i, orderId) =>
@@ -146,7 +146,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .withId(workflowPathIterator.next() ~ versionId)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
-    val order = FreshOrder(orderIdIterator.next(), workflow.path)
+    val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(1)))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
@@ -265,8 +265,11 @@ object InternalJobTest
   private def execute_[A: ClassTag] =
     Execute(
       WorkflowJob(
-      agentId,
-      InternalExecutable(implicitClass[A].getName)))
+        agentId,
+        InternalExecutable(
+          implicitClass[A].getName,
+          arguments = ObjectExpression(Map(
+            "STEP_ARG" -> NamedValue("ORDER_ARG"))))))
 
   private object SimpleJob extends InternalJob
   {
@@ -292,6 +295,7 @@ object InternalJobTest
   private final class AddOneJob(jobContext: JobContext) extends InternalJob
   {
     assertThat(jobContext.implementationClass == getClass)
+
     private val startCount = Atomic(0)
     private val processCount = Atomic(0)
 
@@ -304,11 +308,13 @@ object InternalJobTest
       OrderProcess(Task {
         processCount += 1
         Outcome.Completed.fromChecked(
-          for (number <- step.scope.parseAndEvalToBigDecimal("$ARG")) yield
-            Outcome.Succeeded(NamedValues(
+          step.arguments
+            .checked("STEP_ARG")
+            .flatMap(_.toNumber)
+            .map(value => Outcome.Succeeded(NamedValues(
               "START" -> NumberValue(startCount.get()),
               "PROCESS" -> NumberValue(processCount.get()),
-              "RESULT" -> NumberValue(number + 1))))
+              "RESULT" -> NumberValue(value.number + 1)))))
         })
   }
 

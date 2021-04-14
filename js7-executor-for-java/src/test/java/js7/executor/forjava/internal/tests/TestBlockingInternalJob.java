@@ -2,6 +2,7 @@ package js7.executor.forjava.internal.tests;
 
 import io.vavr.control.Either;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import js7.base.problem.Problem;
@@ -69,9 +70,20 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             }
             step.errWriter().write('\n');
 
-            Value maybeValue = step.arguments().get("arg");  // May be null
+            // The recommened way is to access the declared job arguments:
+            Value argOrNull = step.arguments().get("STEP_ARG");
+
+            {
+                // Access any (maybe undeclared) named values
+                // like $ORDER_ARG in the expression language.
+                // Returns a declared Order default value, too
+                // STEP_ARG is not accessible here.
+                assertThat(step.namedValue("ORDER_ARG"), equalTo(Optional.ofNullable(argOrNull)));
+                assertThat(step.namedValue("UNKNOWN"), equalTo(Optional.empty()));
+            }
+
             // 💥 May throw NullPointerException or ArithmeticException 💥
-            long arg = ((NumberValue)maybeValue).toBigDecimal().longValueExact();
+            long arg = ((NumberValue)argOrNull).toBigDecimal().longValueExact();
             long result = arg + 1;
 
             return JOutcome.succeeded(singletonMap("RESULT", NumberValue.of(result)));
