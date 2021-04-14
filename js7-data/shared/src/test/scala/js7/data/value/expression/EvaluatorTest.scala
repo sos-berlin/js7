@@ -2,11 +2,9 @@ package js7.data.value.expression
 
 import fastparse.NoWhitespace._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.expressionOnly
-import js7.data.value.expression.Scope.ConstantExpressionRequiredProblem
 import js7.data.value.{BooleanValue, ListValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -25,41 +23,40 @@ final class EvaluatorTest extends AnyFreeSpec
         import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
         import ValueSearch.{LastExecuted, Name}
 
-        private val symbols = Map[String, Value]("catchCount" -> NumberValue(3))
-        val symbolToValue = name => symbols.checked(name)
+        override def symbolToValue(symbol: String) = symbol match {
+          case "catchCount" => Right(NumberValue(3))
+          case _ => super.symbolToValue(symbol)
+        }
 
         val findValue = {
           case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
-            Right(
-              Map(
-                "ASTRING" -> StringValue("AA"),
-                "ANUMBER" -> NumberValue(7),
-                "ABOOLEAN" -> BooleanValue(true),
-                "returnCode" -> NumberValue(1)
-              ).get(name))
+            Map(
+              "ASTRING" -> StringValue("AA"),
+              "ANUMBER" -> NumberValue(7),
+              "ABOOLEAN" -> BooleanValue(true),
+              "returnCode" -> NumberValue(1)
+            ).get(name)
 
           case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
-            Right(Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply)
+            Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply
 
           case ValueSearch(LastExecuted(ByLabel(Label("LABEL"))), Name(name)) =>
-            Right(
-              Map(
-                "KEY" -> StringValue("LABEL-VALUE"),
-                "returnCode" -> NumberValue(2)
-              ).get(name))
+            Map(
+              "KEY" -> StringValue("LABEL-VALUE"),
+              "returnCode" -> NumberValue(2)
+            ).get(name)
 
           case ValueSearch(LastExecuted(ByWorkflowJob(WorkflowJob.Name("JOB"))), Name(name)) =>
-            Right(
-              Map(
-                "KEY" -> StringValue("JOB-VALUE"),
-                "returnCode" -> NumberValue(3)
-              ).get(name))
+            Map(
+              "KEY" -> StringValue("JOB-VALUE"),
+              "returnCode" -> NumberValue(3)
+            ).get(name)
 
           case ValueSearch(ValueSearch.Argument, Name(name)) =>
-            Right(Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply)
+            Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply
 
           case o =>
-            Left(Problem(s"UNEXPECTED CASE: $o"))
+            None
         }
 
         override def evalFunctionCall(functionCall: FunctionCall): Checked[Value] =
@@ -426,7 +423,7 @@ final class EvaluatorTest extends AnyFreeSpec
       Right(Equal(NumericConstant(1), NumericConstant(2))))
 
     "Variables cannot be used" in {
-      assert(eval(NamedValue.last("VARIABLE")) == Left(ConstantExpressionRequiredProblem))
+      assert(eval(NamedValue.last("VARIABLE")) == Left(Problem("No such named value: VARIABLE")))
     }
   }
 

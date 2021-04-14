@@ -63,25 +63,25 @@ object StateView
       private lazy val catchCount = Right(NumberValue(
         order.workflowPosition.position.catchCount))
 
-      val symbolToValue = {
+      override def symbolToValue(symbol: String) = symbol match {
         case "catchCount" => catchCount
+        case _ => super.symbolToValue(symbol)
       }
 
       val findValue = {
         case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
-          Right(argument(name))
+          argument(name)
 
         case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
-          Right(
-            order.historicOutcomes
-              .reverseIterator
-              .collectFirst {
-                case HistoricOutcome(_, outcome: Outcome.Completed)
-                  if outcome.namedValues.contains(name) =>
-                  outcome.namedValues(name)
-              }
-              .orElse(argument(name))
-              .orElse(nameToMaybeDefault(name)))
+          order.historicOutcomes
+            .reverseIterator
+            .collectFirst {
+              case HistoricOutcome(_, outcome: Outcome.Completed)
+                if outcome.namedValues.contains(name) =>
+                outcome.namedValues(name)
+            }
+            .orElse(argument(name))
+            .orElse(nameToMaybeDefault(name))
 
         case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
           order.historicOutcomes
@@ -91,8 +91,7 @@ object StateView
                 if workflow.positionMatchesSearch(pos, positionSearch) =>
                 whatToValue(outcome, what)
             }
-            .toChecked(Problem(
-              s"There is no position in workflow that matches '$positionSearch'"))
+            .flatten
       }
 
       private def argument(name: String): Option[Value] =

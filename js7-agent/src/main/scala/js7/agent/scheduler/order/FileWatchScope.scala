@@ -4,11 +4,12 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.regex.Matcher
 import js7.agent.scheduler.order.FileWatchScope._
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.data.orderwatch.OrderWatchId
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope, ValueSearch}
 import js7.data.value.{NumberValue, StringValue, Value}
+import scala.util.control.NonFatal
 
 private final class FileWatchScope(orderWatchId: OrderWatchId, matchedMatcher: Matcher)
 extends Scope
@@ -17,41 +18,32 @@ extends Scope
 
   lazy val now = Instant.now
 
-  val symbolToValue = symbol => Left(Problem(s"Unknown symbol: $symbol"))
-
   val findValue = {
     // $orderWatchId
     case ValueSearch(LastOccurred, Name("orderWatchId")) =>
-      Right(Some(StringValue(orderWatchId.string)))
+      Some(StringValue(orderWatchId.string))
 
     // $epochMilli
     case ValueSearch(LastOccurred, Name("epochMilli")) =>
-      Right(Some(NumberValue(now.toEpochMilli)))
+      Some(NumberValue(now.toEpochMilli))
 
     // $epochSecond
     case ValueSearch(LastOccurred, Name("epochSecond")) =>
-      Right(Some(NumberValue(now.toEpochMilli / 1000)))
+      Some(NumberValue(now.toEpochMilli / 1000))
 
     // $0, $1, ...
     case ValueSearch(LastOccurred, Name(NumberRegex(nr))) =>
-      Checked.catchNonFatal {
+      try {
         val index = nr.toInt
-        val maybe =
-          if (index >= 0 && index <= matchedMatcher.groupCount)
-            Option(matchedMatcher.group(index))
-          else
-            None
-        maybe match {
-          case None =>
-            Left(Problem(s"Unknown regular expression group index $index" +
-              s" or group does not match " +
-              s"(known groups are $$0...$$${matchedMatcher.groupCount})"))
-          case Some(string) =>
-            Right(Some(StringValue(string)))
-        }
-      }.flatten
+        if (index >= 0 && index <= matchedMatcher.groupCount)
+          Option(StringValue(matchedMatcher.group(index)))
+        else
+          None
+      } catch { case NonFatal(_) =>
+        None
+      }
 
-    case _ => Right(None)
+    case _ => None
   }
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall): Checked[Value] =

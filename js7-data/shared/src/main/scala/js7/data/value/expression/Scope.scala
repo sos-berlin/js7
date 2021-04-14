@@ -12,9 +12,10 @@ trait Scope
 {
   protected final lazy val evaluator = Evaluator(this)
 
-  val symbolToValue: String => Checked[Value]
+  def symbolToValue(symbol: String): Checked[Value] =
+    Left(Problem("Unknown symbol: " + symbol))
 
-  val findValue: ValueSearch => Checked[Option[Value]]
+  val findValue: ValueSearch => Option[Value]
 
   final def evalBoolean(expression: Expression): Checked[Boolean] =
     evaluator.evalBoolean(expression).map(_.booleanValue)
@@ -25,15 +26,15 @@ trait Scope
   def evalFunctionCall(functionCall: FunctionCall): Checked[Value] =
     Left(Problem(s"Unknown function: ${functionCall.name}"))
 
-  def variable(name: String): Checked[Option[Value]] =
+  def namedValue(name: String): Option[Value] =
     findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
 
-  def evalToBigDecimal(expression: String): Checked[BigDecimal] =
-    eval(expression)
+  def parseAndEvalToBigDecimal(expression: String): Checked[BigDecimal] =
+    parseAndEval(expression)
       .flatMap(checkedCast[NumberValue])
       .map(_.number)
 
-  def eval(expression: String): Checked[Value] =
+  def parseAndEval(expression: String): Checked[Value] =
     ExpressionParser.parse(expression)
       .flatMap(evaluator.eval)
 }
@@ -43,8 +44,7 @@ object Scope
   val empty: Scope = Empty
 
   private object Empty extends Scope {
-    val symbolToValue = _ => Left(ConstantExpressionRequiredProblem)
-    val findValue = _ => Left(ConstantExpressionRequiredProblem)
+    val findValue = _ => None
   }
 
   case object ConstantExpressionRequiredProblem extends Problem.ArgumentlessCoded

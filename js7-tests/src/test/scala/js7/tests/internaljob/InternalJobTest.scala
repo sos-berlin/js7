@@ -304,7 +304,7 @@ object InternalJobTest
       OrderProcess(Task {
         processCount += 1
         Outcome.Completed.fromChecked(
-          for (number <- step.scope.evalToBigDecimal("$ARG")) yield
+          for (number <- step.scope.parseAndEvalToBigDecimal("$ARG")) yield
             Outcome.Succeeded(NamedValues(
               "START" -> NumberValue(startCount.get()),
               "PROCESS" -> NumberValue(processCount.get()),

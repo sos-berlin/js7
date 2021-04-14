@@ -62,15 +62,20 @@ final class Evaluator(scope: Scope)
           case NamedValue.KeyValue(stringExpr) =>
             for {
               key <- evalString(stringExpr).map(_.string)
-              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(key)))
-              value <- maybeValue.map(Right.apply)
+              value <- scope.findValue(ValueSearch(w, ValueSearch.Name(key)))
+                .map(Right(_))
                 .getOrElse(
                   default.map(evalString).toChecked(Problem(where match {
-                    case NamedValue.Argument => s"No such order argument: $key"
-                    case NamedValue.LastOccurred => s"No such named value: $key"
-                    case NamedValue.LastOccurredByPrefix(prefix) => s"Order has not passed a position '$prefix'"
-                    case NamedValue.ByLabel(Label(label)) => s"Workflow instruction at label $label did not return a named value '$key'"
-                    case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) => s"Last execution of job '$jobName' did not return a named value '$key'"
+                    case NamedValue.Argument =>
+                      s"No such order argument: $key"
+                    case NamedValue.LastOccurred =>
+                      s"No such named value: $key"
+                    case NamedValue.LastOccurredByPrefix(prefix) =>
+                      s"Order has not passed a position '$prefix'"
+                    case NamedValue.ByLabel(Label(label)) =>
+                      s"Workflow instruction at label $label did not return a named value '$key'"
+                    case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) =>
+                      s"Last execution of job '$jobName' did not return a named value '$key'"
                   })).flatten)
             } yield value
         }

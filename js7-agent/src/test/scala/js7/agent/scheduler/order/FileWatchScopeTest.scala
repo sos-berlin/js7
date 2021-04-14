@@ -22,7 +22,7 @@ final class FileWatchScopeTest extends AnyFreeSpec
   }
 
   "Example with now() and $epochSecond" in {
-    val checkedValue = fileWatchScope.eval(
+    val checkedValue = fileWatchScope.parseAndEval(
       "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchId:$1\"")
     val yyyymmdd = LocalDateTime.ofInstant(fileWatchScope.now, ZoneId.of("Antarctica/Troll"))
       .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -33,20 +33,20 @@ final class FileWatchScopeTest extends AnyFreeSpec
 
   "$epochMilli" in {
     val epochMilli = fileWatchScope.now.toEpochMilli
-    val checkedValue = fileWatchScope.eval("$epochMilli")
+    val checkedValue = fileWatchScope.parseAndEval("$epochMilli")
     assert(checkedValue == Right(NumberValue(epochMilli)))
     val n = checkedValue.flatMap(_.toNumber).orThrow.toBigDecimal.longValue
     assert(n == epochMilli)
   }
 
   "$0...$n" in {
-    //assert(newFileWatchScope("X").eval("$0") == Left(Problem("???")))
-    assert(fileWatchScope.eval("$0") == Right(StringValue("file-100B.csv")))
-    assert(fileWatchScope.eval("\"$0\"") == Right(StringValue("file-100B.csv")))
-    assert(fileWatchScope.eval("$1") == Right(StringValue("100B")))
-    assert(fileWatchScope.eval("$2") == Right(StringValue("B")))
-    assert(fileWatchScope.eval("$3") == Left(Problem("Unknown regular expression group index 3 or group does not match (known groups are $0...$4)")))
-    assert(fileWatchScope.eval("$4") == Right(StringValue("B")))
-    assert(fileWatchScope.eval("$5") == Left(Problem("Unknown regular expression group index 5 or group does not match (known groups are $0...$4)")))
+    //assert(newFileWatchScope("X").parseAndEval("$0") == Left(Problem("???")))
+    assert(fileWatchScope.parseAndEval("$0") == Right(StringValue("file-100B.csv")))
+    assert(fileWatchScope.parseAndEval("\"$0\"") == Right(StringValue("file-100B.csv")))
+    assert(fileWatchScope.parseAndEval("$1") == Right(StringValue("100B")))
+    assert(fileWatchScope.parseAndEval("$2") == Right(StringValue("B")))
+    assert(fileWatchScope.parseAndEval("$3") == Left(Problem("No such named value: 3")))
+    assert(fileWatchScope.parseAndEval("$4") == Right(StringValue("B")))
+    assert(fileWatchScope.parseAndEval("$5") == Left(Problem("No such named value: 5")))
   }
 }
