@@ -20,7 +20,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -389,7 +389,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
   private def withJournal(journalMeta: JournalMeta, lastEventId: EventId)(body: (EventJournalWriter, JournalEventWatch) => Unit): Unit =
     autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
       autoClosing(EventJournalWriter.forTest(journalMeta, after = lastEventId, journalId, Some(eventWatch))) { writer =>
-        writer.writeHeader(JournalHeader.forTest(journalId, eventId = lastEventId))
+        writer.writeHeader(JournalHeaders.forTest(journalId, eventId = lastEventId))
         writer.beginEventSection(sync = false)
         writer.onJournalingStarted()
         body(writer, eventWatch)

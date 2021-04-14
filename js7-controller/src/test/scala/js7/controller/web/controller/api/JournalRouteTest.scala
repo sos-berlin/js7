@@ -22,7 +22,7 @@ import js7.data.controller.ControllerState
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.JournalSeparators.EndOfJournalFileMarker
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalHeader, JournalId, Stamped}
+import js7.data.event.{EventId, JournalHeaders, JournalId, Stamped}
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
@@ -188,7 +188,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
 
   private def writeSnapshot(eventId: EventId): Unit =
     autoClosing(newSnapshotJournalWriter(eventId)) { writer =>
-      writer.writeHeader(JournalHeader.forTest(journalId))
+      writer.writeHeader(JournalHeaders.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)

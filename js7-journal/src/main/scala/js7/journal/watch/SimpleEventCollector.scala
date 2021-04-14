@@ -7,7 +7,7 @@ import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, JournalId, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.write.EventJournalWriter
 import monix.execution.Scheduler
@@ -29,7 +29,7 @@ extends AutoCloseable
     val eventWatch = new JournalEventWatch(journalMeta, config withFallback JournalEventWatch.TestConfig)
     val eventWriter = {
       val w = EventJournalWriter.forTest(journalMeta, tornEventId, journalId, Some(eventWatch))
-      w.writeHeader(JournalHeader.forTest(journalId, tornEventId))
+      w.writeHeader(JournalHeaders.forTest(journalId, tornEventId))
       w.beginEventSection(sync = false)
       w.onJournalingStarted()
       w

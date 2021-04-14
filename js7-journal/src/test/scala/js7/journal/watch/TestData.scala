@@ -9,7 +9,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{Event, EventId, JournalEvent, JournalHeaders, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.execution.Scheduler.Implicits.global
@@ -38,7 +38,7 @@ private[watch] object TestData
 
   def writeJournalSnapshot[E <: Event](journalMeta: JournalMeta, after: EventId, snapshotObjects: Seq[Any]): Path =
     autoClosing(SnapshotJournalWriter.forTest(journalMeta, after = after)) { writer =>
-      writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
+      writer.writeHeader(JournalHeaders.forTest(journalId, eventId = after))
       writer.beginSnapshotSection()
       for (o <- snapshotObjects) {
         writer.writeSnapshot(ByteArray(journalMeta.snapshotJsonCodec.encodeObject(o).compactPrint))
@@ -53,7 +53,7 @@ private[watch] object TestData
     journalId: JournalId = this.journalId): Path
   =
     autoClosing(EventJournalWriter.forTest(journalMeta, after = after, journalId)) { writer =>
-      writer.writeHeader(JournalHeader.forTest(journalId, eventId = after))
+      writer.writeHeader(JournalHeaders.forTest(journalId, eventId = after))
       writer.beginEventSection(sync = false)
       writer.writeEvents(stampedEvents take 1)
       writer.writeEvents(stampedEvents drop 1 take 2, transaction = true)

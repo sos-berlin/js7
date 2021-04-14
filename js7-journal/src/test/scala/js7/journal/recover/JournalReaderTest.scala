@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalId, JournalSeparators, KeyedEvent, Stamped}
+import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import js7.journal.JournalActor
 import js7.journal.files.JournalFiles
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
@@ -48,7 +48,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalMeta, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
-      writer.writeHeader(JournalHeader.forTest(journalId))
+      writer.writeHeader(JournalHeaders.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
@@ -66,7 +66,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
     val file = currentFile
     delete(file)  // File of last test
     autoClosing(new SnapshotJournalWriter(journalMeta, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
-      writer.writeHeader(JournalHeader.forTest(journalId))
+      writer.writeHeader(JournalHeaders.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
@@ -118,7 +118,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       val file = currentFile
       delete(file)  // File of last test
       autoClosing(new EventJournalWriter(journalMeta, file, after = 0L, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
-        writer.writeHeader(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst))
+        writer.writeHeader(JournalHeaders.forTest(journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)
         writer.writeEvents(first :: Nil)
         writer.writeEvents(ta, transaction = true)
@@ -154,7 +154,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
         def write[A](a: A)(implicit encoder: Encoder[A]) = writer.write(encoder(a).toByteArray)
         def writeEvent(a: Stamped[KeyedEvent[TestEvent]]) = write(a)
 
-        write(JournalHeader.forTest(journalId, eventId = EventId.BeforeFirst).asJson)
+        write(JournalHeaders.forTest(journalId, eventId = EventId.BeforeFirst).asJson)
         write(JournalSeparators.EventHeader)
         writeEvent(first)
         write(JournalSeparators.Transaction)

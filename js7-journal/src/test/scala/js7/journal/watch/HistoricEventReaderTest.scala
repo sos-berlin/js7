@@ -3,7 +3,7 @@ package js7.journal.watch
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.event.{JournalHeader, Stamped}
+import js7.data.event.{JournalHeaders, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.HistoricEventReaderTest._
@@ -22,7 +22,7 @@ final class HistoricEventReaderTest extends AnyFreeSpec
       val journalMeta = JournalMeta(TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
 
       autoClosing(EventJournalWriter.forTest(journalMeta, after = After, journalId)) { writer =>
-        writer.writeHeader(JournalHeader.forTest(journalId, eventId = After))
+        writer.writeHeader(JournalHeaders.forTest(journalId, eventId = After))
         writer.beginEventSection(sync = false)
         writer.writeEvents(TestEvents)
         writer.endEventSection(sync = false)

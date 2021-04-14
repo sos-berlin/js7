@@ -23,9 +23,10 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
+import js7.data.event.JournalHeaders._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalId, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.JournalActor._
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
@@ -137,7 +138,7 @@ extends Actor with Stash
         journaledStateBuilder.initializeState(None, uncommittedJournaledState.eventId, totalEventCount = 0, uncommittedJournaledState)
       }
       journalingObserver := observer_
-      journalHeader = JournalHeader.initial(journalId).copy(generation = 1)
+      journalHeader = JournalHeaders.initial(journalId).copy(generation = 1)
       eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
       eventWriter.writeHeader(journalHeader)
       eventWriter.beginEventSection(sync = conf.syncOnCommit)

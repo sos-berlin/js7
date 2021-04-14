@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import js7.base.log.Logger
 import js7.base.utils.SetOnce
 import js7.data.cluster.ClusterState
-import js7.data.event.{EventId, JournalHeader, JournalId, JournaledState}
+import js7.data.event.{EventId, JournalHeader, JournalHeaders, JournalId, JournaledState}
 import js7.journal.JournalActor
 import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered._
@@ -70,7 +70,7 @@ extends AutoCloseable
             state, Some(eventWatch),
             recoveredJournalFile
               .map(_.nextJournalHeader)
-              .getOrElse(JournalHeader.initial(journalId)),
+              .getOrElse(JournalHeaders.initial(journalId)),
             totalRunningSince)
 
           def receive = {

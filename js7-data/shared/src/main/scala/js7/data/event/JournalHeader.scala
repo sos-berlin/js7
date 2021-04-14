@@ -3,7 +3,6 @@ package js7.data.event
 import cats.syntax.semigroup._
 import io.circe.Json
 import java.nio.file.Path
-import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -12,8 +11,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.data.event.JournalHeader._
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -30,17 +28,6 @@ final case class JournalHeader private[data](
   js7Version: String,
   buildId: String)
 {
-  def nextGeneration(eventId: EventId, totalEventCount: Long, totalRunningTime: FiniteDuration, timestamp: Timestamp = Timestamp.now) =
-    copy(
-      eventId = eventId,
-      generation = generation + 1,
-      totalEventCount = totalEventCount,
-      totalRunningTime = totalRunningTime,
-      timestamp = timestamp,
-      version = Version,
-      js7Version = BuildInfo.longVersion,
-      buildId = BuildInfo.buildId)
-
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
     s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $startedAt, " +
     s"$version, $js7Version, $buildId)"
@@ -49,32 +36,6 @@ final case class JournalHeader private[data](
 object JournalHeader
 {
   private[data] val Version = "0.34"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
-
-  def forTest(journalId: JournalId, eventId: EventId = EventId.BeforeFirst): JournalHeader =
-    new JournalHeader(
-      journalId,
-      eventId = eventId,
-      generation = 1,
-      totalEventCount = 0,
-      Duration.Zero,
-      timestamp = Timestamp.now,
-      startedAt = Timestamp.now,
-      js7Version = BuildInfo.longVersion,
-      version = Version,
-      buildId = BuildInfo.buildId)
-
-  def initial(journalId: JournalId) =
-    new JournalHeader(
-      journalId,
-      eventId = EventId.BeforeFirst,
-      generation = 0,
-      totalEventCount = 0,
-      Duration.Zero,
-      timestamp = Timestamp.now,
-      startedAt = Timestamp.now,
-      version = Version,
-      js7Version = BuildInfo.longVersion,
-      buildId = BuildInfo.buildId)
 
   implicit lazy val jsonCodec = {
     intelliJuseImport(FiniteDurationJsonEncoder)
