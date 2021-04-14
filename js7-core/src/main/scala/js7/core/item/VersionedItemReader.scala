@@ -42,7 +42,7 @@ trait VersionedItemReader
         yamlToJson(source.utf8String) flatMap convertFromJson
     }
 
-  private[item] def itemPathCompanion: ItemPath.Companion[ThisItemPath] = companion.itemPathCompanion
+  private[item] def itemPathCompanion: ItemPath.Companion[ThisItemPath] = companion.Path
 }
 
 object VersionedItemReader

@@ -30,7 +30,7 @@ object ScheduledOrderGenerator extends VersionedItem.Companion[ScheduledOrderGen
   type Path = ScheduledOrderGeneratorPath
 
   val cls = classOf[ScheduledOrderGenerator]
-  val itemPathCompanion = ScheduledOrderGeneratorPath
+  val Path = ScheduledOrderGeneratorPath
 
   implicit def jsonCodec = ???
 }

@@ -41,7 +41,7 @@ object FileWatch extends OrderWatch.Companion
   type Id = OrderWatchId
 
   val cls = classOf[FileWatch]
-  val idCompanion = OrderWatchId
+  val Id = OrderWatchId
   val FileArgumentName = "file"
   private val defaultPattern = Pattern.compile("[^.].*")
 

@@ -14,7 +14,7 @@ import js7.data.item.{ItemPath, VersionedItem}
 final class TypedSourceReader(directory: Path, readers: Iterable[VersionedItemReader])
 {
   private val companionToReader: Map[ItemPath.AnyCompanion, VersionedItemReader] = readers.toKeyedMap(_.itemPathCompanion)
-  private val itemPathCompanions = readers.map(_.companion.itemPathCompanion)
+  private val itemPathCompanions = readers.map(_.companion.Path)
 
   // For tests
   def readCompleteDirectory(): Checked[Seq[VersionedItem]] =

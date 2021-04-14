@@ -84,6 +84,9 @@ object ItemPath
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
     object versionedItemIdCompanion extends InventoryItemId.Companion[VersionedItemId[P]] {
+      def apply(idString: String): VersionedItemId[P] =
+        checked(idString).orThrow
+
       final def checked(string: String): Checked[VersionedItemId[P]] =
         string indexOf VersionSeparator match {
           case -1 => Problem(s"${P.name} without version (denoted by '$VersionSeparator')?: $string")

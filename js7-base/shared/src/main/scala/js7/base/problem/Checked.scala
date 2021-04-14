@@ -1,6 +1,5 @@
 package js7.base.problem
 
-import cats.Applicative
 import cats.syntax.semigroup._
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
@@ -177,12 +176,12 @@ object Checked
     }
   }
 
-  object implicits {
-    implicit def checkedJsonEncoder[A](implicit A: Encoder[A]): Encoder[Checked[A]] =
-      checked => checked match {
-        case Left(problem) => Json.fromJsonObject(Problem.typedJsonEncoder.encodeObject(problem))
-        case Right(a) => A.apply(a)
-      }
+  object implicits
+  {
+    implicit def checkedJsonEncoder[A](implicit A: Encoder[A]): Encoder[Checked[A]] = {
+      case Left(problem) => Json.fromJsonObject(Problem.typedJsonEncoder.encodeObject(problem))
+      case Right(a) => A.apply(a)
+    }
 
     implicit def checkedJsonDecoder[A: Decoder]: Decoder[Checked[A]] = c =>
       for {

@@ -18,7 +18,7 @@ object AItem extends VersionedItem.Companion[AItem] {
   type Path = APath
 
   val cls = classOf[AItem]
-  val itemPathCompanion = APath
+  val Path = APath
 
   implicit val jsonCodec = deriveCodec[AItem]
 }

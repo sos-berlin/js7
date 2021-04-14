@@ -1,6 +1,6 @@
 package js7.base.circeutils.typed
 
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Codec, Decoder, Encoder, Json}
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils.singletonCodec
 import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, typeName}
@@ -34,6 +34,14 @@ object Subtype {
     apply(codec, codec)
 
   /**
+    * Use explicitly given Encoder.AsObject and Decoder (CirceCodec); Simple class name is type name.
+    * <p>
+    * Usage: Subtype(codec)
+    */
+  def apply[A](codec: Codec.AsObject[A])(implicit classTag: ClassTag[A]): Subtype[A] =
+    apply(codec, codec)
+
+  /**
     * Use explicitly given Encoder.AsObject and Decoder; Simple class name is type name.
     * <p>
     * Usage: Subtype(encoder, decoder)
@@ -56,7 +64,15 @@ object Subtype {
     * <p>
     * Usage: Subtype(A)
     */
-  def apply[A: ClassTag](singleton: A) = {
+  def apply[A: ClassTag](singleton: A) =
+    this.singleton(singleton)
+
+  /**
+    * Singleton is serialized as empty JSON object; Simple class name (without trailing $) is type name.
+    * <p>
+    * Usage: Subtype(A)
+    */
+  def singleton[A: ClassTag](singleton: A) = {
     val codec = singletonCodec(singleton)
     fromClassName[A](implicitClass[A], Nil, codec, codec)
   }

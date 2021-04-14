@@ -379,7 +379,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
   type Path = WorkflowPath
 
   val cls = classOf[Workflow]
-  val itemPathCompanion = WorkflowPath
+  val Path = WorkflowPath
   val empty = Workflow(WorkflowPath.NoId, Vector.empty)
 
   implicit val itemsOverview = WorkflowsOverview

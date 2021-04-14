@@ -21,12 +21,12 @@ trait VersionedItem extends InventoryItem
 
   final def withoutVersion: Self = withVersion(VersionId.Anonymous)
 
-  final def withoutId: Self = withId(id = companion.itemPathCompanion.NoId)
+  final def withoutId: Self = withId(id = companion.Path.NoId)
 
   final def withVersion(v: VersionId): Self = withId(id = id.copy(versionId = v))
 
   def cast[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): A = {
-    if (A != companion) throw new ClassCastException(s"Expected ${companion.itemPathCompanion.name}, but is: $path")
+    if (A != companion) throw new ClassCastException(s"Expected ${companion.Path.name}, but is: $path")
     this.asInstanceOf[A]
   }
 }
@@ -41,8 +41,8 @@ object VersionedItem
     type Path <: ItemPath
     type Id = VersionedItemId[Path]
 
-    val itemPathCompanion: ItemPath.Companion[Path]
-    final lazy val idCompanion = itemPathCompanion.versionedItemIdCompanion
+    val Path: ItemPath.Companion[Path]
+    final lazy val Id = Path.versionedItemIdCompanion
 
     implicit def self: Companion[A] = this
   }

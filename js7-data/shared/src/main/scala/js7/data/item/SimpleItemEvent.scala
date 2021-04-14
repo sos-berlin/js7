@@ -33,7 +33,7 @@ object SimpleItemEvent
 
   def jsonCodec[A <: SimpleItem](companions: Seq[SimpleItem.Companion]): TypedJsonCodec[SimpleItemEvent] = {
     implicit val itemJsonCodec = SimpleItem.jsonCodec(companions)
-    implicit val idJsonCodec = SimpleItemId.jsonCodec(companions.map(_.idCompanion))
+    implicit val idJsonCodec = SimpleItemId.jsonCodec(companions.map(_.Id))
 
     TypedJsonCodec(
       Subtype(deriveCodec[SimpleItemAdded]),

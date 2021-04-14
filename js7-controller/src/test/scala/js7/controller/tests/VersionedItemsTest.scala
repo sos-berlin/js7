@@ -1,8 +1,7 @@
 package js7.controller.tests
 
-import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Json, JsonObject}
+import io.circe.{Json, JsonObject}
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJsonObject}
@@ -13,7 +12,7 @@ import js7.base.problem.Checked.Ops
 import js7.controller.tests.VersionedItemsTest._
 import js7.core.item.VersionedItemReader
 import js7.data.item.VersionedItems.diffVersionedItems
-import js7.data.item.{ItemPath, RepoChange, SourceType, VersionId, VersionedItem, VersionedItemId, VersionedItems}
+import js7.data.item.{ItemPath, RepoChange, SourceType, TestPath, TestVersionedItem, VersionId, VersionedItem, VersionedItems}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
@@ -116,15 +115,16 @@ final class VersionedItemsTest extends AnyFreeSpec
         changed = List(D1Workflow withVersion V1),
         deleted = List(BWorkflow.path)))
 
-    assert(diff.select[TestPath, TestItem] ==
-      VersionedItems.Diff[TestPath, TestItem](
+    assert(diff.select[TestPath, TestVersionedItem] ==
+      VersionedItems.Diff[TestPath, TestVersionedItem](
         added = List(BTestItem withVersion V0),
         changed = Nil,
         deleted = Nil))
   }
 }
 
-object VersionedItemsTest {
+object VersionedItemsTest
+{
   private[tests] val V0 = VersionId("0")
   private[tests] val V1 = VersionId("1")
 
@@ -134,8 +134,8 @@ object VersionedItemsTest {
   private[tests] val DWorkflow = Workflow(WorkflowPath("D"), Vector("D-END" @: ExplicitEnd()))
   private[tests] val EWorkflow = Workflow(WorkflowPath("E"), Vector(Fail(None)))
   private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("D"), "define workflow { `CHANGED-D-END`: end; }").orThrow
-  private[tests] val ATestItem = TestItem(TestPath("A"), "A")
-  private[tests] val BTestItem = TestItem(TestPath("folder/B"), "B")
+  private[tests] val ATestItem = TestVersionedItem(TestPath("A"), "A")
+  private[tests] val BTestItem = TestVersionedItem(TestPath("folder/B"), "B")
 
   private[tests] def provideDirectory[A](body: Path => A): A = {
     val dir = createTempDirectory("test-")
@@ -145,39 +145,11 @@ object VersionedItemsTest {
     finally deleteDirectoryRecursively(dir)
   }
 
-  private[tests] case class TestPath(string: String) extends ItemPath {
-    def companion = TestPath
-  }
-  private[tests] object TestPath extends ItemPath.Companion[TestPath] {
-    val sourceTypeToFilenameExtension = Map(
-      SourceType.Json -> ".test.json")
-
-    protected def unchecked(string: String) = new TestPath(string)
-  }
-
-  private[tests] type TestId = VersionedItemId[TestPath]
-  //private[tests] val TestId = new VersionedItemId.Companion[TestPath] {}
-
-  private[tests] final case class TestItem(id: TestId, content: String) extends VersionedItem {
-    type Self = TestItem
-    val companion = TestItem
-
-    def withId(id: VersionedItemId[Path]) = copy(id)
-  }
-  private[tests] object TestItem extends VersionedItem.Companion[TestItem] {
-    type Item = TestItem
-    type Path = TestPath
-    override type Id = TestId
-    val cls = classOf[TestItem]
-    val itemPathCompanion = TestPath
-    implicit val jsonCodec: Codec.AsObject[TestItem] = deriveCodec[TestItem]
-  }
-
   private[tests] object TestItemReader extends VersionedItemReader
   {
-    val companion = TestItem
+    val companion = TestVersionedItem
 
-    protected def read(testId: VersionedItemId[TestPath], byteArray: ByteArray) = {
+    protected def read(testId: TestVersionedItem.Id, byteArray: ByteArray) = {
       case t: SourceType.JsonLike =>
         readAnonymousJsonLike(t, byteArray).map(_ withId testId)
     }
@@ -185,6 +157,6 @@ object VersionedItemsTest {
     def convertFromJson(json: Json) =
       Json.fromJsonObject(
         json.asObject.get ++ JsonObject("id" -> (TestPath.Anonymous ~ VersionId.Anonymous).asJson)
-      ).as[TestItem].toChecked
+      ).as[TestVersionedItem].toChecked
   }
 }

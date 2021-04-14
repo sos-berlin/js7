@@ -10,6 +10,6 @@ final class VersionedItemTest extends AnyFreeSpec
   "Companion" in {
     assert(AItem.typeName == "AItem")
     assert(AItem.toString == "AItem")
-    assert(AItem.itemPathCompanion == APath)
+    assert(AItem.Path == APath)
   }
 }

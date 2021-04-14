@@ -56,7 +56,7 @@ object CommonItemEvent
   def jsonCodec[A <: SimpleItem](companions: Seq[InventoryItem.Companion])
   : TypedJsonCodec[CommonItemEvent] = {
     implicit val itemJsonCodec = InventoryItem.jsonCodec(companions)
-    implicit val idJsonCodec = InventoryItemId.jsonCodec(companions.map(_.idCompanion))
+    implicit val idJsonCodec = InventoryItemId.jsonCodec(companions.map(_.Id))
 
     TypedJsonCodec(
       Subtype(deriveCodec[ItemDeletionMarked]),

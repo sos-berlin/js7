@@ -23,7 +23,7 @@ object SimpleItem
     type Item <: SimpleItem
     type Id <: SimpleItemId
 
-    val idCompanion: SimpleItemId.Companion[Id]
+    val Id: SimpleItemId.Companion[Id]
   }
 
   def jsonCodec(companions: Seq[Companion]): Codec.AsObject[SimpleItem] =

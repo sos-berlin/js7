@@ -24,7 +24,7 @@ object AgentRef extends SimpleItem.Companion
   type Id = AgentId
 
   val cls = classOf[AgentRef]
-  val idCompanion = AgentId
+  val Id = AgentId
 
   implicit val jsonCodec = {
     implicit val configuration = withDefaults

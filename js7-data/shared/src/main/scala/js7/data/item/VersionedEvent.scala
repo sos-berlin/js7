@@ -36,12 +36,15 @@ object VersionedEvent {
     : Decoder[(VersionedItem, SignedString)] =
       c => for {
         path <- c.get[ItemPath]("path")
-        signed <- c.get[SignedString]("signed")
-        parsed <- io.circe.parser.parse(signed.string).left.map(error => DecodingFailure(error.toString, c.history))
+        signedString <- c.get[SignedString]("signed")
+        parsed <- io.circe.parser.parse(signedString.string)
+          .left.map(error => DecodingFailure(error.toString, c.history))
         item <- parsed.as[VersionedItem].flatMap(o =>
-          if (o.path != path) Left(DecodingFailure(s"Path in event '$path' does not equal path in signed string", c.history))
-          else Right(o))
-      } yield (item, signed)
+          if (o.path != path)
+            Left(DecodingFailure(s"Path '$path' in event does not equal path in signed string", c.history))
+          else
+            Right(o))
+      } yield (item, signedString)
   }
 
   final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {

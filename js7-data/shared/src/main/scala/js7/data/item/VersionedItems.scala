@@ -42,7 +42,7 @@ object VersionedItems
       Diff(
         added   collect { case o if o.companion eq A1 => o.asInstanceOf[A1] },
         changed collect { case o if o.companion eq A1 => o.asInstanceOf[A1] },
-        deleted collect { case o if o.companion eq A1.itemPathCompanion => o.asInstanceOf[P1] })
+        deleted collect { case o if o.companion eq A1.Path => o.asInstanceOf[P1] })
 
     def withVersionId(versionId: VersionId): Diff[P, A] = copy(
       added = added.map(_.withVersion(versionId).asInstanceOf[A]),

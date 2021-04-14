@@ -19,7 +19,7 @@ import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId, ItemPath, SimpleItemState, Repo, SimpleItem, SimpleItemId, VersionedEvent, VersionedItem}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId, ItemPath, Repo, SimpleItem, SimpleItemId, SimpleItemState, VersionedEvent, VersionedItem}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -316,10 +316,10 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   implicit val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(inventoryItemCompanions)
 
   implicit val inventoryItemIdJsonCodec: CirceCodec[InventoryItemId] =
-    InventoryItemId.jsonCodec(inventoryItemCompanions.map(_.idCompanion))
+    InventoryItemId.jsonCodec(inventoryItemCompanions.map(_.Id))
 
   implicit val simpleItemIdJsonCodec: CirceCodec[SimpleItemId] =
-    SimpleItemId.jsonCodec(simpleItemCompanions.map(_.idCompanion))
+    SimpleItemId.jsonCodec(simpleItemCompanions.map(_.Id))
 
   implicit val itemPathJsonCodec: CirceCodec[ItemPath] =
     ItemPath.jsonCodec(itemPathCompanions)

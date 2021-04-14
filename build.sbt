@@ -379,7 +379,15 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .jsSettings(
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
-lazy val `js7-controller` = project.dependsOn(`js7-controller-client`.jvm, `js7-core`, `js7-cluster`, `js7-common`, `js7-agent-client`, `js7-tester`.jvm % "test")
+lazy val `js7-controller` = project
+  .dependsOn(
+    `js7-controller-client`.jvm,
+    `js7-core`,
+    `js7-cluster`,
+    `js7-common`,
+    `js7-agent-client`,
+    `js7-data`.jvm % "test->test",
+    `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings(
     mappings in (Compile, packageDoc) := Seq.empty)

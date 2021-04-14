@@ -26,7 +26,7 @@ object Lock extends SimpleItem.Companion
   type Id = LockId
 
   val cls = classOf[Lock]
-  val idCompanion = LockId
+  val Id = LockId
 
   val jsonCodec = {
     implicit val configuration = withDefaults

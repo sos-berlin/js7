@@ -135,7 +135,7 @@ object AgentState extends JournaledState.Companion[AgentState]
     TypedJsonCodec(inventoryItemCompanions.map(_.subtype): _*)
 
   implicit val inventoryItemIdJsonCodec: Codec[InventoryItemId] =
-    InventoryItemId.jsonCodec(inventoryItemCompanions.map(_.idCompanion))
+    InventoryItemId.jsonCodec(inventoryItemCompanions.map(_.Id))
 
   implicit val inventoryItemEventJsonCodec =
     InventoryItemEvent.jsonCodec(inventoryItemCompanions)
