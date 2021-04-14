@@ -89,7 +89,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     orderArguments = Map("ORDER_ARG" -> NumberValue(200)),
     expectedOutcome = Outcome.Succeeded(NamedValues(
       "START" -> NumberValue(1),
-      "PROCESS" -> NumberValue(1),  // 1 agein, because it is a different WorkflowJob
+      "PROCESS" -> NumberValue(1),  // 1 again, because it is a different WorkflowJob
       "RESULT" -> NumberValue(201))))
 
   addInternalJobTest(

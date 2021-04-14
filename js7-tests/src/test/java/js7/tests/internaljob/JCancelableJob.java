@@ -17,6 +17,7 @@ public final class JCancelableJob implements BlockingInternalJob
                 return JOutcome.failed("Canceled");
             }
 
+            @Override
             public void cancel(boolean immediately) {
                 canceled = true;
             }

@@ -43,7 +43,7 @@ trait BlockingInternalJob
     * <p>
     * May be called multiple times in parallel.
     */
-  @throws[Exception] @Nonnull
+  @Nonnull
   def toOrderProcess(@Nonnull step: Step): OrderProcess
 }
 

@@ -47,7 +47,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         stoppedCalled.put(expectedBlockingThreadPoolName, true);
     }
 
-    public OrderProcess toOrderProcess(Step step) throws Exception {
+    public OrderProcess toOrderProcess(Step step) {
         return () -> {
             assertThat(startCalled, equalTo(true));
 
@@ -76,7 +76,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             {
                 // Access any (maybe undeclared) named values
                 // like $ORDER_ARG in the expression language.
-                // Returns a declared Order default value, too
+                // Returns a declared Order default value, too.
                 // STEP_ARG is not accessible here.
                 assertThat(step.namedValue("ORDER_ARG"), equalTo(Optional.ofNullable(argOrNull)));
                 assertThat(step.namedValue("UNKNOWN"), equalTo(Optional.empty()));

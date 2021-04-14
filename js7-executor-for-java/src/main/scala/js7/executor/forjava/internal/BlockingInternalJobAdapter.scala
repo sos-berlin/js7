@@ -16,13 +16,11 @@ extends InternalJob
       .executeOn(jobContext.blockingJobScheduler)
 
   override def stop: Task[Unit] =
-    helper.callStop(job => Task(job.
-      stop()))
+    helper.callStop(job => Task(job.stop()))
       .executeOn(jobContext.blockingJobScheduler)
 
   def toOrderProcess(step: Step) = {
-    import jobContext.js7Scheduler
-    val jStep = BlockingInternalJob.Step(step)
+    val jStep = BlockingInternalJob.Step(step)(jobContext.js7Scheduler)
 
     helper.callProcessOrder { jInternalJob =>
       val orderProcessTask: Task[BlockingInternalJob.OrderProcess] =
