@@ -14,7 +14,7 @@ import scala.util.Success
  *
  * @author Joacim Zschimmer
  */
-class SetOnce[A](label: String, notYetSetProblem: Problem)
+class SetOnce[A](label: => String, notYetSetProblem: Problem)
 {
   protected[this] val promise = Promise[A]()
 
@@ -90,14 +90,18 @@ object SetOnce
 {
   import scala.language.implicitConversions
 
-  def apply[A](implicit A: TypeTag[A]): SetOnce[A] =
-    SetOnce[A](A.tpe.toString)
+  def apply[A](implicit A: TypeTag[A]): SetOnce[A] = {
+    lazy val label = A.tpe.toString  // Seems to be slow
+    SetOnce[A](label)
+  }
 
-  def apply[A](problem: Problem)(implicit A: TypeTag[A]): SetOnce[A] =
-    SetOnce[A](A.tpe.toString, problem)
+  def apply[A](problem: Problem)(implicit A: TypeTag[A]): SetOnce[A] = {
+    lazy val label = A.tpe.toString  // Seems to be slow
+    new SetOnce[A](label, problem)
+  }
 
-  def apply[A](label: String): SetOnce[A] =
-    SetOnce[A](label, Problem(s"SetOnce[$label] promise has not been kept so far"))
+  def apply[A](label: => String): SetOnce[A] =
+    new SetOnce[A](label, Problem(s"SetOnce[$label] promise has not been kept so far"))
 
   def apply[A](label: String, problem: Problem): SetOnce[A] =
     new SetOnce[A](label, problem)

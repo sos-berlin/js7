@@ -493,6 +493,8 @@ private[controller] object AgentDriver
 
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentId, signedWorkflow: Signed[Workflow]/*TODO Separate this*/)
     extends Input with Queueable {
+      override lazy val hashCode = order.id.hashCode
+
       def orderId = order.id
       override lazy val hashCode = 31 * order.id.hashCode + signedWorkflow.value.id.hashCode  // Accelerate CommandQueue
       override def toShortString = s"AttachOrder(${orderId.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"

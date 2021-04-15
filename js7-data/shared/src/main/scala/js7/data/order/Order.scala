@@ -36,6 +36,9 @@ final case class Order[+S <: Order.State](
   isSuspended: Boolean = false,
   removeWhenTerminated: Boolean = false)
 {
+  // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
+  override def hashCode = id.hashCode
+
   def newForkedOrders(event: OrderForked): Seq[Order[Ready]] =
     for (child <- event.children) yield
       Order(

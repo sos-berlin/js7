@@ -37,19 +37,22 @@ object JobRegister {
 
   final class OrderQueue private[order] {
     private val queue = mutable.ListBuffer.empty[OrderId]
+    private val queueSet = mutable.Set.empty[OrderId]
     private val inProcess = mutable.Set.empty[OrderId]
 
     def dequeue(): Option[OrderId] =
       queue.nonEmpty option {
         val orderId = queue.remove(0)
+        queueSet -= orderId
         inProcess += orderId
         orderId
       }
 
     def +=(orderId: OrderId) = {
       if (inProcess(orderId)) throw new DuplicateKeyException(s"Duplicate $orderId")
-      if (queue contains orderId) throw new DuplicateKeyException(s"Duplicate $orderId")
+      if (queueSet contains orderId) throw new DuplicateKeyException(s"Duplicate $orderId")
       queue += orderId
+      queueSet += orderId
     }
 
     def -=(orderId: OrderId) =
@@ -59,6 +62,7 @@ object JobRegister {
         if (queue.size == s) {
           logger.warn(s"JobRegister.OrderQueue: unknown $orderId")
         }
+        queueSet -= orderId
       }
   }
 }
