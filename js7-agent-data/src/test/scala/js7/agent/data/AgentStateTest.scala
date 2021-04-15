@@ -15,13 +15,13 @@ import js7.data.agent.AgentId
 import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.item.CommonItemEvent.ItemAttachedToAgent
 import js7.data.item.ItemRevision
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.expression.Expression
-import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.position._
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.removeJNull
@@ -142,7 +142,7 @@ final class AgentStateTest extends AsyncFreeSpec
     val agentId = AgentId("AGENT")
     var agentState = AgentState.empty
 
-    agentState = agentState.applyEvent(NoKey <-: WorkflowAttached(workflow)).orThrow
+    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToAgent(workflow)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
         workflowId, Order.Ready, Map.empty, None, Nil, agentId, None, None, false, false))

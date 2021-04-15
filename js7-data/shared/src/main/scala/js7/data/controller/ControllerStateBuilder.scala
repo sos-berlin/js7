@@ -11,7 +11,7 @@ import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStat
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{InventoryItemEvent, Repo, VersionedEvent}
+import js7.data.item.{CommonItemEvent, Repo, SimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -48,6 +48,9 @@ extends JournaledStateBuilder[ControllerState]
 
     case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
+
+    case event: CommonItemEvent =>
+      repo = repo.applyCommonItemEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
       idToAgentRefState.insert(agentRefState.agentId -> agentRefState)
@@ -88,7 +91,7 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(_: NoKey, event: VersionedEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
-    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: InventoryItemEvent)) =>
+    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
       event match {
         case SimpleItemAdded(item) =>
           item match {
@@ -115,13 +118,19 @@ extends JournaledStateBuilder[ControllerState]
             case orderWatch: OrderWatch =>
               allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
           }
+      }
 
-        case ItemAttachedStateChanged(id, agentId, attachedState) =>
+    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: CommonItemEvent)) =>
+      event match {
+        case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
           id match {
             case id: OrderWatchId =>
               allOrderWatchesState = allOrderWatchesState
                 .updateAttachedState(id, agentId, attachedState)
                 .orThrow
+
+            case _: VersionedItemId_ =>
+              repo = repo.applyCommonItemEvent(event).orThrow
 
             case _ =>
               throw Problem(s"Unexpected event: $keyedEvent").throwable

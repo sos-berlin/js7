@@ -23,6 +23,14 @@ object CommonItemEvent
     def attachedState: ItemAttachedState
   }
   object ItemAttachedStateChanged {
+    def apply(id: InventoryItemId, agentId: AgentId, attachedState: ItemAttachedState)
+    : ItemAttachedStateChanged =
+      attachedState match {
+        case Attachable => ItemAttachable(id, agentId)
+        case Attached(itemRevision) => ItemAttached(id, itemRevision, agentId)
+        case Detachable => ItemDetachable(id, agentId)
+        case Detached => ItemDetachable(id, agentId)
+      }
     def unapply(event: ItemAttachedStateChanged) =
       Some((event.id, event.agentId, event.attachedState))
   }
@@ -53,7 +61,7 @@ object CommonItemEvent
     def attachedState = Detached
   }
 
-  def jsonCodec[A <: SimpleItem](companions: Seq[InventoryItem.Companion])
+  def jsonCodec[A <: SimpleItem](companions: Seq[InventoryItem.Companion_])
   : TypedJsonCodec[CommonItemEvent] = {
     implicit val itemJsonCodec = InventoryItem.jsonCodec(companions)
     implicit val idJsonCodec = InventoryItemId.jsonCodec(companions.map(_.Id))

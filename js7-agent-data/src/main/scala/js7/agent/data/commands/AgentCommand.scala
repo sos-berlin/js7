@@ -2,13 +2,14 @@ package js7.agent.data.commands
 
 import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
+import io.circe.syntax.EncoderOps
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.crypt.SignedString
+import js7.base.crypt.{Signed, SignedString}
 import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
@@ -137,6 +138,36 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class AttachSignedItem(signed: Signed[InventoryItem])
+  extends AgentCommand
+  {
+    type Response = Response.Accepted
+  }
+
+  object AttachSignedItem {
+    implicit val jsonEncoder: Encoder.AsObject[AttachSignedItem] =
+      o => JsonObject(
+        "id" -> o.signed.value.id.toTypedString.asJson,
+        "signed" -> o.signed.signedString.asJson)
+
+    // TODO Similar to VersionedItemAdded
+    implicit val jsonDecoder: Decoder[AttachSignedItem] = {
+      import AgentState.{inventoryItemIdJsonCodec, inventoryItemJsonCodec}
+      intelliJuseImport((inventoryItemIdJsonCodec, inventoryItemJsonCodec))
+      c => for {
+        id <- c.get[InventoryItemId]("id")
+        signedString <- c.get[SignedString]("signed")
+        parsed <- io.circe.parser.parse(signedString.string)
+          .left.map(error => DecodingFailure(error.toString, c.history))
+        item <- parsed.as[InventoryItem].flatMap(o =>
+          if (o.id != id)
+            Left(DecodingFailure(s"InventoryId '$id' in event does not equal path in signed string", c.history))
+          else
+            Right(o))
+      } yield AttachSignedItem(Signed(item, signedString))
+    }
+  }
+
   final case class DetachItem(id: InventoryItemId)
   extends AgentCommand
   {
@@ -148,20 +179,19 @@ object AgentCommand extends CommonCommand.Companion
   }
   sealed trait AttachOrDetachOrder extends OrderCommand
 
-  final case class AttachOrder(order: Order[Order.IsFreshOrReady], signedWorkflow: SignedString)
+  final case class AttachOrder(order: Order[Order.IsFreshOrReady])
   extends AttachOrDetachOrder with Big {
     order.workflowId.requireNonAnonymous()
     order.attached.orThrow
 
     type Response = Response.Accepted
 
-    override def toShortString = s"AttachOrder(${order.id.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName}))"
+    override def toShortString = s"AttachOrder(${order.id.string}, ${order.workflowPosition}, " +
+      s"${order.state.getClass.simpleScalaName}))"
   }
   object AttachOrder {
-    def apply(order: Order[Order.IsFreshOrReady], agentId: AgentId, signedWorkflow: SignedString) =
-      new AttachOrder(
-        order.copy(attachedState = Some(Order.Attached(agentId))),
-        signedWorkflow)
+    def apply(order: Order[Order.IsFreshOrReady], agentId: AgentId) =
+      new AttachOrder(order.copy(attachedState = Some(Order.Attached(agentId))))
   }
 
   final case class DetachOrder(orderId: OrderId)
@@ -199,6 +229,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[CoupleController]),
       Subtype[ShutDown],
       Subtype(deriveCodec[AttachItem]),
+      Subtype[AttachSignedItem],
       Subtype[DetachItem],
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),

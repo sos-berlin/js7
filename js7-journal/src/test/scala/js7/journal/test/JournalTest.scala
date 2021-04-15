@@ -186,7 +186,7 @@ object JournalTest
       "totalRunningTime": 3600,
       "startedAt": "STARTED-AT",
       "timestamp": "TIMESTAMP",
-      "version": "0.34",
+      "version": "0.35",
       "js7Version": "${BuildInfo.longVersion}",
       "buildId": "${BuildInfo.buildId}"
     }""",
@@ -270,7 +270,7 @@ object JournalTest
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JS7.Journal",
-      "version": "0.34",
+      "version": "0.35",
       "js7Version": "${BuildInfo.longVersion}",
       "buildId": "${BuildInfo.buildId}",
       "journalId": "ABEiM0RVZneImaq7zN3u_w",

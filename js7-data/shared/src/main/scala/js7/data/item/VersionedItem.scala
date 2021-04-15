@@ -35,7 +35,7 @@ object VersionedItem
 {
   type Companion_ = Companion[_ <: VersionedItem]
 
-  trait Companion[A <: VersionedItem] extends InventoryItem.Companion
+  trait Companion[A <: VersionedItem] extends InventoryItem.Companion[A]
   {
     type Item <: A
     type Path <: ItemPath

@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import js7.agent.command.CommandActor._
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, Batch, CoupleController, DetachItem, EmergencyStop, NoOperation, OrderCommand, RegisterAsController, Response, ShutDown, TakeSnapshot}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DetachItem, EmergencyStop, NoOperation, OrderCommand, RegisterAsController, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
 import js7.base.auth.UserId
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
@@ -83,7 +83,8 @@ extends Actor {
         response.success(Right(AgentCommand.Response.Accepted))
 
       case command @ (_: OrderCommand | _: RegisterAsController | _: CoupleController |
-                      _: TakeSnapshot.type | _: AttachItem | _: DetachItem | _: ShutDown) =>
+                      _: TakeSnapshot.type | _: ShutDown |
+                      _: AttachItem | _: AttachSignedItem | _: DetachItem) =>
         // FIXME Delay CoupleController until all AttachOrder (extends OrderCommand) (and DetachOrder?) have been finished, to return a properly updated state
         agentHandle.executeCommand(command, meta.user.id, response)
 

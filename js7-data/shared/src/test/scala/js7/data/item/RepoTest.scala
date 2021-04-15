@@ -73,16 +73,16 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "Event output" in {
-    assert(testRepo.toEvents == TestEvents)
+    assert(testRepo.toEvents.toSeq == TestEvents)
   }
 
   "eventsFor" in {
-    assert(testRepo.eventsFor(Set(APath, BPath)) == TestEvents)
-    assert(testRepo.eventsFor(Set(APath)) == List(
+    assert(testRepo.eventsFor(Set(APath, BPath)).toSeq == TestEvents)
+    assert(testRepo.eventsFor(Set(APath)).toSeq == Seq(
       VersionAdded(V1), VersionedItemAdded(toSigned(a1)),
       VersionAdded(V2), VersionedItemChanged(toSigned(a2)),
       VersionAdded(V3), VersionedItemChanged(toSigned(a3))))
-    assert(testRepo.eventsFor(Set(AgentId)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
+    assert(testRepo.eventsFor(Set(AgentId)).toSeq == Seq(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
   //"pathToCurrentId" in {

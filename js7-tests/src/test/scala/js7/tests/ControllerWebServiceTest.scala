@@ -465,7 +465,11 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }
       }, {
-        "TYPE": "Order",
+        "TYPE" : "ItemAttached",
+        "id" : "Workflow:WORKFLOW~VERSION-1",
+        "agentId" : "AGENT"
+      },
+      { "TYPE": "Order",
         "id": "ORDER-ID",
         "workflowPosition": {
           "workflowId": {
@@ -584,20 +588,25 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "key": "ORDER-ID",
           "agentId":"AGENT"
         }, {
-          "eventId": 1013,
+          "eventId" : 1013,
+          "TYPE" : "ItemAttached",
+          "id" : "Workflow:WORKFLOW~VERSION-1",
+          "agentId" : "AGENT"
+        }, {
+          "eventId": 1014,
           "TYPE": "OrderAttached",
           "key": "ORDER-ID",
           "agentId": "AGENT"
         }, {
-          "eventId": 1014,
+          "eventId": 1015,
           "TYPE": "OrderStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1015,
+          "eventId": 1016,
           "TYPE": "OrderProcessingStarted",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1016,
+          "eventId": 1017,
           "TYPE": "OrderProcessed",
           "key": "ORDER-ID",
           "outcome": {
@@ -607,20 +616,20 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             }
           }
         }, {
-          "eventId": 1017,
+          "eventId": 1018,
           "TYPE": "OrderMoved",
           "key": "ORDER-ID",
           "to": [ 1 ]
         }, {
-          "eventId": 1018,
+          "eventId": 1019,
           "TYPE": "OrderDetachable",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1019,
+          "eventId": 1020,
           "TYPE": "OrderDetached",
           "key": "ORDER-ID"
         }, {
-          "eventId": 1020,
+          "eventId": 1021,
           "TYPE": "OrderFinished",
           "key": "ORDER-ID"
         }

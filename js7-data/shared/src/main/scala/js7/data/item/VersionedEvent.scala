@@ -32,6 +32,7 @@ object VersionedEvent {
         "path" -> o.signed.value.path.toTypedString.asJson,
         "signed" -> o.signed.signedString.asJson)
 
+    // TODO Similar to AttachSignedItem
     private[VersionedEvent] def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath])
     : Decoder[(VersionedItem, SignedString)] =
       c => for {

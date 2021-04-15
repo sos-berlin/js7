@@ -22,6 +22,8 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
 
   def item = lock
 
+  def agentIdToAttachedState = Map.empty
+
   def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
     assertThat(keyedEvent.event.lockIds contains lock.id)
     keyedEvent match {

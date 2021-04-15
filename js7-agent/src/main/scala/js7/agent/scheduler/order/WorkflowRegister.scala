@@ -3,8 +3,10 @@ package js7.agent.scheduler.order
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.data.event.KeyedEvent
+import js7.data.item.CommonItemEvent
+import js7.data.item.CommonItemEvent.ItemAttachedToAgent
 import js7.data.order.Order
-import js7.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
 /**
@@ -21,12 +23,15 @@ private[order] final class WorkflowRegister {
     _idToWorkflow.insert(workflow.id -> workflow)
   }
 
-  def handleEvent(keyedEvent: KeyedEvent[WorkflowEvent]): Unit = {
+  def handleEvent(keyedEvent: KeyedEvent[CommonItemEvent]): Unit = {
     keyedEvent.event match {
-      case WorkflowEvent.WorkflowAttached(workflow) =>
-        // Multiple orders with same Workflow may occur
-        // TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed
+      case ItemAttachedToAgent(workflow: Workflow) =>
         _idToWorkflow += workflow.id -> workflow
+
+      //case ItemDetached(workflowId: WorkflowId, _) =>
+      //  _idToWorkflow -= workflowId
+
+      case _ => sys.error(s"WorkflowRegister: Unexpected event: $keyedEvent")
     }
   }
 

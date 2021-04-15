@@ -88,7 +88,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     synchronized {
       assertThat(!isTerminating)
       input match {
-        case Input.AttachOrder(order, _, _) if attachedOrderIds contains order.id =>
+        case Input.AttachOrder(order, _) if attachedOrderIds contains order.id =>
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
           false
         case _ =>
@@ -145,8 +145,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
   private def inputToAgentCommand(input: Queueable): AgentCommand =
     input match {
-      case Input.AttachOrder(order, agentId, signedWorkflow) =>
-        AgentCommand.AttachOrder(order, agentId, signedWorkflow.signedString)
+      case Input.AttachOrder(order, agentId) =>
+        AgentCommand.AttachOrder(order, agentId)
 
       case Input.DetachOrder(orderId) =>
         AgentCommand.DetachOrder(orderId)
@@ -154,8 +154,11 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       case Input.MarkOrder(orderId, mark) =>
         AgentCommand.MarkOrder(orderId, mark)
 
-      case Input.AttachSimpleItem(item) =>
+      case Input.AttachItem(item) =>
         AgentCommand.AttachItem(item)
+
+      case Input.AttachSignedItem(item) =>
+        AgentCommand.AttachSignedItem(item)
 
       case Input.DetachItem(id) =>
         AgentCommand.DetachItem(id)

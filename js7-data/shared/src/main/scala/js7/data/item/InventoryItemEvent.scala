@@ -5,17 +5,16 @@ import js7.data.event.NoKeyEvent
 
 trait InventoryItemEvent extends NoKeyEvent
 {
-  // Or type Key = InventoryItemId ???
   def id: InventoryItemId
 }
 
 object InventoryItemEvent
 {
-  def jsonCodec(companions: Seq[InventoryItem.Companion]): TypedJsonCodec[InventoryItemEvent] = {
+  def jsonCodec(companions: Seq[InventoryItem.Companion_]): TypedJsonCodec[InventoryItemEvent] = {
     implicit val itemJsonCodec = InventoryItem.jsonCodec(companions)
     implicit val idJsonCodec = InventoryItemId.jsonCodec(companions.map(_.Id))
 
-    val simpleItemCompanions = companions.collect { case o: SimpleItem.Companion => o  }
+    val simpleItemCompanions = companions.collect { case o: SimpleItem.Companion_ => o  }
     val jsonCodec =
       CommonItemEvent.jsonCodec(companions) |
       SimpleItemEvent.jsonCodec(simpleItemCompanions)

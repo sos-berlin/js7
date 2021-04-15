@@ -4,4 +4,4 @@ package js7.base.crypt
   *
   * @author Joacim Zschimmer
   */
-final case class Signed[A](value: A, signedString: SignedString)
+final case class Signed[+A](value: A, signedString: SignedString)

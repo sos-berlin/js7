@@ -3,25 +3,23 @@ package js7.agent.scheduler.order
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.instances.future._
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.JobRegister.JobEntry
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
-import js7.base.crypt.SignatureVerifier
+import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.ops._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -39,14 +37,15 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
+import js7.data.item.CommonItemEvent.ItemAttachedToAgent
+import js7.data.item.{InventoryItem, VersionedItemId}
 import js7.data.job.JobConf
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.NamedValues
-import js7.data.workflow.Workflow
-import js7.data.workflow.WorkflowEvent.WorkflowAttached
 import js7.data.workflow.instructions.Execute
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.journal.recover.Recovered
@@ -270,19 +269,6 @@ with Stash {
         tryStartProcessing(jobRegister(sender()))
       }
 
-    case Internal.ContinueAttachOrder(order, workflow, promise) =>
-      promise completeWith {
-        if (!workflow.isDefinedAt(order.position))
-          Future.successful(Left(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
-        else if (orderRegister contains order.id)
-          Future.successful(Left(AgentDuplicateOrder(order.id)))
-        else if (shuttingDown)
-          Future.successful(Left(AgentIsShuttingDown))
-        else
-          attachOrder(workflowRegister.reuseMemory(order), workflow)
-            .map((_: Completed) => Right(Response.Accepted))
-      }
-
     case Internal.Due(orderId) if orderRegister contains orderId =>
       proceedWithOrder(orderId)
   }
@@ -298,6 +284,9 @@ with Stash {
           .map(_.rightAs(AgentCommand.Response.Accepted))
           .runToFuture
 
+    case AttachSignedItem(signed: Signed[InventoryItem]) =>
+      attachSignedItem(signed)
+
     case DetachItem(id: OrderWatchId) =>
       fileWatchManager.remove(id)
         .map(_.rightAs(AgentCommand.Response.Accepted))
@@ -311,42 +300,61 @@ with Stash {
     case _ => Future.successful(Left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}")))  // Should not happen
   }
 
+  private def attachSignedItem(signed: Signed[InventoryItem]): Future[Checked[Response.Accepted]] =
+    signed.value.id match {
+      case VersionedItemId(path: WorkflowPath, version) =>
+        val workflowId = path ~ version
+        workflowVerifier.verify(signed.signedString) match {
+          case Left(problem) => Future.successful(Left(problem))
+          case Right(verified) =>
+            val workflow = verified.signedItem.value.reduceForAgent(ownAgentId)
+            (workflowRegister.get(workflowId) match {
+              case None =>
+                logger.trace("Reduced workflow ⏎\n" + workflow.toYamlString)
+                logger.info(Logger.SignatureVerified, verified.toString)
+                persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
+                  workflowRegister.handleEvent(stampedEvent.value)
+                  startJobActors(workflow)
+                  Right(AgentCommand.Response.Accepted)
+                }
+
+              case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
+                Future.successful(Right(AgentCommand.Response.Accepted))
+
+              case Some(_) =>
+                Future.successful(Left(Problem.pure(s"Changed $workflowId")))
+            })
+        }
+
+      case _ =>
+        Future.successful(Left(Problem.pure(s"Invalid AttachedItem(${signed.value.id})")))
+    }
+
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
-    case AttachOrder(order, signedWorkflowString) =>
+    case AttachOrder(order) =>
       if (shuttingDown)
         Future.failed(AgentIsShuttingDown.throwable)
       else
         order.attached match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(agentId) =>
-            workflowVerifier.verify(signedWorkflowString) match {
-              case Left(problem) => Future.successful(Left(problem))
-              case Right(verified) =>
-                if (orderRegister contains order.id)
-                  Future.successful(Left(AgentDuplicateOrder(order.id)))
-                else {
-                  val workflow = verified.signedItem.value.reduceForAgent(agentId)
-                  (workflowRegister.get(order.workflowId) match {
-                    case None =>
-                      logger.trace("Reduced workflow ⏎\n" + workflow.toYamlString)
-                      logger.info(Logger.SignatureVerified, verified.toString)
-                      persist(WorkflowAttached(workflow)) { (stampedEvent, journaledState) =>
-                        workflowRegister.handleEvent(stampedEvent.value)
-                        startJobActors(workflow)
-                        Right(workflow)
-                      }
-                    case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
-                      Future.successful(Right(registeredWorkflow))
-                    case Some(_) =>
-                      Future.successful(Left(Problem.pure(s"Changed ${order.workflowId}")))
-                  })
-                  .flatMapT(registeredWorkflow =>
-                    // Reuse registeredWorkflow to reduce memory usage!
-                    promiseFuture[Checked[AgentCommand.Response.Accepted]] { promise =>
-                      self ! Internal.ContinueAttachOrder(order, registeredWorkflow, promise)
-                    })
-                }
-            }
+            if (agentId != ownAgentId)
+              Future.successful(Left(Problem(s"Wrong $agentId")))
+            else
+              workflowRegister.get(order.workflowId) match {
+                case None =>
+                  Future.successful(Left(Problem.pure(s"Unknown ${order.workflowId}")))
+                case Some(workflow) =>
+                  if (!workflow.isDefinedAt(order.position))
+                    Future.successful(Left(Problem.pure(s"Unknown Position ${order.workflowPosition}")))
+                  else if (orderRegister contains order.id)
+                    Future.successful(Left(AgentDuplicateOrder(order.id)))
+                  else if (shuttingDown)
+                    Future.successful(Left(AgentIsShuttingDown))
+                  else
+                    attachOrder(workflowRegister.reuseMemory(order), workflow)
+                      .map((_: Completed) => Right(Response.Accepted))
+          }
         }
 
     case DetachOrder(orderId) =>
@@ -622,7 +630,6 @@ object AgentOrderKeeper {
 
   private object Internal {
     final case class Recover(recovered: Recovered[AgentState])
-    final case class ContinueAttachOrder(order: Order[Order.IsFreshOrReady], workflow: Workflow, promise: Promise[Checked[AgentCommand.Response.Accepted]])
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression
   }

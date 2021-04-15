@@ -2,16 +2,17 @@ package js7.agent.data.commands
 
 import io.circe.Json
 import java.util.UUID
+import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
 import js7.base.circeutils.CirceUtils._
-import js7.base.crypt.{GenericSignature, SignedString}
+import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.TestCodeProblem
 import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
-import js7.data.item.VersionId
+import js7.data.item.{VersionId, VersionedItemSigner}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.StringValue
@@ -185,6 +186,25 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
+  "AttachSimpleItem" in {
+    val itemSigner = new VersionedItemSigner(SillySigner.Default, AgentState.versionedItemJsonCodec)
+    itemSigner.toSigned(SimpleTestWorkflow)
+    check(
+      AgentCommand.AttachSignedItem(
+        itemSigner.toSigned(SimpleTestWorkflow)),
+      json"""{
+        "TYPE": "AttachSignedItem",
+        "id": "Workflow:WORKFLOW~VERSION",
+        "signed": {
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "SILLY-SIGNATURE"
+          },
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_A\":\"A-VALUE\"},\"taskLimit\":3}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_B\":\"B-VALUE\"},\"taskLimit\":3}}]}"
+        }
+      }""")
+  }
+
   "DetachItem" in {
     check(
       AgentCommand.DetachItem(OrderWatchId("ID")),
@@ -210,8 +230,7 @@ final class AgentCommandTest extends AnyFreeSpec
             SimpleTestWorkflow.id /: Position(3),
             Order.Ready,
             Map("KEY" -> StringValue("VALUE"))),
-          AgentId("AGENT"),
-          SignedString("""{"TYPE":"Workflow",...}""", GenericSignature("Silly", "MY-SILLY-SIGNATURE"))),
+          AgentId("AGENT")),
         json"""{
           "TYPE": "AttachOrder",
           "order": {
@@ -232,13 +251,6 @@ final class AgentCommandTest extends AnyFreeSpec
             "attachedState": {
               "TYPE": "Attached",
               "agentId": "AGENT"
-            }
-          },
-          "signedWorkflow": {
-            "string": "{\"TYPE\":\"Workflow\",...}",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
             }
           }
         }""")

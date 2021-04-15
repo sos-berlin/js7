@@ -2,6 +2,7 @@ package js7.agent.tests
 
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
+import js7.agent.data.AgentState
 import js7.agent.tests.TestAgentDirectoryProvider._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.crypt.silly.{SillySignature, SillySigner}
@@ -18,7 +19,6 @@ import js7.base.utils.HasCloser
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.item.VersionedItemSigner
-import js7.data.workflow.Workflow
 import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser
@@ -27,7 +27,7 @@ trait TestAgentDirectoryProvider extends HasCloser
   coupleScribeWithSlf4j()
 
   private val signature = SillySignature("MY-SILLY-SIGNATURE")
-  final val itemSigner = new VersionedItemSigner(new SillySigner(signature), Workflow.jsonEncoder)
+  final val itemSigner = new VersionedItemSigner(new SillySigner(signature), AgentState.versionedItemJsonCodec)
 
   final lazy val agentDirectory = {
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>

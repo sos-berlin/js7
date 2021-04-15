@@ -8,7 +8,9 @@ import js7.data.workflow.WorkflowPath
 
 trait OrderWatch extends SimpleItem
 {
-  val companion: Companion { type Id <: OrderWatchId }
+  type Self <: OrderWatch
+
+  val companion: Companion[Self] { type Id <: OrderWatchId }
 
   val agentId: AgentId
   val workflowPath: WorkflowPath
@@ -16,9 +18,8 @@ trait OrderWatch extends SimpleItem
 
 object OrderWatch
 {
-  trait Companion extends SimpleItem.Companion
+  trait Companion[A <: OrderWatch] extends SimpleItem.Companion[A]
   {
-    type Item <: OrderWatch
     type Id <: OrderWatchId
   }
 

@@ -223,6 +223,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         Map(FileArgumentName -> StringValue(s"$aDirectory/1")),
         None,
         Some(ExternalOrderKey(orderWatchId, ExternalOrderName("1")))),
+      NoKey <-: ItemAttached(workflow.id, None, bAgentId),
       orderId1 <-: OrderStarted,
       orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory/1\n"),
       orderId1 <-: OrderFinished,

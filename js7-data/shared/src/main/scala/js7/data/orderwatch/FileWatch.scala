@@ -25,7 +25,7 @@ final case class FileWatch(
   itemRevision: Option[ItemRevision] = None)
 extends OrderWatch
 {
-  protected type Self = FileWatch
+  type Self = FileWatch
   val companion = FileWatch
 
   def resolvedPattern: Pattern =
@@ -35,9 +35,8 @@ extends OrderWatch
     copy(itemRevision = Some(revision))
 }
 
-object FileWatch extends OrderWatch.Companion
+object FileWatch extends OrderWatch.Companion[FileWatch]
 {
-  type Item = FileWatch
   type Id = OrderWatchId
 
   val cls = classOf[FileWatch]

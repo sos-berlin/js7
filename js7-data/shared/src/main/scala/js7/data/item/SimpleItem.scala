@@ -9,7 +9,7 @@ trait SimpleItem extends InventoryItem
 
   def withRevision(revision: ItemRevision): Self
 
-  val companion: Companion
+  val companion: Companion[Self]
 
   def id: companion.Id
 
@@ -18,15 +18,17 @@ trait SimpleItem extends InventoryItem
 
 object SimpleItem
 {
-  trait Companion extends InventoryItem.Companion
+  type Companion_ = Companion[_ <: SimpleItem]
+
+  trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]
   {
-    type Item <: SimpleItem
+    type Item  = A
     type Id <: SimpleItemId
 
     val Id: SimpleItemId.Companion[Id]
   }
 
-  def jsonCodec(companions: Seq[Companion]): Codec.AsObject[SimpleItem] =
+  def jsonCodec(companions: Seq[Companion_]): Codec.AsObject[SimpleItem] =
     InventoryItem.jsonCodec(companions)
       .asInstanceOf[Codec.AsObject[SimpleItem]]
 }

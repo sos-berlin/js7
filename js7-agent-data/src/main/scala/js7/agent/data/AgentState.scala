@@ -5,17 +5,16 @@ import js7.agent.data.event.AgentControllerEvent
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
-import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.data.item.CommonItemEvent.{ItemAttachedToAgent, ItemDetached}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId}
+import js7.data.item.{CommonItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, VersionedItem}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchId}
-import js7.data.workflow.{Workflow, WorkflowEvent, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId}
 import monix.reactive.Observable
 
 /**
@@ -52,12 +51,6 @@ extends JournaledState[AgentState]
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)
 
-      case KeyedEvent(_: NoKey, WorkflowEvent.WorkflowAttached(workflow)) =>
-        // Multiple orders with same Workflow may occur
-        // TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed
-        Right(reuseIfEqual(this, copy(
-          idToWorkflow = idToWorkflow + (workflow.id -> workflow))))
-
       case KeyedEvent(_, _: AgentControllerEvent.AgentReadyForController) =>
         Right(this)
 
@@ -65,13 +58,24 @@ extends JournaledState[AgentState]
         allFileWatchesState.applyEvent(orderWatchId <-: event)
           .map(o => copy(allFileWatchesState = o))
 
-      case KeyedEvent(_: NoKey, ItemAttachedToAgent(fileWatch: FileWatch)) =>
-        Right(copy(
-          allFileWatchesState = allFileWatchesState.attach(fileWatch)))
+      case KeyedEvent(_: NoKey, event: CommonItemEvent) =>
+        event match {
+          case ItemAttachedToAgent(workflow: Workflow) =>
+            Right(copy(
+              idToWorkflow = idToWorkflow + (workflow.id -> workflow)))
 
-      case KeyedEvent(_: NoKey, ItemDetached(id: OrderWatchId, agentId/*`ownAgentId`*/)) =>
-        Right(copy(
-          allFileWatchesState = allFileWatchesState.detach(id)))
+          //case ItemDetached(workflowId: WorkflowId, _) =>
+          //  Right(copy(
+          //    idToWorkflow = idToWorkflow - workflowId))
+
+          case ItemAttachedToAgent(fileWatch: FileWatch) =>
+            Right(copy(
+              allFileWatchesState = allFileWatchesState.attach(fileWatch)))
+
+          case ItemDetached(id: OrderWatchId, agentId/*`ownAgentId`*/) =>
+            Right(copy(
+              allFileWatchesState = allFileWatchesState.detach(id)))
+        }
 
       case keyedEvent => applyStandardEvent(keyedEvent)
     }
@@ -128,17 +132,20 @@ object AgentState extends JournaledState.Companion[AgentState]
 
   def newBuilder() = new AgentStateBuilder
 
-  private val inventoryItemCompanions = Seq[InventoryItem.Companion](
-    FileWatch, Workflow/*Used only for premature test*/)
+  private val InventoryItems: Seq[InventoryItem.Companion_] =
+    Seq(FileWatch, Workflow)
 
   implicit val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
-    TypedJsonCodec(inventoryItemCompanions.map(_.subtype): _*)
+    TypedJsonCodec(InventoryItems.map(_.subtype): _*)
 
   implicit val inventoryItemIdJsonCodec: Codec[InventoryItemId] =
-    InventoryItemId.jsonCodec(inventoryItemCompanions.map(_.Id))
+    InventoryItemId.jsonCodec(InventoryItems.map(_.Id))
 
   implicit val inventoryItemEventJsonCodec =
-    InventoryItemEvent.jsonCodec(inventoryItemCompanions)
+    InventoryItemEvent.jsonCodec(InventoryItems)
+
+  implicit val versionedItemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
+    Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
 
   override val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
@@ -151,7 +158,6 @@ object AgentState extends JournaledState.Companion[AgentState]
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached],
       KeyedSubtype[AgentControllerEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[OrderWatchEvent])

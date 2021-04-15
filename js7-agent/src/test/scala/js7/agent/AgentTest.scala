@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.agent.AgentTest._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsController}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, RegisterAsController}
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.auth.SimpleUser
@@ -58,8 +58,10 @@ final class AgentTest extends AnyFreeSpec with AgentTester
             assert(agentApi.commandExecute(RegisterAsController(agentId)).await(99.s).toOption.get
               .isInstanceOf[RegisterAsController.Response])
 
+            assert(agentApi.commandExecute(AttachSignedItem(itemSigner.toSigned(TestWorkflow))).await(99.s)
+              == Right(AgentCommand.Response.Accepted))
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
-            assert(agentApi.commandExecute(AttachOrder(order, TestAgentId, itemSigner.sign(TestWorkflow))).await(99.s)
+            assert(agentApi.commandExecute(AttachOrder(order, TestAgentId)).await(99.s)
               == Right(AgentCommand.Response.Accepted))
             val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.s)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event

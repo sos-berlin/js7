@@ -20,6 +20,8 @@ extends SimpleItemState
 
   def agentId = agentRef.id
 
+  def agentIdToAttachedState = Map.empty
+
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match {
       case AgentRegisteredController(agentRunId_) =>

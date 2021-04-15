@@ -34,11 +34,10 @@ import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredCo
 import js7.data.agent.{AgentId, AgentRefStateEvent, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
-import js7.data.item.{InventoryItemEvent, InventoryItemId, SimpleItem}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
-import js7.data.workflow.Workflow
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.eval.Task
 import monix.execution.atomic.{AtomicInt, AtomicLong}
@@ -485,18 +484,20 @@ private[controller] object AgentDriver
 
     final case class ChangeUri(uri: Uri)
 
-    final case class AttachSimpleItem(item: SimpleItem)
+    final case class AttachItem(item: InventoryItem)
+    extends Input with Queueable
+
+    final case class AttachSignedItem(signed: Signed[InventoryItem])
     extends Input with Queueable
 
     final case class DetachItem(id: InventoryItemId)
     extends Input with Queueable
 
-    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentId, signedWorkflow: Signed[Workflow]/*TODO Separate this*/)
+    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentId)
     extends Input with Queueable {
       override lazy val hashCode = order.id.hashCode
 
       def orderId = order.id
-      override lazy val hashCode = 31 * order.id.hashCode + signedWorkflow.value.id.hashCode  // Accelerate CommandQueue
       override def toShortString = s"AttachOrder(${orderId.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
     }
 

@@ -4,7 +4,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, CoupleController, DetachOrder, GetOrders, RegisterAsController}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CoupleController, DetachOrder, GetOrders, RegisterAsController}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.auth.UserId
@@ -51,13 +51,15 @@ final class AgentActorTest extends AnyFreeSpec
           .mapTo[Checked[EventWatch]].await(99.s).orThrow
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
+        executeCommand(AttachSignedItem(provider.itemSigner.toSigned(SimpleTestWorkflow)))
+          .await(99.s).orThrow
         orderIds.map(orderId =>
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderId), TestAgentId, provider.itemSigner.sign(SimpleTestWorkflow)))
+            AttachOrder(TestOrder.copy(id = orderId), TestAgentId))
         ).await(99.s).foreach(o => assert(o.isRight))
         assert(
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentId, provider.itemSigner.sign(SimpleTestWorkflow))
+            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentId)
           ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
         assert(executeCommand(CoupleController(agentId, agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleController.Response(orderIds.toSet)))

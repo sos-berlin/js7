@@ -8,38 +8,46 @@ import scala.reflect.ClassTag
 
 trait InventoryItem
 {
-  val companion: Companion
+  protected type Self <: InventoryItem
+
+  val companion: Companion[Self]
+
   def id: InventoryItemId
   def itemRevision: Option[ItemRevision]
+
+  // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
+  override def hashCode = 31 * id.hashCode + itemRevision.hashCode
 }
 
 object InventoryItem
 {
-  trait Companion
+  type Companion_ = Companion[_ <: InventoryItem]
+
+  trait Companion[A <: InventoryItem]
   {
-    type Item <: InventoryItem
+    type Item <: A
     type Id <: InventoryItemId
 
     val Id: InventoryItemId.Companion[Id]
 
-    def cls: Class[Item]
+    def cls: Class[A]
 
-    implicit def jsonCodec: Codec.AsObject[Item]
+    implicit def jsonCodec: Codec.AsObject[A]
 
     val typeName = getClass.simpleScalaName
 
-    final def subtype: Subtype[Item] =
+    final def subtype: Subtype[A] =
       Subtype(jsonCodec)(ClassTag(cls))
 
-    def jsonEncoder: Encoder.AsObject[Item] =
+    def jsonEncoder: Encoder.AsObject[A] =
       jsonCodec
 
-    def jsonDecoder: Decoder[Item] =
+    def jsonDecoder: Decoder[A] =
       jsonCodec
 
     override def toString = typeName
   }
 
-  def jsonCodec(companions: Seq[Companion]): TypedJsonCodec[InventoryItem] =
+  def jsonCodec(companions: Seq[Companion_]): TypedJsonCodec[InventoryItem] =
     TypedJsonCodec(companions.map(_.subtype): _*)
 }

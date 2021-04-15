@@ -4,13 +4,14 @@ import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, RegisterAsController}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, Batch, DetachOrder, RegisterAsController}
 import js7.agent.tests.OrderAgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.configutils.Configs._
-import js7.base.crypt.SignedString
+import js7.base.crypt.Signed
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -23,11 +24,10 @@ import js7.base.utils.Closer.withCloser
 import js7.common.crypt.pgp.PgpSigner
 import js7.data.agent.AgentId
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
-import js7.data.item.VersionedItemSigner
+import js7.data.item.{InventoryItem, VersionedItemSigner}
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NumberValue, StringValue}
-import js7.data.workflow.Workflow
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
@@ -66,12 +66,18 @@ final class OrderAgentTest extends AnyFreeSpec
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> StringValue("X")))
 
-          def attachOrder(signedWorkflow: SignedString): Checked[AgentCommand.Response.Accepted] =
-            agentClient.commandExecute(AttachOrder(order, TestAgentId, signedWorkflow)).await(99.s)
+          def attachOrder(signedWorkflow: Signed[InventoryItem]): Checked[AgentCommand.Response.Accepted] =
+            for {
+              _ <- agentClient.commandExecute(AttachSignedItem(signedWorkflow)).await(99.s)
+              x <- agentClient.commandExecute(AttachOrder(order, TestAgentId)).await(99.s)
+            } yield x
 
-          attachOrder(SignedSimpleWorkflow.copy(string = SignedSimpleWorkflow.string + " ")) shouldEqual Left(TamperedWithSignedMessageProblem)
+          val tamperedWorkflow = signedSimpleWorkflow.copy(
+            signedString = signedSimpleWorkflow.signedString.copy(
+              string = signedSimpleWorkflow.signedString.string + " "))
+          attachOrder(tamperedWorkflow) shouldEqual Left(TamperedWithSignedMessageProblem)
 
-          attachOrder(SignedSimpleWorkflow) shouldEqual Right(AgentCommand.Response.Accepted)
+          attachOrder(signedSimpleWorkflow) shouldEqual Right(AgentCommand.Response.Accepted)
 
           EventRequest.singleClass[Event](timeout = Some(10.s))
             .repeat(eventRequest => agentClient.controllersEvents(eventRequest).map(_.orThrow).runToFuture) {
@@ -116,7 +122,9 @@ final class OrderAgentTest extends AnyFreeSpec
               attachedState = Some(Order.Attached(AgentId("AGENT"))))
 
           val stopwatch = new Stopwatch
-          agentClient.commandExecute(Batch(orders.map(AttachOrder(_, SignedSimpleWorkflow)))) await 99.s
+          agentClient.commandExecute(Batch(
+            Seq(AttachSignedItem(signedSimpleWorkflow)) ++ orders.map(AttachOrder(_)))
+          ) await 99.s
 
           val awaitedOrderIds = orders.map(_.id).toSet
           val ready = mutable.Set.empty[OrderId]
@@ -152,8 +160,8 @@ private object OrderAgentTest
       |""".stripMargin
 
   private val (signer, verifier) = PgpSigner.forTest()
-  private val itemSigner = new VersionedItemSigner(signer, Workflow.jsonEncoder)
-  private val SignedSimpleWorkflow = itemSigner.sign(SimpleTestWorkflow)
+  private val itemSigner = new VersionedItemSigner(signer, AgentState.versionedItemJsonCodec)
+  private val signedSimpleWorkflow = Signed[InventoryItem](SimpleTestWorkflow, itemSigner.sign(SimpleTestWorkflow))
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(

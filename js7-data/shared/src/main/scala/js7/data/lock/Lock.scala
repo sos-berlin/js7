@@ -20,9 +20,8 @@ extends SimpleItem
     copy(itemRevision = Some(revision))
 }
 
-object Lock extends SimpleItem.Companion
+object Lock extends SimpleItem.Companion[Lock]
 {
-  type Item = Lock
   type Id = LockId
 
   val cls = classOf[Lock]

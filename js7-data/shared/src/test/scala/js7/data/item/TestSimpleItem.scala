@@ -29,8 +29,7 @@ extends SimpleItem {
     copy(itemRevision = Some(revision))
 }
 
-object TestSimpleItem extends SimpleItem.Companion {
-  type Item = TestSimpleItem
+object TestSimpleItem extends SimpleItem.Companion[TestSimpleItem] {
   val cls = classOf[TestSimpleItem]
 
   type Path = TestSimpleId

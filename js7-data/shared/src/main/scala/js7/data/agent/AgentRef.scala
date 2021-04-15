@@ -18,9 +18,8 @@ extends SimpleItem
     copy(itemRevision = Some(revision))
 }
 
-object AgentRef extends SimpleItem.Companion
+object AgentRef extends SimpleItem.Companion[AgentRef]
 {
-  type Item = AgentRef
   type Id = AgentId
 
   val cls = classOf[AgentRef]

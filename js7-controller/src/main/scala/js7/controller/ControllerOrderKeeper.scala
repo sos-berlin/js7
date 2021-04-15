@@ -53,7 +53,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.CommonItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
-import js7.data.item.ItemAttachedState.{Attachable, Detachable}
+import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAddedOrChanged, SimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SimpleItem, VersionedEvent}
@@ -920,7 +920,7 @@ with MainJournalingActor[ControllerState, Event]
               for (agentEntry <- agentRegister.get(agentId)) {
                 attachedState match {
                   case Attachable =>
-                    agentEntry.actor ! AgentDriver.Input.AttachSimpleItem(orderWatch)
+                    agentEntry.actor ! AgentDriver.Input.AttachItem(orderWatch)
 
                   case Detachable =>
                     agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.id)
@@ -1062,7 +1062,11 @@ with MainJournalingActor[ControllerState, Event]
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
           orderEntry.triedToAttached = true
-          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId, signedWorkflow)
+          val attachedState = _controllerState.repo.attachedState(order.workflowId, agentEntry.agentId)
+          if (attachedState == Detached || attachedState == Attachable) {
+            agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedWorkflow)
+          }
+          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId)
         }
       }
     }

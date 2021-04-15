@@ -2,7 +2,7 @@ package js7.agent.tests
 
 import js7.agent.client.AgentClient
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.commands.AgentCommand.{AttachOrder, RegisterAsController, ShutDown}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, RegisterAsController, ShutDown}
 import js7.agent.tests.TerminateTest._
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.generic.SecretString
@@ -53,6 +53,9 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
       .eventWatchForController(ControllerId.fromUserId(userId))
       .await(99.s).orThrow
 
+    client.commandExecute(AttachSignedItem(itemSigner.toSigned(SimpleTestWorkflow)))
+      .await(99.s).orThrow
+
     val orderIds = for (i <- 0 until 3) yield OrderId(s"TEST-ORDER-$i")
     (for (orderId <- orderIds) yield
       client.commandExecute(AttachOrder(
@@ -61,8 +64,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
           SimpleTestWorkflow.id,
           Order.Ready,
           Map("a" -> StringValue("A"))),
-        TestAgentId,
-        itemSigner.sign(SimpleTestWorkflow)))
+        TestAgentId))
     ) await 99.s
 
     val whenStepEnded: Future[Seq[OrderProcessed]] =

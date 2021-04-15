@@ -189,6 +189,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
       case command @ (_: AgentCommand.OrderCommand |
                       _: AgentCommand.TakeSnapshot.type |
                       _: AgentCommand.AttachItem |
+                      _: AgentCommand.AttachSignedItem |
                       _: AgentCommand.DetachItem) =>
         controllerToOrderKeeper.checked(controllerId) match {
           case Right(entry) =>

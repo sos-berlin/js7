@@ -1,8 +1,6 @@
 package js7.data.item
 
-trait SimpleItemState
+trait SimpleItemState extends InventoryItemState
 {
   def item: SimpleItem
-
-  //def agentIdToAttachedState: Map[AgentId, ItemAttachedState.NotDetached]
 }
