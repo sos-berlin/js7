@@ -7,7 +7,7 @@ import js7.base.io.process.Processes.ShellFileAttributes
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.data.job.{JobConf, ScriptExecutable}
+import js7.data.job.{JobConf, JobResource, JobResourceId, ScriptExecutable}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.process.RichProcess.tryDeleteFile
@@ -16,7 +16,8 @@ import monix.eval.Task
 final class ScriptJobExecutor(
   protected val executable: ScriptExecutable,
   protected val jobConf: JobConf,
-  protected val executorConf: JobExecutorConf,
+  protected val jobExecutorConf: JobExecutorConf,
+  protected val idToJobResource: JobResourceId => Checked[JobResource],
   temporaryFile: Path)
 extends PathProcessJobExecutor
 {
@@ -30,7 +31,8 @@ object ScriptJobExecutor
   def checked(
     executable: ScriptExecutable,
     jobConf: JobConf,
-    executorConf: JobExecutorConf)
+    executorConf: JobExecutorConf,
+    idToJobResource: JobResourceId => Checked[JobResource])
   : Checked[ScriptJobExecutor] =
     if (!executorConf.scriptInjectionAllowed)
       Left(SignedInjectionNotAllowed)
@@ -42,6 +44,7 @@ object ScriptJobExecutor
         ShellFileAttributes: _*)
       Checked
         .catchNonFatal { file.write(executable.script, JobExecutorConf.FileEncoding) }
-        .flatMap(_ => Right(new ScriptJobExecutor(executable, jobConf, executorConf, file)))
+        .flatMap(_ => Right(
+          new ScriptJobExecutor(executable, jobConf, executorConf, idToJobResource, file)))
     }
 }

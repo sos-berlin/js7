@@ -34,7 +34,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredCo
 import js7.data.agent.{AgentId, AgentRefStateEvent, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId, SignableItem}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
@@ -487,7 +487,7 @@ private[controller] object AgentDriver
     final case class AttachItem(item: InventoryItem)
     extends Input with Queueable
 
-    final case class AttachSignedItem(signed: Signed[InventoryItem])
+    final case class AttachSignedItem(signed: Signed[SignableItem])
     extends Input with Queueable
 
     final case class DetachItem(id: InventoryItemId)

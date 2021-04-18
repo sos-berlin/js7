@@ -31,7 +31,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
     sourceDirectory.toString)
 
   "Start with existing file" in {
-    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     // TODO SimpleItemAttachmentFailed
     intercept[TimeoutException] {
       controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id, timeout = 1.s)

@@ -15,7 +15,7 @@ trait InventoryItemId
 
 object InventoryItemId
 {
-  type AnyCompanion = Companion[_ <: InventoryItemId]
+  type Companion_ = Companion[_ <: InventoryItemId]
 
   trait Companion[A <: InventoryItemId]
   {
@@ -24,7 +24,7 @@ object InventoryItemId
     def itemTypeName: String
   }
 
-  def jsonCodec(companions: Iterable[AnyCompanion]): Codec[InventoryItemId] = {
+  def jsonCodec(companions: Iterable[Companion_]): Codec[InventoryItemId] = {
     val typeToCompanion = companions.toKeyedMap(_.itemTypeName)
 
     new Codec[InventoryItemId]

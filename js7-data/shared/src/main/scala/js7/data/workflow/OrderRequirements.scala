@@ -18,7 +18,7 @@ final case class OrderRequirements(
   def defaultArgument(name: String): Option[Value] =
     parameters.flatMap(_.defaultArgument(name))
 
-  def defaultArguments: NamedValues =
+  lazy val defaultArguments: NamedValues =
     parameters.fold(NamedValues.empty)(_.defaultArguments)
 }
 

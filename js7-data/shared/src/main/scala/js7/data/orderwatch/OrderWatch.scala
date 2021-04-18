@@ -2,11 +2,11 @@ package js7.data.orderwatch
 
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.agent.AgentId
-import js7.data.item.SimpleItem
+import js7.data.item.UnsignedSimpleItem
 import js7.data.orderwatch.OrderWatch._
 import js7.data.workflow.WorkflowPath
 
-trait OrderWatch extends SimpleItem
+trait OrderWatch extends UnsignedSimpleItem
 {
   type Self <: OrderWatch
 
@@ -18,7 +18,7 @@ trait OrderWatch extends SimpleItem
 
 object OrderWatch
 {
-  trait Companion[A <: OrderWatch] extends SimpleItem.Companion[A]
+  trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]
   {
     type Id <: OrderWatchId
   }

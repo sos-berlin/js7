@@ -6,7 +6,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.common.files.DirectoryReader
-import js7.data.item.{ItemPath, VersionedItem}
+import js7.data.item.{ItemPath, VersionId, VersionedItem}
 
 /**
   * @author Joacim Zschimmer
@@ -36,6 +36,8 @@ final class TypedSourceReader(directory: Path, readers: Iterable[VersionedItemRe
   private def readTypedSource(itemFile: VersionedItemFile): ItemSource =
     ItemSource(itemFile.file.byteArray, itemFile.path, itemFile.sourceType)
 
-  private def toCheckedItem(o: ItemSource): Checked[VersionedItem] =
-    companionToReader(o.path.companion).readUntyped(o.path, o.byteArray, o.sourceType)
+  private def toCheckedItem(o: ItemSource): Checked[VersionedItem] = {
+    val id = (o.path ~ VersionId.Anonymous)(o.path.companion.asInstanceOf[ItemPath.Companion[ItemPath]]/*???*/)
+    companionToReader(o.path.companion).readUntyped(id, o.byteArray, o.sourceType)
+  }
 }

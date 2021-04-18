@@ -1,11 +1,10 @@
 package js7.data.item
 
-import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson}
-import js7.base.crypt.SignedString
-import js7.base.crypt.silly.SillySignature
+import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.crypt.silly.SillySigner
+import js7.data.controller.ControllerState
 import js7.data.controller.ControllerState._
-import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleAddOrChange, SimpleDelete, VersionedDelete}
 import js7.data.lock.{Lock, LockId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -46,21 +45,21 @@ final class ItemOperationTest extends AnyFreeSpec
         }""")
     }
 
-    "VersionedAddOrChange" in {
+    "SignedAddOrChange" in {
+      val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
+      val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1")
       testJson[ItemOperation](
-        VersionedAddOrChange(
-          SignedString(Workflow.of(WorkflowPath("WORKFLOW") ~ "1").asJson.compactPrint,
-            SillySignature("XX").toGenericSignature)),
+        SignedAddOrChange(itemSigner.toSignedString(workflow)),
         json"""{
-          "TYPE": "VersionedAddOrChange",
+          "TYPE": "SignedAddOrChange",
           "signedString": {
             "signature": {
               "TYPE": "Silly",
-              "signatureString": "XX"
+              "signatureString": "SILLY-SIGNATURE"
             },
-            "string": "{\"path\":\"WORKFLOW\",\"versionId\":\"1\",\"instructions\":[]}"
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1\",\"instructions\":[]}"
           }
-        } """)
+        }""")
     }
 
     "VersionedDelete" in {

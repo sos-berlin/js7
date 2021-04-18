@@ -3,22 +3,22 @@ package js7.data.agent
 import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils._
 import js7.base.web.Uri
-import js7.data.item.{ItemRevision, SimpleItem}
+import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 
 final case class AgentRef(
   id: AgentId,
   uri: Uri,
   itemRevision: Option[ItemRevision] = None)
-extends SimpleItem
+extends UnsignedSimpleItem
 {
   protected type Self = AgentRef
   val companion = AgentRef
 
-  def withRevision(revision: ItemRevision) =
-    copy(itemRevision = Some(revision))
+  def withRevision(revision: Option[ItemRevision]) =
+    copy(itemRevision = revision)
 }
 
-object AgentRef extends SimpleItem.Companion[AgentRef]
+object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
 {
   type Id = AgentId
 

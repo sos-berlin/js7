@@ -2,6 +2,7 @@ package js7.data.controller
 
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils._
+import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -9,11 +10,14 @@ import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentId, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
+import js7.data.controller.ControllerState.ItemAttachedStateSnapshot
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.ItemAttachedState.Attached
+import js7.data.item.ItemAttachedState.{Attachable, Attached}
+import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.VersionedEvent.VersionAdded
-import js7.data.item.{ItemRevision, Repo, VersionId}
+import js7.data.item.{ItemRevision, ItemSigner, Repo, VersionId}
+import js7.data.job.{JobResource, JobResourceId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
@@ -31,7 +35,11 @@ import org.scalatest.freespec.AsyncFreeSpec
   */
 final class ControllerStateTest extends AsyncFreeSpec
 {
-  private val controllerState = ControllerState(
+  private lazy val jobResource = JobResource(JobResourceId("JOB-RESOURCE"))
+  private lazy val signedJobResource = new ItemSigner(SillySigner.Default, ControllerState.signableSimpleItemJsonCodec)
+    .sign(jobResource)
+
+  private lazy val controllerState = ControllerState(
     EventId(1001),
     JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
@@ -44,12 +52,12 @@ final class ControllerStateTest extends AsyncFreeSpec
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    Map(AgentId("AGENT") ->
-      AgentRefState(
+    Map(
+      AgentId("AGENT") -> AgentRefState(
         AgentRef(AgentId("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0))),
         None, None, AgentRefState.Decoupled, EventId(7))),
-    Map(LockId("LOCK") ->
-      LockState(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(7))))),
+    Map(
+      LockId("LOCK") -> LockState(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(7))))),
     AllOrderWatchesState(Map(
       OrderWatchId("WATCH") -> OrderWatchState(
         FileWatch(
@@ -62,12 +70,16 @@ final class ControllerStateTest extends AsyncFreeSpec
         Map(
           ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(VanishedAck)))))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
+    Map(
+      jobResource.id -> signedJobResource),
+    Map(
+      JobResourceId("JOB-RESOURCE") -> Map(AgentId("AGENT") -> Attachable)),
     (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh(None),
       externalOrderKey = Some(ExternalOrderKey(OrderWatchId("WATCH"), ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))
 
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 10)
+    assert(controllerState.estimatedSnapshotSize == 12)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -112,7 +124,10 @@ final class ControllerStateTest extends AsyncFreeSpec
             OrderWatchState.ExternalOrderSnapshot(
               OrderWatchId("WATCH"),
               ExternalOrderName("ORDER-NAME"),
-              HasOrder(OrderId("ORDER"), Some(VanishedAck)))) ++
+              HasOrder(OrderId("ORDER"), Some(VanishedAck))),
+            SignedItemAdded(signedJobResource),
+            ItemAttachedStateSnapshot(jobResource.id, Map(AgentId("AGENT") -> Attachable))
+          ) ++
           controllerState.idToOrder.values)
   }
 
@@ -215,6 +230,24 @@ final class ControllerStateTest extends AsyncFreeSpec
               }
             }
           }, {
+            "TYPE": "SignedItemAdded",
+            "signed": {
+              "string": "{\"TYPE\":\"JobResource\",\"id\":\"JOB-RESOURCE\",\"env\":{}}",
+              "signature": {
+                "TYPE": "Silly",
+                "signatureString": "SILLY-SIGNATURE"
+              }
+            }
+          }, {
+            "TYPE": "ItemAttachedStateSnapshot",
+            "agentToAttachedState": {
+              "AGENT": {
+                "TYPE": "Attachable"
+              }
+            },
+            "itemId": "JobResource:JOB-RESOURCE"
+          },
+          {
             "TYPE": "Order",
             "id": "ORDER",
             "state": {

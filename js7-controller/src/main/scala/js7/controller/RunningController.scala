@@ -49,7 +49,7 @@ import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrder
 import js7.data.controller.{ControllerCommand, ControllerState}
-import js7.data.crypt.VersionedItemVerifier
+import js7.data.crypt.SignedItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.order.OrderEvent.OrderTerminated
@@ -136,16 +136,16 @@ extends AutoCloseable
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
 
-  def updateSimpleItemsAsSystemUser(items: Seq[SimpleItem]): Task[Checked[Completed]] =
+  def updateUnsignedSimpleItemsAsSystemUser(items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
     sessionRegister.systemUser
-      .flatMapT(updateSimpleItems(_, items))
+      .flatMapT(updateUnsignedSimpleItems(_, items))
 
-  def updateSimpleItems(user: SimpleUser, items: Seq[SimpleItem]): Task[Checked[Completed]] =
+  def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
     VerifiedUpdateItems
       .fromOperations(
         Observable.fromIterable(items)
           .map(ItemOperation.SimpleAddOrChange.apply),
-        itemUpdater.versionedItemVerifier.verify,
+        _ => Left(Problem.pure("updateUnsignedSimpleItems and verify?")),
         user)
       .flatMapT(itemUpdater.updateItems)
 
@@ -155,7 +155,7 @@ extends AutoCloseable
 
   def updateItems(user: SimpleUser, operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     VerifiedUpdateItems
-      .fromOperations(operations, itemUpdater.versionedItemVerifier.verify, user)
+      .fromOperations(operations, itemUpdater.signedItemVerifier.verify, user)
       .flatMapT(itemUpdater.updateItems)
 
   @TestOnly
@@ -267,9 +267,9 @@ object RunningController
     private implicit val scheduler = injector.instance[Scheduler]
     private implicit lazy val closer = injector.instance[Closer]
     private implicit lazy val actorSystem = injector.instance[ActorSystem]
-    private lazy val itemVerifier = new VersionedItemVerifier(
+    private lazy val itemVerifier = new SignedItemVerifier(
       GenericSignatureVerifier(controllerConfiguration.config).orThrow,
-      versionedItemJsonCodec)
+      ControllerState.signableItemJsonCodec)
     import controllerConfiguration.{akkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ControllerTermination.Terminate()
 
@@ -495,7 +495,7 @@ object RunningController
   }
 
   private class MyItemUpdater(
-    val versionedItemVerifier: VersionedItemVerifier[VersionedItem],
+    val signedItemVerifier: SignedItemVerifier[SignableItem],
     orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends ItemUpdater

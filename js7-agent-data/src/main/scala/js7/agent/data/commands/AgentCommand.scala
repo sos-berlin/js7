@@ -2,14 +2,14 @@ package js7.agent.data.commands
 
 import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, DecodingFailure, Encoder, Json, JsonObject}
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
+import js7.agent.data.AgentState.{inventoryItemIdJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.crypt.{Signed, SignedString}
+import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
@@ -19,8 +19,8 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CommonCommand
-import js7.data.event.EventId
-import js7.data.item.{InventoryItem, InventoryItemId}
+import js7.data.event.{EventId, JournaledState}
+import js7.data.item.{InventoryItem, InventoryItemId, SignableItem}
 import js7.data.order.{Order, OrderId, OrderMark}
 
 /**
@@ -32,8 +32,6 @@ sealed trait AgentCommand extends CommonCommand {
 
 object AgentCommand extends CommonCommand.Companion
 {
-  intelliJuseImport(FiniteDurationJsonDecoder)
-
   protected type Command = AgentCommand
 
   trait Response
@@ -138,34 +136,19 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class AttachSignedItem(signed: Signed[InventoryItem])
+  final case class AttachSignedItem(signed: Signed[SignableItem])
   extends AgentCommand
   {
     type Response = Response.Accepted
   }
-
   object AttachSignedItem {
+    // Same serialization as SignedItemAdded event
     implicit val jsonEncoder: Encoder.AsObject[AttachSignedItem] =
-      o => JsonObject(
-        "id" -> o.signed.value.id.toTypedString.asJson,
-        "signed" -> o.signed.signedString.asJson)
+      o => SignableItem.signedEncodeJson(o.signed.signedString, o.signed.value.itemRevision)
 
-    // TODO Similar to VersionedItemAdded
-    implicit val jsonDecoder: Decoder[AttachSignedItem] = {
-      import AgentState.{inventoryItemIdJsonCodec, inventoryItemJsonCodec}
-      intelliJuseImport((inventoryItemIdJsonCodec, inventoryItemJsonCodec))
-      c => for {
-        id <- c.get[InventoryItemId]("id")
-        signedString <- c.get[SignedString]("signed")
-        parsed <- io.circe.parser.parse(signedString.string)
-          .left.map(error => DecodingFailure(error.toString, c.history))
-        item <- parsed.as[InventoryItem].flatMap(o =>
-          if (o.id != id)
-            Left(DecodingFailure(s"InventoryId '$id' in event does not equal path in signed string", c.history))
-          else
-            Right(o))
-      } yield AttachSignedItem(Signed(item, signedString))
-    }
+    implicit def jsonDecoder[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
+    : Decoder[AttachSignedItem] =
+      c => SignableItem.signedJsonDecoder(S).decodeJson(c.value).map(AttachSignedItem(_))
   }
 
   final case class DetachItem(id: InventoryItemId)
@@ -173,10 +156,7 @@ object AgentCommand extends CommonCommand.Companion
   {
     type Response = Response.Accepted
   }
-  object DetachItem {
-    implicit def jsonCodec(implicit x: Codec[InventoryItemId]): Codec.AsObject[DetachItem] =
-      deriveCodec[DetachItem]
-  }
+
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   final case class AttachOrder(order: Order[Order.IsFreshOrReady])
@@ -217,8 +197,7 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
-    import AgentState.{inventoryItemEventJsonCodec, inventoryItemIdJsonCodec, inventoryItemJsonCodec}
-    intelliJuseImport((inventoryItemEventJsonCodec, inventoryItemJsonCodec))
+    implicit val S = AgentState
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[MarkOrder]),
@@ -230,7 +209,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype[ShutDown],
       Subtype(deriveCodec[AttachItem]),
       Subtype[AttachSignedItem],
-      Subtype[DetachItem],
+      Subtype(deriveCodec[DetachItem]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
       Subtype(deriveCodec[GetOrder]),
@@ -246,5 +225,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(Response.Accepted),
       Subtype.named(deriveCodec[RegisterAsController.Response], "RegisterAsController.Response"))
 
-  intelliJuseImport((checkedJsonEncoder[Int], checkedJsonDecoder[Int]))
+  intelliJuseImport((FiniteDurationJsonDecoder,
+    checkedJsonEncoder[Int], checkedJsonDecoder[Int],
+    inventoryItemIdJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec))
 }

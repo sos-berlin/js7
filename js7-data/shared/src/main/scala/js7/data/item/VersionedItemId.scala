@@ -11,11 +11,11 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class VersionedItemId[+P <: ItemPath](path: P, versionId: VersionId)
-extends InventoryItemId
+  (implicit P: ItemPath.Companion[P])
+extends SignableItemId
 {
-  def companion = //: InventoryItemId.Companion[VersionedItemId[P]] =
-    path.companion.versionedItemIdCompanion
-      .asInstanceOf[InventoryItemId.Companion[InventoryItemId]]
+  def companion =
+    path.companion.VersionedItemIdCompanion
 
   def requireNonAnonymous(): this.type = {
     path.requireNonAnonymous()
@@ -52,7 +52,7 @@ object VersionedItemId
   val VersionSeparator = "~"  // Can be used in an Akka actor name
 
   // TODO Use this implicit convertion only for tests
-  implicit def pathToItemId[P <: ItemPath](path: P): VersionedItemId[P] =
+  implicit def pathToItemId[P <: ItemPath: ItemPath.Companion](path: P): VersionedItemId[P] =
     VersionedItemId(path, VersionId.Anonymous)
 
   implicit def ordering[P <: ItemPath]: Ordering[VersionedItemId[P]] =
@@ -70,14 +70,14 @@ object VersionedItemId
         version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
       } yield VersionedItemId(path, version)
 
-  trait Companion[P <: ItemPath] extends InventoryItemId.Companion[VersionedItemId[P]]
+  trait Companion[P <: ItemPath] extends SignableItemId.Companion[VersionedItemId[P]]
   {
     implicit val pathCompanion: ItemPath.Companion[P]
-    private val P = pathCompanion
+    private lazy val P = pathCompanion
 
     def apply(path: P, versionId: VersionId): VersionedItemId[P]
 
-    final val itemTypeName = P.itemTypeName
+    final lazy val itemTypeName = P.itemTypeName
 
     implicit final val implicitCompanion: Companion[P] =
       this
@@ -88,14 +88,14 @@ object VersionedItemId
         case i => Right(apply(P(string take i), VersionId(string drop i + 1)))
       }
 
-    implicit final val jsonEncoder: Encoder.AsObject[VersionedItemId[P]] = {
+    implicit final lazy val jsonEncoder: Encoder.AsObject[VersionedItemId[P]] = {
       implicit val x: Encoder[P] = P.jsonEncoder
       o => JsonObject(
         "path" -> (!o.path.isAnonymous ? o.path).asJson,
         "versionId" -> (!o.versionId.isAnonymous ? o.versionId).asJson)
     }
 
-    implicit final val jsonDecoder: Decoder[VersionedItemId[P]] = {
+    implicit final lazy val jsonDecoder: Decoder[VersionedItemId[P]] = {
       implicit val x: Decoder[P] = P.jsonDecoder
       cursor =>
         for {

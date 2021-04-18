@@ -36,6 +36,8 @@ class JControllerProxyTester
         repoTester.addItems(itemJsons);
         repoTester.deleteWorkflow();
 
+        new JJobResourceTester(proxy).run();
+
         JControllerApiOrderTester apiOrderTester = new JControllerApiOrderTester(api);
         apiOrderTester.testCancelOrder();
 

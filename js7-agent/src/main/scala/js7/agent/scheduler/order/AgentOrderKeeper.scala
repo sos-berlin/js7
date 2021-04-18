@@ -32,20 +32,19 @@ import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerId
-import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.CommonItemEvent.ItemAttachedToAgent
-import js7.data.item.{InventoryItem, VersionedItemId}
-import js7.data.job.JobConf
+import js7.data.item.SignableItem
+import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.NamedValues
+import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
-import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.journal.recover.Recovered
@@ -84,7 +83,6 @@ with Stash {
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
-  private val workflowVerifier = new VersionedItemVerifier(signatureVerifier, Workflow.topJsonDecoder)
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val fileWatchManager = new FileWatchManager(ownAgentId, persistence, conf.config)
@@ -294,7 +292,7 @@ with Stash {
           .map(_.rightAs(AgentCommand.Response.Accepted))
           .runToFuture
 
-    case AttachSignedItem(signed: Signed[InventoryItem]) =>
+    case AttachSignedItem(signed: Signed[SignableItem]) =>
       attachSignedItem(signed)
 
     case DetachItem(id: OrderWatchId) =>
@@ -310,18 +308,18 @@ with Stash {
     case _ => Future.successful(Left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}")))  // Should not happen
   }
 
-  private def attachSignedItem(signed: Signed[InventoryItem]): Future[Checked[Response.Accepted]] =
-    signed.value.id match {
-      case VersionedItemId(path: WorkflowPath, version) =>
-        val workflowId = path ~ version
-        workflowVerifier.verify(signed.signedString) match {
-          case Left(problem) => Future.successful(Left(problem))
-          case Right(verified) =>
-            val workflow = verified.signedItem.value.reduceForAgent(ownAgentId)
-            (workflowRegister.get(workflowId) match {
+  private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
+    signatureVerifier.verify(signed.signedString) match {
+      case Left(problem) => Future.successful(Left(problem))
+      case Right(signedIds) =>
+        logger.info(Logger.SignatureVerified, s"Verified ${signed.value.id} (signed by ${signedIds.mkString(", ")}")
+
+        signed.value match {
+          case origWorkflow: Workflow =>
+            val workflow = origWorkflow.reduceForAgent(ownAgentId)
+            workflowRegister.get(workflow.id) match {
               case None =>
-                logger.trace("Reduced workflow ⏎\n" + workflow.toYamlString)
-                logger.info(Logger.SignatureVerified, verified.toString)
+                logger.trace("Reduced workflow: ⏎\n" + workflow.toYamlString)
                 persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
                   workflowRegister.handleEvent(stampedEvent.value)
                   startJobActors(workflow)
@@ -332,12 +330,17 @@ with Stash {
                 Future.successful(Right(AgentCommand.Response.Accepted))
 
               case Some(_) =>
-                Future.successful(Left(Problem.pure(s"Changed $workflowId")))
-            })
-        }
+                Future.successful(Left(Problem.pure(s"Different duplicate ${workflow.id}")))
+            }
 
-      case _ =>
-        Future.successful(Left(Problem.pure(s"Invalid AttachedItem(${signed.value.id})")))
+          case jobResource: JobResource =>
+            persist(ItemAttachedToAgent(jobResource)) { (stampedEvent, journaledState) =>
+              Right(AgentCommand.Response.Accepted)
+            }
+
+          case _ =>
+            Future.successful(Left(Problem.pure(s"AgentCommand.AttachedItem(${signed.value.id}) for unknown SignableItem")))
+        }
     }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
@@ -457,9 +460,9 @@ with Stash {
           jobKey, job, workflow,
           sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
         val jobActor = watch(actorOf(
-          JobActor.props(jobConf, executorConf),
+          JobActor.props(jobConf, executorConf, persistence.currentState.idToJobResource.checked),
           uniqueActorName(encodeAsActorName("Job-" + jobKey.name))))
-        jobRegister.insert(jobKey, jobActor)
+        jobRegister.insert(jobKey, job, jobActor)
       }
     }
 
@@ -587,8 +590,8 @@ with Stash {
       case o: Execute.Named => o.defaultArguments
       case _ => NamedValues.empty
     }
-    //assertThat(job.jobPath == jobEntry.jobPath)
-    orderEntry.actor ! OrderActor.Input.StartProcessing(jobEntry.actor, defaultArguments)
+    orderEntry.actor !
+      OrderActor.Input.StartProcessing(jobEntry.actor, jobEntry.workflowJob, defaultArguments)
   }
 
   private def removeOrder(orderId: OrderId): Unit =

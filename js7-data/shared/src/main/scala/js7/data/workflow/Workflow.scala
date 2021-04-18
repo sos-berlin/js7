@@ -3,6 +3,7 @@ package js7.data.workflow
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
@@ -14,7 +15,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentId
 import js7.data.item.{VersionedItem, VersionedItemId}
-import js7.data.job.JobKey
+import js7.data.job.{JobKey, JobResourceId}
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
@@ -23,6 +24,7 @@ import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFail
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
+import scala.collection.View
 
 /**
   * @author Joacim Zschimmer
@@ -269,6 +271,9 @@ extends VersionedItem
   private def isDefinedAt(nr: InstructionNr): Boolean =
     labeledInstructions.indices isDefinedAt nr.number
 
+  lazy val referencedJobResourceIds: Set[JobResourceId] =
+    workflowJobs.flatMap(_.jobResourceIds).toSet
+
   /** Searches a job bottom-up (from nested to root workflow).
     */
   @tailrec
@@ -298,14 +303,18 @@ extends VersionedItem
             jobKey(workflowBranchPath.copy(branchPath = branchPath.dropChild), name)
         })
 
-  def keyToJob: Map[JobKey, WorkflowJob] =
+  private def workflowJobs: View[WorkflowJob] =
+    keyToJob.values.view
+
+  lazy val keyToJob: Map[JobKey, WorkflowJob] =
     flattenedBranchToWorkflow flatMap { case (branchPath, workflow) =>
       val workflowBranchPath = WorkflowBranchPath(id, branchPath)
-      val namedJobKeys = workflow.nameToJob.toVector.map { case (k, v) => JobKey.Named(workflowBranchPath, k) -> v }
-      val anonymousJobKeys = workflow.numberedInstructions.collect {
+      val namedJobKeys = workflow.nameToJob.view
+        .map { case (k, v) => JobKey.Named(workflowBranchPath, k) -> v }
+      val anonymousJobKeys = workflow.numberedInstructions.view.collect {
         case (nr, _ @: (ex: Execute.Anonymous)) => JobKey.Anonymous(workflowBranchPath / nr) -> ex.job
       }
-      namedJobKeys ++ anonymousJobKeys: Seq[(JobKey, WorkflowJob)]/*for IntelliJ*/
+      (namedJobKeys ++ anonymousJobKeys).toVector: Seq[(JobKey, WorkflowJob)]/*for IntelliJ*/
     }
 
   def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =
@@ -452,6 +461,9 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions.nonEmpty &&
       (labeledInstructions.last.instruction.isInstanceOf[End] ||
        labeledInstructions.last.instruction.isInstanceOf[Goto])
+
+  override lazy val subtype: Subtype[Workflow] =
+    Subtype(jsonEncoder, topJsonDecoder)
 
   implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 

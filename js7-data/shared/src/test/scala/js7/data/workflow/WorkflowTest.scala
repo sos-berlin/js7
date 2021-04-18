@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.data.agent.AgentId
 import js7.data.item.VersionId
-import js7.data.job.{JobKey, PathExecutable, ScriptExecutable}
+import js7.data.job.{JobKey, JobResourceId, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockId
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.value.expression.PositionSearch
@@ -681,6 +681,24 @@ final class WorkflowTest extends AnyFreeSpec
       assert(Workflow.of(TryInstruction(Workflow.empty, Workflow.of(Fork.of("A" -> Workflow.of(Retry())))))
         .completelyChecked == Left(Problem("Statement 'retry' is only allowed in a catch block")))
     }
+  }
+
+  "referencedJobResourceIds" in {
+    val job = WorkflowJob(AgentId("AGENT"), ScriptExecutable(""))
+    val a = JobResourceId("A")
+    val b = JobResourceId("B")
+    val c = JobResourceId("C")
+    val d = JobResourceId("D")
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW") ~ "1",
+      Vector(
+        Execute(job.copy(jobResourceIds = Seq(a))),
+        If(BooleanConstant(true), Workflow.of(
+          Execute(job.copy(jobResourceIds = Seq(b, c))),
+          Fork.of(
+            "BRANCH" -> Workflow.of(
+              Execute(job.copy(jobResourceIds = Seq(c, d)))))))))
+    assert(workflow.referencedJobResourceIds == Set(a, b, c, d))
   }
 
   "namedJobs" in {

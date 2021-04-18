@@ -14,8 +14,8 @@ import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest}
 import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent}
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{CommonItemEvent, InventoryItemEvent, ItemRevision, SimpleItemEvent}
+import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.{CommonItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderRemoved, OrderStarted, OrderStderrWritten}
 import js7.data.order.{OrderId, Outcome}
@@ -80,7 +80,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
     val initialOrderId = orderId1
 
     directoryProvider.runController() { controller =>
-      controller.updateSimpleItemsAsSystemUser(Seq(aFileWatch)).await(99.s).orThrow
+      controller.updateUnsignedSimpleItemsAsSystemUser(Seq(aFileWatch)).await(99.s).orThrow
       // OrderWatch will be attached to the agent after next restart
     }
 
@@ -128,7 +128,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             await[OrderStarted](_.key == orderId)
             createDirectory(bDirectory)
             val beforeAttached = eventWatch.lastAddedEventId
-            controller.updateSimpleItemsAsSystemUser(Seq(bFileWatch)).await(99.s).orThrow
+            controller.updateUnsignedSimpleItemsAsSystemUser(Seq(bFileWatch)).await(99.s).orThrow
             await[ItemAttached](ke => ke.event.id == orderWatchId && ke.event.itemRevision == Some(ItemRevision(1)),
               after = beforeAttached)
             // The OrderWatch watches now the bDirectory, but the running Order points to aDirectory.
@@ -206,7 +206,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         .event match {
           case _: ControllerShutDown => true
           case _: CommonItemEvent => true
-          case event: SimpleItemEvent if event.id.isInstanceOf[OrderWatchId] => true
+          case event: UnsignedSimpleItemEvent if event.id.isInstanceOf[OrderWatchId] => true
           case _: OrderAdded => true
           case _: OrderStarted => true
           case _: OrderStderrWritten => true

@@ -3,27 +3,31 @@ package js7.data.controller
 import cats.instances.list._
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
-import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.crypt.Signed
 import js7.base.problem.Problem
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentId, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
+import js7.data.controller.ControllerState.ItemAttachedStateSnapshot
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{CommonItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemPath, Repo, SimpleItem, SimpleItemEvent, SimpleItemId, SimpleItemState, VersionedEvent, VersionedItem, VersionedItemId_}
+import js7.data.item.ItemAttachedState.{Detached, NotDetached}
+import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.{CommonItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, SimpleItem, SimpleItemId, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.job.{JobResource, JobResourceId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchId, OrderWatchState}
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.Workflow
 import monix.reactive.Observable
 import scala.collection.MapView
 
@@ -38,6 +42,8 @@ final case class ControllerState(
   idToLockState: Map[LockId, LockState],
   allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
+  idToSignedSimpleItem: Map[SignableSimpleItemId, Signed[SignableSimpleItem]],
+  itemIdToAgentToAttachedState: Map[InventoryItemId, Map[AgentId, ItemAttachedState.NotDetached]],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
@@ -49,6 +55,8 @@ extends JournaledState[ControllerState]
     idToAgentRefState.size +
     idToLockState.size +
     allOrderWatchesState.estimatedSnapshotSize +
+    idToSignedSimpleItem.size +
+    itemIdToAgentToAttachedState.values.view.map(_.size).sum +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -59,6 +67,10 @@ extends JournaledState[ControllerState]
     Observable.fromIterable(idToAgentRefState.values) ++
     Observable.fromIterable(idToLockState.values) ++
     allOrderWatchesState.toSnapshot ++
+    Observable.fromIterable(idToSignedSimpleItem.values)
+      .map(SignedItemAdded(_)) ++
+    Observable.fromIterable(itemIdToAgentToAttachedState)
+      .map(o => ItemAttachedStateSnapshot(o._1, o._2)) ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
@@ -83,81 +95,122 @@ extends JournaledState[ControllerState]
     case KeyedEvent(_: NoKey, ControllerEvent.ControllerTestEvent) =>
       Right(this)
 
-    case KeyedEvent(_: NoKey, event: SimpleItemEvent) =>
+
+    case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
       event match {
-        case SimpleItemAdded(item) =>
-          item match {
-            case lock: Lock =>
-              for (o <- idToLockState.insert(lock.id -> LockState(lock))) yield
-                copy(idToLockState = o)
+        case event: UnsignedSimpleItemEvent =>
+          event match {
+            case SimpleItemAdded(item) =>
+              item match {
+                case lock: Lock =>
+                  for (o <- idToLockState.insert(lock.id -> LockState(lock))) yield
+                    copy(idToLockState = o)
 
-            case agentRef: AgentRef =>
-              for (o <- idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef)))
-                yield copy(
-                  idToAgentRefState = o)
+                case agentRef: AgentRef =>
+                  for (o <- idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef)))
+                    yield copy(
+                      idToAgentRefState = o)
 
-            case orderWatch: OrderWatch =>
-              for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
-                copy(allOrderWatchesState = o)
+                case orderWatch: OrderWatch =>
+                  for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
+                    copy(allOrderWatchesState = o)
+              }
+
+            case SimpleItemChanged(item) =>
+              item match {
+                case lock: Lock =>
+                  for (lockState <- idToLockState.checked(lock.id))
+                    yield copy(
+                      idToLockState = idToLockState + (lock.id -> lockState.copy(
+                        lock = lock)))
+
+                case agentRef: AgentRef =>
+                  for (agentRefState <- idToAgentRefState.checked(agentRef.id))
+                    yield copy(
+                      idToAgentRefState = idToAgentRefState + (agentRef.id -> agentRefState.copy(
+                        agentRef = agentRef)))
+
+                case orderWatch: OrderWatch =>
+                  allOrderWatchesState.changeOrderWatch(orderWatch)
+                    .map(o => copy(
+                      allOrderWatchesState = o))
+              }
           }
 
-        case SimpleItemChanged(item) =>
-          item match {
-            case lock: Lock =>
-              for (lockState <- idToLockState.checked(lock.id))
-                yield copy(
-                  idToLockState = idToLockState + (lock.id -> lockState.copy(
-                    lock = lock)))
+        case event: SignedItemEvent =>
+          event match {
+            case SignedItemAdded(Signed(item, signedString)) =>
+              item match {
+                case jobResource: JobResource =>
+                  for (o <- idToSignedSimpleItem.insert(jobResource.id -> Signed(jobResource, signedString))) yield
+                    copy(idToSignedSimpleItem = o)
+              }
 
-            case agentRef: AgentRef =>
-              for (agentRefState <- idToAgentRefState.checked(agentRef.id))
-                yield copy(
-                  idToAgentRefState = idToAgentRefState + (agentRef.id -> agentRefState.copy(
-                    agentRef = agentRef)))
-
-            case orderWatch: OrderWatch =>
-              allOrderWatchesState.changeOrderWatch(orderWatch)
-                .map(o => copy(
-                  allOrderWatchesState = o))
-          }
-      }
-
-    case KeyedEvent(_: NoKey, event: CommonItemEvent) =>
-      event match {
-        case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
-          id match {
-            case id: OrderWatchId =>
-              allOrderWatchesState.updateAttachedState(id, agentId, attachedState)
-                .map(o => copy(
-                  allOrderWatchesState = o))
-
-            case _: VersionedItemId_ =>
-              for (repo <- repo.applyCommonItemEvent(event)) yield
-                copy(repo = repo)
-
-            case _ =>
-              eventNotApplicable(keyedEvent)
+            case SignedItemChanged(Signed(item, signedString)) =>
+              item match {
+                case jobResource: JobResource =>
+                  Right(copy(
+                    idToSignedSimpleItem = idToSignedSimpleItem + (jobResource.id -> Signed(jobResource, signedString))))
+              }
           }
 
-        case ItemDeletionMarked(itemId) =>
-          itemId match {
-            case id: OrderWatchId =>
-              allOrderWatchesState.markAsDeleted(id)
-                .map(o => copy(
-                  allOrderWatchesState = o))
+        case event: CommonItemEvent.ForController =>
+          event match {
+            case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
+              id match {
+                case id: OrderWatchId =>
+                  allOrderWatchesState.updateAttachedState(id, agentId, attachedState)
+                    .map(o => copy(
+                      allOrderWatchesState = o))
 
-            case _ =>
-              Left(Problem(s"A '${itemId.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
-          }
+                case _: VersionedItemId_ =>
+                  for (repo <- repo.applyCommonItemEvent(event)) yield
+                    copy(repo = repo)
 
-        case ItemDestroyed(id) =>
-          id match {
-            case id: OrderWatchId =>
-              Right(copy(
-                allOrderWatchesState = allOrderWatchesState.removeOrderWatch(id)))
+                case id: SignableSimpleItemId =>
+                  // TODO Code is similar to ControllerStateBuidler
+                  attachedState match {
+                    case attachedState: NotDetached =>
+                      Right(copy(
+                        itemIdToAgentToAttachedState = itemIdToAgentToAttachedState +
+                          (id ->
+                            (itemIdToAgentToAttachedState.getOrElse(id, Map.empty) +
+                              (agentId -> attachedState)))))
 
-            case _ =>
-              Left(Problem(s"A '${id.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
+                    case Detached =>
+                      Right(copy(itemIdToAgentToAttachedState = {
+                        val updated = itemIdToAgentToAttachedState.getOrElse(id, Map.empty) - agentId
+                        if (updated.isEmpty)
+                          itemIdToAgentToAttachedState - id
+                        else
+                          itemIdToAgentToAttachedState + (id -> updated)
+                      }))
+                  }
+
+                case _ =>
+                  eventNotApplicable(keyedEvent)
+              }
+
+            case ItemDeletionMarked(itemId) =>
+              itemId match {
+                case id: OrderWatchId =>
+                  allOrderWatchesState.markAsDeleted(id)
+                    .map(o => copy(
+                      allOrderWatchesState = o))
+
+                case _ =>
+                  Left(Problem(s"A '${itemId.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
+              }
+
+            case ItemDestroyed(id) =>
+              id match {
+                case id: OrderWatchId =>
+                  Right(copy(
+                    allOrderWatchesState = allOrderWatchesState.removeOrderWatch(id)))
+
+                case _ =>
+                  Left(Problem(s"A '${id.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
+              }
           }
       }
 
@@ -267,25 +320,37 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def idToSimpleItem: MapView[SimpleItemId, SimpleItem] =
-    idToSimpleItemState.mapValues(_.item)
+  def itemIdToAttachedState(itemId: InventoryItemId, agentId: AgentId): ItemAttachedState =
+    itemId match {
+      case itemId: VersionedItemId_ =>
+        repo.attachedState(itemId, agentId)
 
-  private def idToSimpleItemState: MapView[SimpleItemId, SimpleItemState] =
-    new MapView[SimpleItemId, SimpleItemState] {
-      def get(itemId: SimpleItemId): Option[SimpleItemState] =
-        itemId match {
-          case id: AgentId => idToAgentRefState.get(id)
-          case id: LockId => idToLockState.get(id)
-          case id: OrderWatchId => allOrderWatchesState.idToOrderWatchState.get(id)
-        }
-
-      def iterator: Iterator[(SimpleItemId, SimpleItemState)] =
-        Iterator(idToAgentRefState, idToLockState, allOrderWatchesState.idToOrderWatchState)
-          .flatMap(_.view.iterator)
+      case itemId: SignableSimpleItemId =>
+        itemIdToAgentToAttachedState.get(itemId)
+          .flatMap(_.get(agentId))
+          .getOrElse(Detached)
     }
 
-  override def toString =
-    s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, Repo(${repo.currentVersionSize} objects, ...))"
+  lazy val idToSimpleItem: MapView[SimpleItemId, SimpleItem] =
+    new MapView[SimpleItemId, SimpleItem] {
+      def get(itemId: SimpleItemId): Option[SimpleItem] =
+        itemId match {
+          case id: AgentId => idToAgentRefState.get(id).map(_.item)
+          case id: LockId => idToLockState.get(id).map(_.item)
+          case id: OrderWatchId => allOrderWatchesState.idToOrderWatchState.get(id).map(_.item)
+          case id: JobResourceId => idToSignedSimpleItem.get(id).map(_.value.asInstanceOf[JobResource])
+          case id =>
+            scribe.error(s"idToSimpleItem: Unexpected SimpleItemId: $id")
+            None
+        }
+
+      def iterator: Iterator[(SimpleItemId, SimpleItem)] =
+        Iterator(idToAgentRefState, idToLockState, allOrderWatchesState.idToOrderWatchState)
+          .flatMap(_.view.mapValues(_.item).iterator)
+    }
+
+  override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
+      s"Repo(${repo.currentVersionSize} objects, ...))"
 }
 
 object ControllerState extends JournaledState.Companion[ControllerState]
@@ -298,50 +363,22 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty,
+    Map.empty,
+    Map.empty,
     Map.empty)
 
   val empty = Undefined
 
   def newBuilder() = new ControllerStateBuilder
 
-  private val SimpleItems = Seq[SimpleItem.Companion_](
-    AgentRef, Lock, FileWatch)
+  protected val InventoryItems = Seq[InventoryItem.Companion_](
+    AgentRef, Lock, FileWatch, JobResource, Workflow)
 
-  private val InventoryItems: Seq[InventoryItem.Companion_] =
-    SimpleItems ++ Seq(Workflow)
+  private[controller] final case class ItemAttachedStateSnapshot(
+    itemId: InventoryItemId,
+    agentToAttachedState: Map[AgentId, ItemAttachedState.NotDetached])
 
-  private val ItemPaths = Set[ItemPath.AnyCompanion](
-    WorkflowPath)
-
-  implicit val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(InventoryItems)
-
-  //implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] =
-  //  TypedJsonCodec(simpleItemCompanions.map(_.subtype): _*)
-  //
-  //implicit val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
-  //  TypedJsonCodec(inventoryItemCompanions.map(_.subtype): _*)
-  //
-  //implicit val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(inventoryItemCompanions)
-
-  implicit val inventoryItemIdJsonCodec: CirceCodec[InventoryItemId] =
-    InventoryItemId.jsonCodec(InventoryItems.map(_.Id))
-
-  implicit val simpleItemJsonCodec: TypedJsonCodec[SimpleItem] =
-    TypedJsonCodec(SimpleItems.map(_.subtype): _*)
-
-  implicit val simpleItemIdJsonCodec: CirceCodec[SimpleItemId] =
-    SimpleItemId.jsonCodec(SimpleItems.map(_.Id))
-
-  implicit val itemPathJsonCodec: CirceCodec[ItemPath] =
-    ItemPath.jsonCodec(ItemPaths)
-
-  private implicit val commonItemEventJsonCodec =
-    CommonItemEvent.jsonCodec(InventoryItems)
-
-  implicit val versionedItemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
-    Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
-
-  val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+  lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec[Any](
       Subtype[JournalHeader],
       Subtype[SnapshotMeta],
@@ -351,11 +388,12 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[AgentRefState],
       Subtype[LockState],
       Subtype[VersionedEvent],  // These events describe complete objects
-      Subtype[CommonItemEvent],  // For Repo
+      Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
+      Subtype(deriveCodec[ItemAttachedStateSnapshot]),
       Subtype[Order[Order.State]],
       Subtype[OrderWatchState.Snapshot])
 
-  implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
+  implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
       KeyedSubtype[InventoryItemEvent],

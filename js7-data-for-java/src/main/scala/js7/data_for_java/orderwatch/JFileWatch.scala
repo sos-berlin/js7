@@ -15,12 +15,12 @@ import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.item.JSimpleItem
+import js7.data_for_java.item.JUnsignedSimpleItem
 import js7.data_for_java.vavr.VavrConverters.RichVavrOption
 import scala.jdk.OptionConverters._
 
 final case class JFileWatch(asScala: FileWatch)
-extends JJsonable[JFileWatch] with JSimpleItem
+extends JJsonable[JFileWatch] with JUnsignedSimpleItem
 {
   protected type AsScala = FileWatch
   protected def companion = JFileWatch

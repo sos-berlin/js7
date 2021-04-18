@@ -67,7 +67,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
             WorkflowJob(AgentId("AGENT"),
               ScriptExecutable("LINE 1\nLINE 2\n'''LINE 3'''\n"),
               Map("KEY" -> StringValue("VALUE")),
-              ReturnCodeMeaning.Success.of(0, 1))),
+              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1))),
           Execute.Anonymous(
             WorkflowJob(AgentId("AGENT"), ScriptExecutable("SCRIPT", v1Compatible = true))))),
       """define workflow {
@@ -87,7 +87,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         WorkflowPath.NoId,
         Vector(
           Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("my-script"), Map("KEY" -> StringValue("VALUE")),
-            ReturnCodeMeaning.NoFailure, taskLimit = 3, sigkillDelay = Some(10.s))))),
+            returnCodeMeaning = ReturnCodeMeaning.NoFailure, taskLimit = 3, sigkillDelay = Some(10.s))))),
       """define workflow {
         |  execute agent="AGENT", taskLimit=3, defaultArguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillDelay=10, executable="my-script";
         |}
@@ -102,7 +102,8 @@ final class WorkflowPrinterTest extends AnyFreeSpec
           Execute.Named(WorkflowJob.Name("A")),
           Execute.Named(WorkflowJob.Name("B-JOB"))),
         Map(
-          WorkflowJob.Name("A") -> WorkflowJob(AgentId("AGENT"), PathExecutable("a-script"), Map("KEY" -> StringValue("VALUE")), ReturnCodeMeaning.Success.of(0, 1)),
+          WorkflowJob.Name("A") -> WorkflowJob(AgentId("AGENT"), PathExecutable("a-script"), Map("KEY" -> StringValue("VALUE")),
+            returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
           WorkflowJob.Name("B-JOB") -> WorkflowJob(AgentId("AGENT"), PathExecutable("b-script")))),
       """define workflow {
         |  job A;

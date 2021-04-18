@@ -46,7 +46,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     val agentRef = AgentRef(agentId, Uri(s"http://127.0.0.1:$agentPort1"))
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
-    controller.updateSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
+    controller.updateUnsignedSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔵"), workflow.path))
   }
 
@@ -57,7 +57,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
-    controller.updateSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
+    controller.updateUnsignedSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
   }
 
@@ -71,7 +71,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
         webServerPorts = List(WebServerPort.localhost(agentPort3)))
     ) await 99.s
     val beforeUpdate = controller.eventWatch.lastFileTornEventId
-    controller.updateSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
+    controller.updateUnsignedSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("❌"), workflow.path))
     controller.eventWatch.await[AgentCouplingFailed](
       _.event.problem == UnknownController(ControllerId("Controller")),

@@ -1,21 +1,19 @@
 package js7.data.agent
 
 import js7.base.annotation.javaApi
-import js7.data.item.SimpleItemId
+import js7.data.item.UnsignedSimpleItemId
 
 /**
   * @author Joacim Zschimmer
   */
-final case class AgentId private(string: String) extends SimpleItemId
+final case class AgentId private(string: String) extends UnsignedSimpleItemId
 {
   protected type Self = AgentId
 
   val companion = AgentId
-
-  override def toString = s"Agent:$string"
 }
 
-object AgentId extends SimpleItemId.Companion[AgentId]
+object AgentId extends UnsignedSimpleItemId.Companion[AgentId]
 {
   def itemTypeName = AgentRef.typeName
 

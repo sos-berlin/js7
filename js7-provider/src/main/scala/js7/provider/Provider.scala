@@ -26,7 +26,7 @@ import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.VersionedItems.diffVersionedItems
-import js7.data.item.{ItemPath, VersionId, VersionedItem, VersionedItemSigner, VersionedItems}
+import js7.data.item.{ItemPath, ItemSigner, VersionId, VersionedItem, VersionedItems}
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -44,7 +44,7 @@ import scala.jdk.CollectionConverters._
   * @author Joacim Zschimmer
   */
 final class Provider(
-  itemSigner: VersionedItemSigner[VersionedItem],
+  itemSigner: ItemSigner[VersionedItem],
   protected val conf: ProviderConfiguration)
 extends HasCloser with Observing with ProvideActorSystem
 {
@@ -82,7 +82,7 @@ extends HasCloser with Observing with ProvideActorSystem
         AgentRef(AgentId(name), Uri(obj.toConfig.getString("uri")))
       }
       .toSeq
-    controllerApi.updateSimpleItems(agentRefs)
+    controllerApi.updateUnsignedSimpleItems(agentRefs)
       .map {
         case Left(problem) =>
           logger.error(problem.toString)
@@ -207,7 +207,7 @@ object Provider
       val password = SecretString(conf.config.getString(s"$configPath.password"))
       MessageSigners.typeToMessageSignersCompanion(typeName)
         .flatMap(companion => companion.checked(keyFile.byteArray, password))
-        .map(messageSigner => new VersionedItemSigner(messageSigner, versionedItemJsonCodec))
+        .map(messageSigner => new ItemSigner(messageSigner, versionedItemJsonCodec))
     }.orThrow
     Right(new Provider(itemSigner, conf))
   }

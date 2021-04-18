@@ -9,11 +9,11 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.data.controller.ControllerState.versionedItemJsonCodec
-import js7.data.crypt.VersionedItemVerifier
-import js7.data.crypt.VersionedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}
-import js7.data.item.{VersionId, VersionedItem, VersionedItemSigner}
+import js7.data.controller.ControllerState.signableItemJsonCodec
+import js7.data.crypt.SignedItemVerifier
+import js7.data.crypt.SignedItemVerifier.Verified
+import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleAddOrChange, SimpleDelete, VersionedDelete}
+import js7.data.item.{ItemSigner, SignableItem, VersionId, VersionedItem}
 import js7.data.lock.{Lock, LockId}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -24,15 +24,15 @@ import org.scalatest.freespec.AnyFreeSpec
 final class VerifiedUpdateItemsTest extends AnyFreeSpec
 {
   private lazy val (signer, signatureVerifier) = X509Signer.forTest
-  private lazy val itemVerifier = new VersionedItemVerifier[VersionedItem](signatureVerifier, versionedItemJsonCodec)
-  private lazy val itemSigner = new VersionedItemSigner[VersionedItem](signer, versionedItemJsonCodec)
+  private lazy val itemVerifier = new SignedItemVerifier(signatureVerifier, signableItemJsonCodec)
+  private lazy val itemSigner = new ItemSigner[SignableItem](signer, signableItemJsonCodec)
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val workflow1 = Workflow(WorkflowPath("WORKFLOW-A") ~ v1, Vector(Fail(None)))
   private val workflow2 = Workflow(WorkflowPath("WORKFLOW") ~ v2, Vector(Fail(None)))
   private val lock = Lock(LockId("LOCK-1"))
   private val user = SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(ValidUserPermission, UpdateItemPermission))
-  private def noVerifier(signedString: SignedString): Checked[Verified[VersionedItem]] = Left(Problem("NO VERIFIER"))
+  private def noVerifier(signedString: SignedString): Checked[Verified[SignableItem]] = Left(Problem("NO VERIFIER"))
 
   "UpdateItemPermission is required" in {
     val user = SimpleUser(UserId("TESTER"), grantedPermissions = Set(ValidUserPermission))
@@ -41,9 +41,10 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
   }
 
   "Simple items only" in {
+    // TODO Test SignableSimpleItem
     VerifiedUpdateItems.fromOperations(Observable(SimpleAddOrChange(lock), SimpleDelete(LockId("DELETE"))), noVerifier, user).await(99.s) ==
       Right(VerifiedUpdateItems(
-        VerifiedUpdateItems.Simple(Seq(lock), delete = Nil),
+        VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Nil),
         maybeVersioned = None))
   }
 
@@ -52,19 +53,25 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       SimpleAddOrChange(lock),
       SimpleDelete(LockId("DELETE")),
       AddVersion(v1),
-      VersionedAddOrChange(itemSigner.sign(workflow1)),
+      SignedAddOrChange(itemSigner.toSignedString(workflow1)),
       VersionedDelete(WorkflowPath("DELETE")))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Right(VerifiedUpdateItems(
-        VerifiedUpdateItems.Simple(Seq(lock), delete = Seq(LockId("DELETE"))),
-        Some(VerifiedUpdateItems.Versioned(v1, Seq(itemVerifier.verify(itemSigner.sign(workflow1)).orThrow), Seq(WorkflowPath("DELETE")))))))
+        VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Seq(LockId("DELETE"))),
+        Some(VerifiedUpdateItems.Versioned(
+          v1,
+          Seq(
+            itemVerifier.verify(itemSigner.toSignedString(workflow1))
+              .orThrow
+              .asInstanceOf[Verified[VersionedItem]]),
+          Seq(WorkflowPath("DELETE")))))))
   }
 
   "Verification failed" in {
-    val wrongSignature = itemSigner.sign(workflow2).signature
+    val wrongSignature = itemSigner.toSignedString(workflow2).signature
     val operations = Observable(
       AddVersion(v1),
-      VersionedAddOrChange(itemSigner.sign(workflow1).copy(signature = wrongSignature)))
+      SignedAddOrChange(itemSigner.toSignedString(workflow1).copy(signature = wrongSignature)))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Left(TamperedWithSignedMessageProblem))
   }
@@ -83,8 +90,8 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       VerifiedUpdateItems.fromOperations(
         Observable(
           AddVersion(v1),
-          VersionedAddOrChange(itemSigner.sign(workflow1)),
-          VersionedAddOrChange(itemSigner.sign(Workflow.of(workflow1.id)))),
+          SignedAddOrChange(itemSigner.toSignedString(workflow1)),
+          SignedAddOrChange(itemSigner.toSignedString(Workflow.of(workflow1.id)))),
         itemVerifier.verify,
         user
       ).await(99.s) ==
@@ -94,7 +101,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       VerifiedUpdateItems.fromOperations(
         Observable(
           AddVersion(v1),
-          VersionedAddOrChange(itemSigner.sign(workflow1)),
+          SignedAddOrChange(itemSigner.toSignedString(workflow1)),
           VersionedDelete(workflow1.path)),
         itemVerifier.verify,
         user

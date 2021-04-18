@@ -6,21 +6,28 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.crypt.VersionedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddVersion, SimpleAddOrChange, SimpleDelete, VersionedAddOrChange, VersionedDelete}
-import js7.data.item.{ItemOperation, ItemPath, SimpleItem, SimpleItemId, VersionId, VersionedItem}
+import js7.data.crypt.SignedItemVerifier.Verified
+import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleAddOrChange, SimpleDelete, VersionedDelete}
+import js7.data.item.{ItemOperation, ItemPath, SignableItem, SignableSimpleItem, SimpleItemId, UnsignedSimpleItem, VersionId, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
 
 final case class VerifiedUpdateItems private[item](
   simple: VerifiedUpdateItems.Simple,
   maybeVersioned: Option[VerifiedUpdateItems.Versioned])
+{
+  def itemCount = simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
+}
 
 object VerifiedUpdateItems
 {
   final case class Simple(
-    items: Seq[SimpleItem],
+    unsignedSimpleItems: Seq[UnsignedSimpleItem],
+    verifiedSimpleItems: Seq[Verified[SignableSimpleItem]],
     delete: Seq[SimpleItemId])
+  {
+    def itemCount = unsignedSimpleItems.size + verifiedSimpleItems.size
+  }
 
   final case class Versioned(
     versionId: VersionId,
@@ -29,7 +36,7 @@ object VerifiedUpdateItems
 
   def fromOperations(
     observable: Observable[ItemOperation],
-    verify: SignedString => Checked[Verified[VersionedItem]],
+    verify: SignedString => Checked[Verified[SignableItem]],
     user: SimpleUser)
   : Task[Checked[VerifiedUpdateItems]] =
     Task(user.checkPermissions(ValidUserPermission, UpdateItemPermission))
@@ -37,33 +44,36 @@ object VerifiedUpdateItems
 
   private def fromOperationsOnly(
     observable: Observable[ItemOperation],
-    verify: SignedString => Checked[Verified[VersionedItem]])
-  : Task[Checked[VerifiedUpdateItems]] = {
-    val simpleItems_ = Vector.newBuilder[SimpleItem]
+    verify: SignedString => Checked[Verified[SignableItem]])
+  : Task[Checked[VerifiedUpdateItems]] =
+  {
+    val unsignedSimpleItems_ = Vector.newBuilder[UnsignedSimpleItem]
+    val signedItems_ = Vector.newBuilder[Verified[SignableItem]]
     val simpleDeletes_ = Vector.newBuilder[SimpleItemId]
-    val versionedItems_ = Vector.newBuilder[Verified[VersionedItem]]
     val versionedDeletes_ = Vector.newBuilder[ItemPath]
     @volatile var maybeVersionId: Option[VersionId] = None
     @volatile var problemOccurred: Option[Problem] = None
 
     observable
       .mapParallelUnorderedBatch() {
-          case VersionedAddOrChange(signedJson) =>
-            if (problemOccurred.isEmpty) {
-              verify(signedJson) match {
+          case SignedAddOrChange(signedString) =>
+            if (problemOccurred.isEmpty)
+              verify(signedString) match {
                 case Left(problem) =>
                   problemOccurred = Some(problem)
                   ()  // Delay error until input stream is completely eaten
-                case Right(verified) => verified
+                case Right(verified) =>
+                  verified
               }
-            } else
+            else
               ()
+
           case o => o
         }
       .foreachL {
-        case SimpleAddOrChange(item) => simpleItems_ += item
+        case SimpleAddOrChange(item) => unsignedSimpleItems_ += item
         case SimpleDelete(itemId) => simpleDeletes_ += itemId
-        case verifiedItem: Verified[VersionedItem] @unchecked => versionedItems_ += verifiedItem
+        case verifiedItem: Verified[SignableItem] @unchecked => signedItems_ += verifiedItem
         case () => assert(problemOccurred.nonEmpty)
         case VersionedDelete(path) => versionedDeletes_ += path
         case AddVersion(v) =>
@@ -72,13 +82,22 @@ object VerifiedUpdateItems
       }
       .map { _ =>
         problemOccurred.map(Left.apply).getOrElse {
-          val simpleItems = simpleItems_.result()
+          val unsignedSimpleItems = unsignedSimpleItems_.result()
+          val signedItems = signedItems_.result()
+          val versionedItems = signedItems.flatMap(_.ifCast[VersionedItem])
+          val signedSimpleItems = signedItems.flatMap(_.ifCast[SignableSimpleItem])
           val simpleDeletes = simpleDeletes_.result()
-          (simpleItems.view.map(_.id) ++ simpleDeletes).checkUniqueness(identity)
-            .flatMap(_ => checkVersioned(maybeVersionId, versionedItems_.result(), versionedDeletes_.result()))
+
+          unsignedSimpleItems
+            .view
+            .map(_.id)
+            .concat(simpleDeletes)
+            .checkUniqueness(identity)
+            .flatMap(_ =>
+              checkVersioned(maybeVersionId, versionedItems, versionedDeletes_.result()))
             .map(maybeVersioned =>
               VerifiedUpdateItems(
-                VerifiedUpdateItems.Simple(simpleItems, simpleDeletes),
+                VerifiedUpdateItems.Simple(unsignedSimpleItems, signedSimpleItems, simpleDeletes),
                 maybeVersioned))
         }
       }
@@ -97,7 +116,7 @@ object VerifiedUpdateItems
       case (None, Seq(), Seq()) =>
         Right(None)
       case (None, _, _) =>
-        Left(Problem.pure("Missing VersionId"))
+        Left(Problem.pure(s"VersionedItem but AddVersionId operation is missing"))
     }
 
   private case class ExitStreamException(problem: Problem) extends Exception

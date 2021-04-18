@@ -53,7 +53,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
       .eventWatchForController(ControllerId.fromUserId(userId))
       .await(99.s).orThrow
 
-    client.commandExecute(AttachSignedItem(itemSigner.toSigned(SimpleTestWorkflow)))
+    client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
       .await(99.s).orThrow
 
     val orderIds = for (i <- 0 until 3) yield OrderId(s"TEST-ORDER-$i")

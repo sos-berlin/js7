@@ -4,11 +4,10 @@ import java.nio.file.Path
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
-import js7.data.value.expression.Evaluator
-import js7.executor.{OrderProcess, ProcessOrder}
 import js7.executor.internal.JobExecutor.warnIfNotExecutable
 import js7.executor.process.PathProcessJobExecutor._
 import js7.executor.process.ProcessJobExecutor.StartProcess
+import js7.executor.{OrderProcess, ProcessOrder}
 
 trait PathProcessJobExecutor extends ProcessJobExecutor
 {
@@ -24,11 +23,14 @@ trait PathProcessJobExecutor extends ProcessJobExecutor
   final def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess] =
     checkFile
       .flatMap(file =>
-        evalEnv(Evaluator(toScope(processOrder)), executable.env)
+        evalEnv(processOrder.evaluator, executable.env)
           .map(env =>
-            toOrderProcess(
+            makeOrderProcess(
               processOrder,
-              StartProcess(CommandLine.fromFile(file), name = file.toString, env))))
+              StartProcess(
+                CommandLine.fromFile(file),
+                name = file.toString,
+                env))))
 }
 
 object PathProcessJobExecutor

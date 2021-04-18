@@ -36,7 +36,7 @@ object InventoryItem
 
     val typeName = getClass.simpleScalaName
 
-    final def subtype: Subtype[A] =
+    def subtype: Subtype[A] =
       Subtype(jsonCodec)(ClassTag(cls))
 
     def jsonEncoder: Encoder.AsObject[A] =

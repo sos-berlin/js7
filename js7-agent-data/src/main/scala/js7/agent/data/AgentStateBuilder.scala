@@ -5,6 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, JournaledState, JournaledStateBuilder, Stamped}
+import js7.data.job.{JobResource, JobResourceId}
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
@@ -12,11 +13,14 @@ import scala.collection.mutable
 final class AgentStateBuilder
 extends JournaledStateBuilder[AgentState]
 {
+  protected val S = AgentState
+
   private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
   private var idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private var idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
   private var allFileWatchesState = new AllFileWatchesState.Builder
+  private val idToJobResource = mutable.Map.empty[JobResourceId, JobResource]
   private var _state = AgentState.empty
 
   protected def onInitializeState(state: AgentState) =
@@ -32,6 +36,9 @@ extends JournaledStateBuilder[AgentState]
     case workflow: Workflow =>
       idToWorkflow.insert(workflow.id -> workflow)
 
+    case jobResource: JobResource =>
+      idToJobResource.insert(jobResource.id -> jobResource)
+
     case snapshot: FileWatchState.Snapshot =>
       allFileWatchesState.addSnapshot(snapshot)
   }
@@ -42,7 +49,8 @@ extends JournaledStateBuilder[AgentState]
       JournaledState.Standards(_journalState, ClusterState.Empty),
       idToOrder.toMap,
       idToWorkflow.toMap,
-      allFileWatchesState.result())
+      allFileWatchesState.result(),
+      idToJobResource.toMap)
   }
 
   protected def onAddEvent = {

@@ -5,6 +5,7 @@ import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
+import js7.data.order.Outcome
 import js7.data.value.StringValue
 import js7.data.value.expression.Evaluator
 import js7.data.value.expression.Expression.ObjectExpression
@@ -17,24 +18,39 @@ import monix.eval.Task
 trait ProcessJobExecutor extends JobExecutor
 {
   protected val executable: ProcessExecutable
-  protected def executorConf: JobExecutorConf
+  protected def jobExecutorConf: JobExecutorConf
 
   import executable.v1Compatible
   import jobConf.{jobKey, workflowJob}
 
   final def start = Task.pure(Right(()))
 
-  protected final def toOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
-    val taskRunner = executorConf.newTaskRunner(
+  protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
+    val taskRunner = jobExecutorConf.newTaskRunner(
       TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine,
         v1Compatible = v1Compatible))
+    val checkedJobResourcesEnv = checkedCurrentJobResources().flatMap(_
+      .view
+      .map(_.env.nameToExpr)
+      .reverse/*left overrides right*/
+      .fold(Map.empty)(_ ++ _)
+      .toSeq
+      .traverse { case (k, v) => processOrder.scope.evalString(v).map(k -> _) }
+      .map(_.toMap))
     new OrderProcess {
-      def run = taskRunner
-        .processOrder(
-          processOrder.order.id,
-          v1Env(processOrder) ++ startProcess.env,
-          processOrder.stdObservers)
-        .guarantee(taskRunner.terminate)
+      def run =
+        checkedJobResourcesEnv match {
+          case Left(problem) =>
+            Task.pure(Outcome.Failed.fromProblem(problem))
+
+          case Right(jobResourcesEnv) =>
+            taskRunner
+            .processOrder(
+              processOrder.order.id,
+              (v1Env(processOrder).view ++ startProcess.env ++ jobResourcesEnv).toMap,
+              processOrder.stdObservers)
+            .guarantee(taskRunner.terminate)
+        }
 
       override def cancel(immediately: Boolean) =
         Task {

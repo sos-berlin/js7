@@ -3,22 +3,26 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.agent.AgentId
+import js7.data.event.JournaledState
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
 
 sealed trait CommonItemEvent extends InventoryItemEvent
 
 object CommonItemEvent
 {
+  sealed trait ForController extends CommonItemEvent
+  sealed trait ForAgent extends CommonItemEvent
+
   final case class ItemDeletionMarked(id: InventoryItemId)
-  extends CommonItemEvent {
+  extends ForController {
     def attachedState = None
   }
 
   final case class ItemDestroyed(id: InventoryItemId)
-  extends CommonItemEvent
+  extends ForController
 
   sealed trait ItemAttachedStateChanged
-  extends CommonItemEvent {
+  extends ForController {
     def agentId: AgentId
     def attachedState: ItemAttachedState
   }
@@ -47,7 +51,7 @@ object CommonItemEvent
 
   /** Agent only. */
   final case class ItemAttachedToAgent(item: InventoryItem)
-  extends CommonItemEvent {
+  extends ForAgent {
     def id = item.id
   }
 
@@ -57,14 +61,14 @@ object CommonItemEvent
   }
 
   final case class ItemDetached(id: InventoryItemId, agentId: AgentId)
-  extends ItemAttachedStateChanged {
+  extends ItemAttachedStateChanged with ForAgent {
     def attachedState = Detached
   }
 
-  def jsonCodec[A <: SimpleItem](companions: Seq[InventoryItem.Companion_])
+  def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
   : TypedJsonCodec[CommonItemEvent] = {
-    implicit val itemJsonCodec = InventoryItem.jsonCodec(companions)
-    implicit val idJsonCodec = InventoryItemId.jsonCodec(companions.map(_.Id))
+    implicit val x = S.inventoryItemJsonCodec
+    implicit val y = S.inventoryItemIdJsonCodec
 
     TypedJsonCodec(
       Subtype(deriveCodec[ItemDeletionMarked]),

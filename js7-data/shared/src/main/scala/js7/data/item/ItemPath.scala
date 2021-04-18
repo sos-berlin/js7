@@ -1,8 +1,7 @@
 package js7.data.item
 
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
-import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
@@ -12,7 +11,6 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.ItemPath._
-import js7.data.item.VersionedItemId.VersionSeparator
 import scala.reflect.ClassTag
 
 trait ItemPath extends GenericString
@@ -61,8 +59,11 @@ object ItemPath
   type AnyCompanion = Companion[_ <: ItemPath]
 
   implicit final class ImplicitItemPath[P <: ItemPath](private val underlying: P) extends AnyVal {
-    def ~(version: String): VersionedItemId[P] = this ~ VersionId(version)
-    def ~(v: VersionId): VersionedItemId[P] = VersionedItemId(underlying, v)
+    def ~(version: String)(implicit P: ItemPath.Companion[P]): VersionedItemId[P] =
+      this ~ VersionId(version)
+
+    def ~(v: VersionId)(implicit P: ItemPath.Companion[P]): VersionedItemId[P] =
+      VersionedItemId(underlying, v)
   }
 
   abstract class Companion[P <: ItemPath: ClassTag]
@@ -83,17 +84,14 @@ object ItemPath
 
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
-    object versionedItemIdCompanion extends InventoryItemId.Companion[VersionedItemId[P]] {
+    object VersionedItemIdCompanion extends VersionedItemId.Companion[P] {
       def apply(idString: String): VersionedItemId[P] =
         checked(idString).orThrow
 
-      final def checked(string: String): Checked[VersionedItemId[P]] =
-        string indexOf VersionSeparator match {
-          case -1 => Problem(s"${P.name} without version (denoted by '$VersionSeparator')?: $string")
-          case i => Right(VersionedItemId(P(string take i), VersionId(string drop i + 1)))
-        }
+      val pathCompanion = P
 
-      override def itemTypeName = Companion.this.itemTypeName
+      def apply(path: P, versionId: VersionId) =
+        path ~ versionId
     }
 
     final val itemTypeName: String = name stripSuffix "Path"
@@ -119,8 +117,8 @@ object ItemPath
   def fileToString(file: Path): String =
     file.toString.replaceChar(file.getFileSystem.getSeparator.charAt(0), '/')
 
-  def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[ItemPath] =
-    new Encoder[ItemPath] with Decoder[ItemPath] {
+  def jsonCodec(companions: Iterable[AnyCompanion]): Codec[ItemPath] =
+    new Codec[ItemPath] {
       private val typeToCompanion = companions.toKeyedMap(_.itemTypeName)
 
       def apply(a: ItemPath) = Json.fromString(a.toTypedString)

@@ -33,9 +33,9 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentId, AgentRef}
-import js7.data.controller.ControllerState.versionedItemJsonCodec
-import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
-import js7.data.item.{ItemOperation, ItemPath, SimpleItem, VersionId, VersionedItem, VersionedItemSigner}
+import js7.data.controller.ControllerState.signableItemJsonCodec
+import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, VersionedDelete}
+import js7.data.item.{ItemOperation, ItemPath, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -54,7 +54,7 @@ import scala.util.control.NonFatal
 final class DirectoryProvider(
   agentIds: Seq[AgentId],
   versionedItems: Seq[VersionedItem] = Nil,
-  simpleItems: Seq[SimpleItem] = Nil,
+  simpleItems: Seq[UnsignedSimpleItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
@@ -108,10 +108,13 @@ extends HasCloser
     agents foreach prepareAgentFiles
   }
 
-  val itemSigner = new VersionedItemSigner(signer, versionedItemJsonCodec)
+  val itemSigner = new ItemSigner(signer, signableItemJsonCodec)
 
-  val toSigned: VersionedItem => Signed[VersionedItem] = o => Signed(o, sign(o))
-  val sign: VersionedItem => SignedString = itemSigner.sign
+  def toSignedString[A <: SignableItem](item: A): SignedString =
+    itemSigner.toSignedString(item)
+
+  def sign[A <: SignableItem](item: A): Signed[A] =
+    itemSigner.sign(item)
 
   def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
     runAgents()(agents =>
@@ -152,7 +155,7 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    simpleItems: Seq[SimpleItem] = simpleItems,
+    simpleItems: Seq[UnsignedSimpleItem] = simpleItems,
     versionedItems: Seq[VersionedItem] = versionedItems,
     name: String = controllerName)
   : Task[RunningController]
@@ -165,7 +168,7 @@ extends HasCloser
       if (!doNotAddItems && (agentRefs.nonEmpty || versionedItems.nonEmpty)) {
         if (!itemHasBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
-          runningController.updateSimpleItemsAsSystemUser(agentRefs).await(99.s).orThrow
+          runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs).await(99.s).orThrow
           if (simpleItems.nonEmpty || versionedItems.nonEmpty) {
             runningController
               .updateItemsAsSystemUser(
@@ -174,8 +177,8 @@ extends HasCloser
                     versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
                   Observable.fromIterable(versionedItems)
                     .map(_ withVersion Vinitial)
-                    .map(itemSigner.sign)
-                    .map(ItemOperation.VersionedAddOrChange.apply))
+                    .map(itemSigner.toSignedString)
+                    .map(ItemOperation.SignedAddOrChange.apply))
               .await(99.s).orThrow
           }
         }
@@ -222,8 +225,8 @@ extends HasCloser
       AddVersion(versionId) +:
         (Observable.fromIterable(change)
           .map(_ withVersion versionId)
-          .map(itemSigner.sign)
-          .map(VersionedAddOrChange.apply) ++
+          .map(itemSigner.toSignedString)
+          .map(SignedAddOrChange(_)) ++
           Observable.fromIterable(delete)
             .map(VersionedDelete.apply))
     ).await(99.s).orThrow

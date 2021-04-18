@@ -2,6 +2,7 @@ package js7.tests.controller.agent
 
 import com.typesafe.config.ConfigUtil.quoteString
 import js7.agent.data.Problems.DuplicateAgentRef
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
@@ -21,6 +22,10 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
+  override protected def controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    """
+
   protected val agentIds = aAgentId :: Nil
   protected val versionedItems = workflow :: Nil
 
@@ -36,7 +41,7 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
 
   "test" in {
     controller.eventWatch.await[AgentReady](_.key == aAgentId)
-    controller.updateSimpleItemsAsSystemUser(Seq(AgentRef(bAgentId, agent.localUri))).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(AgentRef(bAgentId, agent.localUri))).await(99.s).orThrow
 
     val orderId = OrderId("ORDER")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))

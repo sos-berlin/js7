@@ -95,8 +95,8 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
       val sw = new Stopwatch
       val operations = Observable.fromIterable(workflowPaths)
         .mapParallelUnordered(sys.runtime.availableProcessors)(path => Task(
-          ItemOperation.VersionedAddOrChange(
-            primary.sign(workflow.copy(id = path ~ versionId)))))
+          ItemOperation.SignedAddOrChange(
+            primary.toSignedString(workflow.copy(id = path ~ versionId)))))
           .toListL await 99.s
       logger.info(sw.itemsPerSecondString(n, "signatures"))
       val logLine = measureTimeOfSingleRun(n, "workflows") {

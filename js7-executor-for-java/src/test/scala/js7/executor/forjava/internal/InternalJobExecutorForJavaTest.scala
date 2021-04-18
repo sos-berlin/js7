@@ -48,9 +48,10 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
           WorkflowJob(AgentId("AGENT"), executable),
           workflow,
           sigKillDelay = 0.s),
+        _ => Left(Problem("No JobResource here")),
         jobScheduler)
 
-      "toOrderProcess" in {
+      "orderProcess" in {
         val (outcomeTask, out, err) = processOrder(NumberValue(1000)).await(99.s).orThrow
         assert(outcomeTask == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
         assertOutErr(out, err)
@@ -106,6 +107,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
             ProcessOrder(
               Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
               workflow,
+              executor.jobConf.workflowJob,
               NamedValues("ORDER_ARG" -> arg),
               StdObservers(out, err, 4096)))
           .orThrow

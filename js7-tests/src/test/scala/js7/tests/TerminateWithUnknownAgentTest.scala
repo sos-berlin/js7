@@ -33,7 +33,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
   }
 
   "Terminate Controller while AgentDriver is trying to send a command to a non-existent Agent" in {
-    controller.updateSimpleItemsAsSystemUser(Seq(AgentRef(agentId, Uri(s"http://127.0.0.1:${socket.getLocalPort}"))))
+    controller.updateUnsignedSimpleItemsAsSystemUser(Seq(AgentRef(agentId, Uri(s"http://127.0.0.1:${socket.getLocalPort}"))))
       .await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("TEST"), workflow.path))
     socket.close()

@@ -31,8 +31,8 @@ extends OrderWatch
   def resolvedPattern: Pattern =
     pattern.fold(defaultPattern)(_.pattern)
 
-  def withRevision(revision: ItemRevision) =
-    copy(itemRevision = Some(revision))
+  def withRevision(revision: Option[ItemRevision]) =
+    copy(itemRevision = revision)
 }
 
 object FileWatch extends OrderWatch.Companion[FileWatch]

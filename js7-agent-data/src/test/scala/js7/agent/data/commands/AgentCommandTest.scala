@@ -12,7 +12,8 @@ import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentId, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
-import js7.data.item.{VersionId, VersionedItemSigner}
+import js7.data.item.{ItemRevision, ItemSigner, VersionId}
+import js7.data.job.{JobResource, JobResourceId}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.value.StringValue
@@ -186,15 +187,13 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "AttachSimpleItem" in {
-    val itemSigner = new VersionedItemSigner(SillySigner.Default, AgentState.versionedItemJsonCodec)
-    itemSigner.toSigned(SimpleTestWorkflow)
+  "AttachSignedItem VersionedItem (without ItemRevision)" in {
+    val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
     check(
       AgentCommand.AttachSignedItem(
-        itemSigner.toSigned(SimpleTestWorkflow)),
+        itemSigner.sign(SimpleTestWorkflow)),
       json"""{
         "TYPE": "AttachSignedItem",
-        "id": "Workflow:WORKFLOW~VERSION",
         "signed": {
           "signature": {
             "TYPE": "Silly",
@@ -205,6 +204,24 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
+  "AttachSignedItem JobResource (with ItemRevision)" in {
+    val jobResource = JobResource(JobResourceId("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))
+    val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
+    check(
+      AgentCommand.AttachSignedItem(itemSigner.sign(jobResource)),
+      json"""{
+        "TYPE": "AttachSignedItem",
+        "signed": {
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "SILLY-SIGNATURE"
+          },
+          "string": "{\"TYPE\":\"JobResource\",\"id\":\"JOB-RESOURCE\",\"env\":{}}"
+        },
+        "itemRevision": 7
+       }""")
+  }
+
   "DetachItem" in {
     check(
       AgentCommand.DetachItem(OrderWatchId("ID")),
@@ -213,7 +230,6 @@ final class AgentCommandTest extends AnyFreeSpec
         "id": "OrderWatch:ID"
       }""")
 
-    // Not yet used:
     check(
       AgentCommand.DetachItem(WorkflowPath("WORKFLOW") ~ VersionId("1")),
       json"""{

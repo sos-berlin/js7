@@ -5,10 +5,10 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.lock.{Lock, LockId}
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.item.JSimpleItem
+import js7.data_for_java.item.JUnsignedSimpleItem
 
 final case class JLock(asScala: Lock)
-extends JJsonable[JLock] with JSimpleItem
+extends JJsonable[JLock] with JUnsignedSimpleItem
 {
   protected type AsScala = Lock
   protected def companion = JLock

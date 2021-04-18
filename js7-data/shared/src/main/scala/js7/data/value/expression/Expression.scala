@@ -1,13 +1,11 @@
 package js7.data.value.expression
 
-import fastparse.NoWhitespace._
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.utils.Identifier.{isIdentifier, isIdentifierPart}
 import js7.base.utils.typeclasses.IsEmpty
-import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValuePrinter.{appendQuotedContent, quoteString}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -22,7 +20,8 @@ object Expression
 {
   implicit val jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
   implicit val jsonDecoder: Decoder[Expression] =
-    c => c.as[String].flatMap(string => checkedParse(string, ExpressionParser.expression(_)).toDecoderResult(c.history))
+    c => c.as[String]
+      .flatMap(ExpressionParser.parse(_).toDecoderResult(c.history))
 
   sealed trait SimpleValueExpression extends Expression
 
@@ -107,6 +106,8 @@ object Expression
     override def toString = expressions.mkString("[", ", ", "]")
   }
 
+  // TODO Rename this. Das ist normaler Ausdruck, sondern eine Sammlung von Ausdrücken
+  // Brauchen wir dafür eine Klasse?
   final case class ObjectExpression(nameToExpr: Map[String, Expression]) extends Expression {
     def isEmpty = nameToExpr.isEmpty
     def nonEmpty = nameToExpr.nonEmpty

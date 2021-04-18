@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import js7.base.crypt.Signed
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits._
@@ -10,8 +11,11 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{CommonItemEvent, Repo, SimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.ItemAttachedState.{Detached, NotDetached}
+import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.{CommonItemEvent, InventoryItemEvent, InventoryItemId, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.job.{JobResource, JobResourceId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -22,6 +26,8 @@ import scala.collection.mutable
 final class ControllerStateBuilder
 extends JournaledStateBuilder[ControllerState]
 {
+  protected val S = ControllerState
+
   private var standards: JournaledState.Standards = JournaledState.Standards.empty
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
@@ -29,6 +35,8 @@ extends JournaledStateBuilder[ControllerState]
   private val idToAgentRefState = mutable.Map.empty[AgentId, AgentRefState]
   private val idToLockState = mutable.Map.empty[LockId, LockState]
   private var allOrderWatchesState = AllOrderWatchesState.empty
+  private val idToSignedItem = mutable.Map.empty[SignableSimpleItemId, Signed[SignableSimpleItem]]
+  private val itemIdToAgentToAttachedState = mutable.Map.empty[InventoryItemId, Map[AgentId, ItemAttachedState.NotDetached]]
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -58,8 +66,14 @@ extends JournaledStateBuilder[ControllerState]
     case lockState: LockState =>
       idToLockState.insert(lockState.lock.id -> lockState)
 
+    case signedItemAdded: SignedItemAdded =>
+      onSignedItemAdded(signedItemAdded)
+
     case snapshot: OrderWatchState.Snapshot =>
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
+
+    case ControllerState.ItemAttachedStateSnapshot(itemId, agentToAttachedState) =>
+      itemIdToAgentToAttachedState.insert(itemId -> agentToAttachedState)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -91,70 +105,101 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(_: NoKey, event: VersionedEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
-    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: SimpleItemEvent)) =>
+    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: InventoryItemEvent)) =>
       event match {
-        case SimpleItemAdded(item) =>
-          item match {
-            case lock: Lock =>
-              idToLockState.insert(lock.id -> LockState(lock))
+        case event: UnsignedSimpleItemEvent =>
+          event match {
+            case SimpleItemAdded(item) =>
+              item match {
+                case lock: Lock =>
+                  idToLockState.insert(lock.id -> LockState(lock))
 
-            case agentRef: AgentRef =>
-              idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
+                case agentRef: AgentRef =>
+                  idToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
 
-            case orderWatch: OrderWatch =>
-              allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
+                case orderWatch: OrderWatch =>
+                  allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
+              }
+
+            case SimpleItemChanged(item) =>
+              item match {
+                case lock: Lock =>
+                  idToLockState(lock.id) = idToLockState(lock.id).copy(
+                    lock = lock)
+
+                case agentRef: AgentRef =>
+                  idToAgentRefState(agentRef.id) = idToAgentRefState(agentRef.id).copy(
+                    agentRef = agentRef)
+
+                case orderWatch: OrderWatch =>
+                  allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
+              }
           }
 
-        case SimpleItemChanged(item) =>
-          item match {
-            case lock: Lock =>
-              idToLockState(lock.id) = idToLockState(lock.id).copy(
-                lock = lock)
+        case event: SignedItemEvent =>
+          event match {
+            case event: SignedItemAdded =>
+              onSignedItemAdded(event)
 
-            case agentRef: AgentRef =>
-              idToAgentRefState(agentRef.id) = idToAgentRefState(agentRef.id).copy(
-                agentRef = agentRef)
-
-            case orderWatch: OrderWatch =>
-              allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
-          }
-      }
-
-    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: CommonItemEvent)) =>
-      event match {
-        case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
-          id match {
-            case id: OrderWatchId =>
-              allOrderWatchesState = allOrderWatchesState
-                .updateAttachedState(id, agentId, attachedState)
-                .orThrow
-
-            case _: VersionedItemId_ =>
-              repo = repo.applyCommonItemEvent(event).orThrow
-
-            case _ =>
-              throw Problem(s"Unexpected event: $keyedEvent").throwable
+            case SignedItemChanged(Signed(item, signedString)) =>
+              item match {
+                case jobResource: JobResource =>
+                  idToSignedItem += jobResource.id -> Signed(jobResource, signedString)
+              }
           }
 
-        case ItemDeletionMarked(itemId) =>
-          itemId match {
-            case id: OrderWatchId =>
-              allOrderWatchesState = allOrderWatchesState.markAsDeleted(id).orThrow
+        case event: CommonItemEvent.ForController =>
+          event match {
+            case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
+              id match {
+                case id: OrderWatchId =>
+                  allOrderWatchesState = allOrderWatchesState
+                    .updateAttachedState(id, agentId, attachedState)
+                    .orThrow
 
-            case _ =>
-              throw Problem(s"Unexpected event: $keyedEvent").throwable
-          }
+                case _: VersionedItemId_ =>
+                  repo = repo.applyCommonItemEvent(event).orThrow
 
-        case ItemDestroyed(itemId) =>
-          itemId match {
-            case id: LockId =>
-              idToLockState -= id
+                case id: JobResourceId =>
+                  // TODO Code is similar to ControllerState
+                  attachedState match {
+                    case attachedState: NotDetached =>
+                      itemIdToAgentToAttachedState += id ->
+                        (itemIdToAgentToAttachedState.getOrElse(id, Map.empty) +
+                          (agentId -> attachedState))
 
-            case id: AgentId =>
-              idToAgentRefState -= id
+                    case Detached =>
+                      val updated = itemIdToAgentToAttachedState.getOrElse(id, Map.empty) - agentId
+                      if (updated.isEmpty)
+                        itemIdToAgentToAttachedState -= id
+                      else
+                        itemIdToAgentToAttachedState += id -> updated
+                  }
 
-            case id: OrderWatchId =>
-              allOrderWatchesState = allOrderWatchesState.removeOrderWatch(id)
+                case _ =>
+                  throw Problem(s"Unexpected event: $keyedEvent").throwable
+              }
+
+            case ItemDeletionMarked(itemId) =>
+              itemId match {
+                case id: OrderWatchId =>
+                  allOrderWatchesState = allOrderWatchesState.markAsDeleted(id).orThrow
+
+                case _ =>
+                  throw Problem(s"Unexpected event: $keyedEvent").throwable
+              }
+
+            case ItemDestroyed(itemId) =>
+              itemId match {
+                case id: LockId =>
+                  idToLockState -= id
+
+                case id: AgentId =>
+                  idToAgentRefState -= id
+
+                case id: OrderWatchId =>
+                  allOrderWatchesState = allOrderWatchesState.removeOrderWatch(id)
+              }
           }
       }
 
@@ -210,6 +255,12 @@ extends JournaledStateBuilder[ControllerState]
         clusterState = standards.clusterState.applyEvent(event).orThrow)
   }
 
+  private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
+    added.signed.value match {
+      case jobResource: JobResource =>
+        idToSignedItem.insert(jobResource.id -> Signed(jobResource, added.signedString))
+    }
+
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
     event match {
       case event: OrderForked =>
@@ -247,6 +298,8 @@ extends JournaledStateBuilder[ControllerState]
       idToLockState.toMap,
       allOrderWatchesState,
       repo,
+      idToSignedItem.toMap,
+      itemIdToAgentToAttachedState.toMap,
       idToOrder.toMap)
 
   def journalState = standards.journalState

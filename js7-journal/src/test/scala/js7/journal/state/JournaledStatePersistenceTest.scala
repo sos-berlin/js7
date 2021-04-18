@@ -293,6 +293,8 @@ private object JournaledStatePersistenceTest
     override def fromObservable(snapshotObjects: Observable[Any]): Task[TestState] =
       throw new NotImplementedError  // Require for HTTP EventApi only
 
+    protected val InventoryItems = Nil
+
     def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       TypedJsonCodec[Any](
         Subtype(deriveCodec[NumberThing]),

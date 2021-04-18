@@ -1,18 +1,16 @@
 package js7.data.orderwatch
 
 import js7.base.annotation.javaApi
-import js7.data.item.SimpleItemId
+import js7.data.item.UnsignedSimpleItemId
 
-final case class OrderWatchId(string: String) extends SimpleItemId
+final case class OrderWatchId(string: String) extends UnsignedSimpleItemId
 {
   protected type Self = OrderWatchId
 
   val companion = OrderWatchId
-
-  override def toString = s"OrderWatch:$string"
 }
 
-object OrderWatchId extends SimpleItemId.Companion[OrderWatchId]
+object OrderWatchId extends UnsignedSimpleItemId.Companion[OrderWatchId]
 {
   def itemTypeName = "OrderWatch"
 

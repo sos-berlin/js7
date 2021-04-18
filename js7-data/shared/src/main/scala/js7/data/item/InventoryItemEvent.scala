@@ -1,7 +1,7 @@
 package js7.data.item
 
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.data.event.NoKeyEvent
+import js7.data.event.{JournaledState, NoKeyEvent}
 
 trait InventoryItemEvent extends NoKeyEvent
 {
@@ -10,14 +10,9 @@ trait InventoryItemEvent extends NoKeyEvent
 
 object InventoryItemEvent
 {
-  def jsonCodec(companions: Seq[InventoryItem.Companion_]): TypedJsonCodec[InventoryItemEvent] = {
-    implicit val itemJsonCodec = InventoryItem.jsonCodec(companions)
-    implicit val idJsonCodec = InventoryItemId.jsonCodec(companions.map(_.Id))
-
-    val simpleItemCompanions = companions.collect { case o: SimpleItem.Companion_ => o  }
-    val jsonCodec =
-      CommonItemEvent.jsonCodec(companions) |
-      SimpleItemEvent.jsonCodec(simpleItemCompanions)
-    jsonCodec.asInstanceOf[TypedJsonCodec[InventoryItemEvent]]
-  }
+  def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S]) =
+    (CommonItemEvent.jsonCodec |
+      UnsignedSimpleItemEvent.jsonCodec |
+      SignedItemEvent.jsonCodec
+    ).asInstanceOf[TypedJsonCodec[InventoryItemEvent]]
 }

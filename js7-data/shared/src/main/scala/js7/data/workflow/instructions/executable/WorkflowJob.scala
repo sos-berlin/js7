@@ -8,9 +8,11 @@ import js7.base.generic.GenericString
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, PathExecutable, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourceId, PathExecutable, ScriptExecutable}
 import js7.data.order.Outcome
 import js7.data.value.{NamedValues, NumberValue, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter
@@ -24,6 +26,7 @@ final case class WorkflowJob private(
   agentId: AgentId,
   executable: Executable,
   defaultArguments: NamedValues,
+  jobResourceIds: Seq[JobResourceId] = Nil,
   returnCodeMeaning: ReturnCodeMeaning/*TODO Move to ProcessExecutable*/,
   taskLimit: Int,/*TODO Rename as parallelism*/
   sigkillDelay: Option[FiniteDuration]/*TODO Move to ProcessExecutable*/)
@@ -63,21 +66,26 @@ object WorkflowJob
     agentId: AgentId,
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
+    jobResourceIds: Seq[JobResourceId] = Nil,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
     sigkillDelay: Option[FiniteDuration] = None)
   : WorkflowJob =
-    checked(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillDelay).orThrow
+    checked(agentId, executable, defaultArguments, jobResourceIds, returnCodeMeaning, taskLimit, sigkillDelay)
+      .orThrow
 
   def checked(
     agentId: AgentId,
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
+    jobResourceIds: Seq[JobResourceId] = Nil,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
     sigkillDelay: Option[FiniteDuration] = None)
   : Checked[WorkflowJob] =
-    Right(new WorkflowJob(agentId, executable, defaultArguments, returnCodeMeaning, taskLimit, sigkillDelay))
+    for (_ <- jobResourceIds.checkUniqueness) yield
+      new WorkflowJob(
+        agentId, executable, defaultArguments, jobResourceIds, returnCodeMeaning, taskLimit, sigkillDelay)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -97,6 +105,7 @@ object WorkflowJob
       ("agentId" -> workflowJob.agentId.asJson) ::
       ("executable" -> workflowJob.executable.asJson) ::
       workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" -> workflowJob.defaultArguments.asJson) :::
+      ("jobResourceIds" -> workflowJob.jobResourceIds.??.asJson) ::
       (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" -> workflowJob.returnCodeMeaning.asJson)) :::
       ("taskLimit" -> workflowJob.taskLimit.asJson) ::
       ("sigkillDelay" -> workflowJob.sigkillDelay.asJson) ::
@@ -108,10 +117,11 @@ object WorkflowJob
       executable <- cursor.get[Executable]("executable")
       agentId <- cursor.get[AgentId]("agentId")
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
+      jobResourceIds <- cursor.getOrElse[Seq[JobResourceId]]("jobResourceIds")(Nil)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.get[Int]("taskLimit")
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
-      job <- checked(agentId, executable, arguments, rc, taskLimit, sigkillDelay)
+      job <- checked(agentId, executable, arguments, jobResourceIds, rc, taskLimit, sigkillDelay)
         .toDecoderResult(cursor.history)
     } yield job
 }

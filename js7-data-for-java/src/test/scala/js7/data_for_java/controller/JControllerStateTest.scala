@@ -12,8 +12,8 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.VersionedEvent.VersionAdded
-import js7.data.item.{Repo, VersionId, VersionedItemSigner}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
+import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.AllOrderWatchesState
@@ -75,7 +75,7 @@ private object JControllerStateTest
        |}
        |""".stripMargin).orThrow
 
-  private val itemSigner = new VersionedItemSigner(SillySigner.Default, versionedItemJsonCodec)
+  private val itemSigner = new ItemSigner(SillySigner.Default, versionedItemJsonCodec)
 
   private val controllerState = ControllerState(
     EventId(1001),
@@ -97,9 +97,11 @@ private object JControllerStateTest
     Repo.empty
       .applyEvents(List(
         VersionAdded(v1),
-        itemSigner.toAddedEvent(aWorkflow),
-        itemSigner.toAddedEvent(bWorkflow)),
+        VersionedItemAdded(itemSigner.sign(aWorkflow)),
+        VersionedItemAdded(itemSigner.sign(bWorkflow)))
       ).orThrow,
+    Map.empty,
+    Map.empty,
     Vector(
       Order(
         OrderId("A-ORDER"),

@@ -24,6 +24,7 @@ import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.{ProcessOrder, StdObservers}
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
@@ -109,7 +110,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def startable: Receive =
     receiveEvent() orElse {
-      case Input.StartProcessing(jobActor, defaultArguments) =>
+      case Input.StartProcessing(jobActor, workflowJob, defaultArguments) =>
         if (order.isProcessable) {
           val out, err = PublishSubject[String]()
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
@@ -140,6 +141,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             jobActor ! ProcessOrder(
               order.castState[Order.Processing],
               workflow,
+              workflowJob,
               defaultArguments,
               stdObservers)
           }
@@ -377,7 +379,13 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddOffering(order: Order[Order.Offering]) extends Input
-    final case class StartProcessing(jobActor: ActorRef, defaultArguments: NamedValues) extends Input
+
+    final case class StartProcessing(
+      jobActor: ActorRef,
+      workflowJob: WorkflowJob,
+      defaultArguments: NamedValues)
+    extends Input
+
     final case class Terminate(processSignal: Option[ProcessSignal] = None)
     extends Input with DeadLetterSuppression
   }

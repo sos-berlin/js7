@@ -126,5 +126,5 @@ final class ItemPathTest extends AnyFreeSpec
 
 object ItemPathTest
 {
-  private val AId = APath.versionedItemIdCompanion
+  private val AId = APath.VersionedItemIdCompanion
 }

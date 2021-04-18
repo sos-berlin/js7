@@ -15,9 +15,9 @@ import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemDeletedPr
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.event.{EventRequest, EventSeq}
-import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, VersionedDelete}
 import js7.data.item.{ItemRevision, VersionId}
-import js7.data.job.RelativePathExecutable
+import js7.data.job.{JobResource, JobResourceId, RelativePathExecutable}
 import js7.data.lock.{Lock, LockId}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -37,7 +37,7 @@ import scala.concurrent.duration._
   */
 final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = TestAgentId :: Nil
+  protected val agentIds = agentId :: Nil
   protected val versionedItems = Nil
 
   override def beforeAll() = {
@@ -51,15 +51,15 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativePathExecutable("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(TestAgentId).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
+    directoryProvider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
+    directoryProvider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 
   "User requires permission 'UpdateItem'" in {
     val controllerApi = controller.newControllerApi(Some(UserId("without-permission") -> SecretString("TEST-PASSWORD")))
-    assert(controllerApi.updateItems(Observable(AddVersion(V1), VersionedAddOrChange(sign(workflow1)))).await(99.s) ==
+    assert(controllerApi.updateItems(Observable(AddVersion(V1), SignedAddOrChange(toSignedString(workflow1)))).await(99.s) ==
       Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateItemPermission)))
 
     controller.httpApi.login_(Some(directoryProvider.controller.userAndPassword)) await 99.s
@@ -67,15 +67,15 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "ControllerCommand.UpdateRepo with VersionedItem" in {
     val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
-    controllerApi.updateItems(Observable(AddVersion(V1), VersionedAddOrChange(sign(workflow1)))).await(99.s).orThrow
-    controller.addOrderBlocking(FreshOrder(orderIds(0), TestWorkflowPath))
+    controllerApi.updateItems(Observable(AddVersion(V1), SignedAddOrChange(toSignedString(workflow1)))).await(99.s).orThrow
+    controllerApi.addOrders(Observable(FreshOrder(orderIds(0), workflowPath))).await(99.s).orThrow
 
     locally {
-      val signedWorkflow2 = sign(workflow2)
-      controllerApi.updateItems(Observable(AddVersion(V2), VersionedAddOrChange(signedWorkflow2))).await(99.s).orThrow
-      controllerApi.updateItems(Observable(AddVersion(V2), VersionedAddOrChange(signedWorkflow2))).await(99.s).orThrow  /*Duplicate effect is ignored*/
+      val signedWorkflow2 = toSignedString(workflow2)
+      controllerApi.updateItems(Observable(AddVersion(V2), SignedAddOrChange(signedWorkflow2))).await(99.s).orThrow
+      controllerApi.updateItems(Observable(AddVersion(V2), SignedAddOrChange(signedWorkflow2))).await(99.s).orThrow  /*Duplicate effect is ignored*/
     }
-    controller.addOrderBlocking(FreshOrder(orderIds(1), TestWorkflowPath))
+    controllerApi.addOrders(Observable(FreshOrder(orderIds(1), workflowPath))).await(99.s).orThrow
 
     val promises = Vector.fill(2)(Promise[Deadline]())
     for (i <- orderIds.indices) {
@@ -87,72 +87,81 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val finishedAt = promises.map(_.future) await 99.s
     // The two order running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
-    controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
+    controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
-    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(TestWorkflowPath))).await(99.s).orThrow
-    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(TestWorkflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
-    assert(controllerApi.addOrder(FreshOrder(orderIds(1), TestWorkflowPath)).await(99.s) ==
-      Left(VersionedItemDeletedProblem(TestWorkflowPath)))
+    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(workflowPath))).await(99.s).orThrow
+    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(workflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
+    assert(controllerApi.addOrder(FreshOrder(orderIds(1), workflowPath)).await(99.s) ==
+      Left(VersionedItemDeletedProblem(workflowPath)))
 
     withClue("Tampered with configuration: ") {
       assert(controllerApi.updateItems(Observable(
         AddVersion(VersionId("vTampered")),
-        VersionedAddOrChange(sign(workflow2).copy(string = "TAMPERED"))
+        SignedAddOrChange(toSignedString(workflow2).tamper)
       )).await(99.s) == Left(TamperedWithSignedMessageProblem))
     }
-  }
-
-  "SimpleItem's ItemRevision must not be supplied" in {
-    // itemRevision is set only be the Controller
-    val lock = Lock(LockId("LOCK"))
-    assert(controllerApi.updateSimpleItems(Seq(lock.copy(itemRevision = Some(ItemRevision(1))))).await(99.s) ==
-      Left(Problem("ItemRevision is not accepted here")))
-
-    controllerApi.updateSimpleItems(Seq(lock)).await(99.s).orThrow
-
-    assert(controllerApi.updateSimpleItems(Seq(lock.copy(limit = 7, itemRevision = Some(ItemRevision(1))))).await(99.s) ==
-      Left(Problem("ItemRevision is not accepted here")))
   }
 
   "Divergent VersionId is rejected" in {
     // The signer signs the VersionId, too
     assert(controllerApi.updateItems(Observable(
       AddVersion(VersionId("DIVERGE")),
-      VersionedAddOrChange(sign(otherWorkflow5))
-    )).await(99.s) == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow5.id)))
+      SignedAddOrChange(toSignedString(otherWorkflow4))
+    )).await(99.s) == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow4.id)))
+  }
+
+  "SimpleItem's ItemRevision must not be supplied" in {
+    // itemRevision is set only be the Controller
+    val lock = Lock(LockId("LOCK"))
+    assert(controllerApi.updateUnsignedSimpleItems(Seq(lock.copy(itemRevision = Some(ItemRevision(1))))).await(99.s) ==
+      Left(Problem("ItemRevision is not accepted here")))
+
+    controllerApi.updateUnsignedSimpleItems(Seq(lock)).await(99.s).orThrow
+
+    assert(controllerApi.updateUnsignedSimpleItems(Seq(lock.copy(limit = 7, itemRevision = Some(ItemRevision(1))))).await(99.s) ==
+      Left(Problem("ItemRevision is not accepted here")))
+  }
+
+  "SignableItem" in {
+    controllerApi.updateItems(Observable(SignedAddOrChange(toSignedString(jobResource))))
+      .await(99.s).orThrow
+  }
+
+  "SignableItem, tampered" in {
+    assert(controllerApi.updateItems(Observable(SignedAddOrChange(toSignedString(jobResource).tamper)))
+      .await(99.s) == Left(TamperedWithSignedMessageProblem))
   }
 }
 
 object UpdateItemsTest
 {
   private val Tick = 2.s
-  private val TestAgentId = AgentId("AGENT")
-  private val TestWorkflowPath = WorkflowPath("WORKFLOW")
+  private val agentId = AgentId("AGENT")
+
+  private val workflowPath = WorkflowPath("WORKFLOW")
   private val script1 = """
     define workflow {
       execute executable="SCRIPT1.cmd", agent="AGENT";
     }"""
 
   private val V1 = VersionId("1")
-  private val workflow1 = WorkflowParser.parse(TestWorkflowPath ~ V1, script1).orThrow
+  private val workflow1 = WorkflowParser.parse(workflowPath ~ V1, script1).orThrow
 
   private val V2 = VersionId("2")
   private val script2 = """
     define workflow {
       execute executable="SCRIPT2.cmd", agent="AGENT";
     }"""
-  private val workflow2 = WorkflowParser.parse(TestWorkflowPath ~ V2, script2).orThrow
+  private val workflow2 = WorkflowParser.parse(workflowPath ~ V2, script2).orThrow
 
   private val V3 = VersionId("3")
 
-  private val V4 = VersionId("4")
-  private val workflow4 = WorkflowParser.parse(TestWorkflowPath ~ V4, script2).orThrow
-  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V4, script2).orThrow
-
-  private val V5 = VersionId("5")
-  private val script5 = """
+  private val V4 = VersionId("5")
+  private val script4 = """
     define workflow {
       execute executable="SCRIPT4.cmd", agent="AGENT";
     }"""
-  private val otherWorkflow5 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V5, script5).orThrow
+  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V4, script4).orThrow
+
+  private val jobResource = JobResource(JobResourceId("JOB-RESOURCE"))
 }

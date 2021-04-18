@@ -8,7 +8,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import js7.base.crypt.SignedString;
 import js7.base.problem.Problem;
@@ -20,7 +19,7 @@ import js7.data.item.VersionId;
 import js7.data.item.VersionedEvent;
 import js7.data.lock.LockId;
 import js7.data.workflow.WorkflowPath;
-import js7.data_for_java.item.JSimpleItem;
+import js7.data_for_java.item.JUnsignedSimpleItem;
 import js7.data_for_java.item.JUpdateItemOperation;
 import js7.data_for_java.lock.JLock;
 import js7.data_for_java.workflow.JWorkflowId;
@@ -30,8 +29,9 @@ import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import reactor.core.publisher.Flux;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
-import static js7.data_for_java.item.JUpdateItemOperation.addOrChangeVersioned;
+import static js7.data_for_java.item.JUpdateItemOperation.addOrChangeSigned;
 import static js7.data_for_java.item.JUpdateItemOperation.addVersion;
 import static js7.data_for_java.item.JUpdateItemOperation.deleteVersioned;
 import static js7.data_for_java.vavr.VavrUtils.await;
@@ -58,7 +58,7 @@ final class JControllerProxyRepoTester
         throws InterruptedException, ExecutionException, TimeoutException
     {
         // Try to add many items with invalid signature
-        String bigSpace = Stream.generate(() -> "          ").limit(10_000).collect(Collectors.joining());
+        String bigSpace = Stream.generate(() -> "          ").limit(10_000).collect(joining());
         assertThat(bigSpace.length(), equalTo(100_000));
         assertThat(manyItemJsons.stream().mapToInt(o -> o.length() + bigSpace.length()).sum(),
             greaterThan(100_000_000/*bytes*/));
@@ -66,7 +66,7 @@ final class JControllerProxyRepoTester
             api.updateItems(Flux.concat(
                     Flux.just(addVersion(versionId)),
                     Flux.fromIterable(manyItemJsons)
-                        .map(json -> addOrChangeVersioned(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE")))))
+                        .map(json -> addOrChangeSigned(SignedString.of(json + bigSpace, "Silly", "MY-SILLY-FAKE")))))
                 .get(99, SECONDS)
                 .mapLeft(problem -> new Tuple2<>(
                     Optional.ofNullable(problem.codeOrNull()).map(ProblemCode::string),
@@ -89,7 +89,7 @@ final class JControllerProxyRepoTester
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
         JLock lock = JLock.of(LockId.of("MY-LOCK"), 1);
-        List<JSimpleItem> simpleItems = singletonList(lock);
+        List<JUnsignedSimpleItem> simpleItems = singletonList(lock);
         List<SignedString> signedItemJsons = itemJsons.stream().map(o -> sign(o)).collect(toList());
         // Add items
         addItemsOnly(simpleItems, signedItemJsons);
@@ -102,7 +102,7 @@ final class JControllerProxyRepoTester
             equalTo(Either.right(bWorkflowPath)));
     }
 
-    private void addItemsOnly(List<JSimpleItem> simpleItems, List<SignedString> signedItemJsons) {
+    private void addItemsOnly(List<JUnsignedSimpleItem> simpleItems, List<SignedString> signedItemJsons) {
         await(api.updateItems(Flux.concat(
             Flux.fromIterable(simpleItems)
                 .map(JUpdateItemOperation::addOrChangeSimple),

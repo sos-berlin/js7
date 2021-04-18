@@ -63,7 +63,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
             httpPort = Some(port))
           ).await(99.s)
 
-          controller.updateSimpleItemsAsSystemUser(Seq(AgentRef(agentId, uri = agent2.localUri))).await(99.s).orThrow
+          controller.updateUnsignedSimpleItemsAsSystemUser(Seq(AgentRef(agentId, uri = agent2.localUri))).await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }

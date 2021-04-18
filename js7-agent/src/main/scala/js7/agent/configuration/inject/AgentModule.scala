@@ -83,7 +83,7 @@ extends AbstractModule
     }
 
   @Provides @Singleton
-  def executorConf(conf: AgentConfiguration, newTaskRunner: TaskRunner.Factory, closer: Closer)
+  def jobExecutorConf(conf: AgentConfiguration, newTaskRunner: TaskRunner.Factory, closer: Closer)
   : JobExecutorConf = {
     val blockingJobScheduler: SchedulerService = {
       val scheduler = newUnlimitedScheduler("JS7 blocking job")

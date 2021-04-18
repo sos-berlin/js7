@@ -14,8 +14,8 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedEventTest extends AnyFreeSpec {
-
+final class VersionedEventTest extends AnyFreeSpec
+{
   import VersionedEventTest.{itemEventJsonCodec, itemJsonCodec}
 
   "JSON" - {
@@ -35,7 +35,6 @@ final class VersionedEventTest extends AnyFreeSpec {
         VersionedItemAdded(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "VersionedItemAdded",
-          "path": "Workflow:WORKFLOW",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
             "signature": {
@@ -51,7 +50,6 @@ final class VersionedEventTest extends AnyFreeSpec {
         VersionedItemChanged(Signed(workflow, SignedString.pgp((workflow: VersionedItem).asJson.compactPrint, "SIGNATURE"))),
         json"""{
           "TYPE": "VersionedItemChanged",
-          "path": "Workflow:WORKFLOW",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"instructions\":[{\"TYPE\":\"Fail\"}]}",
             "signature": {
@@ -94,5 +92,6 @@ object VersionedEventTest
   implicit private val itemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
 
-  private[VersionedEventTest] implicit val itemEventJsonCodec: TypedJsonCodec[VersionedEvent] = VersionedEvent.jsonCodec
+  private[VersionedEventTest] implicit val itemEventJsonCodec: TypedJsonCodec[VersionedEvent] =
+    VersionedEvent.jsonCodec
 }

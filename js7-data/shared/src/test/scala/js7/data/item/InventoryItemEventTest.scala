@@ -2,15 +2,16 @@ package js7.data.item
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerState
 import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
-import js7.data.orderwatch.{FileWatch, OrderWatchId}
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.orderwatch.OrderWatchId
+import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 final class InventoryItemEventTest extends AnyFreeSpec
 {
-  implicit private val jsonCodec = InventoryItemEvent.jsonCodec(Seq(FileWatch, Workflow))
+  implicit private val jsonCodec = InventoryItemEvent.jsonCodec(ControllerState)
 
   "JSON" - {
     "ItemDeletionMarked" in {

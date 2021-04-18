@@ -9,24 +9,24 @@ import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.common.crypt.pgp.PgpCommons.RichPGPPublicKey
 import js7.common.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
-import js7.core.item.VersionedItemVerifierTest._
-import js7.data.crypt.VersionedItemVerifier
-import js7.data.item.{VersionedItem, VersionedItemSigner}
+import js7.core.item.SignableItemVerifierTest._
+import js7.data.crypt.SignedItemVerifier
+import js7.data.item.{ItemSigner, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemVerifierTest extends AnyFreeSpec
+final class SignableItemVerifierTest extends AnyFreeSpec
 {
-  "VersionedItemSigner.sign" in {
-    implicit val jsonCodec = VersionedItemVerifierTest.jsonCodec
+  "ItemSigner.sign" in {
+    implicit val jsonCodec = SignableItemVerifierTest.jsonCodec
     val workflowString = jsonCodec(workflow: VersionedItem).asJson.compactPrint
 
     def check() = {
       val signature = signer.signString(workflowString).toGenericSignature
-      assert(itemSigner.sign(workflow) == SignedString(workflowString, signature))
+      assert(itemSigner.sign(workflow) == Signed(workflow, SignedString(workflowString, signature)))
     }
     try check()
     catch { case _: Throwable =>
@@ -37,9 +37,9 @@ final class VersionedItemVerifierTest extends AnyFreeSpec
 
   "Verify valid objects" in {
     def check() = {
-      val signedString = itemSigner.sign(workflow)
-      assert(signedString == itemSigner.sign(workflow))
-      assert(itemVerifier.verify(signedString) == Right(VersionedItemVerifier.Verified(Signed(workflow, signedString), signerIds)))
+      val signedString = itemSigner.toSignedString(workflow)
+      assert(signedString == itemSigner.toSignedString(workflow))
+      assert(itemVerifier.verify(signedString) == Right(SignedItemVerifier.Verified(Signed(workflow, signedString), signerIds)))
     }
     try check()
     catch { case _: Throwable =>
@@ -49,19 +49,19 @@ final class VersionedItemVerifierTest extends AnyFreeSpec
   }
 
   "Verify falsified" in {
-    val tampered = itemSigner.sign(workflow).copy("TAMPERED")
+    val tampered = itemSigner.toSignedString(workflow).tamper
     assert(itemVerifier.verify(tampered) == Left(TamperedWithSignedMessageProblem))
   }
 }
 
-object VersionedItemVerifierTest
+object SignableItemVerifierTest
 {
   private val workflow = {
     val workflowScript = """define workflow { execute executable="SCRIPT.cmd", agent="AGENT"; }"""
     WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "1.0", workflowScript).orThrow
   }
 
-  private val signerIds = SignerId("VersionedItemVerifierTest") :: Nil
+  private val signerIds = SignerId("SignableItemVerifierTest") :: Nil
 
   private val (signer, verifier) = {
     val password = SecretString("TEST-PASSWORD")
@@ -73,6 +73,6 @@ object VersionedItemVerifierTest
 
   private implicit val jsonCodec = TypedJsonCodec[VersionedItem](
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
-  private val itemSigner = new VersionedItemSigner(signer, jsonCodec)
-  private val itemVerifier = new VersionedItemVerifier(verifier, jsonCodec)
+  private val itemSigner = new ItemSigner(signer, jsonCodec)
+  private val itemVerifier = new SignedItemVerifier(verifier, jsonCodec)
 }

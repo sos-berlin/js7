@@ -26,8 +26,8 @@ import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ItemRoute._
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.controller.ControllerState._
-import js7.data.crypt.VersionedItemVerifier.Verified
-import js7.data.item.{ItemOperation, VersionedItem}
+import js7.data.crypt.SignedItemVerifier.Verified
+import js7.data.item.{ItemOperation, SignableItem}
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
 
@@ -63,8 +63,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     .parseJsonAs[ItemOperation].orThrow)
                 VerifiedUpdateItems.fromOperations(operations, verify, user)
                   .flatMapT { verifiedUpdateItems =>
-                    val itemCount = verifiedUpdateItems.simple.items.size +
-                      verifiedUpdateItems.maybeVersioned.fold(0)(_.verifiedItems.size)
+                    val itemCount = verifiedUpdateItems.itemCount
                     val d = startedAt.elapsed
                     if (d > 1.s) logger.debug(s"post controller/api/item received and verified - " +
                       itemsPerSecondString(d, itemCount, "items") + " · " +
@@ -92,8 +91,8 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
       }
     }
 
-  private def verify(signedString: SignedString): Checked[Verified[VersionedItem]] = {
-    val verified = itemUpdater.versionedItemVerifier.verify(signedString)
+  private def verify(signedString: SignedString): Checked[Verified[SignableItem]] = {
+    val verified = itemUpdater.signedItemVerifier.verify(signedString)
     verified match {
       case Left(problem) => logger.warn(problem.toString)
       case Right(verified) => logger.info(Logger.SignatureVerified, verified.toString)

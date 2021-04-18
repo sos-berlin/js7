@@ -7,7 +7,7 @@ trait SimpleItem extends InventoryItem
 {
   protected type Self <: SimpleItem
 
-  def withRevision(revision: ItemRevision): Self
+  def withRevision(revision: Option[ItemRevision]): Self
 
   val companion: Companion[Self]
 

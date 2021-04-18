@@ -22,7 +22,7 @@ import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemDeletedProblem
 import js7.data.agent.AgentId
-import js7.data.item.ItemOperation.{AddVersion, VersionedAddOrChange}
+import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
@@ -66,13 +66,13 @@ final class ControllerRepoTest extends AnyFreeSpec
             // Add Workflow
             val v = V1
             val workflow = testWorkflow(v) withId AWorkflowPath ~ v
-            val signedString = itemSigner.sign(workflow)
-            controllerApi.updateRepo(v, Seq(signedString)).await(99.s).orThrow
+            val signed = itemSigner.sign(workflow)
+            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("A"), workflow.path))
 
             // Non-empty UpdateRepo with same resulting Repo is accepted
-            controllerApi.updateRepo(v, Seq(signedString)).await(99.s).orThrow
-            controllerApi.updateRepo(v, Seq(signedString)).await(99.s).orThrow
+            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
+            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
 
             // Empty UpdateRepo with same VersionId is rejected due to duplicate VersionId
             assert(controllerApi.updateRepo(v, Nil).await(99.s) ==
@@ -83,8 +83,8 @@ final class ControllerRepoTest extends AnyFreeSpec
             // Add another Workflow
             val v = V2
             val workflow = testWorkflow(v) withId BWorkflowPath ~ v
-            val signedString = itemSigner.sign(workflow)
-            controllerApi.updateRepo(v, Seq(signedString)).await(99.s).orThrow
+            val signed = itemSigner.sign(workflow)
+            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("B"), workflow.path))
           }
 
@@ -110,8 +110,8 @@ final class ControllerRepoTest extends AnyFreeSpec
           locally {
             val v = V4
             val workflow = testWorkflow(v) withId CWorkflowPath ~ v
-            val signedString = itemSigner.sign(workflow)
-            controllerApi.updateRepo(v, Seq(signedString)).await(99.s).orThrow
+            val signed = itemSigner.sign(workflow)
+            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("C"), workflow.path))
           }
 
@@ -190,7 +190,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           Observable.fromIterable(1 to n)
             .mapParallelUnorderedBatch() { i =>
               val workflow = workflow0.withId(WorkflowPath(s"WORKFLOW-$i") ~ v)
-              VersionedAddOrChange(provider.sign(workflow))
+              SignedAddOrChange(provider.toSignedString(workflow))
             }
             .prepend(AddVersion(v))
             .toL(Vector)

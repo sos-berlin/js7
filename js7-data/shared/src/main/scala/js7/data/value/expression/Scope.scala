@@ -10,7 +10,7 @@ import js7.data.value.{NumberValue, Value}
   */
 trait Scope
 {
-  protected final lazy val evaluator = Evaluator(this)
+  final lazy val evaluator = Evaluator(this)
 
   def symbolToValue(symbol: String): Checked[Value] =
     Left(Problem("Unknown symbol: " + symbol))

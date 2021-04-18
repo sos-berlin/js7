@@ -18,7 +18,7 @@ import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.Exceptions.repeatUntilNoException
-import js7.data.item.VersionedItemSigner
+import js7.data.item.ItemSigner
 import scala.util.control.NonFatal
 
 trait TestAgentDirectoryProvider extends HasCloser
@@ -27,7 +27,7 @@ trait TestAgentDirectoryProvider extends HasCloser
   coupleScribeWithSlf4j()
 
   private val signature = SillySignature("MY-SILLY-SIGNATURE")
-  final val itemSigner = new VersionedItemSigner(new SillySigner(signature), AgentState.versionedItemJsonCodec)
+  final val itemSigner = new ItemSigner(new SillySigner(signature), AgentState.signableItemJsonCodec)
 
   final lazy val agentDirectory = {
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>

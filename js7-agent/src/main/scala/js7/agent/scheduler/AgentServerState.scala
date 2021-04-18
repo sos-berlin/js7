@@ -74,4 +74,6 @@ object AgentServerState extends JournaledState.Companion[AgentServerState]
       KeyedSubtype[AgentServerEvent])
 
   def newBuilder() = new AgentServerStateBuilder
+
+  protected def InventoryItems = Nil
 }

@@ -17,6 +17,7 @@ import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
+import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
@@ -194,7 +195,8 @@ private object OrderActorTest {
     private val jobActor = actorOf(
       JobActor.props(
         JobConf(jobKey, workflowJob, Workflow.empty, sigKillDelay = 5.s),
-        executorConf))
+        executorConf,
+        _ => Left(Problem("No JobResource here"))))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
         journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
@@ -231,7 +233,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed =>
-        orderActor ! OrderActor.Input.StartProcessing(defaultArguments = Map.empty, jobActor = jobActor)
+        orderActor ! OrderActor.Input.StartProcessing(jobActor, workflowJob, Map.empty)
         become(processing)
     }
 

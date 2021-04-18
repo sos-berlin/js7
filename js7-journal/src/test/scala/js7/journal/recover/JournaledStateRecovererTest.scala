@@ -46,7 +46,7 @@ private object JournaledStateRecovererTest
 //    def clusterState: ClusterState = ???
 //  }
 //
-//  implicit private val snapshotJsonCodec = TypedJsonCodec[Any](
+//  implicit private val snapshotObjectJsonCodec = TypedJsonCodec[Any](
 //    Subtype(deriveCodec[TestState]))
 //  implicit private val eventJsonCodec = TypedJsonCodec[TestEvent](
 //    Subtype(deriveCodec[Add]))

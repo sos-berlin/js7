@@ -1,10 +1,10 @@
 package js7.tests.controller.proxy
 
-import io.circe.syntax._
+import io.circe.syntax.EncoderOps
 import java.nio.file.Files.createDirectory
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.TimeoutException
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.thread.MonixBlocking.syntax._
@@ -37,6 +37,10 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
         permissions = [ UpdateItem ]
       }
     }
+    """
+
+  override protected def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
     """
 
   protected val agentIds = AgentId("AGENT") :: Nil

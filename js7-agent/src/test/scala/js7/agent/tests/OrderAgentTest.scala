@@ -24,7 +24,7 @@ import js7.base.utils.Closer.withCloser
 import js7.common.crypt.pgp.PgpSigner
 import js7.data.agent.AgentId
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
-import js7.data.item.{InventoryItem, VersionedItemSigner}
+import js7.data.item.{ItemSigner, SignableItem}
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NumberValue, StringValue}
@@ -66,7 +66,7 @@ final class OrderAgentTest extends AnyFreeSpec
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> StringValue("X")))
 
-          def attachOrder(signedWorkflow: Signed[InventoryItem]): Checked[AgentCommand.Response.Accepted] =
+          def attachOrder(signedWorkflow: Signed[SignableItem]): Checked[AgentCommand.Response.Accepted] =
             for {
               _ <- agentClient.commandExecute(AttachSignedItem(signedWorkflow)).await(99.s)
               x <- agentClient.commandExecute(AttachOrder(order, TestAgentId)).await(99.s)
@@ -160,8 +160,8 @@ private object OrderAgentTest
       |""".stripMargin
 
   private val (signer, verifier) = PgpSigner.forTest()
-  private val itemSigner = new VersionedItemSigner(signer, AgentState.versionedItemJsonCodec)
-  private val signedSimpleWorkflow = Signed[InventoryItem](SimpleTestWorkflow, itemSigner.sign(SimpleTestWorkflow))
+  private val itemSigner = new ItemSigner(signer, AgentState.versionedItemJsonCodec)
+  private val signedSimpleWorkflow = itemSigner.sign(SimpleTestWorkflow)
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(

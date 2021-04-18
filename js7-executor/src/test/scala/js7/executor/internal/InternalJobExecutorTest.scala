@@ -1,6 +1,7 @@
 package js7.executor.internal
 
 import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.globalIOX
 import js7.base.time.ScalaTime._
@@ -28,23 +29,27 @@ final class InternalJobExecutorTest extends AnyFreeSpec
     val executable = InternalExecutable(
       classOf[TestInternalJob].getName,
       arguments = ObjectExpression(Map("ARG" -> NamedValue("ARG"))))
+    val workflowJob = WorkflowJob(AgentId("AGENT"), executable)
     val executor = new InternalJobExecutor(
       executable,
       JobConf(
         JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
-        WorkflowJob(AgentId("AGENT"), executable),
+        workflowJob,
         workflow,
         sigKillDelay = 0.s),
+      _ => Left(Problem("No JobResource here")),
       globalIOX.scheduler)(Scheduler.global, globalIOX)
     val out = PublishSubject[String]()
     val err = PublishSubject[String]()
     val whenOutString = out.fold.lastL.runToFuture
     val whenErrString = err.fold.lastL.runToFuture
-    val orderRun = executor.toOrderProcess(ProcessOrder(
-      Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
-      workflow,
-      NamedValues("ARG" -> NumberValue(1)),
-      StdObservers(out, err, charBufferSize = 4096))
+    val orderRun = executor.toOrderProcess(
+      ProcessOrder(
+        Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
+        workflow,
+        workflowJob,
+        NamedValues("ARG" -> NumberValue(1)),
+        StdObservers(out, err, charBufferSize = 4096))
     ).orThrow
     val outcome = orderRun.runToFuture.await(99.s)
     assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))

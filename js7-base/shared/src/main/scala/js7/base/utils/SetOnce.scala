@@ -57,6 +57,9 @@ class SetOnce[A](label: => String, notYetSetProblem: Problem)
 
   final def nonEmpty = promise.future.isCompleted
 
+  final def foreach(f: A => Unit) =
+    toOption.foreach(f)
+
   /**
    * Sets the variable.
    * Thread-safe.

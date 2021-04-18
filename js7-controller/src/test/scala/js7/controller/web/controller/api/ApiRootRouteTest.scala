@@ -39,6 +39,8 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
     Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty,
+    Map.empty,
+    Map.empty,
     Map.empty)))
   protected def totalRunningSince = now - 1.hour
 

@@ -7,6 +7,8 @@ import js7.data.event.{JournalState, JournaledStateBuilder}
 final class AgentServerStateBuilder
 extends JournaledStateBuilder[AgentServerState]
 {
+  protected val S = AgentServerState
+
   private var _state = AgentServerState.empty
 
   protected def onInitializeState(state: AgentServerState) =

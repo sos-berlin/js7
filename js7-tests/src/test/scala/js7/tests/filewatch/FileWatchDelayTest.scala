@@ -62,7 +62,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
 
   "Start with some files" in {
     createDirectories(watchedDirectory)
-    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     await[ItemAttached](_.event.id == orderWatchId)
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.

@@ -135,11 +135,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       //assert(controller.controllerState.map(_.idToAgentRefState.values).await(99.s) == Seq(agentRef))
       assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
-          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         AWorkflowPath -> List(
-          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         BWorkflowPath -> List(
-          Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))))))
+          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))))))
 
       assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
@@ -176,12 +176,12 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       provider.updateControllerConfiguration(V2.some).await(99.s).orThrow
       assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
-          Entry(V2, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
-          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2)))),
+          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         BWorkflowPath -> List(
-          Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))),
+          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))),
         CWorkflowPath -> List(
-          Entry(V2, Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
+          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
     }
 
     "Delete a Workflow" in {
@@ -190,13 +190,13 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
       assert(checkedRepo.map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
-          Entry(V2, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V2)))),
-          Entry(V1, Some(toSigned(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2)))),
+          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         BWorkflowPath -> List(
           Entry(V3, None),
-          Entry(V1, Some(toSigned(TestWorkflow.withId(BWorkflowPath ~ V1))))),
+          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))),
         CWorkflowPath -> List(
-          Entry(V2, Some(toSigned(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
+          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
     }
 
     "Workflow notation (including a try-instruction)" in {
@@ -237,7 +237,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       val events = controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
-        .map(path => NoKey <-: VersionedItemAdded(toSigned(TestWorkflow withId path ~ versionId))))
+        .map(path => NoKey <-: VersionedItemAdded(sign(TestWorkflow withId path ~ versionId))))
     }
 
     "Delete a workflow" in {
@@ -254,7 +254,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       writeWorkflowFile(CWorkflowPath)
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: VersionedItemAdded(toSigned(TestWorkflow withId CWorkflowPath ~ versionId))))
+        Vector(NoKey <-: VersionedItemAdded(sign(TestWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Change a workflow" in {
@@ -263,7 +263,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: VersionedItemChanged(toSigned(ChangedWorkflow withId CWorkflowPath ~ versionId))))
+        Vector(NoKey <-: VersionedItemChanged(sign(ChangedWorkflow withId CWorkflowPath ~ versionId))))
     }
 
     "Add an order generator" in {

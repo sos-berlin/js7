@@ -1,11 +1,17 @@
 package js7.data.item
 
-import io.circe.syntax._
-import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
+import io.circe.{Decoder, DecodingFailure, Encoder}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.crypt.{Signed, SignedString}
+import js7.base.crypt.Signed
+import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.data.controller.ControllerState
+import js7.data.controller.ControllerState.{itemPathJsonCodec, versionedItemJsonCodec}
 import js7.data.event.NoKeyEvent
+import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
+import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
@@ -27,25 +33,20 @@ object VersionedEvent {
   }
   object VersionedItemAddedOrChanged
   {
-    private[VersionedEvent] def jsonEncoder: Encoder.AsObject[VersionedItemAddedOrChanged] = o =>
-      JsonObject(
-        "path" -> o.signed.value.path.toTypedString.asJson,
-        "signed" -> o.signed.signedString.asJson)
-
-    // TODO Similar to AttachSignedItem
-    private[VersionedEvent] def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath])
-    : Decoder[(VersionedItem, SignedString)] =
-      c => for {
-        path <- c.get[ItemPath]("path")
-        signedString <- c.get[SignedString]("signed")
-        parsed <- io.circe.parser.parse(signedString.string)
-          .left.map(error => DecodingFailure(error.toString, c.history))
-        item <- parsed.as[VersionedItem].flatMap(o =>
-          if (o.path != path)
-            Left(DecodingFailure(s"Path '$path' in event does not equal path in signed string", c.history))
-          else
-            Right(o))
-      } yield (item, signedString)
+    // Use SignedItemAdded implementation (for ..Added and ..Changed events)
+    private[VersionedEvent] def jsonDecoder[A <: VersionedItemAddedOrChanged: ClassTag]
+      (toA: Signed[VersionedItem] => A)
+    : Decoder[A] =
+      c => SignedItemAdded.jsonCodec(ControllerState)
+        .decodeJson(c.value)
+        .flatMap(e =>
+          e.signed.value match {
+            case item: VersionedItem =>
+              Right(toA(e.signed.copy(value = item)))
+            case item =>
+              Left(DecodingFailure(
+                s"VersionedItem expected in ${implicitClass.simpleName} event: ${item.id}", c.history))
+          })
   }
 
   final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
@@ -54,14 +55,11 @@ object VersionedEvent {
   object VersionedItemAdded
   {
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemAdded] =
-      o => VersionedItemAddedOrChanged.jsonEncoder.encodeObject(o)
+      SignedItemAdded.jsonCodec(ControllerState)
+        .contramapObject(e => SignedItemAdded(e.signed))
 
-    private[VersionedEvent] implicit def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath])
-    : Decoder[VersionedItemAdded] =
-      hCursor =>
-        VersionedItemAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (item, signedString) =>
-          new VersionedItemAdded(Signed(item, signedString))
-        }
+    private[VersionedEvent] implicit val jsonDecoder: Decoder[VersionedItemAdded] =
+      VersionedItemAddedOrChanged.jsonDecoder(VersionedItemAdded(_))
   }
 
   final case class VersionedItemChanged(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
@@ -70,25 +68,21 @@ object VersionedEvent {
   object VersionedItemChanged
   {
     private[VersionedEvent] implicit val jsonEncoder: Encoder.AsObject[VersionedItemChanged] =
-      o => VersionedItemAddedOrChanged.jsonEncoder.encodeObject(o)
+      SignedItemChanged.jsonCodec(ControllerState).contramapObject(e => SignedItemChanged(e.signed))
 
-    private[VersionedEvent] implicit def jsonDecoder(implicit x: Decoder[VersionedItem], y: Decoder[ItemPath])
-    : Decoder[VersionedItemChanged] =
-      hCursor =>
-        VersionedItemAddedOrChanged.jsonDecoder.decodeJson(hCursor.value).map { case (item, signedString) =>
-          new VersionedItemChanged(Signed(item, signedString))
-        }
+    private[VersionedEvent] implicit val jsonDecoder: Decoder[VersionedItemChanged] =
+      VersionedItemAddedOrChanged.jsonDecoder(VersionedItemChanged(_))
   }
 
   final case class VersionedItemDeleted(path: ItemPath) extends VersionedItemEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }
 
-  implicit def jsonCodec(implicit w: Encoder.AsObject[VersionedItem], x: Decoder[VersionedItem],
-    y: Encoder[ItemPath], z: Decoder[ItemPath])
-  : TypedJsonCodec[VersionedEvent] = TypedJsonCodec(
-      Subtype(deriveCodec[VersionAdded]),
-      Subtype[VersionedItemAdded],
-      Subtype[VersionedItemChanged],
-      Subtype(deriveCodec[VersionedItemDeleted]))
+  implicit val jsonCodec = TypedJsonCodec[VersionedEvent](
+    Subtype(deriveCodec[VersionAdded]),
+    Subtype[VersionedItemAdded],
+    Subtype[VersionedItemChanged],
+    Subtype(deriveCodec[VersionedItemDeleted]))
+
+  intelliJuseImport(versionedItemJsonCodec, itemPathJsonCodec)
 }

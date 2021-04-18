@@ -17,7 +17,7 @@ import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.SimpleDelete
-import js7.data.item.SimpleItemEvent.SimpleItemChanged
+import js7.data.item.UnsignedSimpleItemEvent.SimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.OrderId
@@ -61,7 +61,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val file = sourceDirectory / "1"
     val orderId = fileToOrderId("1")
     file := ""
-    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id)
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
@@ -102,7 +102,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     for (i <- 1 to 10) withClue(s"#$i") {
       itemRevision = itemRevision.next
       val eventId = controller.eventWatch.lastAddedEventId
-      controller.updateSimpleItemsAsSystemUser(Seq(fileWatch)).await(99.s).orThrow
+      controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
       controller.eventWatch.await[ItemAttached](after = eventId)
       assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
         Seq(
@@ -116,7 +116,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     itemRevision = itemRevision.next
     val eventId = controller.eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(agentId = bAgentId)
-    controller.updateSimpleItemsAsSystemUser(Seq(changedFileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](after = eventId)
     assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(

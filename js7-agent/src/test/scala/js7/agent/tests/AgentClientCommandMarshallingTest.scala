@@ -1,13 +1,12 @@
-package js7.agent
+package js7.agent.tests
 
 import com.google.inject.{AbstractModule, Provides}
 import javax.inject.Singleton
-import js7.agent.AgentClientCommandMarshallingTest._
 import js7.agent.client.SimpleAgentClient
 import js7.agent.command.CommandHandler
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
-import js7.agent.tests.AgentTester
+import js7.agent.tests.AgentClientCommandMarshallingTest._
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax._

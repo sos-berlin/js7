@@ -17,6 +17,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalState, JournaledState}
 import js7.data.item.CommonItemEvent.ItemAttachedToAgent
 import js7.data.item.ItemRevision
+import js7.data.job.{JobResource, JobResourceId}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
@@ -35,13 +36,16 @@ import org.scalatest.freespec.AsyncFreeSpec
 final class AgentStateTest extends AsyncFreeSpec
 {
   private val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"
+  private val jobResourceId = JobResourceId("JOB-RESOURCE")
   private val agentState = AgentState(
     EventId(1000),
     JournaledState.Standards(
       JournalState(Map(UserId("USER") -> 500L)),
       ClusterState.Empty),
-    Map(OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflowId))),
-    Map(workflowId -> Workflow.of(workflowId)),
+    Map(
+      OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflowId))),
+    Map(
+      workflowId -> Workflow.of(workflowId)),
     AllFileWatchesState.fromIterable(Seq(
       FileWatchState(
         FileWatch(
@@ -55,10 +59,12 @@ final class AgentStateTest extends AsyncFreeSpec
           Some(ItemRevision(7))),
         DirectoryState.fromIterable(Seq(
           DirectoryState.Entry(Paths.get("/DIRECTORY/1.csv")),
-          DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))))
+          DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))),
+    Map(
+      jobResourceId -> JobResource(jobResourceId)))
 
   "estimatedSnapshotSize" in {
-    assert(agentState.estimatedSnapshotSize == 6)
+    assert(agentState.estimatedSnapshotSize == 7)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
   }
@@ -116,6 +122,11 @@ final class AgentStateTest extends AsyncFreeSpec
             "TYPE": "FileWatchState.File",
             "orderWatchId": "ORDER-SOURCE-ID",
             "path": "/DIRECTORY/2.csv"
+          }""",
+          json"""{
+            "TYPE": "JobResource",
+            "id": "JOB-RESOURCE",
+            "env": {}
           }"""))
 
         AgentState
@@ -160,6 +171,7 @@ final class AgentStateTest extends AsyncFreeSpec
           Order(childOrderId, workflowId /: (Position(0) / "fork+BRANCH" % 0), Ready,
             attachedState = Some(Order.Attached(agentId)), parent = Some(orderId))),
       Map(workflowId -> workflow),
-      AllFileWatchesState.empty))
+      AllFileWatchesState.empty,
+      Map.empty))
   }
 }

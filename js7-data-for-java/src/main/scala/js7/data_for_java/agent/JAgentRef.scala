@@ -6,10 +6,10 @@ import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.item.JSimpleItem
+import js7.data_for_java.item.JUnsignedSimpleItem
 
 final case class JAgentRef(asScala: AgentRef)
-extends JJsonable[JAgentRef] with JSimpleItem
+extends JJsonable[JAgentRef] with JUnsignedSimpleItem
 {
   protected type AsScala = AgentRef
   protected def companion = JAgentRef

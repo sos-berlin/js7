@@ -9,7 +9,7 @@ import js7.base.thread.IOExecutor
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{InternalExecutable, JobConf}
+import js7.data.job.{InternalExecutable, JobConf, JobResource, JobResourceId}
 import js7.data.value.expression.Evaluator
 import js7.executor.ProcessOrder
 import js7.executor.internal.InternalJob.{JobContext, Step}
@@ -20,7 +20,8 @@ import scala.util.control.NonFatal
 
 final class InternalJobExecutor(
   executable: InternalExecutable,
-  protected val jobConf: JobConf,
+  val jobConf: JobConf,
+  protected val idToJobResource: JobResourceId => Checked[JobResource],
   blockingJobScheduler: Scheduler)
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends JobExecutor
@@ -49,9 +50,8 @@ extends JobExecutor
       .flatMap(internalJob => toStep(processOrder)
         .map(internalJob.toOrderProcess))
 
-  private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] = {
-    val scope = toScope(processOrder)
-    Evaluator(scope)
+  private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
+    Evaluator(processOrder.scope)
       .evalObjectExpression(executable.arguments)
       .map(_.nameToValue)
       .map(arguments =>
@@ -59,9 +59,8 @@ extends JobExecutor
           arguments = arguments,
           processOrder.order,
           processOrder.workflow,
-          scope,
+          processOrder.scope,
           processOrder.stdObservers))
-  }
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =
     Checked.catchNonFatal(

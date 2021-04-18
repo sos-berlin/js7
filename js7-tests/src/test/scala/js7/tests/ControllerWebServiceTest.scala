@@ -155,8 +155,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           Workflow.of(WorkflowPath("FOLDER/WORKFLOW-2") ~ "VERSION-1",
             Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"B$sh"))),
             Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"MISSING$sh"))))
-        ).map(directoryProvider.itemSigner.sign)
-          .map(ItemOperation.VersionedAddOrChange.apply)
+        ).map(directoryProvider.itemSigner.toSignedString)
+          .map(ItemOperation.SignedAddOrChange.apply)
     ).await(99.s).orThrow
   }
 
@@ -446,7 +446,6 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         "versionId": "VERSION-1"
       }, {
         "TYPE": "VersionedItemAdded",
-        "path": "Workflow:FOLDER/WORKFLOW-2",
         "signed": {
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
           "signature": {
@@ -456,7 +455,6 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }
       }, {
         "TYPE": "VersionedItemAdded",
-        "path": "Workflow:WORKFLOW",
         "signed": {
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
           "signature": {
@@ -466,8 +464,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }
       }, {
         "TYPE" : "ItemAttached",
-        "id" : "Workflow:WORKFLOW~VERSION-1",
-        "agentId" : "AGENT"
+        "id": "Workflow:WORKFLOW~VERSION-1",
+        "agentId": "AGENT"
       },
       { "TYPE": "Order",
         "id": "ORDER-ID",
@@ -555,7 +553,6 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1009,
           "TYPE": "VersionedItemAdded",
-          "path": "Workflow:WORKFLOW",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
             "signature": {
@@ -566,7 +563,6 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1010,
           "TYPE": "VersionedItemAdded",
-          "path": "Workflow:FOLDER/WORKFLOW-2",
           "signed": {
             "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
             "signature": {
@@ -588,10 +584,10 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "key": "ORDER-ID",
           "agentId":"AGENT"
         }, {
-          "eventId" : 1013,
-          "TYPE" : "ItemAttached",
-          "id" : "Workflow:WORKFLOW~VERSION-1",
-          "agentId" : "AGENT"
+          "eventId": 1013,
+          "TYPE": "ItemAttached",
+          "id": "Workflow:WORKFLOW~VERSION-1",
+          "agentId": "AGENT"
         }, {
           "eventId": 1014,
           "TYPE": "OrderAttached",

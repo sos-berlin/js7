@@ -4,14 +4,14 @@ import cats.syntax.option._
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.{Config, ConfigFactory}
-import js7.base.crypt.{DocumentSigner, SignatureVerifier}
+import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.io.JavaResource
 import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.utils.HasCloser
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentId
-import js7.data.item.{SimpleItem, VersionedItem}
+import js7.data.item.{SignableItem, UnsignedSimpleItem, VersionedItem}
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
 
@@ -56,13 +56,16 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def provideAgentClientCertificate = false
   protected def controllerTrustStores: Iterable[JavaResource] = Nil
   protected def controllerConfig: Config = ConfigFactory.empty
-  protected def simpleItems: Seq[SimpleItem] = Nil
+  protected def simpleItems: Seq[UnsignedSimpleItem] = Nil
   protected def versionedItems: Seq[VersionedItem]
   protected def signer: DocumentSigner = DirectoryProvider.defaultSigner
   protected def verifier: SignatureVerifier = DirectoryProvider.defaultVerifier
 
-  protected final def toSigned(item: VersionedItem) = directoryProvider.toSigned(item)
-  protected final def sign(item: VersionedItem) = directoryProvider.sign(item)
+  protected final def sign[A <: SignableItem](item: A): Signed[A] =
+    directoryProvider.sign(item)
+
+  protected final def toSignedString[A <: SignableItem](item: A): SignedString =
+    directoryProvider.toSignedString(item)
 
   override def beforeAll() = {
     super.beforeAll()

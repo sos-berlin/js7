@@ -2,7 +2,7 @@ package  js7.data_for_java.item
 
 import javax.annotation.Nonnull
 import js7.base.crypt.SignedString
-import js7.data.item.ItemOperation.{AddVersion, SimpleDelete, VersionedAddOrChange, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleDelete, VersionedDelete}
 import js7.data.item.{ItemOperation, ItemPath, SimpleItemId, VersionId}
 import js7.data_for_java.common.JavaWrapper
 
@@ -14,25 +14,9 @@ extends JavaWrapper
 
 object JUpdateItemOperation
 {
-  /** BITTE VERWENDE addOrChangeSimple!
-    *
-    * Adds or replaces a non-versioned item. */
-  @Deprecated
   @Nonnull
-  def addOrChange(@Nonnull item: JSimpleItem) =
-    addOrChangeSimple(item)
-
-  @Nonnull
-  def addOrChangeSimple(@Nonnull item: JSimpleItem) =
+  def addOrChangeSimple(@Nonnull item: JUnsignedSimpleItem) =
     new JUpdateItemOperation(ItemOperation.SimpleAddOrChange(item.asScala))
-
-  /** BITTE VERWENDE deleteSimple!
-    *
-    * Deletes a non-versioned item. */
-  @Deprecated
-  @Nonnull
-  def deleteItem(@Nonnull itemId: SimpleItemId) =
-    deleteSimple(itemId)
 
   /** Deletes a non-versioned item. */
   @Nonnull
@@ -45,28 +29,22 @@ object JUpdateItemOperation
     new JUpdateItemOperation(
       AddVersion(versionId))
 
-  /** BITTE VERWENDE addOrChangeVersioned!
-    *
-    * `signedString` contains the JSON-serialized `VersionedItem` including path and `VersionId`,
-    * signed with a signature.
-    * Adds the versioned item to the versioned specified with `addVersion`. */
+  /** Please use addOrChangedSigned instead! */
   @Deprecated
   @Nonnull
-  def addOrChange(@Nonnull signedString: SignedString): JUpdateItemOperation =
-    addOrChangeVersioned(signedString)
+  def addOrChangeVersioned(@Nonnull signedString: SignedString): JUpdateItemOperation =
+    addOrChangeSigned(signedString)
 
   /** `signedString` contains the JSON-serialized `VersionedItem` including path and `VersionId`,
     * signed with a signature.
     * Adds the versioned item to the versioned specified with `addVersion`. */
   @Nonnull
-  def addOrChangeVersioned(@Nonnull signedString: SignedString): JUpdateItemOperation =
+  def addOrChangeSigned(@Nonnull signedString: SignedString): JUpdateItemOperation =
     new JUpdateItemOperation(
-      VersionedAddOrChange(signedString))
+      SignedAddOrChange(signedString))
 
-  /** BITTE VERWENDE deleteVersioned!
-    *
-    * Delete the given path in the new version,
-    * Requires `addVersion`. */
+  /** BITTE VERWENDE deleteVersioned! */
+  @Deprecated
   @Nonnull
   def deleteItem(@Nonnull path: ItemPath): JUpdateItemOperation =
     deleteVersioned(path)

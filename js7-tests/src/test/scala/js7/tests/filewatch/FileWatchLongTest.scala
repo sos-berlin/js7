@@ -51,7 +51,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
   "Start with a filel" in {
     createDirectory(sourceDirectory)
-    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     val file = sourceDirectory / "1"
     val orderId = fileToOrderId("1")
     file := ""

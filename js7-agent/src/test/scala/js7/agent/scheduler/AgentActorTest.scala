@@ -51,7 +51,7 @@ final class AgentActorTest extends AnyFreeSpec
           .mapTo[Checked[EventWatch]].await(99.s).orThrow
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
-        executeCommand(AttachSignedItem(provider.itemSigner.toSigned(SimpleTestWorkflow)))
+        executeCommand(AttachSignedItem(provider.itemSigner.sign(SimpleTestWorkflow)))
           .await(99.s).orThrow
         orderIds.map(orderId =>
           executeCommand(

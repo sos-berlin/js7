@@ -69,4 +69,6 @@ object TestState extends JournaledState.Companion[TestState]
     KeyedEventTypedJsonCodec[Event](
         KeyedSubtype[JournalEvent],
         KeyedSubtype[TestEvent])
+
+  protected def InventoryItems = Nil
 }

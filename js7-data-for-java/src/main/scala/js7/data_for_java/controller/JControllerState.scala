@@ -3,6 +3,7 @@ package  js7.data_for_java.controller
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
@@ -14,7 +15,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
-import js7.data_for_java.item.JRepo
+import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.lock.{JLock, JLockState}
 import js7.data_for_java.order.JOrder
 import js7.data_for_java.order.JOrderPredicates.any
@@ -145,4 +146,8 @@ object JControllerState
   implicit val companion = new JJournaledState.Companion[JControllerState, ControllerState] {
     def apply(underlying: ControllerState) = new JControllerState(underlying)
   }
+
+  /** Includes the type. */
+  def inventoryItemToJson(item: JInventoryItem): String =
+    ControllerState.inventoryItemJsonCodec(item.asScala).compactPrint
 }

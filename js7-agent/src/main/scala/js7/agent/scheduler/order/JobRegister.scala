@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.core.common.ActorRegister
 import js7.data.job.JobKey
 import js7.data.order.OrderId
+import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.collection.mutable
 
 /**
@@ -23,14 +24,14 @@ final class JobRegister extends ActorRegister[JobKey, JobEntry](_.actor) {
       logger.trace(s"Removing ${jobEntry.jobKey} after Actor death")
     }
 
-  def insert(key: JobKey, actor: ActorRef): Unit =
-    this.insert(key -> new JobEntry(key, actor))
+  def insert(key: JobKey, workflowJob: WorkflowJob, actor: ActorRef): Unit =
+    this.insert(key -> new JobEntry(key, workflowJob, actor))
 }
 
 object JobRegister {
   private val logger = Logger(getClass)
 
-  final class JobEntry private[JobRegister](val jobKey: JobKey, val actor: ActorRef) {
+  final class JobEntry private[JobRegister](val jobKey: JobKey, val workflowJob: WorkflowJob, val actor: ActorRef) {
     val queue = new OrderQueue
     var waitingForOrder = false
   }

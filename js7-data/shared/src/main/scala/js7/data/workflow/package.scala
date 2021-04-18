@@ -9,5 +9,5 @@ package object workflow
 {
   type WorkflowId = VersionedItemId[WorkflowPath]
 
-  val WorkflowId = WorkflowPath.versionedItemIdCompanion
+  val WorkflowId = WorkflowPath.VersionedItemIdCompanion
 }

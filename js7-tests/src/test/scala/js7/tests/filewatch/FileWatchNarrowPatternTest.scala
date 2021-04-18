@@ -60,7 +60,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
 
   "Add two files" in {
     createDirectory(sourceDirectory)
-    controllerApi.updateSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id)
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobActorStarvationTest)
@@ -76,7 +76,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   "Narrow the pattern" in {
     val eventId = controller.eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(pattern = Some(SimplePattern("NARROW-.+")))
-    controllerApi.updateSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id, after = eventId)
 
     // Now, the A file is not match and out of scope, and a ExternalOrderVanished is emitted.

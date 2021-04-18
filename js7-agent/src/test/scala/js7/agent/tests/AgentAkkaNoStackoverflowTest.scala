@@ -1,8 +1,8 @@
-package js7.agent
+package js7.agent.tests
 
-import js7.agent.AgentAkkaNoStackoverflowTest._
+import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.tests.AgentTester
+import js7.agent.tests.AgentAkkaNoStackoverflowTest._
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.log.Logger
 import js7.base.time.ScalaTime._

@@ -3,7 +3,7 @@ package js7.data.item
 /**
   * @author Joacim Zschimmer
   */
-trait VersionedItem extends InventoryItem
+trait VersionedItem extends SignableItem
 {
   type Self <: VersionedItem
   type Path = companion.Path
@@ -23,7 +23,8 @@ trait VersionedItem extends InventoryItem
 
   final def withoutId: Self = withId(id = companion.Path.NoId)
 
-  final def withVersion(v: VersionId): Self = withId(id = id.copy(versionId = v))
+  final def withVersion(v: VersionId): Self =
+    withId(id = id.copy(versionId = v)(companion.Path))
 
   def cast[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): A = {
     if (A != companion) throw new ClassCastException(s"Expected ${companion.Path.name}, but is: $path")
@@ -35,14 +36,14 @@ object VersionedItem
 {
   type Companion_ = Companion[_ <: VersionedItem]
 
-  trait Companion[A <: VersionedItem] extends InventoryItem.Companion[A]
+  trait Companion[A <: VersionedItem] extends SignableItem.Companion[A]
   {
     type Item <: A
     type Path <: ItemPath
     type Id = VersionedItemId[Path]
 
     val Path: ItemPath.Companion[Path]
-    final lazy val Id = Path.versionedItemIdCompanion
+    final lazy val Id: SignableItemId.Companion[Id] = Path.VersionedItemIdCompanion
 
     implicit def self: Companion[A] = this
   }

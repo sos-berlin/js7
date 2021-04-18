@@ -48,15 +48,17 @@ import js7.data.agent.{AgentId, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{liveOrderEventHandler, liveOrderEventSource}
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor}
+import js7.data.crypt.SignedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.CommonItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
-import js7.data.item.SimpleItemEvent.{SimpleItemAdded, SimpleItemAddedOrChanged, SimpleItemChanged}
+import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged, SignedItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SimpleItem, VersionedEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SignableSimpleItem, UnsignedSimpleItem, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchId}
@@ -70,7 +72,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
 import scala.collection.immutable.VectorBuilder
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -428,8 +430,8 @@ with MainJournalingActor[ControllerState, Event]
           case Success(response) => sender ! response
         }
 
-    case Command.VerifiedUpdateItemsCmd(VerifiedUpdateItems(simple, maybeVersioned)) =>
-      val sender = this.sender()
+    case Command.VerifiedUpdateItemsCmd(verifiedUpdateItems: VerifiedUpdateItems) =>
+      import verifiedUpdateItems.{maybeVersioned, simple}
       val t = now
       val checkedEvents = simpleItemsToEvent(simple)
       val whenPersisted = maybeVersioned
@@ -446,13 +448,12 @@ with MainJournalingActor[ControllerState, Event]
                 persistItemAndVersionedEvents(keyedEvents)
                   .map(_.map { o =>
                     if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
-                      itemsPerSecondString(t.elapsed,
-                        simple.items.size + maybeVersioned.fold(0)(_.verifiedItems.size),
-                        "items"))
+                      itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
                     o
                   })
             }
         }
+      val sender = this.sender()
       whenPersisted.onComplete {
         case Failure(t) => sender ! Status.Failure(t)
         case Success(response) => sender ! (response: Checked[Completed])
@@ -559,26 +560,44 @@ with MainJournalingActor[ControllerState, Event]
   }
 
   private def simpleItemsToEvent(simple: VerifiedUpdateItems.Simple): Checked[Seq[InventoryItemEvent]] =
-    simple.items
-      .toVector
-      .traverse(simpleItemToEvent)
-      .flatMap(addedOrChanged =>
-        simple.delete
-          .flatTraverse(id => simpleItemIdToDeletedEvent(id).map(_.toSeq))
-          .map(_ ++ addedOrChanged))
+    simple.verifiedSimpleItems
+      .traverse(verifiedItemToEvent)
+      .flatMap(signedEvents =>
+        simple.unsignedSimpleItems
+          .traverse(unsignedSimpleItemToEvent)
+          .flatMap(unsignedEvents =>
+            simple.delete
+              .flatTraverse(id => simpleItemIdToDeletedEvent(id).map(_.toSeq))
+              .map(_ ++ signedEvents ++ unsignedEvents)))
 
-  private def simpleItemToEvent(item: SimpleItem): Checked[SimpleItemAddedOrChanged] =
+  private def verifiedItemToEvent(verified: SignedItemVerifier.Verified[SignableSimpleItem]): Checked[SignedItemAddedOrChanged] =
+    if (verified.item.itemRevision.isDefined)
+      Left(Problem.pure("ItemRevision is not accepted here"))
+    else
+      Right(
+        _controllerState.idToSimpleItem.get(verified.item.id) match {
+          case None =>
+            SignedItemAdded(verified.signedItem.copy(value = verified.item
+              .withRevision(Some(ItemRevision.Initial))))
+          case Some(existing) =>
+            SignedItemChanged(verified.signedItem.copy(
+              value = verified.signedItem.value
+                .withRevision(Some(
+                  existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
+        })
+
+  private def unsignedSimpleItemToEvent(item: UnsignedSimpleItem): Checked[UnsignedSimpleItemAddedOrChanged] =
     if (item.itemRevision.isDefined)
       Left(Problem.pure("ItemRevision is not accepted here"))
     else
       Right(
         _controllerState.idToSimpleItem.get(item.id) match {
           case None =>
-            SimpleItemAdded(item
-              .withRevision(ItemRevision.Initial))
+            SimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
           case Some(existing) =>
             SimpleItemChanged(item
-              .withRevision(existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))
+              .withRevision(Some(
+                existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
         })
 
   private def simpleItemIdToDeletedEvent(id: InventoryItemId): Checked[Option[InventoryItemEvent]] =
@@ -1065,11 +1084,16 @@ with MainJournalingActor[ControllerState, Event]
       if (order.isAttaching) {
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
-          orderEntry.triedToAttached = true
-          val attachedState = _controllerState.repo.attachedState(order.workflowId, agentEntry.agentId)
-          if (attachedState == Detached || attachedState == Attachable) {
-            agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedWorkflow)
+          val jobResources = signedWorkflow.value.referencedJobResourceIds
+            .flatMap(_controllerState.idToSignedSimpleItem.get)
+          for (signedItem <- jobResources ++ View(signedWorkflow)) {
+            val attachedState = _controllerState.itemIdToAttachedState(signedItem.value.id, agentEntry.agentId)
+            if (attachedState == Detached || attachedState == Attachable) {
+              agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+            }
           }
+
+          orderEntry.triedToAttached = true
           agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId)
         }
       }

@@ -3,11 +3,11 @@ package js7.data.item
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
-case class TestSimpleId(string: String) extends SimpleItemId {
+case class TestSimpleId(string: String) extends UnsignedSimpleItemId {
   def companion = TestSimpleId
 }
 
-object TestSimpleId extends SimpleItemId.Companion[TestSimpleId]
+object TestSimpleId extends UnsignedSimpleItemId.Companion[TestSimpleId]
 {
   protected def unchecked(string: String) = new TestSimpleId(string)
 
@@ -19,17 +19,17 @@ final case class TestSimpleItem(
   id: TestSimpleId,
   content: String,
   itemRevision: Option[ItemRevision] = None)
-extends SimpleItem {
+extends UnsignedSimpleItem {
   type Self = TestSimpleItem
   val companion = TestSimpleItem
 
   def withId(id: TestSimpleId) = copy(id)
 
-  def withRevision(revision: ItemRevision) =
-    copy(itemRevision = Some(revision))
+  def withRevision(revision: Option[ItemRevision]) =
+    copy(itemRevision = revision)
 }
 
-object TestSimpleItem extends SimpleItem.Companion[TestSimpleItem] {
+object TestSimpleItem extends UnsignedSimpleItem.Companion[TestSimpleItem] {
   val cls = classOf[TestSimpleItem]
 
   type Path = TestSimpleId
