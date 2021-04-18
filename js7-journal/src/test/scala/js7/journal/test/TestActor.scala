@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.common.akkautils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
-import js7.journal.recover.{JournaledStateRecoverer, Recovered}
+import js7.journal.recover.JournaledStateRecoverer
 import js7.journal.test.TestActor._
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.execution.Scheduler
@@ -49,11 +49,14 @@ extends Actor with Stash
       actor ! TestAggregateActor.Input.RecoverFromSnapshot(aggregate)
       keyToAggregate += aggregate.key -> actor
     }
-    recovered.startJournalAndFinishRecovery(journalActor)
+    val sender = this.sender()
+    recovered.startJournaling(journalActor)
+      .map(_ => (self ! Internal.JournalIsReady)(sender))
+      .runAsyncAndForget
   }
 
   def receive = {
-    case Recovered.Output.JournalIsReady(_) =>
+    case Internal.JournalIsReady =>
       context.become(ready)
       unstashAll()
       logger.info("Ready")
@@ -145,5 +148,9 @@ private[journal] object TestActor
     final case object GetJournalState
     final case object GetAll
     final case object Terminate
+  }
+
+  private object Internal {
+    case object JournalIsReady
   }
 }

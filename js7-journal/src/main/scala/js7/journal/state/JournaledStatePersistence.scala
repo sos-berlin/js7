@@ -2,7 +2,6 @@ package js7.journal.state
 
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
-import js7.base.monixutils.MonixBase.deferFutureAndLog
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.utils.Assertions.assertThat
@@ -36,16 +35,24 @@ extends AutoCloseable
   private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
 
   private val actorOnce = SetOnce[ActorRef]
+  private val getCurrentState = SetOnce[() => S]
 
   def actor = actorOnce.orThrow
 
   def close(): Unit =
     actorOnce.foreach(actorRefFactory.stop)
 
-  def start(state: S): Unit =
-    actorOnce := actorRefFactory.actorOf(
-      StateJournalingActor.props[S, Event](state, journalActor, journalConf, persistPromise),
-      encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
+  def start(state: S): Task[Unit] =
+    Task {
+      actorOnce := actorRefFactory.actorOf(
+        StateJournalingActor.props[S, Event](state, journalActor, journalConf, persistPromise),
+        encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
+    }
+
+  // TODO Call start() only after JournalActor has been started
+  // Then fill getCurrentState in start() and delete this method.
+  def onJournalActorStarted: Task[Unit] =
+    provideGetCurrentState
 
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
     requireStarted()
@@ -60,13 +67,13 @@ extends AutoCloseable
   }
 
   private def persistEventUnlocked[E <: Event](stateToEvent: S => Checked[KeyedEvent[E]]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    persistTask.flatMap(
-      _(state => stateToEvent(state).map(_ :: Nil), /*transaction=*/false)
-    ).map(_ map {
-      case (stampedKeyedEvents, state) =>
-        assertThat(stampedKeyedEvents.lengthIs == 1)
-        stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
-    })
+    persistTask
+      .flatMap(_(state => stateToEvent(state).map(_ :: Nil), /*transaction=*/false))
+      .map(_ map {
+        case (stampedKeyedEvents, state) =>
+          assertThat(stampedKeyedEvents.lengthIs == 1)
+          stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
+      })
 
   def persist[E <: Event]: (S => Checked[Seq[KeyedEvent[E]]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
@@ -99,18 +106,29 @@ extends AutoCloseable
     if (actorOnce.isEmpty) throw new IllegalStateException(s"$toString has not yet been started")
 
   def clusterState: Task[ClusterState] =
-    currentState.map(_.clusterState)
+    awaitCurrentState.map(_.clusterState)
 
-  def currentState: Task[S] =
-    waitUntilStarted >>
-    Task.deferFuture {
-      (journalActor ? JournalActor.Input.GetJournaledState).mapTo[JournaledState[S]]
-    } .map(_.asInstanceOf[S])
-      .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
+  private val provideGetCurrentState: Task[Unit] =
+    (waitUntilStarted >>
+      Task
+        .deferFuture(
+          (journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
+        .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
+        .map(getCurrentState := _)
+        .as(())
+    ).memoize
+
+  def awaitCurrentState: Task[S] =
+    provideGetCurrentState >>
+      Task(currentState)
+
+  def currentState: S =
+    getCurrentState.orThrow()
 
   def waitUntilStarted: Task[Unit] =
-    deferFutureAndLog(actorOnce.future, s"$toString.waitUntilStarted")
+    actorOnce.task
       .map(_ => ())
+      .logWhenItTakesLonger(s"$toString.waitUntilStarted")
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
 }
@@ -122,9 +140,11 @@ object JournaledStatePersistence
     journalActor: ActorRef @@ JournalActor.type,
     journalConf: JournalConf)
     (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
-  = {
+  = Task.defer {
     val persistence = new JournaledStatePersistence[S](journalActor, journalConf)
-    persistence.start(initialState)
     persistence
+      .start(initialState)
+      .tapEval(_ => persistence.onJournalActorStarted)
+      .as(persistence)
   }
 }

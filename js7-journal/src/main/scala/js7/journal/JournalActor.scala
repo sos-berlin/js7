@@ -61,7 +61,8 @@ extends Actor with Stash
   private var snapshotSchedule: Cancelable = null
 
   private var uncommittedState: S = null.asInstanceOf[S]
-  private var committedState: S = null.asInstanceOf[S]
+  // committedState is being read asynchronously from outside this JournalActor. Always keep consistent!
+  @volatile private var committedState: S = null.asInstanceOf[S]
   private val journaledStateBuilder = S.newBuilder()
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
@@ -464,7 +465,9 @@ extends Actor with Stash
         isRequiringClusterAcknowledgement = requireClusterAcknowledgement)
 
     case Input.GetJournaledState =>
-      sender() ! committedState
+      // Allow the caller outside of this JournalActor to read committedState
+      // asynchronously at any time.
+      sender() ! (() => committedState)
   }
 
   private val syncOrFlushString: String =

@@ -104,7 +104,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
     }
 
     "currentState" in {
-      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
+      assert(persistence.awaitCurrentState.await(99.s) == TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
@@ -121,7 +121,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
     }
 
     "currentState" in {
-      assert(persistence.currentState.await(99.s) == TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
+      assert(persistence.awaitCurrentState.await(99.s) == TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
@@ -142,13 +142,16 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
 
     def start() = {
       val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
-      recovered.startJournalAndFinishRecovery(journalActor)(actorSystem)
+      recovered.startJournaling(journalActor)(actorSystem)
+        .runAsyncAndForget
       implicit val a = actorSystem
       implicit val timeout = Timeout(99.s)
-      journaledStatePersistence = JournaledStatePersistence.start(
-        recovered.recoveredState getOrElse TestState.empty,
-        journalActor,
-        JournalConf.fromConfig(TestConfig))
+      journaledStatePersistence = JournaledStatePersistence.
+        start(
+          recovered.recoveredState getOrElse TestState.empty,
+          journalActor,
+          JournalConf.fromConfig(TestConfig))
+        .await(99.s)
       journaledStatePersistence
     }
 

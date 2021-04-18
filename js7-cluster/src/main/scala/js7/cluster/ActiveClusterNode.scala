@@ -358,7 +358,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
               //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
               //  -- Nicht nötig durch die Abfrage auf initialState ?
               // FIXME (2) Deadlock when called immediately after start of Controller, before Journal has been started ?
-              //  persistence.currentState may not response GetJournalState.
+              //  persistence.awaitCurrentState may not response GetJournalState.
               clusterStateLock.lock(
                 persistence.clusterState/*lock ???*/.flatMap {
                   case clusterState: Coupled =>

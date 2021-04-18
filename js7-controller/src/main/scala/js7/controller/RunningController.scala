@@ -48,11 +48,10 @@ import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrder
-import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
-import js7.data.item.{ItemOperation, SimpleItem, VersionedItem}
+import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data.order.{FreshOrder, OrderEvent}
 import js7.journal.JournalActor.Output
@@ -407,7 +406,7 @@ object RunningController
         }
         .flatTap {
           case Right(ClusterFollowUp.BecomeActive(recovered)) =>
-            Task { persistence.start(recovered.state) }
+            persistence.start(recovered.state)
           case _ =>
             cluster.stop
               .onErrorHandle(t => Task {
@@ -416,7 +415,7 @@ object RunningController
         }
       val controllerState = Task.defer {
         if (persistence.isStarted)
-          persistence.currentState map Right.apply
+          persistence.awaitCurrentState map Right.apply
         else
           replicatedState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem).flatten)
       }

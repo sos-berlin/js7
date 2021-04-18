@@ -176,21 +176,15 @@ with Stash {
     case Internal.Recover(recovered) =>
       val state = recovered.state
       journalState = state.journalState
-      for (workflow <- state.idToWorkflow.values)
-        wrapException(s"Error while recovering ${workflow.path}") {
-          workflowRegister.recover(workflow)
-          startJobActors(workflow)
+
+      val sender = this.sender()
+      recovered.startJournaling(journalActor)
+        .tapEval(_ => persistence.start(state))
+        .tapEval(_ => persistence.onJournalActorStarted)
+        .foreach { journalHeader =>
+          (self ! Internal.JournalIsReady(journalHeader, state))(sender)
         }
-      for (recoveredOrder <- state.idToOrder.values)
-        wrapException(s"Error while recovering ${recoveredOrder.id}") {
-          val order = workflowRegister.reuseMemory(recoveredOrder)
-          val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
-          val actor = newOrderActor(order, workflow)
-          orderRegister.recover(order, workflow, actor)
-          actor ! OrderActor.Input.Recover(order)
-        }
-      persistence.start(state)
-      recovered.startJournalAndFinishRecovery(journalActor)
+
       become("Recovering")(recovering(state))
       unstashAll()
 
@@ -231,9 +225,25 @@ with Stash {
         remainingOrders -= 1
         continue()
 
-      case Recovered.Output.JournalIsReady(journalHeader) =>
+      case Internal.JournalIsReady(journalHeader, state) =>
         logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
         _journalHeader = Some(journalHeader)
+
+        for (workflow <- state.idToWorkflow.values)
+          wrapException(s"Error while recovering ${workflow.path}") {
+            workflowRegister.recover(workflow)
+            startJobActors(workflow)
+          }
+
+        for (recoveredOrder <- state.idToOrder.values)
+          wrapException(s"Error while recovering ${recoveredOrder.id}") {
+            val order = workflowRegister.reuseMemory(recoveredOrder)
+            val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
+            val actor = newOrderActor(order, workflow)
+            orderRegister.recover(order, workflow, actor)
+            actor ! OrderActor.Input.Recover(order)
+          }
+
         continue()
 
       case _: AgentCommand.ShutDown =>
@@ -630,6 +640,7 @@ object AgentOrderKeeper {
 
   private object Internal {
     final case class Recover(recovered: Recovered[AgentState])
+    final case class JournalIsReady(journalHeader: JournalHeader, agentState: AgentState)
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression
   }

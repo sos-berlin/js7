@@ -1,8 +1,11 @@
 package js7.journal.recover
 
-import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
+import akka.actor.{ActorRef, ActorRefFactory}
+import akka.pattern.ask
+import akka.util.Timeout
 import com.typesafe.config.Config
 import js7.base.log.Logger
+import js7.base.time.ScalaTime._
 import js7.base.utils.SetOnce
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalHeader, JournalHeaders, JournalId, JournaledState}
@@ -10,7 +13,8 @@ import js7.journal.JournalActor
 import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered._
 import js7.journal.watch.JournalEventWatch
-import scala.concurrent.duration.Deadline
+import monix.eval.Task
+import scala.concurrent.duration._
 import shapeless.tag.@@
 
 final class Recovered[S <: JournaledState[S]] private(
@@ -55,34 +59,29 @@ extends AutoCloseable
   def onJournalIdReplicated(journalId: JournalId): Unit =
     journalIdOnce := journalId
 
-  def startJournalAndFinishRecovery(journalActor: ActorRef @@ JournalActor.type)
+  def startJournaling(journalActor: ActorRef @@ JournalActor.type)
     (implicit actorRefFactory: ActorRefFactory)
-  : ActorRef = {
-    val journalId = journalIdOnce.getOrElse {
-      logger.info("Starting a new empty journal")
-      val journalId = JournalId.random()
-      journalId
-    }
-    actorRefFactory.actorOf(
-      Props {
-        new Actor {
-          journalActor ! JournalActor.Input.Start(
-            state, Some(eventWatch),
-            recoveredJournalFile
-              .map(_.nextJournalHeader)
-              .getOrElse(JournalHeaders.initial(journalId)),
-            totalRunningSince)
+  : Task[JournalHeader] =
+    Task.defer {
+      val journalId = journalIdOnce.getOrElse {
+        logger.info("Starting a new empty journal")
+        val journalId = JournalId.random()
+        journalId
+      }
 
-          def receive = {
-            case JournalActor.Output.Ready(journalHeader) =>
-              logger.debug(s"JournalIsReady")
-              context.parent ! Output.JournalIsReady(journalHeader)
-              context.stop(self)
-          }
+      val start = JournalActor.Input.Start(
+        state,
+        Some(eventWatch),
+        recoveredJournalFile
+          .map(_.nextJournalHeader)
+          .getOrElse(JournalHeaders.initial(journalId)),
+        totalRunningSince)
+      Task.fromFuture((journalActor ? start)(Timeout(1.h/*???*/)).mapTo[JournalActor.Output.Ready])
+        .map { case JournalActor.Output.Ready(journalHeader) =>
+          logger.debug(s"JournalIsReady")
+          journalHeader
         }
-      },
-      name = "JournalActorRecoverer")
-  }
+    }
 }
 
 object Recovered
@@ -101,9 +100,5 @@ object Recovered
       journalMeta, recoveredJournalFile, totalRunningSince, config,
       new JournalEventWatch(journalMeta, config, Some(recoveredEventId)),
       recoveredJournalFile.map(_.journalId))
-  }
-
-  object Output {
-    final case class JournalIsReady(journalHeader: JournalHeader)
   }
 }

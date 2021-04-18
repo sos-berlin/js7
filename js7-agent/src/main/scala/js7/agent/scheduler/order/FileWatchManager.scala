@@ -61,7 +61,7 @@ final class FileWatchManager(
       .map(_.unorderedFold)
 
   def start(): Task[Unit] =
-    persistence.currentState
+    persistence.awaitCurrentState
       .map(_.allFileWatchesState)
       .map(_.idToFileWatchState.values)
       .flatMap(_
@@ -159,7 +159,7 @@ final class FileWatchManager(
         .bufferIntrospective(1024/*TODO?*/)
         .mapEval(dirEventSeqs =>
           lockKeeper.lock(fileWatch.id)(
-            persistence.currentState
+            persistence.awaitCurrentState
               .flatMap(agentState =>
                 if (!agentState.allFileWatchesState.idToFileWatchState.contains(fileWatch.id))
                   Task.pure(Right(Nil -> agentState))

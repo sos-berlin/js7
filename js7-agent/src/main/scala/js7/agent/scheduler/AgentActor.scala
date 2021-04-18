@@ -35,7 +35,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, KeyedEvent, Stamped}
 import js7.executor.configuration.JobExecutorConf
 import js7.journal.data.JournalMeta
-import js7.journal.recover.{JournaledStateRecoverer, Recovered}
+import js7.journal.recover.JournaledStateRecoverer
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, MainJournalingActor, StampedKeyedEventBus}
@@ -82,7 +82,11 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
     for (o <- state.idToController.values) {
       addOrderKeeper(o.controllerId, o.agentId, o.agentRunId)
     }
-    recovered.startJournalAndFinishRecovery(journalActor)
+    val sender = this.sender()
+    recovered.startJournaling(journalActor)
+      .foreach { _ =>
+        (self ! Internal.JournalIsReady)(sender)
+      }
   }
 
   override def postStop() = {
@@ -94,7 +98,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
   }
 
   def receive = {
-    case Recovered.Output.JournalIsReady(_) =>
+    case Internal.JournalIsReady =>
       if (controllerToOrderKeeper.nonEmpty) {
         logger.info(s"${controllerToOrderKeeper.size} recovered Controller registrations: ${controllerToOrderKeeper.keys.mkString(", ")}")
       }
@@ -181,7 +185,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
         response.completeWith(
           ( for {
               entry <- EitherT(checkController(controllerId, agentId, Some(agentRunId), eventId))
-              response <- EitherT(entry.persistence.currentState
+              response <- EitherT(entry.persistence.awaitCurrentState
                 .map(state => Checked(CoupleController.Response(state.idToOrder.keySet))))
             } yield response
           ).value
@@ -294,6 +298,10 @@ object AgentActor
 
   object Output {
     case object Ready
+  }
+
+  private object Internal {
+    case object JournalIsReady
   }
 
   private final class ControllerRegister extends ActorRegister[ControllerId, ControllerRegister.Entry](_.actor) {

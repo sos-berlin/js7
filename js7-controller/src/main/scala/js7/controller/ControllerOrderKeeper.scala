@@ -50,7 +50,7 @@ import js7.data.controller.ControllerStateExecutor.{liveOrderEventHandler, liveO
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.CommonItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
@@ -296,7 +296,11 @@ with MainJournalingActor[ControllerState, Event]
       throw t.appendCurrentStackTrace
 
     case Internal.Activated(Success(recovered)) =>
-      recovered.startJournalAndFinishRecovery(journalActor)
+      val sender = this.sender()
+      recovered.startJournaling(journalActor)
+        .foreach { journalHeader =>
+          (self ! Internal.JournalIsReady(journalHeader))(sender)
+        }
       become("journalIsStarting")(journalIsStarting)
       unstashAll()
 
@@ -324,7 +328,7 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def journalIsStarting: Receive = {
-    case Recovered.Output.JournalIsReady(journalHeader) =>
+    case Internal.JournalIsReady(journalHeader) =>
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
       locally {
@@ -1152,6 +1156,7 @@ private[controller] object ControllerOrderKeeper
   }
 
   private object Internal {
+    final case class JournalIsReady(journalHeader: JournalHeader)
     case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
     final case class Activated(recovered: Try[Recovered[ControllerState]])

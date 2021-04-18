@@ -273,8 +273,9 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
             if (inhibited)
               Task.pure(Right(ClusterInhibitActivation.Response(None)))
             else
-              // Could not inhibit, so this node is already active
-              persistence.currentState/*TODO Possible Deadlock?*/.map(_.clusterState).map {
+              // Could not inhibit, so this node is already active.
+              // awaitCurrentState will return (maybe almost?) immediately.
+              persistence.awaitCurrentState.map(_.clusterState).map {
                 case failedOver: FailedOver =>
                   logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
                   Right(ClusterInhibitActivation.Response(Some(failedOver)))
