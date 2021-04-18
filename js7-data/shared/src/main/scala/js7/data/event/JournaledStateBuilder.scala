@@ -144,10 +144,10 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   /** Calculated next JournalHeader. */
   final def nextJournalHeader: Option[JournalHeader] =
-    _journalHeader.map(_.copy(
+    _journalHeader.toOption.map(_.copy(
       eventId = eventId,
       totalEventCount = totalEventCount,
-      totalRunningTime = _journalHeader.fold(Duration.Zero) { header =>
+      totalRunningTime = _journalHeader.toOption.fold(Duration.Zero) { header =>
         val lastJournalDuration = lastEventIdTimestamp - header.timestamp
         header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
       },
@@ -164,7 +164,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   final def eventCount = _eventCount
 
-  final def totalEventCount = _journalHeader.fold(0L)(_.totalEventCount) + _eventCount
+  final def totalEventCount = _journalHeader.toOption.fold(0L)(_.totalEventCount) + _eventCount
 
   private def lastEventIdTimestamp: Timestamp =
     if (eventId == EventId.BeforeFirst) Timestamp.now

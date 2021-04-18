@@ -88,7 +88,8 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
   override def postStop() = {
     for (m <- controllerToOrderKeeper.values) m.eventWatch.close()
     super.postStop()
-    terminatePromise.trySuccess(AgentTermination.Terminate(restart = shutDownCommand.fold(false)(_.restart)))
+    terminatePromise.trySuccess(
+      AgentTermination.Terminate(restart = shutDownCommand.toOption.fold(false)(_.restart)))
     logger.debug("Stopped")
   }
 

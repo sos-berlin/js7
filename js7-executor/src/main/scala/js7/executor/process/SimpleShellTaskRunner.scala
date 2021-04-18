@@ -40,7 +40,7 @@ extends TaskRunner
   val asBaseAgentTask = new BaseAgentTask {
     def id = taskId
     def jobKey = conf.jobKey
-    def pidOption = richProcessOnce.flatMap(_.pidOption)
+    def pidOption = richProcessOnce.toOption.flatMap(_.pidOption)
     def terminated = terminatedPromise.future
 
     def sendProcessSignal(signal: ProcessSignal) =

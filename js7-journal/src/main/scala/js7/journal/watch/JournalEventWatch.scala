@@ -370,7 +370,7 @@ with JournalingObserver
     def eventReader: EventReader =
       _eventReader.get() match {
         case null =>
-          val r = new HistoricEventReader(journalMeta, journalIdOnce.get, tornEventId = afterEventId, file, config)
+          val r = new HistoricEventReader(journalMeta, journalIdOnce.orThrow, tornEventId = afterEventId, file, config)
           if (_eventReader.compareAndSet(null, r)) {
             logger.debug(s"Using HistoricEventReader(${file.getFileName})")
             r

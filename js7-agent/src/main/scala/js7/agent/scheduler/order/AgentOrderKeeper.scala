@@ -169,7 +169,7 @@ with Stash {
     fileWatchManager.stop.runAsyncAndForget
     shutdown.close()
     super.postStop()
-    logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
+    logger.debug("Stopped" + shutdown.since.toOption.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
   }
 
   def receive = {

@@ -61,7 +61,7 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
     }
 
   def stop: Task[Completed] =
-    _activeClusterNode.fold(Task.completed)(_.stop)
+    _activeClusterNode.toOption.fold(Task.completed)(_.stop)
 
   def beforeJournalingStarts: Task[Checked[Completed]] =
     _activeClusterNode.toOption match {

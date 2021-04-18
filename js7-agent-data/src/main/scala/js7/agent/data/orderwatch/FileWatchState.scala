@@ -82,7 +82,7 @@ object FileWatchState
       }
 
     def result() = FileWatchState(
-      header.get.fileWatch,
+      header.orThrow.fileWatch,
       DirectoryState.fromIterable(entries))
   }
 

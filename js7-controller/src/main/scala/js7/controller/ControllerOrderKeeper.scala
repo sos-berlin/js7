@@ -120,7 +120,7 @@ with MainJournalingActor[ControllerState, Event]
 
     def shuttingDown = since.isDefined
 
-    def restart = shutDown.fold(false)(_.restart)
+    def restart = shutDown.toOption.fold(false)(_.restart)
 
     def start(shutDown: ControllerCommand.ShutDown): Unit =
       if (!shuttingDown) {
@@ -238,7 +238,7 @@ with MainJournalingActor[ControllerState, Event]
       shutdown.close()
       switchover foreach { _.close() }
     } finally {
-      logger.debug("Stopped" + shutdown.since.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
+      logger.debug("Stopped" + shutdown.since.toOption.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
       stopped.success(
         if (switchover.exists(_.restart)) ControllerTermination.Restart
         else ControllerTermination.Terminate(restart = shutdown.restart))

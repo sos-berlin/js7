@@ -33,7 +33,7 @@ extends AutoCloseable
     * because JournalEventWatch remains the same.
     */
   def changeRecoveredJournalFile(recoveredJournalFile: Option[RecoveredJournalFile[S]]) =
-    new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config, eventWatch, journalIdOnce)
+    new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config, eventWatch, journalIdOnce.toOption)
 
   def maybeJournalId = recoveredJournalFile.map(_.journalId)
 

@@ -207,10 +207,10 @@ extends AutoCloseable
   lazy val httpApi: HttpControllerApi = {
     if (_httpApi.isEmpty) {
       httpApiUserAndPassword.trySet(None)
-      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.get,
+      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.orThrow,
         actorSystem = actorSystem, config = config, name = controllerConfiguration.name)
     }
-    _httpApi.get
+    _httpApi.orThrow
   }
 
   @TestOnly

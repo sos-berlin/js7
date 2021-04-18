@@ -88,8 +88,6 @@ class SetOnce[A](label: => String, notYetSetProblem: Problem)
 
 object SetOnce
 {
-  import scala.language.implicitConversions
-
   def apply[A](implicit A: TypeTag[A]): SetOnce[A] = {
     lazy val label = A.tpe.toString  // Seems to be slow
     SetOnce[A](label)
@@ -117,6 +115,4 @@ object SetOnce
     option foreach setOnce.:=
     setOnce
   }
-
-  implicit def setOnceToOption[A](o: SetOnce[A]): Option[A] = o.toOption
 }

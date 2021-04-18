@@ -14,7 +14,7 @@ trait OrderProcess
 
   protected def run: Task[Outcome.Completed]
 
-  final def future = futureOnce.get
+  final def future = futureOnce.orThrow
 
   def cancel(immediately: Boolean): Task[Unit] =
     Task { future.cancel() }
