@@ -20,7 +20,10 @@ import scala.util.control.NonFatal
 
 trait JournaledStateBuilder[S <: JournaledState[S]]
 {
+  protected val S: JournaledState.Companion[S]
+
   private val since = now
+  private var recordCount = 0L
   private var _snapshotCount = 0L
   private var _firstEventId = EventId.BeforeFirst
   private var _eventId = EventId.BeforeFirst
@@ -50,25 +53,31 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   def clusterState: ClusterState
 
-  def addSnapshotObject(obj: Any): Unit =
-    obj match {
-      case journalHeader: JournalHeader =>
-        this._journalHeader := journalHeader
-        require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst, "EventId mismatch in snapshot")
-        _firstEventId = journalHeader.eventId
-        _eventId = journalHeader.eventId
+  def addSnapshotObject(obj: Any): Unit = {
+    recordCount += 1
+    try
+      obj match {
+        case journalHeader: JournalHeader =>
+          this._journalHeader := journalHeader
+          require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst, "EventId mismatch in snapshot")
+          _firstEventId = journalHeader.eventId
+          _eventId = journalHeader.eventId
 
-      case SnapshotEventId(eventId) =>
-        require(eventId == _firstEventId && eventId == _eventId ||
-                _firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst,
-          "EventId mismatch in snapshot")
-        _firstEventId = eventId
-        _eventId = eventId
+        case SnapshotEventId(eventId) =>
+          require(eventId == _firstEventId && eventId == _eventId ||
+                  _firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst,
+            "EventId mismatch in snapshot")
+          _firstEventId = eventId
+          _eventId = eventId
 
-      case _ =>
-        _snapshotCount += 1
-        onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNoApplicable)
+        case _ =>
+          _snapshotCount += 1
+          onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNoApplicable)
+      }
+    catch { case NonFatal(t) =>
+      throw new RuntimeException(s"Decoding JournalHeader or snapshot failed in record #$recordCount for $S", t)
     }
+  }
 
   protected def onSnapshotObjectNoApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
@@ -87,18 +96,23 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   final def addEvent(stamped: Stamped[KeyedEvent[Event]]) =
     synchronized {  // synchronize with asynchronous execution of synchronizedStateFuture
-      if (stamped.eventId <= _eventId) {
-        throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
+      try {
+        recordCount += 1
+        if (stamped.eventId <= _eventId) {
+          throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
+        }
+        try onAddEvent(stamped)
+        catch { case NonFatal(t) =>
+          throw new RuntimeException(s"Event failed: $stamped", t)
+        }
+        _eventCount += 1
+        if (_firstEventId == EventId.BeforeFirst) {
+          _firstEventId = stamped.eventId
+        }
+        _eventId = stamped.eventId
+      } catch { case NonFatal(t) =>
+        throw new RuntimeException(s"Decoding event failed in record #$recordCount for $S", t)
       }
-      try onAddEvent(stamped)
-      catch { case NonFatal(t) =>
-        throw new RuntimeException(s"Event failed: $stamped", t)
-      }
-      _eventCount += 1
-      if (_firstEventId == EventId.BeforeFirst) {
-        _firstEventId = stamped.eventId
-      }
-      _eventId = stamped.eventId
     }
 
   def logStatistics(byteCount: Option[Long]): Unit = {
@@ -159,7 +173,8 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
 object JournaledStateBuilder
 {
-  abstract class Simple[S <: JournaledState[S]](S: JournaledState.Companion[S]) extends JournaledStateBuilder[S]
+  abstract class Simple[S <: JournaledState[S]](protected val S: JournaledState.Companion[S])
+  extends JournaledStateBuilder[S]
   {
     private var _state = S.empty
 
