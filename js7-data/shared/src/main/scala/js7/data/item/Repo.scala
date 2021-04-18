@@ -3,7 +3,7 @@ package js7.data.item
 import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
-import js7.base.crypt.Signed
+import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
@@ -13,7 +13,6 @@ import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId
-import js7.data.crypt.VersionedItemVerifier
 import js7.data.event.NoKeyEvent
 import js7.data.item.CommonItemEvent.ItemAttachedStateChanged
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
@@ -32,11 +31,11 @@ final case class Repo private(
   versionSet: Set[VersionId],
   pathToVersionToSignedItems: Map[ItemPath, List[Entry]],
   idToAgentIdToAttachedState: Map[VersionedItemId_, Map[AgentId, ItemAttachedState.NotDetached]],
-  itemVerifier: Option[VersionedItemVerifier[VersionedItem]])
+  signatureVerifier: Option[SignatureVerifier])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
 
-  /** `itemVerifier` is not compared - for testing only. */
+  /** `signatureVerifier` is not compared - for testing only. */
   override def equals(o: Any) = o match {
     case o: Repo =>
       versions == o.versions &&
@@ -176,17 +175,18 @@ final case class Repo private(
     }
 
   private def addOrChange(event: VersionedItemAddedOrChanged): Checked[Repo] = {
-    itemVerifier match {
+    signatureVerifier match {
       case Some(verifier) =>
-        verifier.verify(event.signedString).map(_.item).flatMap(item =>
-          if (event.path != item.path)
-            Problem.pure(s"Error in VersionedItemAddedOrChanged event: path=${event.path} does not equal path=${item.path}")
-          else if (item.path.isAnonymous)
-            Problem.pure(s"Adding an anonymous ${item.companion.typeName} is not allowed")
-          else if (item.id.versionId != versionId)
-            EventVersionDoesNotMatchProblem(versionId, event)
-          else
-            Right(addEntry(item.path, Some(js7.base.crypt.Signed(item withVersion versionId, event.signedString)))))
+        verifier
+          .verify(event.signedString)
+          .map(_ => event.signed.value)
+          .flatMap(item =>
+            if (item.path.isAnonymous)
+              Problem.pure(s"Adding an anonymous ${item.companion.typeName} is not allowed")
+            else if (item.id.versionId != versionId)
+              EventVersionDoesNotMatchProblem(versionId, event)
+            else
+              Right(addEntry(item.path, Some(js7.base.crypt.Signed(item withVersion versionId, event.signedString)))))
 
       case None =>
         Right(addEntry(event.path, Some(event.signed)))
@@ -194,13 +194,10 @@ final case class Repo private(
   }
 
   def verify[A <: VersionedItem](signed: Signed[A]): Checked[A] =
-    itemVerifier match {
+    signatureVerifier match {
       case Some(verifier) =>
-        verifier.verify(signed.signedString).map(_.item).flatMap(item =>
-          if (item != signed.value)
-            Left(Problem.pure("item != signed.value"))
-          else
-            Right(signed.value))
+        verifier.verify(signed.signedString)
+          .map(_ => signed.value)
 
       case None =>
         Right(signed.value)
@@ -366,13 +363,13 @@ object Repo
 {
   val empty = new Repo(Nil, Set.empty, Map.empty, Map.empty, None)
 
-  def signatureVerifying(itemVerifier: VersionedItemVerifier[VersionedItem]): Repo =
-    new Repo(Nil, Set.empty, Map.empty, Map.empty, Some(itemVerifier))
+  def signatureVerifying(signatureVerifier: SignatureVerifier): Repo =
+    new Repo(Nil, Set.empty, Map.empty, Map.empty, Some(signatureVerifier))
 
   @TestOnly
   private[item] object testOnly {
     implicit final class OpRepo(private val underlying: Repo.type) extends AnyVal {
-      def fromOp(versionIds: Seq[VersionId], operations: Seq[Operation], itemVerifier: Option[VersionedItemVerifier[VersionedItem]]) =
+      def fromOp(versionIds: Seq[VersionId], operations: Seq[Operation], signatureVerifier: Option[SignatureVerifier]) =
         new Repo(
           versionIds.toList,
           versionIds.toSet,
@@ -384,7 +381,7 @@ object Repo
             .mapValues(_.map(o => Entry(o._1, o._2)).toList)
             .toMap,
           Map.empty,
-          itemVerifier)
+          signatureVerifier)
     }
 
     sealed trait Operation {

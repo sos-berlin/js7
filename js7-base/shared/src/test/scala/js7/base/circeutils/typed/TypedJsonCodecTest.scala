@@ -1,5 +1,6 @@
 package js7.base.circeutils.typed
 
+import io.circe.DecodingFailure
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec._
@@ -28,8 +29,8 @@ final class TypedJsonCodecTest extends AnyFreeSpec
   }
 
   "decode unknown subclass" in {
-    json"""{ "TYPE": "UNKNOWN" }""".as[A] == Left(Problem(
-      """Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'TypedJsonCodecTest.A'"""))
+    assert(json"""{ "TYPE": "UNKNOWN" }""".as[A].toChecked == Left(Problem(
+      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'TypedJsonCodecTest.A'""")))
   }
 
   "Nested TypedJsonCodec" in {

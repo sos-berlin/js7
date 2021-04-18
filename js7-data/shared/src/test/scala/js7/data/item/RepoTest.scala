@@ -11,7 +11,6 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId
-import js7.data.crypt.VersionedItemVerifier
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
 import js7.data.item.RepoTest._
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
@@ -184,7 +183,7 @@ final class RepoTest extends AnyFreeSpec
     "More" in {
       var repo = emptyRepo
       repo = repo.itemsToEvents(V1, toSigned(a1) :: toSigned(b1) :: Nil).flatMap(repo.applyEvents).orThrow
-      assert(repo == Repo.fromOp(V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(b1)) :: Nil, Some(itemVerifier)))
+      assert(repo == Repo.fromOp(V1 :: Nil, Changed(toSigned(a1)) :: Changed(toSigned(b1)) :: Nil, Some(signatureVerifier)))
 
       val events = repo.itemsToEvents(V2, toSigned(a2) :: toSigned(bx2) :: Nil, deleted = b1.path :: Nil).orThrow
       assert(events == VersionAdded(V2) :: VersionedItemDeleted(b1.path) :: VersionedItemChanged(toSigned(a2)) :: VersionedItemAdded(toSigned(bx2)) :: Nil)
@@ -192,7 +191,7 @@ final class RepoTest extends AnyFreeSpec
       repo = repo.applyEvents(events).orThrow
       assert(repo == Repo.fromOp(V2 :: V1 :: Nil,
         Changed(toSigned(a1)) :: Changed(toSigned(a2)) :: Changed(toSigned(b1)) :: Deleted(b1.path ~ V2) :: Changed(toSigned(bx2)) :: Nil,
-        Some(itemVerifier)))
+        Some(signatureVerifier)))
 
       assert(repo.applyEvents(events) == Left(DuplicateKey("VersionId", VersionId("2"))))
     }
@@ -287,9 +286,9 @@ object RepoTest
     Subtype[AItem],
     Subtype[BItem])
 
-  private val itemSigner = new VersionedItemSigner(SillySigner.Default, itemJsonCodec)
-  private val itemVerifier = new VersionedItemVerifier(new SillySignatureVerifier, itemJsonCodec)
-  private val emptyRepo = Repo.signatureVerifying(itemVerifier)
+  private val itemSigner = new ItemSigner(SillySigner.Default, itemJsonCodec)
+  private val signatureVerifier = SillySignatureVerifier.Default
+  private val emptyRepo = Repo.signatureVerifying(signatureVerifier)
 
   import itemSigner.toSigned
 
