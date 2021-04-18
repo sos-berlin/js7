@@ -8,22 +8,38 @@ import js7.base.utils.Collections._
 import js7.base.utils.Collections.implicits.RichPairTraversable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
   */
 final class KeyedEventTypedJsonCodec[E <: Event: ClassTag](
-  val name: String,
-  val printName: String,
-  val classToEncoder: Map[Class[_], Encoder.AsObject[KeyedEvent[_ <: E]]],
-  val nameToDecoder: Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: E]]]],
-  val nameToClass: Map[String, Class[_ <: E]])
+  private val superclassName: String,
+  private val printName: String,
+  private val subtypes: Seq[KeyedSubtype[_ <: E]])
 extends Encoder.AsObject[KeyedEvent[E]]
 with Decoder[KeyedEvent[E]]
 {
+  private val classToEncoder: Map[Class[_], Encoder.AsObject[KeyedEvent[_ <: E]]] =
+    subtypes
+      .flatMap(_.classToEncoder.view
+        .mapValues(_.asInstanceOf[Encoder.AsObject[KeyedEvent[E]]]))
+      .uniqueToMap
+      .withDefault(o => throw new UnknownClassForJsonException(o.shortClassName, printName))
+
+  private val nameToDecoder: Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: E]]]] =
+    subtypes
+      .flatMap(_.nameToDecoder.view
+        .mapValues(decoder => Right(decoder.asInstanceOf[Decoder[KeyedEvent[E]]])))
+      .uniqueToMap
+      .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, printName, Nil)))
+
+  private val nameToClass: Map[String, Class[_ <: E]] =
+    subtypes.flatMap(_.nameToClass).uniqueToMap
+
   private val _classToName: Map[Class[_ <: E], String] =
-    nameToClass.map(o => o._2 -> o._1).toMap
+    nameToClass.view.map(o => o._2 -> o._1).toMap
 
   private val classToNameJson: Map[Class[_ <: E], Json/*String*/] =
     _classToName.view.mapValues(Json.fromString).toMap
@@ -38,15 +54,9 @@ with Decoder[KeyedEvent[E]]
     if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(s"Union of KeyedEventTypedJsonCodec has non-unique class names: $sameDecoderNames")
 
     new KeyedEventTypedJsonCodec[Event](
-      name = "Event",
+      superclassName = "Event",
       printName = s"$printName|${other.printName}",
-      (classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]] ++
-        other.classToEncoder.asInstanceOf[Map[Class[_ <: Event], Encoder.AsObject[KeyedEvent[_ <: Event]]]]
-      ).toMap,
-      nameToDecoder.asInstanceOf[Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: Event]]]]] ++
-        other.nameToDecoder.asInstanceOf[Map[String, Decoder.Result[Decoder[KeyedEvent[_ <: Event]]]]],
-      nameToClass.asInstanceOf[Map[String, Class[_ <: Event]]] ++
-        other.nameToClass.asInstanceOf[Map[String, Class[_ <: Event]]])
+      (subtypes ++ other.subtypes))
   }
 
   def encodeObject(keyedEvent: KeyedEvent[E]) =
@@ -72,7 +82,7 @@ with Decoder[KeyedEvent[E]]
     json.asObject.flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[E1])
 
   def typenameToClassOption(name: String): Option[Class[_ <: E]] =
-    if (name == this.name)
+    if (name == this.superclassName)
       Some(implicitClass[E])
     else
       nameToClass.get(name)
@@ -83,19 +93,11 @@ with Decoder[KeyedEvent[E]]
 object KeyedEventTypedJsonCodec
 {
   def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*) = {
-    val cls = implicitClass[E]
+    val superclass = implicitClass[E]
     new KeyedEventTypedJsonCodec[E](
-      cls.simpleScalaName,
-      cls.simpleScalaName,
-      subtypes
-        .flatMap(_.classToEncoder mapValuesStrict (_.asInstanceOf[Encoder.AsObject[KeyedEvent[E]]]))
-        .uniqueToMap
-        .withDefault(o => throw new UnknownClassForJsonException(o, cls)),
-      subtypes
-        .flatMap(_.nameToDecoder.mapValuesStrict(decoder => Right(decoder.asInstanceOf[Decoder[KeyedEvent[E]]])))
-        .uniqueToMap
-        .withDefault(typeName => Left(unknownJsonTypeFailure(typeName, cls.shortClassName, Nil))),
-      subtypes.flatMap(_.nameToClass).uniqueToMap)
+      superclass.simpleScalaName,
+      superclass.shortClassName,
+      subtypes)
   }
 
   final class KeyedSubtype[E <: Event](

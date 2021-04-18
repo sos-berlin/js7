@@ -24,7 +24,7 @@ final class TypedJsonCodecTest extends AnyFreeSpec
     intercept[UnknownClassForJsonException] {
       (NotRegistered(1): A).asJson(AJsonCodec)
     }.getMessage should include (
-      "Class js7.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[TypedJsonCodecTest.A]")
+      "Class 'TypedJsonCodecTest.NotRegistered' is not registered in TypedJsonCodec[TypedJsonCodecTest.A]")
   }
 
   "decode unknown subclass" in {

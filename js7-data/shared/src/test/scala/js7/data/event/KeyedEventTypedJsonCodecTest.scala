@@ -29,7 +29,7 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
     intercept[UnknownClassForJsonException] {
       (KeyedEvent(NotRegistered(1)): KeyedEvent[TestEvent]).asJson
     }.getMessage should include (
-      "Class js7.data.event.KeyedEventTypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]")
+      "Class 'KeyedEventTypedJsonCodecTest.NotRegistered' is not registered in TypedJsonCodec[KeyedEventTypedJsonCodecTest.TestEvent]")
   }
 
   "decode unknown subclass" in {
@@ -53,7 +53,7 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
     implicit val e0KeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E0.type] = KeyedEventTypedJsonCodec[E0.type](
       KeyedSubtype(E0))
 
-    testJson[KeyedEvent[E0.type]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
+    testJson[KeyedEvent[E0.type]](NoKey <-: E0, json"""{ "TYPE": "E0" }""")
     assert(json"""{ "TYPE": "E0" }""".as[KeyedEvent[E0.type]].isRight)
     assert(json"""{ "TYPE": "UNKNOWN" }""".as[KeyedEvent[E0.type]] == Left(DecodingFailure(
       """Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'KeyedEventTypedJsonCodecTest.E0'""", Nil)))
