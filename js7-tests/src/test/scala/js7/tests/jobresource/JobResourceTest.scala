@@ -10,6 +10,7 @@ import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.job.{JobResource, JobResourceId, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{ObjectExpression, StringConstant}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -41,19 +42,21 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[SignedItemAdded](_.event.id == bJobResource.id)
 
     val orderId = OrderId("ORDER")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
+      "A" -> StringValue("A OF ORDER")
+    ))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.id == aJobResource.id)
     controller.eventWatch.await[ItemAttached](_.event.id == bJobResource.id)
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
+
     val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId)
       .foldLeft("")(_ + _.chunk)
-
     assert(stdouterr.replaceAll("\r", "") ==
-      """A=/a/
-        |B=/bb/
-        |C=/ccc/
-        |D=/D OF JOB/
-        |E=/E OF JOB RESOURCE/
+      """A=/A of JOB-RESOURCE-A/
+        |B=/B of JOB-RESOURCE-A/
+        |C=/C of JOB-RESOURCE-B/
+        |D=/D OF JOB ENV/
+        |E=/E OF JOB-RESOURCE-B/
         |""".stripMargin)
   }
 }
@@ -65,15 +68,15 @@ object JobResourceTest
   private val aJobResource = JobResource(
     JobResourceId("JOB-RESOURCE-A"),
     env = ObjectExpression(Map(
-      "A" -> StringConstant("a"),
-      "B" -> StringConstant("bb"))))
+      "A" -> StringConstant("A of JOB-RESOURCE-A"),
+      "B" -> StringConstant("B of JOB-RESOURCE-A"))))
 
   private val bJobResource = JobResource(
     JobResourceId("JOB-RESOURCE-B"),
     env = ObjectExpression(Map(
       "B" -> StringConstant("IGNORED"),
-      "C" -> StringConstant("ccc"),
-      "E" -> StringConstant("E OF JOB RESOURCE"))))
+      "C" -> StringConstant("C of JOB-RESOURCE-B"),
+      "E" -> StringConstant("E OF JOB-RESOURCE-B"))))
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
@@ -88,8 +91,10 @@ object JobResourceTest
             |echo D=/$D/
             |echo E=/$E/
             |""".stripMargin,
-          ObjectExpression(Map(
-            "D" -> StringConstant("D OF JOB"),
-            "E" -> StringConstant("E OF JOB")))),
-        jobResourceIds = Seq(aJobResource.id, bJobResource.id)))))
+          env = ObjectExpression(Map(
+            "D" -> StringConstant("D OF JOB ENV"),
+            "E" -> StringConstant("E OF JOB ENV")))),
+        defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
+        jobResourceIds = Seq(aJobResource.id, bJobResource.id)),
+      defaultArguments = Map("A" -> StringValue("A of Execute")))))
 }
