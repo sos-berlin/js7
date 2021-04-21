@@ -33,7 +33,12 @@ object ReturnCodeMeaning {
     case Success(o) => JsonObject.singleton("success", o.asJson)
     case Failure(o) => JsonObject.singleton("failure", o.asJson)
   }
-  implicit val jsonDecoder: Decoder[ReturnCodeMeaning] = cursor =>
-    cursor.get[Set[ReturnCode]]("success").map(Success.apply) orElse
-      cursor.get[Set[ReturnCode]]("failure").map(Failure.apply)
+  implicit val jsonDecoder: Decoder[ReturnCodeMeaning] =
+    c => {
+      val c1 = c.downField("failure")
+      if (c1.succeeded)
+        c1.as[Set[ReturnCode]].map(Failure.apply)
+      else
+        c.get[Set[ReturnCode]]("success").map(Success.apply)
+    }
 }

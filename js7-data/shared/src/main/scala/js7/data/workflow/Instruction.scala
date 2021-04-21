@@ -1,7 +1,7 @@
 package js7.data.workflow
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
@@ -102,12 +102,17 @@ object Instruction
         ) ++ instruction.asJsonObject
     }
 
+    private val rightNode = Right(None)
+
     implicit def jsonDecoder(implicit instrDecoder: Decoder[Instruction]): Decoder[Labeled] =
       cursor => for {
         instruction <- cursor.as[Instruction]
-        labels <- cursor.get[Json]("label") match {
-          case Right(json) => json.as[Option[Label]]
-          case Left(_) => Right(None)
+        labels <- {
+          val c1 = cursor.downField("label")
+          if (c1.succeeded)
+            c1.as[Option[Label]]
+          else
+            rightNode
         }
       } yield Labeled(labels, instruction)
   }
