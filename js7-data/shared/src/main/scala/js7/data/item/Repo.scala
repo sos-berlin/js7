@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId
 import js7.data.event.NoKeyEvent
-import js7.data.item.CommonItemEvent.ItemAttachedStateChanged
+import js7.data.item.BasicItemEvent.ItemAttachedStateChanged
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.Repo.Entry
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
@@ -272,7 +272,7 @@ final case class Repo private(
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
   def toEvents: View[NoKeyEvent] =
-    toVersionedEvents ++ toCommonItemEvents
+    toVersionedEvents ++ toBasicItemEvents
 
   private def toVersionedEvents: View[VersionedEvent] = {
     type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[VersionedItem/*added/changed*/]]
@@ -313,7 +313,7 @@ final case class Repo private(
       .flatten
   }
 
-  private def toCommonItemEvents: View[CommonItemEvent] =
+  private def toBasicItemEvents: View[BasicItemEvent] =
     for {
       (id, agentToAttached) <- idToAgentIdToAttachedState.view
       (agentId, attachedState) <- agentToAttached
@@ -333,7 +333,7 @@ final case class Repo private(
       .flatMap(_.get(agentId))
       .getOrElse(Detached)
 
-  def applyCommonItemEvent(event: CommonItemEvent): Checked[Repo] =
+  def applyBasicItemEvent(event: BasicItemEvent): Checked[Repo] =
     event match {
       case ItemAttachedStateChanged(id: VersionedItemId_, agentId, attachedState) =>
         attachedState match {

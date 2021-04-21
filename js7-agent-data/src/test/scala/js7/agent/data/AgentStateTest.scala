@@ -15,7 +15,7 @@ import js7.data.agent.AgentId
 import js7.data.cluster.ClusterState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.CommonItemEvent.ItemAttachedToAgent
+import js7.data.item.BasicItemEvent.ItemAttachedToAgent
 import js7.data.item.ItemRevision
 import js7.data.job.{JobResource, JobResourceId}
 import js7.data.order.Order.{Forked, Ready}

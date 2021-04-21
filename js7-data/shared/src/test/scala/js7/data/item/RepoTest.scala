@@ -292,10 +292,11 @@ object RepoTest
 
   import itemSigner.sign
 
-  private val TestEvents =
-    VersionAdded(V1) :: VersionedItemAdded(sign(a1)) ::
-    VersionAdded(V2) :: VersionedItemChanged(sign(a2)) :: VersionedItemAdded(sign(bx2)) :: VersionedItemAdded(sign(by2)) ::
-    VersionAdded(V3) :: VersionedItemChanged(sign(a3)) :: VersionedItemDeleted(bx2.path) :: Nil
+  // TODO Add AttachedState events, Detached too!
+  private val TestEvents = Seq(
+    VersionAdded(V1), VersionedItemAdded(sign(a1)),
+    VersionAdded(V2), VersionedItemChanged(sign(a2)), VersionedItemAdded(sign(bx2)), VersionedItemAdded(sign(by2)),
+    VersionAdded(V3), VersionedItemChanged(sign(a3)), VersionedItemDeleted(bx2.path))
 
   private def v(version: String) = VersionId(version)
 }

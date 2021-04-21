@@ -36,7 +36,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
-import js7.data.item.CommonItemEvent.ItemAttachedToAgent
+import js7.data.item.BasicItemEvent.ItemAttachedToAgent
 import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}

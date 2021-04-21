@@ -6,12 +6,12 @@ import js7.data.agent.AgentId
 import js7.data.event.JournaledState
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
 
-sealed trait CommonItemEvent extends InventoryItemEvent
+sealed trait BasicItemEvent extends InventoryItemEvent
 
-object CommonItemEvent
+object BasicItemEvent
 {
-  sealed trait ForController extends CommonItemEvent
-  sealed trait ForAgent extends CommonItemEvent
+  sealed trait ForController extends BasicItemEvent
+  sealed trait ForAgent extends BasicItemEvent
 
   final case class ItemDeletionMarked(id: InventoryItemId)
   extends ForController {
@@ -33,7 +33,7 @@ object CommonItemEvent
         case Attachable => ItemAttachable(id, agentId)
         case Attached(itemRevision) => ItemAttached(id, itemRevision, agentId)
         case Detachable => ItemDetachable(id, agentId)
-        case Detached => ItemDetachable(id, agentId)
+        case Detached => ItemDetached(id, agentId)
       }
     def unapply(event: ItemAttachedStateChanged) =
       Some((event.id, event.agentId, event.attachedState))
@@ -66,7 +66,7 @@ object CommonItemEvent
   }
 
   def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
-  : TypedJsonCodec[CommonItemEvent] = {
+  : TypedJsonCodec[BasicItemEvent] = {
     implicit val x = S.inventoryItemJsonCodec
     implicit val y = S.inventoryItemIdJsonCodec
 

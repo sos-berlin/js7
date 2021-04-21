@@ -23,7 +23,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.CommonItemEvent.{ItemAttachedToAgent, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}

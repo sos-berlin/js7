@@ -5,7 +5,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentId
-import js7.data.item.CommonItemEvent.ItemAttached
+import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.job.{JobResource, JobResourceId, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderStdWritten, OrderTerminated}

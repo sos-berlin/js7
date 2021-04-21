@@ -11,7 +11,7 @@ trait InventoryItemEvent extends NoKeyEvent
 object InventoryItemEvent
 {
   def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S]) =
-    (CommonItemEvent.jsonCodec |
+    (BasicItemEvent.jsonCodec |
       UnsignedSimpleItemEvent.jsonCodec |
       SignedItemEvent.jsonCodec
     ).asInstanceOf[TypedJsonCodec[InventoryItemEvent]]

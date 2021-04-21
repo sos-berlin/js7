@@ -13,9 +13,9 @@ import js7.data.agent.AgentId
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest}
-import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{CommonItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderRemoved, OrderStarted, OrderStderrWritten}
 import js7.data.order.{OrderId, Outcome}
@@ -205,7 +205,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       .filter(_
         .event match {
           case _: ControllerShutDown => true
-          case _: CommonItemEvent => true
+          case _: BasicItemEvent => true
           case event: UnsignedSimpleItemEvent if event.id.isInstanceOf[OrderWatchId] => true
           case _: OrderAdded => true
           case _: OrderStarted => true

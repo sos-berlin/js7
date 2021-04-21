@@ -15,7 +15,7 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentId
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.item.UnsignedSimpleItemEvent.SimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}

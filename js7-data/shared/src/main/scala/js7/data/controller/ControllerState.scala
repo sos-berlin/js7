@@ -17,11 +17,11 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
-import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{CommonItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, SimpleItem, SimpleItemId, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, SimpleItem, SimpleItemId, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourceId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
@@ -154,7 +154,7 @@ extends JournaledState[ControllerState]
               }
           }
 
-        case event: CommonItemEvent.ForController =>
+        case event: BasicItemEvent.ForController =>
           event match {
             case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
               id match {
@@ -164,7 +164,7 @@ extends JournaledState[ControllerState]
                       allOrderWatchesState = o))
 
                 case _: VersionedItemId_ =>
-                  for (repo <- repo.applyCommonItemEvent(event)) yield
+                  for (repo <- repo.applyBasicItemEvent(event)) yield
                     copy(repo = repo)
 
                 case id: SignableSimpleItemId =>

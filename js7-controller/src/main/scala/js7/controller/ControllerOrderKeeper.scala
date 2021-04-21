@@ -53,7 +53,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.item.CommonItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}

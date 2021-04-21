@@ -9,7 +9,7 @@ import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
-import js7.data.item.CommonItemEvent.{ItemAttached, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemDestroyed}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.OrderId

@@ -10,11 +10,11 @@ import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEv
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.item.CommonItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{CommonItemEvent, InventoryItemEvent, InventoryItemId, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemId, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourceId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
@@ -57,8 +57,8 @@ extends JournaledStateBuilder[ControllerState]
     case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
 
-    case event: CommonItemEvent =>
-      repo = repo.applyCommonItemEvent(event).orThrow
+    case event: BasicItemEvent =>
+      repo = repo.applyBasicItemEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
       idToAgentRefState.insert(agentRefState.agentId -> agentRefState)
@@ -148,7 +148,7 @@ extends JournaledStateBuilder[ControllerState]
               }
           }
 
-        case event: CommonItemEvent.ForController =>
+        case event: BasicItemEvent.ForController =>
           event match {
             case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
               id match {
@@ -158,7 +158,7 @@ extends JournaledStateBuilder[ControllerState]
                     .orThrow
 
                 case _: VersionedItemId_ =>
-                  repo = repo.applyCommonItemEvent(event).orThrow
+                  repo = repo.applyBasicItemEvent(event).orThrow
 
                 case id: JobResourceId =>
                   // TODO Code is similar to ControllerState

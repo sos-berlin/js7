@@ -3,7 +3,7 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerState
-import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.orderwatch.OrderWatchId
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson

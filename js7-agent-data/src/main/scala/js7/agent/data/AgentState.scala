@@ -8,8 +8,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
-import js7.data.item.CommonItemEvent.{ItemAttachedToAgent, ItemDetached}
-import js7.data.item.{CommonItemEvent, InventoryItem, InventoryItemEvent}
+import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent}
 import js7.data.job.{JobResource, JobResourceId}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -61,7 +61,7 @@ extends JournaledState[AgentState]
         allFileWatchesState.applyEvent(orderWatchId <-: event)
           .map(o => copy(allFileWatchesState = o))
 
-      case KeyedEvent(_: NoKey, event: CommonItemEvent.ForAgent) =>
+      case KeyedEvent(_: NoKey, event: BasicItemEvent.ForAgent) =>
         event match {
           case ItemAttachedToAgent(workflow: Workflow) =>
             Right(copy(

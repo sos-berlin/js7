@@ -6,7 +6,7 @@ import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
-import js7.data.item.CommonItemEvent.ItemAttached
+import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.orderwatch.{FileWatch, OrderWatchId}
 import js7.data.workflow.WorkflowPath
 import js7.tests.testenv.ControllerAgentForScalaTest

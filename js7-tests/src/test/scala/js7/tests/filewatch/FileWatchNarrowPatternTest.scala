@@ -10,7 +10,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentId
 import js7.data.event.EventId
-import js7.data.item.CommonItemEvent.ItemAttached
+import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderRemoved, OrderStarted}
 import js7.data.order.{OrderId, Outcome}
