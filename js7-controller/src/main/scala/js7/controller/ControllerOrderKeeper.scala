@@ -943,7 +943,7 @@ with MainJournalingActor[ControllerState, Event]
               for (agentEntry <- agentRegister.get(agentId)) {
                 attachedState match {
                   case Attachable =>
-                    agentEntry.actor ! AgentDriver.Input.AttachItem(orderWatch)
+                    agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(orderWatch)
 
                   case Detachable =>
                     agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.id)

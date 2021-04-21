@@ -311,8 +311,8 @@ with Stash {
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
     signatureVerifier.verify(signed.signedString) match {
       case Left(problem) => Future.successful(Left(problem))
-      case Right(signedIds) =>
-        logger.info(Logger.SignatureVerified, s"Verified ${signed.value.id} (signed by ${signedIds.mkString(", ")}")
+      case Right(signerIds) =>
+        logger.info(Logger.SignatureVerified, s"Verified ${signed.value.id} (signed by ${signerIds.mkString(", ")}")
 
         signed.value match {
           case origWorkflow: Workflow =>

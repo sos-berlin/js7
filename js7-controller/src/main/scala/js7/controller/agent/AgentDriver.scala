@@ -484,7 +484,7 @@ private[controller] object AgentDriver
 
     final case class ChangeUri(uri: Uri)
 
-    final case class AttachItem(item: InventoryItem)
+    final case class AttachUnsignedItem(item: InventoryItem)
     extends Input with Queueable
 
     final case class AttachSignedItem(signed: Signed[SignableItem])

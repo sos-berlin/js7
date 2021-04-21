@@ -17,9 +17,9 @@ extends JournaledStateBuilder[AgentState]
 
   private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
-  private var idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
-  private var idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
-  private var allFileWatchesState = new AllFileWatchesState.Builder
+  private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
+  private val idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
+  private val allFileWatchesState = new AllFileWatchesState.Builder
   private val idToJobResource = mutable.Map.empty[JobResourceId, JobResource]
   private var _state = AgentState.empty
 
