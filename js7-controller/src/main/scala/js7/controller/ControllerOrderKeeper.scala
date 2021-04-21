@@ -53,12 +53,12 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
-import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
-import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged, SignedItemChanged}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
+import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
+import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SignableSimpleItem, UnsignedSimpleItem, VersionedEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SignableSimpleItem, SignableSimpleItemId, UnsignedSimpleItem, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchId}
@@ -433,7 +433,7 @@ with MainJournalingActor[ControllerState, Event]
     case Command.VerifiedUpdateItemsCmd(verifiedUpdateItems: VerifiedUpdateItems) =>
       import verifiedUpdateItems.{maybeVersioned, simple}
       val t = now
-      val checkedEvents = simpleItemsToEvent(simple)
+      val checkedEvents: Checked[View[InventoryItemEvent]] = simpleItemsToEvents(simple)
       val whenPersisted = maybeVersioned
         .map(versionedItemsToEvent)
         .getOrElse(Success(Right(Nil)))
@@ -444,8 +444,8 @@ with MainJournalingActor[ControllerState, Event]
             checkedEvents match {
               case Left(problem) => Future.successful(Left(problem))
               case Right(simpleItemEvents) =>
-                val keyedEvents = simpleItemEvents.map(NoKey <-: _) ++ versionedEvents.map(NoKey <-: _)
-                persistItemAndVersionedEvents(keyedEvents)
+                val keyedEvents = simpleItemEvents.view.map(NoKey <-: _) ++ versionedEvents.map(NoKey <-: _)
+                persistItemAndVersionedEvents(keyedEvents.toVector)
                   .map(_.map { o =>
                     if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
                       itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
@@ -559,32 +559,49 @@ with MainJournalingActor[ControllerState, Event]
       }
   }
 
-  private def simpleItemsToEvent(simple: VerifiedUpdateItems.Simple): Checked[Seq[InventoryItemEvent]] =
+  private def simpleItemsToEvents(simple: VerifiedUpdateItems.Simple): Checked[View[InventoryItemEvent]] =
     simple.verifiedSimpleItems
-      .traverse(verifiedItemToEvent)
+      .flatTraverse(verifiedItemToEvents)
       .flatMap(signedEvents =>
         simple.unsignedSimpleItems
           .traverse(unsignedSimpleItemToEvent)
           .flatMap(unsignedEvents =>
             simple.delete
               .flatTraverse(id => simpleItemIdToDeletedEvent(id).map(_.toSeq))
-              .map(_ ++ signedEvents ++ unsignedEvents)))
+              .map(_.view ++ signedEvents ++ unsignedEvents)))
 
-  private def verifiedItemToEvent(verified: SignedItemVerifier.Verified[SignableSimpleItem]): Checked[SignedItemAddedOrChanged] =
-    if (verified.item.itemRevision.isDefined)
+  private def verifiedItemToEvents(verified: SignedItemVerifier.Verified[SignableSimpleItem])
+  : Checked[Seq[InventoryItemEvent]] = {
+    val item = verified.item
+    if (item.itemRevision.isDefined)
       Left(Problem.pure("ItemRevision is not accepted here"))
     else
       Right(
-        _controllerState.idToSimpleItem.get(verified.item.id) match {
+        _controllerState.idToSimpleItem.get(item.id) match {
           case None =>
-            SignedItemAdded(verified.signedItem.copy(value = verified.item
-              .withRevision(Some(ItemRevision.Initial))))
+            SignedItemAdded(verified.signedItem.copy(value =
+              item.withRevision(Some(ItemRevision.Initial)))) :: Nil
           case Some(existing) =>
-            SignedItemChanged(verified.signedItem.copy(
+            val changed = SignedItemChanged(verified.signedItem.copy(
               value = verified.signedItem.value
                 .withRevision(Some(
                   existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
+            val attaching = _controllerState.itemIdToAgentToAttachedState.get(item.id)
+              .map(_.view.map {
+                case (agentId, Attachable) => ItemAttachable(item.id, agentId)
+                case (agentId, Attached(rev)) if rev != item.itemRevision && agentRequiresItem(agentId, item.id) =>
+                  ItemAttachable(item.id, agentId)
+                //case (agentId, Detachable) => Should not happen
+                //case (agentId, Detached) => Nothing to do
+              })
+              .view.flatten
+            Vector(changed) ++ attaching
         })
+  }
+
+  private def agentRequiresItem(agentId: AgentId, itemId: InventoryItemId): Boolean =
+    // Maybe optimize ??? Changed item needs only to be attached if it is needed by an attached order
+    true
 
   private def unsignedSimpleItemToEvent(item: UnsignedSimpleItem): Checked[UnsignedSimpleItemAddedOrChanged] =
     if (item.itemRevision.isDefined)
@@ -938,20 +955,40 @@ with MainJournalingActor[ControllerState, Event]
       case itemId: OrderWatchId =>
         for (orderWatchState <- _controllerState.allOrderWatchesState.idToOrderWatchState.get(itemId)) {
           import orderWatchState.orderWatch
-            for ((agentId, attachedState) <- orderWatchState.agentIdToAttachedState) {
-              // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-              for (agentEntry <- agentRegister.get(agentId)) {
-                attachedState match {
-                  case Attachable =>
-                    agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(orderWatch)
+          for ((agentId, attachedState) <- orderWatchState.agentIdToAttachedState) {
+            // TODO Does nothing if Agent is added later! (should be impossible, anyway)
+            for (agentEntry <- agentRegister.get(agentId)) {
+              attachedState match {
+                case Attachable =>
+                  agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(orderWatch)
 
-                  case Detachable =>
-                    agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.id)
+                case Detachable =>
+                  agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.id)
 
-                  case _ =>
-                }
+                case _ =>
               }
             }
+          }
+        }
+
+      case itemId: SignableSimpleItemId =>
+        for (agentToAttachedState <- _controllerState.itemIdToAgentToAttachedState.get(itemId)) {
+          for ((agentId, attachedState) <- agentToAttachedState) {
+            // TODO Does nothing if Agent is added later! (should be impossible, anyway)
+            for (agentEntry <- agentRegister.get(agentId)) {
+              attachedState match {
+                case Attachable =>
+                  for (signedItem <- _controllerState.idToSignedSimpleItem.get(itemId)) {
+                    agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+                  }
+
+                case Detachable =>
+                  agentEntry.actor ! AgentDriver.Input.DetachItem(itemId)
+
+                case _ =>
+              }
+            }
+          }
         }
 
       case _ =>
@@ -1087,7 +1124,9 @@ with MainJournalingActor[ControllerState, Event]
           val jobResources = signedWorkflow.value.referencedJobResourceIds
             .flatMap(_controllerState.idToSignedSimpleItem.get)
           for (signedItem <- jobResources ++ View(signedWorkflow)) {
-            val attachedState = _controllerState.itemIdToAttachedState(signedItem.value.id, agentEntry.agentId)
+            val item = signedItem.value
+            val attachedState = _controllerState
+              .itemIdToAttachedState(item.id, item.itemRevision, agentEntry.agentId)
             if (attachedState == Detached || attachedState == Attachable) {
               agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }

@@ -7,8 +7,8 @@ import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
 import js7.data.value.StringValue
-import js7.data.value.expression.Evaluator
 import js7.data.value.expression.Expression.ObjectExpression
+import js7.data.value.expression.{Evaluator, Scope}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
@@ -35,7 +35,7 @@ trait ProcessJobExecutor extends JobExecutor
       .reverse/*left overrides right*/
       .fold(Map.empty)(_ ++ _)
       .toSeq
-      .traverse { case (k, v) => processOrder.scope.evalString(v).map(k -> _) }
+      .traverse { case (k, v) => Scope.empty.evalString(v).map(k -> _) }
       .map(_.toMap))
     new OrderProcess {
       def run =
@@ -45,11 +45,11 @@ trait ProcessJobExecutor extends JobExecutor
 
           case Right(jobResourcesEnv) =>
             taskRunner
-            .processOrder(
-              processOrder.order.id,
-              (v1Env(processOrder).view ++ startProcess.env ++ jobResourcesEnv).toMap,
-              processOrder.stdObservers)
-            .guarantee(taskRunner.terminate)
+              .processOrder(
+                processOrder.order.id,
+                (v1Env(processOrder).view ++ startProcess.env ++ jobResourcesEnv).toMap,
+                processOrder.stdObservers)
+              .guarantee(taskRunner.terminate)
         }
 
       override def cancel(immediately: Boolean) =

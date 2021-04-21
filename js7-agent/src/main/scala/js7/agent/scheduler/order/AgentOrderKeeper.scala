@@ -460,7 +460,7 @@ with Stash {
           jobKey, job, workflow,
           sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
         val jobActor = watch(actorOf(
-          JobActor.props(jobConf, executorConf, persistence.currentState.idToJobResource.checked),
+          JobActor.props(jobConf, executorConf, id => persistence.currentState.idToJobResource.checked(id)),
           uniqueActorName(encodeAsActorName("Job-" + jobKey.name))))
         jobRegister.insert(jobKey, job, jobActor)
       }

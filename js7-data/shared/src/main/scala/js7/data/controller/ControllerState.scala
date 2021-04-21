@@ -18,10 +18,10 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
-import js7.data.item.ItemAttachedState.{Detached, NotDetached}
+import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, SimpleItem, SimpleItemId, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemAttachedState, ItemRevision, Repo, SignableSimpleItem, SignableSimpleItemId, SignedItemEvent, SimpleItem, SimpleItemId, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourceId}
 import js7.data.lock.{Lock, LockId, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
@@ -320,14 +320,20 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def itemIdToAttachedState(itemId: InventoryItemId, agentId: AgentId): ItemAttachedState =
+  def itemIdToAttachedState(itemId: InventoryItemId, itemRevision: Option[ItemRevision], agentId: AgentId)
+  : ItemAttachedState =
     itemId match {
       case itemId: VersionedItemId_ =>
         repo.attachedState(itemId, agentId)
 
       case itemId: SignableSimpleItemId =>
-        itemIdToAgentToAttachedState.get(itemId)
+        itemIdToAgentToAttachedState
+          .get(itemId)
           .flatMap(_.get(agentId))
+          .map {
+            case a @ (Attachable | Attached(`itemRevision`) | Detachable) => a
+            case Attached(_) => Detached
+          }
           .getOrElse(Detached)
     }
 

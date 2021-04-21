@@ -8,10 +8,11 @@ import js7.data.agent.AgentId
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.job.{JobResource, JobResourceId, ScriptExecutable}
-import js7.data.order.OrderEvent.{OrderStdWritten, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderTerminated}
+import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{ObjectExpression, StringConstant}
+import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -34,10 +35,9 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Seq(workflow)
 
-  private lazy val signedJobResources = Seq(aJobResource, bJobResource).map(directoryProvider.itemSigner.sign)
-
   "JobResourceId" in {
-    controllerApi.updateSignedSimpleItems(signedJobResources).await(99.s).orThrow
+    controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)
+      .await(99.s).orThrow
     controller.eventWatch.await[SignedItemAdded](_.event.id == aJobResource.id)
     controller.eventWatch.await[SignedItemAdded](_.event.id == bJobResource.id)
 
@@ -59,6 +59,30 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
         |E=/E OF JOB-RESOURCE-B/
         |""".stripMargin)
   }
+
+  "Change JobResourceId" in {
+    val eventId = controller.eventWatch.lastAddedEventId
+    controllerApi.updateSignedSimpleItems(Seq(sign(b1JobResource))).await(99.s).orThrow
+    val orderId = OrderId("ORDER-1")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.eventWatch.await[ItemAttached](_.event.id == b1JobResource.id, after = eventId)
+  }
+
+  "JobResourceId with variable references" in {
+    val eventId = controller.eventWatch.lastAddedEventId
+    controllerApi.updateSignedSimpleItems(Seq(sign(b2JobResource))).await(99.s).orThrow
+    controller.eventWatch.await[ItemAttached](_.event.id == b2JobResource.id, after = eventId)
+
+    val orderId = OrderId("ORDER-2")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
+      "E" -> StringValue("E OF ORDER")
+    ))).await(99.s).orThrow
+    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+
+    // JobResource must not use order variables
+    val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event
+    assert(orderProcessed.outcome == Outcome.Failed(Some("No such named value: E")))
+  }
 }
 
 object JobResourceTest
@@ -77,6 +101,14 @@ object JobResourceTest
       "B" -> StringConstant("IGNORED"),
       "C" -> StringConstant("C of JOB-RESOURCE-B"),
       "E" -> StringConstant("E OF JOB-RESOURCE-B"))))
+
+  private val b1JobResource = JobResource(JobResourceId("JOB-RESOURCE-B"))
+
+  private val b2JobResource = JobResource(
+    JobResourceId("JOB-RESOURCE-B"),
+    env = ObjectExpression(Map(
+      "B" -> StringConstant("IGNORED"),
+      "E" -> ExpressionParser.parse(""""E=$E"""").orThrow)))
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

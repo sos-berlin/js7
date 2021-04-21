@@ -29,6 +29,7 @@ trait JobExecutor
 
   def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess]
 
+  // JobResources may change at any time
   protected final def checkedCurrentJobResources(): Checked[Seq[JobResource]] =
     jobConf.workflowJob.jobResourceIds.traverse(idToJobResource)
 
