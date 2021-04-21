@@ -11,6 +11,7 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentId
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDetachable, ItemDetached}
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
 import js7.data.item.RepoTest._
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
@@ -23,7 +24,8 @@ final class RepoTest extends AnyFreeSpec
 {
   import itemSigner.sign
 
-  private lazy val Right(testRepo) = emptyRepo.applyEvents(TestEvents)
+  private lazy val Right(testRepo: Repo) = emptyRepo.applyEvents(versionedEvents)
+    .map(repo => basicItemEvents.foldLeft(repo)((repo, event) => repo.applyBasicItemEvent(event).orThrow))
 
   "empty" in {
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
@@ -72,16 +74,7 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "Event output" in {
-    assert(testRepo.toEvents.toSeq == TestEvents)
-  }
-
-  "eventsFor" in {
-    assert(testRepo.eventsFor(Set(APath, BPath)).toSeq == TestEvents)
-    assert(testRepo.eventsFor(Set(APath)).toSeq == Seq(
-      VersionAdded(V1), VersionedItemAdded(sign(a1)),
-      VersionAdded(V2), VersionedItemChanged(sign(a2)),
-      VersionAdded(V3), VersionedItemChanged(sign(a3))))
-    assert(testRepo.eventsFor(Set(AgentId)).toSeq == Seq(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
+    assert(testRepo.toEvents.toSeq == snapshotEvents)
   }
 
   //"pathToCurrentId" in {
@@ -272,6 +265,9 @@ final class RepoTest extends AnyFreeSpec
 
 object RepoTest
 {
+  private val aAgentId = AgentId("AGENT-A")
+  private val bAgentId = AgentId("AGENT-B")
+
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")
   private val V3 = VersionId("3")
@@ -292,11 +288,32 @@ object RepoTest
 
   import itemSigner.sign
 
-  // TODO Add AttachedState events, Detached too!
-  private val TestEvents = Seq(
+  private val versionedEvents = Seq(
     VersionAdded(V1), VersionedItemAdded(sign(a1)),
     VersionAdded(V2), VersionedItemChanged(sign(a2)), VersionedItemAdded(sign(bx2)), VersionedItemAdded(sign(by2)),
     VersionAdded(V3), VersionedItemChanged(sign(a3)), VersionedItemDeleted(bx2.path))
+
+  private val basicItemEvents = Seq(
+    ItemAttachable(a1.id, aAgentId),
+
+    ItemAttachable(a2.id, aAgentId),
+    ItemAttachable(a2.id, bAgentId),
+    ItemAttached(a2.id, None, bAgentId),
+
+    ItemAttached(b1.id, None, bAgentId),
+    ItemDetachable(b1.id, bAgentId),
+
+    ItemAttached(a3.id, None, bAgentId),
+    ItemDetachable(a3.id, bAgentId),
+    ItemDetached(a3.id, bAgentId))
+
+  private def snapshotBasicEvents = Seq(
+    ItemAttachable(a1.id, aAgentId),
+    ItemAttachable(a2.id, aAgentId),
+    ItemAttached(a2.id, None, bAgentId),
+    ItemDetachable(b1.id, bAgentId))
+
+  private val snapshotEvents = versionedEvents ++ snapshotBasicEvents
 
   private def v(version: String) = VersionId(version)
 }

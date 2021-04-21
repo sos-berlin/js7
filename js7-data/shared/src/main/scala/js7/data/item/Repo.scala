@@ -263,13 +263,6 @@ final case class Repo private(
     sum
   }
 
-  /** Converts the Repo to an event sequence, regarding only a given type. */
-  def eventsFor(is: ItemPath.AnyCompanion => Boolean): View[VersionedEvent] =
-    toEvents collect {
-      case e: VersionAdded => e
-      case e: VersionedItemEvent if is(e.path.companion) => e
-    }
-
   /** Convert the Repo to an event sequence ordered by VersionId. */
   def toEvents: View[NoKeyEvent] =
     toVersionedEvents ++ toBasicItemEvents
@@ -343,7 +336,16 @@ final case class Repo private(
                 (id -> (idToAgentIdToAttachedState.getOrElse(id, Map.empty) + (agentId -> attachedState)))))
 
           case Detached =>
-            Left(Problem(s"Inapplicable event for Repo: $event"))
+            Right(
+              idToAgentIdToAttachedState.get(id).fold(this) { agentToAttachedState =>
+                val updated = agentToAttachedState - agentId
+                copy(
+                  idToAgentIdToAttachedState =
+                    if (updated.isEmpty)
+                      idToAgentIdToAttachedState - id
+                    else
+                      idToAgentIdToAttachedState + (id -> updated))
+              })
         }
 
       case _ => Left(Problem(s"Inapplicable event for Repo: $event"))
