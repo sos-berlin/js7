@@ -15,7 +15,7 @@ import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemDeletedPr
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.event.{EventRequest, EventSeq}
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.{JobResource, JobResourceId, RelativePathExecutable}
 import js7.data.lock.{Lock, LockId}
@@ -59,7 +59,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "User requires permission 'UpdateItem'" in {
     val controllerApi = controller.newControllerApi(Some(UserId("without-permission") -> SecretString("TEST-PASSWORD")))
-    assert(controllerApi.updateItems(Observable(AddVersion(V1), SignedAddOrChange(toSignedString(workflow1)))).await(99.s) ==
+    assert(controllerApi.updateItems(Observable(AddVersion(V1), AddOrChangeSigned(toSignedString(workflow1)))).await(99.s) ==
       Left(UserDoesNotHavePermissionProblem(UserId("without-permission"), UpdateItemPermission)))
 
     controller.httpApi.login_(Some(directoryProvider.controller.userAndPassword)) await 99.s
@@ -67,13 +67,13 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "ControllerCommand.UpdateRepo with VersionedItem" in {
     val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
-    controllerApi.updateItems(Observable(AddVersion(V1), SignedAddOrChange(toSignedString(workflow1)))).await(99.s).orThrow
+    controllerApi.updateItems(Observable(AddVersion(V1), AddOrChangeSigned(toSignedString(workflow1)))).await(99.s).orThrow
     controllerApi.addOrders(Observable(FreshOrder(orderIds(0), workflowPath))).await(99.s).orThrow
 
     locally {
       val signedWorkflow2 = toSignedString(workflow2)
-      controllerApi.updateItems(Observable(AddVersion(V2), SignedAddOrChange(signedWorkflow2))).await(99.s).orThrow
-      controllerApi.updateItems(Observable(AddVersion(V2), SignedAddOrChange(signedWorkflow2))).await(99.s).orThrow  /*Duplicate effect is ignored*/
+      controllerApi.updateItems(Observable(AddVersion(V2), AddOrChangeSigned(signedWorkflow2))).await(99.s).orThrow
+      controllerApi.updateItems(Observable(AddVersion(V2), AddOrChangeSigned(signedWorkflow2))).await(99.s).orThrow  /*Duplicate effect is ignored*/
     }
     controllerApi.addOrders(Observable(FreshOrder(orderIds(1), workflowPath))).await(99.s).orThrow
 
@@ -89,15 +89,15 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
     controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
-    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(workflowPath))).await(99.s).orThrow
-    controllerApi.updateItems(Observable(AddVersion(V3), VersionedDelete(workflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
+    controllerApi.updateItems(Observable(AddVersion(V3), DeleteVersioned(workflowPath))).await(99.s).orThrow
+    controllerApi.updateItems(Observable(AddVersion(V3), DeleteVersioned(workflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
     assert(controllerApi.addOrder(FreshOrder(orderIds(1), workflowPath)).await(99.s) ==
       Left(VersionedItemDeletedProblem(workflowPath)))
 
     withClue("Tampered with configuration: ") {
       assert(controllerApi.updateItems(Observable(
         AddVersion(VersionId("vTampered")),
-        SignedAddOrChange(toSignedString(workflow2).tamper)
+        AddOrChangeSigned(toSignedString(workflow2).tamper)
       )).await(99.s) == Left(TamperedWithSignedMessageProblem))
     }
   }
@@ -106,7 +106,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
     // The signer signs the VersionId, too
     assert(controllerApi.updateItems(Observable(
       AddVersion(VersionId("DIVERGE")),
-      SignedAddOrChange(toSignedString(otherWorkflow4))
+      AddOrChangeSigned(toSignedString(otherWorkflow4))
     )).await(99.s) == Left(ItemVersionDoesNotMatchProblem(VersionId("DIVERGE"), otherWorkflow4.id)))
   }
 
@@ -123,12 +123,12 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "SignableItem" in {
-    controllerApi.updateItems(Observable(SignedAddOrChange(toSignedString(jobResource))))
+    controllerApi.updateItems(Observable(AddOrChangeSigned(toSignedString(jobResource))))
       .await(99.s).orThrow
   }
 
   "SignableItem, tampered" in {
-    assert(controllerApi.updateItems(Observable(SignedAddOrChange(toSignedString(jobResource).tamper)))
+    assert(controllerApi.updateItems(Observable(AddOrChangeSigned(toSignedString(jobResource).tamper)))
       .await(99.s) == Left(TamperedWithSignedMessageProblem))
   }
 }

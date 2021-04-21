@@ -13,7 +13,7 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
 import js7.data.agent.AgentId
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned}
 import js7.data.item.VersionId
 import js7.data.item.VersionedEvent.VersionedItemAdded
 import js7.data.job.RelativePathExecutable
@@ -73,7 +73,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
     "VersionId mismatch" in {
       val response = api.updateItems(Observable(
         AddVersion(VersionId("OTHER-VERSION")),
-        SignedAddOrChange(toSignedString(workflow))
+        AddOrChangeSigned(toSignedString(workflow))
       )).await(99.s)
       assert(response == Left(ItemVersionDoesNotMatchProblem(VersionId("OTHER-VERSION"), workflow.id)))
     }
@@ -83,7 +83,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
       proxy.awaitEvent[VersionedItemAdded](_.stampedEvent.value.event.signed.value == myWorkflow) {
         api.updateItems(Observable(
           AddVersion(versionId),
-          SignedAddOrChange(toSignedString(myWorkflow))
+          AddOrChangeSigned(toSignedString(myWorkflow))
         )).map { o => assert(o.orThrow == Completed) }
       }.await(99.s)
     }

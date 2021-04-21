@@ -34,7 +34,7 @@ import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentId, AgentRef}
 import js7.data.controller.ControllerState.signableItemJsonCodec
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteVersioned}
 import js7.data.item.{ItemOperation, ItemPath, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
@@ -172,13 +172,13 @@ extends HasCloser
           if (simpleItems.nonEmpty || versionedItems.nonEmpty) {
             runningController
               .updateItemsAsSystemUser(
-                Observable.fromIterable(simpleItems).map(ItemOperation.SimpleAddOrChange) ++
+                Observable.fromIterable(simpleItems).map(ItemOperation.AddOrChangeSimple) ++
                   Observable.fromIterable(
                     versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
                   Observable.fromIterable(versionedItems)
                     .map(_ withVersion Vinitial)
                     .map(itemSigner.toSignedString)
-                    .map(ItemOperation.SignedAddOrChange.apply))
+                    .map(ItemOperation.AddOrChangeSigned.apply))
               .await(99.s).orThrow
           }
         }
@@ -226,9 +226,9 @@ extends HasCloser
         (Observable.fromIterable(change)
           .map(_ withVersion versionId)
           .map(itemSigner.toSignedString)
-          .map(SignedAddOrChange(_)) ++
+          .map(AddOrChangeSigned(_)) ++
           Observable.fromIterable(delete)
-            .map(VersionedDelete.apply))
+            .map(DeleteVersioned.apply))
     ).await(99.s).orThrow
 
   private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")

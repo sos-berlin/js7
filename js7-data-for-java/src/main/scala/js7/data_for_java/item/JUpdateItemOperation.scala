@@ -2,7 +2,7 @@ package  js7.data_for_java.item
 
 import javax.annotation.Nonnull
 import js7.base.crypt.SignedString
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleDelete, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteSimple, DeleteVersioned}
 import js7.data.item.{ItemOperation, ItemPath, SimpleItemId, VersionId}
 import js7.data_for_java.common.JavaWrapper
 
@@ -16,13 +16,13 @@ object JUpdateItemOperation
 {
   @Nonnull
   def addOrChangeSimple(@Nonnull item: JUnsignedSimpleItem) =
-    new JUpdateItemOperation(ItemOperation.SimpleAddOrChange(item.asScala))
+    new JUpdateItemOperation(ItemOperation.AddOrChangeSimple(item.asScala))
 
   /** Deletes a non-versioned item. */
   @Nonnull
   def deleteSimple(@Nonnull itemId: SimpleItemId): JUpdateItemOperation =
     new JUpdateItemOperation(
-      SimpleDelete(itemId))
+      DeleteSimple(itemId))
 
   /** Required exactly once if any of addReplace(SignedString) or deleteItem(ItemPath) is used. */
   def addVersion(versionId: VersionId) =
@@ -41,7 +41,7 @@ object JUpdateItemOperation
   @Nonnull
   def addOrChangeSigned(@Nonnull signedString: SignedString): JUpdateItemOperation =
     new JUpdateItemOperation(
-      SignedAddOrChange(signedString))
+      AddOrChangeSigned(signedString))
 
   /** BITTE VERWENDE deleteVersioned! */
   @Deprecated
@@ -54,5 +54,5 @@ object JUpdateItemOperation
   @Nonnull
   def deleteVersioned(@Nonnull path: ItemPath): JUpdateItemOperation =
     new JUpdateItemOperation(
-      VersionedDelete(path))
+      DeleteVersioned(path))
 }

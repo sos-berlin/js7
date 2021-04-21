@@ -10,7 +10,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentId
 import js7.data.event.EventSeq
-import js7.data.item.ItemOperation.{AddVersion, SimpleDelete}
+import js7.data.item.ItemOperation.{AddVersion, DeleteSimple}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockId, LockState}
@@ -353,7 +353,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val v = VersionId("DELETE")
     assert(controllerApi.updateItems(Observable(
       AddVersion(v),
-      SimpleDelete(lockId)
+      DeleteSimple(lockId)
     )).await(99.s) == Left(Problem(
       "Lock cannot be deleted")))
   }

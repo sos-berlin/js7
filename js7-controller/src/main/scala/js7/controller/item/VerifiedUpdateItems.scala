@@ -7,7 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.crypt.SignedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleAddOrChange, SimpleDelete, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, AddOrChangeSimple, DeleteSimple, DeleteVersioned}
 import js7.data.item.{ItemOperation, ItemPath, SignableItem, SignableSimpleItem, SimpleItemId, UnsignedSimpleItem, VersionId, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
@@ -56,7 +56,7 @@ object VerifiedUpdateItems
 
     observable
       .mapParallelUnorderedBatch() {
-          case SignedAddOrChange(signedString) =>
+          case AddOrChangeSigned(signedString) =>
             if (problemOccurred.isEmpty)
               verify(signedString) match {
                 case Left(problem) =>
@@ -71,11 +71,11 @@ object VerifiedUpdateItems
           case o => o
         }
       .foreachL {
-        case SimpleAddOrChange(item) => unsignedSimpleItems_ += item
-        case SimpleDelete(itemId) => simpleDeletes_ += itemId
+        case AddOrChangeSimple(item) => unsignedSimpleItems_ += item
+        case DeleteSimple(itemId) => simpleDeletes_ += itemId
         case verifiedItem: Verified[SignableItem] @unchecked => signedItems_ += verifiedItem
         case () => assert(problemOccurred.nonEmpty)
-        case VersionedDelete(path) => versionedDeletes_ += path
+        case DeleteVersioned(path) => versionedDeletes_ += path
         case AddVersion(v) =>
           if (maybeVersionId.isEmpty) maybeVersionId = Some(v)
           else problemOccurred = Some(Problem("Duplicate AddVersion"))

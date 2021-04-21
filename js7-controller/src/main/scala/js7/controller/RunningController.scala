@@ -144,7 +144,7 @@ extends AutoCloseable
     VerifiedUpdateItems
       .fromOperations(
         Observable.fromIterable(items)
-          .map(ItemOperation.SimpleAddOrChange.apply),
+          .map(ItemOperation.AddOrChangeSimple.apply),
         _ => Left(Problem.pure("updateUnsignedSimpleItems and verify?")),
         user)
       .flatMapT(itemUpdater.updateItems)

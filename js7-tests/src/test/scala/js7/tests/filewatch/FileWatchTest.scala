@@ -16,7 +16,7 @@ import js7.data.agent.AgentId
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.CommonItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
-import js7.data.item.ItemOperation.SimpleDelete
+import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.item.UnsignedSimpleItemEvent.SimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.order.OrderEvent.OrderRemoved
@@ -129,7 +129,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Delete a FileWatch" in {
     val eventId = controller.eventWatch.lastAddedEventId
-    assert(controllerApi.updateItems(Observable(SimpleDelete(fileWatch.id))).await(99.s) ==
+    assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.id))).await(99.s) ==
       Right(Completed))
     controller.eventWatch.await[ItemDestroyed](_.event.id == fileWatch.id, after = eventId)
     val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)

@@ -156,7 +156,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
             Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"B$sh"))),
             Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"MISSING$sh"))))
         ).map(directoryProvider.itemSigner.toSignedString)
-          .map(ItemOperation.SignedAddOrChange.apply)
+          .map(ItemOperation.AddOrChangeSigned.apply)
     ).await(99.s).orThrow
   }
 

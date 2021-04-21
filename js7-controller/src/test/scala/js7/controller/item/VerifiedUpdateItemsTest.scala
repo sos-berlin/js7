@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.crypt.SignedItemVerifier
 import js7.data.crypt.SignedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleAddOrChange, SimpleDelete, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, AddOrChangeSimple, DeleteSimple, DeleteVersioned}
 import js7.data.item.{ItemSigner, SignableItem, VersionId, VersionedItem}
 import js7.data.lock.{Lock, LockId}
 import js7.data.workflow.instructions.Fail
@@ -42,7 +42,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
 
   "Simple items only" in {
     // TODO Test SignableSimpleItem
-    VerifiedUpdateItems.fromOperations(Observable(SimpleAddOrChange(lock), SimpleDelete(LockId("DELETE"))), noVerifier, user).await(99.s) ==
+    VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(LockId("DELETE"))), noVerifier, user).await(99.s) ==
       Right(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Nil),
         maybeVersioned = None))
@@ -50,11 +50,11 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
 
   "Verification" in {
     val operations = Observable(
-      SimpleAddOrChange(lock),
-      SimpleDelete(LockId("DELETE")),
+      AddOrChangeSimple(lock),
+      DeleteSimple(LockId("DELETE")),
       AddVersion(v1),
-      SignedAddOrChange(itemSigner.toSignedString(workflow1)),
-      VersionedDelete(WorkflowPath("DELETE")))
+      AddOrChangeSigned(itemSigner.toSignedString(workflow1)),
+      DeleteVersioned(WorkflowPath("DELETE")))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Right(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Seq(LockId("DELETE"))),
@@ -71,17 +71,17 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
     val wrongSignature = itemSigner.toSignedString(workflow2).signature
     val operations = Observable(
       AddVersion(v1),
-      SignedAddOrChange(itemSigner.toSignedString(workflow1).copy(signature = wrongSignature)))
+      AddOrChangeSigned(itemSigner.toSignedString(workflow1).copy(signature = wrongSignature)))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Left(TamperedWithSignedMessageProblem))
   }
 
   "Duplicate SimpleItems are rejected" in {
     assert(
-      VerifiedUpdateItems.fromOperations(Observable(SimpleAddOrChange(lock), SimpleAddOrChange(lock)), noVerifier, user).await(99.s) ==
+      VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), AddOrChangeSimple(lock)), noVerifier, user).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Lock:LOCK-1")))
     assert(
-      VerifiedUpdateItems.fromOperations(Observable(SimpleAddOrChange(lock), SimpleDelete(lock.id)), noVerifier, user).await(99.s) ==
+      VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(lock.id)), noVerifier, user).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Lock:LOCK-1")))
   }
 
@@ -90,8 +90,8 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       VerifiedUpdateItems.fromOperations(
         Observable(
           AddVersion(v1),
-          SignedAddOrChange(itemSigner.toSignedString(workflow1)),
-          SignedAddOrChange(itemSigner.toSignedString(Workflow.of(workflow1.id)))),
+          AddOrChangeSigned(itemSigner.toSignedString(workflow1)),
+          AddOrChangeSigned(itemSigner.toSignedString(Workflow.of(workflow1.id)))),
         itemVerifier.verify,
         user
       ).await(99.s) ==
@@ -101,8 +101,8 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       VerifiedUpdateItems.fromOperations(
         Observable(
           AddVersion(v1),
-          SignedAddOrChange(itemSigner.toSignedString(workflow1)),
-          VersionedDelete(workflow1.path)),
+          AddOrChangeSigned(itemSigner.toSignedString(workflow1)),
+          DeleteVersioned(workflow1.path)),
         itemVerifier.verify,
         user
       ).await(99.s) ==

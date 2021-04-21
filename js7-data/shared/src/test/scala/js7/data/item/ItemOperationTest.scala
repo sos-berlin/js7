@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
 import js7.data.controller.ControllerState
 import js7.data.controller.ControllerState._
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, SimpleAddOrChange, SimpleDelete, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, AddOrChangeSimple, DeleteSimple, DeleteVersioned}
 import js7.data.lock.{Lock, LockId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -13,12 +13,12 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ItemOperationTest extends AnyFreeSpec
 {
   "JSON" - {
-    "SimpleAddOrChange" in {
+    "AddOrChangeSimple" in {
       testJson[ItemOperation](
-        SimpleAddOrChange(Lock(LockId("LOCK"))),
+        AddOrChangeSimple(Lock(LockId("LOCK"))),
         // itemRevision is optional and should not be given !!!
         json"""{
-          "TYPE": "SimpleAddOrChange",
+          "TYPE": "AddOrChangeSimple",
           "item": {
             "TYPE": "Lock",
             "id": "LOCK",
@@ -27,11 +27,11 @@ final class ItemOperationTest extends AnyFreeSpec
         }""")
     }
 
-    "SimpleDelete" in {
+    "DeleteSimple" in {
       testJson[ItemOperation](
-        SimpleDelete(LockId("LOCK")),
+        DeleteSimple(LockId("LOCK")),
         json"""{
-          "TYPE": "SimpleDelete",
+          "TYPE": "DeleteSimple",
           "id": "Lock:LOCK"
         } """)
     }
@@ -45,13 +45,13 @@ final class ItemOperationTest extends AnyFreeSpec
         }""")
     }
 
-    "SignedAddOrChange" in {
+    "AddOrChangeSigned" in {
       val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
       val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1")
       testJson[ItemOperation](
-        SignedAddOrChange(itemSigner.toSignedString(workflow)),
+        AddOrChangeSigned(itemSigner.toSignedString(workflow)),
         json"""{
-          "TYPE": "SignedAddOrChange",
+          "TYPE": "AddOrChangeSigned",
           "signedString": {
             "signature": {
               "TYPE": "Silly",
@@ -62,11 +62,11 @@ final class ItemOperationTest extends AnyFreeSpec
         }""")
     }
 
-    "VersionedDelete" in {
+    "DeleteVersioned" in {
       testJson[ItemOperation](
-        VersionedDelete(WorkflowPath("WORKFLOW")),
+        DeleteVersioned(WorkflowPath("WORKFLOW")),
         json"""{
-          "TYPE": "VersionedDelete",
+          "TYPE": "DeleteVersioned",
           "path": "Workflow:WORKFLOW"
         } """)
     }

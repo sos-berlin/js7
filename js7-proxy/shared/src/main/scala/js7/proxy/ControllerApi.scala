@@ -17,7 +17,7 @@ import js7.data.controller.ControllerCommand.{AddOrders, ReleaseEvents}
 import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange, VersionedDelete}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteVersioned}
 import js7.data.item.{ItemOperation, ItemPath, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItems}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
@@ -72,7 +72,7 @@ with AutoCloseable
   def updateAgentRefs(agentRefs: Seq[AgentRef]): Task[Checked[Accepted]] =
     updateItems(Observable
       .fromIterable(agentRefs)
-      .map(ItemOperation.SimpleAddOrChange.apply))
+      .map(ItemOperation.AddOrChangeSimple.apply))
       .map(_.map((_: Completed) => Accepted))
 
   def updateRepo(
@@ -83,8 +83,8 @@ with AutoCloseable
     val addOrChange = Observable.fromIterable(diff.added ++ diff.changed)
       .map(_ withVersion versionId)
       .map(itemSigner.toSignedString)
-      .map(SignedAddOrChange.apply)
-    val delete = Observable.fromIterable(diff.deleted).map(VersionedDelete.apply)
+      .map(AddOrChangeSigned.apply)
+    val delete = Observable.fromIterable(diff.deleted).map(DeleteVersioned.apply)
     updateItems(AddVersion(versionId) +: (addOrChange ++ delete))
   }
 
@@ -94,16 +94,16 @@ with AutoCloseable
     delete: immutable.Iterable[ItemPath] = Nil)
   : Task[Checked[Completed]] =
     updateItems(AddVersion(versionId) +: (
-      Observable.fromIterable(signedItems).map(o => SignedAddOrChange(o.signedString)) ++
-        Observable.fromIterable(delete).map(VersionedDelete.apply)))
+      Observable.fromIterable(signedItems).map(o => AddOrChangeSigned(o.signedString)) ++
+        Observable.fromIterable(delete).map(DeleteVersioned.apply)))
 
   def updateUnsignedSimpleItems(items: Iterable[UnsignedSimpleItem]): Task[Checked[Completed]] =
     updateItems(
-      Observable.fromIterable(items) map ItemOperation.SimpleAddOrChange.apply)
+      Observable.fromIterable(items) map ItemOperation.AddOrChangeSimple.apply)
 
   def updateSignedSimpleItems(items: Iterable[Signed[SignableItem]]): Task[Checked[Completed]] =
     updateItems(
-      Observable.fromIterable(items).map(o => ItemOperation.SignedAddOrChange(o.signedString)))
+      Observable.fromIterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString)))
 
   def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     untilReachable(_

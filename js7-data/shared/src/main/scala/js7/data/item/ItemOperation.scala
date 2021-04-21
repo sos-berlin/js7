@@ -13,10 +13,10 @@ object ItemOperation
 {
   sealed trait SimpleItemOperation extends ItemOperation
 
-  final case class SimpleAddOrChange(item: UnsignedSimpleItem)
+  final case class AddOrChangeSimple(item: UnsignedSimpleItem)
   extends SimpleItemOperation
 
-  final case class SimpleDelete(id: SimpleItemId)
+  final case class DeleteSimple(id: SimpleItemId)
   extends SimpleItemOperation
 
   sealed trait VersionedOperation extends ItemOperation
@@ -30,8 +30,8 @@ object ItemOperation
     : TypedJsonCodec[VersionedOperation] =
       TypedJsonCodec(
         Subtype(deriveCodec[AddVersion]),
-        Subtype(deriveCodec[SignedAddOrChange]),
-        Subtype(deriveCodec[VersionedDelete]))
+        Subtype(deriveCodec[AddOrChangeSigned]),
+        Subtype(deriveCodec[DeleteVersioned]))
   }
 
   final case class AddVersion(versionId: VersionId)
@@ -39,10 +39,10 @@ object ItemOperation
 
   sealed trait VersionedItemOperation extends VersionedOperation
 
-  final case class SignedAddOrChange(signedString: SignedString)
+  final case class AddOrChangeSigned(signedString: SignedString)
   extends VersionedItemOperation
 
-  final case class VersionedDelete(path: ItemPath)
+  final case class DeleteVersioned(path: ItemPath)
   extends VersionedItemOperation
 
   implicit def jsonCodec(implicit
@@ -54,8 +54,8 @@ object ItemOperation
     unsignedSimpleItemJsonDecoder: Decoder[UnsignedSimpleItem])
   : TypedJsonCodec[ItemOperation] =
     TypedJsonCodec(
-      Subtype(deriveCodec[SimpleAddOrChange]),
-      Subtype(deriveCodec[SimpleDelete]),
+      Subtype(deriveCodec[AddOrChangeSimple]),
+      Subtype(deriveCodec[DeleteSimple]),
       Subtype[VersionedOperation])
 
   intelliJuseImport(signableItemJsonCodec)

@@ -12,12 +12,19 @@ trait JavaJobContext extends JavaWrapper
 
   def asScala: JobContext
 
-  final val js7Executor: java.util.concurrent.Executor =
-    asScala.js7Scheduler
-
   lazy val jobKey: JobKey =
     asScala.jobConf.jobKey
 
   lazy val jobArguments: java.util.Map[String, Value] =
     asScala.executable.jobArguments.asJava
+
+  /** The `Executor` internally used by JS7.
+    * <ul><li>
+    * Use only if you know what you to!
+    * <li>
+    * Never provide a thread-blocking `Runnable`!
+    * </li>
+    */
+  final val internalJs7Executor: java.util.concurrent.Executor =
+    asScala.js7Scheduler
 }

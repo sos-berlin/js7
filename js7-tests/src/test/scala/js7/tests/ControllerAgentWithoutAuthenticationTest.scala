@@ -93,9 +93,9 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       controller.waitUntilReady()
 
       controller.updateItemsAsSystemUser(Observable(
-        ItemOperation.SimpleAddOrChange(agentRef),
+        ItemOperation.AddOrChangeSimple(agentRef),
         ItemOperation.AddVersion(versionId),
-        ItemOperation.SignedAddOrChange(itemSigner.toSignedString(workflow)))
+        ItemOperation.AddOrChangeSigned(itemSigner.toSignedString(workflow)))
       ).await(99.s).orThrow
 
       body(controller, agentPort)

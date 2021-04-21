@@ -22,7 +22,7 @@ import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemDeletedProblem
 import js7.data.agent.AgentId
-import js7.data.item.ItemOperation.{AddVersion, SignedAddOrChange}
+import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
@@ -190,7 +190,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           Observable.fromIterable(1 to n)
             .mapParallelUnorderedBatch() { i =>
               val workflow = workflow0.withId(WorkflowPath(s"WORKFLOW-$i") ~ v)
-              SignedAddOrChange(provider.toSignedString(workflow))
+              AddOrChangeSigned(provider.toSignedString(workflow))
             }
             .prepend(AddVersion(v))
             .toL(Vector)
