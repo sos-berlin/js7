@@ -15,5 +15,7 @@ final case class JobExecutorConf(
 
 object JobExecutorConf
 {
+  // TODO Put this constants at a central place
   val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
+  val ErrLineLengthMaximum = 4096  // Has to fit into the journal
 }

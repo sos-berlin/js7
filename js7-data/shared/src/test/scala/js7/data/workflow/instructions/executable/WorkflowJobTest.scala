@@ -44,7 +44,8 @@ final class WorkflowJobTest extends AnyFreeSpec
           Seq(JobResourceId("JOB-RESOURCE")),
           ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))),
           taskLimit = 3,
-          Some(10.s)),
+          Some(10.s),
+          failOnErrWritten = true),
         json"""{
           "agentId": "AGENT",
           "executable": {
@@ -55,14 +56,15 @@ final class WorkflowJobTest extends AnyFreeSpec
             "NAME": "VALUE",
             "NUMBER": 7
           },
-         "jobResourceIds": [
-           "JOB-RESOURCE"
-         ],
+          "jobResourceIds": [
+            "JOB-RESOURCE"
+          ],
           "returnCodeMeaning": {
             "success": [ 0, 1 ]
           },
           "taskLimit": 3,
-          "sigkillDelay": 10
+          "sigkillDelay": 10,
+          "failOnErrWritten": true
         }""")
     }
   }

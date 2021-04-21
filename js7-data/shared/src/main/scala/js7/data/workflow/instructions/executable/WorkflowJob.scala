@@ -29,7 +29,8 @@ final case class WorkflowJob private(
   jobResourceIds: Seq[JobResourceId] = Nil,
   returnCodeMeaning: ReturnCodeMeaning/*TODO Move to ProcessExecutable*/,
   taskLimit: Int,/*TODO Rename as parallelism*/
-  sigkillDelay: Option[FiniteDuration]/*TODO Move to ProcessExecutable*/)
+  sigkillDelay: Option[FiniteDuration]/*TODO Move to ProcessExecutable*/,
+  failOnErrWritten: Boolean)
 {
   def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
     Outcome.Completed(
@@ -69,10 +70,12 @@ object WorkflowJob
     jobResourceIds: Seq[JobResourceId] = Nil,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
-    sigkillDelay: Option[FiniteDuration] = None)
+    sigkillDelay: Option[FiniteDuration] = None,
+    failOnErrWritten: Boolean = false)
   : WorkflowJob =
-    checked(agentId, executable, defaultArguments, jobResourceIds, returnCodeMeaning, taskLimit, sigkillDelay)
-      .orThrow
+    checked(agentId, executable, defaultArguments, jobResourceIds, returnCodeMeaning, taskLimit, sigkillDelay,
+      failOnErrWritten = failOnErrWritten
+    ).orThrow
 
   def checked(
     agentId: AgentId,
@@ -81,11 +84,13 @@ object WorkflowJob
     jobResourceIds: Seq[JobResourceId] = Nil,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
-    sigkillDelay: Option[FiniteDuration] = None)
+    sigkillDelay: Option[FiniteDuration] = None,
+    failOnErrWritten: Boolean = false)
   : Checked[WorkflowJob] =
     for (_ <- jobResourceIds.checkUniqueness) yield
       new WorkflowJob(
-        agentId, executable, defaultArguments, jobResourceIds, returnCodeMeaning, taskLimit, sigkillDelay)
+        agentId, executable, defaultArguments, jobResourceIds, returnCodeMeaning,
+        taskLimit, sigkillDelay, failOnErrWritten)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -97,31 +102,27 @@ object WorkflowJob
 
   /** To be used in Workflow with known WorkflowId. */
   implicit val jsonEncoder: Encoder.AsObject[WorkflowJob] = workflowJob =>
-    JsonObject.fromIterable(
-      //(workflowJob.jobKey match {
-      //  case JobKey.Named(_, jobName) => ("jobName" -> jobName.asJson) :: Nil
-      //  case _ => Nil
-      //}) :::
-      ("agentId" -> workflowJob.agentId.asJson) ::
-      ("executable" -> workflowJob.executable.asJson) ::
-      workflowJob.defaultArguments.nonEmpty.thenList("defaultArguments" -> workflowJob.defaultArguments.asJson) :::
-      ("jobResourceIds" -> workflowJob.jobResourceIds.??.asJson) ::
-      (workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default thenList ("returnCodeMeaning" -> workflowJob.returnCodeMeaning.asJson)) :::
-      ("taskLimit" -> workflowJob.taskLimit.asJson) ::
-      ("sigkillDelay" -> workflowJob.sigkillDelay.asJson) ::
-      Nil)
+    JsonObject(
+      "agentId" -> workflowJob.agentId.asJson,
+      "executable" -> workflowJob.executable.asJson,
+      "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
+      "jobResourceIds" -> workflowJob.jobResourceIds.??.asJson,
+      "returnCodeMeaning" -> ((workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default) ? workflowJob.returnCodeMeaning).asJson,
+      "taskLimit" -> workflowJob.taskLimit.asJson,
+      "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
+      "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson)
 
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
-      //jobName <- cursor.get[Option[Name]]("jobName").map(_ getOrElse Name.Anonymous)
       executable <- cursor.get[Executable]("executable")
       agentId <- cursor.get[AgentId]("agentId")
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       jobResourceIds <- cursor.getOrElse[Seq[JobResourceId]]("jobResourceIds")(Nil)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
-      taskLimit <- cursor.get[Int]("taskLimit")
+      taskLimit <- cursor.getOrElse[Int]("taskLimit")(DefaultTaskLimit)
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
-      job <- checked(agentId, executable, arguments, jobResourceIds, rc, taskLimit, sigkillDelay)
+      failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
+      job <- checked(agentId, executable, arguments, jobResourceIds, rc, taskLimit, sigkillDelay, failOnErrWritten)
         .toDecoderResult(cursor.history)
     } yield job
 }

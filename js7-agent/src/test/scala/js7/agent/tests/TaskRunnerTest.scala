@@ -63,7 +63,7 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
         historicOutcomes = Seq(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
       val taskRunner = newTaskRunner(taskConfiguration)
       val out, err = PublishSubject[String]()
-      val stdObservers = StdObservers(out, err, charBufferSize = 7)
+      val stdObservers = new StdObservers(out, err, charBufferSize = 7, keepLastErrLine = false)
       val whenOut = out.foldL.runToFuture
       val whenErr = err.foldL.runToFuture
       val ended = taskRunner.processOrder(order.id, Map("VAR1" -> "VALUE1"), stdObservers)

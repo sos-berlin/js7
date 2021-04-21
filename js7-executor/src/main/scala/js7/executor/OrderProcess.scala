@@ -19,16 +19,17 @@ trait OrderProcess
   def cancel(immediately: Boolean): Task[Unit] =
     Task { future.cancel() }
 
-  final def runToFuture(implicit s: Scheduler): CancelableFuture[Outcome.Completed] =
-    futureOnce getOrUpdate
+  final def runToFuture(stdObservers: StdObservers)(implicit s: Scheduler): CancelableFuture[Outcome.Completed] =
+    futureOnce.getOrUpdate(
       run
+        .tapEval(_ => stdObservers.stop)
         .onCancelRaiseError(CanceledException)
         .materialize.map {
           case Failure(CanceledException) => Outcome.Failed(Some("Canceled"))
           case Failure(t) => Outcome.Failed.fromThrowable(t)
           case Success(o) => o
         }
-        .runToFuture
+        .runToFuture)
 }
 
 object OrderProcess

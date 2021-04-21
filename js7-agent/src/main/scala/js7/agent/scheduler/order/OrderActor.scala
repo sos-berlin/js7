@@ -128,7 +128,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             writeObservableAsEvents(Stdout, out),
             writeObservableAsEvents(Stderr, err)
           ).void.runToFuture
-          val stdObservers = StdObservers(out, err, charBufferSize = charBufferSize)
+          val stdObservers = new StdObservers(out, err, charBufferSize = charBufferSize,
+            keepLastErrLine = workflowJob.failOnErrWritten)
           become("processing")(
             processing(jobActor, stdObservers, outErrCompleted,
               () => (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) ?
@@ -164,7 +165,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           case o => o
         }
         context.unwatch(jobActor)
-        stdObservers.stop
+        stdObservers.stop/*may already be stopped by OrderProcess/JobActor*/
           .flatMap(_ => Task.fromFuture(outerrCompleted))
           .runToFuture
           .onComplete { _ =>
@@ -395,7 +396,10 @@ private[order] object OrderActor
     final case class OrderChanged(order: Order[Order.State], events: Seq[OrderEvent])
   }
 
-  final case class Conf(stdoutCommitDelay: FiniteDuration, charBufferSize: Int, journalConf: JournalConf,
+  final case class Conf(
+    stdoutCommitDelay: FiniteDuration,
+    charBufferSize: Int,
+    journalConf: JournalConf,
     stdouterr: StdouterrConf)
   object Conf {
     def apply(config: Config, journalConf: JournalConf) = {

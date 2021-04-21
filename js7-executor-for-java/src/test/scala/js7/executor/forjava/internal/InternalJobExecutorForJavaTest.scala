@@ -99,6 +99,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
     val out, err = PublishSubject[String]()
     val outFuture = out.fold.lastOrElseL("").runToFuture
     val errFuture = err.fold.lastOrElseL("").runToFuture
+    val stdObservers = new StdObservers(out, err, 4096, keepLastErrLine = false)
     executor
       .start
       .flatMapT(_ =>
@@ -109,9 +110,9 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
               workflow,
               executor.jobConf.workflowJob,
               NamedValues("ORDER_ARG" -> arg),
-              StdObservers(out, err, 4096)))
+              stdObservers))
           .orThrow
-          .runToFuture)
+          .runToFuture(stdObservers))
         .guarantee(Task {
           try out.onComplete()
           finally err.onComplete()

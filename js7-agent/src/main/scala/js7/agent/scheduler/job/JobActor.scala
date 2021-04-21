@@ -11,6 +11,7 @@ import js7.base.thread.IOExecutor
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{JobConf, JobResource, JobResourceId}
+import js7.data.order.Outcome.Succeeded
 import js7.data.order.{OrderId, Outcome}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.internal.JobExecutor
@@ -20,7 +21,7 @@ import monix.execution.Scheduler
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 
-final class JobActor private(
+private[agent] final class JobActor private(
   jobConf: JobConf,
   jobExecutorConf: JobExecutorConf,
   idToJobResource: JobResourceId => Checked[JobResource])
@@ -85,12 +86,19 @@ extends Actor with Stash
             case Right(orderProcess) =>
               orderToProcess.insert(order.id -> orderProcess)
               orderProcess
-                .runToFuture
+                .runToFuture(processOrder.stdObservers)  // runToFuture completes the out/err observers
                 .onComplete { tried =>
                   val outcome = tried match {
+                    case Success(outcome: Succeeded) =>
+                      processOrder.stdObservers.errorLine match {
+                        case None => outcome
+                        case Some(errorLine) =>
+                          assert(workflowJob.failOnErrWritten)  // see OrderActor
+                          Outcome.Failed(Some(s"The job's error channel: $errorLine"))
+                      }
                     case Success(o) => o
                     case Failure(t) =>
-                      logger.error(s"${ order }: ${ t.toStringWithCauses }", t.nullIfNoStackTrace)
+                      logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                       Outcome.Failed.fromThrowable(t)
                   }
                   self.!(Internal.TaskFinished(order.id, outcome))(sender)
@@ -189,7 +197,7 @@ extends Actor with Stash
   private def taskCount = orderToProcess.size
 }
 
-object JobActor
+private[agent] object JobActor
 {
   def props(
     jobConf: JobConf,
