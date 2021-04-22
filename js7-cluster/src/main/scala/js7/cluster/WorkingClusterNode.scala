@@ -13,6 +13,7 @@ import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.Problems.ClusterNodesAlreadyAppointed
 import js7.cluster.WorkingClusterNode._
+import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
@@ -124,13 +125,15 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
           .flatMapT(_.appointNodes(setting))
     }
 
-  private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId) = {
-    val activeClusterNode = new ActiveClusterNode(clusterState, persistence, eventWatch, common, clusterConf)
-    if (_activeClusterNode.trySet(activeClusterNode))
-      activeClusterNode.start(eventId)
-    else
-      Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
-  }
+  private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Completed]] =
+    Task(LicenseChecker.checkLicense(ClusterConf.ProductName))
+      .flatMapT { _ =>
+        val activeClusterNode = new ActiveClusterNode(clusterState, persistence, eventWatch, common, clusterConf)
+        if (_activeClusterNode.trySet(activeClusterNode))
+          activeClusterNode.start(eventId)
+        else
+          Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
+      }
 
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =
     _activeClusterNode.task

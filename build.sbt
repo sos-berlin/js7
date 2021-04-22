@@ -171,6 +171,7 @@ lazy val js7 = (project in file("."))
     `js7-provider`,
     `js7-proxy`.jvm,
     `js7-tests`,
+    `js7-license-dummy`,
     `js7-build-info`)
   .settings(skip in publish := true)
 
@@ -574,10 +575,21 @@ lazy val `js7-agent-data` = project.dependsOn(`js7-common`, `js7-data`.jvm, `js7
       lmaxDisruptor % "test"
   }
 
+lazy val `js7-license-dummy` = project.dependsOn(`js7-core`)
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTest % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
 lazy val `js7-tests` = project
   .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
     `js7-core` % "test->test", `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test",
-    `js7-executor-for-java` % "test->test")
+    `js7-executor-for-java` % "test->test",
+    `js7-license-dummy`)
   .settings(
     commonSettings,
     skip in publish := true,
