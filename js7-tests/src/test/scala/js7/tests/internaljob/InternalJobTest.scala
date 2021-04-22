@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.command.CancelMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventRequest, KeyedEvent}
@@ -260,7 +260,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object InternalJobTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private def execute_[A: ClassTag] =
     Execute(

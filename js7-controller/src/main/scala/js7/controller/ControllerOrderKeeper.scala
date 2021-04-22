@@ -44,7 +44,7 @@ import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
-import js7.data.agent.{AgentId, AgentRef, AgentRefState, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{liveOrderEventHandler, liveOrderEventSource}
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor}
@@ -58,10 +58,10 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detach
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SignableSimpleItem, SignableSimpleItemId, UnsignedSimpleItem, VersionedEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, UnsignedSimpleItem, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
-import js7.data.orderwatch.{OrderWatchEvent, OrderWatchId}
+import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
@@ -282,8 +282,8 @@ with MainJournalingActor[ControllerState, Event]
         ).throwable
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
-      for (agentRef <- controllerState.idToAgentRefState.values.map(_.agentRef)) {
-        val agentRefState = controllerState.idToAgentRefState.getOrElse(agentRef.id, AgentRefState(agentRef))
+      for (agentRef <- controllerState.pathToAgentRefState.values.map(_.agentRef)) {
+        val agentRefState = controllerState.pathToAgentRefState.getOrElse(agentRef.id, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
       }
 
@@ -355,7 +355,7 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
 
-      _controllerState.allOrderWatchesState.idToOrderWatchState.keys foreach proceedWithItem
+      _controllerState.allOrderWatchesState.pathToOrderWatchState.keys foreach proceedWithItem
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
       orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now))
@@ -363,7 +363,7 @@ with MainJournalingActor[ControllerState, Event]
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${_controllerState.idToOrder.size} Orders, " +
           s"${_controllerState.repo.typedCount[Workflow]} Workflows and " +
-          s"${_controllerState.idToAgentRefState.size} AgentRefs recovered")
+          s"${_controllerState.pathToAgentRefState.size} AgentRefs recovered")
       }
       // Any ordering when continuing orders???
       proceedWithOrders(_controllerState.idToOrder.keys)
@@ -492,7 +492,7 @@ with MainJournalingActor[ControllerState, Event]
               case KeyedEvent(_: NoKey, _: ItemDetached) =>
                 Timestamped(keyedEvent) :: Nil
 
-              case KeyedEvent(_: OrderWatchId, _: OrderWatchEvent) =>
+              case KeyedEvent(_: OrderWatchPath, _: OrderWatchEvent) =>
                 Timestamped(keyedEvent) :: Nil
 
               case _ =>
@@ -599,7 +599,7 @@ with MainJournalingActor[ControllerState, Event]
         })
   }
 
-  private def agentRequiresItem(agentId: AgentId, itemId: InventoryItemId): Boolean =
+  private def agentRequiresItem(agentId: AgentPath, itemId: InventoryItemId): Boolean =
     // Maybe optimize ??? Changed item needs only to be attached if it is needed by an attached order
     true
 
@@ -619,9 +619,9 @@ with MainJournalingActor[ControllerState, Event]
 
   private def simpleItemIdToDeletedEvent(id: InventoryItemId): Checked[Option[InventoryItemEvent]] =
     id match {
-      case id: OrderWatchId =>
+      case id: OrderWatchPath =>
         Right(
-          _controllerState.allOrderWatchesState.idToOrderWatchState
+          _controllerState.allOrderWatchesState.pathToOrderWatchState
             .get(id)
             .flatMap(orderWatchState =>
               !orderWatchState.delete ? (
@@ -949,11 +949,11 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithItem(itemId: InventoryItemId): Unit =
     itemId match {
-      case agentId: AgentId =>
+      case agentId: AgentPath =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
 
-      case itemId: OrderWatchId =>
-        for (orderWatchState <- _controllerState.allOrderWatchesState.idToOrderWatchState.get(itemId)) {
+      case itemId: OrderWatchPath =>
+        for (orderWatchState <- _controllerState.allOrderWatchesState.pathToOrderWatchState.get(itemId)) {
           import orderWatchState.orderWatch
           for ((agentId, attachedState) <- orderWatchState.agentIdToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
@@ -971,7 +971,7 @@ with MainJournalingActor[ControllerState, Event]
           }
         }
 
-      case itemId: SignableSimpleItemId =>
+      case itemId: SignableSimpleItemPath =>
         for (agentToAttachedState <- _controllerState.itemIdToAgentToAttachedState.get(itemId)) {
           for ((agentId, attachedState) <- agentToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
@@ -1121,7 +1121,7 @@ with MainJournalingActor[ControllerState, Event]
       if (order.isAttaching) {
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
-          val jobResources = signedWorkflow.value.referencedJobResourceIds
+          val jobResources = signedWorkflow.value.referencedJobResourcePaths
             .flatMap(_controllerState.idToSignedSimpleItem.get)
           for (signedItem <- jobResources ++ View(signedWorkflow)) {
             val item = signedItem.value
@@ -1233,8 +1233,8 @@ private[controller] object ControllerOrderKeeper
     def checked(orderId: OrderId) = idToOrder.get(orderId).toChecked(UnknownOrderProblem(orderId))
   }
 
-  private class AgentRegister extends ActorRegister[AgentId, AgentEntry](_.actor) {
-    override def insert(kv: (AgentId, AgentEntry)) = super.insert(kv)
+  private class AgentRegister extends ActorRegister[AgentPath, AgentEntry](_.actor) {
+    override def insert(kv: (AgentPath, AgentEntry)) = super.insert(kv)
     override def -=(a: ActorRef) = super.-=(a)
 
     def update(agentRef: AgentRef): Unit = {

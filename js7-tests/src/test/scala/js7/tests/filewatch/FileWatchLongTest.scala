@@ -8,12 +8,12 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDestroyed}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.OrderId
-import js7.data.orderwatch.{FileWatch, OrderWatchId}
+import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchLongTest._
 import js7.tests.jobs.DeleteFileJob
@@ -41,7 +41,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
   private lazy val fileWatch = FileWatch(
-    OrderWatchId("TEST-WATCH"),
+    OrderWatchPath("TEST-WATCH"),
     workflow.path,
     agentId,
     sourceDirectory.toString)
@@ -69,13 +69,13 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
     assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.id))).await(99.s) ==
       Right(Completed))
     controller.eventWatch.await[ItemDestroyed](_.event.id == fileWatch.id)
-    assert(controller.controllerState.await(99.s).allOrderWatchesState.idToOrderWatchState.isEmpty)
+    assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }
 
 object FileWatchLongTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

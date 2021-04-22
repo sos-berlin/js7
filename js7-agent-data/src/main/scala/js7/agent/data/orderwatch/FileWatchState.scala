@@ -9,7 +9,7 @@ import js7.base.io.file.watch.DirectoryState
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchId}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import monix.reactive.Observable
 import scala.collection.mutable
 
@@ -52,16 +52,16 @@ final case class FileWatchState(
 object FileWatchState
 {
   sealed trait Snapshot {
-    def orderWatchId: OrderWatchId
+    def orderWatchPath: OrderWatchPath
   }
 
   final case class HeaderSnapshot(fileWatch: FileWatch)
   extends Snapshot {
-    def orderWatchId = fileWatch.id
+    def orderWatchPath = fileWatch.id
   }
 
   final case class EntrySnapshot(
-    orderWatchId: OrderWatchId,
+    orderWatchPath: OrderWatchPath,
     path: Path)
   extends Snapshot
 

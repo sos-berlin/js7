@@ -7,7 +7,7 @@ import js7.data.event.JournaledState
 
 sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent
 {
-  def id: SimpleItemId
+  def id: SimpleItemPath
 }
 
 object UnsignedSimpleItemEvent

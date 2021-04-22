@@ -31,7 +31,7 @@ import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredController}
-import js7.data.agent.{AgentId, AgentRefStateEvent, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRefStateEvent, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemId, SignableItem}
@@ -55,7 +55,7 @@ import shapeless.tag.@@
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver private(agentId: AgentId,
+final class AgentDriver private(agentId: AgentPath,
   initialUri: Uri,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
@@ -466,7 +466,7 @@ private[controller] object AgentDriver
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
-  def props(agentId: AgentId, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
+  def props(agentId: AgentPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
     agentDriverConfiguration: AgentDriverConfiguration, controllerConfiguration: ControllerConfiguration,
     journalActor: ActorRef @@ JournalActor.type)(implicit s: Scheduler)
   =
@@ -493,7 +493,7 @@ private[controller] object AgentDriver
     final case class DetachItem(id: InventoryItemId)
     extends Input with Queueable
 
-    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentId)
+    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentPath)
     extends Input with Queueable {
       override lazy val hashCode = order.id.hashCode
 

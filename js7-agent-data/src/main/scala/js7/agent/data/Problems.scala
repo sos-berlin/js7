@@ -1,7 +1,7 @@
 package js7.agent.data
 
 import js7.base.problem.Problem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.order.OrderId
 
@@ -14,12 +14,12 @@ object Problems
     override def httpStatusCode = 503  // Service unavailable
   }
 
-  final case class ControllerAgentMismatch(agentId: AgentId)
+  final case class ControllerAgentMismatch(agentId: AgentPath)
   extends Problem.Coded {
     def arguments = Map("agentId" -> agentId.string)
   }
 
-  final case class DuplicateAgentRef(first: AgentId, second: AgentId)
+  final case class DuplicateAgentRef(first: AgentPath, second: AgentPath)
   extends Problem.Coded {
     def arguments = Map(
       "first" -> first.string,

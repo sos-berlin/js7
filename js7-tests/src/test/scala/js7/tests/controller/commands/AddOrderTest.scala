@@ -10,7 +10,7 @@ import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, RemoveOrdersWhenTerminated}
 import js7.data.job.ScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderStdoutWritten}
@@ -93,7 +93,7 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object AddOrderTest
 {
   private val logger = Logger[this.type]
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val emptyWorkflow = Workflow.of(WorkflowPath("EMPTY"))
   private val stringParameter = WorkflowParameter("myString", StringValue, Some(StringValue("DEFAULT")))
   private val numberParameter = WorkflowParameter("myNumber", NumberValue)

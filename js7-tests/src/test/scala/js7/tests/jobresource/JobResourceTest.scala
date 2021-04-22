@@ -6,10 +6,10 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.job.{JobResource, JobResourceId, ScriptExecutable}
+import js7.data.job.{JobResource, JobResourcePath, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -37,7 +37,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Seq(workflow, envWorkflow, sosWorkflow)
 
-  "JobResourceId" in {
+  "JobResourcePath" in {
     controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)
       .await(99.s).orThrow
     controller.eventWatch.await[SignedItemAdded](_.event.id == aJobResource.id)
@@ -61,7 +61,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
         |""".stripMargin)
   }
 
-  "Change JobResourceId" in {
+  "Change JobResourcePath" in {
     val eventId = controller.eventWatch.lastAddedEventId
     controllerApi.updateSignedSimpleItems(Seq(sign(b1JobResource))).await(99.s).orThrow
     val orderId = OrderId("ORDER-1")
@@ -69,7 +69,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[ItemAttached](_.event.id == b1JobResource.id, after = eventId)
   }
 
-  "JobResourceId with variable references (there are no variables)" in {
+  "JobResourcePath with variable references (there are no variables)" in {
     val eventId = controller.eventWatch.lastAddedEventId
     controllerApi.updateSignedSimpleItems(Seq(sign(b2JobResource))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.id == b2JobResource.id, after = eventId)
@@ -85,7 +85,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(orderProcessed.outcome == Outcome.Failed(Some("No such named value: E")))
   }
 
-  "JobResourceId with environment variable access" in {
+  "JobResourcePath with environment variable access" in {
     controllerApi.updateSignedSimpleItems(Seq(sign(envJobResource))).await(99.s).orThrow
 
     val orderId = OrderId("ORDER-ENV")
@@ -114,25 +114,25 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object JobResourceTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val aJobResource = JobResource(
-    JobResourceId("JOB-RESOURCE-A"),
+    JobResourcePath("JOB-RESOURCE-A"),
     env = ObjectExpression(Map(
       "A" -> StringConstant("A of JOB-RESOURCE-A"),
       "B" -> StringConstant("B of JOB-RESOURCE-A"))))
 
   private val bJobResource = JobResource(
-    JobResourceId("JOB-RESOURCE-B"),
+    JobResourcePath("JOB-RESOURCE-B"),
     env = ObjectExpression(Map(
       "B" -> StringConstant("IGNORED"),
       "C" -> StringConstant("C of JOB-RESOURCE-B"),
       "E" -> StringConstant("E OF JOB-RESOURCE-B"))))
 
-  private val b1JobResource = JobResource(JobResourceId("JOB-RESOURCE-B"))
+  private val b1JobResource = JobResource(JobResourcePath("JOB-RESOURCE-B"))
 
   private val b2JobResource = JobResource(
-    JobResourceId("JOB-RESOURCE-B"),
+    JobResourcePath("JOB-RESOURCE-B"),
     env = ObjectExpression(Map(
       "B" -> StringConstant("IGNORED"),
       "E" -> ExpressionParser.parse(""""E=$E"""").orThrow)))
@@ -155,12 +155,12 @@ object JobResourceTest
             "D" -> StringConstant("D OF JOB ENV"),
             "E" -> StringConstant("E OF JOB ENV")))),
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
-        jobResourceIds = Seq(aJobResource.id, bJobResource.id)),
+        jobResourcePaths = Seq(aJobResource.id, bJobResource.id)),
       defaultArguments = Map("A" -> StringValue("A of Execute")))))
 
   private val envName = if (isWindows) "Path" else "PATH"
   private val envJobResource = JobResource(
-    JobResourceId("JOB-RESOURCE-ENV"),
+    JobResourcePath("JOB-RESOURCE-ENV"),
     env = ObjectExpression(Map(
       "ENV" -> ExpressionParser.parse(s"env('$envName')").orThrow)))
 
@@ -174,10 +174,10 @@ object JobResourceTest
             |set -euo pipefail
             |echo ENV=/$ENV/
             |""".stripMargin),
-        jobResourceIds = Seq(envJobResource.id)))))
+        jobResourcePaths = Seq(envJobResource.id)))))
 
   private val sosJobResource = JobResource(
-    JobResourceId("JOB-RESOURCE-SPS"),
+    JobResourcePath("JOB-RESOURCE-SPS"),
     env = ObjectExpression(Map(
       "JS7_CONTROLLER_ID"     -> ExpressionParser.parse("$js7ControllerId").orThrow,
       "JS7_WORKFLOW_NAME"     -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
@@ -227,5 +227,5 @@ object JobResourceTest
         //echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
         //echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
         //echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
-        jobResourceIds = Seq(sosJobResource.id)))))
+        jobResourcePaths = Seq(sosJobResource.id)))))
 }

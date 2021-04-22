@@ -10,7 +10,7 @@ import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{JobConf, JobResource, JobResourceId}
+import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{OrderId, Outcome}
 import js7.executor.configuration.JobExecutorConf
@@ -24,7 +24,7 @@ import scala.util.{Failure, Success}
 private[agent] final class JobActor private(
   jobConf: JobConf,
   jobExecutorConf: JobExecutorConf,
-  idToJobResource: JobResourceId => Checked[JobResource])
+  pathToJobResource: JobResourcePath => Checked[JobResource])
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends Actor with Stash
 {
@@ -37,7 +37,7 @@ extends Actor with Stash
   private var terminating = false
 
   private val checkedJobExecutor: Checked[JobExecutor] =
-    JobExecutor.checked(jobConf, jobExecutorConf, idToJobResource)
+    JobExecutor.checked(jobConf, jobExecutorConf, pathToJobResource)
 
   for (problem <- checkedJobExecutor.left) logger.error(problem.toString)
 
@@ -202,9 +202,9 @@ private[agent] object JobActor
   def props(
     jobConf: JobConf,
     executorConf: JobExecutorConf,
-    idToJobResource: JobResourceId => Checked[JobResource])
+    pathToJobResource: JobResourcePath => Checked[JobResource])
     (implicit s: Scheduler, iox: IOExecutor) =
-    Props { new JobActor(jobConf, executorConf, idToJobResource) }
+    Props { new JobActor(jobConf, executorConf, pathToJobResource) }
 
   object Response {
     final case class OrderProcessed(orderId: OrderId, outcome: Outcome, isKilled: Boolean)

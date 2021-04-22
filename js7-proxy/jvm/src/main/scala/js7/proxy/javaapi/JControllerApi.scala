@@ -130,7 +130,7 @@ extends AutoCloseable
     *     signatureString)
     * }}}
     * `SignedString.of` requires three arguments:
-    *   - `jsonString` is the JSON-encoded `VersionedItem`, i.e. a Workflow or an AgentId.
+    *   - `jsonString` is the JSON-encoded `VersionedItem`, i.e. a Workflow or an AgentPath.
     *     The item must include its id with `path` and `versionId`.
     *     The `versionId` must be the same as the one `JUpdateItemOperations.addVersion`.
     *   - "PGP" or any supported signature type.

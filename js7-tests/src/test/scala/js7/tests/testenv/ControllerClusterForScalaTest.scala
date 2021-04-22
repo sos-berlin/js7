@@ -17,7 +17,7 @@ import js7.common.auth.SecretStringGenerator
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.{ControllerTermination, RunningController}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.controller.ControllerCommand.ShutDown
@@ -38,7 +38,7 @@ trait ControllerClusterForScalaTest
 {
   this: TestSuite =>
 
-  protected def agentIds: Seq[AgentId] = AgentId("AGENT") :: Nil
+  protected def agentIds: Seq[AgentPath] = AgentPath("AGENT") :: Nil
   protected def versionedItems: Seq[VersionedItem]
   protected def shellScript = script(0.s)
 

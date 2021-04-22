@@ -114,7 +114,7 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
 
 object LockState
 {
-  def OrderLockNotAvailableProblem(lockId: LockId) =
+  def OrderLockNotAvailableProblem(lockId: LockPath) =
     Problem(s"Lock '${lockId.string}' is not available")
 
   implicit val jsonCodec = deriveCodec[LockState]

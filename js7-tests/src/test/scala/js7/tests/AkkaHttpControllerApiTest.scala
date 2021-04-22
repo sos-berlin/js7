@@ -8,7 +8,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.controller.client.AkkaHttpControllerApi
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AddOrder
 import js7.data.job.PathExecutable
 import js7.data.order.{FreshOrder, Order, OrderId}
@@ -97,10 +97,10 @@ private object AkkaHttpControllerApiTest
 {
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val TestWorkflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "INITIAL",
-    Execute(WorkflowJob(AgentId("MISSING"), PathExecutable("MISSING"))))
+    Execute(WorkflowJob(AgentPath("MISSING"), PathExecutable("MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh.StartImmediately)
   private val SecondOrder = Order(OrderId("SECOND-ORDER"), TestWorkflow.id, Order.Fresh.StartImmediately)
 
   private val attachedOrders = Set(TestOrder, SecondOrder)
-    .map(_.copy(attachedState = Some(Order.Attaching(AgentId("MISSING")))))
+    .map(_.copy(attachedState = Some(Order.Attaching(AgentPath("MISSING")))))
 }

@@ -10,7 +10,7 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDetachable, ItemDetached}
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
 import js7.data.item.RepoTest._
@@ -265,8 +265,8 @@ final class RepoTest extends AnyFreeSpec
 
 object RepoTest
 {
-  private val aAgentId = AgentId("AGENT-A")
-  private val bAgentId = AgentId("AGENT-B")
+  private val aAgentId = AgentPath("AGENT-A")
+  private val bAgentId = AgentPath("AGENT-B")
 
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")

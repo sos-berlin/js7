@@ -8,14 +8,14 @@ import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderRemoved, OrderStarted}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchId}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -45,7 +45,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
   private lazy val fileWatch = FileWatch(
-    OrderWatchId("TEST-WATCH"),
+    OrderWatchPath("TEST-WATCH"),
     workflow.path,
     agentId,
     sourceDirectory.toString)
@@ -95,7 +95,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
 
 object FileWatchNarrowPatternTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

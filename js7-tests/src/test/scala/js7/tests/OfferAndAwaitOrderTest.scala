@@ -5,7 +5,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.controller.RunningController
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAwaiting, OrderDetachable, OrderDetached, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -156,7 +156,7 @@ final class OfferAndAwaitOrderTest extends AnyFreeSpec
 
 object OfferAndAwaitOrderTest
 {
-  private val TestAgentId = AgentId("AGENT")
+  private val TestAgentId = AgentPath("AGENT")
   private val JoiningWorkflowId = WorkflowPath("A") ~ "INITIAL"
   private val OfferingWorkflowId = WorkflowPath("B") ~ "INITIAL"
 

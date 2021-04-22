@@ -11,7 +11,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.CirceJsonSupport._
 import js7.controller.web.controller.api.AgentRefRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
-import js7.data.agent.{AgentId, AgentRef, AgentRefState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -24,7 +24,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
 {
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected val idToAgentRefState = Task { Right(nameToAgent) }
+  protected val pathToAgentRefState = Task { Right(nameToAgent) }
 
   private def route: Route =
     pathSegments("api/agent") {
@@ -39,12 +39,12 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
   //  }
   //}
 
-  // Seq[AgentId]
+  // Seq[AgentPath]
   for (uri <- List(s"$AgentUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[Checked[Set[AgentId]]] == Right(nameToAgent.keySet))
+        assert(responseAs[Checked[Set[AgentPath]]] == Right(nameToAgent.keySet))
       }
     }
   }
@@ -81,7 +81,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
 object AgentRefRouteTest
 {
   private val AgentUri = "/api/agent"
-  private val aAgent = AgentRef(AgentId("A-AGENT"), Uri("https://localhost:0"))
-  private val bAgent = AgentRef(AgentId("B-AGENT"), Uri("https://localhost:65535"))
+  private val aAgent = AgentRef(AgentPath("A-AGENT"), Uri("https://localhost:0"))
+  private val bAgent = AgentRef(AgentPath("B-AGENT"), Uri("https://localhost:65535"))
   private val nameToAgent = Seq(aAgent, bAgent).map(AgentRefState.apply).toKeyedMap(_.agentId)
 }

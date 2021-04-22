@@ -1,7 +1,7 @@
 package  js7.data_for_java.agent;
 
 import js7.base.web.Uri;
-import js7.data.agent.AgentId;
+import js7.data.agent.AgentPath;
 import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -32,7 +32,7 @@ class JAgentRefTester
     }
 
     private void testAgentId() {
-        assertThat(agentRef.id(), equalTo(AgentId.of("AGENT")));
+        assertThat(agentRef.id(), equalTo(AgentPath.of("AGENT")));
     }
 
     private void testJson() {

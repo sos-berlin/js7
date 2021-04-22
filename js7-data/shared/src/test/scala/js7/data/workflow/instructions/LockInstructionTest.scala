@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
-import js7.data.lock.LockId
+import js7.data.lock.LockPath
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
@@ -12,7 +12,7 @@ final class LockInstructionTest extends AnyFreeSpec {
 
   "JSON" in {
     testJson[Instruction.Labeled](
-      LockInstruction(LockId("LOCK"), count = None, lockedWorkflow = Workflow.of()),
+      LockInstruction(LockPath("LOCK"), count = None, lockedWorkflow = Workflow.of()),
       json"""{
         "TYPE": "Lock",
         "lockId": "LOCK",
@@ -22,7 +22,7 @@ final class LockInstructionTest extends AnyFreeSpec {
       }""")
 
     testJson[Instruction.Labeled](
-      LockInstruction(LockId("LOCK"), count = Some(3), lockedWorkflow = Workflow.of(), sourcePos = Some(SourcePos(1, 2))),
+      LockInstruction(LockPath("LOCK"), count = Some(3), lockedWorkflow = Workflow.of(), sourcePos = Some(SourcePos(1, 2))),
       json"""{
         "TYPE": "Lock",
         "lockId": "LOCK",

@@ -6,7 +6,7 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.globalIOX
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichPartialFunction}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
@@ -30,7 +30,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
     val executable = InternalExecutable(
       classOf[TestInternalJob].getName,
       arguments = ObjectExpression(Map("ARG" -> NamedValue("ARG"))))
-    val workflowJob = WorkflowJob(AgentId("AGENT"), executable)
+    val workflowJob = WorkflowJob(AgentPath("AGENT"), executable)
     val executor = new InternalJobExecutor(
       executable,
       JobConf(

@@ -17,7 +17,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils._
 import js7.common.akkautils.ProvideActorSystem
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.controller.ControllerState
@@ -223,8 +223,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
 object ProxyHistoryTest
 {
   private val logger = Logger(getClass)
-  private val AAgentId = AgentId("AGENT-A")
-  private val BAgentId = AgentId("AGENT-B")
+  private val AAgentId = AgentPath("AGENT-A")
+  private val BAgentId = AgentPath("AGENT-B")
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""
      |define workflow {
      |  execute executable="${TestPathExecutable.path}", agent="AGENT-A";

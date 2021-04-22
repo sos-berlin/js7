@@ -30,7 +30,7 @@ import js7.common.akkautils.SupervisorStrategies
 import js7.common.http.CirceToYaml.ToYamlString
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
@@ -41,7 +41,7 @@ import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.orderwatch.{FileWatch, OrderWatchId}
+import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
@@ -64,7 +64,7 @@ import shapeless.tag
   */
 final class AgentOrderKeeper(
   controllerId: ControllerId,
-  ownAgentId: AgentId,
+  ownAgentId: AgentPath,
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   executorConf: JobExecutorConf,
@@ -295,7 +295,7 @@ with Stash {
     case AttachSignedItem(signed: Signed[SignableItem]) =>
       attachSignedItem(signed)
 
-    case DetachItem(id: OrderWatchId) =>
+    case DetachItem(id: OrderWatchPath) =>
       fileWatchManager.remove(id)
         .map(_.rightAs(AgentCommand.Response.Accepted))
         .runToFuture
@@ -460,7 +460,7 @@ with Stash {
           jobKey, job, workflow, controllerId,
           sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
         val jobActor = watch(actorOf(
-          JobActor.props(jobConf, executorConf, id => persistence.currentState.idToJobResource.checked(id)),
+          JobActor.props(jobConf, executorConf, id => persistence.currentState.pathToJobResource.checked(id)),
           uniqueActorName(encodeAsActorName("Job-" + jobKey.name))))
         jobRegister.insert(jobKey, job, jobActor)
       }

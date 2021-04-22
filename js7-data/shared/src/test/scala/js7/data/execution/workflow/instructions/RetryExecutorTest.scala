@@ -59,7 +59,7 @@ object RetryExecutorTest
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap.empty
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-      val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
+      val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
     }
     new RetryExecutor(() => now).toEvents(Retry(), order, stateView)
   }

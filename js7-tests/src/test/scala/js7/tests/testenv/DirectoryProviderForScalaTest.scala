@@ -10,7 +10,7 @@ import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.utils.HasCloser
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.{SignableItem, UnsignedSimpleItem, VersionedItem}
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
@@ -24,7 +24,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
 
-  protected def agentIds: Seq[AgentId]
+  protected def agentIds: Seq[AgentPath]
   protected def agentHttps = false
   protected def agentPorts: Iterable[Int] = Nil
   protected def doNotAddItems = false

@@ -7,9 +7,9 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.ItemPath
-import js7.data.lock.LockId
+import js7.data.lock.LockPath
 import scala.reflect.ClassTag
 
 /**
@@ -103,16 +103,16 @@ object BasicParsers
   def path[A <: ItemPath](implicit ctx: P[_], A: ItemPath.Companion[A]) = P[A](
     pathString.flatMap(p => checkedToP(A.checked(p))))
 
-  def agentId(implicit ctx: P[_]) = P[AgentId](
+  def agentId(implicit ctx: P[_]) = P[AgentPath](
     pathString.flatMap(string =>
-      AgentId.checked(string) match {
+      AgentPath.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)
       }))
 
-  def quotedLockId(implicit ctx: P[_]) = P[LockId](
+  def quotedLockId(implicit ctx: P[_]) = P[LockPath](
     quotedString.flatMap(string =>
-      LockId.checked(string) match {
+      LockPath.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)
       }))

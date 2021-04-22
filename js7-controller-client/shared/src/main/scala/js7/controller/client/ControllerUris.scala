@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.http.Uris.{encodePath, encodeQuery}
 import js7.controller.client.ControllerUris._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition}
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
@@ -82,7 +82,7 @@ final class ControllerUris private(controllerUri: Uri)
   }
 
   object agent {
-    def apply(path: AgentId): Uri =
+    def apply(path: AgentPath): Uri =
       api("/" + encodePath("agent", path.string))
 
     def list[A: ClassTag]: Uri =

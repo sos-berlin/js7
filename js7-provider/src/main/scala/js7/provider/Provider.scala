@@ -23,7 +23,7 @@ import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, TypedSourceReader}
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.VersionedItems.diffVersionedItems
 import js7.data.item.{ItemPath, ItemSigner, VersionId, VersionedItem, VersionedItems}
@@ -79,7 +79,7 @@ extends HasCloser with Observing with ProvideActorSystem
     val agentRefs = config.getObject("js7.provider.agents").asScala
       .view
       .collect { case (name, obj: ConfigObject) =>
-        AgentRef(AgentId(name), Uri(obj.toConfig.getString("uri")))
+        AgentRef(AgentPath(name), Uri(obj.toConfig.getString("uri")))
       }
       .toSeq
     controllerApi.updateUnsignedSimpleItems(agentRefs)

@@ -25,7 +25,7 @@ import js7.base.utils.{Closer, DecimalPrefixes}
 import js7.common.commandline.CommandLineArguments
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.utils.JavaShutdownHook
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
@@ -165,7 +165,7 @@ object TestControllerAgent
   }
 
   private val PathNames = LazyList("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
-  private def testJob(conf: Conf, agentId: AgentId) =
+  private def testJob(conf: Conf, agentId: AgentPath) =
     WorkflowJob(agentId, TestPathExecutable,
       Map("JOB-VARIABLE" -> StringValue(s"VALUE-$agentId")),
       taskLimit = conf.tasksPerJob)
@@ -201,7 +201,7 @@ object TestControllerAgent
     require(period.isPositive)
     require(orderGeneratorCount >= 1)
 
-    val agentIds: Seq[AgentId] = for (i <- 1 to agentCount) yield AgentId(s"AGENT-$i")
+    val agentIds: Seq[AgentPath] = for (i <- 1 to agentCount) yield AgentPath(s"AGENT-$i")
   }
 
   private object Conf {

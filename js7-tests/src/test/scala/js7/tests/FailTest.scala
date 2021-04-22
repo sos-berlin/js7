@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -174,5 +174,5 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object FailTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 }

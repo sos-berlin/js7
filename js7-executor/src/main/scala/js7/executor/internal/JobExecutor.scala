@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourceId, RelativePathExecutable, ScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourcePath, RelativePathExecutable, ScriptExecutable}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.process.{AbsolutePathJobExecutor, CommandLineJobExecutor, RelativePathJobExecutor, ScriptJobExecutor}
@@ -21,7 +21,7 @@ import scala.util.Try
 trait JobExecutor
 {
   protected val jobConf: JobConf
-  protected val idToJobResource: JobResourceId => Checked[JobResource]
+  protected val pathToJobResource: JobResourcePath => Checked[JobResource]
 
   def start: Task[Checked[Unit]]
 
@@ -31,7 +31,7 @@ trait JobExecutor
 
   // JobResources may change at any time
   protected final def checkedCurrentJobResources(): Checked[Seq[JobResource]] =
-    jobConf.workflowJob.jobResourceIds.traverse(idToJobResource)
+    jobConf.workflowJob.jobResourcePaths.traverse(pathToJobResource)
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"
 }
@@ -43,7 +43,7 @@ object JobExecutor
   def checked(
     jobConf: JobConf,
     executorConf: JobExecutorConf,
-    idToJobResource: JobResourceId => Checked[JobResource])
+    pathToJobResource: JobResourcePath => Checked[JobResource])
     (implicit scheduler: Scheduler, iox: IOExecutor)
   : Checked[JobExecutor] = {
     import jobConf.workflowJob
@@ -52,25 +52,25 @@ object JobExecutor
         if (!executorConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else
-          Right(new AbsolutePathJobExecutor(executable, jobConf, executorConf, idToJobResource))
+          Right(new AbsolutePathJobExecutor(executable, jobConf, executorConf, pathToJobResource))
 
       case executable: RelativePathExecutable =>
-        Right(new RelativePathJobExecutor(executable, jobConf, executorConf, idToJobResource))
+        Right(new RelativePathJobExecutor(executable, jobConf, executorConf, pathToJobResource))
 
       case executable: ScriptExecutable =>
-        ScriptJobExecutor.checked(executable, jobConf, executorConf, idToJobResource)
+        ScriptJobExecutor.checked(executable, jobConf, executorConf, pathToJobResource)
 
       case executable: CommandLineExecutable =>
         if (!executorConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else
-          Right(new CommandLineJobExecutor(executable, jobConf, executorConf, idToJobResource))
+          Right(new CommandLineJobExecutor(executable, jobConf, executorConf, pathToJobResource))
 
       case executable: InternalExecutable =>
         if (!executorConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else
-          Right(new InternalJobExecutor(executable, jobConf, idToJobResource,
+          Right(new InternalJobExecutor(executable, jobConf, pathToJobResource,
             executorConf.blockingJobScheduler))
     }
   }

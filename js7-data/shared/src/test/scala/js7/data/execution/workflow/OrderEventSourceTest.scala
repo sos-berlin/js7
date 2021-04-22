@@ -6,14 +6,14 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.CancelStartedOrderProblem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.command.CancelMode.FreshOrStarted
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
 import js7.data.job.{PathExecutable, ScriptExecutable}
-import js7.data.lock.{Lock, LockId, LockState}
+import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderStarted, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
@@ -690,13 +690,13 @@ final class OrderEventSourceTest extends AnyFreeSpec
       def eventSource(isAgent: Boolean) = new OrderEventSource(
         Map(order.id -> order).checked,
         Map(TestWorkflowId -> ForkWorkflow).checked,
-        Map.empty[LockId, LockState].checked,
+        Map.empty[LockPath, LockState].checked,
         isAgent = isAgent)
       body(order, eventSource(isAgent = false), eventSource(isAgent = true))
     }
 
     "Resume and UnreachableOrderPositionProblem" - {
-      val lockId = LockId("LOCK")
+      val lockId = LockPath("LOCK")
       lazy val execute = Execute.Anonymous(WorkflowJob(TestAgentId, ScriptExecutable(":")))
       lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(
         /*0*/ execute,
@@ -915,7 +915,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
           bChild.id -> bChild
         ).checked,
         Map(workflow.id -> workflow).checked,
-        Map.empty[LockId, LockState].checked,
+        Map.empty[LockPath, LockState].checked,
         isAgent = false)
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
@@ -973,9 +973,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
         ).checked,
         Map(workflow.id -> workflow).checked,
         Map(
-          LockId("LOCK") -> LockState(Lock(LockId("LOCK"), limit = 1)),
-          LockId("LOCK-1") -> LockState(Lock(LockId("LOCK-1"), limit = 1)),
-          LockId("LOCK-2") -> LockState(Lock(LockId("LOCK-2"), limit = 1))
+          LockPath("LOCK") -> LockState(Lock(LockPath("LOCK"), limit = 1)),
+          LockPath("LOCK-1") -> LockState(Lock(LockPath("LOCK-1"), limit = 1)),
+          LockPath("LOCK-2") -> LockState(Lock(LockPath("LOCK-2"), limit = 1))
         ).checked,
         isAgent = false)
 
@@ -986,7 +986,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       assert(liveEventSource.nextEvents(bChild.id) == Seq(
         bChild.id <-: OrderFailedInFork(
           Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0,
-          lockIds = Seq(LockId("LOCK-2"), LockId("LOCK-1")))))
+          lockIds = Seq(LockPath("LOCK-2"), LockPath("LOCK-1")))))
     }
   }
 }
@@ -995,7 +995,7 @@ object OrderEventSourceTest
 {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
-  private val TestAgentId = AgentId("AGENT")
+  private val TestAgentId = AgentPath("AGENT")
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil)
@@ -1007,7 +1007,7 @@ object OrderEventSourceTest
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))
 
-  private val executeScript = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("executable")))
+  private val executeScript = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("executable")))
 
   private def step(workflow: Workflow, outcome: Outcome): Seq[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
@@ -1021,7 +1021,7 @@ object OrderEventSourceTest
   final class SingleOrderProcess(val workflow: Workflow, val orderId: OrderId = OrderId("ORDER")) {
     private val process = new Process(workflow)
 
-    def transferToAgent(agentId: AgentId) = {
+    def transferToAgent(agentId: AgentPath) = {
       update(OrderAttachable(agentId))
       update(OrderAttached(agentId))
     }
@@ -1048,7 +1048,7 @@ object OrderEventSourceTest
 
     private def eventSource(isAgent: Boolean) =
       new OrderEventSource(o => idToOrder.checked(o), idToWorkflow,
-        Map.empty[LockId, LockState].checked, isAgent = isAgent)
+        Map.empty[LockPath, LockState].checked, isAgent = isAgent)
 
     def jobStep(orderId: OrderId, outcome: Outcome = Outcome.succeeded): Unit = {
       update(orderId <-: OrderProcessingStarted)

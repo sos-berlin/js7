@@ -8,7 +8,7 @@ import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.durationAndPerSecondString
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.addOrders.TestAddOrdersTest._
@@ -19,7 +19,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(AgentId("agent-1"), AgentId("agent-2"))
+  protected val agentIds = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
   protected val versionedItems = Seq(workflow)
 
   override protected def controllerConfig = config"""

@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction.{Labeled, showSourcePos}
 import js7.data.workflow.position._
@@ -28,10 +28,10 @@ trait Instruction
   def adopt(workflow: Workflow): Instruction =
     this
 
-  def reduceForAgent(agentId: AgentId, workflow: Workflow): Instruction =
+  def reduceForAgent(agentId: AgentPath, workflow: Workflow): Instruction =
     this
 
-  def isVisibleForAgent(agentId: AgentId, workflow: Workflow): Boolean =
+  def isVisibleForAgent(agentId: AgentPath, workflow: Workflow): Boolean =
     workflows.exists(_ isVisibleForAgent agentId)
 
   def workflows: Seq[Workflow] =

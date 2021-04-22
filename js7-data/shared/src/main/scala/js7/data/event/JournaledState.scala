@@ -8,7 +8,7 @@ import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournaledState._
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemPath, SignableItem, SignableItemId, SignableSimpleItem, SimpleItem, SimpleItemId, UnsignedSimpleItem, VersionedItem}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemPath, SignableItem, SignableItemId, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
 
@@ -174,8 +174,8 @@ object JournaledState
     implicit final lazy val signableSimpleItemJsonCodec: TypedJsonCodec[SignableSimpleItem] =
       TypedJsonCodec(SignableSimpleItems.map(_.subtype): _*)
 
-    implicit final lazy val simpleItemIdJsonCodec: Codec[SimpleItemId] =
-      SimpleItemId.jsonCodec(SimpleItems.map(_.Id))
+    implicit final lazy val simpleItemIdJsonCodec: Codec[SimpleItemPath] =
+      SimpleItemPath.jsonCodec(SimpleItems.map(_.Id))
 
     implicit final lazy val itemPathJsonCodec: Codec[ItemPath] =
       ItemPath.jsonCodec(ItemPaths)

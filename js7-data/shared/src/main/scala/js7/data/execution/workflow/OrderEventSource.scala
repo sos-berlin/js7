@@ -14,7 +14,7 @@ import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
-import js7.data.lock.{LockId, LockState}
+import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
@@ -31,13 +31,13 @@ import scala.annotation.tailrec
 final class OrderEventSource(
   idToOrder: OrderId => Checked[Order[Order.State]],
   idToWorkflow: WorkflowId => Checked[Workflow],
-  idToLockState: LockId => Checked[LockState],
+  pathToLockState: LockPath => Checked[LockState],
   isAgent: Boolean)
 {
   private val stateView = new StateView {
     def idToOrder                    = OrderEventSource.this.idToOrder
     def idToWorkflow(id: WorkflowId) = OrderEventSource.this.idToWorkflow(id)
-    def idToLockState                = OrderEventSource.this.idToLockState
+    def pathToLockState                = OrderEventSource.this.pathToLockState
 
     def childOrderEnded(order: Order[Order.State]): Boolean =
       order.parent.flatMap(o => idToOrder(o).toOption) match {
@@ -159,7 +159,7 @@ final class OrderEventSource(
     outcome: Option[Outcome.NotSucceeded],
     uncatchable: Boolean):
   Checked[OrderFailedEvent] = {
-    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockIds: Vector[LockId] = Vector.empty): Checked[OrderFailedEvent] =
+    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockIds: Vector[LockPath] = Vector.empty): Checked[OrderFailedEvent] =
       reverseBranchPath match {
         case Nil =>
           Right(OrderFailed(failPosition, outcome, lockIds))

@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.typeclasses.IsEmpty._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -18,7 +18,7 @@ sealed trait Execute extends Instruction
 {
   def defaultArguments: NamedValues
 
-  override def reduceForAgent(agentId: AgentId, workflow: Workflow) =
+  override def reduceForAgent(agentId: AgentPath, workflow: Workflow) =
     if (isVisibleForAgent(agentId, workflow))
       this
     else
@@ -47,7 +47,7 @@ object Execute
   {
     def withoutSourcePos = copy(sourcePos = None)
 
-    override def isVisibleForAgent(agentId: AgentId, workflow: Workflow) =
+    override def isVisibleForAgent(agentId: AgentPath, workflow: Workflow) =
       workflow.findJob(name) // Should always find!
         .fold(_ => true, _ isExecutableOnAgent agentId)
 
@@ -75,7 +75,7 @@ object Execute
   {
     def withoutSourcePos = copy(sourcePos = None)
 
-    override def isVisibleForAgent(agentId: AgentId, workflow: Workflow) =
+    override def isVisibleForAgent(agentId: AgentPath, workflow: Workflow) =
       job isExecutableOnAgent agentId
 
     override def toString = s"execute(defaultArguments=$defaultArguments, $job)$sourcePosToString"

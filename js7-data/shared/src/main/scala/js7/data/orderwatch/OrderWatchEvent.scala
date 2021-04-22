@@ -8,7 +8,7 @@ import js7.data.value.NamedValues
 
 sealed trait OrderWatchEvent extends Event
 {
-  type Key = OrderWatchId
+  type Key = OrderWatchPath
 
   def externalOrderName: ExternalOrderName
 }

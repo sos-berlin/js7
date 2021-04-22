@@ -6,7 +6,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.job.RelativePathExecutable
@@ -149,7 +149,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
 private object CoupleControllerTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("test") ~ "INITIAL",

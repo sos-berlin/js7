@@ -3,7 +3,7 @@ package js7.data.orderwatch
 import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderRemoveMarked, OrderRemoved}
@@ -19,25 +19,25 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   private val v1 = VersionId("1")
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val workflowId = workflowPath ~ v1
-  private val aOrderWatch = FileWatch(OrderWatchId("A-WATCH"),
-    workflowPath, AgentId("AGENT"), "DIRECTORY")
-  private val bOrderWatch = aOrderWatch.copy(id = OrderWatchId("B-WATCH"))
+  private val aOrderWatch = FileWatch(OrderWatchPath("A-WATCH"),
+    workflowPath, AgentPath("AGENT"), "DIRECTORY")
+  private val bOrderWatch = aOrderWatch.copy(id = OrderWatchPath("B-WATCH"))
   private var aoss = AllOrderWatchesState.empty
 
   private def state(name: String): Option[ArisedOrHasOrder] =
-    aoss.idToOrderWatchState(aOrderWatch.id).externalToState.get(ExternalOrderName(name))
+    aoss.pathToOrderWatchState(aOrderWatch.id).externalToState.get(ExternalOrderName(name))
 
   "addOrderWatch" in {
     aoss = aoss.addOrderWatch(aOrderWatch).orThrow
     aoss = aoss.addOrderWatch(bOrderWatch).orThrow
     assert(aoss.addOrderWatch(aOrderWatch) ==
-      Left(DuplicateKey("OrderWatchId", "OrderWatch:A-WATCH")))
+      Left(DuplicateKey("OrderWatchPath", "OrderWatch:A-WATCH")))
   }
 
   "removeOrderWatch" in {
-    val x = bOrderWatch.copy(id = OrderWatchId("X"))
+    val x = bOrderWatch.copy(id = OrderWatchPath("X"))
     val all1 = aoss.addOrderWatch(x).orThrow
-    assert(all1.idToOrderWatchState.contains(x.id))
+    assert(all1.pathToOrderWatchState.contains(x.id))
     val all0 = all1.removeOrderWatch(x.id)
     assert(all0 == aoss)
   }
@@ -45,7 +45,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   "changeOrderWatch" in {
     val a1 = aOrderWatch.copy(directory = "CHANGED")
     val all1 = aoss.changeOrderWatch(a1).orThrow
-    assert(all1.idToOrderWatchState(a1.id) == OrderWatchState(a1))
+    assert(all1.pathToOrderWatchState(a1.id) == OrderWatchState(a1))
   }
 
   "Events on the happy path" - {
@@ -65,7 +65,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
     "ExternalOrderArised A" in {
       aoss = aoss.onOrderWatchEvent(externalOrderArised("A")).orThrow
       assert(aoss
-        .idToOrderWatchState(aOrderWatch.id)
+        .pathToOrderWatchState(aOrderWatch.id)
         .externalToState(ExternalOrderName("A")) == Arised(orderId("A"), arguments("A")))
       assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderAdded("B"), orderAdded("A")))
     }
@@ -186,7 +186,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       // - due to explicit command
       // - due to repeated ExternalOrderArised and ExternalOrderVanished
       aoss = aoss.onOrderWatchEvent(externalOrderArised("A")).orThrow
-      assert(aoss.idToOrderWatchState(aOrderWatch.id).externalToState(ExternalOrderName("A")) ==
+      assert(aoss.pathToOrderWatchState(aOrderWatch.id).externalToState(ExternalOrderName("A")) ==
         HasOrder(orderId("A"), Some(Arised(orderId("A"), order("A").arguments))))
 
       assert(aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemoveMarked) == Right(aoss))

@@ -66,7 +66,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
         isLoopback = binding.address.getAddress.isLoopbackAddress)
       protected val sessionRegister     = ControllerWebServer.this.sessionRegister
       protected val eventWatch          = ControllerWebServer.this.eventWatch
-      protected val idToAgentRefState = controllerState.map(_.map(_.idToAgentRefState))
+      protected val pathToAgentRefState = controllerState.map(_.map(_.pathToAgentRefState))
       protected val itemApi = ControllerWebServer.this.itemApi
       protected val orderApi = ControllerWebServer.this.orderApi
       protected val itemUpdater = ControllerWebServer.this.itemUpdater

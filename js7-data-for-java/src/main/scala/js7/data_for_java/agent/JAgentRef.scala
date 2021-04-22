@@ -4,7 +4,7 @@ import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.web.Uri
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
 
@@ -17,11 +17,11 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
   @Deprecated
   @deprecated("Use id", "2020-12-11")
   @Nonnull
-  def name: AgentId =
+  def name: AgentPath =
     id
 
   @Nonnull
-  def id: AgentId =
+  def id: AgentPath =
     asScala.id
 
   @Nonnull
@@ -32,7 +32,7 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
 object JAgentRef extends JJsonable.Companion[JAgentRef]
 {
   @Nonnull
-  def of(@Nonnull id: AgentId, @Nonnull uri: Uri) =
+  def of(@Nonnull id: AgentPath, @Nonnull uri: Uri) =
     JAgentRef(AgentRef(id, uri))
 
   @Nonnull

@@ -10,10 +10,10 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent}
-import js7.data.job.{JobResource, JobResourceId}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchId}
+import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.workflow.{Workflow, WorkflowId}
 import monix.reactive.Observable
 
@@ -26,7 +26,7 @@ final case class AgentState(
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow],
   allFileWatchesState: AllFileWatchesState,
-  idToJobResource: Map[JobResourceId, JobResource])
+  pathToJobResource: Map[JobResourcePath, JobResource])
 extends JournaledState[AgentState]
 {
   def estimatedSnapshotSize =
@@ -34,14 +34,14 @@ extends JournaledState[AgentState]
       idToWorkflow.size +
       idToOrder.size +
       allFileWatchesState.estimatedSnapshotSize +
-      idToJobResource.size
+      pathToJobResource.size
 
   def toSnapshotObservable =
     standards.toSnapshotObservable ++
       Observable.fromIterable(idToWorkflow.values) ++
       Observable.fromIterable(idToOrder.values) ++
       allFileWatchesState.toSnapshot ++
-      Observable.fromIterable(idToJobResource.values)
+      Observable.fromIterable(pathToJobResource.values)
 
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)
@@ -57,8 +57,8 @@ extends JournaledState[AgentState]
       case KeyedEvent(_, _: AgentControllerEvent.AgentReadyForController) =>
         Right(this)
 
-      case KeyedEvent(orderWatchId: OrderWatchId, event: OrderWatchEvent) =>
-        allFileWatchesState.applyEvent(orderWatchId <-: event)
+      case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
+        allFileWatchesState.applyEvent(orderWatchPath <-: event)
           .map(o => copy(allFileWatchesState = o))
 
       case KeyedEvent(_: NoKey, event: BasicItemEvent.ForAgent) =>
@@ -77,9 +77,9 @@ extends JournaledState[AgentState]
 
           case ItemAttachedToAgent(jobResource: JobResource) =>
             Right(copy(
-              idToJobResource = idToJobResource + (jobResource.id -> jobResource)))
+              pathToJobResource = pathToJobResource + (jobResource.id -> jobResource)))
 
-          case ItemDetached(id: OrderWatchId, agentId/*`ownAgentId`*/) =>
+          case ItemDetached(id: OrderWatchPath, agentId/*`ownAgentId`*/) =>
             Right(copy(
               allFileWatchesState = allFileWatchesState.detach(id)))
         }

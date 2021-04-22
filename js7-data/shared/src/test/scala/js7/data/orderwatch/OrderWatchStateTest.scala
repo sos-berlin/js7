@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemRevision
 import js7.data.order.OrderId
@@ -20,15 +20,15 @@ final class OrderWatchStateTest extends AsyncFreeSpec
 {
   private val orderWatchState = OrderWatchState(
     FileWatch(
-      OrderWatchId("FILE-WATCH"),
+      OrderWatchPath("FILE-WATCH"),
       WorkflowPath("WORKFLOW"),
-      AgentId("AGENT"),
+      AgentPath("AGENT"),
       "DIRECTORY",
       Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
       Some(NamedValue("1")),
       delay = 2.s,
       Some(ItemRevision(7))),
-    Map(AgentId("AGENT") -> Attached(Some(ItemRevision(7)))),
+    Map(AgentPath("AGENT") -> Attached(Some(ItemRevision(7)))),
     Map( // Not in snapshot, because its duplicate to Order.externalOrderKey
       ExternalOrderName("A-NAME") -> Arised(OrderId("A-ORDER"), NamedValues("K" -> StringValue("V"))),
       ExternalOrderName("B-NAME") -> HasOrder(OrderId("B-ORDER"), Some(Vanished))))
@@ -42,13 +42,13 @@ final class OrderWatchStateTest extends AsyncFreeSpec
     "ExternalOrderSnapshot" in {
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
-          OrderWatchId("FILE-WATCH"),
+          OrderWatchPath("FILE-WATCH"),
           ExternalOrderName("FILE"),
           Arised(OrderId("ORDER"), NamedValues("file" -> StringValue("FILE")))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
-          "orderWatchId": "FILE-WATCH",
+          "orderWatchPath": "FILE-WATCH",
           "state": {
             "TYPE": "Arised",
             "orderId": "ORDER",
@@ -58,13 +58,13 @@ final class OrderWatchStateTest extends AsyncFreeSpec
 
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
-          OrderWatchId("FILE-WATCH"),
+          OrderWatchPath("FILE-WATCH"),
           ExternalOrderName("FILE"),
           HasOrder(OrderId("ORDER"), None)),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
-          "orderWatchId": "FILE-WATCH",
+          "orderWatchPath": "FILE-WATCH",
           "state": {
             "TYPE": "HasOrder",
             "orderId": "ORDER"
@@ -73,13 +73,13 @@ final class OrderWatchStateTest extends AsyncFreeSpec
 
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
-          OrderWatchId("FILE-WATCH"),
+          OrderWatchPath("FILE-WATCH"),
           ExternalOrderName("FILE"),
           HasOrder(OrderId("ORDER"), Some(Vanished))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
-          "orderWatchId": "FILE-WATCH",
+          "orderWatchPath": "FILE-WATCH",
           "state": {
             "TYPE": "HasOrder",
             "orderId": "ORDER",
@@ -91,13 +91,13 @@ final class OrderWatchStateTest extends AsyncFreeSpec
 
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
-          OrderWatchId("FILE-WATCH"),
+          OrderWatchPath("FILE-WATCH"),
           ExternalOrderName("FILE"),
           HasOrder(OrderId("ORDER"), Some(VanishedAck))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
-          "orderWatchId": "FILE-WATCH",
+          "orderWatchPath": "FILE-WATCH",
           "state": {
             "TYPE": "HasOrder",
             "orderId": "ORDER",
@@ -109,7 +109,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
 
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
-          OrderWatchId("FILE-WATCH"),
+          OrderWatchPath("FILE-WATCH"),
           ExternalOrderName("FILE"),
           HasOrder(
             OrderId("ORDER"),
@@ -119,7 +119,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
-          "orderWatchId": "FILE-WATCH",
+          "orderWatchPath": "FILE-WATCH",
           "state": {
             "TYPE": "HasOrder",
             "orderId": "ORDER",
@@ -157,7 +157,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
             "delete": false
           }, {
             "TYPE": "ExternalOrder",
-            "orderWatchId": "FILE-WATCH",
+            "orderWatchPath": "FILE-WATCH",
             "externalOrderName": "A-NAME",
             "state": {
               "TYPE": "Arised",
@@ -168,7 +168,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
             }
           }, {
             "TYPE": "ExternalOrder",
-            "orderWatchId": "FILE-WATCH",
+            "orderWatchPath": "FILE-WATCH",
             "externalOrderName": "B-NAME",
             "state": {
               "TYPE": "HasOrder",

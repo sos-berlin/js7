@@ -1,7 +1,7 @@
 package js7.agent.scheduler
 
 import java.util.UUID
-import js7.data.agent.{AgentId, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalId, JournalState, JournaledState}
@@ -21,7 +21,7 @@ final class AgentServerStateTest extends AsyncFreeSpec
     Map(
       ControllerId("CONTROLLER") -> RegisteredController(
         ControllerId("CONTROLLER"),
-        AgentId("AGENT"),
+        AgentPath("AGENT"),
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))))))
 
   "estimatedSnapshotSize" in {

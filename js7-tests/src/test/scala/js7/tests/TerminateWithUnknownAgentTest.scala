@@ -6,7 +6,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.job.ScriptExecutable
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -44,7 +44,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 
 private object TerminateWithUnknownAgentTest
 {
-  private val agentId = AgentId("UNKNOWN")
+  private val agentId = AgentPath("UNKNOWN")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
     Execute.Anonymous(WorkflowJob(agentId, ScriptExecutable(":"))))
 }

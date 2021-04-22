@@ -7,7 +7,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.EventRequest
 import js7.data.item.VersionId
@@ -76,8 +76,8 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 object ManyAddOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd")
-  private val agentId1 = AgentId("AGENT-1")
-  private val agentId2 = AgentId("AGENT-2")
+  private val agentId1 = AgentPath("AGENT-1")
+  private val agentId2 = AgentPath("AGENT-2")
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(

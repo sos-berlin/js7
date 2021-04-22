@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.ScriptExecutable
 import js7.data.order.OrderEvent.{OrderProcessed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
@@ -31,7 +31,7 @@ final class FailOnErrWrittenTest extends AnyFreeSpec with ControllerAgentForScal
   protected val agentIds = Seq(agentId)
   protected val versionedItems = Seq(workflow)
 
-  "JobResourceId" in {
+  "JobResourcePath" in {
     val orderId = OrderId("ORDER")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
       "A" -> StringValue("A OF ORDER")
@@ -47,7 +47,7 @@ final class FailOnErrWrittenTest extends AnyFreeSpec with ControllerAgentForScal
 
 object FailOnErrWrittenTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

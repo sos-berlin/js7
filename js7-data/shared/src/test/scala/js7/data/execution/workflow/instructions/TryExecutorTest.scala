@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.TryExecutorTest._
 import js7.data.job.PathExecutable
@@ -28,7 +28,7 @@ final class TryExecutorTest extends AnyFreeSpec
     def idToOrder = Map(AOrder.id -> AOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-    val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
+    val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
   }
 
   "JSON" - {
@@ -58,7 +58,7 @@ object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh(),
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
-  private val TryJob = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("THEN")))
-  private val CatchJob = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("ELSE")))
+  private val TryJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
+  private val CatchJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))
 }

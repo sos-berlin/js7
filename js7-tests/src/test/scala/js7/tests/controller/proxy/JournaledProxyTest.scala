@@ -11,9 +11,9 @@ import js7.base.time.ScalaTime._
 import js7.common.akkautils.ProvideActorSystem
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.item.VersionedEvent.VersionedItemAdded
 import js7.data.job.RelativePathExecutable
@@ -136,5 +136,5 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
 }
 
 object JournaledProxyTest {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 }

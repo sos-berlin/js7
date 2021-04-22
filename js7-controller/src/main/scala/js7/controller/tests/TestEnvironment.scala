@@ -7,13 +7,13 @@ import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.controller.tests.TestEnvironment._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.{ItemPath, SourceType}
 
 /**
   * @author Joacim Zschimmer
   */
-final class TestEnvironment(agentIds: Seq[AgentId], temporaryDirectory: Path)
+final class TestEnvironment(agentIds: Seq[AgentPath], temporaryDirectory: Path)
 extends AutoCloseable {
 
   if (exists(temporaryDirectory)) {
@@ -38,10 +38,10 @@ extends AutoCloseable {
    def controllerDir: Path =
     temporaryDirectory / "controller"
 
-  def agentFile(agentId: AgentId, path: ItemPath, t: SourceType): Path =
+  def agentFile(agentId: AgentPath, path: ItemPath, t: SourceType): Path =
     agentDir(agentId) / "config/live" resolve path.toFile(t)
 
-  def agentDir(name: AgentId): Path =
+  def agentDir(name: AgentPath): Path =
     agentsDir / name.string
 
   def agentsDir = temporaryDirectory / "agents"

@@ -3,7 +3,7 @@ package js7.tests.https
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.event.KeyedEvent
 import js7.data.order.{FreshOrder, OrderId}
@@ -27,7 +27,7 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
 
   "Run a job" in {
     httpControllerApi.addOrder(FreshOrder(OrderId("TEST"), WorkflowPath("TEST-WORKFLOW"))) await 99.s
-    val KeyedEvent(AgentId("TEST-AGENT"), AgentCouplingFailed(problem)) = controller.eventWatch.await[AgentCouplingFailed](timeout = 99.seconds).head.value
+    val KeyedEvent(AgentPath("TEST-AGENT"), AgentCouplingFailed(problem)) = controller.eventWatch.await[AgentCouplingFailed](timeout = 99.seconds).head.value
     logger.info(problem.toString)  // Content of exception is not reliable. May be SSLxxException or TCP connection reset !!!
     //assert(msg == "javax.net.ssl.SSLException: Received fatal alert: certificate_unknown" ||
     //       msg.startsWith("javax.net.ssl.SSLHandshakeException:") ||  // Since Java 11

@@ -14,7 +14,7 @@ final class AgentRefStateTest extends AnyFreeSpec
   "JSON" in {
     testJson[AgentRefState](
       js7.data.agent.AgentRefState(
-        AgentRef(AgentId("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
+        AgentRef(AgentPath("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
         None,
         None,
         AgentRefState.Decoupled,
@@ -35,7 +35,7 @@ final class AgentRefStateTest extends AnyFreeSpec
 
     testJson[AgentRefState](
       js7.data.agent.AgentRefState(
-        AgentRef(AgentId("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
+        AgentRef(AgentPath("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
         Some(agentRunId),
         None,
         AgentRefState.Decoupled,

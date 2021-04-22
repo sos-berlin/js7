@@ -16,7 +16,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderProcessed
@@ -77,7 +77,7 @@ object AgentTest
 {
   private val TestControllerId = ControllerId("CONTROLLER")
   private val TestUser = SimpleUser(TestControllerId.toUserId)
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val TestScript =
     if (isWindows) """

@@ -8,7 +8,7 @@ import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -53,8 +53,8 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
 
 object DuplicateAgentRefTest
 {
-  private val aAgentId = AgentId("A-AGENT")
-  private val bAgentId = AgentId("B-AGENT")
+  private val aAgentId = AgentPath("A-AGENT")
+  private val bAgentId = AgentPath("B-AGENT")
   private val workflow = Workflow.of(
     WorkflowPath("SINGLE") ~ "INITIAL",
     Execute(WorkflowJob(aAgentId, RelativePathExecutable("executable.cmd"))),

@@ -6,7 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.order.{Order, OrderId}
 import js7.data.value.Value
 import js7.data_for_java.common.{JJsonable, JavaWrapper}
@@ -48,7 +48,7 @@ extends JJsonable[JOrder]
     asScala.parent.toJava
 
   @Nonnull
-  def attached: VEither[Problem, AgentId] =
+  def attached: VEither[Problem, AgentPath] =
     asScala.attached.toVavr
 
   @Nonnull

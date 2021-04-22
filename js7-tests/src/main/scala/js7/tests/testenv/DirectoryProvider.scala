@@ -32,9 +32,9 @@ import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.signableItemJsonCodec
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
 import js7.data.item.{ItemOperation, ItemPath, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
@@ -52,7 +52,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 final class DirectoryProvider(
-  agentIds: Seq[AgentId],
+  agentIds: Seq[AgentPath],
   versionedItems: Seq[VersionedItem] = Nil,
   simpleItems: Seq[UnsignedSimpleItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
@@ -84,7 +84,7 @@ extends HasCloser
   val controller = new ControllerTree(directory / "controller",
     keyStore = controllerKeyStore, trustStores = controllerTrustStores,
     agentHttpsMutual = agentHttpsMutual)
-  val agentToTree: Map[AgentId, AgentTree] =
+  val agentToTree: Map[AgentPath, AgentTree] =
     agentIds
       .zip(agentPorts ++ Vector.fill(agentIds.size - agentPorts.size)(findFreeTcpPort()))
       .map { case (agentId, port) => agentId ->
@@ -190,7 +190,7 @@ extends HasCloser
       runningController
     }
 
-  def runAgents[A](agentIds: Seq[AgentId] = DirectoryProvider.this.agentIds)(body: IndexedSeq[RunningAgent] => A): A =
+  def runAgents[A](agentIds: Seq[AgentPath] = DirectoryProvider.this.agentIds)(body: IndexedSeq[RunningAgent] => A): A =
     multipleAutoClosing(agents
       .filter(o => agentIds.contains(o.agentId))
       .map(_.agentConfiguration)
@@ -212,7 +212,7 @@ extends HasCloser
   def startAgents(): Future[Seq[RunningAgent]] =
     Future.sequence(agents.map(_.agentId) map startAgent)
 
-  def startAgent(agentId: AgentId): Future[RunningAgent] =
+  def startAgent(agentId: AgentPath): Future[RunningAgent] =
     RunningAgent.startForTest(agentToTree(agentId).agentConfiguration)
 
   def updateVersionedItems(
@@ -304,7 +304,7 @@ object DirectoryProvider
       }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentId: AgentId, name: String,
+  final class AgentTree(rootDirectory: Path, val agentId: AgentPath, name: String,
     port: Int,
     https: Boolean = false, mutualHttps: Boolean = false,
     provideHttpsCertificate: Boolean = false, provideClientCertificate: Boolean = false,

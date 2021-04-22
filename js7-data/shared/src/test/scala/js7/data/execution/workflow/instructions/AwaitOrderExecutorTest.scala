@@ -23,7 +23,7 @@ final class AwaitOrderExecutorTest extends AnyFreeSpec {
       val idToOrder = Map(awaitingOrder.id -> awaitingOrder, offeredOrder.id -> offeredOrder).checked
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-      val idToLockState = _ => Left(Problem("idToLockState is not implemented"))
+      val pathToLockState = _ => Left(Problem("pathToLockState is not implemented"))
     }
     assert(InstructionExecutor.toEvents(AwaitOrder(offeredOrder.id), awaitingOrder, stateView) ==
       Right(Seq(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id))))

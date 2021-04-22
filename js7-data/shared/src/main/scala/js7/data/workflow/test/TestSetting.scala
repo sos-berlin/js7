@@ -1,6 +1,6 @@
 package js7.data.workflow.test
 
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.RelativePathExecutable
 import js7.data.order.{Order, OrderId}
 import js7.data.value.StringValue
@@ -13,7 +13,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
   */
 private[js7] object TestSetting
 {
-  val TestAgentId = AgentId("AGENT")
+  val TestAgentId = AgentPath("AGENT")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
   val APathExecutable = RelativePathExecutable("A.cmd", v1Compatible = true)

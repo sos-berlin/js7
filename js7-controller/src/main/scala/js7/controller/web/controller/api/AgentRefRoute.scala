@@ -12,7 +12,7 @@ import js7.common.akkahttp.CirceJsonOrYamlSupport._
 import js7.common.akkahttp.StandardDirectives.remainingPath
 import js7.common.akkahttp.StandardMarshallers.checkedToResponseMarshaller
 import js7.controller.web.common.ControllerRouteProvider
-import js7.data.agent.{AgentId, AgentRef, AgentRefState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -21,7 +21,7 @@ import monix.execution.Scheduler
   */
 trait AgentRefRoute extends ControllerRouteProvider
 {
-  protected def idToAgentRefState: Task[Checked[Map[AgentId, AgentRefState]]]
+  protected def pathToAgentRefState: Task[Checked[Map[AgentPath, AgentRefState]]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -35,30 +35,30 @@ trait AgentRefRoute extends ControllerRouteProvider
           pathSingleSlash {
             parameter("return".?) {
               case None =>
-                completeTask[Checked[Iterable[AgentId]]](
-                  idToAgentRefState.map(_.map(_.keys)))
+                completeTask[Checked[Iterable[AgentPath]]](
+                  pathToAgentRefState.map(_.map(_.keys)))
 
               case Some("AgentRef") =>
                 completeTask[Checked[Iterable[AgentRef]]](
-                  idToAgentRefState.map(_.map(_.values.map(_.agentRef))))
+                  pathToAgentRefState.map(_.map(_.values.map(_.agentRef))))
 
               case Some("AgentRefState") =>
                 completeTask[Checked[Iterable[AgentRefState]]](
-                  idToAgentRefState.map(_.map(_.values)))
+                  pathToAgentRefState.map(_.map(_.values)))
 
               case _ =>
                 complete(NotFound)
             }
           } ~
-          path(remainingPath[AgentId]) { name =>
+          path(remainingPath[AgentPath]) { name =>
             parameter("return".?) {
               case None | Some("AgentRefState") =>
                 completeTask[Checked[AgentRefState]](
-                  idToAgentRefState.map(_.flatMap(_.checked(name))))
+                  pathToAgentRefState.map(_.flatMap(_.checked(name))))
 
               case Some("AgentRef") =>
                 completeTask[Checked[AgentRef]](
-                  idToAgentRefState.map(_.flatMap(_.checked(name).map(_.agentRef))))
+                  pathToAgentRefState.map(_.flatMap(_.checked(name).map(_.agentRef))))
 
               case _ =>
                 complete(NotFound)

@@ -9,7 +9,7 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.item.ItemOperation.AddOrChangeSimple
-import js7.data.lock.{Lock, LockId}
+import js7.data.lock.{Lock, LockPath}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -24,7 +24,7 @@ final class FeedMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected def versionedItems = Nil
 
   "test" in {
-    val ops = Vector[Any](AddOrChangeSimple(Lock(LockId("TEST"))))
+    val ops = Vector[Any](AddOrChangeSimple(Lock(LockPath("TEST"))))
     implicit val opJsonCodec = Feed.opJsonCodec
     val in = Resource.eval(Task.pure(ByteArray(ops.asJson.compactPrint).toInputStream))
     FeedMain.run(Array(s"--controller=${controller.localUri}", "--user=TEST-USER:TEST-PASSWORD"), in)

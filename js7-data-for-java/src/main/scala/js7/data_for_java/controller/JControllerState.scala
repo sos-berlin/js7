@@ -7,9 +7,9 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.data.lock.LockId
+import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
@@ -55,38 +55,38 @@ extends JJournaledState[JControllerState, ControllerState]
 
   /** Looks up an AgentRef VersionedItem in the current version. */
   @Nonnull
-  def idToAgentRef(@Nonnull id: AgentId): VEither[Problem, JAgentRef] =
-    asScala.idToAgentRefState.checked(id)
+  def pathToAgentRef(@Nonnull id: AgentPath): VEither[Problem, JAgentRef] =
+    asScala.pathToAgentRefState.checked(id)
       .map(_.agentRef)
       .map(JAgentRef.apply)
       .toVavr
 
   /** Looks up an AgentRef VersionedItem in the current version. */
   @Deprecated
-  @deprecated("Use idToAgentRef", "2020-12-11")
+  @deprecated("Use pathToAgentRef", "2020-12-11")
   @Nonnull
-  def nameToAgentRef(@Nonnull id: AgentId): VEither[Problem, JAgentRef] =
-    idToAgentRef(id)
+  def nameToAgentRef(@Nonnull id: AgentPath): VEither[Problem, JAgentRef] =
+    pathToAgentRef(id)
 
   /** Looks up an AgentRefState. */
   @Nonnull
-  def idToAgentRefState(@Nonnull agentId: AgentId): VEither[Problem, JAgentRefState] =
-    asScala.idToAgentRefState.checked(agentId)
+  def pathToAgentRefState(@Nonnull agentId: AgentPath): VEither[Problem, JAgentRefState] =
+    asScala.pathToAgentRefState.checked(agentId)
       .map(JAgentRefState.apply)
       .toVavr
 
   /** Looks up an AgentRef VersionedItem in the current version. */
   @Nonnull
-  def idToLock(@Nonnull id: LockId): VEither[Problem, JLock] =
-    asScala.idToLockState.checked(id)
+  def pathToLock(@Nonnull id: LockPath): VEither[Problem, JLock] =
+    asScala.pathToLockState.checked(id)
       .map(_.lock)
       .map(JLock.apply)
       .toVavr
 
   /** Looks up a LockState. */
   @Nonnull
-  def idToLockState(@Nonnull lockId: LockId): VEither[Problem, JLockState] =
-    asScala.idToLockState.checked(lockId)
+  def pathToLockState(@Nonnull lockId: LockPath): VEither[Problem, JLockState] =
+    asScala.pathToLockState.checked(lockId)
       .map(JLockState.apply)
       .toVavr
 

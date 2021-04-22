@@ -17,7 +17,7 @@ import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncode
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.{AgentId, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.event.{EventId, JournaledState}
 import js7.data.item.{InventoryItem, InventoryItemId, SignableItem}
@@ -92,7 +92,7 @@ object AgentCommand extends CommonCommand.Companion
     * The Agent Server starts a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class RegisterAsController(agentId: AgentId) extends AgentCommand {
+  final case class RegisterAsController(agentId: AgentPath) extends AgentCommand {
     type Response = RegisterAsController.Response
   }
   object RegisterAsController {
@@ -103,7 +103,7 @@ object AgentCommand extends CommonCommand.Companion
 
   /** Couples the registered Controller identified by current User.
     * @param agentRunId Must be the value returned by `RegisterAsController`. */
-  final case class CoupleController(agentId: AgentId, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
+  final case class CoupleController(agentId: AgentPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
     type Response = CoupleController.Response
   }
   object CoupleController {
@@ -170,7 +170,7 @@ object AgentCommand extends CommonCommand.Companion
       s"${order.state.getClass.simpleScalaName}))"
   }
   object AttachOrder {
-    def apply(order: Order[Order.IsFreshOrReady], agentId: AgentId) =
+    def apply(order: Order[Order.IsFreshOrReady], agentId: AgentPath) =
       new AttachOrder(order.copy(attachedState = Some(Order.Attached(agentId))))
   }
 

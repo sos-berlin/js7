@@ -11,7 +11,7 @@ final class JobResourceTest extends AnyFreeSpec
 {
   "JSON" in {
     testJsonDecoder[SignableSimpleItem](
-      JobResource(JobResourceId("JOB-RESOURCE")),
+      JobResource(JobResourcePath("JOB-RESOURCE")),
       json"""{
         "TYPE": "JobResource",
         "id": "JOB-RESOURCE"
@@ -19,9 +19,9 @@ final class JobResourceTest extends AnyFreeSpec
 
     testJson[SignableSimpleItem](
       JobResource(
-        JobResourceId("JOB-RESOURCE"),
+        JobResourcePath("JOB-RESOURCE"),
         ObjectExpression.empty,
-        //Seq(JobResourceId("DEPENDS-ON")),
+        //Seq(JobResourcePath("DEPENDS-ON")),
         Some(ItemRevision(1))),
       json"""{
         "TYPE": "JobResource",

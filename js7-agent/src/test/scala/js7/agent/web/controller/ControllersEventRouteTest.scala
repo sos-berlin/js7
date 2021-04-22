@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax._
 import js7.common.guice.GuiceImplicits._
-import js7.data.agent.{AgentId, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, JournalEvent, JournalId, TearableEventSeq}
 import js7.data.problems.UnknownEventIdProblem
@@ -31,7 +31,7 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   implicit private lazy val scheduler = agent.injector.instance[Scheduler]
   implicit private lazy val actorSystem = agent.actorSystem
   private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst
   private var snapshotEventId = EventId.BeforeFirst
@@ -72,11 +72,11 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
     agentClient.login().await(99.s)
   }
 
-  "Recoupling with changed AgentRunId or different AgentId fails" in {
+  "Recoupling with changed AgentRunId or different AgentPath fails" in {
     assert(agentClient.commandExecute(CoupleController(agentId, AgentRunId(JournalId.random()), eventId)).await(99.s) ==
       Left(ControllerAgentMismatch(agentId)))
-    assert(agentClient.commandExecute(CoupleController(AgentId("OTHER"), agentRunId, eventId)).await(99.s) ==
-      Left(DuplicateAgentRef(first = agentId, second = AgentId("OTHER"))))
+    assert(agentClient.commandExecute(CoupleController(AgentPath("OTHER"), agentRunId, eventId)).await(99.s) ==
+      Left(DuplicateAgentRef(first = agentId, second = AgentPath("OTHER"))))
     val Right(EventSeq.NonEmpty(events)) = agentClient.controllersEvents(
       EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)

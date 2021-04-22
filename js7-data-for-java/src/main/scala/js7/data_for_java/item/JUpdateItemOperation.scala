@@ -2,8 +2,8 @@ package  js7.data_for_java.item
 
 import javax.annotation.Nonnull
 import js7.base.crypt.SignedString
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteSimple, DeleteVersioned}
-import js7.data.item.{ItemOperation, ItemPath, SimpleItemId, VersionId}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.{ItemOperation, ItemPath, SimpleItemPath, VersionId}
 import js7.data_for_java.common.JavaWrapper
 
 final case class JUpdateItemOperation(asScala: ItemOperation)
@@ -20,7 +20,7 @@ object JUpdateItemOperation
 
   /** Deletes a non-versioned item. */
   @Nonnull
-  def deleteSimple(@Nonnull itemId: SimpleItemId): JUpdateItemOperation =
+  def deleteSimple(@Nonnull itemId: SimpleItemPath): JUpdateItemOperation =
     new JUpdateItemOperation(
       DeleteSimple(itemId))
 

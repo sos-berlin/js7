@@ -19,7 +19,7 @@ import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentRegisteredController}
 import js7.data.controller.ControllerCommand
 import js7.data.event.JournalSeparators
@@ -163,7 +163,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
 object JournalWebServiceTest
 {
-  private val agentId = AgentId("AGENT-111")
+  private val agentId = AgentPath("AGENT-111")
   private val pathExecutable = RelativePathExecutable("TEST.cmd")
 
   private val workflow = Workflow(WorkflowPath("test") ~ "INITIAL",

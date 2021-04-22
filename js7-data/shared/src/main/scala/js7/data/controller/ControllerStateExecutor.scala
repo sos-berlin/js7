@@ -10,7 +10,7 @@ import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemId, VersionId}
 import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderForked, OrderLockEvent, OrderRemoveMarked}
 import js7.data.order.{OrderEvent, OrderId}
-import js7.data.orderwatch.OrderWatchId
+import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
@@ -42,8 +42,8 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
 
   private def nextItemEvents(itemIds: Seq[InventoryItemId]): Seq[KeyedEvent[BasicItemEvent]] =
     itemIds.flatMap {
-      case itemId: OrderWatchId =>
-        controllerState.allOrderWatchesState.idToOrderWatchState.get(itemId)
+      case itemId: OrderWatchPath =>
+        controllerState.allOrderWatchesState.pathToOrderWatchState.get(itemId)
           .view.flatMap { orderWatchState =>
             import orderWatchState.orderWatch
             if (orderWatchState.agentIdToAttachedState.nonEmpty)
@@ -112,7 +112,7 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
     View(keyedEvent.key) ++ (keyedEvent.event match {
       case OrderLockEvent(lockIds) =>
         lockIds.view
-          .flatMap(_controllerState.idToLockState.get)
+          .flatMap(_controllerState.pathToLockState.get)
           .flatMap(_.firstQueuedOrderId)
 
       case OrderForked(children) =>
@@ -128,7 +128,7 @@ object ControllerStateExecutor
     new OrderEventSource(
       id => controllerState().idToOrder.checked(id),
       id => controllerState().repo.idTo[Workflow](id),
-      id => controllerState().idToLockState.checked(id),
+      id => controllerState().pathToLockState.checked(id),
       isAgent = false)
 
   def liveOrderEventHandler(controllerState: () => ControllerState) =

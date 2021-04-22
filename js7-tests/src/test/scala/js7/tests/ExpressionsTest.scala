@@ -5,7 +5,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -49,7 +49,7 @@ final class ExpressionsTest extends AnyFreeSpec
 }
 
 object ExpressionsTest {
-  private val TestAgentId = AgentId("AGENT")
+  private val TestAgentId = AgentPath("AGENT")
 
   private val jobScript =
     if (isWindows)

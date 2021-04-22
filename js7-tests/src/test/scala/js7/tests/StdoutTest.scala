@@ -5,7 +5,7 @@ import js7.base.io.process.Stdout
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.job.{Executable, InternalExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.OrderStdoutWritten
@@ -153,7 +153,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object StdoutTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val chunkSize = 50
   private val delay = 200.ms
   private val shortDelay = 10.ms

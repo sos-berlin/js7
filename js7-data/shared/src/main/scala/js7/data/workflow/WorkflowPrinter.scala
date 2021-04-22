@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Identifier
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ScriptExecutable}
-import js7.data.lock.LockId
+import js7.data.lock.LockPath
 import js7.data.value.ValuePrinter.{appendObjectExpression, appendQuoted, appendValue}
 import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.{NamedValues, ValuePrinter}
@@ -166,7 +166,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
         }
         sb ++= ";\n"
 
-      case LockInstruction(LockId(lockId), maybeCount, lockedWorkflow, _) =>
+      case LockInstruction(LockPath(lockId), maybeCount, lockedWorkflow, _) =>
         sb ++= "lock (lock="
         appendQuoted(lockId)
         for (n <- maybeCount) {

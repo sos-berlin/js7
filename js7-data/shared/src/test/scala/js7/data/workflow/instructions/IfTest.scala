@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression._
@@ -20,8 +20,8 @@ final class IfTest extends AnyFreeSpec
 {
   private val if_ = If(
     GreaterOrEqual(LastReturnCode, NumericConstant(3)),
-    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("THEN")))),
-    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("ELSE"))))),
+    thenWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))),
+    elseWorkflow = Some(Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE"))))),
     Some(SourcePos(1, 2)))
 
   "JSON" in {

@@ -16,7 +16,7 @@ import js7.common.http.AkkaHttpUtils.RichAkkaUri
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.AgentProxyRoute._
-import js7.data.agent.{AgentId, AgentRef, AgentRefState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -26,7 +26,7 @@ import monix.execution.Scheduler
 trait AgentProxyRoute extends ControllerRouteProvider
 {
   protected implicit def actorSystem: ActorSystem
-  protected def idToAgentRefState: Task[Checked[Map[AgentId, AgentRefState]]]
+  protected def pathToAgentRefState: Task[Checked[Map[AgentPath, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration
 
   private implicit def implicitScheduler: Scheduler = scheduler
@@ -37,8 +37,8 @@ trait AgentProxyRoute extends ControllerRouteProvider
         path(Segment) { pathString =>
           extractRequest { request =>
             completeTask(
-              Task.pure(AgentId.checked(pathString))
-                .flatMapT(name => idToAgentRefState.map(_.flatMap(_.checked(name))))
+              Task.pure(AgentPath.checked(pathString))
+                .flatMapT(name => pathToAgentRefState.map(_.flatMap(_.checked(name))))
                 .flatMapT(agentRefState =>
                   forward(agentRefState.agentRef, request)
                     .map(Right.apply)))

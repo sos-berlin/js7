@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.{VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
@@ -43,7 +43,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  protected val agentIds = AgentId("AGENT") :: Nil
+  protected val agentIds = AgentPath("AGENT") :: Nil
   protected val versionedItems = Nil
 
   override def beforeAll() = {

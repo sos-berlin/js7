@@ -6,7 +6,7 @@ import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerEvent
 import js7.data.job.RelativePathExecutable
@@ -56,7 +56,7 @@ final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryPr
 
 private object ObsoleteJournalFilesRemovedTest
 {
-  private val agentId = AgentId("agent-111")
+  private val agentId = AgentPath("agent-111")
   private val pathExecutable = RelativePathExecutable(s"TEST$sh")
   private val workflow = Workflow.of(WorkflowPath("test"),
     Execute(WorkflowJob(agentId, pathExecutable)))

@@ -4,7 +4,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
@@ -80,7 +80,7 @@ object RemoveOrderWhenTerminatedTest
 {
   private val quickPathExecutable = RelativePathExecutable("quick.cmd")
   private val slowPathExecutable = RelativePathExecutable("slow.cmd")
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val quickWorkflow = Workflow.of(

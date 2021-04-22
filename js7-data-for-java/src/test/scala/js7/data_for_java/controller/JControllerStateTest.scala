@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.data.agent.{AgentId, AgentRef, AgentRefState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
@@ -90,8 +90,8 @@ private object JControllerStateTest
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    Map(AgentId("AGENT") ->
-      AgentRefState(AgentRef(AgentId("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7))),
+    Map(AgentPath("AGENT") ->
+      AgentRefState(AgentRef(AgentPath("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7))),
     Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty

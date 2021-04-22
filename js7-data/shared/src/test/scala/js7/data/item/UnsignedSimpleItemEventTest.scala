@@ -3,7 +3,7 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.controller.ControllerState
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.lock.{Lock, LockId}
+import js7.data.lock.{Lock, LockPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -13,7 +13,7 @@ final class UnsignedSimpleItemEventTest extends AnyFreeSpec
 
   "JSON" - {
     "SimpleItemAdded" in {
-      testJson[UnsignedSimpleItemEvent](SimpleItemAdded(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(0)))),
+      testJson[UnsignedSimpleItemEvent](SimpleItemAdded(Lock(LockPath("LOCK"), limit = 1, Some(ItemRevision(0)))),
         json"""{
           "TYPE": "SimpleItemAdded",
           "item": {
@@ -26,7 +26,7 @@ final class UnsignedSimpleItemEventTest extends AnyFreeSpec
       }
 
     "SimpleItemChanged" in {
-      testJson[UnsignedSimpleItemEvent](SimpleItemChanged(Lock(LockId("LOCK"), limit = 3, Some(ItemRevision(1)))),
+      testJson[UnsignedSimpleItemEvent](SimpleItemChanged(Lock(LockPath("LOCK"), limit = 3, Some(ItemRevision(1)))),
         json"""{
           "TYPE": "SimpleItemChanged",
           "item": {

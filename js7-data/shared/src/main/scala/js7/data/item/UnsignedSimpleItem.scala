@@ -15,8 +15,8 @@ object UnsignedSimpleItem
 
   trait Companion[A <: UnsignedSimpleItem] extends SimpleItem.Companion[A]
   {
-    type Id <: UnsignedSimpleItemId
-    val Id: UnsignedSimpleItemId.Companion[Id]
+    type Id <: UnsignedSimpleItemPath
+    val Id: UnsignedSimpleItemPath.Companion[Id]
   }
 
   def jsonCodec[A <: UnsignedSimpleItem](companions: Seq[Companion_]) =

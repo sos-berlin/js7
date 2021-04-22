@@ -19,7 +19,7 @@ import js7.common.akkautils.ProvideActorSystem
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.RelativePathExecutable
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase._
@@ -143,7 +143,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
   ).closeWithCloser
 
   override protected final def agentHttps = true
-  protected final val agentIds = AgentId("TEST-AGENT") :: Nil
+  protected final val agentIds = AgentPath("TEST-AGENT") :: Nil
   protected final val versionedItems = TestWorkflow :: Nil
 
   override def beforeAll() = {

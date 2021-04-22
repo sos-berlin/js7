@@ -10,7 +10,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.agent.CommandQueueTest._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.workflow.instructions.Execute
@@ -128,7 +128,7 @@ final class CommandQueueTest extends AnyFreeSpec
 
 object CommandQueueTest {
   private val logger = Logger(getClass)
-  private val TestAgentId = AgentId("AGENT")
+  private val TestAgentId = AgentPath("AGENT")
   private val TestWorkflow = Workflow.of(WorkflowPath("A") ~ "VERSION",
     Execute(WorkflowJob(TestAgentId, PathExecutable("EXECUTABLE"))))
 

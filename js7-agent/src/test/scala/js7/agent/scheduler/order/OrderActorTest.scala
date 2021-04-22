@@ -27,7 +27,7 @@ import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
 import js7.common.utils.Exceptions.repeatUntilNoException
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{EventRequest, JournalId, KeyedEvent, Stamped}
 import js7.data.item.VersionId
@@ -129,11 +129,11 @@ private object OrderActorTest {
   private val TestVersion = VersionId("VERSION")
   private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("WORKFLOW") ~ TestVersion, Order.Ready)
   private val DummyJobKey = JobKey.Named(WorkflowPath.NoId, WorkflowJob.Name("test"))
-  private val TestAgentId = AgentId("TEST-AGENT")
+  private val TestAgentId = AgentPath("TEST-AGENT")
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
     OrderAttachedToAgent(TestOrder.workflowPosition, Order.Ready, TestOrder.arguments, None, TestOrder.historicOutcomes,
-      AgentId("TEST-AGENT"), None, None, false, false),
+      AgentPath("TEST-AGENT"), None, None, false, false),
     OrderProcessingStarted,
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-FROM-JOB")))),
     OrderMoved(TestPosition),

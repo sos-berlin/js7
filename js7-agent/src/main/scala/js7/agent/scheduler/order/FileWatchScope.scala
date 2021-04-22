@@ -3,21 +3,21 @@ package js7.agent.scheduler.order
 import cats.syntax.semigroup._
 import java.util.regex.Matcher
 import js7.agent.scheduler.order.FileWatchScope._
-import js7.data.orderwatch.OrderWatchId
+import js7.data.orderwatch.OrderWatchPath
 import js7.data.value.StringValue
 import js7.data.value.expression.scopes.NowScope
 import js7.data.value.expression.{Scope, ValueSearch}
 import scala.util.control.NonFatal
 
-private final class FileWatchScope private(orderWatchId: OrderWatchId, matchedMatcher: Matcher)
+private final class FileWatchScope private(orderWatchPath: OrderWatchPath, matchedMatcher: Matcher)
 extends Scope
 {
   import ValueSearch.{LastOccurred, Name}
 
   val findValue = {
-    // $orderWatchId
-    case ValueSearch(LastOccurred, Name("orderWatchId")) =>
-      Some(StringValue(orderWatchId.string))
+    // $orderWatchPath
+    case ValueSearch(LastOccurred, Name("orderWatchPath")) =>
+      Some(StringValue(orderWatchPath.string))
 
     // $0, $1, ...
     case ValueSearch(LastOccurred, Name(NumberRegex(nr))) =>
@@ -37,8 +37,8 @@ extends Scope
 
 object FileWatchScope
 {
-  def apply(orderWatchId: OrderWatchId, matchedMatcher: Matcher): Scope = {
-    val a: Scope = new FileWatchScope(orderWatchId, matchedMatcher)
+  def apply(orderWatchPath: OrderWatchPath, matchedMatcher: Matcher): Scope = {
+    val a: Scope = new FileWatchScope(orderWatchPath, matchedMatcher)
     a |+| NowScope()
   }
 

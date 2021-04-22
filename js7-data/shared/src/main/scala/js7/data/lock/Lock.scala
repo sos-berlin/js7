@@ -6,7 +6,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 
 final case class Lock(
-  id: LockId,
+  id: LockPath,
   limit: Int = 1,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
@@ -22,10 +22,10 @@ extends UnsignedSimpleItem
 
 object Lock extends UnsignedSimpleItem.Companion[Lock]
 {
-  type Id = LockId
+  type Id = LockPath
 
   val cls = classOf[Lock]
-  val Id = LockId
+  val Id = LockPath
 
   val jsonCodec = {
     implicit val configuration = withDefaults

@@ -13,9 +13,9 @@ import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.{VersionedItem, VersionedItemId}
-import js7.data.job.{JobKey, JobResourceId}
+import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
@@ -236,7 +236,7 @@ extends VersionedItem
       }.toVector ++
         rawLabeledInstructions.lastOption)
 
-  def reduceForAgent(agentId: AgentId): Workflow =
+  def reduceForAgent(agentId: AgentPath): Workflow =
     reuseIfEqual(this, copy(
       rawLabeledInstructions = labeledInstructions
         .map(labeled => labeled.copy(
@@ -245,20 +245,20 @@ extends VersionedItem
       nameToJob = reuseIfEqual(nameToJob,
         nameToJob.filter(o => o._2.agentId == agentId))))
 
-  private[workflow] def isVisibleForAgent(agentId: AgentId): Boolean =
+  private[workflow] def isVisibleForAgent(agentId: AgentPath): Boolean =
     instructions.exists(_.isVisibleForAgent(agentId, this))
 
-  def isStartableOnAgent(position: Position, agentId: AgentId): Boolean =
+  def isStartableOnAgent(position: Position, agentId: AgentPath): Boolean =
     isStartableOnAgent(instruction(position), agentId)
 
-  private def isStartableOnAgent(instruction: Instruction, agentId: AgentId): Boolean =
+  private def isStartableOnAgent(instruction: Instruction, agentId: AgentPath): Boolean =
     instruction match {
       case o: Fork => o isStartableOnAgent agentId
       case o: Execute => o.isVisibleForAgent(agentId, this)
       case _ => false
     }
 
-  private[workflow] def isStartableOnAgent(agentId: AgentId): Boolean =
+  private[workflow] def isStartableOnAgent(agentId: AgentPath): Boolean =
     checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentId)
 
   def isDefinedAt(position: Position): Boolean =
@@ -271,8 +271,8 @@ extends VersionedItem
   private def isDefinedAt(nr: InstructionNr): Boolean =
     labeledInstructions.indices isDefinedAt nr.number
 
-  lazy val referencedJobResourceIds: Set[JobResourceId] =
-    workflowJobs.flatMap(_.jobResourceIds).toSet
+  lazy val referencedJobResourcePaths: Set[JobResourcePath] =
+    workflowJobs.flatMap(_.jobResourcePaths).toSet
 
   /** Searches a job bottom-up (from nested to root workflow).
     */

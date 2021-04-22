@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.IfExecutorTest._
 import js7.data.job.PathExecutable
@@ -28,7 +28,7 @@ final class IfExecutorTest extends AnyFreeSpec {
     def idToOrder = Map(AOrder.id -> AOrder, BOrder.id -> BOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(TestWorkflowId -> Workflow.of(TestWorkflowId)).checked(id)
-    val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
+    val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
   }
 
   "JSON BranchId" - {
@@ -76,8 +76,8 @@ object IfExecutorTest {
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("AA")))) :: Nil)
   private val BOrder = Order(OrderId("ORDER-B"), TestWorkflowId /: Position(7), Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1) ++ Map("A" -> StringValue("XX")))) :: Nil)
-  private val ThenJob = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("THEN")))
-  private val ElseJob = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("ELSE")))
+  private val ThenJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
+  private val ElseJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE")))
 
   private def ifThenElse(booleanExpr: BooleanExpression) =
     If(booleanExpr, Workflow.of(ThenJob), Some(Workflow.of(ElseJob)))

@@ -21,7 +21,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.core.item.{ItemPaths, VersionedItemReader}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
@@ -132,7 +132,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         added = TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.s).orThrow
-      //assert(controller.controllerState.map(_.idToAgentRefState.values).await(99.s) == Seq(agentRef))
+      //assert(controller.controllerState.map(_.pathToAgentRefState.values).await(99.s) == Seq(agentRef))
       assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
           Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
@@ -320,7 +320,7 @@ object ProviderTest
     js7.provider.directory-watch.poll-interval = "${if (isMac) "100ms" else "300s"}"
     """
 
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val AWorkflowPath = WorkflowPath("A")
   private val BWorkflowPath = WorkflowPath("B")
   private val CWorkflowPath = WorkflowPath("C")

@@ -10,7 +10,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
@@ -353,7 +353,7 @@ final case class Order[+S <: Order.State](
   def isDetached: Boolean =
     attachedState.isEmpty
 
-  def attached: Checked[AgentId] =
+  def attached: Checked[AgentPath] =
     attachedState match {
       case Some(Attached(agentId)) =>
         Right(agentId)
@@ -361,7 +361,7 @@ final case class Order[+S <: Order.State](
         Left(Problem(s"'$id' should be 'Attached', but is $o"))
     }
 
-  def detaching: Checked[AgentId] =
+  def detaching: Checked[AgentPath] =
     attachedState match {
       case Some(Detaching(agentId)) =>
         Right(agentId)
@@ -440,7 +440,7 @@ object Order
   sealed trait AttachedState
   object AttachedState {
     sealed trait HasAgentId extends AttachedState {
-      def agentId: AgentId
+      def agentId: AgentPath
     }
     implicit val jsonCodec = TypedJsonCodec[AttachedState](
       Subtype(deriveCodec[Attaching]),
@@ -448,15 +448,15 @@ object Order
       Subtype(deriveCodec[Detaching]))
   }
   /** Order is going to be attached to an Agent. */
-  final case class Attaching(agentId: AgentId) extends AttachedState.HasAgentId {
+  final case class Attaching(agentId: AgentPath) extends AttachedState.HasAgentId {
     override def toString = s"Attaching(${agentId.string})"
   }
   /** Order is attached to an Agent. */
-  final case class Attached(agentId: AgentId) extends AttachedState.HasAgentId {
+  final case class Attached(agentId: AgentPath) extends AttachedState.HasAgentId {
     override def toString = s"Attached(${agentId.string})"
   }
   /** Order is going to be detached from Agent. */
-  final case class Detaching(agentId: AgentId) extends AttachedState.HasAgentId {
+  final case class Detaching(agentId: AgentPath) extends AttachedState.HasAgentId {
     override def toString = s"Detaching(${agentId.string})"
   }
 

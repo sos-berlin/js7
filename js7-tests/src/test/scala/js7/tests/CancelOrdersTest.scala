@@ -8,7 +8,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.command.CancelMode
 import js7.data.controller.ControllerCommand.{CancelOrders, Response}
 import js7.data.item.VersionId
@@ -229,7 +229,7 @@ object CancelOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd",
     ObjectExpression(Map("SLEEP" -> NamedValue.last("sleep"))))
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(

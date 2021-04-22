@@ -5,7 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
@@ -74,7 +74,7 @@ final class JobActorStarvationTest extends AnyFreeSpec with ControllerAgentForSc
 
 object JobActorStarvationTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

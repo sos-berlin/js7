@@ -9,13 +9,13 @@ import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.TestCodeProblem
 import js7.common.message.ProblemCodeMessages
-import js7.data.agent.{AgentId, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CancelMode
 import js7.data.event.JournalId
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
-import js7.data.job.{JobResource, JobResourceId}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId, OrderMark}
-import js7.data.orderwatch.{FileWatch, OrderWatchId}
+import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -105,7 +105,7 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "RegisterAsController" in {
-    check(AgentCommand.RegisterAsController(AgentId("AGENT")),
+    check(AgentCommand.RegisterAsController(AgentPath("AGENT")),
       json"""{
         "TYPE": "RegisterAsController",
         "agentId": "AGENT"
@@ -124,7 +124,7 @@ final class AgentCommandTest extends AnyFreeSpec
   "CoupleController" in {
     check(
       AgentCommand.CoupleController(
-        AgentId("AGENT"),
+        AgentPath("AGENT"),
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
         1000L),
       json"""{
@@ -173,7 +173,7 @@ final class AgentCommandTest extends AnyFreeSpec
   "AttachItem" in {
     check(
       AgentCommand.AttachItem(
-        FileWatch(OrderWatchId("ID"), WorkflowPath("WORKFLOW"), AgentId("AGENT"), "DIRECTORY")),
+        FileWatch(OrderWatchPath("ID"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "DIRECTORY")),
       json"""{
         "TYPE": "AttachItem",
         "item": {
@@ -205,7 +205,7 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "AttachSignedItem JobResource (with ItemRevision)" in {
-    val jobResource = JobResource(JobResourceId("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))
+    val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))
     val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
     check(
       AgentCommand.AttachSignedItem(itemSigner.sign(jobResource)),
@@ -224,7 +224,7 @@ final class AgentCommandTest extends AnyFreeSpec
 
   "DetachItem" in {
     check(
-      AgentCommand.DetachItem(OrderWatchId("ID")),
+      AgentCommand.DetachItem(OrderWatchPath("ID")),
       json"""{
         "TYPE": "DetachItem",
         "id": "OrderWatch:ID"
@@ -246,7 +246,7 @@ final class AgentCommandTest extends AnyFreeSpec
             SimpleTestWorkflow.id /: Position(3),
             Order.Ready,
             Map("KEY" -> StringValue("VALUE"))),
-          AgentId("AGENT")),
+          AgentPath("AGENT")),
         json"""{
           "TYPE": "AttachOrder",
           "order": {

@@ -12,7 +12,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerId
 import js7.data.job.{PathExecutable, RelativePathExecutable}
 import js7.data.order.{FreshOrder, OrderId}
@@ -82,7 +82,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
 object UpdateAgentRefsTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Vector(
     Execute(WorkflowJob(agentId, PathExecutable(s"EXECUTABLE$sh")))))
 }

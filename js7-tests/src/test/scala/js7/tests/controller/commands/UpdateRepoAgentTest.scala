@@ -15,7 +15,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient.HttpException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
@@ -85,7 +85,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
 
 object UpdateRepoAgentTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW"),
      """define workflow {
           execute executable="SCRIPT.cmd", agent="AGENT";

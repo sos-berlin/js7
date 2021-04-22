@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
 import js7.data.job.RelativePathExecutable
@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ExecuteTest extends AnyFreeSpec {
 
-  private val executeAnonymous = Execute(WorkflowJob(AgentId("AGENT"), RelativePathExecutable("EXECUTABLE"),
+  private val executeAnonymous = Execute(WorkflowJob(AgentPath("AGENT"), RelativePathExecutable("EXECUTABLE"),
     returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9)))
   private val orderId = OrderId("ORDER")
 
@@ -29,7 +29,7 @@ final class ExecuteTest extends AnyFreeSpec {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToOrder = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-    val idToLockState = _ => Left(Problem("idToLockState is not implemented here"))
+    val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
   }
 
   "toOutcome" in {

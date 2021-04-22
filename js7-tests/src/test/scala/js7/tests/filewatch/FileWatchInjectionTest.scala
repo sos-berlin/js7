@@ -5,9 +5,9 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.orderwatch.{FileWatch, OrderWatchId}
+import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.workflow.WorkflowPath
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
@@ -16,7 +16,7 @@ import scala.concurrent.TimeoutException
 
 final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  private val aAgentId = AgentId("AGENT-A")
+  private val aAgentId = AgentPath("AGENT-A")
   protected val agentIds = Seq(aAgentId)
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
@@ -25,7 +25,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
   private lazy val fileWatch = FileWatch(
-    OrderWatchId("TEST-WATCH"),
+    OrderWatchPath("TEST-WATCH"),
     WorkflowPath("WORKFLOW"),
     aAgentId,
     sourceDirectory.toString)

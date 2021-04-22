@@ -29,7 +29,7 @@ import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.core.common.ActorRegister
-import js7.data.agent.{AgentId, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, KeyedEvent, Stamped}
@@ -210,7 +210,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
     }
   }
 
-  private def checkController(controllerId: ControllerId, requestedAgentId: AgentId, requestedAgentRunId: Option[AgentRunId], eventId: EventId)
+  private def checkController(controllerId: ControllerId, requestedAgentId: AgentPath, requestedAgentRunId: Option[AgentRunId], eventId: EventId)
   : Task[Checked[ControllerRegister.Entry]] = {
     def pure[A](a: Checked[A]) = EitherT(Task.pure(a))
     ( for {
@@ -250,7 +250,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
     }
   }
 
-  private def addOrderKeeper(controllerId: ControllerId, agentId: AgentId, agentRunId: AgentRunId): ActorRef = {
+  private def addOrderKeeper(controllerId: ControllerId, agentId: AgentPath, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(AgentState, stateDirectory / s"controller-$controllerId")
 
     // May take minutes !!!

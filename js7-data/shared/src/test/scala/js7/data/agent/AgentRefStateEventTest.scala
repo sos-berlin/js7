@@ -12,7 +12,7 @@ final class AgentRefStateEventTest extends AnyFreeSpec
 {
   "JSON" - {
     "AgentCouplingFailed" in {
-      testJson[KeyedEvent[AgentRefStateEvent]](AgentId("AGENT") <-: AgentCouplingFailed(Problem("ERROR")),
+      testJson[KeyedEvent[AgentRefStateEvent]](AgentPath("AGENT") <-: AgentCouplingFailed(Problem("ERROR")),
         json"""{
           "TYPE": "AgentCouplingFailed",
           "key": "AGENT",
@@ -23,7 +23,7 @@ final class AgentRefStateEventTest extends AnyFreeSpec
     }
 
     "AgentReady" in {
-      testJson[KeyedEvent[AgentRefStateEvent]](AgentId("AGENT") <-: AgentReady("Europe/Berlin"),
+      testJson[KeyedEvent[AgentRefStateEvent]](AgentPath("AGENT") <-: AgentReady("Europe/Berlin"),
         json"""{
           "TYPE": "AgentReady",
           "key": "AGENT",
@@ -33,7 +33,7 @@ final class AgentRefStateEventTest extends AnyFreeSpec
 
     "AgentRegisteredController" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentId("AGENT") <-: AgentRegisteredController(AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
+        AgentPath("AGENT") <-: AgentRegisteredController(AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
         json"""{
           "TYPE": "AgentRegisteredController",
           "key": "AGENT",
@@ -43,7 +43,7 @@ final class AgentRefStateEventTest extends AnyFreeSpec
 
     "AgentEventsObserved" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentId("AGENT") <-: AgentEventsObserved(123L),json"""
+        AgentPath("AGENT") <-: AgentEventsObserved(123L),json"""
         {
           "TYPE":  "AgentEventsObserved",
           "key": "AGENT",

@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.data.agent.{AgentId, AgentRef, AgentRefState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerState.ItemAttachedStateSnapshot
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -17,12 +17,12 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{ItemRevision, ItemSigner, Repo, VersionId}
-import js7.data.job.{JobResource, JobResourceId}
-import js7.data.lock.{Lock, LockId, LockState}
+import js7.data.job.{JobResource, JobResourcePath}
+import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, VanishedAck}
-import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchId, OrderWatchState}
+import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
@@ -35,7 +35,7 @@ import org.scalatest.freespec.AsyncFreeSpec
   */
 final class ControllerStateTest extends AsyncFreeSpec
 {
-  private lazy val jobResource = JobResource(JobResourceId("JOB-RESOURCE"))
+  private lazy val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private lazy val signedJobResource = new ItemSigner(SillySigner.Default, ControllerState.signableSimpleItemJsonCodec)
     .sign(jobResource)
 
@@ -53,29 +53,29 @@ final class ControllerStateTest extends AsyncFreeSpec
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Map(
-      AgentId("AGENT") -> AgentRefState(
-        AgentRef(AgentId("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0))),
+      AgentPath("AGENT") -> AgentRefState(
+        AgentRef(AgentPath("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0))),
         None, None, AgentRefState.Decoupled, EventId(7))),
     Map(
-      LockId("LOCK") -> LockState(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(7))))),
+      LockPath("LOCK") -> LockState(Lock(LockPath("LOCK"), limit = 1, Some(ItemRevision(7))))),
     AllOrderWatchesState(Map(
-      OrderWatchId("WATCH") -> OrderWatchState(
+      OrderWatchPath("WATCH") -> OrderWatchState(
         FileWatch(
-          OrderWatchId("WATCH"),
+          OrderWatchPath("WATCH"),
           WorkflowPath("WORKFLOW"),
-          AgentId("AGENT"),
+          AgentPath("AGENT"),
           "/tmp/directory",
           itemRevision = Some(ItemRevision(7))),
-        Map(AgentId("AGENT") -> Attached(Some(ItemRevision(7)))),
+        Map(AgentPath("AGENT") -> Attached(Some(ItemRevision(7)))),
         Map(
           ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(VanishedAck)))))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     Map(
       jobResource.id -> signedJobResource),
     Map(
-      JobResourceId("JOB-RESOURCE") -> Map(AgentId("AGENT") -> Attachable)),
+      JobResourcePath("JOB-RESOURCE") -> Map(AgentPath("AGENT") -> Attachable)),
     (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh(None),
-      externalOrderKey = Some(ExternalOrderKey(OrderWatchId("WATCH"), ExternalOrderName("ORDER-NAME")))
+      externalOrderKey = Some(ExternalOrderKey(OrderWatchPath("WATCH"), ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))
 
   "estimatedSnapshotSize" in {
@@ -85,9 +85,9 @@ final class ControllerStateTest extends AsyncFreeSpec
   }
 
   "idToSimpleItem" in {
-    val sum = controllerState.idToAgentRefState ++
-      controllerState.idToLockState ++
-      controllerState.allOrderWatchesState.idToOrderWatchState
+    val sum = controllerState.pathToAgentRefState ++
+      controllerState.pathToLockState ++
+      controllerState.allOrderWatchesState.pathToOrderWatchState
     assert(controllerState.idToSimpleItem.toMap == sum.map(_._2.item).toKeyedMap(_.id))
   }
 
@@ -109,24 +109,24 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.controllerMetaState,
           VersionAdded(VersionId("1.0"))
         ) ++
-          controllerState.idToAgentRefState.values ++
-          controllerState.idToLockState.values ++
+          controllerState.pathToAgentRefState.values ++
+          controllerState.pathToLockState.values ++
           Seq(
             OrderWatchState.HeaderSnapshot(
               FileWatch(
-                OrderWatchId("WATCH"),
+                OrderWatchPath("WATCH"),
                 WorkflowPath("WORKFLOW"),
-                AgentId("AGENT"),
+                AgentPath("AGENT"),
                 "/tmp/directory",
                 itemRevision = Some(ItemRevision(7))),
-              Map(AgentId("AGENT") -> Attached(Some(ItemRevision(7)))),
+              Map(AgentPath("AGENT") -> Attached(Some(ItemRevision(7)))),
               delete = false),
             OrderWatchState.ExternalOrderSnapshot(
-              OrderWatchId("WATCH"),
+              OrderWatchPath("WATCH"),
               ExternalOrderName("ORDER-NAME"),
               HasOrder(OrderId("ORDER"), Some(VanishedAck))),
             SignedItemAdded(signedJobResource),
-            ItemAttachedStateSnapshot(jobResource.id, Map(AgentId("AGENT") -> Attachable))
+            ItemAttachedStateSnapshot(jobResource.id, Map(AgentPath("AGENT") -> Attachable))
           ) ++
           controllerState.idToOrder.values)
   }
@@ -220,7 +220,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             "delete": false
           }, {
             "TYPE": "ExternalOrder",
-            "orderWatchId": "WATCH",
+            "orderWatchPath": "WATCH",
             "externalOrderName": "ORDER-NAME",
             "state": {
               "TYPE": "HasOrder",
@@ -254,7 +254,7 @@ final class ControllerStateTest extends AsyncFreeSpec
               "TYPE": "Fresh"
             },
             "externalOrderKey": {
-              "orderWatchId": "WATCH",
+              "orderWatchPath": "WATCH",
               "name": "ORDER-NAME"
             },
             "workflowPosition": {

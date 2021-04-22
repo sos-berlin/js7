@@ -2,7 +2,7 @@ package js7.data.item
 
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.JournaledState
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
 
@@ -23,11 +23,11 @@ object BasicItemEvent
 
   sealed trait ItemAttachedStateChanged
   extends ForController {
-    def agentId: AgentId
+    def agentId: AgentPath
     def attachedState: ItemAttachedState
   }
   object ItemAttachedStateChanged {
-    def apply(id: InventoryItemId, agentId: AgentId, attachedState: ItemAttachedState)
+    def apply(id: InventoryItemId, agentId: AgentPath, attachedState: ItemAttachedState)
     : ItemAttachedStateChanged =
       attachedState match {
         case Attachable => ItemAttachable(id, agentId)
@@ -39,12 +39,12 @@ object BasicItemEvent
       Some((event.id, event.agentId, event.attachedState))
   }
 
-  final case class ItemAttachable(id: InventoryItemId, agentId: AgentId)
+  final case class ItemAttachable(id: InventoryItemId, agentId: AgentPath)
   extends ItemAttachedStateChanged {
     def attachedState = Attachable
   }
 
-  final case class ItemAttached(id: InventoryItemId, itemRevision: Option[ItemRevision], agentId: AgentId)
+  final case class ItemAttached(id: InventoryItemId, itemRevision: Option[ItemRevision], agentId: AgentPath)
   extends ItemAttachedStateChanged {
     def attachedState = Attached(itemRevision)
   }
@@ -55,12 +55,12 @@ object BasicItemEvent
     def id = item.id
   }
 
-  final case class ItemDetachable(id: InventoryItemId, agentId: AgentId)
+  final case class ItemDetachable(id: InventoryItemId, agentId: AgentPath)
   extends ItemAttachedStateChanged {
     def attachedState = Detachable
   }
 
-  final case class ItemDetached(id: InventoryItemId, agentId: AgentId)
+  final case class ItemDetached(id: InventoryItemId, agentId: AgentPath)
   extends ItemAttachedStateChanged with ForAgent {
     def attachedState = Detached
   }

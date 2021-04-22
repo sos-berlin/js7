@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import js7.base.crypt.SignedString;
 import js7.data.event.Event;
 import js7.data.item.VersionId;
-import js7.data.job.JobResourceId;
+import js7.data.job.JobResourcePath;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.data_for_java.controller.JControllerState;
@@ -39,13 +39,13 @@ final class JJobResourceTester
     void run() throws Exception
     {
         JJobResource aJobResource = JJobResource.of(
-            JobResourceId.of("JOB-RESOURCE-A"),
+            JobResourcePath.of("JOB-RESOURCE-A"),
             new HashMap<String, JExpression>() {{
                 put("A", getOrThrow(JExpression.parse("'a'")));
                 put("B", getOrThrow(JExpression.parse("'bb'")));
             }});
         JJobResource bJobResource = JJobResource.of(
-            JobResourceId.of("JOB-RESOURCE-B"),
+            JobResourcePath.of("JOB-RESOURCE-B"),
             new HashMap<String, JExpression>() {{
                 put("B", getOrThrow(JExpression.parse("'IGNORED'")));
                 put("C", getOrThrow(JExpression.parse("'ccc'")));
@@ -68,7 +68,7 @@ final class JJobResourceTester
             "            \"E\": \"'E OF JOB'\"\n" +
             "          }\n" +
             "        },\n" +
-            "        \"jobResourceIds\": [\n" +
+            "        \"jobResourcePaths\": [\n" +
             "          \"JOB-RESOURCE-A\",\n" +
             "          \"JOB-RESOURCE-B\"\n" +
             "        ],\n" +

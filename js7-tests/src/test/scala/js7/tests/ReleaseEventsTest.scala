@@ -14,7 +14,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.RunningController
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{ReleaseEvents, TakeSnapshot}
 import js7.data.controller.ControllerEvent
 import js7.data.job.RelativePathExecutable
@@ -140,7 +140,7 @@ private object ReleaseEventsTest
   private val aUserAndPassword = UserAndPassword(UserId("A"), SecretString("PASSWORD"))
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))
   private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
-  private val TestAgentId = AgentId("agent-111")
+  private val TestAgentId = AgentPath("agent-111")
   private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("test"),
     Execute(WorkflowJob(TestAgentId, TestPathExecutable)))

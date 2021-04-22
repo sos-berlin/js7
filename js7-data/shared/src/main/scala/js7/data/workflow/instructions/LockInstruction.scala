@@ -3,14 +3,14 @@ package js7.data.workflow.instructions
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.Problem
 import js7.base.utils.Assertions.assertThat
-import js7.data.agent.AgentId
-import js7.data.lock.LockId
+import js7.data.agent.AgentPath
+import js7.data.lock.LockPath
 import js7.data.source.SourcePos
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
 final case class LockInstruction(
-  lockId: LockId,
+  lockId: LockPath,
   count: Option[Int],
   lockedWorkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
@@ -30,7 +30,7 @@ extends Instruction {
     lockedWorkflow = lockedWorkflow.copy(
       outer = Some(outer)))
 
-  override def reduceForAgent(agentId: AgentId, workflow: Workflow) =
+  override def reduceForAgent(agentId: AgentPath, workflow: Workflow) =
     if (isVisibleForAgent(agentId, workflow))
       copy(
         lockedWorkflow = lockedWorkflow.reduceForAgent(agentId))
@@ -52,7 +52,7 @@ extends Instruction {
 object LockInstruction {
   implicit val jsonCodec = deriveCodec[LockInstruction]
 
-  def checked(lockId: LockId, count: Option[Int], lockedWorkflow: Workflow, sourcePos: Option[SourcePos] = None) =
+  def checked(lockId: LockPath, count: Option[Int], lockedWorkflow: Workflow, sourcePos: Option[SourcePos] = None) =
     if (count.exists(_ < 1))
       Left(Problem(s"Invalid count=$count in lock instruction"))
     else

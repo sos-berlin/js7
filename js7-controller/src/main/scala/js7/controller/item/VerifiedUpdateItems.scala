@@ -7,8 +7,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.crypt.SignedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, AddOrChangeSimple, DeleteSimple, DeleteVersioned}
-import js7.data.item.{ItemOperation, ItemPath, SignableItem, SignableSimpleItem, SimpleItemId, UnsignedSimpleItem, VersionId, VersionedItem}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.{ItemOperation, ItemPath, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
 
@@ -24,7 +24,7 @@ object VerifiedUpdateItems
   final case class Simple(
     unsignedSimpleItems: Seq[UnsignedSimpleItem],
     verifiedSimpleItems: Seq[Verified[SignableSimpleItem]],
-    delete: Seq[SimpleItemId])
+    delete: Seq[SimpleItemPath])
   {
     def itemCount = unsignedSimpleItems.size + verifiedSimpleItems.size
   }
@@ -49,7 +49,7 @@ object VerifiedUpdateItems
   {
     val unsignedSimpleItems_ = Vector.newBuilder[UnsignedSimpleItem]
     val signedItems_ = Vector.newBuilder[Verified[SignableItem]]
-    val simpleDeletes_ = Vector.newBuilder[SimpleItemId]
+    val simpleDeletes_ = Vector.newBuilder[SimpleItemPath]
     val versionedDeletes_ = Vector.newBuilder[ItemPath]
     @volatile var maybeVersionId: Option[VersionId] = None
     @volatile var problemOccurred: Option[Problem] = None

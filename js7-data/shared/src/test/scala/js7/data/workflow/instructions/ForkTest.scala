@@ -2,7 +2,7 @@ package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.ProblemException
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Instructions.jsonCodec
@@ -18,8 +18,8 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ForkTest extends AnyFreeSpec {
 
   private val fork = Fork.of(
-    "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("A")))),
-    "B" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("B")))))
+    "A" -> Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("A")))),
+    "B" -> Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("B")))))
     .copy(sourcePos = Some(SourcePos(1, 2)))
 
   "JSON" - {
@@ -71,8 +71,8 @@ final class ForkTest extends AnyFreeSpec {
   "Duplicate branch ids are rejected" in {  // TODO
     intercept[ProblemException] {
       Fork.of(
-        "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("A")))),
-        "A" -> Workflow.of(Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("B")))))
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("A")))),
+        "A" -> Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("B")))))
     }
   }
 

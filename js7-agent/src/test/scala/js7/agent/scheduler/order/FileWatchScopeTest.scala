@@ -4,14 +4,14 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneId}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
-import js7.data.orderwatch.OrderWatchId
+import js7.data.orderwatch.OrderWatchPath
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.NamedValue
 import org.scalatest.freespec.AnyFreeSpec
 
 final class FileWatchScopeTest extends AnyFreeSpec
 {
-  private val orderWatchId = OrderWatchId("FILE-WATCH")
+  private val orderWatchPath = OrderWatchPath("FILE-WATCH")
   private val pattern = """file-(.*((A)|(B)))\.csv""".r.pattern
   private val filename = "file-100B.csv"
 
@@ -19,7 +19,7 @@ final class FileWatchScopeTest extends AnyFreeSpec
     val matcher = pattern.matcher(filename)
     val matches = matcher.matches()  // required !!!
     assert(matches)
-    FileWatchScope(orderWatchId, matcher)
+    FileWatchScope(orderWatchPath, matcher)
   }
 
   "$0...$n" in {
@@ -34,7 +34,7 @@ final class FileWatchScopeTest extends AnyFreeSpec
 
   "Complete" in {
     val checkedValue = scope.parseAndEval(
-      "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchId:$1\"")
+      "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchPath:$1\"")
     val now = Instant.ofEpochSecond(scope.evalString(NamedValue("epochSecond")).orThrow.toLong)
     val yyyymmdd = LocalDateTime.ofInstant(now, ZoneId.of("Antarctica/Troll"))
       .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))

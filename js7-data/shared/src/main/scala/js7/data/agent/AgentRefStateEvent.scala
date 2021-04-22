@@ -9,7 +9,7 @@ import js7.data.event.{Event, EventId}
   * @author Joacim Zschimmer
   */
 sealed trait AgentRefStateEvent extends Event {
-  type Key = AgentId
+  type Key = AgentPath
 }
 
 object AgentRefStateEvent

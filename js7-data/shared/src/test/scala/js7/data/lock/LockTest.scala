@@ -7,7 +7,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class LockTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(Lock(LockId("LOCK"), limit = 3), json"""
+    testJson(Lock(LockPath("LOCK"), limit = 3), json"""
       {
         "id": "LOCK",
         "limit": 3

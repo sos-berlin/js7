@@ -17,7 +17,7 @@ import js7.common.utils.FreeTcpPortFinder
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
-import js7.data.agent.{AgentId, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.{ItemOperation, ItemSigner, VersionId}
 import js7.data.job.PathExecutable
@@ -109,7 +109,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 object ControllerAgentWithoutAuthenticationTest
 {
   private val versionId = VersionId("INITIAL")
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val pathExecutable = PathExecutable("EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ versionId,
     Execute(WorkflowJob(agentId, pathExecutable)))

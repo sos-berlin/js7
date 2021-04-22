@@ -3,7 +3,7 @@ package js7.data_for_java.jobresource
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
-import js7.data.job.{JobResource, JobResourceId}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.value.expression.Expression.ObjectExpression
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JSignableItem
@@ -17,7 +17,7 @@ extends JJsonable[JJobResource] with JSignableItem
   protected def companion = JJobResource
 
   @Nonnull
-  def id: JobResourceId =
+  def id: JobResourcePath =
     asScala.id
 
   @Nonnull
@@ -33,7 +33,7 @@ object JJobResource extends JJsonable.Companion[JJobResource]
 {
   @Nonnull
   def of(
-    @Nonnull id: JobResourceId,
+    @Nonnull id: JobResourcePath,
     @Nonnull env: java.util.Map[String, JExpression])
   : JJobResource =
     JJobResource(

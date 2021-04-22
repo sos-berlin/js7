@@ -1,6 +1,6 @@
 package js7.tests.jobs
 
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.job.InternalExecutable
 import js7.data.order.Outcome
 import js7.data.workflow.instructions.Execute
@@ -17,6 +17,6 @@ final class EmptyJob extends InternalJob
 
 object EmptyJob
 {
-  def execute(agentId: AgentId) =
+  def execute(agentId: AgentPath) =
     Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyJob].getName)))
 }

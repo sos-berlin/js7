@@ -18,7 +18,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
@@ -96,7 +96,7 @@ final class AgentActorTest extends AnyFreeSpec
 
 object AgentActorTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off

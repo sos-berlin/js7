@@ -6,10 +6,10 @@ import org.scalatest.freespec.AnyFreeSpec
 final class LockIdTest extends AnyFreeSpec
 {
   "Invalid path" in {
-    Js7PathValidatorTest.checkInvalid("LockId", LockId.checked)
+    Js7PathValidatorTest.checkInvalid("LockPath", LockPath.checked)
   }
 
   "Valid paths" in {
-    Js7PathValidatorTest.checkValid(LockId.checked)
+    Js7PathValidatorTest.checkValid(LockPath.checked)
   }
 }

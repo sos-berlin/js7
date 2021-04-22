@@ -7,9 +7,9 @@ import js7.base.auth.SimpleUser
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
-import js7.data.job.{JobResource, JobResourceId}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.value.expression.Expression.{ObjectExpression, StringConstant}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.AttachSignedItemTest._
@@ -62,7 +62,7 @@ final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForSc
 
 object AttachSignedItemTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION")
-  private val jobResource = JobResource(JobResourceId("JOB-RESOURCE"))
+  private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
 }

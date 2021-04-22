@@ -23,9 +23,9 @@ object SimpleItem
   trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]
   {
     type Item  = A
-    type Id <: SimpleItemId
+    type Id <: SimpleItemPath
 
-    val Id: SimpleItemId.Companion[Id]
+    val Id: SimpleItemPath.Companion[Id]
   }
 
   def jsonCodec(companions: Seq[Companion_]): Codec.AsObject[SimpleItem] =

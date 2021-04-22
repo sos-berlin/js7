@@ -16,7 +16,7 @@ import js7.common.akkautils.Akkas
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.utils.UntilNoneIterator
 import js7.controller.RunningController
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.{ControllerEvent, ControllerId}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
@@ -164,7 +164,7 @@ private object RecoveryTest {
   private val logger = Logger(getClass)
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
-  private val AgentIds = AgentId("agent-111") :: AgentId("agent-222") :: Nil
+  private val AgentIds = AgentPath("agent-111") :: AgentPath("agent-222") :: Nil
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd", v1Compatible = true)
 
   private val TestWorkflow = Workflow(WorkflowPath("test") ~ "INITIAL",

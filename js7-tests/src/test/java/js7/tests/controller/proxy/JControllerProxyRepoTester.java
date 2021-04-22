@@ -17,7 +17,7 @@ import js7.data.event.KeyedEvent;
 import js7.data.item.ItemPath;
 import js7.data.item.VersionId;
 import js7.data.item.VersionedEvent;
-import js7.data.lock.LockId;
+import js7.data.lock.LockPath;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.item.JUnsignedSimpleItem;
 import js7.data_for_java.item.JUpdateItemOperation;
@@ -88,7 +88,7 @@ final class JControllerProxyRepoTester
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowAdded =
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
-        JLock lock = JLock.of(LockId.of("MY-LOCK"), 1);
+        JLock lock = JLock.of(LockPath.of("MY-LOCK"), 1);
         List<JUnsignedSimpleItem> simpleItems = singletonList(lock);
         List<SignedString> signedItemJsons = itemJsons.stream().map(o -> sign(o)).collect(toList());
         // Add items

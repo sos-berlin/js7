@@ -12,7 +12,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.NoKeyEvent
 import js7.data.item.BasicItemEvent.ItemAttachedStateChanged
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
@@ -30,7 +30,7 @@ final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
   pathToVersionToSignedItems: Map[ItemPath, List[Entry]],
-  idToAgentIdToAttachedState: Map[VersionedItemId_, Map[AgentId, ItemAttachedState.NotDetached]],
+  idToAgentIdToAttachedState: Map[VersionedItemId_, Map[AgentPath, ItemAttachedState.NotDetached]],
   signatureVerifier: Option[SignatureVerifier])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
@@ -321,7 +321,7 @@ final case class Repo private(
   def newVersionId(): VersionId =
     VersionId.generate(isKnown = versions.contains)
 
-  def attachedState(itemId: VersionedItemId_, agentId: AgentId): ItemAttachedState =
+  def attachedState(itemId: VersionedItemId_, agentId: AgentPath): ItemAttachedState =
     idToAgentIdToAttachedState.get(itemId)
       .flatMap(_.get(agentId))
       .getOrElse(Detached)

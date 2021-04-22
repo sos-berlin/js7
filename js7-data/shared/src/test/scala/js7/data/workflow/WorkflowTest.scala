@@ -5,10 +5,10 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{JobKey, JobResourceId, PathExecutable, ScriptExecutable}
-import js7.data.lock.LockId
+import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ScriptExecutable}
+import js7.data.lock.LockPath
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.value.expression.PositionSearch
 import js7.data.value.{NumberValue, StringValue}
@@ -32,7 +32,7 @@ final class WorkflowTest extends AnyFreeSpec
       testJson[Workflow](
         Workflow(WorkflowPath.NoId,
           Vector(Labeled(Some("TEST-LABEL"), Execute(WorkflowJob.Name("JOB")))),
-          Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE")))),
+          Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))),
         json"""{
           "instructions": [
             {
@@ -394,11 +394,11 @@ final class WorkflowTest extends AnyFreeSpec
           Map(
             WorkflowJob.Name("EXECUTABLE") ->
               WorkflowJob(
-                AgentId("AGENT"),
+                AgentPath("AGENT"),
                 PathExecutable("EXECUTABLE")),
             WorkflowJob.Name("OWN-SCRIPT") ->
               WorkflowJob(
-                AgentId("AGENT"),
+                AgentPath("AGENT"),
                 ScriptExecutable("#!/usr/bin/env bash\n...")))),
         json"""{
           "path": "TEST",
@@ -460,7 +460,7 @@ final class WorkflowTest extends AnyFreeSpec
       val workflow = Workflow(
         WorkflowPath("WORKFLOW") ~ VersionId("1"),
         Vector(
-          Execute(WorkflowJob(AgentId("AGENT"), ScriptExecutable("echo HELLO\n")))))
+          Execute(WorkflowJob(AgentPath("AGENT"), ScriptExecutable("echo HELLO\n")))))
       testJson(workflow,json"""
         {
           "instructions": [
@@ -487,8 +487,8 @@ final class WorkflowTest extends AnyFreeSpec
       "A" @: Execute.Named(WorkflowJob.Name("JOB-A")),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE")))))),
-      Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))))
+          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))))),
+      Map(WorkflowJob.Name("JOB-A") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))
       .completelyChecked.orThrow
     assert(workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("A")))
     assert(!workflow.positionMatchesSearch(Position(0), PositionSearch.ByLabel("B")))
@@ -502,10 +502,10 @@ final class WorkflowTest extends AnyFreeSpec
 
   "labelToPosition of a branch" in {
     val workflow = Workflow.of(
-      "A" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))),
+      "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))))))
+          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))
       .completelyChecked.orThrow
     assert(workflow.labelToPosition(Nil, Label("A")) == Right(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("UNKNOWN")) == Left(UnknownKeyProblem("Label", "UNKNOWN")))
@@ -514,10 +514,10 @@ final class WorkflowTest extends AnyFreeSpec
 
   "labelToPosition of whole workflow" in {
     val workflow = Workflow.of(
-      "A" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))),
+      "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "B" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))))))
+          "B" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))
       .completelyChecked.orThrow
     assert(workflow.labelToPosition(Label("A")) == Right(Position(0)))
     assert(workflow.labelToPosition(Label("B")) == Right(Position(1) / Then % 0))
@@ -526,10 +526,10 @@ final class WorkflowTest extends AnyFreeSpec
 
   "Duplicate labels" in {
     assert(Workflow.of(
-      "DUPLICATE" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))),
+      "DUPLICATE" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
       If(Equal(LastReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
-          "DUPLICATE" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))))))
+          "DUPLICATE" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))
       .completelyChecked ==
       Left(Problem("Label 'DUPLICATE' is duplicated at positions 0, 1/then:0")))
   }
@@ -537,8 +537,8 @@ final class WorkflowTest extends AnyFreeSpec
   "Duplicate label in nested workflow" in {
     assert(intercept[RuntimeException] {
       Workflow.of(
-        "A" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))),
-        "A" @: Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE"))))
+        "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))),
+        "A" @: Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))
     }
     .toString contains "Duplicate labels")
   }
@@ -571,7 +571,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "reduce" in {
-    val job = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("EXECUTABLE-A")))
+    val job = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE-A")))
     val B = Label("B")
     val C = Label("C")
     val D = Label("D")
@@ -683,22 +683,22 @@ final class WorkflowTest extends AnyFreeSpec
     }
   }
 
-  "referencedJobResourceIds" in {
-    val job = WorkflowJob(AgentId("AGENT"), ScriptExecutable(""))
-    val a = JobResourceId("A")
-    val b = JobResourceId("B")
-    val c = JobResourceId("C")
-    val d = JobResourceId("D")
+  "referencedJobResourcePaths" in {
+    val job = WorkflowJob(AgentPath("AGENT"), ScriptExecutable(""))
+    val a = JobResourcePath("A")
+    val b = JobResourcePath("B")
+    val c = JobResourcePath("C")
+    val d = JobResourcePath("D")
     val workflow = Workflow(
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
-        Execute(job.copy(jobResourceIds = Seq(a))),
+        Execute(job.copy(jobResourcePaths = Seq(a))),
         If(BooleanConstant(true), Workflow.of(
-          Execute(job.copy(jobResourceIds = Seq(b, c))),
+          Execute(job.copy(jobResourcePaths = Seq(b, c))),
           Fork.of(
             "BRANCH" -> Workflow.of(
-              Execute(job.copy(jobResourceIds = Seq(c, d)))))))))
-    assert(workflow.referencedJobResourceIds == Set(a, b, c, d))
+              Execute(job.copy(jobResourcePaths = Seq(c, d)))))))))
+    assert(workflow.referencedJobResourcePaths == Set(a, b, c, d))
   }
 
   "namedJobs" in {
@@ -805,7 +805,7 @@ final class WorkflowTest extends AnyFreeSpec
       lazy val workflow = Workflow(WorkflowPath("TEST") ~ "1",
         Vector(
           AExecute,
-          LockInstruction(LockId("LOCK"), None, Workflow.of(
+          LockInstruction(LockPath("LOCK"), None, Workflow.of(
             If(BooleanConstant(true),
               Workflow.of(AExecute))))),
         Map(
@@ -828,7 +828,7 @@ final class WorkflowTest extends AnyFreeSpec
 
     "try catch is okay" in {
       val workflow = {
-        val execute = Execute.Anonymous(WorkflowJob(AgentId("AGENT"), PathExecutable("SCRIPT")))
+        val execute = Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("SCRIPT")))
         Workflow.of(
           execute,
           TryInstruction(
@@ -846,7 +846,7 @@ final class WorkflowTest extends AnyFreeSpec
     Workflow(WorkflowPath("WORKFLOW"),
         Vector(
           LockInstruction(
-            LockId("LOCK"), count = None, Workflow.of(
+            LockPath("LOCK"), count = None, Workflow.of(
               Execute.Named(WorkflowJob.Name("JOB"))))),
         Map(
           WorkflowJob.Name("JOB") -> AJob))
@@ -898,7 +898,7 @@ final class WorkflowTest extends AnyFreeSpec
     "reduceForAgent with LockInstruction" in {
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+          LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
             AExecute,
             Fork.of(
               "🥕" -> Workflow.of(AExecute))))),
@@ -910,7 +910,7 @@ final class WorkflowTest extends AnyFreeSpec
     "reduceForAgent with LockInstruction and more (1)" in {
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+          LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
             If(BooleanConstant(true), Workflow.of(
               TryInstruction(Workflow.empty, Workflow.empty),
               Fail(),
@@ -926,7 +926,7 @@ final class WorkflowTest extends AnyFreeSpec
     "reduceForAgent with LockInstruction and if" in {
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+          LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
             AExecute,
             If(BooleanConstant(true),
               Workflow.of(
@@ -943,7 +943,7 @@ final class WorkflowTest extends AnyFreeSpec
       assert(workflow.reduceForAgent(AAgentId) ==
         Workflow(WorkflowPath.Anonymous,
           Vector(
-            LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+            LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
               AExecute,
               If(BooleanConstant(true),
                 Workflow.of(
@@ -959,7 +959,7 @@ final class WorkflowTest extends AnyFreeSpec
       assert(workflow.reduceForAgent(BAgentId) ==
         Workflow(WorkflowPath.Anonymous,
           Vector(
-            LockInstruction(LockId("LOCK"), count=None, Workflow.of(
+            LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
               Gap(),
               If(BooleanConstant(true),
                 Workflow.of(

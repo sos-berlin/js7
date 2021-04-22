@@ -5,10 +5,10 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.Future;
-import js7.data.agent.AgentId;
+import js7.data.agent.AgentPath;
 import js7.data.order.OrderEvent.OrderRemoved$;
 import js7.data.order.OrderId;
-import js7.data.orderwatch.OrderWatchId;
+import js7.data.orderwatch.OrderWatchPath;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.orderwatch.JFileWatch;
 import js7.proxy.javaapi.JControllerApi;
@@ -34,12 +34,12 @@ final class JFileWatchTester
             await(
                 api.updateItems(Flux.just(addOrChangeSimple(
                     getOrThrow(JFileWatch.checked(
-                        OrderWatchId.of("FILE-WATCH"),
+                        OrderWatchPath.of("FILE-WATCH"),
                         WorkflowPath.of("WORKFLOW"),
-                        AgentId.of("AGENT"),
+                        AgentPath.of("AGENT"),
                         directory,
                         Optional.of("file-(.+)\\.txt"),
-                        Optional.of("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchId:$1\""),
+                        Optional.of("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchPath:$1\""),
                         Duration.ofSeconds(0)))))));
 
             Path file = directory.resolve("file-TEST.txt");

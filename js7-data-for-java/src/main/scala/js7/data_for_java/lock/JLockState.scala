@@ -2,7 +2,7 @@ package  js7.data_for_java.lock
 
 import javax.annotation.Nonnull
 import js7.data.lock.Acquired.Available
-import js7.data.lock.{Lock, LockId, LockState}
+import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderId
 import js7.data_for_java.common.JJsonable
 import scala.jdk.CollectionConverters._
@@ -14,7 +14,7 @@ extends JJsonable[JLockState]
   protected def companion = JLockState
 
   @Nonnull
-  def lockId: LockId =
+  def lockId: LockPath =
     asScala.lock.id
 
   @Nonnull

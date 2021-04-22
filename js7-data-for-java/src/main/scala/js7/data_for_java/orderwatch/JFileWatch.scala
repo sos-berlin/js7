@@ -10,8 +10,8 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.SimplePattern
-import js7.data.agent.AgentId
-import js7.data.orderwatch.{FileWatch, OrderWatchId}
+import js7.data.agent.AgentPath
+import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
@@ -26,7 +26,7 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
   protected def companion = JFileWatch
 
   @Nonnull
-  def id: OrderWatchId =
+  def id: OrderWatchPath =
     asScala.id
 
   @Nonnull
@@ -34,7 +34,7 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
     asScala.workflowPath
 
   @Nonnull
-  def agentId: AgentId =
+  def agentId: AgentPath =
     asScala.agentId
 
   @Nonnull
@@ -50,9 +50,9 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
 {
   @Nonnull
   def checked(
-    @Nonnull id: OrderWatchId,
+    @Nonnull id: OrderWatchPath,
     @Nonnull workflowPath: WorkflowPath,
-    @Nonnull agentId: AgentId,
+    @Nonnull agentId: AgentPath,
     @Nonnull directory: Path,
     @Nonnull pattern: Optional[String],
     @Nonnull orderIdExpression: Optional[String],

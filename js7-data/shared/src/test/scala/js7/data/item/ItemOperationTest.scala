@@ -4,8 +4,8 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
 import js7.data.controller.ControllerState
 import js7.data.controller.ControllerState._
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, AddOrChangeSimple, DeleteSimple, DeleteVersioned}
-import js7.data.lock.{Lock, LockId}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -15,7 +15,7 @@ final class ItemOperationTest extends AnyFreeSpec
   "JSON" - {
     "AddOrChangeSimple" in {
       testJson[ItemOperation](
-        AddOrChangeSimple(Lock(LockId("LOCK"))),
+        AddOrChangeSimple(Lock(LockPath("LOCK"))),
         // itemRevision is optional and should not be given !!!
         json"""{
           "TYPE": "AddOrChangeSimple",
@@ -29,7 +29,7 @@ final class ItemOperationTest extends AnyFreeSpec
 
     "DeleteSimple" in {
       testJson[ItemOperation](
-        DeleteSimple(LockId("LOCK")),
+        DeleteSimple(LockPath("LOCK")),
         json"""{
           "TYPE": "DeleteSimple",
           "id": "Lock:LOCK"

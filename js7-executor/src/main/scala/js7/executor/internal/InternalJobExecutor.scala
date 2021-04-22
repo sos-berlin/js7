@@ -9,7 +9,7 @@ import js7.base.thread.IOExecutor
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{InternalExecutable, JobConf, JobResource, JobResourceId}
+import js7.data.job.{InternalExecutable, JobConf, JobResource, JobResourcePath}
 import js7.data.value.expression.Evaluator
 import js7.executor.ProcessOrder
 import js7.executor.internal.InternalJob.{JobContext, Step}
@@ -21,7 +21,7 @@ import scala.util.control.NonFatal
 final class InternalJobExecutor(
   executable: InternalExecutable,
   val jobConf: JobConf,
-  protected val idToJobResource: JobResourceId => Checked[JobResource],
+  protected val pathToJobResource: JobResourcePath => Checked[JobResource],
   blockingJobScheduler: Scheduler)
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends JobExecutor

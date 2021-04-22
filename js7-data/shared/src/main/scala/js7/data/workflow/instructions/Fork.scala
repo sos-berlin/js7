@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Fork._
 import js7.data.workflow.position.{BranchId, Position}
@@ -39,7 +39,7 @@ extends Instruction
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
-  override def reduceForAgent(agentId: AgentId, workflow: Workflow) =
+  override def reduceForAgent(agentId: AgentPath, workflow: Workflow) =
     if (isVisibleForAgent(agentId, workflow))
       copy(
         branches = for (b <- branches) yield
@@ -48,15 +48,15 @@ extends Instruction
     else
       Gap(sourcePos = sourcePos)  // The agent will never touch this fork or its branches
 
-  def isStartableOnAgent(agentId: AgentId): Boolean =
+  def isStartableOnAgent(agentId: AgentPath): Boolean =
     // Any Agent or the controller can fork. The current Agent is okay.
     branches.exists(_.workflow isStartableOnAgent agentId)
 
-  //def isJoinableOnAgent(agentId: AgentId): Boolean =
+  //def isJoinableOnAgent(agentId: AgentPath): Boolean =
   //  // If branches end on multiple Agents, only the Controller can join the Orders
   //  branches.values forall (_ isEndingOnAgent agentId)
 
-  //def startAgents: Set[AgentId] =
+  //def startAgents: Set[AgentPath] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
   override def workflow(branchId: BranchId) = {

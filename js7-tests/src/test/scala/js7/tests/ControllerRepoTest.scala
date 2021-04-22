@@ -21,8 +21,8 @@ import js7.common.http.AkkaHttpClient.HttpException
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemDeletedProblem
-import js7.data.agent.AgentId
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned}
+import js7.data.agent.AgentPath
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
@@ -219,7 +219,7 @@ object ControllerRepoTest
   private val V4 = VersionId("4")
   private val V5 = VersionId("5")
   private val V6 = VersionId("6")
-  private val TestAgentId = AgentId("AGENT")
+  private val TestAgentId = AgentPath("AGENT")
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
     Execute(WorkflowJob(TestAgentId, RelativePathExecutable(s"EXECUTABLE-V${versionId.string}$sh"))))

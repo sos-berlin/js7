@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.orderwatch.FileWatch.defaultPattern
 import js7.data.value.expression.Expression
@@ -15,9 +15,9 @@ import js7.data.workflow.WorkflowPath
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 final case class FileWatch(
-  id: OrderWatchId,
+  id: OrderWatchPath,
   workflowPath: WorkflowPath,
-  agentId: AgentId,
+  agentId: AgentPath,
   directory: String,
   pattern: Option[SimplePattern] = None,
   orderIdExpression: Option[Expression] = None,
@@ -37,10 +37,10 @@ extends OrderWatch
 
 object FileWatch extends OrderWatch.Companion[FileWatch]
 {
-  type Id = OrderWatchId
+  type Id = OrderWatchPath
 
   val cls = classOf[FileWatch]
-  val Id = OrderWatchId
+  val Id = OrderWatchPath
   val FileArgumentName = "file"
   private val defaultPattern = Pattern.compile("[^.].*")
 

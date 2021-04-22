@@ -3,7 +3,7 @@ package  js7.data_for_java.agent
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
-import js7.data.agent.{AgentId, AgentRefState}
+import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data_for_java.common.JJsonable
 
 final case class JAgentRefState(asScala: AgentRefState)
@@ -13,7 +13,7 @@ extends JJsonable[JAgentRefState]
   protected def companion = JAgentRefState
 
   @Nonnull
-  def agentId: AgentId =
+  def agentId: AgentPath =
     asScala.agentId
 
   @Nonnull

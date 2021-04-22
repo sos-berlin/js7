@@ -32,7 +32,7 @@ import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceToYaml.yamlToJson
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.agent.AgentRefStateEvent.AgentRegisteredController
-import js7.data.agent.{AgentId, AgentRefStateEvent}
+import js7.data.agent.{AgentPath, AgentRefStateEvent}
 import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.controller.{ControllerMetaState, ControllerState}
 import js7.data.event.{<-:, Event, KeyedEvent}
@@ -67,7 +67,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   private lazy val uri = controller.localUri
 
-  protected val agentIds = TestAgentId :: AgentId("AGENT-A") :: Nil
+  protected val agentIds = TestAgentId :: AgentPath("AGENT-A") :: Nil
   protected val versionedItems = Nil
   private lazy val agent1Uri = directoryProvider.agents(0).localUri
   private lazy val agent2Uri = directoryProvider.agents(1).localUri
@@ -151,10 +151,10 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       ItemOperation.AddVersion(VersionId("VERSION-1")) +:
         Observable(
           Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION-1",
-            Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"A$sh")))),
+            Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable(s"A$sh")))),
           Workflow.of(WorkflowPath("FOLDER/WORKFLOW-2") ~ "VERSION-1",
-            Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"B$sh"))),
-            Execute(WorkflowJob(AgentId("AGENT"), PathExecutable(s"MISSING$sh"))))
+            Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable(s"B$sh"))),
+            Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable(s"MISSING$sh"))))
         ).map(directoryProvider.itemSigner.toSignedString)
           .map(ItemOperation.AddOrChangeSigned.apply)
     ).await(99.s).orThrow
@@ -245,7 +245,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   "/controller/api/agent-proxy" - {
     //"/controller/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
-    //  // Pass-through AgentRef. Slashes but the first in AgentId must be coded as %2F.
+    //  // Pass-through AgentRef. Slashes but the first in AgentPath must be coded as %2F.
     //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
     //  val overview = httpClient.get[AgentOverview](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A"), Duration.Inf, headers) await 99.s
     //  assert(overview.version == BuildInfo.prettyVersion)
@@ -257,7 +257,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/UNKNOWN"), headers) await 99.s
       }
       assert(e.status.intValue == 400/*BadRequest*/)
-      assert(e.problem == Some(UnknownKeyProblem("AgentId", AgentId("UNKNOWN"))))
+      assert(e.problem == Some(UnknownKeyProblem("AgentPath", AgentPath("UNKNOWN"))))
     }
 
     //"/controller/api/agent-proxy/FOLDER%2FAGENT-A/NOT-FOUND returns 404" in {
@@ -499,7 +499,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     val eventsJson = httpClient.get[Json](Uri(s"$uri/controller/api/event?after=0"), headers) await 99.s
     val keyedEvents: Seq[KeyedEvent[Event]] =
       eventsJson.asObject.get("stamped").get.asArray.get.map(_.as(ControllerState.keyedEventJsonCodec).orThrow)
-    val agentRunId = keyedEvents.collectFirst { case AgentId("AGENT") <-: (e: AgentRegisteredController) => e.agentRunId }.get
+    val agentRunId = keyedEvents.collectFirst { case AgentPath("AGENT") <-: (e: AgentRegisteredController) => e.agentRunId }.get
     val totalRunningTime = keyedEvents.collectFirst { case _ <-: (e: ControllerReady) => e.totalRunningTime }.get
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
     assert(manipulateEventsForTest(eventsJson) == json"""{

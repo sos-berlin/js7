@@ -10,7 +10,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, InternalExecutable, RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
@@ -329,7 +329,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object ExecuteTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private def returnCodeScript(returnCode: Int) =
     if (isWindows) s"@exit $returnCode"

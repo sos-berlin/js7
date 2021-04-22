@@ -1,11 +1,11 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.LockExecutorTest._
 import js7.data.job.PathExecutable
-import js7.data.lock.{Acquired, Lock, LockId, LockState}
+import js7.data.lock.{Acquired, Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockQueued, OrderLockReleased}
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -20,7 +20,7 @@ final class LockExecutorTest extends AnyFreeSpec {
     def idToOrder = Map(freeLockOrder.id -> freeLockOrder, freeLockedOrder.id -> freeLockedOrder, occupiedLockOrder.id -> occupiedLockOrder).checked
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(workflow.id -> workflow).checked(id)
-    val idToLockState = Map(
+    val pathToLockState = Map(
       freeLockId -> LockState(Lock(freeLockId, limit = 1)),
       occupiedLockId -> LockState(Lock(occupiedLockId, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))),
     ).checked
@@ -48,10 +48,10 @@ final class LockExecutorTest extends AnyFreeSpec {
 }
 
 object LockExecutorTest {
-  private val freeLockId = LockId("FREE-LOCK")
-  private val occupiedLockId = LockId("OCCUPIED-LOCK")
-  private val exclusiveLockId = LockId("EXCLUSIVE-LOCK")
-  private val execute = Execute(WorkflowJob(AgentId("AGENT"), PathExecutable("JOB")))
+  private val freeLockId = LockPath("FREE-LOCK")
+  private val occupiedLockId = LockPath("OCCUPIED-LOCK")
+  private val exclusiveLockId = LockPath("EXCLUSIVE-LOCK")
+  private val execute = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("JOB")))
 
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION",
     LockInstruction(freeLockId, None, Workflow.of(execute)),

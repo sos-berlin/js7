@@ -7,12 +7,12 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.command.CancelMode
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.lock.LockId
+import js7.data.lock.LockPath
 import js7.data.order.OrderEvent._
-import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchId}
+import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -31,7 +31,7 @@ final class OrderEventTest extends AnyFreeSpec
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
         Some(Timestamp("2021-01-01T00:00:00Z")),
-        Some(ExternalOrderKey(OrderWatchId("ORDER-WATCH"), ExternalOrderName("ORDER-NAME")))),
+        Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME")))),
       json"""
       {
         "TYPE": "OrderAdded",
@@ -44,7 +44,7 @@ final class OrderEventTest extends AnyFreeSpec
           "VAR": "VALUE"
         },
         "externalOrderKey": {
-          "orderWatchId": "ORDER-WATCH",
+          "orderWatchPath": "ORDER-WATCH",
           "name": "ORDER-NAME"
         }
       }""")
@@ -52,7 +52,7 @@ final class OrderEventTest extends AnyFreeSpec
 
   "OrderAttachable" in {
     check(
-      OrderAttachable(AgentId("AGENT")),
+      OrderAttachable(AgentPath("AGENT")),
       json"""{
         "TYPE": "OrderAttachable",
         "agentId": "AGENT"
@@ -65,9 +65,9 @@ final class OrderEventTest extends AnyFreeSpec
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
         Map("KEY" -> StringValue("VALUE")),
-        Some(ExternalOrderKey(OrderWatchId("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
+        Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
-        AgentId("AGENT"),
+        AgentPath("AGENT"),
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending()),
         isSuspended = true,
@@ -88,7 +88,7 @@ final class OrderEventTest extends AnyFreeSpec
           "KEY": "VALUE"
         },
         "externalOrderKey": {
-          "orderWatchId": "ORDER-WATCH",
+          "orderWatchPath": "ORDER-WATCH",
           "name": "ORDER-NAME"
         },
         "historicOutcomes": [
@@ -111,7 +111,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderAttached" in {
-    check(OrderAttached(AgentId("AGENT")), json"""
+    check(OrderAttached(AgentPath("AGENT")), json"""
       {
         "TYPE": "OrderAttached",
         "agentId":"AGENT"
@@ -182,7 +182,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched complete" in {
-    check(OrderCatched(Position(1), Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Seq(LockId("LOCK"))), json"""
+    check(OrderCatched(Position(1), Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
@@ -213,7 +213,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailed(Failed) complete" in {
-    check(OrderFailed(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockId("LOCK"))), json"""
+    check(OrderFailed(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderFailed",
         "movedTo": [ 1 ],
@@ -262,7 +262,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailedInFork complete" in {
-    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockId("LOCK"))), json"""
+    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderFailedInFork",
         "movedTo": [ 1 ],
@@ -447,7 +447,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderLockAcquired" in {
-    check(OrderLockAcquired(LockId("LOCK"), Some(3)), json"""
+    check(OrderLockAcquired(LockPath("LOCK"), Some(3)), json"""
       {
         "TYPE": "OrderLockAcquired",
         "lockId": "LOCK",
@@ -456,7 +456,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderLockQueued" in {
-    check(OrderLockQueued(LockId("LOCK"), Some(1)), json"""
+    check(OrderLockQueued(LockPath("LOCK"), Some(1)), json"""
       {
         "TYPE": "OrderLockQueued",
         "lockId": "LOCK",
@@ -465,7 +465,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderLockReleased" in {
-    check(OrderLockReleased(LockId("LOCK")), json"""
+    check(OrderLockReleased(LockPath("LOCK")), json"""
       {
         "TYPE": "OrderLockReleased",
         "lockId": "LOCK"

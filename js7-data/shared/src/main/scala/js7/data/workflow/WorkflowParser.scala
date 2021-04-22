@@ -6,9 +6,9 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.data.agent.AgentId
-import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourceId, PathExecutable, ScriptExecutable}
-import js7.data.lock.LockId
+import js7.data.agent.AgentPath
+import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ScriptExecutable}
+import js7.data.lock.LockPath
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
@@ -108,16 +108,16 @@ object WorkflowParser
           keyValue("defaultArguments", namedValues) |
           keyValue("arguments", objectExpression) |
           keyValue("jobArguments", namedValues) |
-          keyValue("jobResourceIds", inParentheses(commaSequence(quotedString.map(JobResourceId(_))))) |
+          keyValue("jobResourcePaths", inParentheses(commaSequence(quotedString.map(JobResourcePath(_))))) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int) |
           keyValue("sigkillDelay", int))
-        agentId <- kv[AgentId]("agent")
+        agentId <- kv[AgentPath]("agent")
         defaultArguments <- kv[NamedValues]("defaultArguments", NamedValues.empty)
         arguments <- kv[ObjectExpression]("arguments", ObjectExpression.empty)
         jobArguments <- kv[NamedValues]("jobArguments", NamedValues.empty)
-        jobResourceIds <- kv[Seq[JobResourceId]]("jobResourceIds", Nil)
+        jobResourcePaths <- kv[Seq[JobResourcePath]]("jobResourcePaths", Nil)
         env <- kv[ObjectExpression]("env", ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
         executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
@@ -138,7 +138,7 @@ object WorkflowParser
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
       } yield
-        WorkflowJob(agentId, executable, defaultArguments, jobResourceIds, returnCodeMeaning, taskLimit = taskLimit,
+        WorkflowJob(agentId, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, taskLimit = taskLimit,
           sigkillDelay = sigkillDelay))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
@@ -251,7 +251,7 @@ object WorkflowParser
         w ~/ curlyWorkflowOrInstruction
       ).flatMap { case (start, keyToValue, end, subworkflow) =>
         for {
-          lockId <- keyToValue[LockId]("lock")
+          lockId <- keyToValue[LockPath]("lock")
           count <- keyToValue.get[Int]("count")
           lock <- checkedToP(LockInstruction.checked(lockId, count, subworkflow, sourcePos(start, end)))
         } yield lock

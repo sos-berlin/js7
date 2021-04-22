@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.typeclasses.IsEmpty.syntax._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.TryInstruction._
 import js7.data.workflow.position.{BranchId, CatchBranchId, Position, TryBranchId, TryCatchBranchId}
@@ -47,7 +47,7 @@ extends Instruction
     tryWorkflow = tryWorkflow.copy(outer = Some(outer)),
     catchWorkflow = catchWorkflow.copy(outer = Some(outer)))
 
-  override def reduceForAgent(agentId: AgentId, workflow: Workflow): Instruction =
+  override def reduceForAgent(agentId: AgentPath, workflow: Workflow): Instruction =
     copy(
       tryWorkflow = tryWorkflow.reduceForAgent(agentId),
       catchWorkflow = catchWorkflow.reduceForAgent(agentId))

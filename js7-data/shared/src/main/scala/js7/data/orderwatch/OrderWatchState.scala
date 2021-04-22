@@ -6,7 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.{ItemAttachedState, SimpleItemState, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderRemoveMarked, OrderRemoved}
@@ -20,7 +20,7 @@ import scala.collection.View
 
 final case class OrderWatchState(
   orderWatch: OrderWatch,
-  agentIdToAttachedState: Map[AgentId, ItemAttachedState.NotDetached],
+  agentIdToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
   delete: Boolean,
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder],
   private[orderwatch] val arisedQueue: Set[ExternalOrderName],
@@ -29,7 +29,7 @@ extends SimpleItemState
 {
   def item = orderWatch
 
-  def id: OrderWatchId = orderWatch.id
+  def id: OrderWatchPath = orderWatch.id
 
   type Revision = Int
 
@@ -202,7 +202,7 @@ object OrderWatchState
 
   def apply(
     orderWatch: OrderWatch,
-    agentIdToAttachedState: Map[AgentId, ItemAttachedState.NotDetached],
+    agentIdToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
     sourceToOrderId: Map[ExternalOrderName, ArisedOrHasOrder])
   : OrderWatchState =
     OrderWatchState(orderWatch, agentIdToAttachedState, delete = false,
@@ -215,19 +215,19 @@ object OrderWatchState
     ).recoverQueues
 
   sealed trait Snapshot {
-    def orderWatchId: OrderWatchId
+    def orderWatchPath: OrderWatchPath
   }
 
   final case class HeaderSnapshot(
     orderWatch: OrderWatch,
-    agentIdToAttachedState: Map[AgentId, ItemAttachedState.NotDetached],
+    agentIdToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
     delete: Boolean)
   extends Snapshot {
-    def orderWatchId = orderWatch.id
+    def orderWatchPath = orderWatch.id
   }
 
   final case class ExternalOrderSnapshot(
-    orderWatchId: OrderWatchId,
+    orderWatchPath: OrderWatchPath,
     externalOrderName: ExternalOrderName,
     state: ArisedOrHasOrder)
   extends Snapshot

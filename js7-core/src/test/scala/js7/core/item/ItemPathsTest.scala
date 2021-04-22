@@ -20,9 +20,9 @@ final class ItemPathsTest extends AnyFreeSpec {
     val dir = Paths.get("DIR")
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Right(WorkflowPath("folder/test") -> SourceType.Json))
-    //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentId), dir, dir / "folder/test.workflow.json") ==
+    //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentPath), dir, dir / "folder/test.workflow.json") ==
     //  Right(WorkflowPath("folder/test") -> SourceType.Json))
-    //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentId), dir, dir / "folder/test.workflow.yaml") ==
+    //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentPath), dir, dir / "folder/test.workflow.yaml") ==
     //  Right(WorkflowPath("folder/test") -> SourceType.Yaml))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.txt") ==
       Right(WorkflowPath("folder/test") -> SourceType.Txt))

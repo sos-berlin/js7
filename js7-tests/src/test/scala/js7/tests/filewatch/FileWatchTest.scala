@@ -12,7 +12,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
@@ -21,7 +21,7 @@ import js7.data.item.UnsignedSimpleItemEvent.SimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.OrderId
-import js7.data.orderwatch.{FileWatch, OrderWatchId}
+import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchTest._
 import js7.tests.jobs.DeleteFileJob
@@ -48,7 +48,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
 
   private lazy val fileWatch = FileWatch(
-    OrderWatchId("TEST-WATCH"),
+    OrderWatchPath("TEST-WATCH"),
     workflow.path,
     aAgentId,
     sourceDirectory.toString)
@@ -138,15 +138,15 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       NoKey <-: ItemDetachable(fileWatch.id, bAgentId),
       NoKey <-: ItemDetached(fileWatch.id, bAgentId),
       NoKey <-: ItemDestroyed(fileWatch.id)))
-    assert(controller.controllerState.await(99.s).allOrderWatchesState.idToOrderWatchState.isEmpty)
+    assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }
 
 object FileWatchTest
 {
   private val logger = Logger(getClass)
-  private val aAgentId = AgentId("AGENT-A")
-  private val bAgentId = AgentId("AGENT-B")
+  private val aAgentId = AgentPath("AGENT-A")
+  private val bAgentId = AgentPath("AGENT-B")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

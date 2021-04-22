@@ -14,7 +14,7 @@ import scala.collection.immutable.Queue
 final class LockStateTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson(LockState(Lock(LockId("LOCK"), limit = 1, Some(ItemRevision(0)))), json"""
+    testJson(LockState(Lock(LockPath("LOCK"), limit = 1, Some(ItemRevision(0)))), json"""
       {
         "lock": {
           "id": "LOCK",
@@ -42,9 +42,9 @@ final class LockStateTest extends AnyFreeSpec
     orderId <-: OrderLockAcquired(lock.id, count)
 
   for ((lock, testName) <- Seq(
-    //Lock(LockId("LOCK")) -> "Exclusive lock",
-    Lock(LockId("LOCK"), 1) -> "Lock with limit=1",
-    Lock(LockId("LOCK"), 3) -> "Lock with limit=3")) {
+    //Lock(LockPath("LOCK")) -> "Exclusive lock",
+    Lock(LockPath("LOCK"), 1) -> "Lock with limit=1",
+    Lock(LockPath("LOCK"), 3) -> "Lock with limit=3")) {
 
     implicit val implicitLock = lock
 
@@ -109,7 +109,7 @@ final class LockStateTest extends AnyFreeSpec
   }
 
   //"Exclusive lock used non-exclusively" in {
-  //  implicit val lock = Lock(LockId("LOCK"))
+  //  implicit val lock = Lock(LockPath("LOCK"))
   //
   //  assert(applyEvent(Available, orderLockAcquired(a, None)) == Right(LockState(lock, Exclusive(a))))
   //  assert(applyEvent(Available, orderLockAcquired(a, Some(1))) == Right(LockState(lock, NonExclusive(Map(a -> 1)))))
@@ -125,7 +125,7 @@ final class LockStateTest extends AnyFreeSpec
   //}
 
   "Lock with limit=3" - {
-    implicit val lock = Lock(LockId("LOCK"), limit = 3)
+    implicit val lock = Lock(LockPath("LOCK"), limit = 3)
 
     "acquireFor" in {
       assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(1))) == Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 1)))))
@@ -148,13 +148,13 @@ final class LockStateTest extends AnyFreeSpec
   }
 
   "acquireFor more than limit" in {
-    implicit val lock = Lock(LockId("LOCK"), limit = 1)
+    implicit val lock = Lock(LockPath("LOCK"), limit = 1)
     assert(applyEvent(Available, a <-: OrderLockQueued(lock.id, Some(2))) ==
       Left(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1")))
   }
 
   "Lock with limit=0" in {
-    implicit val lock = Lock(LockId("LOCK"), limit = 0)
+    implicit val lock = Lock(LockPath("LOCK"), limit = 0)
 
       assert(applyEvent(Available, orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK: 0+1 would exceed limit=0")))
       assert(applyEvent(Exclusive(a), orderLockAcquired(b, Some(1))) == Left(Problem("Lock:LOCK is in use")))
@@ -162,7 +162,7 @@ final class LockStateTest extends AnyFreeSpec
   }
 
   "acquireFor with integer overflow" in {
-    implicit val lock = Lock(LockId("LOCK"), limit = Int.MaxValue)
+    implicit val lock = Lock(LockPath("LOCK"), limit = Int.MaxValue)
     assert(applyEvent(NonExclusive(Map(a -> 1)), orderLockAcquired(b, Some(2))) == Right(LockState(lock, NonExclusive(Map(a -> 1, b -> 2)))))
     assert(Int.MaxValue + 1 == Int.MinValue)
     assert(Int.MaxValue + Int.MaxValue == -2)

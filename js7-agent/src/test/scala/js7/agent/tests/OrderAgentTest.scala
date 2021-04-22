@@ -22,7 +22,7 @@ import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.common.crypt.pgp.PgpSigner
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
 import js7.data.order.OrderEvent.OrderDetachable
@@ -119,7 +119,7 @@ final class OrderAgentTest extends AnyFreeSpec
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
               Map("x" -> StringValue("X")),
-              attachedState = Some(Order.Attached(AgentId("AGENT"))))
+              attachedState = Some(Order.Attached(AgentPath("AGENT"))))
 
           val stopwatch = new Stopwatch
           agentClient.commandExecute(Batch(
@@ -149,7 +149,7 @@ final class OrderAgentTest extends AnyFreeSpec
 
 private object OrderAgentTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off

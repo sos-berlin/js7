@@ -1,7 +1,7 @@
 package js7.tests.controller.proxy
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.JControllerApi
 import js7.tests.controller.proxy.JFileWatchTest._
@@ -29,7 +29,7 @@ final class JFileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object JFileWatchTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
     DeleteFileJob.execute(agentId))
 }

@@ -6,7 +6,7 @@ import js7.base.configutils.Configs._
 import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -81,7 +81,7 @@ final class PlayTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object PlayTest
 {
   private val logger = Logger(getClass)
-  private val agentIds = Seq(AgentId("primaryAgent"), AgentId("secondaryAgent"))  // Names for Andreas' test cases
+  private val agentIds = Seq(AgentPath("primaryAgent"), AgentPath("secondaryAgent"))  // Names for Andreas' test cases
 
   private final class TestInternalJob extends InternalJob
   {

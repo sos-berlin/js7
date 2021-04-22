@@ -12,9 +12,9 @@ import js7.base.time.ScalaTime._
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.crypt.SignedItemVerifier
 import js7.data.crypt.SignedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, AddOrChangeSimple, DeleteSimple, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
 import js7.data.item.{ItemSigner, SignableItem, VersionId, VersionedItem}
-import js7.data.lock.{Lock, LockId}
+import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.global
@@ -30,7 +30,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
   private val v2 = VersionId("2")
   private val workflow1 = Workflow(WorkflowPath("WORKFLOW-A") ~ v1, Vector(Fail(None)))
   private val workflow2 = Workflow(WorkflowPath("WORKFLOW") ~ v2, Vector(Fail(None)))
-  private val lock = Lock(LockId("LOCK-1"))
+  private val lock = Lock(LockPath("LOCK-1"))
   private val user = SimpleUser(UserId("PROVIDER")).copy(grantedPermissions = Set(ValidUserPermission, UpdateItemPermission))
   private def noVerifier(signedString: SignedString): Checked[Verified[SignableItem]] = Left(Problem("NO VERIFIER"))
 
@@ -42,7 +42,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
 
   "Simple items only" in {
     // TODO Test SignableSimpleItem
-    VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(LockId("DELETE"))), noVerifier, user).await(99.s) ==
+    VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(LockPath("DELETE"))), noVerifier, user).await(99.s) ==
       Right(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Nil),
         maybeVersioned = None))
@@ -51,13 +51,13 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
   "Verification" in {
     val operations = Observable(
       AddOrChangeSimple(lock),
-      DeleteSimple(LockId("DELETE")),
+      DeleteSimple(LockPath("DELETE")),
       AddVersion(v1),
       AddOrChangeSigned(itemSigner.toSignedString(workflow1)),
       DeleteVersioned(WorkflowPath("DELETE")))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Right(VerifiedUpdateItems(
-        VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Seq(LockId("DELETE"))),
+        VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Seq(LockPath("DELETE"))),
         Some(VerifiedUpdateItems.Versioned(
           v1,
           Seq(

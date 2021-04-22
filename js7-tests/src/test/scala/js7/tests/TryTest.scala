@@ -4,7 +4,7 @@ import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
@@ -164,7 +164,7 @@ final class TryTest extends AnyFreeSpec
 
 object TryTest
 {
-  private val TestAgentId = AgentId("AGENT")
+  private val TestAgentId = AgentPath("AGENT")
   private val finishingScript = s"""
      |define workflow {
      |  try {                                                // :0

@@ -11,7 +11,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.data.Problems.UnknownOrderProblem
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.controller.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
@@ -444,7 +444,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 object SuspendResumeOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd")
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
   private val executeJob = Execute(WorkflowJob(agentId, pathExecutable, taskLimit = 100))
 

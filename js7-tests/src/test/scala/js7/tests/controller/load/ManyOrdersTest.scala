@@ -6,7 +6,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.ByteUnits.toKBGB
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.OrderEvent.OrderFinished
@@ -85,7 +85,7 @@ object ManyOrdersTest
   private val defaultN = 10
   private val defaultSize = 4_000_000
   private val longTimeout = 999.s
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "1", s"""
       define workflow {

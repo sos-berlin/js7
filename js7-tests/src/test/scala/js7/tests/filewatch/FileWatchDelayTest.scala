@@ -11,13 +11,13 @@ import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.EventRequest
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderFinished, OrderRemoved}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
-import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchId}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchDelayTest._
 import js7.tests.jobs.DeleteFileJob
@@ -45,10 +45,10 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
   protected val versionedItems = Seq(workflow)
 
   private lazy val watchedDirectory = directoryProvider.agents(0).dataDir / "tmp/a-files"
-  private val orderWatchId = OrderWatchId("FILE-WATCH")
+  private val orderWatchPath = OrderWatchPath("FILE-WATCH")
 
   private lazy val fileWatch = FileWatch(
-    orderWatchId,
+    orderWatchPath,
     workflow.path,
     agentId,
     watchedDirectory.toString,
@@ -63,7 +63,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
   "Start with some files" in {
     createDirectories(watchedDirectory)
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-    await[ItemAttached](_.event.id == orderWatchId)
+    await[ItemAttached](_.event.id == orderWatchPath)
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
     def delayedFileAddedTest(i: Int) = Task {
@@ -74,7 +74,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
         val whenArised = eventWatch
           .whenKeyedEvent[ExternalOrderArised](
             EventRequest.singleClass(after = eventWatch.lastAddedEventId, timeout = Some(99.s)),
-            key = orderWatchId,
+            key = orderWatchPath,
             predicate = _.externalOrderName == externalOrderName)
           .runToFuture
         val since = now
@@ -105,7 +105,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
 
 object FileWatchDelayTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",

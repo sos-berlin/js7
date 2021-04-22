@@ -15,7 +15,7 @@ import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.core.command.CommandMeta
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderProcessed
@@ -85,6 +85,6 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
 object TerminateTest
 {
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
   private val AScript = operatingSystem.sleepingShellScript(10.s)
 }

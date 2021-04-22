@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
@@ -166,6 +166,6 @@ final class FinishTest extends AnyFreeSpec
 object FinishTest
 {
   private val orderId = OrderId("🔺")
-  private val TestAgentId = AgentId("AGENT")
+  private val TestAgentId = AgentPath("AGENT")
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "INITIAL"
 }

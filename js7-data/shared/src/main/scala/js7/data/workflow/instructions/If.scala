@@ -5,7 +5,7 @@ import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.{BranchId, Position}
@@ -38,7 +38,7 @@ extends Instruction
     thenWorkflow = thenWorkflow.copy(outer = Some(outer)),
     elseWorkflow = elseWorkflow.map(_.copy(outer = Some(outer))))
 
-  override def reduceForAgent(agentId: AgentId, workflow: Workflow): Instruction =
+  override def reduceForAgent(agentId: AgentPath, workflow: Workflow): Instruction =
     copy(
       thenWorkflow = thenWorkflow.reduceForAgent(agentId),
       elseWorkflow = elseWorkflow.map(_.reduceForAgent(agentId)))

@@ -25,7 +25,7 @@ import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
 import js7.controller.tests.TestEnvironment
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import monix.execution.Scheduler.Implicits.global
 
 /**
@@ -33,7 +33,7 @@ import monix.execution.Scheduler.Implicits.global
   */
 object TestDockerExample
 {
-  private val TestAgentIds = AgentId("agent-1") :: AgentId("agent-2") :: Nil
+  private val TestAgentIds = AgentPath("agent-1") :: AgentPath("agent-2") :: Nil
 
   def main(args: Array[String]) = {
     val directory =
@@ -75,7 +75,7 @@ object TestDockerExample
         val agent = RunningAgent.startForTest(
           AgentConfiguration.forTest(configAndData = env.agentDir(agentId))
         ).map(_.closeWithCloser) await 99.s
-        //env.file(agentId, SourceType.Json) := AgentRef(AgentId.NoId, uri = agent.localUri.toString)
+        //env.file(agentId, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
         agent
       }
       JavaShutdownHook.add("TestDockerExample") {

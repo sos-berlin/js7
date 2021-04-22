@@ -12,13 +12,13 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
-import js7.data.agent.AgentId
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.event.{EventRequest, EventSeq}
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
 import js7.data.item.{ItemRevision, VersionId}
-import js7.data.job.{JobResource, JobResourceId, RelativePathExecutable}
-import js7.data.lock.{Lock, LockId}
+import js7.data.job.{JobResource, JobResourcePath, RelativePathExecutable}
+import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -112,7 +112,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "SimpleItem's ItemRevision must not be supplied" in {
     // itemRevision is set only be the Controller
-    val lock = Lock(LockId("LOCK"))
+    val lock = Lock(LockPath("LOCK"))
     assert(controllerApi.updateUnsignedSimpleItems(Seq(lock.copy(itemRevision = Some(ItemRevision(1))))).await(99.s) ==
       Left(Problem("ItemRevision is not accepted here")))
 
@@ -136,7 +136,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object UpdateItemsTest
 {
   private val Tick = 2.s
-  private val agentId = AgentId("AGENT")
+  private val agentId = AgentPath("AGENT")
 
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val script1 = """
@@ -163,5 +163,5 @@ object UpdateItemsTest
     }"""
   private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V4, script4).orThrow
 
-  private val jobResource = JobResource(JobResourceId("JOB-RESOURCE"))
+  private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
 }

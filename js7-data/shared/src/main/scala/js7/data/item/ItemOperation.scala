@@ -16,15 +16,15 @@ object ItemOperation
   final case class AddOrChangeSimple(item: UnsignedSimpleItem)
   extends SimpleItemOperation
 
-  final case class DeleteSimple(id: SimpleItemId)
+  final case class DeleteSimple(id: SimpleItemPath)
   extends SimpleItemOperation
 
   sealed trait VersionedOperation extends ItemOperation
   object VersionedOperation
   {
     implicit def jsonCodec(implicit
-      idJsonEncoder: Encoder[SimpleItemId],
-      idJsonDecoder: Decoder[SimpleItemId],
+      idJsonEncoder: Encoder[SimpleItemPath],
+      idJsonDecoder: Decoder[SimpleItemPath],
       itemPathJsonEncoder: Encoder[ItemPath],
       itemPathJsonDecoder: Decoder[ItemPath])
     : TypedJsonCodec[VersionedOperation] =
@@ -46,8 +46,8 @@ object ItemOperation
   extends VersionedItemOperation
 
   implicit def jsonCodec(implicit
-    idJsonEncoder: Encoder[SimpleItemId],
-    idJsonDecoder: Decoder[SimpleItemId],
+    idJsonEncoder: Encoder[SimpleItemPath],
+    idJsonDecoder: Decoder[SimpleItemPath],
     itemPathJsonEncoder: Encoder[ItemPath],
     itemPathJsonDecoder: Decoder[ItemPath],
     unsignedSimpleItemJsonEncoder: Encoder[UnsignedSimpleItem],
