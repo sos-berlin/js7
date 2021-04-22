@@ -3,19 +3,20 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.agent.AgentId
 import js7.data.controller.ControllerState
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
+import js7.data.job.{JobResource, JobResourceId}
 import js7.data.orderwatch.OrderWatchId
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class InventoryItemEventTest extends AnyFreeSpec
+final class BasicItemEventTest extends AnyFreeSpec
 {
-  implicit private val jsonCodec = InventoryItemEvent.jsonCodec(ControllerState)
+  implicit private val jsonCodec = BasicItemEvent.jsonCodec(ControllerState)
 
   "JSON" - {
     "ItemDeletionMarked" in {
-      testJson[InventoryItemEvent](ItemDeletionMarked(OrderWatchId("ID")), json"""
+      testJson[BasicItemEvent](ItemDeletionMarked(OrderWatchId("ID")), json"""
         {
           "TYPE": "ItemDeletionMarked",
           "id": "OrderWatch:ID"
@@ -23,7 +24,7 @@ final class InventoryItemEventTest extends AnyFreeSpec
     }
 
     "ItemDestroyed" in {
-      testJson[InventoryItemEvent](ItemDestroyed(OrderWatchId("ID")), json"""
+      testJson[BasicItemEvent](ItemDestroyed(OrderWatchId("ID")), json"""
         {
           "TYPE": "ItemDestroyed",
           "id": "OrderWatch:ID"
@@ -31,7 +32,7 @@ final class InventoryItemEventTest extends AnyFreeSpec
     }
 
     "ItemAttachable" in {
-      testJson[InventoryItemEvent](ItemAttachable(OrderWatchId("ID"), AgentId("AGENT")),
+      testJson[BasicItemEvent](ItemAttachable(OrderWatchId("ID"), AgentId("AGENT")),
         json"""
         {
           "TYPE": "ItemAttachable",
@@ -41,7 +42,7 @@ final class InventoryItemEventTest extends AnyFreeSpec
     }
 
     "ItemAttached" in {
-      testJson[InventoryItemEvent](ItemAttached(OrderWatchId("ID"), Some(ItemRevision(7)), AgentId("AGENT")),
+      testJson[BasicItemEvent](ItemAttached(OrderWatchId("ID"), Some(ItemRevision(7)), AgentId("AGENT")),
         json"""
         {
           "TYPE": "ItemAttached",
@@ -51,8 +52,22 @@ final class InventoryItemEventTest extends AnyFreeSpec
         }""")
     }
 
+    "ItemAttachedToAgent" in {
+      testJson[BasicItemEvent](ItemAttachedToAgent(JobResource(JobResourceId("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))),
+        json"""
+        {
+          "TYPE": "ItemAttachedToAgent",
+          "item": {
+            "TYPE": "JobResource",
+            "id": "JOB-RESOURCE",
+            "env": {},
+            "itemRevision": 7
+           }
+        }""")
+    }
+
     "ItemDetachable" in {
-      testJson[InventoryItemEvent](ItemDetachable(WorkflowPath("PATH") ~ "1", AgentId("AGENT")),
+      testJson[BasicItemEvent](ItemDetachable(WorkflowPath("PATH") ~ "1", AgentId("AGENT")),
         json"""
         {
           "TYPE": "ItemDetachable",
@@ -62,7 +77,7 @@ final class InventoryItemEventTest extends AnyFreeSpec
     }
 
     "ItemDetached" in {
-      testJson[InventoryItemEvent](ItemDetached(WorkflowPath("PATH") ~ "1", AgentId("AGENT")),
+      testJson[BasicItemEvent](ItemDetached(WorkflowPath("PATH") ~ "1", AgentId("AGENT")),
         json"""
         {
           "TYPE": "ItemDetached",
