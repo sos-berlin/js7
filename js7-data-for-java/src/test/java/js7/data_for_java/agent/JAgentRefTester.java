@@ -25,14 +25,14 @@ class JAgentRefTester
     }
 
     void test() {
-        testAgentId();
+        testAgentPath();
         testJson();
         assertThat(agentRef.uri(), equalTo(Uri.of("https://agent.example.com")));
         assertThat(agentRef.uri().string(), equalTo("https://agent.example.com"));
     }
 
-    private void testAgentId() {
-        assertThat(agentRef.id(), equalTo(AgentPath.of("AGENT")));
+    private void testAgentPath() {
+        assertThat(agentRef.path(), equalTo(AgentPath.of("AGENT")));
     }
 
     private void testJson() {

@@ -18,7 +18,7 @@ final class FileWatchTest extends AnyFreeSpec
         "TYPE": "FileWatch",
         "id": "ID",
         "workflowPath": "WORKFLOW",
-        "agentId": "AGENT",
+        "agentPath": "AGENT",
         "directory": "/DIRECTORY"
       }"""
       assert(json.as[OrderWatch].orThrow == FileWatch(OrderWatchPath("ID"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "/DIRECTORY"))
@@ -36,7 +36,7 @@ final class FileWatchTest extends AnyFreeSpec
           "TYPE": "FileWatch",
           "id": "ID",
           "workflowPath": "WORKFLOW",
-          "agentId": "AGENT",
+          "agentPath": "AGENT",
           "directory": "/DIRECTORY",
           "pattern": "[a-z]+.csv",
           "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$epochSecond-$$orderWatchPath:$$1\"",

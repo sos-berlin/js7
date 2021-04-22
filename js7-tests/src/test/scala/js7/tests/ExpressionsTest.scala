@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExpressionsTest extends AnyFreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("ExpressionsTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh", v1Compatible = true), jobScript)
 
@@ -49,7 +49,7 @@ final class ExpressionsTest extends AnyFreeSpec
 }
 
 object ExpressionsTest {
-  private val TestAgentId = AgentPath("AGENT")
+  private val TestAgentPath = AgentPath("AGENT")
 
   private val jobScript =
     if (isWindows)
@@ -97,8 +97,8 @@ object ExpressionsTest {
     OrderId("⭕️") -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"))),
       OrderMoved(Position(0) / Then % 0),
-      OrderAttachable(TestAgentId),
-      OrderAttached(TestAgentId),
+      OrderAttachable(TestAgentPath),
+      OrderAttached(TestAgentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
@@ -111,8 +111,8 @@ object ExpressionsTest {
         "ARG2" -> StringValue("ARG2-VALUE"),
         "RETURN_CODE" -> StringValue("1"))),
       OrderMoved(Position(0) / Then % 0),
-      OrderAttachable(TestAgentId),
-      OrderAttached(TestAgentId),
+      OrderAttachable(TestAgentPath),
+      OrderAttached(TestAgentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(1))),

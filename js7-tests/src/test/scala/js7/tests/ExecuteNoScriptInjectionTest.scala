@@ -14,7 +14,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(scriptWorkflow, absolutePathWorkflow)
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false"""
@@ -50,7 +50,7 @@ final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgen
 
 object ExecuteNoScriptInjectionTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val scriptWorkflow = WorkflowParser.parse(
     WorkflowPath("SCRIPT-WORKFLOW"),

@@ -39,7 +39,7 @@ der direkt in dieser Anweisung definiert ist.
 {
   "TYPE": "Execute.Anonymous",
   "job": {
-    "agentId": "AGENT",
+    "agentPath": "AGENT",
     "executable": {
       "TYPE": "ScriptExecutable",
       "script": "#!/bin/sh\n..."

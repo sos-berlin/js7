@@ -24,7 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(workflow)
 
   override protected val controllerConfig = config"""
@@ -43,7 +43,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
-    agentId,
+    agentPath,
     sourceDirectory.toString)
 
   private def fileToOrderId(filename: String): OrderId =
@@ -55,7 +55,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
     val file = sourceDirectory / "1"
     val orderId = fileToOrderId("1")
     file := ""
-    controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id)
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
   }
@@ -68,16 +68,16 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
   "Delete FileWatch" in {
     assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.id))).await(99.s) ==
       Right(Completed))
-    controller.eventWatch.await[ItemDestroyed](_.event.id == fileWatch.id)
+    controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.id)
     assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }
 
 object FileWatchLongTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
-    Vector(DeleteFileJob.execute(agentId)))
+    Vector(DeleteFileJob.execute(agentPath)))
 }

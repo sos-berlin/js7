@@ -34,7 +34,7 @@ import scala.concurrent.duration._
   */
 final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
 
   override def beforeAll() = {
@@ -50,8 +50,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderCancelMarked(CancelMode.FreshOnly),
       OrderDetachable,
       OrderDetached,
@@ -66,8 +66,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.eventWatch.await[OrderFinished](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelMarked(CancelMode.FreshOrStarted()),
@@ -100,8 +100,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderCancelMarked(CancelMode.FreshOrStarted()),
@@ -123,8 +123,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     testCancel(order, Some(twoJobsWorkflow.id /: Position(1)), immediately = false,
       mode => Vector(
         OrderAdded(twoJobsWorkflow.id, order.arguments),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderCancelMarked(mode),
@@ -151,8 +151,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     testCancel(order, workflowPosition, immediately = immediately,
       mode => Vector(
         OrderAdded(order.workflowPath ~ versionId, order.arguments),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderCancelMarked(mode),
@@ -180,8 +180,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
         OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
-        OrderId("FORK|🥕") <-: OrderAttachable(agentId),
-        OrderId("FORK|🥕") <-: OrderAttached(agentId),
+        OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
+        OrderId("FORK|🥕") <-: OrderAttached(agentPath),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderCancelMarked(mode),
         OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
@@ -229,22 +229,22 @@ object CancelOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd",
     ObjectExpression(Map("SLEEP" -> NamedValue.last("sleep"))))
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, pathExecutable)))
+    Execute(WorkflowJob(agentPath, pathExecutable)))
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("TWO") ~ versionId,
-    Execute(WorkflowJob(agentId, pathExecutable)),
-    Execute(WorkflowJob(agentId, pathExecutable)))
+    Execute(WorkflowJob(agentPath, pathExecutable)),
+    Execute(WorkflowJob(agentPath, pathExecutable)))
 
   private val forkWorkflow = Workflow.of(
     WorkflowPath("FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
-        Execute(WorkflowJob(agentId, pathExecutable)))),
-    Execute(WorkflowJob(agentId, pathExecutable)))
+        Execute(WorkflowJob(agentPath, pathExecutable)))),
+    Execute(WorkflowJob(agentPath, pathExecutable)))
 }

@@ -14,14 +14,8 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
   protected type AsScala = AgentRef
   protected def companion = JAgentRef
 
-  @Deprecated
-  @deprecated("Use id", "2020-12-11")
   @Nonnull
-  def name: AgentPath =
-    id
-
-  @Nonnull
-  def id: AgentPath =
+  def path: AgentPath =
     asScala.id
 
   @Nonnull
@@ -32,8 +26,8 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
 object JAgentRef extends JJsonable.Companion[JAgentRef]
 {
   @Nonnull
-  def of(@Nonnull id: AgentPath, @Nonnull uri: Uri) =
-    JAgentRef(AgentRef(id, uri))
+  def of(@Nonnull path: AgentPath, @Nonnull uri: Uri) =
+    JAgentRef(AgentRef(path, uri))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JAgentRef] =

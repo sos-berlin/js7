@@ -47,7 +47,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
     val client = AgentClient(agentUri = agent.localUri, Some(userId -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(RegisterAsController(agentId)) await 99.s
+    client.commandExecute(RegisterAsController(agentPath)) await 99.s
 
     val eventWatch = agent.api(CommandMeta(SimpleUser(userId)))
       .eventWatchForController(ControllerId.fromUserId(userId))
@@ -64,7 +64,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
           SimpleTestWorkflow.id,
           Order.Ready,
           Map("a" -> StringValue("A"))),
-        TestAgentId))
+        TestAgentPath))
     ) await 99.s
 
     val whenStepEnded: Future[Seq[OrderProcessed]] =
@@ -85,6 +85,6 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
 object TerminateTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val AScript = operatingSystem.sleepingShellScript(10.s)
 }

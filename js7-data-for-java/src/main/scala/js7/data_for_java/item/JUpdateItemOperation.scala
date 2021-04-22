@@ -20,9 +20,9 @@ object JUpdateItemOperation
 
   /** Deletes a non-versioned item. */
   @Nonnull
-  def deleteSimple(@Nonnull itemId: SimpleItemPath): JUpdateItemOperation =
+  def deleteSimple(@Nonnull path: SimpleItemPath): JUpdateItemOperation =
     new JUpdateItemOperation(
-      DeleteSimple(itemId))
+      DeleteSimple(path))
 
   /** Required exactly once if any of addReplace(SignedString) or deleteItem(ItemPath) is used. */
   def addVersion(versionId: VersionId) =

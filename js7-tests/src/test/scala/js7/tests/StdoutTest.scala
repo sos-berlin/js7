@@ -26,7 +26,7 @@ import scala.util.Try
 
 final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -116,7 +116,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
     (implicit pos: source.Position)
   : Unit =
     testWithWorkflow(
-      Workflow.of(Execute(WorkflowJob(agentId, executable))),
+      Workflow.of(Execute(WorkflowJob(agentPath, executable))),
       expectedChunks)
 
   private def testWithWorkflow(
@@ -153,7 +153,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object StdoutTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val chunkSize = 50
   private val delay = 200.ms
   private val shortDelay = 10.ms

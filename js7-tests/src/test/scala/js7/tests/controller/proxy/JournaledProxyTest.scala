@@ -38,7 +38,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class JournaledProxyTest
 extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with ControllerAgentForScalaTest
 {
-  override protected def agentIds = agentId :: Nil
+  override protected def agentPaths = agentPath :: Nil
   protected val versionedItems = Nil
   protected def config = ProxyConfs.defaultConfig
 
@@ -120,8 +120,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
         orderIds
           .map(_ -> List[OrderEvent](
             OrderAdded(workflow.path ~ versionId),
-            OrderAttachable(agentId),
-            OrderAttached(agentId),
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
             OrderStarted,
             OrderProcessingStarted,
             OrderStdoutWritten("TEST ☘\n"),
@@ -136,5 +136,5 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
 }
 
 object JournaledProxyTest {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 }

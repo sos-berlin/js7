@@ -43,7 +43,7 @@ final case class ControllerState(
   allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
   idToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
-  itemIdToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]],
+  itemToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
@@ -56,7 +56,7 @@ extends JournaledState[ControllerState]
     pathToLockState.size +
     allOrderWatchesState.estimatedSnapshotSize +
     idToSignedSimpleItem.size +
-    itemIdToAgentToAttachedState.values.view.map(_.size).sum +
+    itemToAgentToAttachedState.values.view.map(_.size).sum +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -69,7 +69,7 @@ extends JournaledState[ControllerState]
     allOrderWatchesState.toSnapshot ++
     Observable.fromIterable(idToSignedSimpleItem.values)
       .map(SignedItemAdded(_)) ++
-    Observable.fromIterable(itemIdToAgentToAttachedState)
+    Observable.fromIterable(itemToAgentToAttachedState)
       .map(o => ItemAttachedStateSnapshot(o._1, o._2)) ++
     Observable.fromIterable(idToOrder.values)
 
@@ -156,10 +156,10 @@ extends JournaledState[ControllerState]
 
         case event: BasicItemEvent.ForController =>
           event match {
-            case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
+            case event @ ItemAttachedStateChanged(id, agentPath, attachedState) =>
               id match {
                 case id: OrderWatchPath =>
-                  allOrderWatchesState.updateAttachedState(id, agentId, attachedState)
+                  allOrderWatchesState.updateAttachedState(id, agentPath, attachedState)
                     .map(o => copy(
                       allOrderWatchesState = o))
 
@@ -172,18 +172,18 @@ extends JournaledState[ControllerState]
                   attachedState match {
                     case attachedState: NotDetached =>
                       Right(copy(
-                        itemIdToAgentToAttachedState = itemIdToAgentToAttachedState +
+                        itemToAgentToAttachedState = itemToAgentToAttachedState +
                           (id ->
-                            (itemIdToAgentToAttachedState.getOrElse(id, Map.empty) +
-                              (agentId -> attachedState)))))
+                            (itemToAgentToAttachedState.getOrElse(id, Map.empty) +
+                              (agentPath -> attachedState)))))
 
                     case Detached =>
-                      Right(copy(itemIdToAgentToAttachedState = {
-                        val updated = itemIdToAgentToAttachedState.getOrElse(id, Map.empty) - agentId
+                      Right(copy(itemToAgentToAttachedState = {
+                        val updated = itemToAgentToAttachedState.getOrElse(id, Map.empty) - agentPath
                         if (updated.isEmpty)
-                          itemIdToAgentToAttachedState - id
+                          itemToAgentToAttachedState - id
                         else
-                          itemIdToAgentToAttachedState + (id -> updated)
+                          itemToAgentToAttachedState + (id -> updated)
                       }))
                   }
 
@@ -218,12 +218,12 @@ extends JournaledState[ControllerState]
       for (o <- repo.applyEvent(event)) yield
         copy(repo = o)
 
-    case KeyedEvent(agentId: AgentPath, event: AgentRefStateEvent) =>
-      pathToAgentRefState.checked(agentId)
+    case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
+      pathToAgentRefState.checked(agentPath)
         .flatMap(agentRefState =>
           agentRefState.applyEvent(event)
             .map(updated => copy(
-              pathToAgentRefState = pathToAgentRefState + (agentId -> updated))))
+              pathToAgentRefState = pathToAgentRefState + (agentPath -> updated))))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
@@ -267,9 +267,9 @@ extends JournaledState[ControllerState]
                     idToOrder = updatedIdToOrder + (offered.id -> offered))
 
               case event: OrderLockEvent =>
-                event.lockIds
+                event.lockPaths
                   .toList
-                  .traverse(lockId => pathToLockState(lockId).applyEvent(orderId <-: event))
+                  .traverse(lockPath => pathToLockState(lockPath).applyEvent(orderId <-: event))
                   .map(lockStates =>
                     copy(
                       idToOrder = updatedIdToOrder,
@@ -320,16 +320,16 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def itemIdToAttachedState(itemId: InventoryItemKey, itemRevision: Option[ItemRevision], agentId: AgentPath)
+  def itemIdToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
-    itemId match {
+    itemKey match {
       case itemId: VersionedItemId_ =>
-        repo.attachedState(itemId, agentId)
+        repo.attachedState(itemId, agentPath)
 
       case itemId: SignableSimpleItemPath =>
-        itemIdToAgentToAttachedState
+        itemToAgentToAttachedState
           .get(itemId)
-          .flatMap(_.get(agentId))
+          .flatMap(_.get(agentPath))
           .map {
             case a @ (Attachable | Attached(`itemRevision`) | Detachable) => a
             case Attached(_) => Detached
@@ -337,16 +337,16 @@ extends JournaledState[ControllerState]
           .getOrElse(Detached)
     }
 
-  lazy val idToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
+  lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
     new MapView[SimpleItemPath, SimpleItem] {
-      def get(itemId: SimpleItemPath): Option[SimpleItem] =
-        itemId match {
-          case id: AgentPath => pathToAgentRefState.get(id).map(_.item)
-          case id: LockPath => pathToLockState.get(id).map(_.item)
-          case id: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(id).map(_.item)
-          case id: JobResourcePath => idToSignedSimpleItem.get(id).map(_.value.asInstanceOf[JobResource])
-          case id =>
-            scribe.error(s"idToSimpleItem: Unexpected SimpleItemPath: $id")
+      def get(path: SimpleItemPath): Option[SimpleItem] =
+        path match {
+          case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
+          case path: LockPath => pathToLockState.get(path).map(_.item)
+          case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
+          case path: JobResourcePath => idToSignedSimpleItem.get(path).map(_.value.asInstanceOf[JobResource])
+          case path =>
+            scribe.error(s"pathToSimpleItem: Unexpected SimpleItemPath: $path")
             None
         }
 

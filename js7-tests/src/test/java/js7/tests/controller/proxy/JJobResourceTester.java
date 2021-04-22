@@ -59,7 +59,7 @@ final class JJobResourceTester
             "    {\n" +
             "      \"TYPE\": \"Execute.Anonymous\",\n" +
             "      \"job\": {\n" +
-            "        \"agentId\": \"AGENT\",\n" +
+            "        \"agentPath\": \"AGENT\",\n" +
             "        \"executable\": {\n" +
             "          \"TYPE\": \"ScriptExecutable\",\n" +
             "          \"script\": \"#!/usr/bin/env bash\\nset -euo pipefail\\necho A=/$A/\\necho B=/$B/\\necho C=/$C/\\necho D=/$D/\\necho E=/$E/\\n\",\n" +

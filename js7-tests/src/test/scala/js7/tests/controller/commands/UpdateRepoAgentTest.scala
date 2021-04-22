@@ -35,7 +35,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
   coupleScribeWithSlf4j()
 
   "ControllerCommand.UpdateRepo" in {
-    autoClosing(new DirectoryProvider(agentId :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
+    autoClosing(new DirectoryProvider(agentPath :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
       (provider.controller.configDir / "private" / "private.conf") ++=
         """js7.auth.users {
           |  UpdateRepoAgentTest {
@@ -44,7 +44,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
           |  }
           |}
           |""".stripMargin
-      provider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT.cmd"), ":")
+      provider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT.cmd"), ":")
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
       val agent1 = provider.startAgents().await(99.s).head
@@ -63,7 +63,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
             httpPort = Some(port))
           ).await(99.s)
 
-          controller.updateUnsignedSimpleItemsAsSystemUser(Seq(AgentRef(agentId, uri = agent2.localUri))).await(99.s).orThrow
+          controller.updateUnsignedSimpleItemsAsSystemUser(Seq(AgentRef(agentPath, uri = agent2.localUri))).await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }
@@ -85,7 +85,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
 
 object UpdateRepoAgentTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW"),
      """define workflow {
           execute executable="SCRIPT.cmd", agent="AGENT";

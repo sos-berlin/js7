@@ -29,8 +29,8 @@ final class FailUncatchableTest extends AnyFreeSpec
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentId),
-        OrderAttached(TestAgentId),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -48,8 +48,8 @@ final class FailUncatchableTest extends AnyFreeSpec
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentId),
-        OrderAttached(TestAgentId),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -67,8 +67,8 @@ final class FailUncatchableTest extends AnyFreeSpec
       |}""".stripMargin,
       Vector(
         OrderAdded(TestWorkflowId),
-        OrderAttachable(TestAgentId),
-        OrderAttached(TestAgentId),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -104,8 +104,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentId),
-        OrderAttached(TestAgentId),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
@@ -115,8 +115,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentId),
-        OrderAttached(TestAgentId),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -150,8 +150,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentId),
-        OrderAttached(TestAgentId),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
@@ -161,8 +161,8 @@ final class FailUncatchableTest extends AnyFreeSpec
 
     assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
       Vector(
-        OrderAttachable(TestAgentId),
-        OrderAttached(TestAgentId),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -175,7 +175,7 @@ final class FailUncatchableTest extends AnyFreeSpec
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(RelativePathExecutable("sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
@@ -193,6 +193,6 @@ final class FailUncatchableTest extends AnyFreeSpec
 object FailUncatchableTest
 {
   private val orderId = OrderId("🔺")
-  private val TestAgentId = AgentPath("AGENT")
+  private val TestAgentPath = AgentPath("AGENT")
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "INITIAL"
 }

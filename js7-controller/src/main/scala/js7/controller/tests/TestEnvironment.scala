@@ -13,7 +13,7 @@ import js7.data.item.{ItemPath, SourceType}
 /**
   * @author Joacim Zschimmer
   */
-final class TestEnvironment(agentIds: Seq[AgentPath], temporaryDirectory: Path)
+final class TestEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
 extends AutoCloseable {
 
   if (exists(temporaryDirectory)) {
@@ -23,10 +23,10 @@ extends AutoCloseable {
 
   createDirectories(controllerDir / "config/private")
   createDirectories(controllerDir / "data")
-  for (agentId <- agentIds) {
-    createDirectories(agentDir(agentId) / "config/private")
-    createDirectories(agentDir(agentId) / "config/executables")
-    createDirectory(agentDir(agentId) / "data")
+  for (agentPath <- agentPaths) {
+    createDirectories(agentDir(agentPath) / "config/private")
+    createDirectories(agentDir(agentPath) / "config/executables")
+    createDirectory(agentDir(agentPath) / "data")
   }
 
   def close(): Unit = {
@@ -38,8 +38,8 @@ extends AutoCloseable {
    def controllerDir: Path =
     temporaryDirectory / "controller"
 
-  def agentFile(agentId: AgentPath, path: ItemPath, t: SourceType): Path =
-    agentDir(agentId) / "config/live" resolve path.toFile(t)
+  def agentFile(agentPath: AgentPath, path: ItemPath, t: SourceType): Path =
+    agentDir(agentPath) / "config/live" resolve path.toFile(t)
 
   def agentDir(name: AgentPath): Path =
     agentsDir / name.string

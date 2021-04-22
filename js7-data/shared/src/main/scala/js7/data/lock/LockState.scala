@@ -22,10 +22,10 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
 
   def item = lock
 
-  def agentIdToAttachedState = Map.empty
+  def agentPathToAttachedState = Map.empty
 
   def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
-    assertThat(keyedEvent.event.lockIds contains lock.id)
+    assertThat(keyedEvent.event.lockPaths contains lock.id)
     keyedEvent match {
       case KeyedEvent(orderId, OrderLockAcquired(lock.id, count)) =>
         for (lockState <- toLockState(tryAcquire(orderId, count))) yield
@@ -39,16 +39,16 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
 
       case KeyedEvent(orderId, OrderLockQueued(lock.id, count)) =>
         if (!count.forall(_ <= limit))
-          Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockId limit=$limit"))
+          Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockPath limit=$limit"))
         else if (acquired == Available)
-          Left(Problem(s"$lockId is available an does not accept queuing"))
+          Left(Problem(s"$lockPath is available an does not accept queuing"))
         else if (acquired.isAcquiredBy(orderId))
           Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.id))
         else if (queue contains orderId)
-          Left(Problem(s"Order '${orderId.string}' already queues for $lockId"))
+          Left(Problem(s"Order '${orderId.string}' already queues for $lockPath"))
         else orderId.allParents find acquired.isAcquiredBy match {
           case Some(parentOrderId) =>
-            Left(Problem(s"$lockId has already been acquired by parent $parentOrderId"))
+            Left(Problem(s"$lockPath has already been acquired by parent $parentOrderId"))
           case None =>
             Right(enqueue(orderId))
         }
@@ -56,7 +56,7 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
       case KeyedEvent(orderId: OrderId, _: OrderFailedEvent) =>
         release(orderId)
 
-      case _ => Left(Problem.pure(s"Invalid event for '$lockId': $keyedEvent"))
+      case _ => Left(Problem.pure(s"Invalid event for '$lockPath': $keyedEvent"))
     }
   }
 
@@ -107,15 +107,15 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
       .map(acquired =>
         copy(acquired = acquired))
 
-  private def lockId = lock.id
+  private def lockPath = lock.id
 
   //TODO Break snapshot into smaller parts: private def toSnapshot: Observable[Any] = ...
 }
 
 object LockState
 {
-  def OrderLockNotAvailableProblem(lockId: LockPath) =
-    Problem(s"Lock '${lockId.string}' is not available")
+  def OrderLockNotAvailableProblem(lockPath: LockPath) =
+    Problem(s"Lock '${lockPath.string}' is not available")
 
   implicit val jsonCodec = deriveCodec[LockState]
 }

@@ -31,7 +31,7 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
       case Right(o) => _controllerState = o
     }
     val touchedItemIds = keyedEvents
-      .collect { case KeyedEvent(_, e: InventoryItemEvent) => e.id }
+      .collect { case KeyedEvent(_, e: InventoryItemEvent) => e.key }
       .distinct
     val touchedOrderIds = keyedEvents.view.map(_.key).collect { case o: OrderId => o }.toSeq.distinct
     (nextItemEvents(touchedItemIds).view ++
@@ -46,25 +46,25 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
         controllerState.allOrderWatchesState.pathToOrderWatchState.get(itemId)
           .view.flatMap { orderWatchState =>
             import orderWatchState.orderWatch
-            if (orderWatchState.agentIdToAttachedState.nonEmpty)
-              orderWatchState.agentIdToAttachedState.flatMap {
-                case (agentId, Attached(revision)) =>
+            if (orderWatchState.agentPathToAttachedState.nonEmpty)
+              orderWatchState.agentPathToAttachedState.flatMap {
+                case (agentPath, Attached(revision)) =>
                   if (orderWatchState.delete)
-                    Some(NoKey <-: ItemDetachable(itemId, agentId))
+                    Some(NoKey <-: ItemDetachable(itemId, agentPath))
                   else
                     (orderWatch.itemRevision != revision) ? (
-                      if (agentId == orderWatch.agentId)
+                      if (agentPath == orderWatch.agentPath)
                         // Attach again without detaching, and let Agent change OrderWatch while in flight
-                        NoKey <-: ItemAttachable(itemId, agentId)
+                        NoKey <-: ItemAttachable(itemId, agentPath)
                       else
-                        NoKey <-: ItemDetachable(itemId, agentId))
+                        NoKey <-: ItemDetachable(itemId, agentPath))
                 case _ =>
                   None
               }
             else if (orderWatchState.delete)
               orderWatchState.isDestroyable ? (NoKey <-: ItemDestroyed(itemId))
             else
-              Some(NoKey <-: ItemAttachable(itemId, orderWatch.agentId))
+              Some(NoKey <-: ItemAttachable(itemId, orderWatch.agentPath))
           }
 
       case _ =>
@@ -110,8 +110,8 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
 
   private def keyedEventToOrderIds(keyedEvent: KeyedEvent[OrderEvent]): View[OrderId] =
     View(keyedEvent.key) ++ (keyedEvent.event match {
-      case OrderLockEvent(lockIds) =>
-        lockIds.view
+      case OrderLockEvent(lockPaths) =>
+        lockPaths.view
           .flatMap(_controllerState.pathToLockState.get)
           .flatMap(_.firstQueuedOrderId)
 

@@ -30,7 +30,7 @@ final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
   pathToVersionToSignedItems: Map[ItemPath, List[Entry]],
-  idToAgentIdToAttachedState: Map[VersionedItemId_, Map[AgentPath, ItemAttachedState.NotDetached]],
+  idToAgentPathToAttachedState: Map[VersionedItemId_, Map[AgentPath, ItemAttachedState.NotDetached]],
   signatureVerifier: Option[SignatureVerifier])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
@@ -40,7 +40,7 @@ final case class Repo private(
     case o: Repo =>
       versions == o.versions &&
         pathToVersionToSignedItems == o.pathToVersionToSignedItems &&
-        idToAgentIdToAttachedState == o.idToAgentIdToAttachedState
+        idToAgentPathToAttachedState == o.idToAgentPathToAttachedState
     case _ => false
   }
 
@@ -308,9 +308,9 @@ final case class Repo private(
 
   private def toBasicItemEvents: View[BasicItemEvent] =
     for {
-      (id, agentToAttached) <- idToAgentIdToAttachedState.view
-      (agentId, attachedState) <- agentToAttached
-    } yield ItemAttachedStateChanged(id, agentId, attachedState)
+      (id, agentToAttached) <- idToAgentPathToAttachedState.view
+      (agentPath, attachedState) <- agentToAttached
+    } yield ItemAttachedStateChanged(id, agentPath, attachedState)
 
   private[item] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
     versions.dropWhile(versionId.!=) match {
@@ -321,30 +321,30 @@ final case class Repo private(
   def newVersionId(): VersionId =
     VersionId.generate(isKnown = versions.contains)
 
-  def attachedState(itemId: VersionedItemId_, agentId: AgentPath): ItemAttachedState =
-    idToAgentIdToAttachedState.get(itemId)
-      .flatMap(_.get(agentId))
+  def attachedState(itemId: VersionedItemId_, agentPath: AgentPath): ItemAttachedState =
+    idToAgentPathToAttachedState.get(itemId)
+      .flatMap(_.get(agentPath))
       .getOrElse(Detached)
 
   def applyBasicItemEvent(event: BasicItemEvent): Checked[Repo] =
     event match {
-      case ItemAttachedStateChanged(id: VersionedItemId_, agentId, attachedState) =>
+      case ItemAttachedStateChanged(id: VersionedItemId_, agentPath, attachedState) =>
         attachedState match {
           case attachedState: NotDetached =>
             Right(copy(
-              idToAgentIdToAttachedState = idToAgentIdToAttachedState +
-                (id -> (idToAgentIdToAttachedState.getOrElse(id, Map.empty) + (agentId -> attachedState)))))
+              idToAgentPathToAttachedState = idToAgentPathToAttachedState +
+                (id -> (idToAgentPathToAttachedState.getOrElse(id, Map.empty) + (agentPath -> attachedState)))))
 
           case Detached =>
             Right(
-              idToAgentIdToAttachedState.get(id).fold(this) { agentToAttachedState =>
-                val updated = agentToAttachedState - agentId
+              idToAgentPathToAttachedState.get(id).fold(this) { agentToAttachedState =>
+                val updated = agentToAttachedState - agentPath
                 copy(
-                  idToAgentIdToAttachedState =
+                  idToAgentPathToAttachedState =
                     if (updated.isEmpty)
-                      idToAgentIdToAttachedState - id
+                      idToAgentPathToAttachedState - id
                     else
-                      idToAgentIdToAttachedState + (id -> updated))
+                      idToAgentPathToAttachedState + (id -> updated))
               })
         }
 

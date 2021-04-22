@@ -55,7 +55,7 @@ final class OrderEventTest extends AnyFreeSpec
       OrderAttachable(AgentPath("AGENT")),
       json"""{
         "TYPE": "OrderAttachable",
-        "agentId": "AGENT"
+        "agentPath": "AGENT"
       }""")
   }
 
@@ -99,7 +99,7 @@ final class OrderEventTest extends AnyFreeSpec
             }
           }
         ],
-        "agentId":"AGENT",
+        "agentPath":"AGENT",
         "parent": "PARENT",
         "mark": {
           "TYPE": "Suspending",
@@ -114,7 +114,7 @@ final class OrderEventTest extends AnyFreeSpec
     check(OrderAttached(AgentPath("AGENT")), json"""
       {
         "TYPE": "OrderAttached",
-        "agentId":"AGENT"
+        "agentPath":"AGENT"
       }""")
   }
 
@@ -177,7 +177,7 @@ final class OrderEventTest extends AnyFreeSpec
             "returnCode": 1
           }
         },
-        "lockIds": []
+        "lockPaths": []
       }""")
   }
 
@@ -193,7 +193,7 @@ final class OrderEventTest extends AnyFreeSpec
           "message": "FAILED"
         },
         "movedTo": [ 1 ],
-        "lockIds": [ "LOCK" ]
+        "lockPaths": [ "LOCK" ]
       }""")
   }
 
@@ -208,7 +208,7 @@ final class OrderEventTest extends AnyFreeSpec
             "returnCode": 1
           }
         },
-        "lockIds": []
+        "lockPaths": []
       }""")
   }
 
@@ -224,7 +224,7 @@ final class OrderEventTest extends AnyFreeSpec
           },
           "message": "ERROR"
         },
-        "lockIds": [ "LOCK" ]
+        "lockPaths": [ "LOCK" ]
       }""")
   }
 
@@ -242,7 +242,7 @@ final class OrderEventTest extends AnyFreeSpec
             }
           }
         },
-        "lockIds": []
+        "lockPaths": []
       }""")
   }
 
@@ -257,7 +257,7 @@ final class OrderEventTest extends AnyFreeSpec
             "returnCode": 1
           }
         },
-        "lockIds": []
+        "lockPaths": []
       }""")
   }
 
@@ -273,7 +273,7 @@ final class OrderEventTest extends AnyFreeSpec
           },
           "message": "ERROR"
         },
-        "lockIds": [ "LOCK" ]
+        "lockPaths": [ "LOCK" ]
       }""")
   }
 
@@ -450,7 +450,7 @@ final class OrderEventTest extends AnyFreeSpec
     check(OrderLockAcquired(LockPath("LOCK"), Some(3)), json"""
       {
         "TYPE": "OrderLockAcquired",
-        "lockId": "LOCK",
+        "lockPath": "LOCK",
         "count": 3
       }""")
   }
@@ -459,7 +459,7 @@ final class OrderEventTest extends AnyFreeSpec
     check(OrderLockQueued(LockPath("LOCK"), Some(1)), json"""
       {
         "TYPE": "OrderLockQueued",
-        "lockId": "LOCK",
+        "lockPath": "LOCK",
         "count": 1
       }""")
   }
@@ -468,7 +468,7 @@ final class OrderEventTest extends AnyFreeSpec
     check(OrderLockReleased(LockPath("LOCK")), json"""
       {
         "TYPE": "OrderLockReleased",
-        "lockId": "LOCK"
+        "lockPath": "LOCK"
       }""")
   }
 

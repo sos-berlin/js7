@@ -38,7 +38,7 @@ trait ControllerClusterForScalaTest
 {
   this: TestSuite =>
 
-  protected def agentIds: Seq[AgentPath] = AgentPath("AGENT") :: Nil
+  protected def agentPaths: Seq[AgentPath] = AgentPath("AGENT") :: Nil
   protected def versionedItems: Seq[VersionedItem]
   protected def shellScript = script(0.s)
 
@@ -82,8 +82,8 @@ trait ControllerClusterForScalaTest
   : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
-      val agentPorts = findFreeTcpPorts(agentIds.size)
-      val primary = new DirectoryProvider(agentIds, versionedItems, testName = Some(s"$testName-Primary"),
+      val agentPorts = findFreeTcpPorts(agentPaths.size)
+      val primary = new DirectoryProvider(agentPaths, versionedItems, testName = Some(s"$testName-Primary"),
         controllerConfig = combineArgs(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""

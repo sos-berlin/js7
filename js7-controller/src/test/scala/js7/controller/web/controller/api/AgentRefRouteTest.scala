@@ -68,7 +68,7 @@ final class AgentRefRouteTest extends AnyFreeSpec with RouteTester with AgentRef
   }
 
   // AgentRef
-  for (uri <- List(s"$AgentUri/${nameToAgent.values.head.agentId.string}")) {
+  for (uri <- List(s"$AgentUri/${nameToAgent.values.head.agentPath.string}")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
@@ -83,5 +83,5 @@ object AgentRefRouteTest
   private val AgentUri = "/api/agent"
   private val aAgent = AgentRef(AgentPath("A-AGENT"), Uri("https://localhost:0"))
   private val bAgent = AgentRef(AgentPath("B-AGENT"), Uri("https://localhost:65535"))
-  private val nameToAgent = Seq(aAgent, bAgent).map(AgentRefState.apply).toKeyedMap(_.agentId)
+  private val nameToAgent = Seq(aAgent, bAgent).map(AgentRefState.apply).toKeyedMap(_.agentPath)
 }

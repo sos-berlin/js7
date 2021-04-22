@@ -6,7 +6,7 @@ import js7.data.controller.ControllerId
 
 final case class RegisteredController(
   controllerId: ControllerId,
-  agentId: AgentPath,
+  agentPath: AgentPath,
   agentRunId: AgentRunId)
 
 object RegisteredController

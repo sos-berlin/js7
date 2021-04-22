@@ -40,7 +40,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
 
   def appendWorkflowExecutable(job: WorkflowJob): Unit = {
     sb ++= "agent="
-    appendQuoted(job.agentId.string)
+    appendQuoted(job.agentPath.string)
     if (job.taskLimit != WorkflowJob.DefaultTaskLimit) {
       sb ++= ", taskLimit="
       sb.append(job.taskLimit)
@@ -166,9 +166,9 @@ final class WorkflowPrinter(sb: StringBuilder) {
         }
         sb ++= ";\n"
 
-      case LockInstruction(LockPath(lockId), maybeCount, lockedWorkflow, _) =>
+      case LockInstruction(LockPath(lockPath), maybeCount, lockedWorkflow, _) =>
         sb ++= "lock (lock="
-        appendQuoted(lockId)
+        appendQuoted(lockPath)
         for (n <- maybeCount) {
           sb ++= ", count="
           sb.append(n)

@@ -15,7 +15,7 @@ final class LockInstructionTest extends AnyFreeSpec {
       LockInstruction(LockPath("LOCK"), count = None, lockedWorkflow = Workflow.of()),
       json"""{
         "TYPE": "Lock",
-        "lockId": "LOCK",
+        "lockPath": "LOCK",
         "lockedWorkflow": {
           "instructions": []
         }
@@ -25,7 +25,7 @@ final class LockInstructionTest extends AnyFreeSpec {
       LockInstruction(LockPath("LOCK"), count = Some(3), lockedWorkflow = Workflow.of(), sourcePos = Some(SourcePos(1, 2))),
       json"""{
         "TYPE": "Lock",
-        "lockId": "LOCK",
+        "lockPath": "LOCK",
         "count": 3,
         "lockedWorkflow": {
           "instructions": []

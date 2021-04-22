@@ -34,7 +34,7 @@ final class IfTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "PathExecutable",
                   "path": "THEN"
@@ -49,7 +49,7 @@ final class IfTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job":  {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "PathExecutable",
                   "path": "ELSE"

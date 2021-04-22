@@ -34,7 +34,7 @@ final class TryInstructionTest extends AnyFreeSpec
               {
                 "TYPE": "Execute.Anonymous",
                 "job": {
-                  "agentId": "AGENT",
+                  "agentPath": "AGENT",
                   "executable": {
                     "TYPE": "PathExecutable",
                     "path": "TRY"
@@ -49,7 +49,7 @@ final class TryInstructionTest extends AnyFreeSpec
               {
                 "TYPE": "Execute.Anonymous",
                 "job": {
-                  "agentId": "AGENT",
+                  "agentPath": "AGENT",
                   "executable": {
                     "TYPE": "PathExecutable",
                     "path": "CATCH"

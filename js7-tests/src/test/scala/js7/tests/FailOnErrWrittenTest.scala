@@ -28,7 +28,7 @@ final class FailOnErrWrittenTest extends AnyFreeSpec with ControllerAgentForScal
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(workflow)
 
   "JobResourcePath" in {
@@ -47,20 +47,20 @@ final class FailOnErrWrittenTest extends AnyFreeSpec with ControllerAgentForScal
 
 object FailOnErrWrittenTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
       Execute.Anonymous(WorkflowJob(
-        agentId,
+        agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
             |echo ERROR >&2
             |""".stripMargin))),
       Execute.Anonymous(WorkflowJob(
-        agentId,
+        agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
@@ -68,7 +68,7 @@ object FailOnErrWrittenTest
             |""".stripMargin),
         failOnErrWritten = true)),
       Execute.Anonymous(WorkflowJob(
-        agentId,
+        agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail

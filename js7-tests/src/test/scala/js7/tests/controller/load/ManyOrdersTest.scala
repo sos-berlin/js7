@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = workflow :: Nil
 
   override protected val controllerConfig = config"""
@@ -85,7 +85,7 @@ object ManyOrdersTest
   private val defaultN = 10
   private val defaultSize = 4_000_000
   private val longTimeout = 999.s
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "1", s"""
       define workflow {

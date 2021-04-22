@@ -43,7 +43,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  protected val agentIds = AgentPath("AGENT") :: Nil
+  protected val agentPaths = AgentPath("AGENT") :: Nil
   protected val versionedItems = Nil
 
   override def beforeAll() = {

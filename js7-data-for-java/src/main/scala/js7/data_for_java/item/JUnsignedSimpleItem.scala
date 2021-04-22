@@ -8,5 +8,5 @@ trait JUnsignedSimpleItem
   def asScala: UnsignedSimpleItem
 
   @Nonnull
-  def id: SimpleItemPath
+  def path: SimpleItemPath
 }

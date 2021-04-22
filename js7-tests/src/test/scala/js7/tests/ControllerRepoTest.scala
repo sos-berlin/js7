@@ -45,7 +45,7 @@ final class ControllerRepoTest extends AnyFreeSpec
   import ControllerRepoTest._
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentId), testName = Some("ControllerRepoTest"))) { provider =>
+    autoClosing(new DirectoryProvider(List(TestAgentPath), testName = Some("ControllerRepoTest"))) { provider =>
       import provider.itemSigner
 
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
@@ -184,7 +184,7 @@ final class ControllerRepoTest extends AnyFreeSpec
       }
 
       def generateItemOperations(n: Int): Seq[ItemOperation] = {
-        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentId, ScriptExecutable("# " + "BIG "*256))))
+        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentPath, ScriptExecutable("# " + "BIG "*256))))
         val versionCounter = AtomicInt(0)
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
           Observable.fromIterable(1 to n)
@@ -219,8 +219,8 @@ object ControllerRepoTest
   private val V4 = VersionId("4")
   private val V5 = VersionId("5")
   private val V6 = VersionId("6")
-  private val TestAgentId = AgentPath("AGENT")
+  private val TestAgentPath = AgentPath("AGENT")
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(
-    Execute(WorkflowJob(TestAgentId, RelativePathExecutable(s"EXECUTABLE-V${versionId.string}$sh"))))
+    Execute(WorkflowJob(TestAgentPath, RelativePathExecutable(s"EXECUTABLE-V${versionId.string}$sh"))))
 }

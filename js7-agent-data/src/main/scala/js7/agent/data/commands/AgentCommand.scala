@@ -92,7 +92,7 @@ object AgentCommand extends CommonCommand.Companion
     * The Agent Server starts a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class RegisterAsController(agentId: AgentPath) extends AgentCommand {
+  final case class RegisterAsController(agentPath: AgentPath) extends AgentCommand {
     type Response = RegisterAsController.Response
   }
   object RegisterAsController {
@@ -103,7 +103,7 @@ object AgentCommand extends CommonCommand.Companion
 
   /** Couples the registered Controller identified by current User.
     * @param agentRunId Must be the value returned by `RegisterAsController`. */
-  final case class CoupleController(agentId: AgentPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
+  final case class CoupleController(agentPath: AgentPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
     type Response = CoupleController.Response
   }
   object CoupleController {
@@ -170,8 +170,8 @@ object AgentCommand extends CommonCommand.Companion
       s"${order.state.getClass.simpleScalaName}))"
   }
   object AttachOrder {
-    def apply(order: Order[Order.IsFreshOrReady], agentId: AgentPath) =
-      new AttachOrder(order.copy(attachedState = Some(Order.Attached(agentId))))
+    def apply(order: Order[Order.IsFreshOrReady], agentPath: AgentPath) =
+      new AttachOrder(order.copy(attachedState = Some(Order.Attached(agentPath))))
   }
 
   final case class DetachOrder(orderId: OrderId)

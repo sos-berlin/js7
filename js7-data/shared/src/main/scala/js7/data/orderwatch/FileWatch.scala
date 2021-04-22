@@ -17,7 +17,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 final case class FileWatch(
   id: OrderWatchPath,
   workflowPath: WorkflowPath,
-  agentId: AgentPath,
+  agentPath: AgentPath,
   directory: String,
   pattern: Option[SimplePattern] = None,
   orderIdExpression: Option[Expression] = None,

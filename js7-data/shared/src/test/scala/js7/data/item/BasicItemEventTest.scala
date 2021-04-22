@@ -19,7 +19,7 @@ final class BasicItemEventTest extends AnyFreeSpec
       testJson[BasicItemEvent](ItemDeletionMarked(OrderWatchPath("ID")), json"""
         {
           "TYPE": "ItemDeletionMarked",
-          "id": "OrderWatch:ID"
+          "key": "OrderWatch:ID"
         }""")
     }
 
@@ -27,7 +27,7 @@ final class BasicItemEventTest extends AnyFreeSpec
       testJson[BasicItemEvent](ItemDestroyed(OrderWatchPath("ID")), json"""
         {
           "TYPE": "ItemDestroyed",
-          "id": "OrderWatch:ID"
+          "key": "OrderWatch:ID"
         }""")
     }
 
@@ -36,8 +36,8 @@ final class BasicItemEventTest extends AnyFreeSpec
         json"""
         {
           "TYPE": "ItemAttachable",
-          "id": "OrderWatch:ID",
-          "agentId": "AGENT"
+          "key": "OrderWatch:ID",
+          "agentPath": "AGENT"
         }""")
     }
 
@@ -46,9 +46,9 @@ final class BasicItemEventTest extends AnyFreeSpec
         json"""
         {
           "TYPE": "ItemAttached",
-          "id": "OrderWatch:ID",
+          "key": "OrderWatch:ID",
           "itemRevision":  7,
-          "agentId": "AGENT"
+          "agentPath": "AGENT"
         }""")
     }
 
@@ -71,8 +71,8 @@ final class BasicItemEventTest extends AnyFreeSpec
         json"""
         {
           "TYPE": "ItemDetachable",
-          "id": "Workflow:PATH~1",
-          "agentId": "AGENT"
+          "key": "Workflow:PATH~1",
+          "agentPath": "AGENT"
         }""")
     }
 
@@ -81,8 +81,8 @@ final class BasicItemEventTest extends AnyFreeSpec
         json"""
         {
           "TYPE": "ItemDetached",
-          "id": "Workflow:PATH~1",
-          "agentId": "AGENT"
+          "key": "Workflow:PATH~1",
+          "agentPath": "AGENT"
         }""")
     }
   }

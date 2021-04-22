@@ -30,12 +30,12 @@ import scala.util.Random
 
 final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId, bAgentId)
+  protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val versionedItems = Nil
   override protected val simpleItems = Seq(
-    Lock(lockId, limit = 1),
+    Lock(lockPath, limit = 1),
     Lock(lock2Id, limit = 1),
-    Lock(limit2LockId, limit = 2))
+    Lock(limit2LockPath, limit = 2))
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -55,10 +55,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
             job `JOB-2`;
           };
           define job `JOB-1` {
-            execute agent="${agentId.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
+            execute agent="${agentPath.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
           }
           define job `JOB-2` {
-            execute agent="${bAgentId.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
+            execute agent="${bAgentPath.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
           }
         }""")
 
@@ -79,23 +79,23 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controller.eventWatch.keyedEvents[OrderEvent](a) == Seq(
         OrderAdded(workflow.id),
         OrderStarted,
-        OrderLockAcquired(lockId, None),
-          OrderAttachable(agentId),
-          OrderAttached(agentId),
+        OrderLockAcquired(lockPath, None),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.succeededRC0),
           OrderMoved(Position(0) / "lock" % 1),
           OrderDetachable,
           OrderDetached,
 
-          OrderAttachable(bAgentId),
-          OrderAttached(bAgentId),
+          OrderAttachable(bAgentPath),
+          OrderAttached(bAgentPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.succeededRC0),
           OrderMoved(Position(0) / "lock" % 2),
           OrderDetachable,
           OrderDetached,
-        OrderLockReleased(lockId),
+        OrderLockReleased(lockPath),
         OrderFinished))
 
       for (orderId <- queuedOrderIds) {
@@ -103,24 +103,24 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
           OrderAdded(workflow.id),
           OrderStarted,
-          OrderLockQueued(lockId, None),
-          OrderLockAcquired(lockId, None),
-            OrderAttachable(agentId),
-            OrderAttached(agentId),
+          OrderLockQueued(lockPath, None),
+          OrderLockAcquired(lockPath, None),
+            OrderAttachable(agentPath),
+            OrderAttached(agentPath),
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeededRC0),
             OrderMoved(Position(0) / "lock" % 1),
             OrderDetachable,
             OrderDetached,
 
-            OrderAttachable(bAgentId),
-            OrderAttached(bAgentId),
+            OrderAttachable(bAgentPath),
+            OrderAttached(bAgentPath),
             OrderProcessingStarted,
             OrderProcessed(Outcome.succeededRC0),
             OrderMoved(Position(0) / "lock" % 2),
             OrderDetachable,
             OrderDetached,
-          OrderLockReleased(lockId),
+          OrderLockReleased(lockPath),
           OrderFinished))
       }
 
@@ -128,9 +128,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         assert(controller.eventWatch.await[OrderLockAcquired](_.key == pair(0)).map(_.eventId).head <
                controller.eventWatch.await[OrderLockAcquired](_.key == pair(1)).map(_.eventId).head)
       }
-      assert(controller.controllerState.await(99.s).pathToLockState(lockId) ==
+      assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
         LockState(
-          Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+          Lock(lockPath, limit = 1, itemRevision = Some(ItemRevision(0))),
           Available,
           Queue.empty))
     }
@@ -139,13 +139,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "After releasing a lock of 2, two orders with count=1 each start simultaneously" in {
     val workflow1 = defineWorkflow(WorkflowPath("WORKFLOW-1"), s"""
       define workflow {
-        lock (lock="${limit2LockId.string}", count=1) {
+        lock (lock="${limit2LockPath.string}", count=1) {
           execute agent="AGENT", script="${script(50.ms)}", taskLimit=99
         }
       }""")
     val workflow2 = defineWorkflow(WorkflowPath("WORKFLOW-2"), s"""
       define workflow {
-        lock (lock="${limit2LockId.string}", count=2) {
+        lock (lock="${limit2LockPath.string}", count=2) {
           execute agent="AGENT", script="${script(100.ms)}", taskLimit=99
         }
       }""")
@@ -165,9 +165,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val bReleased = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLockReleased]).get
     assert(aAquired.eventId < bReleased.eventId, "- a acquired lock after b released")
     assert(bAquired.eventId < aReleased.eventId, "- b acquired lock after a released")
-    assert(controller.controllerState.await(99.s).pathToLockState(limit2LockId) ==
+    assert(controller.controllerState.await(99.s).pathToLockState(limit2LockPath) ==
       LockState(
-        Lock(limit2LockId, limit = 2, itemRevision = Some(ItemRevision(0))),
+        Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
   }
@@ -175,13 +175,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Multiple orders with count=1 and count=2 finish" in {
     val workflow1 = defineWorkflow(WorkflowPath("WORKFLOW-1"), s"""
       define workflow {
-        lock (lock="${limit2LockId.string}", count=1) {
+        lock (lock="${limit2LockPath.string}", count=1) {
           execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
         }
       }""")
     val workflow2 = defineWorkflow(WorkflowPath("WORKFLOW-2"), s"""
       define workflow {
-        lock (lock="${limit2LockId.string}", count=2) {
+        lock (lock="${limit2LockPath.string}", count=2) {
           execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
         }
       }""")
@@ -191,9 +191,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrders(Observable.from(orders)).await(99.s).orThrow
     val terminated = for (order <- orders) yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     for (keyedEvent <- terminated.map(_.last.value))  assert(keyedEvent.event == OrderFinished, s"- ${keyedEvent.key}")
-    assert(controller.controllerState.await(99.s).pathToLockState(limit2LockId) ==
+    assert(controller.controllerState.await(99.s).pathToLockState(limit2LockPath) ==
       LockState(
-        Lock(limit2LockId, limit = 2, itemRevision = Some(ItemRevision(0))),
+        Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
   }
@@ -214,12 +214,12 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
-      OrderLockAcquired(lockId, None),
+      OrderLockAcquired(lockPath, None),
       OrderLockAcquired(lock2Id, None),
-      OrderFailed(Position(0), Some(Outcome.failed), lockIds = Seq(lock2Id, lockId))))
-    assert(controller.controllerState.await(99.s).pathToLockState(lockId) ==
+      OrderFailed(Position(0), Some(Outcome.failed), lockPaths = Seq(lock2Id, lockPath))))
+    assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
       LockState(
-        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Lock(lockPath, limit = 1, itemRevision = Some(ItemRevision(0))),
         Available, Queue.empty))
   }
 
@@ -241,22 +241,22 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
-      OrderLockAcquired(lockId, None),
+      OrderLockAcquired(lockPath, None),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLockAcquired(lock2Id, None),
-      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockIds = Seq(lock2Id)),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockPaths = Seq(lock2Id)),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(0) / "lock" % 1),
       OrderDetachable,
       OrderDetached,
-      OrderLockReleased(lockId),
+      OrderLockReleased(lockPath),
       OrderFinished))
-    assert(controller.controllerState.await(99.s).pathToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
       LockState(
-        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Lock(lockPath, limit = 1, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
   }
@@ -284,12 +284,12 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFailed(Position(0))))
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
-      OrderLockAcquired(lockId, None),
-      OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockIds = Seq(lockId))))
+      OrderLockAcquired(lockPath, None),
+      OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockPaths = Seq(lockPath))))
 
-    assert(controller.controllerState.await(99.s).pathToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
       LockState(
-        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Lock(lockPath, limit = 1, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
   }
@@ -312,18 +312,18 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
-      OrderLockAcquired(lockId, None),
+      OrderLockAcquired(lockPath, None),
       OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
       OrderJoined(Outcome.failed),
-      OrderFailed(Position(0), lockIds = Seq(lockId))))
+      OrderFailed(Position(0), lockPaths = Seq(lockPath))))
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
       OrderFailedInFork(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
         "Lock:LOCK has already been acquired by parent Order:🟪"))))))
 
-    assert(controller.controllerState.await(99.s).pathToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
       LockState(
-        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Lock(lockPath, limit = 1, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
   }
@@ -342,9 +342,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1"))))))
 
-    assert(controller.controllerState.await(99.s).pathToLockState(lockId) ==
+    assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
       LockState(
-        Lock(lockId, limit = 1, itemRevision = Some(ItemRevision(0))),
+        Lock(lockPath, limit = 1, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
   }
@@ -353,7 +353,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val v = VersionId("DELETE")
     assert(controllerApi.updateItems(Observable(
       AddVersion(v),
-      DeleteSimple(lockId)
+      DeleteSimple(lockPath)
     )).await(99.s) == Left(Problem(
       "Lock cannot be deleted")))
   }
@@ -370,9 +370,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 }
 
 object LockTest {
-  private val agentId = AgentPath("AGENT")
-  private val bAgentId = AgentPath("B-AGENT")
-  private val lockId = LockPath("LOCK")
+  private val agentPath = AgentPath("AGENT")
+  private val bAgentPath = AgentPath("B-AGENT")
+  private val lockPath = LockPath("LOCK")
   private val lock2Id = LockPath("LOCK-2")
-  private val limit2LockId = LockPath("LOCK-LIMIT-2")
+  private val limit2LockPath = LockPath("LOCK-LIMIT-2")
 }

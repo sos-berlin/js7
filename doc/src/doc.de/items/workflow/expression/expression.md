@@ -25,7 +25,7 @@ Zum Beispiel das Feld `predicate` in der If-Anweisung.
 {
   "TYPE": "Execute.Anonymous",
   "job": {
-    "agentId": "AGENT",
+    "agentPath": "AGENT",
     "executable": {
       "TYPE": "PathExecutable",
       "file": "script.sh",

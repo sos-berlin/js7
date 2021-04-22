@@ -20,7 +20,7 @@ import scala.collection.View
 
 final case class OrderWatchState(
   orderWatch: OrderWatch,
-  agentIdToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
+  agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
   delete: Boolean,
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder],
   private[orderwatch] val arisedQueue: Set[ExternalOrderName],
@@ -47,7 +47,7 @@ extends SimpleItemState
         .toSet)
 
   def isDestroyable =
-    delete && agentIdToAttachedState.isEmpty
+    delete && agentPathToAttachedState.isEmpty
 
   def applyOrderWatchEvent(event: OrderWatchEvent): Checked[OrderWatchState] =
     event match {
@@ -179,7 +179,7 @@ extends SimpleItemState
     1 + externalToState.size
 
   def toSnapshot: Observable[Snapshot] =
-    HeaderSnapshot(orderWatch, agentIdToAttachedState, delete) +:
+    HeaderSnapshot(orderWatch, agentPathToAttachedState, delete) +:
       Observable.fromIterable(externalToState)
         .map { case (externalOrderName, state) =>
           ExternalOrderSnapshot(orderWatch.id, externalOrderName, state)
@@ -202,15 +202,15 @@ object OrderWatchState
 
   def apply(
     orderWatch: OrderWatch,
-    agentIdToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
+    agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
     sourceToOrderId: Map[ExternalOrderName, ArisedOrHasOrder])
   : OrderWatchState =
-    OrderWatchState(orderWatch, agentIdToAttachedState, delete = false,
+    OrderWatchState(orderWatch, agentPathToAttachedState, delete = false,
       sourceToOrderId, Set.empty, Set.empty
     ).recoverQueues
 
   def fromSnapshot(snapshot: HeaderSnapshot) =
-    OrderWatchState(snapshot.orderWatch, snapshot.agentIdToAttachedState, snapshot.delete,
+    OrderWatchState(snapshot.orderWatch, snapshot.agentPathToAttachedState, snapshot.delete,
       Map.empty, Set.empty, Set.empty
     ).recoverQueues
 
@@ -220,7 +220,7 @@ object OrderWatchState
 
   final case class HeaderSnapshot(
     orderWatch: OrderWatch,
-    agentIdToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
+    agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
     delete: Boolean)
   extends Snapshot {
     def orderWatchPath = orderWatch.id

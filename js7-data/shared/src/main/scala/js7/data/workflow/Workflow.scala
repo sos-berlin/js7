@@ -236,30 +236,30 @@ extends VersionedItem
       }.toVector ++
         rawLabeledInstructions.lastOption)
 
-  def reduceForAgent(agentId: AgentPath): Workflow =
+  def reduceForAgent(agentPath: AgentPath): Workflow =
     reuseIfEqual(this, copy(
       rawLabeledInstructions = labeledInstructions
         .map(labeled => labeled.copy(
           instruction = labeled.instruction
-            .reduceForAgent(agentId, this))),
+            .reduceForAgent(agentPath, this))),
       nameToJob = reuseIfEqual(nameToJob,
-        nameToJob.filter(o => o._2.agentId == agentId))))
+        nameToJob.filter(o => o._2.agentPath == agentPath))))
 
-  private[workflow] def isVisibleForAgent(agentId: AgentPath): Boolean =
-    instructions.exists(_.isVisibleForAgent(agentId, this))
+  private[workflow] def isVisibleForAgent(agentPath: AgentPath): Boolean =
+    instructions.exists(_.isVisibleForAgent(agentPath, this))
 
-  def isStartableOnAgent(position: Position, agentId: AgentPath): Boolean =
-    isStartableOnAgent(instruction(position), agentId)
+  def isStartableOnAgent(position: Position, agentPath: AgentPath): Boolean =
+    isStartableOnAgent(instruction(position), agentPath)
 
-  private def isStartableOnAgent(instruction: Instruction, agentId: AgentPath): Boolean =
+  private def isStartableOnAgent(instruction: Instruction, agentPath: AgentPath): Boolean =
     instruction match {
-      case o: Fork => o isStartableOnAgent agentId
-      case o: Execute => o.isVisibleForAgent(agentId, this)
+      case o: Fork => o isStartableOnAgent agentPath
+      case o: Execute => o.isVisibleForAgent(agentPath, this)
       case _ => false
     }
 
-  private[workflow] def isStartableOnAgent(agentId: AgentPath): Boolean =
-    checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentId)
+  private[workflow] def isStartableOnAgent(agentPath: AgentPath): Boolean =
+    checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentPath)
 
   def isDefinedAt(position: Position): Boolean =
     position match {

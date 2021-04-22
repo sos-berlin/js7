@@ -104,7 +104,7 @@ object WorkflowParser
           keyValue("command", quotedString) |
           keyValue("script", constantExpression) |
           keyValue("internalJobClass", constantExpression) |
-          keyValue("agent", agentId) |
+          keyValue("agent", agentPath) |
           keyValue("defaultArguments", namedValues) |
           keyValue("arguments", objectExpression) |
           keyValue("jobArguments", namedValues) |
@@ -113,7 +113,7 @@ object WorkflowParser
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("taskLimit", int) |
           keyValue("sigkillDelay", int))
-        agentId <- kv[AgentPath]("agent")
+        agentPath <- kv[AgentPath]("agent")
         defaultArguments <- kv[NamedValues]("defaultArguments", NamedValues.empty)
         arguments <- kv[ObjectExpression]("arguments", ObjectExpression.empty)
         jobArguments <- kv[NamedValues]("jobArguments", NamedValues.empty)
@@ -138,7 +138,7 @@ object WorkflowParser
         taskLimit <- kv[Int]("taskLimit", WorkflowJob.DefaultTaskLimit)
         sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
       } yield
-        WorkflowJob(agentId, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, taskLimit = taskLimit,
+        WorkflowJob(agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, taskLimit = taskLimit,
           sigkillDelay = sigkillDelay))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
@@ -244,16 +244,16 @@ object WorkflowParser
     private def lockInstruction[_: P] = P[LockInstruction](
       (Index ~ keyword("lock") ~ w ~/
         inParentheses(keyValues(
-          keyValue("lock", quotedLockId) |
+          keyValue("lock", quotedLockPath) |
           keyValue("count", int)
         )) ~/
         Index ~/
         w ~/ curlyWorkflowOrInstruction
       ).flatMap { case (start, keyToValue, end, subworkflow) =>
         for {
-          lockId <- keyToValue[LockPath]("lock")
+          lockPath <- keyToValue[LockPath]("lock")
           count <- keyToValue.get[Int]("count")
-          lock <- checkedToP(LockInstruction.checked(lockId, count, subworkflow, sourcePos(start, end)))
+          lock <- checkedToP(LockInstruction.checked(lockPath, count, subworkflow, sourcePos(start, end)))
         } yield lock
       }  ~~/ instructionTerminator.?)
 

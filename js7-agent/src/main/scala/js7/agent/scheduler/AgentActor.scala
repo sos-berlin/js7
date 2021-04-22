@@ -80,7 +80,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
       agentConfiguration.config)
     state = recovered.state
     for (o <- state.idToController.values) {
-      addOrderKeeper(o.controllerId, o.agentId, o.agentRunId)
+      addOrderKeeper(o.controllerId, o.agentPath, o.agentRunId)
     }
     val sender = this.sender()
     recovered.startJournaling(journalActor)
@@ -162,12 +162,12 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
           }
         }
 
-      case AgentCommand.RegisterAsController(agentId) if !terminating =>
+      case AgentCommand.RegisterAsController(agentPath) if !terminating =>
         state.idToController.get(controllerId) match {
           case None =>
             val agentRunId = AgentRunId(JournalId.random())
             response completeWith
-              persist(AgentServerEvent.ControllerRegistered(controllerId, agentId, agentRunId)) {
+              persist(AgentServerEvent.ControllerRegistered(controllerId, agentPath, agentRunId)) {
                 case (Stamped(_, _, KeyedEvent(NoKey, event)), _) =>
                   update(event)
                   Right(AgentCommand.RegisterAsController.Response(agentRunId))
@@ -175,16 +175,16 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
 
           case Some(registeredController) =>
             response.completeWith(
-              checkController(controllerId, agentId, None, EventId.BeforeFirst)
+              checkController(controllerId, agentPath, None, EventId.BeforeFirst)
                 .map(_.map((_: ControllerRegister.Entry) => AgentCommand.RegisterAsController.Response(registeredController.agentRunId)))
                 .runToFuture)
         }
 
-      case AgentCommand.CoupleController(agentId, agentRunId, eventId) if !terminating =>
+      case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
         response.completeWith(
           ( for {
-              entry <- EitherT(checkController(controllerId, agentId, Some(agentRunId), eventId))
+              entry <- EitherT(checkController(controllerId, agentPath, Some(agentRunId), eventId))
               response <- EitherT(entry.persistence.awaitCurrentState
                 .map(state => Checked(CoupleController.Response(state.idToOrder.keySet))))
             } yield response
@@ -210,7 +210,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
     }
   }
 
-  private def checkController(controllerId: ControllerId, requestedAgentId: AgentPath, requestedAgentRunId: Option[AgentRunId], eventId: EventId)
+  private def checkController(controllerId: ControllerId, requestedAgentPath: AgentPath, requestedAgentRunId: Option[AgentRunId], eventId: EventId)
   : Task[Checked[ControllerRegister.Entry]] = {
     def pure[A](a: Checked[A]) = EitherT(Task.pure(a))
     ( for {
@@ -219,10 +219,10 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
         eventWatch <- EitherT(entry.eventWatch.started map Checked.apply)
         _ <- pure {
             assertThat(entry.agentRunId == registeredController.agentRunId)
-            if (requestedAgentId != registeredController.agentId)
-              Left(DuplicateAgentRef(first = registeredController.agentId, second = requestedAgentId))
+            if (requestedAgentPath != registeredController.agentPath)
+              Left(DuplicateAgentRef(first = registeredController.agentPath, second = requestedAgentPath))
             else if (!requestedAgentRunId.forall(_ == registeredController.agentRunId))
-              Left(ControllerAgentMismatch(registeredController.agentId))
+              Left(ControllerAgentMismatch(registeredController.agentPath))
             else
               Right(())
           }
@@ -245,12 +245,12 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
   private def update(event: AgentServerEvent): Unit = {
     state = state.applyEvent(event).orThrow
     event match {
-      case AgentServerEvent.ControllerRegistered(controllerId, agentId, agentRunId) =>
-        addOrderKeeper(controllerId, agentId, agentRunId)
+      case AgentServerEvent.ControllerRegistered(controllerId, agentPath, agentRunId) =>
+        addOrderKeeper(controllerId, agentPath, agentRunId)
     }
   }
 
-  private def addOrderKeeper(controllerId: ControllerId, agentId: AgentPath, agentRunId: AgentRunId): ActorRef = {
+  private def addOrderKeeper(controllerId: ControllerId, agentPath: AgentPath, agentRunId: AgentRunId): ActorRef = {
     val journalMeta = JournalMeta(AgentState, stateDirectory / s"controller-$controllerId")
 
     // May take minutes !!!
@@ -265,7 +265,7 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
       Props {
         new AgentOrderKeeper(
           controllerId,
-          agentId,
+          agentPath,
           recovered,
           signatureVerifier,
           executorConf,

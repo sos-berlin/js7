@@ -29,7 +29,7 @@ import scala.util.Random
 // Try to resemble a failed manual test
 final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId1, agentId2)
+  protected val agentPaths = Seq(agentPath1, agentPath2)
   protected val versionedItems = Seq(workflow, workflow2)
   override def controllerConfig = config"""
     js7.auth.users.TEST-USER {
@@ -76,14 +76,14 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 object ManyAddOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd")
-  private val agentId1 = AgentPath("AGENT-1")
-  private val agentId2 = AgentPath("AGENT-2")
+  private val agentPath1 = AgentPath("AGENT-1")
+  private val agentPath2 = AgentPath("AGENT-2")
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId1, pathExecutable, taskLimit = 3)),
-    Execute(WorkflowJob(agentId2, pathExecutable, taskLimit = 3)))
+    Execute(WorkflowJob(agentPath1, pathExecutable, taskLimit = 3)),
+    Execute(WorkflowJob(agentPath2, pathExecutable, taskLimit = 3)))
 
   private val workflow2 =json"""
     {
@@ -152,7 +152,7 @@ object ManyAddOrdersTest
       } ],
       "jobs": {
         "job1_e": {
-          "agentId": "AGENT-1",
+          "agentPath": "AGENT-1",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
@@ -163,7 +163,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1_d": {
-          "agentId": "AGENT-1",
+          "agentPath": "AGENT-1",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
@@ -174,7 +174,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2_c": {
-          "agentId": "AGENT-1",
+          "agentPath": "AGENT-1",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\n"
@@ -185,7 +185,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2_b": {
-          "agentId": "AGENT-2",
+          "agentPath": "AGENT-2",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\n"
@@ -196,7 +196,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2": {
-          "agentId": "AGENT-2",
+          "agentPath": "AGENT-2",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
@@ -207,7 +207,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1": {
-          "agentId": "AGENT-1",
+          "agentPath": "AGENT-1",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
@@ -218,7 +218,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job3": {
-          "agentId": "AGENT-2",
+          "agentPath": "AGENT-2",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\nsleep 1"
@@ -229,7 +229,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1_b": {
-          "agentId": "AGENT-1",
+          "agentPath": "AGENT-1",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"
@@ -240,7 +240,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job2_a": {
-          "agentId": "AGENT-1",
+          "agentPath": "AGENT-1",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world\"\n"
@@ -251,7 +251,7 @@ object ManyAddOrdersTest
           "taskLimit": 500
         },
         "job1_a": {
-          "agentId": "AGENT-2",
+          "agentPath": "AGENT-2",
           "executable": {
             "TYPE": "ScriptExecutable",
             "script": "echo \"hello world1\"\n"

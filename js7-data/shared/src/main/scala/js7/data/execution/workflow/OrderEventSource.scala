@@ -159,28 +159,28 @@ final class OrderEventSource(
     outcome: Option[Outcome.NotSucceeded],
     uncatchable: Boolean):
   Checked[OrderFailedEvent] = {
-    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockIds: Vector[LockPath] = Vector.empty): Checked[OrderFailedEvent] =
+    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockPaths: Vector[LockPath] = Vector.empty): Checked[OrderFailedEvent] =
       reverseBranchPath match {
         case Nil =>
-          Right(OrderFailed(failPosition, outcome, lockIds))
+          Right(OrderFailed(failPosition, outcome, lockPaths))
 
         case Segment(_, ForkBranchId(_)) :: _ =>
-          Right(OrderFailedInFork(failPosition, outcome, lockIds))
+          Right(OrderFailedInFork(failPosition, outcome, lockPaths))
 
         case Segment(_, BranchId.Lock) :: prefix =>
           val pos = prefix.reverse % 0
           checkedCast[LockInstruction](workflow.instruction(pos))
-            .flatMap(lockInstr => loop(prefix, pos, lockIds :+ lockInstr.lockId))
+            .flatMap(lockInstr => loop(prefix, pos, lockPaths :+ lockInstr.lockPath))
 
         case Segment(nr, TryBranchId(retry)) :: prefix if !uncatchable =>
           val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
           if (isMaxRetriesReached(workflow.id, catchPos))
-            loop(prefix, failPosition, lockIds)
+            loop(prefix, failPosition, lockPaths)
           else
-            Right(OrderCatched(catchPos, outcome, lockIds))
+            Right(OrderCatched(catchPos, outcome, lockPaths))
 
         case Segment(_, _) :: prefix =>
-          loop(prefix, failPosition, lockIds)
+          loop(prefix, failPosition, lockPaths)
       }
 
     loop(position.branchPath.reverse, position, Vector.empty)

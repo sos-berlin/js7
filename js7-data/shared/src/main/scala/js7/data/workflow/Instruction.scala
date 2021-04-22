@@ -28,11 +28,11 @@ trait Instruction
   def adopt(workflow: Workflow): Instruction =
     this
 
-  def reduceForAgent(agentId: AgentPath, workflow: Workflow): Instruction =
+  def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     this
 
-  def isVisibleForAgent(agentId: AgentPath, workflow: Workflow): Boolean =
-    workflows.exists(_ isVisibleForAgent agentId)
+  def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow): Boolean =
+    workflows.exists(_ isVisibleForAgent agentPath)
 
   def workflows: Seq[Workflow] =
     branchWorkflows.map(_._2)

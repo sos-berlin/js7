@@ -55,8 +55,8 @@ extends JJournaledState[JControllerState, ControllerState]
 
   /** Looks up an AgentRef VersionedItem in the current version. */
   @Nonnull
-  def pathToAgentRef(@Nonnull id: AgentPath): VEither[Problem, JAgentRef] =
-    asScala.pathToAgentRefState.checked(id)
+  def pathToAgentRef(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRef] =
+    asScala.pathToAgentRefState.checked(agentPath)
       .map(_.agentRef)
       .map(JAgentRef.apply)
       .toVavr
@@ -65,28 +65,28 @@ extends JJournaledState[JControllerState, ControllerState]
   @Deprecated
   @deprecated("Use pathToAgentRef", "2020-12-11")
   @Nonnull
-  def nameToAgentRef(@Nonnull id: AgentPath): VEither[Problem, JAgentRef] =
-    pathToAgentRef(id)
+  def nameToAgentRef(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRef] =
+    pathToAgentRef(agentPath)
 
   /** Looks up an AgentRefState. */
   @Nonnull
-  def pathToAgentRefState(@Nonnull agentId: AgentPath): VEither[Problem, JAgentRefState] =
-    asScala.pathToAgentRefState.checked(agentId)
+  def pathToAgentRefState(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRefState] =
+    asScala.pathToAgentRefState.checked(agentPath)
       .map(JAgentRefState.apply)
       .toVavr
 
   /** Looks up an AgentRef VersionedItem in the current version. */
   @Nonnull
-  def pathToLock(@Nonnull id: LockPath): VEither[Problem, JLock] =
-    asScala.pathToLockState.checked(id)
+  def pathToLock(@Nonnull lockPath: LockPath): VEither[Problem, JLock] =
+    asScala.pathToLockState.checked(lockPath)
       .map(_.lock)
       .map(JLock.apply)
       .toVavr
 
   /** Looks up a LockState. */
   @Nonnull
-  def pathToLockState(@Nonnull lockId: LockPath): VEither[Problem, JLockState] =
-    asScala.pathToLockState.checked(lockId)
+  def pathToLockState(@Nonnull lockPath: LockPath): VEither[Problem, JLockState] =
+    asScala.pathToLockState.checked(lockPath)
       .map(JLockState.apply)
       .toVavr
 

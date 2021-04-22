@@ -25,7 +25,7 @@ import scala.concurrent.TimeoutException
 
 final class JobActorStarvationTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(workflow)
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -74,12 +74,12 @@ final class JobActorStarvationTest extends AnyFreeSpec with ControllerAgentForSc
 
 object JobActorStarvationTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentId, InternalExecutable(classOf[SemaphoreJob].getName), taskLimit = 2))))
+      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), taskLimit = 2))))
 
   private val semaphore = Semaphore[Task](0).memoize
 

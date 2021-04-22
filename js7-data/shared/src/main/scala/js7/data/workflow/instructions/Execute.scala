@@ -18,8 +18,8 @@ sealed trait Execute extends Instruction
 {
   def defaultArguments: NamedValues
 
-  override def reduceForAgent(agentId: AgentPath, workflow: Workflow) =
-    if (isVisibleForAgent(agentId, workflow))
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
+    if (isVisibleForAgent(agentPath, workflow))
       this
     else
       Gap(sourcePos)
@@ -47,9 +47,9 @@ object Execute
   {
     def withoutSourcePos = copy(sourcePos = None)
 
-    override def isVisibleForAgent(agentId: AgentPath, workflow: Workflow) =
+    override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =
       workflow.findJob(name) // Should always find!
-        .fold(_ => true, _ isExecutableOnAgent agentId)
+        .fold(_ => true, _ isExecutableOnAgent agentPath)
 
     //override def toString = s"execute $name, defaultArguments=$defaultArguments"
   }
@@ -75,8 +75,8 @@ object Execute
   {
     def withoutSourcePos = copy(sourcePos = None)
 
-    override def isVisibleForAgent(agentId: AgentPath, workflow: Workflow) =
-      job isExecutableOnAgent agentId
+    override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =
+      job isExecutableOnAgent agentPath
 
     override def toString = s"execute(defaultArguments=$defaultArguments, $job)$sourcePosToString"
   }

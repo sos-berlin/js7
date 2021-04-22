@@ -7,7 +7,7 @@ Beispiele:
     {
       "TYPE": "Execute.Anonymous",
       "job": {
-        "agentId": "AGENT",
+        "agentPath": "AGENT",
         "executable": {
           "TYPE": "PathExecutable",
           "file": "script.sh"
@@ -42,7 +42,7 @@ Beispiele:
   ],
   "jobs": {
     "MY-JOB": {
-      "agentId": "AGENT",
+      "agentPath": "AGENT",
       "executable": {
         "TYPE": "ScriptExecutable",
         "script": "#!/usr/bin/env bash\n set -euo pipefail\necho HELLO\n"
@@ -107,7 +107,7 @@ Beispiel in JSON den beiden Parametern
     {
       "TYPE": "Execute.Anonymous",
       "job": {
-        "agentId": "AGENT",
+        "agentPath": "AGENT",
         "executable": {
           "TYPE": "ScriptExecutable",
           "script": "#!/usr/bin/env bash\nset -euo pipefail\necho \"STRING=$STRING\"\necho \"NUMBER=$NUMBER\"\n",

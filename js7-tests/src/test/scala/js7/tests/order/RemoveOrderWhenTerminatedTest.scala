@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = quickWorkflow:: Nil
 
   override def beforeAll() = {
@@ -41,8 +41,8 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(quickWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderRemoveMarked,
@@ -62,8 +62,8 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     controller.eventWatch.await[OrderRemoved](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(slowWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderRemoveMarked,
@@ -80,14 +80,14 @@ object RemoveOrderWhenTerminatedTest
 {
   private val quickPathExecutable = RelativePathExecutable("quick.cmd")
   private val slowPathExecutable = RelativePathExecutable("slow.cmd")
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val quickWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, quickPathExecutable)))
+    Execute(WorkflowJob(agentPath, quickPathExecutable)))
 
   private val slowWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, slowPathExecutable)))
+    Execute(WorkflowJob(agentPath, slowPathExecutable)))
 }

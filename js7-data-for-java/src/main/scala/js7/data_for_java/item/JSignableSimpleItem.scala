@@ -10,5 +10,5 @@ trait JSignableSimpleItem extends JSignableItem
   def asScala: SignableSimpleItem
 
   @Nonnull
-  def id: SignableSimpleItemPath
+  def path: SignableSimpleItemPath
 }

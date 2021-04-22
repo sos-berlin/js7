@@ -13,7 +13,7 @@ import scala.collection.mutable
  */
 final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Nil
+  protected val agentPaths = Nil
   protected val versionedItems = Nil
   private def configDirectory = directoryProvider.controller.configDir
   private def dataDirectory = directoryProvider.controller.dataDir

@@ -13,8 +13,8 @@ extends JJsonable[JAgentRefState]
   protected def companion = JAgentRefState
 
   @Nonnull
-  def agentId: AgentPath =
-    asScala.agentId
+  def agentPath: AgentPath =
+    asScala.agentPath
 
   @Nonnull
   def agentRef: JAgentRef =

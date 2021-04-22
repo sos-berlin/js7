@@ -16,7 +16,7 @@ object ExecuteExecutor extends EventInstructionExecutor
   def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
     if (order.isProcessable && order.isDetached)
       for (job <- state.workflowJob(order.workflowPosition)) yield
-        (order.id <-: OrderAttachable(job.agentId)) :: Nil
+        (order.id <-: OrderAttachable(job.agentPath)) :: Nil
     else
     // Order.Ready: Execution has to be started by the caller
     //order.ifState[Order.Fresh].map(order =>

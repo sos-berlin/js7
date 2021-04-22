@@ -20,13 +20,13 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val versionedItems = Nil
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
 
   "AttachSignedItem command verifies signature" in {
     import directoryProvider.itemSigner
     directoryProvider.runAgents() { case Seq(runningAgent) =>
       val agentApi = runningAgent.api(CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
-      assert(agentApi.commandExecute(RegisterAsController(agentId)).await(99.s).toOption.get
+      assert(agentApi.commandExecute(RegisterAsController(agentPath)).await(99.s).toOption.get
         .isInstanceOf[RegisterAsController.Response])
 
       // Signed VersionedItem
@@ -62,7 +62,7 @@ final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForSc
 
 object AttachSignedItemTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION")
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
 }

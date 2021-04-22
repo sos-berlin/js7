@@ -461,7 +461,7 @@ with MainJournalingActor[ControllerState, Event]
 
     case AgentDriver.Output.EventsFromAgent(stampedAgentEvents, committedPromise) =>
       val agentEntry = agentRegister(sender())
-      import agentEntry.agentId
+      import agentEntry.agentPath
       var timestampedEvents: Seq[Timestamped[Event]] =
         stampedAgentEvents.view.flatMap {
           case Stamped(_, timestampMillis, keyedEvent) =>
@@ -477,17 +477,17 @@ with MainJournalingActor[ControllerState, Event]
 
               case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                 val ownEvent = event match {
-                  case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentId) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                  case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                   case _ => event
                 }
                 Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
 
               case KeyedEvent(_: NoKey, AgentControllerEvent.AgentReadyForController(timezone, _)) =>
-                Timestamped(agentEntry.agentId <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
+                Timestamped(agentEntry.agentPath <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
 
               case KeyedEvent(_: NoKey, ItemAttachedToAgent(item)) =>
                 // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                Timestamped(NoKey <-: ItemAttached(item.id, item.itemRevision, agentId)) :: Nil
+                Timestamped(NoKey <-: ItemAttached(item.id, item.itemRevision, agentPath)) :: Nil
 
               case KeyedEvent(_: NoKey, _: ItemDetached) =>
                 Timestamped(keyedEvent) :: Nil
@@ -496,7 +496,7 @@ with MainJournalingActor[ControllerState, Event]
                 Timestamped(keyedEvent) :: Nil
 
               case _ =>
-                logger.error(s"Unknown event received from ${agentEntry.agentId}: $keyedEvent")
+                logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
                 Nil
             }
         }.toVector
@@ -508,7 +508,7 @@ with MainJournalingActor[ControllerState, Event]
         committedPromise.success(None)
       } else {
         val agentEventId = stampedAgentEvents.last.eventId
-        timestampedEvents :+= Timestamped(agentId <-: AgentEventsObserved(agentEventId))
+        timestampedEvents :+= Timestamped(agentPath <-: AgentEventsObserved(agentEventId))
 
         val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
         orderQueue.enqueue(subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
@@ -577,7 +577,7 @@ with MainJournalingActor[ControllerState, Event]
       Left(Problem.pure("ItemRevision is not accepted here"))
     else
       Right(
-        _controllerState.idToSimpleItem.get(item.id) match {
+        _controllerState.pathToSimpleItem.get(item.id) match {
           case None =>
             SignedItemAdded(verified.signedItem.copy(value =
               item.withRevision(Some(ItemRevision.Initial)))) :: Nil
@@ -586,20 +586,20 @@ with MainJournalingActor[ControllerState, Event]
               value = verified.signedItem.value
                 .withRevision(Some(
                   existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
-            val attaching = _controllerState.itemIdToAgentToAttachedState.get(item.id)
+            val attaching = _controllerState.itemToAgentToAttachedState.get(item.id)
               .map(_.view.map {
-                case (agentId, Attachable) => ItemAttachable(item.id, agentId)
-                case (agentId, Attached(rev)) if rev != item.itemRevision && agentRequiresItem(agentId, item.id) =>
-                  ItemAttachable(item.id, agentId)
-                //case (agentId, Detachable) => Should not happen
-                //case (agentId, Detached) => Nothing to do
+                case (agentPath, Attachable) => ItemAttachable(item.id, agentPath)
+                case (agentPath, Attached(rev)) if rev != item.itemRevision && agentRequiresItem(agentPath, item.id) =>
+                  ItemAttachable(item.id, agentPath)
+                //case (agentPath, Detachable) => Should not happen
+                //case (agentPath, Detached) => Nothing to do
               })
               .view.flatten
             Vector(changed) ++ attaching
         })
   }
 
-  private def agentRequiresItem(agentId: AgentPath, itemId: InventoryItemKey): Boolean =
+  private def agentRequiresItem(agentPath: AgentPath, itemId: InventoryItemKey): Boolean =
     // Maybe optimize ??? Changed item needs only to be attached if it is needed by an attached order
     true
 
@@ -608,7 +608,7 @@ with MainJournalingActor[ControllerState, Event]
       Left(Problem.pure("ItemRevision is not accepted here"))
     else
       Right(
-        _controllerState.idToSimpleItem.get(item.id) match {
+        _controllerState.pathToSimpleItem.get(item.id) match {
           case None =>
             SimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
           case Some(existing) =>
@@ -823,7 +823,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def logEvent(event: Event): Unit =
     event match {
-      case e: InventoryItemEvent => logger.trace(s"${e.id} ${e.getClass.scalaName}")
+      case e: InventoryItemEvent => logger.trace(s"${e.key} ${e.getClass.scalaName}")
       case VersionAdded(version) => logger.trace(s"Version '${version.string}' added")
       case e: VersionedItemEvent => logger.trace(s"${e.path} ${e.getClass.scalaName}")
       case _ =>
@@ -920,7 +920,7 @@ with MainJournalingActor[ControllerState, Event]
 
         case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
           _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
-          itemIds += event.id
+          itemIds += event.key
           handleItemEvent(event)
 
         case _ =>
@@ -949,15 +949,15 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithItem(itemId: InventoryItemKey): Unit =
     itemId match {
-      case agentId: AgentPath =>
+      case agentPath: AgentPath =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
 
       case itemId: OrderWatchPath =>
         for (orderWatchState <- _controllerState.allOrderWatchesState.pathToOrderWatchState.get(itemId)) {
           import orderWatchState.orderWatch
-          for ((agentId, attachedState) <- orderWatchState.agentIdToAttachedState) {
+          for ((agentPath, attachedState) <- orderWatchState.agentPathToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-            for (agentEntry <- agentRegister.get(agentId)) {
+            for (agentEntry <- agentRegister.get(agentPath)) {
               attachedState match {
                 case Attachable =>
                   agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(orderWatch)
@@ -972,10 +972,10 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case itemId: SignableSimpleItemPath =>
-        for (agentToAttachedState <- _controllerState.itemIdToAgentToAttachedState.get(itemId)) {
-          for ((agentId, attachedState) <- agentToAttachedState) {
+        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemId)) {
+          for ((agentPath, attachedState) <- agentToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-            for (agentEntry <- agentRegister.get(agentId)) {
+            for (agentEntry <- agentRegister.get(agentPath)) {
               attachedState match {
                 case Attachable =>
                   for (signedItem <- _controllerState.idToSignedSimpleItem.get(itemId)) {
@@ -1126,14 +1126,14 @@ with MainJournalingActor[ControllerState, Event]
           for (signedItem <- jobResources ++ View(signedWorkflow)) {
             val item = signedItem.value
             val attachedState = _controllerState
-              .itemIdToAttachedState(item.id, item.itemRevision, agentEntry.agentId)
+              .itemIdToAttachedState(item.id, item.itemRevision, agentEntry.agentPath)
             if (attachedState == Detached || attachedState == Attachable) {
               agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
           }
 
           orderEntry.triedToAttached = true
-          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentId)
+          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentPath)
         }
       }
     }
@@ -1142,7 +1142,7 @@ with MainJournalingActor[ControllerState, Event]
     for {
       signedWorkflow <- _controllerState.repo.idToSigned[Workflow](order.workflowId)
       job <- signedWorkflow.value.checkedWorkflowJob(order.position)
-      agentEntry <- agentRegister.checked(job.agentId)
+      agentEntry <- agentRegister.checked(job.agentPath)
     } yield (signedWorkflow, agentEntry)
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
@@ -1151,9 +1151,9 @@ with MainJournalingActor[ControllerState, Event]
         _controllerState.idToOrder.checked(orderId)
           .flatMap(_.detaching)
           .onProblem(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
-          .foreach { agentId =>
-            agentRegister.get(agentId) match {
-              case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentId")
+          .foreach { agentPath =>
+            agentRegister.get(agentPath) match {
+              case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentPath")
               case Some(a) =>
                 a.actor ! AgentDriver.Input.DetachOrder(orderId)
                 orderEntry.isDetaching = true
@@ -1250,7 +1250,7 @@ private[controller] object ControllerOrderKeeper
     actor: ActorRef,
     var actorTerminated: Boolean = false)
   {
-    def agentId = agentRef.id
+    def agentPath = agentRef.id
 
     def reconnect()(implicit sender: ActorRef): Unit =
       actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)

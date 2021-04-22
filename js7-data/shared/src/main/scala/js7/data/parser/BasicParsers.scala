@@ -103,14 +103,14 @@ object BasicParsers
   def path[A <: ItemPath](implicit ctx: P[_], A: ItemPath.Companion[A]) = P[A](
     pathString.flatMap(p => checkedToP(A.checked(p))))
 
-  def agentId(implicit ctx: P[_]) = P[AgentPath](
+  def agentPath(implicit ctx: P[_]) = P[AgentPath](
     pathString.flatMap(string =>
       AgentPath.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)
       }))
 
-  def quotedLockId(implicit ctx: P[_]) = P[LockPath](
+  def quotedLockPath(implicit ctx: P[_]) = P[LockPath](
     quotedString.flatMap(string =>
       LockPath.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)

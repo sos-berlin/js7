@@ -61,7 +61,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     "again, all events" in {
       val process = new SingleOrderProcess(workflow)
       process.update(OrderAdded(TestWorkflowId))
-      process.transferToAgent(TestAgentId)
+      process.transferToAgent(TestAgentPath)
       process.update(OrderStarted)
       process.jobStep()
       assert(process.step() == Seq(OrderMoved(Position(1) / Then % 0)))
@@ -100,8 +100,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
     val orderId = succeededOrderId
 
     process.update(orderId <-: OrderAdded(TestWorkflowId))
-    process.update(orderId <-: OrderAttachable(TestAgentId))
-    process.update(orderId <-: OrderAttached(TestAgentId))
+    process.update(orderId <-: OrderAttachable(TestAgentPath))
+    process.update(orderId <-: OrderAttached(TestAgentPath))
     assert(process.run(orderId) == List(
       orderId <-: OrderStarted,
       orderId <-: OrderForked(List(
@@ -133,8 +133,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
       OrderForked.Child("🍋", orderId | "🍋")))))
 
     assert(process.run(orderId | "🥕") == List(
-      (orderId | "🥕") <-: OrderAttachable(TestAgentId),
-      (orderId | "🥕") <-: OrderAttached(TestAgentId),
+      (orderId | "🥕") <-: OrderAttachable(TestAgentPath),
+      (orderId | "🥕") <-: OrderAttached(TestAgentPath),
       (orderId | "🥕") <-: OrderProcessingStarted,
       (orderId | "🥕") <-: OrderProcessed(Outcome.succeededRC0),
       (orderId | "🥕") <-: OrderMoved(Position(1) / "fork+🥕" % 1),
@@ -144,8 +144,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
     assert(process.run(orderId | "🍋") == List(
-      (orderId | "🍋") <-: OrderAttachable(TestAgentId),
-      (orderId | "🍋") <-: OrderAttached(TestAgentId),
+      (orderId | "🍋") <-: OrderAttachable(TestAgentPath),
+      (orderId | "🍋") <-: OrderAttached(TestAgentPath),
       (orderId | "🍋") <-: OrderProcessingStarted,
       (orderId | "🍋") <-: OrderProcessed(Outcome.succeededRC0),
       (orderId | "🍋") <-: OrderMoved(Position(1) / "fork+🍋" % 1),
@@ -154,8 +154,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
       orderId <-: OrderJoined(Outcome.succeeded)))
 
     assert(process.step(orderId) == Seq(orderId <-: OrderMoved(Position(2))))
-    assert(process.step(orderId) == Seq(orderId <-: OrderAttachable(TestAgentId)))
-    assert(process.step(orderId) == Seq(orderId <-: OrderAttached(TestAgentId)))
+    assert(process.step(orderId) == Seq(orderId <-: OrderAttachable(TestAgentPath)))
+    assert(process.step(orderId) == Seq(orderId <-: OrderAttached(TestAgentPath)))
     assert(process.step(orderId) == Seq(orderId <-: OrderProcessingStarted))
     // and so forth...
   }
@@ -213,9 +213,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
   "cancel, suspend, resume" - {
     val detached = none[Order.AttachedState]
-    val attaching = Some(Order.Attaching(TestAgentId))
-    val attached = Some(Order.Attached(TestAgentId))
-    val detaching = Some(Order.Detaching(TestAgentId))
+    val attaching = Some(Order.Attaching(TestAgentPath))
+    val attached = Some(Order.Attached(TestAgentPath))
+    val detaching = Some(Order.Detaching(TestAgentPath))
 
     "Order.mark.isEmpty" - {
       val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None))
@@ -696,8 +696,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Resume and UnreachableOrderPositionProblem" - {
-      val lockId = LockPath("LOCK")
-      lazy val execute = Execute.Anonymous(WorkflowJob(TestAgentId, ScriptExecutable(":")))
+      val lockPath = LockPath("LOCK")
+      lazy val execute = Execute.Anonymous(WorkflowJob(TestAgentPath, ScriptExecutable(":")))
       lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(
         /*0*/ execute,
         /*1*/ If(BooleanConstant(true),
@@ -709,7 +709,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         /*3*/ Fork.of(
           "A" -> Workflow.of(execute),
           "B" -> Workflow.of(execute)),
-        /*4*/ LockInstruction(lockId, count = None, Workflow.of(execute))))
+        /*4*/ LockInstruction(lockPath, count = None, Workflow.of(execute))))
 
       "Same level" in {
         assert(testResume(workflow, Position(0), Position(1)) == Right(Some(OrderResumed(Some(Position(1))))))
@@ -764,7 +764,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         def eventSource = new OrderEventSource(
           Map(order.id -> order).checked,
           Map(workflow.id -> workflow).checked,
-          Map(lockId -> LockState(Lock(lockId))).checked,
+          Map(lockPath -> LockState(Lock(lockPath))).checked,
           isAgent = false)
         eventSource.resume(order.id, Some(to), None)
       }
@@ -986,7 +986,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       assert(liveEventSource.nextEvents(bChild.id) == Seq(
         bChild.id <-: OrderFailedInFork(
           Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0,
-          lockIds = Seq(LockPath("LOCK-2"), LockPath("LOCK-1")))))
+          lockPaths = Seq(LockPath("LOCK-2"), LockPath("LOCK-1")))))
     }
   }
 }
@@ -995,7 +995,7 @@ object OrderEventSourceTest
 {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
-  private val TestAgentId = AgentPath("AGENT")
+  private val TestAgentPath = AgentPath("AGENT")
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil)
@@ -1012,7 +1012,7 @@ object OrderEventSourceTest
   private def step(workflow: Workflow, outcome: Outcome): Seq[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(workflow.id))
-    process.transferToAgent(TestAgentId)
+    process.transferToAgent(TestAgentPath)
     process.update(OrderStarted)
     process.jobStep(outcome = outcome)
     process.step()
@@ -1021,9 +1021,9 @@ object OrderEventSourceTest
   final class SingleOrderProcess(val workflow: Workflow, val orderId: OrderId = OrderId("ORDER")) {
     private val process = new Process(workflow)
 
-    def transferToAgent(agentId: AgentPath) = {
-      update(OrderAttachable(agentId))
-      update(OrderAttached(agentId))
+    def transferToAgent(agentPath: AgentPath) = {
+      update(OrderAttachable(agentPath))
+      update(OrderAttached(agentPath))
     }
 
     def transferToController() = {
@@ -1076,9 +1076,9 @@ object OrderEventSourceTest
         (order.state, workflow.instruction(order.position)) match {
           case (_: Order.Ready, _: Execute) =>
             if (order.isDetached)
-              Seq(order.id <-: OrderAttachable(TestAgentId))
+              Seq(order.id <-: OrderAttachable(TestAgentPath))
             else if (order.isAttaching)
-              Seq(order.id <-: OrderAttached(TestAgentId))
+              Seq(order.id <-: OrderAttached(TestAgentPath))
             else
               Seq(order.id <-: OrderProcessingStarted)
 

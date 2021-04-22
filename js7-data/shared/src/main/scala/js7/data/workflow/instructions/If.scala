@@ -38,10 +38,10 @@ extends Instruction
     thenWorkflow = thenWorkflow.copy(outer = Some(outer)),
     elseWorkflow = elseWorkflow.map(_.copy(outer = Some(outer))))
 
-  override def reduceForAgent(agentId: AgentPath, workflow: Workflow): Instruction =
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     copy(
-      thenWorkflow = thenWorkflow.reduceForAgent(agentId),
-      elseWorkflow = elseWorkflow.map(_.reduceForAgent(agentId)))
+      thenWorkflow = thenWorkflow.reduceForAgent(agentPath),
+      elseWorkflow = elseWorkflow.map(_.reduceForAgent(agentPath)))
 
   override def workflow(branchId: BranchId) =
     branchId match {

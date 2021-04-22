@@ -40,7 +40,7 @@ import scala.jdk.CollectionConverters._
 
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(
-  ownAgentId: AgentPath,
+  ownAgentPath: AgentPath,
   persistence: JournaledStatePersistence[AgentState],
   config: Config)
   (implicit scheduler: Scheduler, iox: IOExecutor)
@@ -97,7 +97,7 @@ final class FileWatchManager(
                 val vanished = fileWatchState.directoryState.pathToEntry.keys.view
                   .map(file => orderWatchPath <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
                 (vanished ++
-                  Seq(NoKey <-: ItemDetached(orderWatchPath, ownAgentId))
+                  Seq(NoKey <-: ItemDetached(orderWatchPath, ownAgentPath))
                 ).toVector
             }))
         .flatMapT { case (_, agentState) =>

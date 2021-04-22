@@ -20,7 +20,7 @@ final class FeedMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
-  protected def agentIds = Nil
+  protected def agentPaths = Nil
   protected def versionedItems = Nil
 
   "test" in {

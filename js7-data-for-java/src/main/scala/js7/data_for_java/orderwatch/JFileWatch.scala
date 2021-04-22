@@ -26,7 +26,7 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
   protected def companion = JFileWatch
 
   @Nonnull
-  def id: OrderWatchPath =
+  def path: OrderWatchPath =
     asScala.id
 
   @Nonnull
@@ -34,8 +34,8 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
     asScala.workflowPath
 
   @Nonnull
-  def agentId: AgentPath =
-    asScala.agentId
+  def agentPath: AgentPath =
+    asScala.agentPath
 
   @Nonnull
   lazy val directory: Path =
@@ -52,7 +52,7 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
   def checked(
     @Nonnull id: OrderWatchPath,
     @Nonnull workflowPath: WorkflowPath,
-    @Nonnull agentId: AgentPath,
+    @Nonnull agentPath: AgentPath,
     @Nonnull directory: Path,
     @Nonnull pattern: Optional[String],
     @Nonnull orderIdExpression: Optional[String],
@@ -63,7 +63,7 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
         orderIdExpression <- orderIdExpression.toScala.traverse(ExpressionParser.parse(_))
       } yield
         JFileWatch(FileWatch(
-            id, workflowPath, agentId, directory.toString,
+            id, workflowPath, agentPath, directory.toString,
             pattern,
             orderIdExpression,
             delay.toFiniteDuration))

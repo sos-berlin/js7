@@ -75,7 +75,7 @@ final class OrderTest extends AnyFreeSpec
             ],
             "attachedState": {
               "TYPE": "Attached",
-              "agentId":"AGENT"
+              "agentPath":"AGENT"
             },
             "parent": "PARENT"
           }""")
@@ -226,7 +226,7 @@ final class OrderTest extends AnyFreeSpec
         testJson[AttachedState](Attached(AgentPath("AGENT")),
           json"""{
             "TYPE": "Attached",
-            "agentId": "AGENT"
+            "agentPath": "AGENT"
           }""")
       }
 
@@ -234,7 +234,7 @@ final class OrderTest extends AnyFreeSpec
         testJson[AttachedState](Detaching(AgentPath("AGENT")),
           json"""{
             "TYPE": "Detaching",
-            "agentId": "AGENT"
+            "agentPath": "AGENT"
           }""")
       }
     }
@@ -243,15 +243,15 @@ final class OrderTest extends AnyFreeSpec
   "Order transitions: event to state" - {
     val orderId = OrderId("ID")
     val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
-    val agentId = AgentPath("AGENT")
+    val agentPath = AgentPath("AGENT")
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
       OrderRemoveMarked,
       OrderRemoved,
 
-      OrderAttachable(agentId),
-      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), Map.empty, None, Nil, agentId, None, None, false, false),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), Map.empty, None, Nil, agentPath, None, None, false, false),
+      OrderAttached(agentPath),
 
       OrderStarted,
       OrderProcessingStarted,
@@ -297,9 +297,9 @@ final class OrderTest extends AnyFreeSpec
     }
 
     val IsDetached  = none[AttachedState]
-    val IsAttaching = Some(Attaching(agentId))
-    val IsAttached  = Some(Attached(agentId))
-    val IsDetaching = Some(Detaching(agentId))
+    val IsAttaching = Some(Attaching(agentPath))
+    val IsAttached  = Some(Attached(agentPath))
+    val IsDetaching = Some(Detaching(agentPath))
 
     val NoMark     = none[OrderMark]
     val Cancelling = OrderMark.Cancelling(CancelMode.FreshOrStarted()).some
@@ -526,17 +526,17 @@ final class OrderTest extends AnyFreeSpec
     "attachedState" - {
       "attachedState=None" in {
         val order = Order(orderId, workflowId, Ready, attachedState = None)
-        assert(order.applyEvent(OrderAttachable(agentId)) == Right(order.copy(attachedState = Some(Attaching(agentId)))))
-        assert(order.applyEvent(OrderAttached(agentId)).isLeft)
+        assert(order.applyEvent(OrderAttachable(agentPath)) == Right(order.copy(attachedState = Some(Attaching(agentPath)))))
+        assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached).isLeft)
         assert(order.applyEvent(OrderDetached).isLeft)
       }
 
       "attachedState=Attaching" in {
-        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attaching(agentId)))
-        assert(order.applyEvent(OrderAttachable(agentId)).isLeft)
-        assert(order.applyEvent(OrderAttached(agentId)) == Right(order.copy(attachedState = Some(Attached(agentId)))))
+        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attaching(agentPath)))
+        assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
+        assert(order.applyEvent(OrderAttached(agentPath)) == Right(order.copy(attachedState = Some(Attached(agentPath)))))
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached).isLeft)
@@ -544,19 +544,19 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "attachedState=Attached" in {
-        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attached(agentId)))
-        assert(order.applyEvent(OrderAttachable(agentId)).isLeft)
-        assert(order.applyEvent(OrderAttached(agentId)).isLeft)
+        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attached(agentPath)))
+        assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
+        assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
-        assert(order.applyEvent(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentId)))))
+        assert(order.applyEvent(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentPath)))))
         assert(order.applyEvent(OrderDetached).isLeft)
         assert(order.applyEvent(OrderDetached).isLeft)
       }
 
       "attachedState=Detaching" in {
-        val order = Order(orderId, workflowId, Ready, attachedState = Some(Detaching(agentId)))
-        assert(order.applyEvent(OrderAttachable(agentId)).isLeft)
-        assert(order.applyEvent(OrderAttached(agentId)).isLeft)
+        val order = Order(orderId, workflowId, Ready, attachedState = Some(Detaching(agentPath)))
+        assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
+        assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
@@ -627,17 +627,17 @@ final class OrderTest extends AnyFreeSpec
 
   "Operations" - {
     "attached" in {
-      val agentId = AgentPath("A")
+      val agentPath = AgentPath("A")
       assert(testOrder.attached.isLeft)
-      assert(testOrder.copy(attachedState = Some(Attached(agentId))) .attached == Right(agentId))
-      assert(testOrder.copy(attachedState = Some(Detaching(agentId))).attached.isLeft)
+      assert(testOrder.copy(attachedState = Some(Attached(agentPath))) .attached == Right(agentPath))
+      assert(testOrder.copy(attachedState = Some(Detaching(agentPath))).attached.isLeft)
     }
 
     "detaching" in {
-      val agentId = AgentPath("A")
+      val agentPath = AgentPath("A")
       assert(testOrder.detaching.isLeft)
-      assert(testOrder.copy(attachedState = Some(Attached(agentId))) .detaching.isLeft)
-      assert(testOrder.copy(attachedState = Some(Detaching(agentId))).detaching == Right(agentId))
+      assert(testOrder.copy(attachedState = Some(Attached(agentPath))) .detaching.isLeft)
+      assert(testOrder.copy(attachedState = Some(Detaching(agentPath))).detaching == Right(agentPath))
     }
 
     "castState" in {

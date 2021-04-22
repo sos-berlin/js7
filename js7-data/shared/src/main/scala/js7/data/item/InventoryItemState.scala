@@ -6,5 +6,5 @@ trait InventoryItemState
 {
   def item: InventoryItem
 
-  def agentIdToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached]
+  def agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached]
 }

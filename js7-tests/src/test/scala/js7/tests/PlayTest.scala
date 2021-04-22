@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /* A test to play with. */
 final class PlayTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = PlayTest.agentIds
+  protected val agentPaths = PlayTest.agentPaths
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -81,7 +81,7 @@ final class PlayTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object PlayTest
 {
   private val logger = Logger(getClass)
-  private val agentIds = Seq(AgentPath("primaryAgent"), AgentPath("secondaryAgent"))  // Names for Andreas' test cases
+  private val agentPaths = Seq(AgentPath("primaryAgent"), AgentPath("secondaryAgent"))  // Names for Andreas' test cases
 
   private final class TestInternalJob extends InternalJob
   {

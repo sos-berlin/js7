@@ -21,42 +21,42 @@ final class LockExecutorTest extends AnyFreeSpec {
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = Map(workflow.id -> workflow).checked(id)
     val pathToLockState = Map(
-      freeLockId -> LockState(Lock(freeLockId, limit = 1)),
-      occupiedLockId -> LockState(Lock(occupiedLockId, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))),
+      freeLockPath -> LockState(Lock(freeLockPath, limit = 1)),
+      occupiedLockPath -> LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))),
     ).checked
   }
 
   "Lock acquired" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(freeLockOrder.position), freeLockOrder, stateView) ==
-      Right(Seq(freeLockOrder.id <-: OrderLockAcquired(freeLockId))))
+      Right(Seq(freeLockOrder.id <-: OrderLockAcquired(freeLockPath))))
   }
 
   "Lock released" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
-      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockId))))
+      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockPath))))
   }
 
   "Lock can not acquired and is queued" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(occupiedLockOrder.position), occupiedLockOrder, stateView) ==
-      Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockId, None))))
+      Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockPath, None))))
   }
 
   "Lock released and waiting order continues" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
-      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockId))))
+      Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockPath))))
   }
 }
 
 object LockExecutorTest {
-  private val freeLockId = LockPath("FREE-LOCK")
-  private val occupiedLockId = LockPath("OCCUPIED-LOCK")
-  private val exclusiveLockId = LockPath("EXCLUSIVE-LOCK")
+  private val freeLockPath = LockPath("FREE-LOCK")
+  private val occupiedLockPath = LockPath("OCCUPIED-LOCK")
+  private val exclusiveLockPath = LockPath("EXCLUSIVE-LOCK")
   private val execute = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("JOB")))
 
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "VERSION",
-    LockInstruction(freeLockId, None, Workflow.of(execute)),
-    LockInstruction(occupiedLockId, None, Workflow.of(execute)),
-    LockInstruction(exclusiveLockId, None, Workflow.of(execute)))
+    LockInstruction(freeLockPath, None, Workflow.of(execute)),
+    LockInstruction(occupiedLockPath, None, Workflow.of(execute)),
+    LockInstruction(exclusiveLockPath, None, Workflow.of(execute)))
 
   private val freeLockOrder = Order(OrderId("ORDER-A"), workflow.id /: Position(0), Order.Ready)
   private val freeLockedOrder = Order(OrderId("ORDER-A"), workflow.id /: (Position(0) / BranchId.Lock % 1), Order.Ready)

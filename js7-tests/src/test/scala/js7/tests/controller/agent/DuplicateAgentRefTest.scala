@@ -26,37 +26,37 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
 
-  protected val agentIds = aAgentId :: Nil
+  protected val agentPaths = aAgentPath :: Nil
   protected val versionedItems = workflow :: Nil
 
   import controller.scheduler
 
   override def beforeAll() = {
     (directoryProvider.controller.configDir / "private" / "private.conf") ++=
-      "js7.auth.agents." + quoteString(bAgentId.string) + " = " +
-        quoteString(directoryProvider.agentToTree(aAgentId).password.string) + "\n"
+      "js7.auth.agents." + quoteString(bAgentPath.string) + " = " +
+        quoteString(directoryProvider.agentToTree(aAgentPath).password.string) + "\n"
     for (a <- directoryProvider.agents) a.writeExecutable(TestPathExecutable, script(0.s))
     super.beforeAll()
   }
 
   "test" in {
-    controller.eventWatch.await[AgentReady](_.key == aAgentId)
-    controllerApi.updateUnsignedSimpleItems(Seq(AgentRef(bAgentId, agent.localUri))).await(99.s).orThrow
+    controller.eventWatch.await[AgentReady](_.key == aAgentPath)
+    controllerApi.updateUnsignedSimpleItems(Seq(AgentRef(bAgentPath, agent.localUri))).await(99.s).orThrow
 
     val orderId = OrderId("ORDER")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     val a = controller.eventWatch.await[AgentCouplingFailed]().head.value.event
-    val b = AgentCouplingFailed(DuplicateAgentRef(first = aAgentId, second = bAgentId))
+    val b = AgentCouplingFailed(DuplicateAgentRef(first = aAgentPath, second = bAgentPath))
     assert(a == b)
   }
 }
 
 object DuplicateAgentRefTest
 {
-  private val aAgentId = AgentPath("A-AGENT")
-  private val bAgentId = AgentPath("B-AGENT")
+  private val aAgentPath = AgentPath("A-AGENT")
+  private val bAgentPath = AgentPath("B-AGENT")
   private val workflow = Workflow.of(
     WorkflowPath("SINGLE") ~ "INITIAL",
-    Execute(WorkflowJob(aAgentId, RelativePathExecutable("executable.cmd"))),
-    Execute(WorkflowJob(bAgentId, RelativePathExecutable("executable.cmd"))))
+    Execute(WorkflowJob(aAgentPath, RelativePathExecutable("executable.cmd"))),
+    Execute(WorkflowJob(bAgentPath, RelativePathExecutable("executable.cmd"))))
 }

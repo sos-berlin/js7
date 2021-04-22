@@ -31,7 +31,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(workflow)
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -47,7 +47,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
-    agentId,
+    agentPath,
     sourceDirectory.toString)
 
   private def fileToOrderId(filename: String): OrderId =
@@ -61,7 +61,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   "Add two files" in {
     createDirectory(sourceDirectory)
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id)
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobActorStarvationTest)
     aFile := ""
@@ -77,7 +77,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
     val eventId = controller.eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(pattern = Some(SimplePattern("NARROW-.+")))
     controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id, after = eventId)
+    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id, after = eventId)
 
     // Now, the A file is not match and out of scope, and a ExternalOrderVanished is emitted.
 
@@ -95,13 +95,13 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
 
 object FileWatchNarrowPatternTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentId, InternalExecutable(classOf[SemaphoreJob].getName), taskLimit = 10)),
-      Execute(WorkflowJob(agentId, InternalExecutable(classOf[DeleteFileJob].getName), taskLimit = 10))))
+      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), taskLimit = 10)),
+      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[DeleteFileJob].getName), taskLimit = 10))))
 
   private val semaphore = Semaphore[Task](0).memoize
 

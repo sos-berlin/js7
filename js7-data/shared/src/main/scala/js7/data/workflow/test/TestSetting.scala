@@ -13,14 +13,14 @@ import js7.data.workflow.{Workflow, WorkflowPath}
   */
 private[js7] object TestSetting
 {
-  val TestAgentId = AgentPath("AGENT")
+  val TestAgentPath = AgentPath("AGENT")
   val AJobName = WorkflowJob.Name("A")
   val BJobName = WorkflowJob.Name("B")
   val APathExecutable = RelativePathExecutable("A.cmd", v1Compatible = true)
   val BPathExecutable = RelativePathExecutable("B.cmd", v1Compatible = true)
-  val AJob = WorkflowJob(TestAgentId, APathExecutable, Map("JOB_A" -> StringValue("A-VALUE")), taskLimit = 3)
-  val BJob = WorkflowJob(TestAgentId, BPathExecutable, Map("JOB_B" -> StringValue("B-VALUE")), taskLimit = 3)
-  val B1Job = WorkflowJob(TestAgentId, BPathExecutable, Map("JOB_B1" -> StringValue("B1-VALUE")), taskLimit = 3)
+  val AJob = WorkflowJob(TestAgentPath, APathExecutable, Map("JOB_A" -> StringValue("A-VALUE")), taskLimit = 3)
+  val BJob = WorkflowJob(TestAgentPath, BPathExecutable, Map("JOB_B" -> StringValue("B-VALUE")), taskLimit = 3)
+  val B1Job = WorkflowJob(TestAgentPath, BPathExecutable, Map("JOB_B1" -> StringValue("B1-VALUE")), taskLimit = 3)
   val AExecute = Execute(AJob)
   val BExecute = Execute(BJob)
   val TestPathExecutables = Vector(APathExecutable, BPathExecutable)

@@ -24,7 +24,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 {
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
   protected val versionedItems = workflow ::  Nil
-  protected val agentIds = Nil
+  protected val agentPaths = Nil
   override protected def provideAgentClientCertificate = false
 
   override def afterAll() = {
@@ -33,7 +33,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
   }
 
   "Terminate Controller while AgentDriver is trying to send a command to a non-existent Agent" in {
-    controller.updateUnsignedSimpleItemsAsSystemUser(Seq(AgentRef(agentId, Uri(s"http://127.0.0.1:${socket.getLocalPort}"))))
+    controller.updateUnsignedSimpleItemsAsSystemUser(Seq(AgentRef(agentPath, Uri(s"http://127.0.0.1:${socket.getLocalPort}"))))
       .await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("TEST"), workflow.path))
     socket.close()
@@ -44,7 +44,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 
 private object TerminateWithUnknownAgentTest
 {
-  private val agentId = AgentPath("UNKNOWN")
+  private val agentPath = AgentPath("UNKNOWN")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
-    Execute.Anonymous(WorkflowJob(agentId, ScriptExecutable(":"))))
+    Execute.Anonymous(WorkflowJob(agentPath, ScriptExecutable(":"))))
 }

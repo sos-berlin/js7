@@ -23,7 +23,7 @@ import scala.concurrent.duration.FiniteDuration
   * @author Joacim Zschimmer
   */
 final case class WorkflowJob private(
-  agentId: AgentPath,
+  agentPath: AgentPath,
   executable: Executable,
   defaultArguments: NamedValues,
   jobResourcePaths: Seq[JobResourcePath] = Nil,
@@ -37,12 +37,12 @@ final case class WorkflowJob private(
       success = returnCodeMeaning.isSuccess(returnCode),
       namedValues + ("returnCode" -> NumberValue(returnCode.number)))
 
-  def isExecutableOnAgent(agentId: AgentPath): Boolean =
-    this.agentId == agentId
+  def isExecutableOnAgent(agentPath: AgentPath): Boolean =
+    this.agentPath == agentPath
 
   //override def toString = s"Job($argumentsString)"
 
-  def argumentsString = s"agent=${agentId.string}, " +
+  def argumentsString = s"agent=${agentPath.string}, " +
     (executable match {
       case PathExecutable(o, env, v1Compatible) => s"executable=$o"
       case ScriptExecutable(o, env, v1Compatible) => s"script=$o"
@@ -64,7 +64,7 @@ object WorkflowJob
   val DefaultTaskLimit = 1
 
   def apply(
-    agentId: AgentPath,
+    agentPath: AgentPath,
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
@@ -73,12 +73,12 @@ object WorkflowJob
     sigkillDelay: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false)
   : WorkflowJob =
-    checked(agentId, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, taskLimit, sigkillDelay,
+    checked(agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, taskLimit, sigkillDelay,
       failOnErrWritten = failOnErrWritten
     ).orThrow
 
   def checked(
-    agentId: AgentPath,
+    agentPath: AgentPath,
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
@@ -89,7 +89,7 @@ object WorkflowJob
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
-        agentId, executable, defaultArguments, jobResourcePaths, returnCodeMeaning,
+        agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning,
         taskLimit, sigkillDelay, failOnErrWritten)
 
   final case class Name private(string: String) extends GenericString
@@ -103,7 +103,7 @@ object WorkflowJob
   /** To be used in Workflow with known WorkflowId. */
   implicit val jsonEncoder: Encoder.AsObject[WorkflowJob] = workflowJob =>
     JsonObject(
-      "agentId" -> workflowJob.agentId.asJson,
+      "agentPath" -> workflowJob.agentPath.asJson,
       "executable" -> workflowJob.executable.asJson,
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
@@ -115,14 +115,14 @@ object WorkflowJob
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
       executable <- cursor.get[Executable]("executable")
-      agentId <- cursor.get[AgentPath]("agentId")
+      agentPath <- cursor.get[AgentPath]("agentPath")
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       taskLimit <- cursor.getOrElse[Int]("taskLimit")(DefaultTaskLimit)
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
       failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
-      job <- checked(agentId, executable, arguments, jobResourcePaths, rc, taskLimit, sigkillDelay, failOnErrWritten)
+      job <- checked(agentPath, executable, arguments, jobResourcePaths, rc, taskLimit, sigkillDelay, failOnErrWritten)
         .toDecoderResult(cursor.history)
     } yield job
 }

@@ -45,7 +45,7 @@ final class AgentActorTest extends AnyFreeSpec
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
-        val agentRunId = executeCommand(RegisterAsController(agentId))
+        val agentRunId = executeCommand(RegisterAsController(agentPath))
           .await(99.s).orThrow.asInstanceOf[RegisterAsController.Response].agentRunId
         val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch(ControllerId.fromUserId(UserId.Anonymous)))(Timeout(88.s))
           .mapTo[Checked[EventWatch]].await(99.s).orThrow
@@ -55,13 +55,13 @@ final class AgentActorTest extends AnyFreeSpec
           .await(99.s).orThrow
         orderIds.map(orderId =>
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderId), TestAgentId))
+            AttachOrder(TestOrder.copy(id = orderId), TestAgentPath))
         ).await(99.s).foreach(o => assert(o.isRight))
         assert(
           executeCommand(
-            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentId)
+            AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentPath)
           ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
-        assert(executeCommand(CoupleController(agentId, agentRunId, EventId.BeforeFirst)).await(99.s) ==
+        assert(executeCommand(CoupleController(agentPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleController.Response(orderIds.toSet)))
         for (orderId <- orderIds)
           eventWatch.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
@@ -82,7 +82,7 @@ final class AgentActorTest extends AnyFreeSpec
             historicOutcomes = TestOrder.historicOutcomes :+
               HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-")))) :+
               HistoricOutcome(Position(1), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-B-VALUE")))),
-            attachedState = Some(Order.Detaching(TestAgentId))
+            attachedState = Some(Order.Detaching(TestAgentPath))
           )).toSet)
 
         (for (orderId <- orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
@@ -96,7 +96,7 @@ final class AgentActorTest extends AnyFreeSpec
 
 object AgentActorTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off

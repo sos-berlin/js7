@@ -35,7 +35,7 @@ final class ForkTest extends AnyFreeSpec {
                 {
                   "TYPE": "Execute.Anonymous",
                   "job": {
-                    "agentId": "AGENT",
+                    "agentPath": "AGENT",
                     "executable": {
                       "TYPE": "PathExecutable",
                       "path": "A"
@@ -52,7 +52,7 @@ final class ForkTest extends AnyFreeSpec {
                 {
                   "TYPE": "Execute.Anonymous",
                   "job": {
-                    "agentId": "AGENT",
+                    "agentPath": "AGENT",
                     "executable": {
                       "TYPE": "PathExecutable",
                       "path": "B"

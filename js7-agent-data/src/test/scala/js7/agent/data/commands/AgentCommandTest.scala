@@ -108,7 +108,7 @@ final class AgentCommandTest extends AnyFreeSpec
     check(AgentCommand.RegisterAsController(AgentPath("AGENT")),
       json"""{
         "TYPE": "RegisterAsController",
-        "agentId": "AGENT"
+        "agentPath": "AGENT"
       }""")
   }
 
@@ -129,7 +129,7 @@ final class AgentCommandTest extends AnyFreeSpec
         1000L),
       json"""{
         "TYPE": "CoupleController",
-        "agentId": "AGENT",
+        "agentPath": "AGENT",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
         "eventId": 1000
       }""")
@@ -180,7 +180,7 @@ final class AgentCommandTest extends AnyFreeSpec
           "TYPE": "FileWatch",
           "id": "ID",
           "workflowPath": "WORKFLOW",
-          "agentId": "AGENT",
+          "agentPath": "AGENT",
           "directory": "DIRECTORY",
           "delay": 0
         }
@@ -199,7 +199,7 @@ final class AgentCommandTest extends AnyFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_A\":\"A-VALUE\"},\"taskLimit\":3}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentId\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_B\":\"B-VALUE\"},\"taskLimit\":3}}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_A\":\"A-VALUE\"},\"taskLimit\":3}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B.cmd\",\"v1Compatible\":true},\"defaultArguments\":{\"JOB_B\":\"B-VALUE\"},\"taskLimit\":3}}]}"
         }
       }""")
   }
@@ -266,7 +266,7 @@ final class AgentCommandTest extends AnyFreeSpec
             },
             "attachedState": {
               "TYPE": "Attached",
-              "agentId": "AGENT"
+              "agentPath": "AGENT"
             }
           }
         }""")

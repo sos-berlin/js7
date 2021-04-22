@@ -57,11 +57,11 @@ final class OrderAgentTest extends AnyFreeSpec
         withCloser { implicit closer =>
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
-          assert(agentClient.commandExecute(RegisterAsController(agentId)).await(99.s) ==
+          assert(agentClient.commandExecute(RegisterAsController(agentPath)).await(99.s) ==
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsController(agentId)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
+          assert(agentClient.commandExecute(RegisterAsController(agentPath)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
             .isInstanceOf[RegisterAsController.Response])
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> StringValue("X")))
@@ -69,7 +69,7 @@ final class OrderAgentTest extends AnyFreeSpec
           def attachOrder(signedWorkflow: Signed[SignableItem]): Checked[AgentCommand.Response.Accepted] =
             for {
               _ <- agentClient.commandExecute(AttachSignedItem(signedWorkflow)).await(99.s)
-              x <- agentClient.commandExecute(AttachOrder(order, TestAgentId)).await(99.s)
+              x <- agentClient.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
             } yield x
 
           val tamperedWorkflow = signedSimpleWorkflow.copy(
@@ -114,7 +114,7 @@ final class OrderAgentTest extends AnyFreeSpec
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(RegisterAsController(agentId)).await(99.s) == Right(AgentCommand.Response.Accepted))
+          assert(agentClient.commandExecute(RegisterAsController(agentPath)).await(99.s) == Right(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
@@ -149,7 +149,7 @@ final class OrderAgentTest extends AnyFreeSpec
 
 private object OrderAgentTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off
@@ -166,7 +166,7 @@ private object OrderAgentTest
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
-      attachedState = Some(Order.Detaching(TestAgentId)),
+      attachedState = Some(Order.Detaching(TestAgentPath)),
       arguments = Map("x" -> StringValue("X")),
       historicOutcomes =
         HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-")))) ::

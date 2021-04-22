@@ -22,7 +22,7 @@ final class AgentServerEventTest extends AnyFreeSpec {
           AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
         json"""{
           "TYPE": "ControllerRegistered",
-          "agentId": "AGENT",
+          "agentPath": "AGENT",
           "controllerId": "CONTROLLER",
           "agentRunId": "ABEiM0RVZneImaq7zN3u_w"
         }""")

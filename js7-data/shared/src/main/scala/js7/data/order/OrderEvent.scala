@@ -65,7 +65,7 @@ object OrderEvent
     arguments: NamedValues,
     externalOrderKey: Option[ExternalOrderKey],
     historicOutcomes: Seq[HistoricOutcome],
-    agentId: AgentPath,
+    agentPath: AgentPath,
     parent: Option[OrderId],
     mark: Option[OrderMark],
     isSuspended: Boolean,
@@ -74,7 +74,7 @@ object OrderEvent
     workflowPosition.workflowId.requireNonAnonymous()
   }
 
-  final case class OrderAttached(agentId: AgentPath)
+  final case class OrderAttached(agentPath: AgentPath)
   extends OrderCoreEvent
 
   type OrderStarted = OrderStarted.type
@@ -140,10 +140,10 @@ object OrderEvent
   extends OrderActorEvent
 
   sealed trait OrderLockEvent extends OrderActorEvent {
-    def lockIds: Seq[LockPath]
+    def lockPaths: Seq[LockPath]
   }
   object OrderLockEvent {
-    def unapply(event: OrderLockEvent) = Some(event.lockIds)
+    def unapply(event: OrderLockEvent) = Some(event.lockPaths)
   }
 
   sealed trait OrderFailedEvent extends OrderActorEvent with OrderLockEvent {
@@ -152,17 +152,17 @@ object OrderEvent
     def movedTo: Position
   }
 
-  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockPath] = Nil)
+  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockPaths: Seq[LockPath] = Nil)
   extends OrderFailedEvent with OrderTerminated {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
 
-  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockPath] = Nil)
+  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockPaths: Seq[LockPath] = Nil)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
 
-  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockIds: Seq[LockPath] = Nil)
+  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockPaths: Seq[LockPath] = Nil)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
@@ -182,7 +182,7 @@ object OrderEvent
   /**
     * Controller may have started to attach Order to Agent..
     */
-  final case class OrderAttachable(agentId: AgentPath) extends OrderActorEvent
+  final case class OrderAttachable(agentPath: AgentPath) extends OrderActorEvent
 
   type OrderDetachable = OrderDetachable.type
   /**
@@ -253,19 +253,19 @@ object OrderEvent
     historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
 
-  final case class OrderLockAcquired(lockId: LockPath, count: Option[Int] = None)
+  final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int] = None)
   extends OrderLockEvent {
-    def lockIds = lockId :: Nil
+    def lockPaths = lockPath :: Nil
   }
 
-  final case class OrderLockQueued(lockId: LockPath, count: Option[Int])
+  final case class OrderLockQueued(lockPath: LockPath, count: Option[Int])
   extends OrderLockEvent  {
-    def lockIds = lockId :: Nil
+    def lockPaths = lockPath :: Nil
   }
 
-  final case class OrderLockReleased(lockId: LockPath)
+  final case class OrderLockReleased(lockPath: LockPath)
   extends OrderLockEvent {
-    def lockIds = lockId :: Nil
+    def lockPaths = lockPath :: Nil
   }
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](

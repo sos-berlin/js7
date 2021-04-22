@@ -105,7 +105,7 @@ final class AgentStateTest extends AsyncFreeSpec
             "fileWatch": {
               "id": "ORDER-SOURCE-ID",
               "workflowPath": "WORKFLOW",
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "directory": "/DIRECTORY",
               "pattern": "\\.csv",
               "delay": 3,
@@ -150,13 +150,13 @@ final class AgentStateTest extends AsyncFreeSpec
     val childOrderId = OrderId("ORDER") | "BRANCH"
     val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"
     val workflow = Workflow.of(workflowId)
-    val agentId = AgentPath("AGENT")
+    val agentPath = AgentPath("AGENT")
     var agentState = AgentState.empty
 
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToAgent(workflow)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
-        workflowId, Order.Ready, Map.empty, None, Nil, agentId, None, None, false, false))
+        workflowId, Order.Ready, Map.empty, None, Nil, agentPath, None, None, false, false))
       .orThrow
     agentState = agentState.applyEvent(orderId <-: OrderForked(Seq(OrderForked.Child("BRANCH", childOrderId))))
       .orThrow
@@ -166,10 +166,10 @@ final class AgentStateTest extends AsyncFreeSpec
       Map(
         orderId ->
           Order(orderId, workflowId, Forked(Seq(Forked.Child("BRANCH", childOrderId))),
-            attachedState = Some(Order.Attached(agentId))),
+            attachedState = Some(Order.Attached(agentPath))),
         childOrderId ->
           Order(childOrderId, workflowId /: (Position(0) / "fork+BRANCH" % 0), Ready,
-            attachedState = Some(Order.Attached(agentId)), parent = Some(orderId))),
+            attachedState = Some(Order.Attached(agentPath)), parent = Some(orderId))),
       Map(workflowId -> workflow),
       AllFileWatchesState.empty,
       Map.empty))

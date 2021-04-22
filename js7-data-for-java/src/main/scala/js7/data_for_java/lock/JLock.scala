@@ -14,7 +14,7 @@ extends JJsonable[JLock] with JUnsignedSimpleItem
   protected def companion = JLock
 
   @Nonnull
-  def id: LockPath =
+  def path: LockPath =
     asScala.id
 
   def limit: Int =
@@ -24,8 +24,8 @@ extends JJsonable[JLock] with JUnsignedSimpleItem
 object JLock extends JJsonable.Companion[JLock]
 {
   @Nonnull
-  def of(@Nonnull lockId: LockPath, limit: Int): JLock =
-    JLock(Lock(lockId, limit))
+  def of(@Nonnull lockPath: LockPath, limit: Int): JLock =
+    JLock(Lock(lockPath, limit))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JLock] =

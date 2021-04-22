@@ -265,8 +265,8 @@ final class RepoTest extends AnyFreeSpec
 
 object RepoTest
 {
-  private val aAgentId = AgentPath("AGENT-A")
-  private val bAgentId = AgentPath("AGENT-B")
+  private val aAgentPath = AgentPath("AGENT-A")
+  private val bAgentPath = AgentPath("AGENT-B")
 
   private val V1 = VersionId("1")
   private val V2 = VersionId("2")
@@ -294,24 +294,24 @@ object RepoTest
     VersionAdded(V3), VersionedItemChanged(sign(a3)), VersionedItemDeleted(bx2.path))
 
   private val basicItemEvents = Seq(
-    ItemAttachable(a1.id, aAgentId),
+    ItemAttachable(a1.id, aAgentPath),
 
-    ItemAttachable(a2.id, aAgentId),
-    ItemAttachable(a2.id, bAgentId),
-    ItemAttached(a2.id, None, bAgentId),
+    ItemAttachable(a2.id, aAgentPath),
+    ItemAttachable(a2.id, bAgentPath),
+    ItemAttached(a2.id, None, bAgentPath),
 
-    ItemAttached(b1.id, None, bAgentId),
-    ItemDetachable(b1.id, bAgentId),
+    ItemAttached(b1.id, None, bAgentPath),
+    ItemDetachable(b1.id, bAgentPath),
 
-    ItemAttached(a3.id, None, bAgentId),
-    ItemDetachable(a3.id, bAgentId),
-    ItemDetached(a3.id, bAgentId))
+    ItemAttached(a3.id, None, bAgentPath),
+    ItemDetachable(a3.id, bAgentPath),
+    ItemDetached(a3.id, bAgentPath))
 
   private def snapshotBasicEvents = Seq(
-    ItemAttachable(a1.id, aAgentId),
-    ItemAttachable(a2.id, aAgentId),
-    ItemAttached(a2.id, None, bAgentId),
-    ItemDetachable(b1.id, bAgentId))
+    ItemAttachable(a1.id, aAgentPath),
+    ItemAttachable(a2.id, aAgentPath),
+    ItemAttached(a2.id, None, bAgentPath),
+    ItemDetachable(b1.id, bAgentPath))
 
   private val snapshotEvents = versionedEvents ++ snapshotBasicEvents
 

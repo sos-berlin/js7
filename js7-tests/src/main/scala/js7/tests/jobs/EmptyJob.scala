@@ -17,6 +17,6 @@ final class EmptyJob extends InternalJob
 
 object EmptyJob
 {
-  def execute(agentId: AgentPath) =
-    Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyJob].getName)))
+  def execute(agentPath: AgentPath) =
+    Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyJob].getName)))
 }

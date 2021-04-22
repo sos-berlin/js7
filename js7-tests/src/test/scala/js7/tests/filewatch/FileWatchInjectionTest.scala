@@ -16,8 +16,8 @@ import scala.concurrent.TimeoutException
 
 final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  private val aAgentId = AgentPath("AGENT-A")
-  protected val agentIds = Seq(aAgentId)
+  private val aAgentPath = AgentPath("AGENT-A")
+  protected val agentPaths = Seq(aAgentPath)
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
@@ -27,14 +27,14 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
     WorkflowPath("WORKFLOW"),
-    aAgentId,
+    aAgentPath,
     sourceDirectory.toString)
 
   "Start with existing file" in {
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     // TODO SimpleItemAttachmentFailed
     intercept[TimeoutException] {
-      controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id, timeout = 1.s)
+      controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id, timeout = 1.s)
     }
   }
 }

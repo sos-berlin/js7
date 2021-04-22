@@ -84,11 +84,11 @@ final class ControllerStateTest extends AsyncFreeSpec
       assert(controllerState.estimatedSnapshotSize == n)
   }
 
-  "idToSimpleItem" in {
+  "pathToSimpleItem" in {
     val sum = controllerState.pathToAgentRefState ++
       controllerState.pathToLockState ++
       controllerState.allOrderWatchesState.pathToOrderWatchState
-    assert(controllerState.idToSimpleItem.toMap == sum.map(_._2.item).toKeyedMap(_.id))
+    assert(controllerState.pathToSimpleItem.toMap == sum.map(_._2.item).toKeyedMap(_.id))
   }
 
   "toSnapshotObservable" in {
@@ -206,12 +206,12 @@ final class ControllerStateTest extends AsyncFreeSpec
               "TYPE": "FileWatch",
               "id": "WATCH",
               "workflowPath": "WORKFLOW",
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "directory": "/tmp/directory",
               "delay": 0,
               "itemRevision": 7
             },
-            "agentIdToAttachedState": {
+            "agentPathToAttachedState": {
               "AGENT": {
                 "TYPE": "Attached",
                 "itemRevision": 7
@@ -245,7 +245,7 @@ final class ControllerStateTest extends AsyncFreeSpec
                 "TYPE": "Attachable"
               }
             },
-            "itemId": "JobResource:JOB-RESOURCE"
+            "itemKey": "JobResource:JOB-RESOURCE"
           },
           {
             "TYPE": "Order",

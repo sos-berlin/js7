@@ -24,13 +24,13 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
 
-  protected def agentIds: Seq[AgentPath]
+  protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
   protected def agentPorts: Iterable[Int] = Nil
   protected def doNotAddItems = false
 
   protected final lazy val directoryProvider = new DirectoryProvider(
-    agentIds,
+    agentPaths,
     versionedItems = versionedItems,
     simpleItems = simpleItems,
     controllerConfig = controllerConfig,

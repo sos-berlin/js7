@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class IfTest extends AnyFreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(agentId :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(agentPath :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
@@ -48,7 +48,7 @@ final class IfTest extends AnyFreeSpec
        |  }
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
-    val directoryProvider = new DirectoryProvider(agentId :: Nil, versionedItems = workflow :: Nil,
+    val directoryProvider = new DirectoryProvider(agentPath :: Nil, versionedItems = workflow :: Nil,
       testName = Some("IfTest"))
     autoClosing(directoryProvider) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
@@ -59,8 +59,8 @@ final class IfTest extends AnyFreeSpec
         val EventSeq.NonEmpty(events) = controller.eventWatch.all[OrderEvent]
         assert(events.map(_.value.event) == Seq(
           OrderAdded(workflow.id),
-          OrderAttachable(agentId),
-          OrderAttached(agentId),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
           OrderStarted,
           OrderProcessingStarted,
           OrderProcessed(Outcome.succeededRC0),
@@ -82,7 +82,7 @@ final class IfTest extends AnyFreeSpec
 }
 
 object IfTest {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val jobScript =
     if (isWindows)
@@ -121,8 +121,8 @@ object IfTest {
     ReturnCode(0) -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("0"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(0)))),
@@ -139,8 +139,8 @@ object IfTest {
     ReturnCode(1) -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("1"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(1)))),
@@ -157,8 +157,8 @@ object IfTest {
     ReturnCode(2) ->  Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("2"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(2)))),

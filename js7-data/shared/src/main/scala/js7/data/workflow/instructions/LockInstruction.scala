@@ -10,7 +10,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
 final case class LockInstruction(
-  lockId: LockPath,
+  lockPath: LockPath,
   count: Option[Int],
   lockedWorkflow: Workflow,
   sourcePos: Option[SourcePos] = None)
@@ -30,10 +30,10 @@ extends Instruction {
     lockedWorkflow = lockedWorkflow.copy(
       outer = Some(outer)))
 
-  override def reduceForAgent(agentId: AgentPath, workflow: Workflow) =
-    if (isVisibleForAgent(agentId, workflow))
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
+    if (isVisibleForAgent(agentPath, workflow))
       copy(
-        lockedWorkflow = lockedWorkflow.reduceForAgent(agentId))
+        lockedWorkflow = lockedWorkflow.reduceForAgent(agentPath))
     else
       Gap(sourcePos)  // The agent will never touch this lock or it subworkflow
 
@@ -52,9 +52,9 @@ extends Instruction {
 object LockInstruction {
   implicit val jsonCodec = deriveCodec[LockInstruction]
 
-  def checked(lockId: LockPath, count: Option[Int], lockedWorkflow: Workflow, sourcePos: Option[SourcePos] = None) =
+  def checked(lockPath: LockPath, count: Option[Int], lockedWorkflow: Workflow, sourcePos: Option[SourcePos] = None) =
     if (count.exists(_ < 1))
       Left(Problem(s"Invalid count=$count in lock instruction"))
     else
-      Right(new LockInstruction(lockId, count, lockedWorkflow, sourcePos))
+      Right(new LockInstruction(lockPath, count, lockedWorkflow, sourcePos))
 }

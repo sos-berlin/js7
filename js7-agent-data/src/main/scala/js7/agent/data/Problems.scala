@@ -14,9 +14,9 @@ object Problems
     override def httpStatusCode = 503  // Service unavailable
   }
 
-  final case class ControllerAgentMismatch(agentId: AgentPath)
+  final case class ControllerAgentMismatch(agentPath: AgentPath)
   extends Problem.Coded {
-    def arguments = Map("agentId" -> agentId.string)
+    def arguments = Map("agentPath" -> agentPath.string)
   }
 
   final case class DuplicateAgentRef(first: AgentPath, second: AgentPath)

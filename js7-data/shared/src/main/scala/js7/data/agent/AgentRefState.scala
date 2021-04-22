@@ -18,9 +18,9 @@ extends SimpleItemState
 {
   def item = agentRef
 
-  def agentId = agentRef.id
+  def agentPath = agentRef.id
 
-  def agentIdToAttachedState = Map.empty
+  def agentPathToAttachedState = Map.empty
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match {

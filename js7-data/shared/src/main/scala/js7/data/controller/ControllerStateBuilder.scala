@@ -36,7 +36,7 @@ extends JournaledStateBuilder[ControllerState]
   private val pathToLockState = mutable.Map.empty[LockPath, LockState]
   private var allOrderWatchesState = AllOrderWatchesState.empty
   private val idToSignedItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
-  private val itemIdToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
+  private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
 
   protected def onInitializeState(state: ControllerState): Unit = {
     controllerMetaState = state.controllerMetaState
@@ -61,7 +61,7 @@ extends JournaledStateBuilder[ControllerState]
       repo = repo.applyBasicItemEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
-      pathToAgentRefState.insert(agentRefState.agentId -> agentRefState)
+      pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
 
     case lockState: LockState =>
       pathToLockState.insert(lockState.lock.id -> lockState)
@@ -73,7 +73,7 @@ extends JournaledStateBuilder[ControllerState]
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
     case ControllerState.ItemAttachedStateSnapshot(itemId, agentToAttachedState) =>
-      itemIdToAgentToAttachedState.insert(itemId -> agentToAttachedState)
+      itemToAgentToAttachedState.insert(itemId -> agentToAttachedState)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -150,30 +150,30 @@ extends JournaledStateBuilder[ControllerState]
 
         case event: BasicItemEvent.ForController =>
           event match {
-            case event @ ItemAttachedStateChanged(id, agentId, attachedState) =>
+            case event @ ItemAttachedStateChanged(id, agentPath, attachedState) =>
               id match {
                 case id: OrderWatchPath =>
                   allOrderWatchesState = allOrderWatchesState
-                    .updateAttachedState(id, agentId, attachedState)
+                    .updateAttachedState(id, agentPath, attachedState)
                     .orThrow
 
                 case _: VersionedItemId_ =>
                   repo = repo.applyBasicItemEvent(event).orThrow
 
-                case id: JobResourcePath =>
+                case path: JobResourcePath =>
                   // TODO Code is similar to ControllerState
                   attachedState match {
                     case attachedState: NotDetached =>
-                      itemIdToAgentToAttachedState += id ->
-                        (itemIdToAgentToAttachedState.getOrElse(id, Map.empty) +
-                          (agentId -> attachedState))
+                      itemToAgentToAttachedState += path ->
+                        (itemToAgentToAttachedState.getOrElse(path, Map.empty) +
+                          (agentPath -> attachedState))
 
                     case Detached =>
-                      val updated = itemIdToAgentToAttachedState.getOrElse(id, Map.empty) - agentId
+                      val updated = itemToAgentToAttachedState.getOrElse(path, Map.empty) - agentPath
                       if (updated.isEmpty)
-                        itemIdToAgentToAttachedState -= id
+                        itemToAgentToAttachedState -= path
                       else
-                        itemIdToAgentToAttachedState += id -> updated
+                        itemToAgentToAttachedState += path -> updated
                   }
 
                 case _ =>
@@ -182,8 +182,8 @@ extends JournaledStateBuilder[ControllerState]
 
             case ItemDeletionMarked(itemId) =>
               itemId match {
-                case id: OrderWatchPath =>
-                  allOrderWatchesState = allOrderWatchesState.markAsDeleted(id).orThrow
+                case path: OrderWatchPath =>
+                  allOrderWatchesState = allOrderWatchesState.markAsDeleted(path).orThrow
 
                 case _ =>
                   throw Problem(s"Unexpected event: $keyedEvent").throwable
@@ -191,14 +191,14 @@ extends JournaledStateBuilder[ControllerState]
 
             case ItemDestroyed(itemId) =>
               itemId match {
-                case id: LockPath =>
-                  pathToLockState -= id
+                case path: LockPath =>
+                  pathToLockState -= path
 
-                case id: AgentPath =>
-                  pathToAgentRefState -= id
+                case path: AgentPath =>
+                  pathToAgentRefState -= path
 
-                case id: OrderWatchPath =>
-                  allOrderWatchesState = allOrderWatchesState.removeOrderWatch(id)
+                case path: OrderWatchPath =>
+                  allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)
               }
           }
       }
@@ -221,8 +221,8 @@ extends JournaledStateBuilder[ControllerState]
           }
 
         case event: OrderLockEvent =>
-          for (lockId <- event.lockIds) {
-            pathToLockState(lockId) = pathToLockState(lockId).applyEvent(orderId <-: event).orThrow
+          for (lockPath <- event.lockPaths) {
+            pathToLockState(lockPath) = pathToLockState(lockPath).applyEvent(orderId <-: event).orThrow
           }
           idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
 
@@ -299,7 +299,7 @@ extends JournaledStateBuilder[ControllerState]
       allOrderWatchesState,
       repo,
       idToSignedItem.toMap,
-      itemIdToAgentToAttachedState.toMap,
+      itemToAgentToAttachedState.toMap,
       idToOrder.toMap)
 
   def journalState = standards.journalState

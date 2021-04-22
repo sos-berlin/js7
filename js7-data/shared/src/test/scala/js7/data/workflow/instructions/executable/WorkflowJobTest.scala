@@ -24,7 +24,7 @@ final class WorkflowJobTest extends AnyFreeSpec
           AgentPath("AGENT"),
           RelativePathExecutable("EXECUTABLE")),
         json"""{
-          "agentId": "AGENT",
+          "agentPath": "AGENT",
           "executable": {
             "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
@@ -47,7 +47,7 @@ final class WorkflowJobTest extends AnyFreeSpec
           Some(10.s),
           failOnErrWritten = true),
         json"""{
-          "agentId": "AGENT",
+          "agentPath": "AGENT",
           "executable": {
             "TYPE": "PathExecutable",
             "path": "EXECUTABLE"

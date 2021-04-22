@@ -40,17 +40,17 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
       .map(updated => copy(
         pathToOrderWatchState = pathToOrderWatchState + (updated.id -> updated)))
 
-  def updateAttachedState(orderWatchPath: OrderWatchPath, agentId: AgentPath, attachedState: ItemAttachedState)
+  def updateAttachedState(orderWatchPath: OrderWatchPath, agentPath: AgentPath, attachedState: ItemAttachedState)
   : Checked[AllOrderWatchesState] =
     pathToOrderWatchState
       .checked(orderWatchPath)
       .map { watchState =>
-        val updated = watchState.copy(agentIdToAttachedState =
+        val updated = watchState.copy(agentPathToAttachedState =
           attachedState match {
             case Detached =>
-              watchState.agentIdToAttachedState - agentId
+              watchState.agentPathToAttachedState - agentPath
             case a: NotDetached =>
-              watchState.agentIdToAttachedState + (agentId -> a)
+              watchState.agentPathToAttachedState + (agentPath -> a)
           })
         copy(
           pathToOrderWatchState = pathToOrderWatchState + (orderWatchPath -> updated))

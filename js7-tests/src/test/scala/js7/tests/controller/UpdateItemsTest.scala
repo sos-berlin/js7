@@ -37,7 +37,7 @@ import scala.concurrent.duration._
   */
 final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = Nil
 
   override def beforeAll() = {
@@ -51,9 +51,9 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
          |  }
          |}
          |""".stripMargin
-    directoryProvider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
-    directoryProvider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
-    directoryProvider.agentToTree(agentId).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
+    directoryProvider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT1.cmd"), sleepingShellScript(2 * Tick))
+    directoryProvider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT2.cmd"), ":")
+    directoryProvider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT4.cmd"), ":")
     super.beforeAll()
   }
 
@@ -136,7 +136,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object UpdateItemsTest
 {
   private val Tick = 2.s
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val script1 = """

@@ -32,7 +32,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(aAgentId, bAgentId)
+  protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val versionedItems = Seq(workflow)
 
   override protected val controllerConfig = config"""
@@ -50,7 +50,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
-    aAgentId,
+    aAgentPath,
     sourceDirectory.toString)
 
   private def fileToOrderId(filename: String): OrderId =
@@ -62,7 +62,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderId = fileToOrderId("1")
     file := ""
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.id == fileWatch.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id)
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
   }
@@ -107,36 +107,36 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
         Seq(
           NoKey <-: SimpleItemChanged(fileWatch.copy(itemRevision = Some(itemRevision))),
-          NoKey <-: ItemAttachable(fileWatch.id, aAgentId),
-          NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), aAgentId)))
+          NoKey <-: ItemAttachable(fileWatch.id, aAgentPath),
+          NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), aAgentPath)))
     }
   }
 
   "Change Agent" in {
     itemRevision = itemRevision.next
     val eventId = controller.eventWatch.lastAddedEventId
-    val changedFileWatch = fileWatch.copy(agentId = bAgentId)
+    val changedFileWatch = fileWatch.copy(agentPath = bAgentPath)
     controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](after = eventId)
     assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(
         NoKey <-: SimpleItemChanged(changedFileWatch.copy(itemRevision = Some(itemRevision))),
-        NoKey <-: ItemDetachable(fileWatch.id, aAgentId),
-        NoKey <-: ItemDetached(fileWatch.id, aAgentId),
-        NoKey <-: ItemAttachable(fileWatch.id, bAgentId),
-        NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), bAgentId)))
+        NoKey <-: ItemDetachable(fileWatch.id, aAgentPath),
+        NoKey <-: ItemDetached(fileWatch.id, aAgentPath),
+        NoKey <-: ItemAttachable(fileWatch.id, bAgentPath),
+        NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), bAgentPath)))
   }
 
   "Delete a FileWatch" in {
     val eventId = controller.eventWatch.lastAddedEventId
     assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.id))).await(99.s) ==
       Right(Completed))
-    controller.eventWatch.await[ItemDestroyed](_.event.id == fileWatch.id, after = eventId)
+    controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.id, after = eventId)
     val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
     assert(events == Seq(
       NoKey <-: ItemDeletionMarked(fileWatch.id),
-      NoKey <-: ItemDetachable(fileWatch.id, bAgentId),
-      NoKey <-: ItemDetached(fileWatch.id, bAgentId),
+      NoKey <-: ItemDetachable(fileWatch.id, bAgentPath),
+      NoKey <-: ItemDetached(fileWatch.id, bAgentPath),
       NoKey <-: ItemDestroyed(fileWatch.id)))
     assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
@@ -145,10 +145,10 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object FileWatchTest
 {
   private val logger = Logger(getClass)
-  private val aAgentId = AgentPath("AGENT-A")
-  private val bAgentId = AgentPath("AGENT-B")
+  private val aAgentPath = AgentPath("AGENT-A")
+  private val bAgentPath = AgentPath("AGENT-B")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
-    Vector(DeleteFileJob.execute(aAgentId)))
+    Vector(DeleteFileJob.execute(aAgentPath)))
 }

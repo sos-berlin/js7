@@ -4,7 +4,7 @@ import js7.base.problem.ProblemException
 import js7.base.standards.Js7PathValidatorTest
 import org.scalatest.freespec.AnyFreeSpec
 
-final class AgentIdTest extends AnyFreeSpec
+final class AgentPathTest extends AnyFreeSpec
 {
   "AgentPath" in {
     // See NameValidating

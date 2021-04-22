@@ -39,7 +39,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentIds = Seq(aAgentId, bAgentId)
+  protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val versionedItems = Seq(workflow)
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
@@ -61,7 +61,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
   private lazy val aFileWatch = FileWatch(
     orderWatchPath,
     workflow.path,
-    aAgentId,
+    aAgentPath,
     aDirectory.toString)
   private lazy val bFileWatch = aFileWatch.copy(directory = bDirectory.toString)
 
@@ -88,9 +88,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       import controller.eventWatch
       import controller.eventWatch.await
 
-      directoryProvider.runAgents(Seq(bAgentId)) { _ =>
-        directoryProvider.runAgents(Seq(aAgentId)) { _ =>
-          await[ItemAttached](_.event.id == orderWatchPath)
+      directoryProvider.runAgents(Seq(bAgentPath)) { _ =>
+        directoryProvider.runAgents(Seq(aAgentPath)) { _ =>
+          await[ItemAttached](_.event.key == orderWatchPath)
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == initialOrderId)
           await[OrderRemoved](_.key == initialOrderId)
@@ -112,7 +112,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         }
 
         // RESTART WATCHING AGENT WHILE A FILE EXISTS
-        directoryProvider.runAgents(Seq(aAgentId)) { case Seq(aAgent) =>
+        directoryProvider.runAgents(Seq(aAgentPath)) { case Seq(aAgent) =>
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == orderId3)
           // Agent must detect the file deletion after restart to allow the order to be removed:
@@ -129,7 +129,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             createDirectory(bDirectory)
             val beforeAttached = eventWatch.lastAddedEventId
             controller.updateUnsignedSimpleItemsAsSystemUser(Seq(bFileWatch)).await(99.s).orThrow
-            await[ItemAttached](ke => ke.event.id == orderWatchPath && ke.event.itemRevision == Some(ItemRevision(1)),
+            await[ItemAttached](ke => ke.event.key == orderWatchPath && ke.event.itemRevision == Some(ItemRevision(1)),
               after = beforeAttached)
             // The OrderWatch watches now the bDirectory, but the running Order points to aDirectory.
             // bDirectory does not contain the file
@@ -206,7 +206,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         .event match {
           case _: ControllerShutDown => true
           case _: BasicItemEvent => true
-          case event: UnsignedSimpleItemEvent if event.id.isInstanceOf[OrderWatchPath] => true
+          case event: UnsignedSimpleItemEvent if event.key.isInstanceOf[OrderWatchPath] => true
           case _: OrderAdded => true
           case _: OrderStarted => true
           case _: OrderStderrWritten => true
@@ -216,14 +216,14 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         })
     assert(filteredLeyedEvents == Seq[AnyKeyedEvent](
       NoKey <-: SimpleItemAdded(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
-      NoKey <-: ItemAttachable(orderWatchPath, aAgentId),
+      NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
       NoKey <-: ControllerShutDown(None),
-      NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(0)), aAgentId),
+      NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(0)), aAgentPath),
       orderId1 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/1")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("1")))),
-      NoKey <-: ItemAttached(workflow.id, None, bAgentId),
+      NoKey <-: ItemAttached(workflow.id, None, bAgentPath),
       orderId1 <-: OrderStarted,
       orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory/1\n"),
       orderId1 <-: OrderFinished,
@@ -253,8 +253,8 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("4")))),
       orderId4 <-: OrderStarted,
       NoKey <-: SimpleItemChanged(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
-      NoKey <-: ItemAttachable(orderWatchPath, aAgentId),
-      NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(1)), aAgentId),
+      NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
+      NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(1)), aAgentPath),
       orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory/4\n"),
       orderId4 <-: OrderFinished,
       orderId4 <-: OrderRemoved,
@@ -358,15 +358,15 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
 
 object FileWatch2Test
 {
-  private val aAgentId = AgentPath("AGENT-A")
-  private val bAgentId = AgentPath("AGENT-B")
+  private val aAgentPath = AgentPath("AGENT-A")
+  private val bAgentPath = AgentPath("AGENT-B")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(bAgentId, InternalExecutable(classOf[SemaphoreJob].getName))),
-      Execute(WorkflowJob(bAgentId, InternalExecutable(classOf[DeleteFileJob].getName))),
-      Execute(WorkflowJob(bAgentId, InternalExecutable(classOf[SemaphoreJob].getName)))))
+      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName))),
+      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[DeleteFileJob].getName))),
+      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName)))))
 
   private val semaphore = Semaphore[Task](0).memoize
 

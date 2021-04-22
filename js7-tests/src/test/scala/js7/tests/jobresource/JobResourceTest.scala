@@ -34,21 +34,21 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(workflow, envWorkflow, sosWorkflow)
 
   "JobResourcePath" in {
     controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)
       .await(99.s).orThrow
-    controller.eventWatch.await[SignedItemAdded](_.event.id == aJobResource.id)
-    controller.eventWatch.await[SignedItemAdded](_.event.id == bJobResource.id)
+    controller.eventWatch.await[SignedItemAdded](_.event.key == aJobResource.id)
+    controller.eventWatch.await[SignedItemAdded](_.event.key == bJobResource.id)
 
     val orderId = OrderId("ORDER")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
       "A" -> StringValue("A OF ORDER")
     ))).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.id == aJobResource.id)
-    controller.eventWatch.await[ItemAttached](_.event.id == bJobResource.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == aJobResource.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == bJobResource.id)
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
 
     val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
@@ -66,13 +66,13 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.updateSignedSimpleItems(Seq(sign(b1JobResource))).await(99.s).orThrow
     val orderId = OrderId("ORDER-1")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.id == b1JobResource.id, after = eventId)
+    controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.id, after = eventId)
   }
 
   "JobResourcePath with variable references (there are no variables)" in {
     val eventId = controller.eventWatch.lastAddedEventId
     controllerApi.updateSignedSimpleItems(Seq(sign(b2JobResource))).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.id == b2JobResource.id, after = eventId)
+    controller.eventWatch.await[ItemAttached](_.event.key == b2JobResource.id, after = eventId)
 
     val orderId = OrderId("ORDER-2")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
@@ -114,7 +114,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object JobResourceTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val aJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-A"),
@@ -141,7 +141,7 @@ object JobResourceTest
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(Execute.Anonymous(
       WorkflowJob(
-        agentId,
+        agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
@@ -168,7 +168,7 @@ object JobResourceTest
     WorkflowPath("WORKFLOW-ENV") ~ "INITIAL",
     Vector(Execute.Anonymous(
       WorkflowJob(
-        agentId,
+        agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
@@ -203,7 +203,7 @@ object JobResourceTest
     WorkflowPath("WORKFLOW-SOS") ~ "INITIAL",
     Vector(Execute.Anonymous(
       WorkflowJob(
-        agentId,
+        agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail

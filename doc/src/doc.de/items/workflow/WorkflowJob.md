@@ -3,7 +3,7 @@
 Beispiel:
 ```json
 {
-  "agentId": "AGENT",
+  "agentPath": "AGENT",
   "executable": {
     "TYPE": "ScriptExecutable",
     "script": "echo \"hello world1\"\n"
@@ -20,7 +20,7 @@ Beispiel:
 }
 ```
 **Felder**
-* `agentId`
+* `agentPath`
 * `executable`
 
   Ein [Executable](Executable.md)

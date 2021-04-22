@@ -39,22 +39,22 @@ extends Instruction
   override def adopt(outer: Workflow) = copy(
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
-  override def reduceForAgent(agentId: AgentPath, workflow: Workflow) =
-    if (isVisibleForAgent(agentId, workflow))
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
+    if (isVisibleForAgent(agentPath, workflow))
       copy(
         branches = for (b <- branches) yield
           reuseIfEqual(b, b.copy(
-            workflow = b.workflow.reduceForAgent(agentId))))
+            workflow = b.workflow.reduceForAgent(agentPath))))
     else
       Gap(sourcePos = sourcePos)  // The agent will never touch this fork or its branches
 
-  def isStartableOnAgent(agentId: AgentPath): Boolean =
+  def isStartableOnAgent(agentPath: AgentPath): Boolean =
     // Any Agent or the controller can fork. The current Agent is okay.
-    branches.exists(_.workflow isStartableOnAgent agentId)
+    branches.exists(_.workflow isStartableOnAgent agentPath)
 
-  //def isJoinableOnAgent(agentId: AgentPath): Boolean =
+  //def isJoinableOnAgent(agentPath: AgentPath): Boolean =
   //  // If branches end on multiple Agents, only the Controller can join the Orders
-  //  branches.values forall (_ isEndingOnAgent agentId)
+  //  branches.values forall (_ isEndingOnAgent agentPath)
 
   //def startAgents: Set[AgentPath] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet

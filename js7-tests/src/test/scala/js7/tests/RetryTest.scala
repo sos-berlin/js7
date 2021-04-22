@@ -28,7 +28,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   override protected val agentConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
-  protected val agentIds = TestAgentId :: Nil
+  protected val agentPaths = TestAgentPath :: Nil
   protected val versionedItems = Nil
 
   import controller.eventWatch
@@ -57,8 +57,8 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / try_(0) % 0),
-      OrderAttachable(TestAgentId),
-      OrderAttached(TestAgentId),
+      OrderAttachable(TestAgentPath),
+      OrderAttached(TestAgentPath),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -103,8 +103,8 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val expectedEvents = Vector(
       OrderAdded(workflow.path ~ versionId),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0),
-      OrderAttachable(TestAgentId),
-      OrderAttached(TestAgentId),
+      OrderAttachable(TestAgentPath),
+      OrderAttached(TestAgentPath),
       OrderStarted,
 
       OrderProcessingStarted,
@@ -273,6 +273,6 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object RetryTest
 {
-  private val TestAgentId = AgentPath("AGENT")
+  private val TestAgentPath = AgentPath("AGENT")
   private val logger = Logger(getClass)
 }

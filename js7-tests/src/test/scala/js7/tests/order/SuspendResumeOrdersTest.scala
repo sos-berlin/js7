@@ -34,7 +34,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: tryWorkflow :: Nil
   override def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
@@ -67,8 +67,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Seq(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderSuspendMarked(),
       OrderDetachable,
       OrderDetached,
@@ -86,8 +86,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderFinished](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(None),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeededRC0),
@@ -108,8 +108,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -151,8 +151,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(events == Seq(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(SuspendMode(Some(CancelMode.Kill()))),
@@ -170,8 +170,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(None),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
@@ -193,8 +193,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
       assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderSuspendMarked(),
@@ -212,8 +212,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderResumed(None),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(2)),
@@ -261,8 +261,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
         OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
-        OrderId("FORK|🥕") <-: OrderAttachable(agentId),
-        OrderId("FORK|🥕") <-: OrderAttached(agentId),
+        OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
+        OrderId("FORK|🥕") <-: OrderAttached(agentPath),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,
         OrderId("FORK") <-: OrderSuspendMarked(),
         OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
@@ -310,8 +310,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -324,8 +324,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       // and so order is detached for suspending (which has been withdrawn by ResumeOrders).
       OrderDetachable,
       OrderDetached,
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
 
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeededRC0),
@@ -351,8 +351,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     controller.eventWatch.await[OrderSuspended](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -403,8 +403,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(tryWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentId),
-      OrderAttached(agentId),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
       OrderSuspendMarked(),
@@ -444,9 +444,9 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 object SuspendResumeOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd")
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
-  private val executeJob = Execute(WorkflowJob(agentId, pathExecutable, taskLimit = 100))
+  private val executeJob = Execute(WorkflowJob(agentPath, pathExecutable, taskLimit = 100))
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,

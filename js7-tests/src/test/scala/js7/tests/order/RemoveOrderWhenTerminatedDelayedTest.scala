@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = workflow:: Nil
   override protected def controllerConfig = config"""js7.order.remove-delay = 1s"""
     .withFallback(super.controllerConfig)
@@ -45,10 +45,10 @@ final class RemoveOrderWhenTerminatedDelayedTest extends AnyFreeSpec with Contro
 object RemoveOrderWhenTerminatedDelayedTest
 {
   private val pathExecutable = RelativePathExecutable("quick.cmd")
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val workflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentId, pathExecutable)))
+    Execute(WorkflowJob(agentPath, pathExecutable)))
 }

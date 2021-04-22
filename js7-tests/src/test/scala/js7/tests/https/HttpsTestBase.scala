@@ -143,7 +143,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
   ).closeWithCloser
 
   override protected final def agentHttps = true
-  protected final val agentIds = AgentPath("TEST-AGENT") :: Nil
+  protected final val agentPaths = AgentPath("TEST-AGENT") :: Nil
   protected final val versionedItems = TestWorkflow :: Nil
 
   override def beforeAll() = {

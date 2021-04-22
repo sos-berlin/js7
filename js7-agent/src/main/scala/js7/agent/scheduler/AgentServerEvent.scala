@@ -19,7 +19,7 @@ object AgentServerEvent
 
   final case class ControllerRegistered(
     controllerId: ControllerId,
-    agentId: AgentPath,
+    agentPath: AgentPath,
     agentRunId: AgentRunId)
   extends AgentServerEvent
 

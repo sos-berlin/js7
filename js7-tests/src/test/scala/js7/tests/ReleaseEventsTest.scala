@@ -36,7 +36,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentIds = TestAgentId :: Nil
+  protected val agentPaths = TestAgentPath :: Nil
   protected val versionedItems = TestWorkflow :: Nil
   override protected val controllerConfig = config"""
     js7.journal.users-allowed-to-release-events = [ "A", "B" ]
@@ -140,10 +140,10 @@ private object ReleaseEventsTest
   private val aUserAndPassword = UserAndPassword(UserId("A"), SecretString("PASSWORD"))
   private val bUserAndPassword = UserAndPassword(UserId("B"), SecretString("PASSWORD"))
   private val xUserAndPassword = UserAndPassword(UserId("X"), SecretString("PASSWORD"))
-  private val TestAgentId = AgentPath("agent-111")
+  private val TestAgentPath = AgentPath("agent-111")
   private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("test"),
-    Execute(WorkflowJob(TestAgentId, TestPathExecutable)))
+    Execute(WorkflowJob(TestAgentPath, TestPathExecutable)))
   private val aOrder = FreshOrder(OrderId("🔵"), TestWorkflow.id.path)
   private val bOrder = FreshOrder(OrderId("🔶"), TestWorkflow.id.path)
   private val cOrder = FreshOrder(OrderId("⭕️"), TestWorkflow.id.path)

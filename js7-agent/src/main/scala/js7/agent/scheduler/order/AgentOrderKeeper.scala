@@ -64,7 +64,7 @@ import shapeless.tag
   */
 final class AgentOrderKeeper(
   controllerId: ControllerId,
-  ownAgentId: AgentPath,
+  ownAgentPath: AgentPath,
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   executorConf: JobExecutorConf,
@@ -85,7 +85,7 @@ with Stash {
   private var journalState = JournalState.empty
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
-  private val fileWatchManager = new FileWatchManager(ownAgentId, persistence, conf.config)
+  private val fileWatchManager = new FileWatchManager(ownAgentPath, persistence, conf.config)
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
   private val orderEventSource = new OrderEventSource(
@@ -316,7 +316,7 @@ with Stash {
 
         signed.value match {
           case origWorkflow: Workflow =>
-            val workflow = origWorkflow.reduceForAgent(ownAgentId)
+            val workflow = origWorkflow.reduceForAgent(ownAgentPath)
             workflowRegister.get(workflow.id) match {
               case None =>
                 logger.trace("Reduced workflow: ⏎\n" + workflow.toYamlString)
@@ -350,9 +350,9 @@ with Stash {
       else
         order.attached match {
           case Left(problem) => Future.successful(Left(problem))
-          case Right(agentId) =>
-            if (agentId != ownAgentId)
-              Future.successful(Left(Problem(s"Wrong $agentId")))
+          case Right(agentPath) =>
+            if (agentPath != ownAgentPath)
+              Future.successful(Left(Problem(s"Wrong $agentPath")))
             else
               workflowRegister.get(order.workflowId) match {
                 case None =>
@@ -455,7 +455,7 @@ with Stash {
 
   private def startJobActors(workflow: Workflow): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
-      if (job.agentId == ownAgentId) {
+      if (job.agentPath == ownAgentPath) {
         val jobConf = JobConf(
           jobKey, job, workflow, controllerId,
           sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)

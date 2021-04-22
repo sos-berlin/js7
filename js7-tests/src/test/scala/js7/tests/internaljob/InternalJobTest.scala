@@ -41,7 +41,7 @@ import scala.reflect.ClassTag
 
 final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = Nil
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -93,19 +93,19 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       "RESULT" -> NumberValue(201))))
 
   addInternalJobTest(
-    Execute(WorkflowJob(agentId, InternalExecutable(classOf[SimpleJob.type].getName))),
+    Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SimpleJob.type].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
   addInternalJobTest(
-    Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyJob].getName))),
+    Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
   addInternalJobTest(
-    Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyJInternalJob].getName))),
+    Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyJInternalJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
   addInternalJobTest(
-    Execute(WorkflowJob(agentId, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
+    Execute(WorkflowJob(agentPath, InternalExecutable(classOf[EmptyBlockingInternalJob].getName))),
     expectedOutcome = Outcome.Succeeded(NamedValues.empty))
 
   private val blockingThreadPoolName = "JS7 blocking job"
@@ -116,7 +116,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       lazy val indexedOrderIds = (1 to n).map(_ -> orderIdIterator.next())
       addInternalJobTestWithMultipleOrders(
         Execute(WorkflowJob(
-          agentId,
+          agentPath,
           InternalExecutable(
             jobClass.getName,
             jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
@@ -260,12 +260,12 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object InternalJobTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private def execute_[A: ClassTag] =
     Execute(
       WorkflowJob(
-        agentId,
+        agentPath,
         InternalExecutable(
           implicitClass[A].getName,
           arguments = ObjectExpression(Map(

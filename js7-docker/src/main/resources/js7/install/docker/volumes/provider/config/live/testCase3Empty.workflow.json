@@ -272,7 +272,7 @@
   ],
   "jobs": {
     "job1_1a": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -287,7 +287,7 @@
       "taskLimit": 100
     },
     "job1_2b": {
-      "agentId": "agent-2",
+      "agentPath": "agent-2",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -302,7 +302,7 @@
       "taskLimit": 100
     },
     "job1_2a": {
-      "agentId": "agent-2",
+      "agentPath": "agent-2",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -317,7 +317,7 @@
       "taskLimit": 100
     },
     "job1_1b_1b": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -332,7 +332,7 @@
       "taskLimit": 100
     },
     "job1_1b_2": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -347,7 +347,7 @@
       "taskLimit": 100
     },
     "job1": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -362,7 +362,7 @@
       "taskLimit": 100
     },
     "job1_1d": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -377,7 +377,7 @@
       "taskLimit": 100
     },
     "job1_1b_1": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -392,7 +392,7 @@
       "taskLimit": 100
     },
     "job1_2b_2": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -407,7 +407,7 @@
       "taskLimit": 100
     },
     "job1_1b_1a": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -422,7 +422,7 @@
       "taskLimit": 100
     },
     "job1_1c": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -437,7 +437,7 @@
       "taskLimit": 100
     },
     "job1_2d": {
-      "agentId": "agent-2",
+      "agentPath": "agent-2",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -452,7 +452,7 @@
       "taskLimit": 100
     },
     "job1_2b_1": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -467,7 +467,7 @@
       "taskLimit": 100
     },
     "job3": {
-      "agentId": "agent-2",
+      "agentPath": "agent-2",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -483,7 +483,7 @@
       "title": "some title"
     },
     "job1_1b": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",
@@ -498,7 +498,7 @@
       "taskLimit": 100
     },
     "job1_2c": {
-      "agentId": "agent-2",
+      "agentPath": "agent-2",
       "executable": {
         "TYPE": "InternalExecutable",
         "className": "js7.tests.jobs.EmptyJob",

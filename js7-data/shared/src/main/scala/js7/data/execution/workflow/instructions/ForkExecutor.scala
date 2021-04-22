@@ -51,7 +51,7 @@ object ForkExecutor extends EventInstructionExecutor
   private def toJoined(state: StateView, order: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] =
     order.ifState[Order.Forked].flatMap(order =>
       //orderEntry.fork match {
-      //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentId =>
+      //  case fork: Instruction.Fork if fork isJoinableOnAgent ourAgentPath =>
       if (order.isAttached)
         Some(order.id <-: OrderDetachable)
       else {

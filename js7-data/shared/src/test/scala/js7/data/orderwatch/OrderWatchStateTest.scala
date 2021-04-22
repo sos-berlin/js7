@@ -141,14 +141,14 @@ final class OrderWatchStateTest extends AsyncFreeSpec
               "TYPE": "FileWatch",
               "id": "FILE-WATCH",
               "workflowPath": "WORKFLOW",
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "directory": "DIRECTORY",
               "pattern": "PATTERN.*\\.csv",
               "orderIdExpression": "$$1",
               "delay": 2,
               "itemRevision": 7
             },
-            "agentIdToAttachedState": {
+            "agentPathToAttachedState": {
               "AGENT": {
                 "TYPE": "Attached",
                 "itemRevision": 7

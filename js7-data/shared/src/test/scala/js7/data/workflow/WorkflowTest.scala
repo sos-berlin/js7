@@ -43,7 +43,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "JOB": {
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "executable": {
                 "TYPE": "PathExecutable",
                 "path": "EXECUTABLE"
@@ -74,7 +74,7 @@ final class WorkflowTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "PathExecutable",
                   "v1Compatible": true,
@@ -94,7 +94,7 @@ final class WorkflowTest extends AnyFreeSpec
                 ],
                 "jobs": {
                   "B": {
-                    "agentId": "AGENT",
+                    "agentPath": "AGENT",
                     "executable": {
                       "TYPE": "PathExecutable",
                       "v1Compatible": true,
@@ -110,7 +110,7 @@ final class WorkflowTest extends AnyFreeSpec
                   {
                     "TYPE": "Execute.Anonymous",
                     "job": {
-                      "agentId": "AGENT",
+                      "agentPath": "AGENT",
                       "executable": {
                         "TYPE": "PathExecutable",
                         "v1Compatible": true,
@@ -132,7 +132,7 @@ final class WorkflowTest extends AnyFreeSpec
                       {
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentId": "AGENT",
+                          "agentPath": "AGENT",
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
@@ -153,7 +153,7 @@ final class WorkflowTest extends AnyFreeSpec
                       {
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentId": "AGENT",
+                          "agentPath": "AGENT",
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
@@ -172,7 +172,7 @@ final class WorkflowTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "PathExecutable",
                   "v1Compatible": true,
@@ -185,7 +185,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "A": {
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "executable": {
                 "TYPE": "PathExecutable",
                 "v1Compatible": true,
@@ -195,7 +195,7 @@ final class WorkflowTest extends AnyFreeSpec
               "defaultArguments": { "JOB_A": "A-VALUE" }
             },
             "B": {
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "executable": {
                 "TYPE": "PathExecutable",
                 "v1Compatible": true,
@@ -228,7 +228,7 @@ final class WorkflowTest extends AnyFreeSpec
               "position": [ 0 ],
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "PathExecutable",
                   "v1Compatible": true,
@@ -250,7 +250,7 @@ final class WorkflowTest extends AnyFreeSpec
                 ],
                 "jobs": {
                   "B": {
-                    "agentId": "AGENT",
+                    "agentPath": "AGENT",
                     "executable": {
                       "TYPE": "PathExecutable",
                       "v1Compatible": true,
@@ -267,7 +267,7 @@ final class WorkflowTest extends AnyFreeSpec
                     "position": [ 1, "else", 0 ],
                     "TYPE": "Execute.Anonymous",
                     "job": {
-                      "agentId": "AGENT",
+                      "agentPath": "AGENT",
                       "executable": {
                         "TYPE": "PathExecutable",
                         "v1Compatible": true,
@@ -294,7 +294,7 @@ final class WorkflowTest extends AnyFreeSpec
                         "position": [ 2, "fork+🥕", 0 ],
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentId": "AGENT",
+                          "agentPath": "AGENT",
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
@@ -321,7 +321,7 @@ final class WorkflowTest extends AnyFreeSpec
                         "position": [ 2, "fork+🍋", 0 ],
                         "TYPE": "Execute.Anonymous",
                         "job": {
-                          "agentId": "AGENT",
+                          "agentPath": "AGENT",
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
@@ -346,7 +346,7 @@ final class WorkflowTest extends AnyFreeSpec
               "position": [ 3 ],
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "PathExecutable",
                   "v1Compatible": true,
@@ -362,7 +362,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "A": {
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "executable": {
                 "TYPE": "PathExecutable",
                 "v1Compatible": true,
@@ -372,7 +372,7 @@ final class WorkflowTest extends AnyFreeSpec
               "defaultArguments": { "JOB_A": "A-VALUE" }
             },
             "B": {
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "executable": {
                 "TYPE": "PathExecutable",
                 "v1Compatible": true,
@@ -414,7 +414,7 @@ final class WorkflowTest extends AnyFreeSpec
           ],
           "jobs": {
             "EXECUTABLE": {
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "executable": {
                 "TYPE": "PathExecutable",
                 "path": "EXECUTABLE"
@@ -422,7 +422,7 @@ final class WorkflowTest extends AnyFreeSpec
               "taskLimit": 1
             },
             "OWN-SCRIPT": {
-              "agentId": "AGENT",
+              "agentPath": "AGENT",
               "executable": {
                 "TYPE": "ScriptExecutable",
                 "script": "#!/usr/bin/env bash\n..."
@@ -440,7 +440,7 @@ final class WorkflowTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "PathExecutable",
                   "v1Compatible": true,
@@ -467,7 +467,7 @@ final class WorkflowTest extends AnyFreeSpec
             {
               "TYPE": "Execute.Anonymous",
               "job": {
-                "agentId": "AGENT",
+                "agentPath": "AGENT",
                 "executable": {
                   "TYPE": "ScriptExecutable",
                   "script": "echo HELLO\n"
@@ -858,7 +858,7 @@ final class WorkflowTest extends AnyFreeSpec
     import js7.data.workflow.test.ForkTestSetting._
 
     "reduceForAgent A" in {
-      assert(TestWorkflow.reduceForAgent(AAgentId) == Workflow(
+      assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(
         TestWorkflow.id,
         Vector(
           /*0*/ Fork.of(
@@ -879,7 +879,7 @@ final class WorkflowTest extends AnyFreeSpec
     }
 
     "reduceForAgent B" in {
-      assert(TestWorkflow.reduceForAgent(BAgentId) == Workflow(
+      assert(TestWorkflow.reduceForAgent(BAgentPath) == Workflow(
         WorkflowPath("WORKFLOW") ~ "INITIAL" ,
         Vector(
           /*0*/ Gap(),
@@ -903,8 +903,8 @@ final class WorkflowTest extends AnyFreeSpec
             Fork.of(
               "🥕" -> Workflow.of(AExecute))))),
         Map(AJobName -> AJob))
-      assert(workflow.reduceForAgent(AAgentId) eq workflow)
-      assert(workflow.reduceForAgent(BAgentId) == Workflow.of(Gap()))
+      assert(workflow.reduceForAgent(AAgentPath) eq workflow)
+      assert(workflow.reduceForAgent(BAgentPath) == Workflow.of(Gap()))
     }
 
     "reduceForAgent with LockInstruction and more (1)" in {
@@ -919,8 +919,8 @@ final class WorkflowTest extends AnyFreeSpec
             Fork.of(
               "🥕" -> Workflow.of(AExecute))))),
         Map(AJobName -> AJob))
-      assert(workflow.reduceForAgent(AAgentId) eq workflow)
-      assert(workflow.reduceForAgent(BAgentId) == Workflow.of(Gap()))
+      assert(workflow.reduceForAgent(AAgentPath) eq workflow)
+      assert(workflow.reduceForAgent(BAgentPath) == Workflow.of(Gap()))
     }
 
     "reduceForAgent with LockInstruction and if" in {
@@ -940,7 +940,7 @@ final class WorkflowTest extends AnyFreeSpec
           AJobName -> AJob,
           BJobName -> BJob))
 
-      assert(workflow.reduceForAgent(AAgentId) ==
+      assert(workflow.reduceForAgent(AAgentPath) ==
         Workflow(WorkflowPath.Anonymous,
           Vector(
             LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
@@ -956,7 +956,7 @@ final class WorkflowTest extends AnyFreeSpec
           Map(
             AJobName -> AJob)))
 
-      assert(workflow.reduceForAgent(BAgentId) ==
+      assert(workflow.reduceForAgent(BAgentPath) ==
         Workflow(WorkflowPath.Anonymous,
           Vector(
             LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
@@ -975,38 +975,38 @@ final class WorkflowTest extends AnyFreeSpec
 
     "isStartableOnAgent" - {
       val isStartableSetting = List(
-        Position(0) -> List(AAgentId),
-        Position(0) / "fork+🥕" % 0 -> List(AAgentId),
+        Position(0) -> List(AAgentPath),
+        Position(0) / "fork+🥕" % 0 -> List(AAgentPath),
         Position(0) / "fork+🥕" % 1 -> Nil,
-        Position(0) / "fork+🍋" % 0 -> List(AAgentId),
+        Position(0) / "fork+🍋" % 0 -> List(AAgentPath),
         Position(0) / "fork+🍋" % 1 -> Nil,
-        Position(1) -> List(AAgentId),
-        Position(1) / "fork+🥕" % 0 -> List(AAgentId),
+        Position(1) -> List(AAgentPath),
+        Position(1) / "fork+🥕" % 0 -> List(AAgentPath),
         Position(1) / "fork+🥕" % 1 -> Nil,
-        Position(1) / "fork+🍋" % 0 -> List(AAgentId),
+        Position(1) / "fork+🍋" % 0 -> List(AAgentPath),
         Position(1) / "fork+🍋" % 1 -> Nil,
-        Position(2) -> List(BAgentId),
-        Position(3) -> List(AAgentId, BAgentId),
-        Position(3) / "fork+🥕" % 0 -> List(BAgentId),
+        Position(2) -> List(BAgentPath),
+        Position(3) -> List(AAgentPath, BAgentPath),
+        Position(3) / "fork+🥕" % 0 -> List(BAgentPath),
         Position(3) / "fork+🥕" % 1 -> Nil,
-        Position(3) / "fork+🍋" % 0 -> List(AAgentId),
-        Position(3) / "fork+🍋" % 1 -> List(BAgentId),
+        Position(3) / "fork+🍋" % 0 -> List(AAgentPath),
+        Position(3) / "fork+🍋" % 1 -> List(BAgentPath),
         Position(3) / "fork+🍋" % 2 -> Nil,
-        Position(4) -> List(AAgentId, BAgentId),  // Order 🍋 is created on A but executed on B
-        Position(4) / "fork+🥕" % 0 -> List(AAgentId),
+        Position(4) -> List(AAgentPath, BAgentPath),  // Order 🍋 is created on A but executed on B
+        Position(4) / "fork+🥕" % 0 -> List(AAgentPath),
         Position(4) / "fork+🥕" % 1 -> Nil,
-        Position(4) / "fork+🍋" % 0 -> List(BAgentId),
+        Position(4) / "fork+🍋" % 0 -> List(BAgentPath),
         Position(4) / "fork+🍋" % 1 -> Nil,
         Position(5) -> Nil)
 
-      for ((position, agentIds) <- isStartableSetting) {
-        for ((agentId, expected) <- agentIds.map(_ -> true) ++ (AgentIds filterNot agentIds.toSet).map(_ -> false)) {
-          s"isStartableOnAgent($position $agentId) = $expected" in {
-            assert(TestWorkflow.isStartableOnAgent(position, agentId) == expected)
+      for ((position, agentPaths) <- isStartableSetting) {
+        for ((agentPath, expected) <- agentPaths.map(_ -> true) ++ (AgentPaths filterNot agentPaths.toSet).map(_ -> false)) {
+          s"isStartableOnAgent($position $agentPath) = $expected" in {
+            assert(TestWorkflow.isStartableOnAgent(position, agentPath) == expected)
           }
-          s".reduceForAgent.isStartableOnAgent($position $agentId) = $expected" in {
-            //assert(SimpleTestWorkflow.reduceForAgent(agentId).isStartableOnAgent(position, agentId))
-            assert(TestWorkflow.reduceForAgent(agentId).isStartableOnAgent(position, agentId) == expected)
+          s".reduceForAgent.isStartableOnAgent($position $agentPath) = $expected" in {
+            //assert(SimpleTestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
+            assert(TestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath) == expected)
           }
         }
       }
@@ -1014,9 +1014,9 @@ final class WorkflowTest extends AnyFreeSpec
 
     //"determinedExecutingAgent" - {
     //  val setting = List(
-    //    Position(0) -> Some(AAgentId),
-    //    Position(1) -> Some(AAgentId),
-    //    Position(2) -> Some(BAgentId),
+    //    Position(0) -> Some(AAgentPath),
+    //    Position(1) -> Some(AAgentPath),
+    //    Position(2) -> Some(BAgentPath),
     //    Position(3) -> None,
     //    Position(4) -> None,
     //    Position(5) -> Nil)

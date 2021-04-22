@@ -14,7 +14,7 @@ extends JJsonable[JLockState]
   protected def companion = JLockState
 
   @Nonnull
-  def lockId: LockPath =
+  def lockPath: LockPath =
     asScala.lock.id
 
   @Nonnull

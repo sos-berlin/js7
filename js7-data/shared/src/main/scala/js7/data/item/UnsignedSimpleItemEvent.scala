@@ -7,7 +7,7 @@ import js7.data.event.JournaledState
 
 sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent
 {
-  def id: SimpleItemPath
+  def key: SimpleItemPath
 }
 
 object UnsignedSimpleItemEvent
@@ -23,13 +23,13 @@ object UnsignedSimpleItemEvent
   final case class SimpleItemAdded(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged
   {
-    def id = item.id
+    def key = item.id
   }
 
   final case class SimpleItemChanged(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged
   {
-    def id = item.id
+    def key = item.id
   }
 
   def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])

@@ -55,7 +55,7 @@ import shapeless.tag.@@
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver private(agentId: AgentPath,
+final class AgentDriver private(agentPath: AgentPath,
   initialUri: Uri,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
@@ -68,9 +68,9 @@ with ReceiveLoggingActor.WithStash
 {
   protected def journalConf = controllerConfiguration.journalConf
 
-  private val logger = Logger.withPrefix[this.type](agentId.string)
+  private val logger = Logger.withPrefix[this.type](agentPath.string)
   private val agentUserAndPassword: Option[UserAndPassword] =
-    controllerConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentId.string))
+    controllerConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
       .map(password => UserAndPassword(controllerConfiguration.controllerId.toUserId, password))
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
@@ -99,7 +99,7 @@ with ReceiveLoggingActor.WithStash
       (for {
         _ <- EitherT(registerAsControllerIfNeeded)
         completed <- EitherT(
-          client.commandExecute(CoupleController(agentId, agentRunIdOnce.orThrow, eventId = eventId))
+          client.commandExecute(CoupleController(agentPath, agentRunIdOnce.orThrow, eventId = eventId))
             .map(_.map { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds
@@ -195,10 +195,10 @@ with ReceiveLoggingActor.WithStash
         }
   }
 
-  protected def key = agentId  // Only one version is active at any time
+  protected def key = agentPath  // Only one version is active at any time
 
   private def newAgentClient(uri: Uri): AgentClient =
-    AgentClient(uri, agentUserAndPassword, label = agentId.toString,
+    AgentClient(uri, agentUserAndPassword, label = agentPath.toString,
       controllerConfiguration.keyStoreRefOption, controllerConfiguration.trustStoreRefs)(context.system)
 
   def receive = {
@@ -407,7 +407,7 @@ with ReceiveLoggingActor.WithStash
       else
         (for {
           agentRunId <- EitherT(
-            client.commandExecute(RegisterAsController(agentId)).map(_.map(_.agentRunId)))
+            client.commandExecute(RegisterAsController(agentPath)).map(_.map(_.agentRunId)))
           completed <- EitherT(
             if (noJournal)
               Task.pure(Right(Completed))
@@ -454,7 +454,7 @@ with ReceiveLoggingActor.WithStash
         client.close()
       })
 
-  override def toString = s"AgentDriver($agentId)"
+  override def toString = s"AgentDriver($agentPath)"
 }
 
 private[controller] object AgentDriver
@@ -466,11 +466,11 @@ private[controller] object AgentDriver
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
-  def props(agentId: AgentPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
+  def props(agentPath: AgentPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
     agentDriverConfiguration: AgentDriverConfiguration, controllerConfiguration: ControllerConfiguration,
     journalActor: ActorRef @@ JournalActor.type)(implicit s: Scheduler)
   =
-    Props { new AgentDriver(agentId, uri, agentRunId, eventId, agentDriverConfiguration, controllerConfiguration, journalActor) }
+    Props { new AgentDriver(agentPath, uri, agentRunId, eventId, agentDriverConfiguration, controllerConfiguration, journalActor) }
 
   sealed trait Queueable extends Input {
     def toShortString = toString
@@ -493,7 +493,7 @@ private[controller] object AgentDriver
     final case class DetachItem(id: InventoryItemKey)
     extends Input with Queueable
 
-    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentId: AgentPath)
+    final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
     extends Input with Queueable {
       override lazy val hashCode = order.id.hashCode
 

@@ -272,7 +272,7 @@
   ],
   "jobs": {
     "job-1": {
-      "agentId": "agent-1",
+      "agentPath": "agent-1",
       "executable": {
         "TYPE": "ScriptExecutable",
         "script": "echo \"hello world\""
@@ -285,7 +285,7 @@
       "taskLimit": 100
     },
     "job-2": {
-      "agentId": "agent-2",
+      "agentPath": "agent-2",
       "executable": {
         "TYPE": "ScriptExecutable",
         "script": "echo \"hello world\""

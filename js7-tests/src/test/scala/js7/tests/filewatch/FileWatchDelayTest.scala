@@ -41,7 +41,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(workflow)
 
   private lazy val watchedDirectory = directoryProvider.agents(0).dataDir / "tmp/a-files"
@@ -50,7 +50,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
   private lazy val fileWatch = FileWatch(
     orderWatchPath,
     workflow.path,
-    agentId,
+    agentPath,
     watchedDirectory.toString,
     delay = systemWatchDelay + 300.ms)
 
@@ -63,7 +63,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
   "Start with some files" in {
     createDirectories(watchedDirectory)
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-    await[ItemAttached](_.event.id == orderWatchPath)
+    await[ItemAttached](_.event.key == orderWatchPath)
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
     def delayedFileAddedTest(i: Int) = Task {
@@ -105,12 +105,12 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
 
 object FileWatchDelayTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      DeleteFileJob.execute(agentId)))
+      DeleteFileJob.execute(agentPath)))
 
   private val systemWatchDelay = if (isMac) 2.s else 0.s
 }

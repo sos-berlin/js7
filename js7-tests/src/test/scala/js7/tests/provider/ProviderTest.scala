@@ -47,7 +47,7 @@ import scala.concurrent.duration._
 final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected def doNotAddItems = true
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
@@ -231,7 +231,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     "Initial observation with a workflow and an agentRef added" in {
       lastEventId = controller.eventWatch.lastAddedEventId
       writeWorkflowFile(BWorkflowPath)
-      //live / (s"$agentId.json") := AgentRef(agentId, uri = agent.localUri)
+      //live / (s"$agentPath.json") := AgentRef(agentPath, uri = agent.localUri)
 
       whenObserved
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
@@ -320,7 +320,7 @@ object ProviderTest
     js7.provider.directory-watch.poll-interval = "${if (isMac) "100ms" else "300s"}"
     """
 
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val AWorkflowPath = WorkflowPath("A")
   private val BWorkflowPath = WorkflowPath("B")
   private val CWorkflowPath = WorkflowPath("C")
@@ -336,7 +336,7 @@ object ProviderTest
         {
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentId": "AGENT",
+            "agentPath": "AGENT",
             "executable": {
               "TYPE": "PathExecutable",
               "path": "EXECUTABLE"
@@ -353,7 +353,7 @@ object ProviderTest
         {
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentId": "AGENT",
+            "agentPath": "AGENT",
             "executable": {
               "TYPE": "PathExecutable",
               "path": "OTHER-EXECUTABLE"

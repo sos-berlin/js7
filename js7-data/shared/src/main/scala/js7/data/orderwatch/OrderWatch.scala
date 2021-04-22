@@ -12,7 +12,7 @@ trait OrderWatch extends UnsignedSimpleItem
 
   val companion: Companion[Self] { type Key <: OrderWatchPath }
 
-  val agentId: AgentPath
+  val agentPath: AgentPath
   val workflowPath: WorkflowPath
 }
 

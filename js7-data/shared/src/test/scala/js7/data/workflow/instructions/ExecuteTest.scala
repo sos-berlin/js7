@@ -49,7 +49,7 @@ final class ExecuteTest extends AnyFreeSpec
         json"""{
           "TYPE": "Execute.Anonymous",
           "job": {
-            "agentId": "AGENT",
+            "agentPath": "AGENT",
             "executable": {
               "TYPE": "PathExecutable",
               "path": "EXECUTABLE"
@@ -77,7 +77,7 @@ final class ExecuteTest extends AnyFreeSpec
             "ARG": 1
           },
           "job": {
-            "agentId": "AGENT",
+            "agentPath": "AGENT",
             "executable": {
               "TYPE": "ScriptExecutable",
               "script": "SCRIPT",

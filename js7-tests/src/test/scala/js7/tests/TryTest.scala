@@ -21,7 +21,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class TryTest extends AnyFreeSpec
 {
   "Nested try catch with outer non-failing catch, OrderFinished" in {
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, FinishingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, FinishingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
         a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
@@ -37,7 +37,7 @@ final class TryTest extends AnyFreeSpec
   }
 
   "Nested try catch with failing catch, OrderFailed" in {
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, StoppingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, StoppingWorkflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
         a.writeExecutable(RelativePathExecutable(s"FAIL-2$sh"), if (isWindows) "@exit 2" else "exit 2")
@@ -64,7 +64,7 @@ final class TryTest extends AnyFreeSpec
          |  }
          |  execute executable="OKAY$sh", agent="AGENT";
          |}""".stripMargin).orThrow
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
         a.writeExecutable(RelativePathExecutable(s"FAIL$sh"), if (isWindows) "@exit 1" else "exit 1")
@@ -76,8 +76,8 @@ final class TryTest extends AnyFreeSpec
         checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], Vector(
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / try_(0) % 0),
-          OrderAttachable(TestAgentId),
-          OrderAttached(TestAgentId),
+          OrderAttachable(TestAgentPath),
+          OrderAttached(TestAgentPath),
           OrderStarted,
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
@@ -110,7 +110,7 @@ final class TryTest extends AnyFreeSpec
          |    execute executable="OKAY$sh", agent="AGENT";
          |  }
          |}""".stripMargin).orThrow
-    autoClosing(new DirectoryProvider(TestAgentId :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil, testName = Some("TryTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) {
         a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")
         a.writeExecutable(RelativePathExecutable(s"FAIL-1$sh"), if (isWindows) "@exit 1" else "exit 1")
@@ -131,8 +131,8 @@ final class TryTest extends AnyFreeSpec
             OrderForked.Child("🌶", OrderId("🔴|🌶")))),
           OrderJoined(Outcome.Failed()),
           OrderCatched(Position(0) / "catch+0" % 0),
-          OrderAttachable(TestAgentId),
-          OrderAttached(TestAgentId),
+          OrderAttachable(TestAgentPath),
+          OrderAttached(TestAgentPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1)),
@@ -140,8 +140,8 @@ final class TryTest extends AnyFreeSpec
           OrderDetached,
           OrderFinished))
         checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.all[OrderEvent], Vector(
-          OrderAttachable(TestAgentId),
-          OrderAttached(TestAgentId),
+          OrderAttachable(TestAgentPath),
+          OrderAttached(TestAgentPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
           OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0),
@@ -164,7 +164,7 @@ final class TryTest extends AnyFreeSpec
 
 object TryTest
 {
-  private val TestAgentId = AgentPath("AGENT")
+  private val TestAgentPath = AgentPath("AGENT")
   private val finishingScript = s"""
      |define workflow {
      |  try {                                                // :0
@@ -183,8 +183,8 @@ object TryTest
   private val ExpectedFinishedEvents = Vector(
     OrderAdded(FinishingWorkflow.id),
     OrderMoved(Position(0) / "try+0" % 0 / "try+0" % 0),
-    OrderAttachable(TestAgentId),
-    OrderAttached(TestAgentId),
+    OrderAttachable(TestAgentPath),
+    OrderAttached(TestAgentPath),
 
     OrderStarted,
     OrderProcessingStarted,
@@ -217,8 +217,8 @@ object TryTest
   private val ExpectedStoppedEvent = Vector(
     OrderAdded(StoppingWorkflow.id),
     OrderMoved(Position(0) / "try+0" % 0),
-    OrderAttachable(TestAgentId),
-    OrderAttached(TestAgentId),
+    OrderAttachable(TestAgentPath),
+    OrderAttached(TestAgentPath),
 
     OrderStarted,
     OrderProcessingStarted,

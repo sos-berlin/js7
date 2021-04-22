@@ -47,12 +47,12 @@ extends JournaledState[AgentServerState]
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match {
-      case KeyedEvent(_: NoKey, AgentServerEvent.ControllerRegistered(controllerId, agentId, agentRunId)) =>
+      case KeyedEvent(_: NoKey, AgentServerEvent.ControllerRegistered(controllerId, agentPath, agentRunId)) =>
         if (idToController contains controllerId)
           Left(Problem.pure(s"Duplicate event for register Controller: $keyedEvent"))
         else
           Right(copy(
-            idToController = idToController + (controllerId -> RegisteredController(controllerId, agentId, agentRunId))))
+            idToController = idToController + (controllerId -> RegisteredController(controllerId, agentPath, agentRunId))))
 
       case keyedEvent =>
         applyStandardEvent(keyedEvent)

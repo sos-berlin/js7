@@ -21,7 +21,7 @@ import scala.reflect.runtime.universe._
 
 final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Nil
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -44,8 +44,8 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
       |}""".stripMargin,
       Vector(
         OrderAdded(workflowId),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -65,8 +65,8 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
       |}""".stripMargin,
       Vector(
         OrderAdded(workflowId),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
@@ -174,5 +174,5 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object FailTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 }

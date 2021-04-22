@@ -33,7 +33,7 @@ import monix.execution.Scheduler.Implicits.global
   */
 object TestDockerExample
 {
-  private val TestAgentIds = AgentPath("agent-1") :: AgentPath("agent-2") :: Nil
+  private val TestAgentPaths = AgentPath("agent-1") :: AgentPath("agent-2") :: Nil
 
   def main(args: Array[String]) = {
     val directory =
@@ -51,7 +51,7 @@ object TestDockerExample
   }
 
   private def run(directory: Path): Unit = {
-    val env = new TestEnvironment(TestAgentIds, directory)
+    val env = new TestEnvironment(TestAgentPaths, directory)
     def provide(path: String) = {
       val dir = if (path.startsWith("controller")) directory else env.agentsDir
       createDirectories((dir / path).getParent)
@@ -71,11 +71,11 @@ object TestDockerExample
       val injector = Guice.createInjector(new ControllerModule(controllerConfiguration.copy(
         config = controllerConfiguration.config)))
       injector.instance[Closer].closeWithCloser
-      val agents = for (agentId <- TestAgentIds) yield {
+      val agents = for (agentPath <- TestAgentPaths) yield {
         val agent = RunningAgent.startForTest(
-          AgentConfiguration.forTest(configAndData = env.agentDir(agentId))
+          AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
         ).map(_.closeWithCloser) await 99.s
-        //env.file(agentId, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
+        //env.file(agentPath, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
         agent
       }
       JavaShutdownHook.add("TestDockerExample") {

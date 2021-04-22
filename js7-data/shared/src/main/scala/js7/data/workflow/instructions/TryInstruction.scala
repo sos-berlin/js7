@@ -47,10 +47,10 @@ extends Instruction
     tryWorkflow = tryWorkflow.copy(outer = Some(outer)),
     catchWorkflow = catchWorkflow.copy(outer = Some(outer)))
 
-  override def reduceForAgent(agentId: AgentPath, workflow: Workflow): Instruction =
+  override def reduceForAgent(agentPath: AgentPath, workflow: Workflow): Instruction =
     copy(
-      tryWorkflow = tryWorkflow.reduceForAgent(agentId),
-      catchWorkflow = catchWorkflow.reduceForAgent(agentId))
+      tryWorkflow = tryWorkflow.reduceForAgent(agentPath),
+      catchWorkflow = catchWorkflow.reduceForAgent(agentPath))
 
   override def workflow(branchId: BranchId) =
     branchId match {

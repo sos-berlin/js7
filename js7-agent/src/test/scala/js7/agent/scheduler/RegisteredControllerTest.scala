@@ -23,7 +23,7 @@ final class RegisteredControllerTest extends AnyFreeSpec
       json"""{
         "TYPE": "RegisteredController",
         "controllerId": "CONTROLLER",
-        "agentId": "AGENT",
+        "agentPath": "AGENT",
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w"
       }""")
   }

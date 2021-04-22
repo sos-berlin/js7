@@ -87,7 +87,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
         "--data-directory=" + dir / "controller/data" ::
         "--http-port=" + controllerPort :: Nil))
 
-      val agentRef = AgentRef(agentId, Uri(s"http://127.0.0.1:$agentPort"))
+      val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort"))
       val agent = RunningAgent(agentConfiguration) await 99.s
       val controller = RunningController(controllerConfiguration) await 99.s
       controller.waitUntilReady()
@@ -109,9 +109,9 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 object ControllerAgentWithoutAuthenticationTest
 {
   private val versionId = VersionId("INITIAL")
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val pathExecutable = PathExecutable("EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ versionId,
-    Execute(WorkflowJob(agentId, pathExecutable)))
+    Execute(WorkflowJob(agentPath, pathExecutable)))
   private val orderId = OrderId("🔵")
 }

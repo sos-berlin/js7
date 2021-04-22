@@ -29,7 +29,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentIds = Seq(agentId)
+  protected val agentPaths = Seq(agentPath)
   protected val versionedItems = Seq(emptyWorkflow, unknownArgWorkflow, paramWorkflow)
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
@@ -52,8 +52,8 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val orderId = OrderId(s"UNKNOWN-ARG-$i")
       assert(controller.runOrder(FreshOrder(orderId, unknownArgWorkflow.path)).map(_.value) == Seq(
         OrderAdded(unknownArgWorkflow.path ~ "INITIAL"),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderProcessed(Outcome.Disrupted(Problem("No such named value: myString"))),
@@ -77,8 +77,8 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.runOrder(FreshOrder(orderId, paramWorkflow.path, namedValues)).map(_.value) ==
       Seq(
         OrderAdded(paramWorkflow.path ~ "INITIAL", namedValues),
-        OrderAttachable(agentId),
-        OrderAttached(agentId),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
         OrderStdoutWritten("STRING=DEFAULT\n" + "NUMBER=7\n"),
@@ -93,14 +93,14 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object AddOrderTest
 {
   private val logger = Logger[this.type]
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val emptyWorkflow = Workflow.of(WorkflowPath("EMPTY"))
   private val stringParameter = WorkflowParameter("myString", StringValue, Some(StringValue("DEFAULT")))
   private val numberParameter = WorkflowParameter("myNumber", NumberValue)
 
   private val unknownArgWorkflow = Workflow(WorkflowPath("UNKNOWN-ARG"),
     labeledInstructions = Vector(
-      Execute.Anonymous(WorkflowJob(agentId,
+      Execute.Anonymous(WorkflowJob(agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
@@ -112,7 +112,7 @@ object AddOrderTest
 
   private val paramWorkflow = Workflow(WorkflowPath("PARAMETERIZED-WORKFLOW"),
     labeledInstructions = Vector(
-      Execute.Anonymous(WorkflowJob(agentId,
+      Execute.Anonymous(WorkflowJob(agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail

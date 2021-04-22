@@ -46,9 +46,9 @@ object DeleteFileJob
 {
   private val logger = Logger[this.type]
 
-  def execute(agentId: AgentPath) =
+  def execute(agentPath: AgentPath) =
     Execute(WorkflowJob(
-      agentId,
+      agentPath,
       InternalExecutable(classOf[DeleteFileJob].getName),
       taskLimit = sys.runtime.availableProcessors))
 }

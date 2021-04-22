@@ -75,7 +75,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   "Shell script" in {
     val pathExecutable = RelativePathExecutable(s"TEST-1$sh", v1Compatible = true)
     pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentId, pathExecutable, Map("VAR1" -> StringValue("FROM-JOB"))))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, pathExecutable, Map("VAR1" -> StringValue("FROM-JOB"))))
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout) == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr) == s"THIS IS STDERR$Nl")
@@ -97,7 +97,7 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
           s"""echo ${line("o", i)}
              |echo ${line("e", i)}>&2
              |""".stripMargin).mkString)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentId, pathExecutable))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, pathExecutable))
     info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)}) took ${result.duration.pretty}")
     assert(result.stdoutStderr(Stderr) == expectedStderr)
     assert(result.stdoutStderr(Stdout) == expectedStdout)
@@ -129,7 +129,7 @@ private object OrderActorTest {
   private val TestVersion = VersionId("VERSION")
   private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("WORKFLOW") ~ TestVersion, Order.Ready)
   private val DummyJobKey = JobKey.Named(WorkflowPath.NoId, WorkflowJob.Name("test"))
-  private val TestAgentId = AgentPath("TEST-AGENT")
+  private val TestAgentPath = AgentPath("TEST-AGENT")
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
     OrderAttachedToAgent(TestOrder.workflowPosition, Order.Ready, TestOrder.arguments, None, TestOrder.historicOutcomes,
@@ -228,7 +228,7 @@ private object OrderActorTest {
     private def jobActorReady: Receive = {
       case JobActor.Output.ReadyForOrder =>  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder.copy(
-          attachedState = Some(Order.Attached(TestAgentId))))
+          attachedState = Some(Order.Attached(TestAgentPath))))
         become(attaching)
     }
 

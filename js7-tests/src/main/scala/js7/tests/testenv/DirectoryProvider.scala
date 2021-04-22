@@ -52,7 +52,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 final class DirectoryProvider(
-  agentIds: Seq[AgentPath],
+  agentPaths: Seq[AgentPath],
   versionedItems: Seq[VersionedItem] = Nil,
   simpleItems: Seq[UnsignedSimpleItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
@@ -85,11 +85,11 @@ extends HasCloser
     keyStore = controllerKeyStore, trustStores = controllerTrustStores,
     agentHttpsMutual = agentHttpsMutual)
   val agentToTree: Map[AgentPath, AgentTree] =
-    agentIds
-      .zip(agentPorts ++ Vector.fill(agentIds.size - agentPorts.size)(findFreeTcpPort()))
-      .map { case (agentId, port) => agentId ->
-        new AgentTree(directory, agentId,
-          testName.fold("")(_ + "-") ++ agentId.string,
+    agentPaths
+      .zip(agentPorts ++ Vector.fill(agentPaths.size - agentPorts.size)(findFreeTcpPort()))
+      .map { case (agentPath, port) => agentPath ->
+        new AgentTree(directory, agentPath,
+          testName.fold("")(_ + "-") ++ agentPath.string,
           port = port,
           https = agentHttps,
           mutualHttps = agentHttpsMutual,
@@ -99,7 +99,7 @@ extends HasCloser
       }
       .toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
-  lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentId, uri = a.agentConfiguration.localUri)
+  lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentPath, uri = a.agentConfiguration.localUri)
   private val itemHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
@@ -190,9 +190,9 @@ extends HasCloser
       runningController
     }
 
-  def runAgents[A](agentIds: Seq[AgentPath] = DirectoryProvider.this.agentIds)(body: IndexedSeq[RunningAgent] => A): A =
+  def runAgents[A](agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(body: IndexedSeq[RunningAgent] => A): A =
     multipleAutoClosing(agents
-      .filter(o => agentIds.contains(o.agentId))
+      .filter(o => agentPaths.contains(o.agentPath))
       .map(_.agentConfiguration)
       .map(RunningAgent.startForTest)
       .await(99.s))
@@ -210,10 +210,10 @@ extends HasCloser
     }
 
   def startAgents(): Future[Seq[RunningAgent]] =
-    Future.sequence(agents.map(_.agentId) map startAgent)
+    Future.sequence(agents.map(_.agentPath) map startAgent)
 
-  def startAgent(agentId: AgentPath): Future[RunningAgent] =
-    RunningAgent.startForTest(agentToTree(agentId).agentConfiguration)
+  def startAgent(agentPath: AgentPath): Future[RunningAgent] =
+    RunningAgent.startForTest(agentToTree(agentPath).agentConfiguration)
 
   def updateVersionedItems(
     controller: RunningController,
@@ -297,20 +297,20 @@ object DirectoryProvider
     def writeAgentAuthentication(agentTree: AgentTree): Unit =
       if (!agentHttpsMutual) {
         (configDir / "private" / "private.conf") ++=
-          "js7.auth.agents." + quoteString(agentTree.agentId.string) + " = " + quoteString(agentTree.password.string) + "\n" +
+          "js7.auth.agents." + quoteString(agentTree.agentPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
           "js7.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"  /*ClusterWatch*/
       } else {
         // Agent uses the distinguished name of the Controller's HTTPS certificate
       }
   }
 
-  final class AgentTree(rootDirectory: Path, val agentId: AgentPath, name: String,
+  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath, name: String,
     port: Int,
     https: Boolean = false, mutualHttps: Boolean = false,
     provideHttpsCertificate: Boolean = false, provideClientCertificate: Boolean = false,
     config: Config = ConfigFactory.empty)
   extends Tree {
-    val directory = rootDirectory / agentId.string
+    val directory = rootDirectory / agentPath.string
     lazy val agentConfiguration = (AgentConfiguration.forTest(directory,
         config,
         httpPort = !https ? port,

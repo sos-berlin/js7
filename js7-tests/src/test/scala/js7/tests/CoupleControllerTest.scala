@@ -28,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = TestWorkflow :: Nil
 
   override protected def controllerConfig = config"""
@@ -64,7 +64,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       move(firstJournalFile, Paths.get(s"$firstJournalFile-MOVED"))
       directoryProvider.runAgents() { _ =>
         val event = controller.eventWatch.await[AgentCouplingFailed](after = lastEventId, predicate =
-          ke => ke.key == agentId &&
+          ke => ke.key == agentPath &&
             ke.event.problem.is(UnknownEventIdProblem))
         lastEventId = event.last.eventId
       }
@@ -109,7 +109,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       directoryProvider.runController() { controller =>
         controller.eventWatch.await[AgentCouplingFailed](after = controller.recoveredEventId,
           predicate = ke =>
-            ke.key == agentId && ke.event.problem.is(UnknownEventIdProblem))
+            ke.key == agentPath && ke.event.problem.is(UnknownEventIdProblem))
       }
     }
 
@@ -140,7 +140,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       directoryProvider.runAgents() { _ =>
         controller.eventWatch.await[AgentCouplingFailed](after = controller.recoveredEventId,
           predicate = ke =>
-            ke.key == agentId && ke.event.problem.is(UnknownEventIdProblem))
+            ke.key == agentPath && ke.event.problem.is(UnknownEventIdProblem))
       }
     }
   }
@@ -149,12 +149,12 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
 private object CoupleControllerTest
 {
   private val logger = Logger(getClass)
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd")
 
   private val TestWorkflow = Workflow(WorkflowPath("test") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentId, TestPathExecutable))))
+      Execute(WorkflowJob(agentPath, TestPathExecutable))))
 
   private def lastEventIdOf[E <: Event](stamped: IterableOnce[Stamped[KeyedEvent[E]]]): EventId =
     stamped.iterator.to(Iterable).last.eventId

@@ -26,7 +26,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val agentIds = agentId :: Nil
+  protected val agentPaths = agentPath :: Nil
   protected val versionedItems = workflow :: Nil
   override protected def controllerConfig = config"js7.journal.release-events-delay = 0s"
     .withFallback(super.controllerConfig)
@@ -56,9 +56,9 @@ final class ObsoleteJournalFilesRemovedTest extends AnyFreeSpec with DirectoryPr
 
 private object ObsoleteJournalFilesRemovedTest
 {
-  private val agentId = AgentPath("agent-111")
+  private val agentPath = AgentPath("agent-111")
   private val pathExecutable = RelativePathExecutable(s"TEST$sh")
   private val workflow = Workflow.of(WorkflowPath("test"),
-    Execute(WorkflowJob(agentId, pathExecutable)))
+    Execute(WorkflowJob(agentPath, pathExecutable)))
   private val aOrder = FreshOrder(OrderId("🔵"), workflow.id.path)
 }

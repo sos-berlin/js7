@@ -135,7 +135,7 @@ Beispiel in JSON den beiden Parametern
     {
       "TYPE": "Execute.Anonymous",
       "job": {
-        "agentId": "AGENT",
+        "agentPath": "AGENT",
         "executable": {
           "TYPE": "ScriptExecutable",
           "script": "#!/usr/bin/env bash\nset -euo pipefail\necho \"STRING=$STRING\"\necho \"NUMBER=$NUMBER\"\n",

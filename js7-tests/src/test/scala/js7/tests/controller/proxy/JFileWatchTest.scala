@@ -12,7 +12,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class JFileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected def agentIds = Seq(agentId)
+  protected def agentPaths = Seq(agentPath)
   protected def versionedItems = Seq(workflow)
   override protected def controllerConfig = config"""
     js7.web.server.auth.public = on
@@ -29,7 +29,7 @@ final class JFileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object JFileWatchTest
 {
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
-    DeleteFileJob.execute(agentId))
+    DeleteFileJob.execute(agentPath))
 }

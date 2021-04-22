@@ -31,7 +31,7 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   implicit private lazy val scheduler = agent.injector.instance[Scheduler]
   implicit private lazy val actorSystem = agent.actorSystem
   private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
-  private val agentId = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst
   private var snapshotEventId = EventId.BeforeFirst
@@ -46,7 +46,7 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   }
 
   "(RegisterAsController)" in {
-    val RegisterAsController.Response(agentRunId_) = agentClient.commandExecute(RegisterAsController(agentId)).await(99.s).orThrow
+    val RegisterAsController.Response(agentRunId_) = agentClient.commandExecute(RegisterAsController(agentPath)).await(99.s).orThrow
     this.agentRunId = agentRunId_
   }
 
@@ -73,10 +73,10 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   }
 
   "Recoupling with changed AgentRunId or different AgentPath fails" in {
-    assert(agentClient.commandExecute(CoupleController(agentId, AgentRunId(JournalId.random()), eventId)).await(99.s) ==
-      Left(ControllerAgentMismatch(agentId)))
+    assert(agentClient.commandExecute(CoupleController(agentPath, AgentRunId(JournalId.random()), eventId)).await(99.s) ==
+      Left(ControllerAgentMismatch(agentPath)))
     assert(agentClient.commandExecute(CoupleController(AgentPath("OTHER"), agentRunId, eventId)).await(99.s) ==
-      Left(DuplicateAgentRef(first = agentId, second = AgentPath("OTHER"))))
+      Left(DuplicateAgentRef(first = agentPath, second = AgentPath("OTHER"))))
     val Right(EventSeq.NonEmpty(events)) = agentClient.controllersEvents(
       EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
@@ -103,22 +103,22 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
     // Wait until ReleaseEvents takes effect (otherwise CoupleController may succeed or fail with watch.ClosedException)
     waitForCondition(9.s, 10.ms) { journalFiles.head.afterEventId > EventId.BeforeFirst }
 
-    assert(agentClient.commandExecute(CoupleController(agentId, agentRunId, EventId.BeforeFirst)).await(99.s) ==
+    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
       Left(UnknownEventIdProblem(EventId.BeforeFirst)))
   }
 
   "Recoupling with Controller's last events deleted fails" in {
     val newerEventId = eventId + 1  // Assuming that no further Event has been emitted
-    assert(agentClient.commandExecute(CoupleController(agentId, agentRunId, newerEventId)).await(99.s) ==
+    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, newerEventId)).await(99.s) ==
       Left(UnknownEventIdProblem(newerEventId)))
 
     val unknownEventId = EventId(1)  // Assuming this is EventId has not been emitted
-    assert(agentClient.commandExecute(CoupleController(agentId, agentRunId, unknownEventId)).await(99.s) ==
+    assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, unknownEventId)).await(99.s) ==
       Left(UnknownEventIdProblem(unknownEventId)))
   }
 
   "Recouple" in {
-    agentClient.commandExecute(CoupleController(agentId, agentRunId, eventId)).await(99.s).orThrow
+    agentClient.commandExecute(CoupleController(agentPath, agentRunId, eventId)).await(99.s).orThrow
   }
 
   "Continue fetching events" in {
