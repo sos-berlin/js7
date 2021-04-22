@@ -64,8 +64,8 @@ object StateView
         order.workflowPosition.position.catchCount))
 
       override def symbolToValue(symbol: String) = symbol match {
-        case "catchCount" => catchCount
-        case _ => super.symbolToValue(symbol)
+        case "catchCount" => Some(catchCount)
+        case _ => None
       }
 
       val findValue = {

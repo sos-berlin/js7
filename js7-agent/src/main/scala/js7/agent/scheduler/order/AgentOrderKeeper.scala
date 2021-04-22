@@ -457,7 +457,7 @@ with Stash {
     for ((jobKey, job) <- workflow.keyToJob) {
       if (job.agentId == ownAgentId) {
         val jobConf = JobConf(
-          jobKey, job, workflow,
+          jobKey, job, workflow, controllerId,
           sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
         val jobActor = watch(actorOf(
           JobActor.props(jobConf, executorConf, id => persistence.currentState.idToJobResource.checked(id)),

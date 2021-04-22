@@ -24,8 +24,8 @@ final class EvaluatorTest extends AnyFreeSpec
         import ValueSearch.{LastExecuted, Name}
 
         override def symbolToValue(symbol: String) = symbol match {
-          case "catchCount" => Right(NumberValue(3))
-          case _ => super.symbolToValue(symbol)
+          case "catchCount" => Some(Right(NumberValue(3)))
+          case _ => None
         }
 
         val findValue = {
@@ -59,12 +59,12 @@ final class EvaluatorTest extends AnyFreeSpec
             None
         }
 
-        override def evalFunctionCall(functionCall: FunctionCall): Checked[Value] =
+        override def evalFunctionCall(functionCall: FunctionCall): Option[Checked[Value]] =
           functionCall match {
             case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
-             evaluator.eval(expr).flatMap(_.toNumber).map(o => NumberValue(o.number * 3))
+             Some(evaluator.eval(expr).flatMap(_.toNumber).map(o => NumberValue(o.number * 3)))
 
-            case _ => super.evalFunctionCall(functionCall)
+            case _ => None
           }
       })
     val eval = evaluator.eval _

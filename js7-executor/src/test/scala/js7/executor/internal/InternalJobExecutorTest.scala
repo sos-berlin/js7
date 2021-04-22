@@ -7,6 +7,7 @@ import js7.base.thread.IOExecutor.globalIOX
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichPartialFunction}
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
@@ -36,6 +37,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
         JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
         workflowJob,
         workflow,
+        ControllerId("CONTROLLER"),
         sigKillDelay = 0.s),
       _ => Left(Problem("No JobResource here")),
       globalIOX.scheduler)(Scheduler.global, globalIOX)

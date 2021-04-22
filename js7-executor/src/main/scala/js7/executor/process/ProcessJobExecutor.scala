@@ -1,14 +1,15 @@
 package js7.executor.process
 
-import cats.implicits._
+import cats.syntax.all._
 import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
 import js7.data.value.StringValue
+import js7.data.value.expression.Evaluator
 import js7.data.value.expression.Expression.ObjectExpression
-import js7.data.value.expression.{Evaluator, Scope}
+import js7.data.value.expression.scopes.{EnvScope, NamedValueScope, NowScope}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
@@ -26,17 +27,31 @@ trait ProcessJobExecutor extends JobExecutor
   final def start = Task.pure(Right(()))
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
-    val taskRunner = jobExecutorConf.newTaskRunner(
-      TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine,
-        v1Compatible = v1Compatible))
+    import processOrder.order
+    val jobResourceScope = Seq(
+      new NowScope,
+      EnvScope,
+      new NamedValueScope(Map(
+        "js7ControllerId" -> StringValue(jobConf.controllerId.string),
+        "js7WorkflowPath" -> StringValue(order.workflowId.path.string),
+        "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString),
+        "js7OrderId" -> StringValue(order.id.string),
+        "js7JobName" -> StringValue(jobKey.name)))
+    ).combineAll
+
     val checkedJobResourcesEnv = checkedCurrentJobResources().flatMap(_
       .view
       .map(_.env.nameToExpr)
       .reverse/*left overrides right*/
       .fold(Map.empty)(_ ++ _)
       .toSeq
-      .traverse { case (k, v) => Scope.Env.evalString(v).map(k -> _) }
+      .traverse { case (k, v) => jobResourceScope.evalString(v).map(k -> _) }
       .map(_.toMap))
+
+    val taskRunner = jobExecutorConf.newTaskRunner(
+      TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine,
+        v1Compatible = v1Compatible))
+
     new OrderProcess {
       def run =
         checkedJobResourcesEnv match {
@@ -46,7 +61,7 @@ trait ProcessJobExecutor extends JobExecutor
           case Right(jobResourcesEnv) =>
             taskRunner
               .processOrder(
-                processOrder.order.id,
+                order.id,
                 (v1Env(processOrder).view ++ startProcess.env ++ jobResourcesEnv).toMap,
                 processOrder.stdObservers)
               .guarantee(taskRunner.terminate)

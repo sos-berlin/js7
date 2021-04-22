@@ -10,6 +10,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
@@ -47,6 +48,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
           JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
           WorkflowJob(AgentId("AGENT"), executable),
           workflow,
+          ControllerId("CONTROLLER"),
           sigKillDelay = 0.s),
         _ => Left(Problem("No JobResource here")),
         jobScheduler)

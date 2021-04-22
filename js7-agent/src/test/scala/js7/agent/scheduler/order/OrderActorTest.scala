@@ -28,6 +28,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.data.agent.AgentId
+import js7.data.controller.ControllerId
 import js7.data.event.{EventRequest, JournalId, KeyedEvent, Stamped}
 import js7.data.item.VersionId
 import js7.data.job.{JobConf, JobKey, RelativePathExecutable}
@@ -194,7 +195,7 @@ private object OrderActorTest {
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = actorOf(
       JobActor.props(
-        JobConf(jobKey, workflowJob, Workflow.empty, sigKillDelay = 5.s),
+        JobConf(jobKey, workflowJob, Workflow.empty, ControllerId("CONTROLLER"), sigKillDelay = 5.s),
         executorConf,
         _ => Left(Problem("No JobResource here"))))
     private val orderActor = watch(actorOf(

@@ -39,7 +39,9 @@ final class Evaluator(scope: Scope)
       case Or             (a, b) => evalBoolean(a).flatMap(o => if (o.booleanValue) Right(o) else evalBoolean(b))
       case ToBoolean(a) => evalString(a) flatMap toBoolean
       case NumericConstant(o) => Right(NumberValue(o))
-      case OrderCatchCount => scope.symbolToValue("catchCount").flatMap(_.toNumber)
+      case OrderCatchCount => scope.symbolToValue("catchCount")
+        .getOrElse(Left(Problem(s"Unknown symbol: $OrderCatchCount")))
+        .flatMap(_.toNumber)
       case ToNumber(e) => eval(e) flatMap toNumber
 
       case InterpolatedString(expressions) =>
@@ -89,6 +91,7 @@ final class Evaluator(scope: Scope)
 
   private def evalFunctionCall(functionCall: Expression.FunctionCall): Checked[Value] =
     scope.evalFunctionCall(functionCall)
+      .getOrElse(Left(Problem(s"Unknown function or non-matching arguments: ${functionCall.name}")))
 
   private def evalListExpression(expr: ListExpression): Checked[ListValue] =
     expr.expressions.traverse(eval).map(ListValue.apply)

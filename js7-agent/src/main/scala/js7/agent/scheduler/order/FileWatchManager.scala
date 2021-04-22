@@ -240,5 +240,5 @@ object FileWatchManager
   }
 
   private def eval(orderWatchId: OrderWatchId, expression: Expression, matchedMatcher: Matcher) =
-    Evaluator.eval(expression, new FileWatchScope(orderWatchId, matchedMatcher))
+    Evaluator.eval(expression, FileWatchScope(orderWatchId, matchedMatcher))
 }
