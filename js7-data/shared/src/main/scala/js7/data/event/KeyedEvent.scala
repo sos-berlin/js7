@@ -21,7 +21,7 @@ final case class KeyedEvent[+E <: Event](key: E#Key, event: E)
 }
 
 object KeyedEvent {
-  private[event] val KeyFieldName = "key"
+  private[event] val KeyFieldName = "Key"
 
   type NoKey = NoKey.type
   case object NoKey {
@@ -50,7 +50,7 @@ object KeyedEvent {
 
   implicit def jsonDecoder[E <: Event](implicit decoder: Decoder[E], keyDecoder: Decoder[E#Key]): Decoder[KeyedEvent[E]] =
     cursor => for {
-      key <- cursor.getOrElse[E#Key]("key")(NoKey.asInstanceOf[E#Key])
+      key <- cursor.getOrElse[E#Key](KeyFieldName)(NoKey.asInstanceOf[E#Key])
       event <- cursor.as[E]
     } yield KeyedEvent(key, event)
 

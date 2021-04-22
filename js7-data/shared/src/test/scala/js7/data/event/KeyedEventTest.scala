@@ -28,7 +28,7 @@ final class KeyedEventTest extends AnyFreeSpec {
     check(KeyedEvent(StringEvent("HUNDRED"))(100),
       json"""{
         "TYPE": "StringEvent",
-        "key": 100,
+        "Key": 100,
         "string": "HUNDRED"
       }""")
   }
@@ -37,7 +37,7 @@ final class KeyedEventTest extends AnyFreeSpec {
     check(KeyedEvent(IntEvent(100))(100),
       json"""{
         "TYPE": "IntEvent",
-        "key": 100,
+        "Key": 100,
         "int": 100
       }""")
   }
@@ -46,7 +46,7 @@ final class KeyedEventTest extends AnyFreeSpec {
     check(KeyedEvent(SimpleEvent)(100),
       json"""{
         "TYPE": "SimpleEvent",
-        "key": 100
+        "Key": 100
       }""")
   }
 

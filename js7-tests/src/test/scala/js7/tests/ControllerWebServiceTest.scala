@@ -538,13 +538,13 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }, {
           "eventId": 1006,
-          "key": "AGENT",
+          "Key": "AGENT",
           "TYPE": "AgentRegisteredController",
           "agentRunId": "${agentRunId.string}"
         }, {
           "eventId": 1007,
           "TYPE": "AgentReady",
-          "key": "AGENT",
+          "Key": "AGENT",
           "timezone": "${ZoneId.systemDefault.getId}"
         }, {
           "eventId": 1008,
@@ -573,7 +573,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1011,
           "TYPE": "OrderAdded",
-          "key": "ORDER-ID",
+          "Key": "ORDER-ID",
           "workflowId": {
             "path": "WORKFLOW",
             "versionId": "VERSION-1"
@@ -581,7 +581,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1012,
           "TYPE": "OrderAttachable",
-          "key": "ORDER-ID",
+          "Key": "ORDER-ID",
           "agentId":"AGENT"
         }, {
           "eventId": 1013,
@@ -591,20 +591,20 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1014,
           "TYPE": "OrderAttached",
-          "key": "ORDER-ID",
+          "Key": "ORDER-ID",
           "agentId": "AGENT"
         }, {
           "eventId": 1015,
           "TYPE": "OrderStarted",
-          "key": "ORDER-ID"
+          "Key": "ORDER-ID"
         }, {
           "eventId": 1016,
           "TYPE": "OrderProcessingStarted",
-          "key": "ORDER-ID"
+          "Key": "ORDER-ID"
         }, {
           "eventId": 1017,
           "TYPE": "OrderProcessed",
-          "key": "ORDER-ID",
+          "Key": "ORDER-ID",
           "outcome": {
             "TYPE": "Succeeded",
             "namedValues": {
@@ -614,20 +614,20 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1018,
           "TYPE": "OrderMoved",
-          "key": "ORDER-ID",
+          "Key": "ORDER-ID",
           "to": [ 1 ]
         }, {
           "eventId": 1019,
           "TYPE": "OrderDetachable",
-          "key": "ORDER-ID"
+          "Key": "ORDER-ID"
         }, {
           "eventId": 1020,
           "TYPE": "OrderDetached",
-          "key": "ORDER-ID"
+          "Key": "ORDER-ID"
         }, {
           "eventId": 1021,
           "TYPE": "OrderFinished",
-          "key": "ORDER-ID"
+          "Key": "ORDER-ID"
         }
       ]
     }""")

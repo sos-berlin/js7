@@ -20,9 +20,9 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
 {
   "encode and decode" in {
     testJson[KeyedEvent[TestEvent]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
-    testJson[KeyedEvent[TestEvent]]("A"   <-: E1(7),   json"""{ "TYPE": "E1", "key": "A", "int": 7 }""")
-    testJson[KeyedEvent[TestEvent]]("B"   <-: E2("X"), json"""{ "TYPE": "E2", "key": "B", "string": "X" }""")
-    testJson[KeyedEvent[TestEvent]](1     <-: E3(2),   json"""{ "TYPE": "E3", "key": 1, "int": 2 }""")
+    testJson[KeyedEvent[TestEvent]]("A"   <-: E1(7),   json"""{ "TYPE": "E1", "Key": "A", "int": 7 }""")
+    testJson[KeyedEvent[TestEvent]]("B"   <-: E2("X"), json"""{ "TYPE": "E2", "Key": "B", "string": "X" }""")
+    testJson[KeyedEvent[TestEvent]](1     <-: E3(2),   json"""{ "TYPE": "E3", "Key": 1, "int": 2 }""")
   }
 
   "encode unknown subclass" in {
@@ -44,9 +44,9 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
       KeyedEventTypedJsonCodec[IntEvent](KeyedSubtype[IntEvent])
 
     testJson[KeyedEvent[Event]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")
-    testJson[KeyedEvent[Event]]("A"   <-: E1(7),   json"""{ "TYPE": "E1", "key": "A", "int": 7 }""")
-    testJson[KeyedEvent[Event]]("B"   <-: E2("X"), json"""{ "TYPE": "E2", "key": "B", "string": "X" }""")
-    testJson[KeyedEvent[Event]](1     <-: E3(2),   json"""{ "TYPE": "E3", "key": 1, "int": 2 }""")
+    testJson[KeyedEvent[Event]]("A"   <-: E1(7),   json"""{ "TYPE": "E1", "Key": "A", "int": 7 }""")
+    testJson[KeyedEvent[Event]]("B"   <-: E2("X"), json"""{ "TYPE": "E2", "Key": "B", "string": "X" }""")
+    testJson[KeyedEvent[Event]](1     <-: E3(2),   json"""{ "TYPE": "E3", "Key": 1, "int": 2 }""")
   }
 
   "Unknown TYPE" in {
@@ -67,7 +67,7 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
   }
 
   "isOfType" in {
-    val a1Json = json"""{ "TYPE": "E1", "key": "A", "int": 7 }"""
+    val a1Json = json"""{ "TYPE": "E1", "Key": "A", "int": 7 }"""
     val xJson = json"""{ "TYPE":  "X"}"""
     assert(StringEventJsonCodec.isOfType[E1](a1Json))
     assert(!StringEventJsonCodec.isOfType[E1](xJson))

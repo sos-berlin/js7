@@ -86,8 +86,8 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       assert(response.entity.contentType == ContentType(`application/json-seq`))
       val RS = Ascii.RS.toChar
       assert(response.utf8StringFuture.await(99.s) ==
-        s"""$RS{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
-        s"""$RS{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
+        s"""$RS{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
+        s"""$RS{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
 
       //implicit val x = JsonSeqStreamingSupport
       //implicit val y = CirceJsonSeqSupport
@@ -102,8 +102,8 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/x-ndjson`))
       assert(response.utf8StringFuture.await(99.s) ==
-        s"""{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
-        s"""{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
+        s"""{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
+        s"""{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
 
       //implicit val x = JsonSeqStreamingSupport
       //implicit val y = CirceJsonSeqSupport
@@ -243,10 +243,10 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
         assert(response.entity.contentType == ContentType(`text/event-stream`))
         assert(response.utf8StringFuture.await(99.s) ==
-          """data:{"eventId":10,"timestamp":999,"key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
+          """data:{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
             |id:10
             |
-            |data:{"eventId":20,"timestamp":999,"key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
+            |data:{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
             |id:20
             |
             |""".stripMargin)
@@ -258,10 +258,10 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
         assert(response.entity.contentType == ContentType(`text/event-stream`))
         assert(response.utf8StringFuture.await(99.s) ==
-          """data:{"eventId":30,"timestamp":999,"key":"3","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
+          """data:{"eventId":30,"timestamp":999,"Key":"3","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
             |id:30
             |
-            |data:{"eventId":40,"timestamp":999,"key":"4","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
+            |data:{"eventId":40,"timestamp":999,"Key":"4","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
             |id:40
             |
             |""".stripMargin)

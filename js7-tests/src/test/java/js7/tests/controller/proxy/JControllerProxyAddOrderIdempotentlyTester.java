@@ -98,19 +98,19 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
         // Check events of the first added order
         assertThat(events.get(0).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(0).event(), instanceOf(OrderEvent.OrderStarted$.class));
-        assertThat(keyedEventToJson(events.get(0)), equalTo("{\"key\":\"MY-ORDER-0\",\"TYPE\":\"OrderStarted\"}"));
+        assertThat(keyedEventToJson(events.get(0)), equalTo("{\"Key\":\"MY-ORDER-0\",\"TYPE\":\"OrderStarted\"}"));
 
         assertThat(events.get(1).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(1).event(), instanceOf(OrderEvent.OrderMoved.class));
-        assertThat(keyedEventToJson(events.get(1)), equalTo("{\"key\":\"MY-ORDER-0\",\"TYPE\":\"OrderMoved\",\"to\":[1]}"));
+        assertThat(keyedEventToJson(events.get(1)), equalTo("{\"Key\":\"MY-ORDER-0\",\"TYPE\":\"OrderMoved\",\"to\":[1]}"));
 
         assertThat(events.get(2).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(2).event(), instanceOf(OrderEvent.OrderFinished$.class));
-        assertThat(keyedEventToJson(events.get(2)), equalTo("{\"key\":\"MY-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
+        assertThat(keyedEventToJson(events.get(2)), equalTo("{\"Key\":\"MY-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
 
         assertThat(events.get(3).key(), equalTo(orderIds.get(0)));
         assertThat(events.get(3).event(), instanceOf(OrderEvent.OrderRemoved$.class));
-        assertThat(keyedEventToJson(events.get(3)), equalTo("{\"key\":\"MY-ORDER-0\",\"TYPE\":\"OrderRemoved\"}"));
+        assertThat(keyedEventToJson(events.get(3)), equalTo("{\"Key\":\"MY-ORDER-0\",\"TYPE\":\"OrderRemoved\"}"));
     }
 
     private void addOrdersIdempotently() {

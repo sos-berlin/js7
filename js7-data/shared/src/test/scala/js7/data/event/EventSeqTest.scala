@@ -28,7 +28,7 @@ final class EventSeqTest extends AnyFreeSpec {
             "eventId": 1,
             "timestamp": 123,
             "TYPE": "TestEvent",
-            "key": "KEY"
+            "Key": "KEY"
             }
           ]
         }""")
