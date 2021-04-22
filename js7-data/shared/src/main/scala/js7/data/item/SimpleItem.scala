@@ -11,7 +11,7 @@ trait SimpleItem extends InventoryItem
 
   val companion: Companion[Self]
 
-  def id: companion.Id
+  def id: companion.Key
 
   def itemRevision: Option[ItemRevision]
 }
@@ -23,9 +23,9 @@ object SimpleItem
   trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]
   {
     type Item  = A
-    type Id <: SimpleItemPath
+    type Key <: SimpleItemPath
 
-    val Id: SimpleItemPath.Companion[Id]
+    val Key: SimpleItemPath.Companion[Key]
   }
 
   def jsonCodec(companions: Seq[Companion_]): Codec.AsObject[SimpleItem] =

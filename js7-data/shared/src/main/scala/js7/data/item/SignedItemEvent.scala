@@ -7,7 +7,7 @@ import js7.data.event.JournaledState
 
 trait SignedItemEvent extends InventoryItemEvent
 {
-  def id: SignableItemId
+  def id: SignableItemKey
 }
 
 object SignedItemEvent
@@ -15,7 +15,7 @@ object SignedItemEvent
   sealed trait SignedItemAddedOrChanged extends SignedItemEvent with Product {
     def signedString = signed.signedString
     def signed: Signed[SignableItem]
-    def id: SignableItemId = signed.value.id
+    def id: SignableItemKey = signed.value.id
     def toShortString = s"$productPrefix($id)"
   }
 

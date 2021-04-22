@@ -149,7 +149,7 @@ object VersionedItemsTest
   {
     val companion = TestVersionedItem
 
-    protected def read(testId: TestVersionedItem.Id, byteArray: ByteArray) = {
+    protected def read(testId: TestVersionedItem.Key, byteArray: ByteArray) = {
       case t: SourceType.JsonLike =>
         readAnonymousJsonLike(t, byteArray).map(_ withId testId)
     }

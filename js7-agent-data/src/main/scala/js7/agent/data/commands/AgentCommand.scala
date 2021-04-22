@@ -20,7 +20,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.event.{EventId, JournaledState}
-import js7.data.item.{InventoryItem, InventoryItemId, SignableItem}
+import js7.data.item.{InventoryItem, InventoryItemKey, SignableItem}
 import js7.data.order.{Order, OrderId, OrderMark}
 
 /**
@@ -151,7 +151,7 @@ object AgentCommand extends CommonCommand.Companion
       c => SignableItem.signedJsonDecoder(S).decodeJson(c.value).map(AttachSignedItem(_))
   }
 
-  final case class DetachItem(id: InventoryItemId)
+  final case class DetachItem(id: InventoryItemKey)
   extends AgentCommand
   {
     type Response = Response.Accepted

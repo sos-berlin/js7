@@ -21,7 +21,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarke
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemId, ItemAttachedState, ItemRevision, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
@@ -43,7 +43,7 @@ final case class ControllerState(
   allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
   idToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
-  itemIdToAgentToAttachedState: Map[InventoryItemId, Map[AgentPath, ItemAttachedState.NotDetached]],
+  itemIdToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
@@ -320,7 +320,7 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def itemIdToAttachedState(itemId: InventoryItemId, itemRevision: Option[ItemRevision], agentId: AgentPath)
+  def itemIdToAttachedState(itemId: InventoryItemKey, itemRevision: Option[ItemRevision], agentId: AgentPath)
   : ItemAttachedState =
     itemId match {
       case itemId: VersionedItemId_ =>
@@ -381,7 +381,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     AgentRef, Lock, FileWatch, JobResource, Workflow)
 
   private[controller] final case class ItemAttachedStateSnapshot(
-    itemId: InventoryItemId,
+    itemId: InventoryItemKey,
     agentToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached])
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =

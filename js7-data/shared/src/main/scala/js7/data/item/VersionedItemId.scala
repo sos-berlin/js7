@@ -12,7 +12,7 @@ import scala.language.implicitConversions
   */
 final case class VersionedItemId[+P <: ItemPath](path: P, versionId: VersionId)
   (implicit P: ItemPath.Companion[P])
-extends SignableItemId
+extends SignableItemKey
 {
   def companion =
     path.companion.VersionedItemIdCompanion
@@ -70,7 +70,7 @@ object VersionedItemId
         version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
       } yield VersionedItemId(path, version)
 
-  trait Companion[P <: ItemPath] extends SignableItemId.Companion[VersionedItemId[P]]
+  trait Companion[P <: ItemPath] extends SignableItemKey.Companion[VersionedItemId[P]]
   {
     implicit val pathCompanion: ItemPath.Companion[P]
     private lazy val P = pathCompanion

@@ -11,7 +11,7 @@ trait SignableItem extends InventoryItem
 
   val companion: SignableItem.Companion[Self]
 
-  def id: SignableItemId
+  def id: SignableItemKey
 }
 
 object SignableItem
@@ -20,8 +20,8 @@ object SignableItem
 
   trait Companion[A <: SignableItem] extends InventoryItem.Companion[A]
   {
-    type Id <: SignableItemId
-    val Id: SignableItemId.Companion[Id]
+    type Key <: SignableItemKey
+    val Key: SignableItemKey.Companion[Key]
   }
 
   // Common JSON serializationfor AgentCommand.AttachSignableItem and SignedItemAdded

@@ -12,8 +12,6 @@ trait VersionedItemApi
 {
   def overview[A <: VersionedItem: VersionedItem.Companion](implicit O: VersionedItemOverview.Companion[A]): Task[Checked[O.Overview]]
 
-  //def idTo[A <: VersionedItem: VersionedItem.Companion](id: A#Id): Task[Checked[A]]
-
   def pathToCurrentItem[A <: VersionedItem: VersionedItem.Companion](path: A#Path): Task[Checked[A]]
 
   def items[A <: VersionedItem: VersionedItem.Companion]: Task[Checked[Seq[A]]]
@@ -30,9 +28,6 @@ object VersionedItemApi
     {
       def overview[A <: VersionedItem: VersionedItem.Companion](implicit O: VersionedItemOverview.Companion[A]): Task[Checked[O.Overview]] =
         Task(Right(O.itemsToOverview(pathTo.values.toSeq)))
-
-      def idTo[A <: VersionedItem: VersionedItem.Companion](id: A#Id) =
-        throw new NotImplementedError
 
       def items[A <: VersionedItem: VersionedItem.Companion] =
         Task(Right(pathTo[A].values.toSeq))

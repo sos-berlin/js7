@@ -10,7 +10,7 @@ trait OrderWatch extends UnsignedSimpleItem
 {
   type Self <: OrderWatch
 
-  val companion: Companion[Self] { type Id <: OrderWatchPath }
+  val companion: Companion[Self] { type Key <: OrderWatchPath }
 
   val agentId: AgentPath
   val workflowPath: WorkflowPath
@@ -20,7 +20,7 @@ object OrderWatch
 {
   trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]
   {
-    type Id <: OrderWatchPath
+    type Key <: OrderWatchPath
   }
 
   implicit val jsonCodec = TypedJsonCodec[OrderWatch](

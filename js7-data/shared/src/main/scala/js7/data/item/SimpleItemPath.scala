@@ -3,9 +3,9 @@ package js7.data.item
 import io.circe.Codec
 import js7.base.generic.GenericString
 import js7.base.standards.Js7PathValidating
-import js7.data.item.InventoryItemId.Companion
+import js7.data.item.InventoryItemKey.Companion
 
-trait SimpleItemPath extends InventoryItemId with GenericString
+trait SimpleItemPath extends InventoryItemKey with GenericString
 {
   protected type Self <: SimpleItemPath
 
@@ -19,11 +19,11 @@ trait SimpleItemPath extends InventoryItemId with GenericString
 
 object SimpleItemPath
 {
-  trait Companion[A <: SimpleItemPath] extends InventoryItemId.Companion[A] with Js7PathValidating[A]
+  trait Companion[A <: SimpleItemPath] extends InventoryItemKey.Companion[A] with Js7PathValidating[A]
 
   type AnyCompanion = Companion[_ <: SimpleItemPath]
 
   def jsonCodec(companions: Iterable[AnyCompanion]): Codec[SimpleItemPath] =
-    InventoryItemId.jsonCodec(companions)
+    InventoryItemKey.jsonCodec(companions)
       .asInstanceOf[Codec[SimpleItemPath]]
 }

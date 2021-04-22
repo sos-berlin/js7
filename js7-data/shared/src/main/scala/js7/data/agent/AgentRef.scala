@@ -20,10 +20,10 @@ extends UnsignedSimpleItem
 
 object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
 {
-  type Id = AgentPath
+  type Key = AgentPath
 
   val cls = classOf[AgentRef]
-  val Id = AgentPath
+  val Key = AgentPath
 
   implicit val jsonCodec = {
     implicit val configuration = withDefaults

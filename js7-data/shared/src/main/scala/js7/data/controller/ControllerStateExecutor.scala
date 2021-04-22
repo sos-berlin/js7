@@ -7,7 +7,7 @@ import js7.data.event.{Event, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestroyed, ItemDetachable}
 import js7.data.item.ItemAttachedState.Attached
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemId, VersionId}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, VersionId}
 import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderForked, OrderLockEvent, OrderRemoveMarked}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchPath
@@ -40,7 +40,7 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
     ).toVector
   }
 
-  private def nextItemEvents(itemIds: Seq[InventoryItemId]): Seq[KeyedEvent[BasicItemEvent]] =
+  private def nextItemEvents(itemIds: Seq[InventoryItemKey]): Seq[KeyedEvent[BasicItemEvent]] =
     itemIds.flatMap {
       case itemId: OrderWatchPath =>
         controllerState.allOrderWatchesState.pathToOrderWatchState.get(itemId)

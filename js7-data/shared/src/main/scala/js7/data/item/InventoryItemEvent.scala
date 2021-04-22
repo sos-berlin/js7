@@ -5,7 +5,7 @@ import js7.data.event.{JournaledState, NoKeyEvent}
 
 trait InventoryItemEvent extends NoKeyEvent
 {
-  def id: InventoryItemId
+  def id: InventoryItemKey
 }
 
 object InventoryItemEvent

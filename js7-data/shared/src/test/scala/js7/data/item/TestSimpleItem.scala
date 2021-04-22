@@ -35,8 +35,8 @@ object TestSimpleItem extends UnsignedSimpleItem.Companion[TestSimpleItem] {
   type Path = TestSimplePath
   val Path = TestSimplePath
 
-  override type Id = TestSimplePath
-  val Id = TestSimplePath
+  override type Key = TestSimplePath
+  val Key = TestSimplePath
 
   implicit val jsonCodec: Codec.AsObject[TestSimpleItem] = deriveCodec[TestSimpleItem]
 }

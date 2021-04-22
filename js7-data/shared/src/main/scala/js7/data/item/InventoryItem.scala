@@ -12,7 +12,7 @@ trait InventoryItem
 
   val companion: Companion[Self]
 
-  def id: InventoryItemId
+  def id: InventoryItemKey
   def itemRevision: Option[ItemRevision]
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
@@ -26,9 +26,9 @@ object InventoryItem
   trait Companion[A <: InventoryItem]
   {
     type Item <: A
-    type Id <: InventoryItemId
+    type Key <: InventoryItemKey
 
-    val Id: InventoryItemId.Companion[Id]
+    val Key: InventoryItemKey.Companion[Key]
 
     def cls: Class[A]
 

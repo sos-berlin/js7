@@ -58,7 +58,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detach
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemId, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, UnsignedSimpleItem, VersionedEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, UnsignedSimpleItem, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -599,7 +599,7 @@ with MainJournalingActor[ControllerState, Event]
         })
   }
 
-  private def agentRequiresItem(agentId: AgentPath, itemId: InventoryItemId): Boolean =
+  private def agentRequiresItem(agentId: AgentPath, itemId: InventoryItemKey): Boolean =
     // Maybe optimize ??? Changed item needs only to be attached if it is needed by an attached order
     true
 
@@ -617,7 +617,7 @@ with MainJournalingActor[ControllerState, Event]
                 existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
         })
 
-  private def simpleItemIdToDeletedEvent(id: InventoryItemId): Checked[Option[InventoryItemEvent]] =
+  private def simpleItemIdToDeletedEvent(id: InventoryItemKey): Checked[Option[InventoryItemEvent]] =
     id match {
       case id: OrderWatchPath =>
         Right(
@@ -908,7 +908,7 @@ with MainJournalingActor[ControllerState, Event]
       new ControllerStateExecutor(_controllerState).nextOrderEventsByOrderId(orderIds).toVector)
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
-    val itemIds = mutable.Buffer.empty[InventoryItemId]
+    val itemIds = mutable.Buffer.empty[InventoryItemKey]
     val orderIds = mutable.Buffer.empty[OrderId]
     for (stamped <- stampedEvents) {
       val keyedEvent = stamped.value
@@ -947,7 +947,7 @@ with MainJournalingActor[ControllerState, Event]
     }
   }
 
-  private def proceedWithItem(itemId: InventoryItemId): Unit =
+  private def proceedWithItem(itemId: InventoryItemKey): Unit =
     itemId match {
       case agentId: AgentPath =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...

@@ -22,10 +22,10 @@ extends UnsignedSimpleItem
 
 object Lock extends UnsignedSimpleItem.Companion[Lock]
 {
-  type Id = LockPath
+  type Key = LockPath
 
   val cls = classOf[Lock]
-  val Id = LockPath
+  val Key = LockPath
 
   val jsonCodec = {
     implicit val configuration = withDefaults
