@@ -35,7 +35,7 @@ trait ProcessJobExecutor extends JobExecutor
       .reverse/*left overrides right*/
       .fold(Map.empty)(_ ++ _)
       .toSeq
-      .traverse { case (k, v) => Scope.empty.evalString(v).map(k -> _) }
+      .traverse { case (k, v) => Scope.Env.evalString(v).map(k -> _) }
       .map(_.toMap))
     new OrderProcess {
       def run =

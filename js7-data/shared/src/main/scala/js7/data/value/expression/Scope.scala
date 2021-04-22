@@ -1,9 +1,11 @@
 package js7.data.value.expression
 
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.data.value.expression.Expression.FunctionCall
-import js7.data.value.{NumberValue, Value}
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.data.value.expression.Expression.{Argument, FunctionCall}
+import js7.data.value.{NumberValue, StringValue, Value}
 
 /**
   * @author Joacim Zschimmer
@@ -45,6 +47,22 @@ object Scope
 
   private object Empty extends Scope {
     val findValue = _ => None
+  }
+
+  object Env extends Scope {
+    val findValue = _ => None
+
+    override def evalFunctionCall(functionCall: Expression.FunctionCall): Checked[Value] =
+      functionCall match {
+        case FunctionCall("env", Seq(Argument(nameExpr, None | Some("name")))) =>
+          for {
+            name <- evaluator.eval(nameExpr).flatMap(_.toStringValueString)
+            string <- sys.env.rightOr(name, UnknownKeyProblem("environment variable", name))
+          } yield
+            StringValue(string)
+
+        case _ => super.evalFunctionCall(functionCall)
+      }
   }
 
   case object ConstantExpressionRequiredProblem extends Problem.ArgumentlessCoded

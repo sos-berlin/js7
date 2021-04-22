@@ -1,6 +1,8 @@
 package js7.tests.jobresource
 
+import cats.implicits._
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
@@ -33,7 +35,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentIds = Seq(agentId)
-  protected val versionedItems = Seq(workflow)
+  protected val versionedItems = Seq(workflow, envWorkflow)
 
   "JobResourceId" in {
     controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)
@@ -49,8 +51,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[ItemAttached](_.event.id == bJobResource.id)
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
 
-    val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId)
-      .foldLeft("")(_ + _.chunk)
+    val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
     assert(stdouterr.replaceAll("\r", "") ==
       """A=/A of JOB-RESOURCE-A/
         |B=/B of JOB-RESOURCE-A/
@@ -68,7 +69,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[ItemAttached](_.event.id == b1JobResource.id, after = eventId)
   }
 
-  "JobResourceId with variable references" in {
+  "JobResourceId with variable references (there are no variables)" in {
     val eventId = controller.eventWatch.lastAddedEventId
     controllerApi.updateSignedSimpleItems(Seq(sign(b2JobResource))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.id == b2JobResource.id, after = eventId)
@@ -82,6 +83,19 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     // JobResource must not use order variables
     val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event
     assert(orderProcessed.outcome == Outcome.Failed(Some("No such named value: E")))
+  }
+
+  "JobResourceId with environment variable access" in {
+    controllerApi.updateSignedSimpleItems(Seq(sign(envJobResource))).await(99.s).orThrow
+
+    val orderId = OrderId("ORDER-ENV")
+    controllerApi.addOrder(FreshOrder(orderId, envWorkflow.path)).await(99.s).orThrow
+    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+
+    val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
+    assert(stdouterr.replaceAll("\r", "") ==
+      s"""ENV=/${sys.env(pathName)}/
+         |""".stripMargin)
   }
 }
 
@@ -110,12 +124,19 @@ object JobResourceTest
       "B" -> StringConstant("IGNORED"),
       "E" -> ExpressionParser.parse(""""E=$E"""").orThrow)))
 
+  private val pathName = if (isWindows) "Path" else "PATH"
+  private val envJobResource = JobResource(
+    JobResourceId("JOB-RESOURCE-ENV"),
+    env = ObjectExpression(Map(
+      "ENV" -> ExpressionParser.parse(s"env('$pathName')").orThrow)))
+
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(Execute.Anonymous(
       WorkflowJob(
         agentId,
-        ScriptExecutable("""#!/usr/bin/env bash
+        ScriptExecutable(
+          """#!/usr/bin/env bash
             |set -euo pipefail
             |echo A=/$A/
             |echo B=/$B/
@@ -129,4 +150,16 @@ object JobResourceTest
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
         jobResourceIds = Seq(aJobResource.id, bJobResource.id)),
       defaultArguments = Map("A" -> StringValue("A of Execute")))))
+
+  private val envWorkflow = Workflow(
+    WorkflowPath("WORKFLOW-ENV") ~ "INITIAL",
+    Vector(Execute.Anonymous(
+      WorkflowJob(
+        agentId,
+        ScriptExecutable(
+          """#!/usr/bin/env bash
+            |set -euo pipefail
+            |echo ENV=/$ENV/
+            |""".stripMargin),
+        jobResourceIds = Seq(envJobResource.id)))))
 }
