@@ -14,7 +14,7 @@ final class JobResourceTest extends AnyFreeSpec
       JobResource(JobResourcePath("JOB-RESOURCE")),
       json"""{
         "TYPE": "JobResource",
-        "id": "JOB-RESOURCE"
+        "path": "JOB-RESOURCE"
       }""")
 
     testJson[SignableSimpleItem](
@@ -25,7 +25,7 @@ final class JobResourceTest extends AnyFreeSpec
         Some(ItemRevision(1))),
       json"""{
         "TYPE": "JobResource",
-        "id": "JOB-RESOURCE",
+        "path": "JOB-RESOURCE",
         "env": {},
         "itemRevision": 1
       }""")

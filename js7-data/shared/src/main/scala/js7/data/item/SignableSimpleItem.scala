@@ -4,7 +4,7 @@ trait SignableSimpleItem extends SimpleItem with SignableItem
 {
   protected type Self <: SignableSimpleItem
 
-  val id: companion.Key
+  //val key: companion.Key
   //val id: SignableSimpleItemPath
   val companion: SignableSimpleItem.Companion[Self]
 }

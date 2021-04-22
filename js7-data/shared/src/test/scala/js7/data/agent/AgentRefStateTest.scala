@@ -21,7 +21,7 @@ final class AgentRefStateTest extends AnyFreeSpec
         123L),
       json"""{
         "agentRef": {
-          "id": "AGENT",
+          "path": "AGENT",
           "uri": "https://URI",
           "itemRevision": 0
         },
@@ -42,7 +42,7 @@ final class AgentRefStateTest extends AnyFreeSpec
         123L),
       json"""{
         "agentRef": {
-          "id": "AGENT",
+          "path": "AGENT",
           "uri": "https://URI",
           "itemRevision": 0
         },

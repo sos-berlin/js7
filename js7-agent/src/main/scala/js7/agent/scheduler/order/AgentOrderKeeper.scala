@@ -312,7 +312,7 @@ with Stash {
     signatureVerifier.verify(signed.signedString) match {
       case Left(problem) => Future.successful(Left(problem))
       case Right(signerIds) =>
-        logger.info(Logger.SignatureVerified, s"Verified ${signed.value.id} (signed by ${signerIds.mkString(", ")}")
+        logger.info(Logger.SignatureVerified, s"Verified ${signed.value.key} (signed by ${signerIds.mkString(", ")}")
 
         signed.value match {
           case origWorkflow: Workflow =>
@@ -339,7 +339,7 @@ with Stash {
             }
 
           case _ =>
-            Future.successful(Left(Problem.pure(s"AgentCommand.AttachedItem(${signed.value.id}) for unknown SignableItem")))
+            Future.successful(Left(Problem.pure(s"AgentCommand.AttachedItem(${signed.value.key}) for unknown SignableItem")))
         }
     }
 

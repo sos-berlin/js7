@@ -34,6 +34,6 @@ object SignedItemVerifier
     def item: A = signedItem.value
 
     override def toString =
-      s"'${item.id}' verified: signed by ${signerIds.mkString("'", "', '", "'")}"
+      s"'${item.key}' verified: signed by ${signerIds.mkString("'", "', '", "'")}"
   }
 }

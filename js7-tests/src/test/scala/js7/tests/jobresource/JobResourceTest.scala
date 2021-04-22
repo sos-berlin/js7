@@ -40,15 +40,15 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "JobResourcePath" in {
     controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)
       .await(99.s).orThrow
-    controller.eventWatch.await[SignedItemAdded](_.event.key == aJobResource.id)
-    controller.eventWatch.await[SignedItemAdded](_.event.key == bJobResource.id)
+    controller.eventWatch.await[SignedItemAdded](_.event.key == aJobResource.path)
+    controller.eventWatch.await[SignedItemAdded](_.event.key == bJobResource.path)
 
     val orderId = OrderId("ORDER")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
       "A" -> StringValue("A OF ORDER")
     ))).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == aJobResource.id)
-    controller.eventWatch.await[ItemAttached](_.event.key == bJobResource.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == aJobResource.path)
+    controller.eventWatch.await[ItemAttached](_.event.key == bJobResource.path)
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
 
     val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
@@ -66,13 +66,13 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.updateSignedSimpleItems(Seq(sign(b1JobResource))).await(99.s).orThrow
     val orderId = OrderId("ORDER-1")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.id, after = eventId)
+    controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.path, after = eventId)
   }
 
   "JobResourcePath with variable references (there are no variables)" in {
     val eventId = controller.eventWatch.lastAddedEventId
     controllerApi.updateSignedSimpleItems(Seq(sign(b2JobResource))).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == b2JobResource.id, after = eventId)
+    controller.eventWatch.await[ItemAttached](_.event.key == b2JobResource.path, after = eventId)
 
     val orderId = OrderId("ORDER-2")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
@@ -155,7 +155,7 @@ object JobResourceTest
             "D" -> StringConstant("D OF JOB ENV"),
             "E" -> StringConstant("E OF JOB ENV")))),
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
-        jobResourcePaths = Seq(aJobResource.id, bJobResource.id)),
+        jobResourcePaths = Seq(aJobResource.path, bJobResource.path)),
       defaultArguments = Map("A" -> StringValue("A of Execute")))))
 
   private val envName = if (isWindows) "Path" else "PATH"
@@ -174,7 +174,7 @@ object JobResourceTest
             |set -euo pipefail
             |echo ENV=/$ENV/
             |""".stripMargin),
-        jobResourcePaths = Seq(envJobResource.id)))))
+        jobResourcePaths = Seq(envJobResource.path)))))
 
   private val sosJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-SPS"),
@@ -227,5 +227,5 @@ object JobResourceTest
         //echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
         //echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
         //echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
-        jobResourcePaths = Seq(sosJobResource.id)))))
+        jobResourcePaths = Seq(sosJobResource.path)))))
 }

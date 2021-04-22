@@ -17,7 +17,7 @@ final case class FileWatchState(
   fileWatch: FileWatch,
   directoryState: DirectoryState)
 {
-  def id = fileWatch.id
+  def id = fileWatch.path
 
   def applyEvent(event: OrderWatchEvent): FileWatchState =
     event match {
@@ -57,7 +57,7 @@ object FileWatchState
 
   final case class HeaderSnapshot(fileWatch: FileWatch)
   extends Snapshot {
-    def orderWatchPath = fileWatch.id
+    def orderWatchPath = fileWatch.path
   }
 
   final case class EntrySnapshot(

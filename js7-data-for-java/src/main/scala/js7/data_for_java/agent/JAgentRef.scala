@@ -16,7 +16,7 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
 
   @Nonnull
   def path: AgentPath =
-    asScala.id
+    asScala.path
 
   @Nonnull
   def uri: Uri =

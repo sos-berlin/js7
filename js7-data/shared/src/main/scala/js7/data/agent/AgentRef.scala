@@ -6,7 +6,7 @@ import js7.base.web.Uri
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 
 final case class AgentRef(
-  id: AgentPath,
+  path: AgentPath,
   uri: Uri,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
@@ -20,9 +20,9 @@ extends UnsignedSimpleItem
 
 object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
 {
-  type Key = AgentPath
-
   val cls = classOf[AgentRef]
+
+  type Key = AgentPath
   val Key = AgentPath
 
   implicit val jsonCodec = {

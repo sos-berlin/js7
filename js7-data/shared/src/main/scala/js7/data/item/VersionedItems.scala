@@ -17,7 +17,7 @@ object VersionedItems
 
   private def toAddedOrChanged(previousPathToItem: ItemPath => Option[VersionedItem], ignoreVersion: Boolean)(item: VersionedItem): Option[RepoChange] =
     previousPathToItem(item.path) match {
-      case Some(previous) if previous == (if (ignoreVersion) item.withVersion(previous.id.versionId) else item) =>
+      case Some(previous) if previous == (if (ignoreVersion) item.withVersion(previous.key.versionId) else item) =>
         None
 
       case Some(_) =>

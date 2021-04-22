@@ -10,5 +10,5 @@ extends JSignableItem with JJsonable[A]
 {
   protected type AsScala <: VersionedItem
 
-  def id: JItemId[P]
+  def id: JVersionedItemId[P]
 }

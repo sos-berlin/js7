@@ -81,7 +81,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), AddOrChangeSimple(lock)), noVerifier, user).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Lock:LOCK-1")))
     assert(
-      VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(lock.id)), noVerifier, user).await(99.s) ==
+      VerifiedUpdateItems.fromOperations(Observable(AddOrChangeSimple(lock), DeleteSimple(lock.path)), noVerifier, user).await(99.s) ==
         Left(Problem("Unexpected duplicates: 2×Lock:LOCK-1")))
   }
 

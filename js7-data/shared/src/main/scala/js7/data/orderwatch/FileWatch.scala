@@ -15,7 +15,7 @@ import js7.data.workflow.WorkflowPath
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 final case class FileWatch(
-  id: OrderWatchPath,
+  path: OrderWatchPath,
   workflowPath: WorkflowPath,
   agentPath: AgentPath,
   directory: String,
@@ -37,10 +37,11 @@ extends OrderWatch
 
 object FileWatch extends OrderWatch.Companion[FileWatch]
 {
-  type Key = OrderWatchPath
-
   val cls = classOf[FileWatch]
+
+  type Key = OrderWatchPath
   val Key = OrderWatchPath
+
   val FileArgumentName = "file"
   private val defaultPattern = Pattern.compile("[^.].*")
 

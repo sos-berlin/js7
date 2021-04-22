@@ -18,8 +18,8 @@ final case class AllFileWatchesState(
   def attach(fileWatch: FileWatch): AllFileWatchesState =
     copy(
       pathToFileWatchState = pathToFileWatchState +
-        (fileWatch.id ->
-          (pathToFileWatchState.get(fileWatch.id) match {
+        (fileWatch.path ->
+          (pathToFileWatchState.get(fileWatch.path) match {
             case None => FileWatchState(fileWatch, DirectoryState.empty)
             case Some(fileWatchState) => fileWatchState.copy(fileWatch = fileWatch)
           })))
@@ -39,7 +39,7 @@ final case class AllFileWatchesState(
       .flatMap(_.toSnapshot)
 
   def contains(fileWatch: FileWatch) =
-    pathToFileWatchState.get(fileWatch.id)
+    pathToFileWatchState.get(fileWatch.path)
       .exists(_.fileWatch == fileWatch)
 }
 

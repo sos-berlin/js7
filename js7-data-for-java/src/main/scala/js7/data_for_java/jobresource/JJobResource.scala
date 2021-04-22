@@ -17,8 +17,8 @@ extends JJsonable[JJobResource] with JSignableItem
   protected def companion = JJobResource
 
   @Nonnull
-  def id: JobResourcePath =
-    asScala.id
+  def path: JobResourcePath =
+    asScala.path
 
   @Nonnull
   def env: java.util.Map[String, JExpression] =
@@ -33,11 +33,11 @@ object JJobResource extends JJsonable.Companion[JJobResource]
 {
   @Nonnull
   def of(
-    @Nonnull id: JobResourcePath,
+    @Nonnull path: JobResourcePath,
     @Nonnull env: java.util.Map[String, JExpression])
   : JJobResource =
     JJobResource(
-      JobResource(id, ObjectExpression(env.asScala.view.mapValues(_.asScala).toMap)))
+      JobResource(path, ObjectExpression(env.asScala.view.mapValues(_.asScala).toMap)))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JJobResource] =

@@ -103,7 +103,7 @@ final class AgentStateTest extends AsyncFreeSpec
           json"""{
             "TYPE": "FileWatchState",
             "fileWatch": {
-              "id": "ORDER-SOURCE-ID",
+              "path": "ORDER-SOURCE-ID",
               "workflowPath": "WORKFLOW",
               "agentPath": "AGENT",
               "directory": "/DIRECTORY",
@@ -125,7 +125,7 @@ final class AgentStateTest extends AsyncFreeSpec
           }""",
           json"""{
             "TYPE": "JobResource",
-            "id": "JOB-RESOURCE",
+            "path": "JOB-RESOURCE",
             "env": {}
           }"""))
 

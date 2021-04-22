@@ -64,7 +64,7 @@ extends JournaledStateBuilder[ControllerState]
       pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
 
     case lockState: LockState =>
-      pathToLockState.insert(lockState.lock.id -> lockState)
+      pathToLockState.insert(lockState.lock.path -> lockState)
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
@@ -72,8 +72,8 @@ extends JournaledStateBuilder[ControllerState]
     case snapshot: OrderWatchState.Snapshot =>
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
-    case ControllerState.ItemAttachedStateSnapshot(itemId, agentToAttachedState) =>
-      itemToAgentToAttachedState.insert(itemId -> agentToAttachedState)
+    case ControllerState.ItemAttachedStateSnapshot(itemKey, agentToAttachedState) =>
+      itemToAgentToAttachedState.insert(itemKey -> agentToAttachedState)
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -112,10 +112,10 @@ extends JournaledStateBuilder[ControllerState]
             case SimpleItemAdded(item) =>
               item match {
                 case lock: Lock =>
-                  pathToLockState.insert(lock.id -> LockState(lock))
+                  pathToLockState.insert(lock.path -> LockState(lock))
 
                 case agentRef: AgentRef =>
-                  pathToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef))
+                  pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
@@ -124,11 +124,11 @@ extends JournaledStateBuilder[ControllerState]
             case SimpleItemChanged(item) =>
               item match {
                 case lock: Lock =>
-                  pathToLockState(lock.id) = pathToLockState(lock.id).copy(
+                  pathToLockState(lock.path) = pathToLockState(lock.path).copy(
                     lock = lock)
 
                 case agentRef: AgentRef =>
-                  pathToAgentRefState(agentRef.id) = pathToAgentRefState(agentRef.id).copy(
+                  pathToAgentRefState(agentRef.path) = pathToAgentRefState(agentRef.path).copy(
                     agentRef = agentRef)
 
                 case orderWatch: OrderWatch =>
@@ -144,7 +144,7 @@ extends JournaledStateBuilder[ControllerState]
             case SignedItemChanged(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
-                  idToSignedItem += jobResource.id -> Signed(jobResource, signedString)
+                  idToSignedItem += jobResource.path -> Signed(jobResource, signedString)
               }
           }
 
@@ -258,7 +258,7 @@ extends JournaledStateBuilder[ControllerState]
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match {
       case jobResource: JobResource =>
-        idToSignedItem.insert(jobResource.id -> Signed(jobResource, added.signedString))
+        idToSignedItem.insert(jobResource.path -> Signed(jobResource, added.signedString))
     }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer

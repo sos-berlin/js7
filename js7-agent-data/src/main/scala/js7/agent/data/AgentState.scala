@@ -77,7 +77,7 @@ extends JournaledState[AgentState]
 
           case ItemAttachedToAgent(jobResource: JobResource) =>
             Right(copy(
-              pathToJobResource = pathToJobResource + (jobResource.id -> jobResource)))
+              pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
           case ItemDetached(id: OrderWatchPath, agentPath/*`ownAgentPath`*/) =>
             Right(copy(

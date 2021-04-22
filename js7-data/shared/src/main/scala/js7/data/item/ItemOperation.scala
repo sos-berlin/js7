@@ -16,7 +16,7 @@ object ItemOperation
   final case class AddOrChangeSimple(item: UnsignedSimpleItem)
   extends SimpleItemOperation
 
-  final case class DeleteSimple(id: SimpleItemPath)
+  final case class DeleteSimple(path: SimpleItemPath)
   extends SimpleItemOperation
 
   sealed trait VersionedOperation extends ItemOperation

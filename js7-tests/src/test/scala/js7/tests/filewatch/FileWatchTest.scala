@@ -62,7 +62,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderId = fileToOrderId("1")
     file := ""
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
   }
@@ -107,8 +107,8 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
         Seq(
           NoKey <-: SimpleItemChanged(fileWatch.copy(itemRevision = Some(itemRevision))),
-          NoKey <-: ItemAttachable(fileWatch.id, aAgentPath),
-          NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), aAgentPath)))
+          NoKey <-: ItemAttachable(fileWatch.path, aAgentPath),
+          NoKey <-: ItemAttached(fileWatch.path, Some(itemRevision), aAgentPath)))
     }
   }
 
@@ -121,23 +121,23 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(
         NoKey <-: SimpleItemChanged(changedFileWatch.copy(itemRevision = Some(itemRevision))),
-        NoKey <-: ItemDetachable(fileWatch.id, aAgentPath),
-        NoKey <-: ItemDetached(fileWatch.id, aAgentPath),
-        NoKey <-: ItemAttachable(fileWatch.id, bAgentPath),
-        NoKey <-: ItemAttached(fileWatch.id, Some(itemRevision), bAgentPath)))
+        NoKey <-: ItemDetachable(fileWatch.path, aAgentPath),
+        NoKey <-: ItemDetached(fileWatch.path, aAgentPath),
+        NoKey <-: ItemAttachable(fileWatch.path, bAgentPath),
+        NoKey <-: ItemAttached(fileWatch.path, Some(itemRevision), bAgentPath)))
   }
 
   "Delete a FileWatch" in {
     val eventId = controller.eventWatch.lastAddedEventId
-    assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.id))).await(99.s) ==
+    assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
-    controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.id, after = eventId)
+    controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.path, after = eventId)
     val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
     assert(events == Seq(
-      NoKey <-: ItemDeletionMarked(fileWatch.id),
-      NoKey <-: ItemDetachable(fileWatch.id, bAgentPath),
-      NoKey <-: ItemDetached(fileWatch.id, bAgentPath),
-      NoKey <-: ItemDestroyed(fileWatch.id)))
+      NoKey <-: ItemDeletionMarked(fileWatch.path),
+      NoKey <-: ItemDetachable(fileWatch.path, bAgentPath),
+      NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
+      NoKey <-: ItemDestroyed(fileWatch.path)))
     assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }

@@ -490,7 +490,7 @@ private[controller] object AgentDriver
     final case class AttachSignedItem(signed: Signed[SignableItem])
     extends Input with Queueable
 
-    final case class DetachItem(id: InventoryItemKey)
+    final case class DetachItem(key: InventoryItemKey)
     extends Input with Queueable
 
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)

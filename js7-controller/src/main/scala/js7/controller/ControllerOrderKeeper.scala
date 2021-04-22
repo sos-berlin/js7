@@ -283,7 +283,7 @@ with MainJournalingActor[ControllerState, Event]
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       for (agentRef <- controllerState.pathToAgentRefState.values.map(_.agentRef)) {
-        val agentRefState = controllerState.pathToAgentRefState.getOrElse(agentRef.id, AgentRefState(agentRef))
+        val agentRefState = controllerState.pathToAgentRefState.getOrElse(agentRef.path, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
       }
 
@@ -487,7 +487,7 @@ with MainJournalingActor[ControllerState, Event]
 
               case KeyedEvent(_: NoKey, ItemAttachedToAgent(item)) =>
                 // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                Timestamped(NoKey <-: ItemAttached(item.id, item.itemRevision, agentPath)) :: Nil
+                Timestamped(NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
 
               case KeyedEvent(_: NoKey, _: ItemDetached) =>
                 Timestamped(keyedEvent) :: Nil
@@ -577,7 +577,7 @@ with MainJournalingActor[ControllerState, Event]
       Left(Problem.pure("ItemRevision is not accepted here"))
     else
       Right(
-        _controllerState.pathToSimpleItem.get(item.id) match {
+        _controllerState.pathToSimpleItem.get(item.key) match {
           case None =>
             SignedItemAdded(verified.signedItem.copy(value =
               item.withRevision(Some(ItemRevision.Initial)))) :: Nil
@@ -586,11 +586,11 @@ with MainJournalingActor[ControllerState, Event]
               value = verified.signedItem.value
                 .withRevision(Some(
                   existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
-            val attaching = _controllerState.itemToAgentToAttachedState.get(item.id)
+            val attaching = _controllerState.itemToAgentToAttachedState.get(item.key)
               .map(_.view.map {
-                case (agentPath, Attachable) => ItemAttachable(item.id, agentPath)
-                case (agentPath, Attached(rev)) if rev != item.itemRevision && agentRequiresItem(agentPath, item.id) =>
-                  ItemAttachable(item.id, agentPath)
+                case (agentPath, Attachable) => ItemAttachable(item.key, agentPath)
+                case (agentPath, Attached(rev)) if rev != item.itemRevision && agentRequiresItem(agentPath, item.key) =>
+                  ItemAttachable(item.key, agentPath)
                 //case (agentPath, Detachable) => Should not happen
                 //case (agentPath, Detached) => Nothing to do
               })
@@ -599,7 +599,7 @@ with MainJournalingActor[ControllerState, Event]
         })
   }
 
-  private def agentRequiresItem(agentPath: AgentPath, itemId: InventoryItemKey): Boolean =
+  private def agentRequiresItem(agentPath: AgentPath, itemKey: InventoryItemKey): Boolean =
     // Maybe optimize ??? Changed item needs only to be attached if it is needed by an attached order
     true
 
@@ -608,7 +608,7 @@ with MainJournalingActor[ControllerState, Event]
       Left(Problem.pure("ItemRevision is not accepted here"))
     else
       Right(
-        _controllerState.pathToSimpleItem.get(item.id) match {
+        _controllerState.pathToSimpleItem.get(item.key) match {
           case None =>
             SimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
           case Some(existing) =>
@@ -617,8 +617,8 @@ with MainJournalingActor[ControllerState, Event]
                 existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
         })
 
-  private def simpleItemIdToDeletedEvent(id: InventoryItemKey): Checked[Option[InventoryItemEvent]] =
-    id match {
+  private def simpleItemIdToDeletedEvent(itemKey: InventoryItemKey): Checked[Option[InventoryItemEvent]] =
+    itemKey match {
       case id: OrderWatchPath =>
         Right(
           _controllerState.allOrderWatchesState.pathToOrderWatchState
@@ -631,7 +631,7 @@ with MainJournalingActor[ControllerState, Event]
                   ItemDeletionMarked(id))))
 
       case _ =>
-        Left(Problem.pure(s"${id.companion.itemTypeName} cannot be deleted"))
+        Left(Problem.pure(s"${itemKey.companion.itemTypeName} cannot be deleted"))
     }
 
   private def versionedItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
@@ -831,11 +831,11 @@ with MainJournalingActor[ControllerState, Event]
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
-      AgentDriver.props(agent.id, agent.uri, agentRunId, eventId = eventId, agentDriverConfiguration, controllerConfiguration,
+      AgentDriver.props(agent.path, agent.uri, agentRunId, eventId = eventId, agentDriverConfiguration, controllerConfiguration,
         journalActor = journalActor),
-      encodeAsActorName("Agent-" + agent.id)))
+      encodeAsActorName("Agent-" + agent.path)))
     val entry = AgentEntry(agent, actor)
-    agentRegister.insert(agent.id -> entry)
+    agentRegister.insert(agent.path -> entry)
     entry
   }
 
@@ -941,19 +941,19 @@ with MainJournalingActor[ControllerState, Event]
 
       case SimpleItemChanged(agentRef: AgentRef) =>
         agentRegister.update(agentRef)
-        agentRegister(agentRef.id).reconnect()
+        agentRegister(agentRef.path).reconnect()
 
       case _ =>
     }
   }
 
-  private def proceedWithItem(itemId: InventoryItemKey): Unit =
-    itemId match {
+  private def proceedWithItem(itemKey: InventoryItemKey): Unit =
+    itemKey match {
       case agentPath: AgentPath =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
 
-      case itemId: OrderWatchPath =>
-        for (orderWatchState <- _controllerState.allOrderWatchesState.pathToOrderWatchState.get(itemId)) {
+      case path: OrderWatchPath =>
+        for (orderWatchState <- _controllerState.allOrderWatchesState.pathToOrderWatchState.get(path)) {
           import orderWatchState.orderWatch
           for ((agentPath, attachedState) <- orderWatchState.agentPathToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
@@ -963,7 +963,7 @@ with MainJournalingActor[ControllerState, Event]
                   agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(orderWatch)
 
                 case Detachable =>
-                  agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.id)
+                  agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.key)
 
                 case _ =>
               }
@@ -1126,7 +1126,7 @@ with MainJournalingActor[ControllerState, Event]
           for (signedItem <- jobResources ++ View(signedWorkflow)) {
             val item = signedItem.value
             val attachedState = _controllerState
-              .itemIdToAttachedState(item.id, item.itemRevision, agentEntry.agentPath)
+              .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
             if (attachedState == Detached || attachedState == Attachable) {
               agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
@@ -1238,8 +1238,8 @@ private[controller] object ControllerOrderKeeper
     override def -=(a: ActorRef) = super.-=(a)
 
     def update(agentRef: AgentRef): Unit = {
-      val oldEntry = apply(agentRef.id)
-      super.update(agentRef.id -> oldEntry.copy(agentRef = agentRef))
+      val oldEntry = apply(agentRef.path)
+      super.update(agentRef.path -> oldEntry.copy(agentRef = agentRef))
     }
 
     def runningActorCount = values.count(o => !o.actorTerminated)
@@ -1250,7 +1250,7 @@ private[controller] object ControllerOrderKeeper
     actor: ActorRef,
     var actorTerminated: Boolean = false)
   {
-    def agentPath = agentRef.id
+    def agentPath = agentRef.path
 
     def reconnect()(implicit sender: ActorRef): Unit =
       actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)

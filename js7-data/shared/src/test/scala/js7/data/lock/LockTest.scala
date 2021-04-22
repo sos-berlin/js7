@@ -9,7 +9,7 @@ final class LockTest extends AnyFreeSpec
   "JSON" in {
     testJson(Lock(LockPath("LOCK"), limit = 3), json"""
       {
-        "id": "LOCK",
+        "path": "LOCK",
         "limit": 3
       }""")
   }

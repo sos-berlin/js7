@@ -224,11 +224,11 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""[
           {
-            "id": "AGENT",
+            "path": "AGENT",
             "uri": "$agent1Uri",
             "itemRevision": 0
           }, {
-            "id": "AGENT-A",
+            "path": "AGENT-A",
             "uri": "$agent2Uri",
             "itemRevision": 0
           }
@@ -237,7 +237,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     testGet("controller/api/agent/AGENT-A?return=AgentRef",
       RawHeader("x-js7-session", sessionToken) :: Nil,
       json"""{
-        "id": "AGENT-A",
+        "path": "AGENT-A",
         "uri": "$agent2Uri",
         "itemRevision": 0
       }""")
@@ -523,7 +523,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "TYPE": "SimpleItemAdded",
           "item": {
             "TYPE": "AgentRef",
-            "id": "AGENT",
+            "path": "AGENT",
             "uri": "$agent1Uri",
             "itemRevision": 0
           }
@@ -532,7 +532,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "TYPE": "SimpleItemAdded",
           "item": {
             "TYPE": "AgentRef",
-            "id": "AGENT-A",
+            "path": "AGENT-A",
             "uri": "$agent2Uri",
             "itemRevision": 0
           }

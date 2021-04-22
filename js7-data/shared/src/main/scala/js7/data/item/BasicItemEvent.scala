@@ -52,7 +52,7 @@ object BasicItemEvent
   /** Agent only. */
   final case class ItemAttachedToAgent(item: InventoryItem)
   extends ForAgent {
-    def key = item.id
+    def key = item.key
   }
 
   final case class ItemDetachable(key: InventoryItemKey, agentPath: AgentPath)

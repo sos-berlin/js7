@@ -12,11 +12,11 @@ trait InventoryItem
 
   val companion: Companion[Self]
 
-  def id: InventoryItemKey
+  def key: InventoryItemKey
   def itemRevision: Option[ItemRevision]
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
-  override def hashCode = 31 * id.hashCode + itemRevision.hashCode
+  override def hashCode = 31 * key.hashCode + itemRevision.hashCode
 }
 
 object InventoryItem
@@ -26,15 +26,14 @@ object InventoryItem
   trait Companion[A <: InventoryItem]
   {
     type Item <: A
-    type Key <: InventoryItemKey
+    def cls: Class[A]
+    val typeName = getClass.simpleScalaName
 
+    type Key <: InventoryItemKey
     val Key: InventoryItemKey.Companion[Key]
 
-    def cls: Class[A]
 
     implicit def jsonCodec: Codec.AsObject[A]
-
-    val typeName = getClass.simpleScalaName
 
     def subtype: Subtype[A] =
       Subtype(jsonCodec)(ClassTag(cls))

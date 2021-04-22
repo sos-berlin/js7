@@ -71,7 +71,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(VanishedAck)))))),
     Repo.empty.applyEvent(VersionAdded(VersionId("1.0"))).orThrow,
     Map(
-      jobResource.id -> signedJobResource),
+      jobResource.path -> signedJobResource),
     Map(
       JobResourcePath("JOB-RESOURCE") -> Map(AgentPath("AGENT") -> Attachable)),
     (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh(None),
@@ -88,7 +88,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     val sum = controllerState.pathToAgentRefState ++
       controllerState.pathToLockState ++
       controllerState.allOrderWatchesState.pathToOrderWatchState
-    assert(controllerState.pathToSimpleItem.toMap == sum.map(_._2.item).toKeyedMap(_.id))
+    assert(controllerState.pathToSimpleItem.toMap == sum.map(_._2.item).toKeyedMap(_.key))
   }
 
   "toSnapshotObservable" in {
@@ -126,7 +126,7 @@ final class ControllerStateTest extends AsyncFreeSpec
               ExternalOrderName("ORDER-NAME"),
               HasOrder(OrderId("ORDER"), Some(VanishedAck))),
             SignedItemAdded(signedJobResource),
-            ItemAttachedStateSnapshot(jobResource.id, Map(AgentPath("AGENT") -> Attachable))
+            ItemAttachedStateSnapshot(jobResource.path, Map(AgentPath("AGENT") -> Attachable))
           ) ++
           controllerState.idToOrder.values)
   }
@@ -181,7 +181,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           }, {
             "TYPE": "AgentRefState",
             "agentRef": {
-              "id": "AGENT",
+              "path": "AGENT",
               "uri": "https://AGENT",
               "itemRevision": 0
             },
@@ -192,7 +192,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           }, {
             "TYPE": "LockState",
             "lock": {
-              "id": "LOCK",
+              "path": "LOCK",
               "limit": 1,
               "itemRevision": 7
             },
@@ -204,7 +204,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "OrderWatchState.Header",
             "orderWatch": {
               "TYPE": "FileWatch",
-              "id": "WATCH",
+              "path": "WATCH",
               "workflowPath": "WORKFLOW",
               "agentPath": "AGENT",
               "directory": "/tmp/directory",
@@ -232,7 +232,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           }, {
             "TYPE": "SignedItemAdded",
             "signed": {
-              "string": "{\"TYPE\":\"JobResource\",\"id\":\"JOB-RESOURCE\",\"env\":{}}",
+              "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"env\":{}}",
               "signature": {
                 "TYPE": "Silly",
                 "signatureString": "SILLY-SIGNATURE"

@@ -103,11 +103,11 @@ extends JournaledState[ControllerState]
             case SimpleItemAdded(item) =>
               item match {
                 case lock: Lock =>
-                  for (o <- pathToLockState.insert(lock.id -> LockState(lock))) yield
+                  for (o <- pathToLockState.insert(lock.path -> LockState(lock))) yield
                     copy(pathToLockState = o)
 
                 case agentRef: AgentRef =>
-                  for (o <- pathToAgentRefState.insert(agentRef.id -> AgentRefState(agentRef)))
+                  for (o <- pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef)))
                     yield copy(
                       pathToAgentRefState = o)
 
@@ -119,15 +119,15 @@ extends JournaledState[ControllerState]
             case SimpleItemChanged(item) =>
               item match {
                 case lock: Lock =>
-                  for (lockState <- pathToLockState.checked(lock.id))
+                  for (lockState <- pathToLockState.checked(lock.path))
                     yield copy(
-                      pathToLockState = pathToLockState + (lock.id -> lockState.copy(
+                      pathToLockState = pathToLockState + (lock.path -> lockState.copy(
                         lock = lock)))
 
                 case agentRef: AgentRef =>
-                  for (agentRefState <- pathToAgentRefState.checked(agentRef.id))
+                  for (agentRefState <- pathToAgentRefState.checked(agentRef.path))
                     yield copy(
-                      pathToAgentRefState = pathToAgentRefState + (agentRef.id -> agentRefState.copy(
+                      pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
                         agentRef = agentRef)))
 
                 case orderWatch: OrderWatch =>
@@ -142,7 +142,7 @@ extends JournaledState[ControllerState]
             case SignedItemAdded(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
-                  for (o <- idToSignedSimpleItem.insert(jobResource.id -> Signed(jobResource, signedString))) yield
+                  for (o <- idToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, signedString))) yield
                     copy(idToSignedSimpleItem = o)
               }
 
@@ -150,7 +150,7 @@ extends JournaledState[ControllerState]
               item match {
                 case jobResource: JobResource =>
                   Right(copy(
-                    idToSignedSimpleItem = idToSignedSimpleItem + (jobResource.id -> Signed(jobResource, signedString))))
+                    idToSignedSimpleItem = idToSignedSimpleItem + (jobResource.path -> Signed(jobResource, signedString))))
               }
           }
 
@@ -273,7 +273,7 @@ extends JournaledState[ControllerState]
                   .map(lockStates =>
                     copy(
                       idToOrder = updatedIdToOrder,
-                      pathToLockState = pathToLockState ++ (lockStates.map(o => o.lock.id -> o))))
+                      pathToLockState = pathToLockState ++ (lockStates.map(o => o.lock.path -> o))))
 
               case OrderRemoveMarked =>
                 previousOrder.externalOrderKey match {
@@ -320,15 +320,15 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def itemIdToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
+  def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
     itemKey match {
-      case itemId: VersionedItemId_ =>
-        repo.attachedState(itemId, agentPath)
+      case id: VersionedItemId_ =>
+        repo.attachedState(id, agentPath)
 
-      case itemId: SignableSimpleItemPath =>
+      case path: SignableSimpleItemPath =>
         itemToAgentToAttachedState
-          .get(itemId)
+          .get(path)
           .flatMap(_.get(agentPath))
           .map {
             case a @ (Attachable | Attached(`itemRevision`) | Detachable) => a
@@ -381,7 +381,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     AgentRef, Lock, FileWatch, JobResource, Workflow)
 
   private[controller] final case class ItemAttachedStateSnapshot(
-    itemId: InventoryItemKey,
+    itemKey: InventoryItemKey,
     agentToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached])
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =

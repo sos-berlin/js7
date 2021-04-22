@@ -6,7 +6,4 @@ import js7.data_for_java.common.JavaWrapper
 trait JInventoryItem extends JavaWrapper
 {
   protected type AsScala <: InventoryItem
-
-  //@Nonnull
-  //def id: JInventoryItemId
 }

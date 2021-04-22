@@ -77,7 +77,6 @@ final class JJobResourceTester
             "    }\n" +
             "  ]\n" +
             "}\n"));
-        System.err.println(workflow.id().versionId());
 
         await(
             api.updateItems(Flux.concat(

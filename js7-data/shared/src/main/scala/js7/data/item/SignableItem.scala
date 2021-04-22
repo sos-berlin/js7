@@ -11,7 +11,7 @@ trait SignableItem extends InventoryItem
 
   val companion: SignableItem.Companion[Self]
 
-  def id: SignableItemKey
+  def key: SignableItemKey
 }
 
 object SignableItem

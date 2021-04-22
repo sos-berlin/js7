@@ -90,7 +90,7 @@ object VerifiedUpdateItems
 
           unsignedSimpleItems
             .view
-            .map(_.id)
+            .map(_.key)
             .concat(simpleDeletes)
             .checkUniqueness(identity)
             .flatMap(_ =>

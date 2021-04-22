@@ -151,7 +151,7 @@ object AgentCommand extends CommonCommand.Companion
       c => SignableItem.signedJsonDecoder(S).decodeJson(c.value).map(AttachSignedItem(_))
   }
 
-  final case class DetachItem(id: InventoryItemKey)
+  final case class DetachItem(key: InventoryItemKey)
   extends AgentCommand
   {
     type Response = Response.Accepted

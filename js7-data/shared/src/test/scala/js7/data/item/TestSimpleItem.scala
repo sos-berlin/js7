@@ -16,7 +16,7 @@ object TestSimplePath extends UnsignedSimpleItemPath.Companion[TestSimplePath]
 
 
 final case class TestSimpleItem(
-  id: TestSimplePath,
+  path: TestSimplePath,
   content: String,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem {

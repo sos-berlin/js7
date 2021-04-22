@@ -45,12 +45,12 @@ object VersionedEvent {
               Right(toA(e.signed.copy(value = item)))
             case item =>
               Left(DecodingFailure(
-                s"VersionedItem expected in ${implicitClass.simpleName} event: ${item.id}", c.history))
+                s"VersionedItem expected in ${implicitClass.simpleName} event: ${item.key}", c.history))
           })
   }
 
   final case class VersionedItemAdded(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
-    def id = signed.value.id
+    def id = signed.value.key
   }
   object VersionedItemAdded
   {
@@ -63,7 +63,7 @@ object VersionedEvent {
   }
 
   final case class VersionedItemChanged(signed: Signed[VersionedItem]) extends VersionedItemAddedOrChanged {
-    def id = signed.value.id
+    def id = signed.value.key
   }
   object VersionedItemChanged
   {

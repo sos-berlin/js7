@@ -14,7 +14,7 @@ class JAgentRefTester
     private static final String agentRefJson =
        "{\n" +
        "  \"TYPE\": \"AgentRef\",\n" +
-       "  \"id\": \"AGENT\",\n" +
+       "  \"path\": \"AGENT\",\n" +
        "  \"uri\": \"https://agent.example.com\"\n" +
        "}";
 

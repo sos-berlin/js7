@@ -15,7 +15,7 @@ object SignedItemEvent
   sealed trait SignedItemAddedOrChanged extends SignedItemEvent with Product {
     def signedString = signed.signedString
     def signed: Signed[SignableItem]
-    def key: SignableItemKey = signed.value.id
+    def key: SignableItemKey = signed.value.key
     def toShortString = s"$productPrefix($key)"
   }
 

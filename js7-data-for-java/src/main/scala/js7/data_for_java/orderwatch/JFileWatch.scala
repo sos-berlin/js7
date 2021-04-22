@@ -27,7 +27,7 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
 
   @Nonnull
   def path: OrderWatchPath =
-    asScala.id
+    asScala.path
 
   @Nonnull
   def workflowPath: WorkflowPath =

@@ -15,7 +15,7 @@ extends JJsonable[JLock] with JUnsignedSimpleItem
 
   @Nonnull
   def path: LockPath =
-    asScala.id
+    asScala.path
 
   def limit: Int =
     asScala.limit

@@ -115,7 +115,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         assert(watchSetting != updatedBackupSetting)
 
         val bAgent = {
-          val conf = primary.agentToTree(primary.agentRefs.head.id).agentConfiguration
+          val conf = primary.agentToTree(primary.agentRefs.head.path).agentConfiguration
           RunningAgent.startForTest(conf.copy(webServerPorts = Seq(WebServerPort.localhost(otherClusterWatchPort)))).await(99.s)
         }
         assert(bAgent.localUri == bAgentUri)

@@ -60,7 +60,7 @@ trait AgentProxyRoute extends ControllerRouteProvider
     val agentClient = AgentClient(  // TODO Reuse AgentClient of AgentDriver
       agentRef.uri,
       userAndPassword = None,
-      label = agentRef.id.toString,
+      label = agentRef.path.toString,
       controllerConfiguration.keyStoreRefOption,
       controllerConfiguration.trustStoreRefs)
     implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)

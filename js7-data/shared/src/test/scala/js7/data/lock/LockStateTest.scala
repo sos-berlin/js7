@@ -17,7 +17,7 @@ final class LockStateTest extends AnyFreeSpec
     testJson(LockState(Lock(LockPath("LOCK"), limit = 1, Some(ItemRevision(0)))), json"""
       {
         "lock": {
-          "id": "LOCK",
+          "path": "LOCK",
           "limit": 1,
           "itemRevision": 0
         },
@@ -39,7 +39,7 @@ final class LockStateTest extends AnyFreeSpec
     LockState(lock, acquired).applyEvent(event)
 
   def orderLockAcquired(orderId: OrderId, count: Option[Int])(implicit lock: Lock) =
-    orderId <-: OrderLockAcquired(lock.id, count)
+    orderId <-: OrderLockAcquired(lock.path, count)
 
   for ((lock, testName) <- Seq(
     //Lock(LockPath("LOCK")) -> "Exclusive lock",
@@ -68,42 +68,42 @@ final class LockStateTest extends AnyFreeSpec
       }
 
       "OrderLockQueued" in {
-        assert(applyEvent(Available, a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK is available an does not accept queuing")))
+        assert(applyEvent(Available, a <-: OrderLockQueued(lock.path, None)) == Left(Problem("Lock:LOCK is available an does not accept queuing")))
 
-        assert(applyEvent(Exclusive(a), a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(Exclusive(a), b <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b))))
+        assert(applyEvent(Exclusive(a), a <-: OrderLockQueued(lock.path, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(Exclusive(a), b <-: OrderLockQueued(lock.path, None)) == Right(LockState(lock, Exclusive(a), Queue(b))))
 
-        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockQueued(lock.id, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
-        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, NonExclusive(Map(a -> 1)), Queue(b))))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockQueued(lock.path, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockQueued(lock.path, None)) == Left(Problem("Lock:LOCK has already been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockQueued(lock.path, None)) == Right(LockState(lock, NonExclusive(Map(a -> 1)), Queue(b))))
 
-        assert(LockState(lock, Exclusive(a)).applyEvent(b <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b))))
-        assert(LockState(lock, Exclusive(a), Queue(b)).applyEvent(c <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b, c))))
-        assert(LockState(lock, Exclusive(a), Queue(b, c)).applyEvent(d <-: OrderLockQueued(lock.id, None)) == Right(LockState(lock, Exclusive(a), Queue(b, c, d))))
-        assert(LockState(lock, Exclusive(a), Queue(b, c, d)).applyEvent(c <-: OrderLockQueued(lock.id, None)) == Left(Problem("Order 'C' already queues for Lock:LOCK")))
+        assert(LockState(lock, Exclusive(a)).applyEvent(b <-: OrderLockQueued(lock.path, None)) == Right(LockState(lock, Exclusive(a), Queue(b))))
+        assert(LockState(lock, Exclusive(a), Queue(b)).applyEvent(c <-: OrderLockQueued(lock.path, None)) == Right(LockState(lock, Exclusive(a), Queue(b, c))))
+        assert(LockState(lock, Exclusive(a), Queue(b, c)).applyEvent(d <-: OrderLockQueued(lock.path, None)) == Right(LockState(lock, Exclusive(a), Queue(b, c, d))))
+        assert(LockState(lock, Exclusive(a), Queue(b, c, d)).applyEvent(c <-: OrderLockQueued(lock.path, None)) == Left(Problem("Order 'C' already queues for Lock:LOCK")))
       }
 
       "Child order cannot lock if parent order has locked" in {
-        assert(applyEvent(Exclusive(a), (a | "CHILD") <-: OrderLockQueued(lock.id, None)) ==
+        assert(applyEvent(Exclusive(a), (a | "CHILD") <-: OrderLockQueued(lock.path, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
-        assert(applyEvent(Exclusive(a), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.id, None)) ==
+        assert(applyEvent(Exclusive(a), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.path, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
-        assert(applyEvent(Exclusive(a | "CHILD"), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.id, None)) ==
+        assert(applyEvent(Exclusive(a | "CHILD"), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.path, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A|CHILD")))
       }
 
       "OrderLockReleased" in {
-        assert(applyEvent(Available, a <-: OrderLockReleased(lock.id)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
+        assert(applyEvent(Available, a <-: OrderLockReleased(lock.path)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
 
-        assert(applyEvent(Exclusive(a), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, Available)))
-        assert(applyEvent(Exclusive(a), b <-: OrderLockReleased(lock.id)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
+        assert(applyEvent(Exclusive(a), a <-: OrderLockReleased(lock.path)) == Right(LockState(lock, Available)))
+        assert(applyEvent(Exclusive(a), b <-: OrderLockReleased(lock.path)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
 
-        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, Available)))
-        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusive(Map(b -> 1)))))
-        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockReleased(lock.id)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), a <-: OrderLockReleased(lock.path)) == Right(LockState(lock, Available)))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), a <-: OrderLockReleased(lock.path)) == Right(LockState(lock, NonExclusive(Map(b -> 1)))))
+        assert(applyEvent(NonExclusive(Map(a -> 1)), b <-: OrderLockReleased(lock.path)) == Left(Problem("Lock:LOCK has not been acquired by this order")))
 
-        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), b <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusive(Map(a -> 1)))))
-        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1, c -> 1)), b <-: OrderLockReleased(lock.id)) == Right(LockState(lock, NonExclusive(Map(a -> 1, c -> 1)))))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1)), b <-: OrderLockReleased(lock.path)) == Right(LockState(lock, NonExclusive(Map(a -> 1)))))
+        assert(applyEvent(NonExclusive(Map(a -> 1, b -> 1, c -> 1)), b <-: OrderLockReleased(lock.path)) == Right(LockState(lock, NonExclusive(Map(a -> 1, c -> 1)))))
       }
     }
   }
@@ -149,7 +149,7 @@ final class LockStateTest extends AnyFreeSpec
 
   "acquireFor more than limit" in {
     implicit val lock = Lock(LockPath("LOCK"), limit = 1)
-    assert(applyEvent(Available, a <-: OrderLockQueued(lock.id, Some(2))) ==
+    assert(applyEvent(Available, a <-: OrderLockQueued(lock.path, Some(2))) ==
       Left(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1")))
   }
 

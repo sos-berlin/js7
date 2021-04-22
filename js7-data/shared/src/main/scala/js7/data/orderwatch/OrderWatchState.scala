@@ -29,7 +29,7 @@ extends SimpleItemState
 {
   def item = orderWatch
 
-  def id: OrderWatchPath = orderWatch.id
+  def id: OrderWatchPath = orderWatch.key
 
   type Revision = Int
 
@@ -182,7 +182,7 @@ extends SimpleItemState
     HeaderSnapshot(orderWatch, agentPathToAttachedState, delete) +:
       Observable.fromIterable(externalToState)
         .map { case (externalOrderName, state) =>
-          ExternalOrderSnapshot(orderWatch.id, externalOrderName, state)
+          ExternalOrderSnapshot(orderWatch.key, externalOrderName, state)
         }
 
   def applySnapshot(snapshot: ExternalOrderSnapshot): Checked[OrderWatchState] =
@@ -223,7 +223,7 @@ object OrderWatchState
     agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
     delete: Boolean)
   extends Snapshot {
-    def orderWatchPath = orderWatch.id
+    def orderWatchPath = orderWatch.key
   }
 
   final case class ExternalOrderSnapshot(

@@ -21,11 +21,11 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   private val workflowId = workflowPath ~ v1
   private val aOrderWatch = FileWatch(OrderWatchPath("A-WATCH"),
     workflowPath, AgentPath("AGENT"), "DIRECTORY")
-  private val bOrderWatch = aOrderWatch.copy(id = OrderWatchPath("B-WATCH"))
+  private val bOrderWatch = aOrderWatch.copy(path = OrderWatchPath("B-WATCH"))
   private var aoss = AllOrderWatchesState.empty
 
   private def state(name: String): Option[ArisedOrHasOrder] =
-    aoss.pathToOrderWatchState(aOrderWatch.id).externalToState.get(ExternalOrderName(name))
+    aoss.pathToOrderWatchState(aOrderWatch.path).externalToState.get(ExternalOrderName(name))
 
   "addOrderWatch" in {
     aoss = aoss.addOrderWatch(aOrderWatch).orThrow
@@ -35,17 +35,17 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   }
 
   "removeOrderWatch" in {
-    val x = bOrderWatch.copy(id = OrderWatchPath("X"))
+    val x = bOrderWatch.copy(path = OrderWatchPath("X"))
     val all1 = aoss.addOrderWatch(x).orThrow
-    assert(all1.pathToOrderWatchState.contains(x.id))
-    val all0 = all1.removeOrderWatch(x.id)
+    assert(all1.pathToOrderWatchState.contains(x.path))
+    val all0 = all1.removeOrderWatch(x.path)
     assert(all0 == aoss)
   }
 
   "changeOrderWatch" in {
     val a1 = aOrderWatch.copy(directory = "CHANGED")
     val all1 = aoss.changeOrderWatch(a1).orThrow
-    assert(all1.pathToOrderWatchState(a1.id) == OrderWatchState(a1))
+    assert(all1.pathToOrderWatchState(a1.path) == OrderWatchState(a1))
   }
 
   "Events on the happy path" - {
@@ -65,7 +65,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
     "ExternalOrderArised A" in {
       aoss = aoss.onOrderWatchEvent(externalOrderArised("A")).orThrow
       assert(aoss
-        .pathToOrderWatchState(aOrderWatch.id)
+        .pathToOrderWatchState(aOrderWatch.path)
         .externalToState(ExternalOrderName("A")) == Arised(orderId("A"), arguments("A")))
       assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderAdded("B"), orderAdded("A")))
     }
@@ -186,7 +186,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       // - due to explicit command
       // - due to repeated ExternalOrderArised and ExternalOrderVanished
       aoss = aoss.onOrderWatchEvent(externalOrderArised("A")).orThrow
-      assert(aoss.pathToOrderWatchState(aOrderWatch.id).externalToState(ExternalOrderName("A")) ==
+      assert(aoss.pathToOrderWatchState(aOrderWatch.path).externalToState(ExternalOrderName("A")) ==
         HasOrder(orderId("A"), Some(Arised(orderId("A"), order("A").arguments))))
 
       assert(aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemoveMarked) == Right(aoss))
@@ -199,16 +199,16 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
     NamedValues("file" -> StringValue(s"/DIR/$name"))
 
   private def externalOrderArised(name: String) =
-    aOrderWatch.id <-: ExternalOrderArised(
+    aOrderWatch.path <-: ExternalOrderArised(
       ExternalOrderName(name),
       orderId(name),
       NamedValues("file" -> StringValue(s"/DIR/$name")))
 
   private def externalOrderVanished(name: String) =
-    aOrderWatch.id <-: ExternalOrderVanished(ExternalOrderName(name))
+    aOrderWatch.path <-: ExternalOrderVanished(ExternalOrderName(name))
 
   private def externalOrderKey(name: String) =
-    ExternalOrderKey(aOrderWatch.id, ExternalOrderName(name))
+    ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))
 
   private def orderId(name: String) =
     OrderId(s"file:A-SOURCE:$name")
@@ -216,7 +216,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   private def orderAdded(name: String) =
     orderId(name) <-:
       OrderAdded(workflowId,Map("file" -> StringValue(s"/DIR/$name")),
-        externalOrderKey = Some(ExternalOrderKey(aOrderWatch.id, ExternalOrderName(name))))
+        externalOrderKey = Some(ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))))
 
   private def order(name: String): Order[Order.Fresh] = {
     val KeyedEvent(orderId, event) = orderAdded(name)

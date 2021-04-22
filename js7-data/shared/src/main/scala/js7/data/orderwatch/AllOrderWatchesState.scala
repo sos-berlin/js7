@@ -18,7 +18,7 @@ import scala.collection.View
 final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath, OrderWatchState])
 {
   def addOrderWatch(orderWatch: OrderWatch): Checked[AllOrderWatchesState] =
-    pathToOrderWatchState.insert(orderWatch.id -> OrderWatchState(orderWatch))
+    pathToOrderWatchState.insert(orderWatch.key -> OrderWatchState(orderWatch))
       .map(o => copy(pathToOrderWatchState = o))
 
   def removeOrderWatch(orderWatchPath: OrderWatchPath): AllOrderWatchesState =
@@ -26,10 +26,10 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
 
   def changeOrderWatch(changed: OrderWatch): Checked[AllOrderWatchesState] =
     pathToOrderWatchState
-      .checked(changed.id)
+      .checked(changed.key)
       .map(watchState =>
         copy(
-          pathToOrderWatchState = pathToOrderWatchState + (changed.id -> watchState.copy(
+          pathToOrderWatchState = pathToOrderWatchState + (changed.key -> watchState.copy(
             orderWatch = changed))))
 
   def onOrderWatchEvent(keyedEvent: KeyedEvent[OrderWatchEvent])

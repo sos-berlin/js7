@@ -18,7 +18,7 @@ extends SimpleItemState
 {
   def item = agentRef
 
-  def agentPath = agentRef.id
+  def agentPath = agentRef.path
 
   def agentPathToAttachedState = Map.empty
 

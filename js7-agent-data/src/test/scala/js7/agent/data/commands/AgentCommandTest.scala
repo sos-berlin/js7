@@ -173,12 +173,12 @@ final class AgentCommandTest extends AnyFreeSpec
   "AttachItem" in {
     check(
       AgentCommand.AttachItem(
-        FileWatch(OrderWatchPath("ID"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "DIRECTORY")),
+        FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "DIRECTORY")),
       json"""{
         "TYPE": "AttachItem",
         "item": {
           "TYPE": "FileWatch",
-          "id": "ID",
+          "path": "PATH",
           "workflowPath": "WORKFLOW",
           "agentPath": "AGENT",
           "directory": "DIRECTORY",
@@ -216,7 +216,7 @@ final class AgentCommandTest extends AnyFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"JobResource\",\"id\":\"JOB-RESOURCE\",\"env\":{}}"
+          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"env\":{}}"
         },
         "itemRevision": 7
        }""")
@@ -224,17 +224,17 @@ final class AgentCommandTest extends AnyFreeSpec
 
   "DetachItem" in {
     check(
-      AgentCommand.DetachItem(OrderWatchPath("ID")),
+      AgentCommand.DetachItem(OrderWatchPath("PATH")),
       json"""{
         "TYPE": "DetachItem",
-        "id": "OrderWatch:ID"
+        "key": "OrderWatch:PATH"
       }""")
 
     check(
       AgentCommand.DetachItem(WorkflowPath("WORKFLOW") ~ VersionId("1")),
       json"""{
         "TYPE": "DetachItem",
-        "id": "Workflow:WORKFLOW~1"
+        "key": "Workflow:WORKFLOW~1"
       }""")
   }
 
@@ -255,7 +255,7 @@ final class AgentCommandTest extends AnyFreeSpec
               "workflowId": {
                 "path": "WORKFLOW",
                 "versionId": "VERSION"
-                },
+              },
               "position": [ 3 ]
             },
             "state": {

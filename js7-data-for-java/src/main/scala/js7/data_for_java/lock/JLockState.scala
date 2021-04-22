@@ -15,7 +15,7 @@ extends JJsonable[JLockState]
 
   @Nonnull
   def lockPath: LockPath =
-    asScala.lock.id
+    asScala.lock.path
 
   @Nonnull
   def lock: Lock =

@@ -19,7 +19,7 @@ extends VersionedItemApi
     for (checked <- checkedRepo) yield
       for (repo <- checked) yield
         repo.currentTyped[A].values.toSeq
-          .sortBy/*for determinstic tests*/(_.id: VersionedItemId[ItemPath])
+          .sortBy/*for determinstic tests*/(_.key: VersionedItemId[ItemPath])
 
   def pathToCurrentItem[A <: VersionedItem: VersionedItem.Companion](path: A#Path): Task[Checked[A]] =
     for (checked <- checkedRepo) yield

@@ -11,7 +11,9 @@ trait SimpleItem extends InventoryItem
 
   val companion: Companion[Self]
 
-  def id: companion.Key
+  final def key = path
+
+  def path: companion.Key
 
   def itemRevision: Option[ItemRevision]
 }
@@ -23,8 +25,8 @@ object SimpleItem
   trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]
   {
     type Item  = A
-    type Key <: SimpleItemPath
 
+    type Key <: SimpleItemPath
     val Key: SimpleItemPath.Companion[Key]
   }
 

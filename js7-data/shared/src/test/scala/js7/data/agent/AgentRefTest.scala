@@ -14,13 +14,13 @@ final class AgentRefTest extends AnyFreeSpec
   "JSON" in {
     testJsonDecoder(AgentRef(AgentPath("AGENT"), Uri("http://127.0.0.1")),
       json"""{
-        "id": "AGENT",
+        "path": "AGENT",
         "uri": "http://127.0.0.1"
       }""")
 
     testJson(AgentRef(AgentPath("AGENT"), Uri("http://127.0.0.1"), Some(ItemRevision(7))),
       json"""{
-        "id": "AGENT",
+        "path": "AGENT",
         "uri": "http://127.0.0.1",
         "itemRevision": 7
       }""")

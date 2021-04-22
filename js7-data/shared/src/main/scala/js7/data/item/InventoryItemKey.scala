@@ -29,7 +29,7 @@ object InventoryItemKey
 
     new Codec[InventoryItemKey]
     {
-      def apply(id: InventoryItemKey) = Json.fromString(id.toTypedString)
+      def apply(key: InventoryItemKey) = Json.fromString(key.toTypedString)
 
       def apply(cursor: HCursor) =
         for {

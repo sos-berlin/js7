@@ -139,7 +139,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
             "TYPE": "OrderWatchState.Header",
             "orderWatch": {
               "TYPE": "FileWatch",
-              "id": "FILE-WATCH",
+              "path": "FILE-WATCH",
               "workflowPath": "WORKFLOW",
               "agentPath": "AGENT",
               "directory": "DIRECTORY",

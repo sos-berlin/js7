@@ -25,25 +25,25 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
   def agentPathToAttachedState = Map.empty
 
   def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
-    assertThat(keyedEvent.event.lockPaths contains lock.id)
+    assertThat(keyedEvent.event.lockPaths contains lock.path)
     keyedEvent match {
-      case KeyedEvent(orderId, OrderLockAcquired(lock.id, count)) =>
+      case KeyedEvent(orderId, OrderLockAcquired(lock.`path`, count)) =>
         for (lockState <- toLockState(tryAcquire(orderId, count))) yield
           if (queue contains orderId)
             lockState.copy(queue = queue.filterNot(_ == orderId)) /*TODO Slow with long order queue*/
           else
             lockState
 
-      case KeyedEvent(orderId, OrderLockReleased(lock.id)) =>
+      case KeyedEvent(orderId, OrderLockReleased(lock.`path`)) =>
         release(orderId)
 
-      case KeyedEvent(orderId, OrderLockQueued(lock.id, count)) =>
+      case KeyedEvent(orderId, OrderLockQueued(lock.`path`, count)) =>
         if (!count.forall(_ <= limit))
           Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockPath limit=$limit"))
         else if (acquired == Available)
           Left(Problem(s"$lockPath is available an does not accept queuing"))
         else if (acquired.isAcquiredBy(orderId))
-          Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.id))
+          Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.path))
         else if (queue contains orderId)
           Left(Problem(s"Order '${orderId.string}' already queues for $lockPath"))
         else orderId.allParents find acquired.isAcquiredBy match {
@@ -103,11 +103,11 @@ extends SimpleItemState with Big/*acquired and queue get big with many orders*/
 
   private def toLockState(result: Either[LockRefusal, Acquired]): Checked[LockState] =
     result
-      .left.map(refusal => refusal.toProblem(lock.id))
+      .left.map(refusal => refusal.toProblem(lock.path))
       .map(acquired =>
         copy(acquired = acquired))
 
-  private def lockPath = lock.id
+  private def lockPath = lock.path
 
   //TODO Break snapshot into smaller parts: private def toSnapshot: Observable[Any] = ...
 }

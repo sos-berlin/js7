@@ -5,7 +5,7 @@ import js7.base.annotation.javaApi
 import js7.data.item.{ItemPath, VersionId, VersionedItemId}
 
 @javaApi
-trait JItemId[P <: ItemPath]
+trait JVersionedItemId[P <: ItemPath]
 {
   final type Path = P
   protected type ScalaPath <: ItemPath

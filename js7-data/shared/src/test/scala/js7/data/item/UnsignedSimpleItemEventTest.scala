@@ -18,7 +18,7 @@ final class UnsignedSimpleItemEventTest extends AnyFreeSpec
           "TYPE": "SimpleItemAdded",
           "item": {
             "TYPE": "Lock",
-            "id": "LOCK",
+            "path": "LOCK",
             "limit": 1,
             "itemRevision": 0
           }
@@ -31,7 +31,7 @@ final class UnsignedSimpleItemEventTest extends AnyFreeSpec
           "TYPE": "SimpleItemChanged",
           "item": {
             "TYPE": "Lock",
-            "id": "LOCK",
+            "path": "LOCK",
             "limit": 3,
             "itemRevision": 1
           }

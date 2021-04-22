@@ -7,11 +7,11 @@ import js7.base.problem.Problem
 import js7.data.item.{VersionId, VersionedItemId}
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.item.JItemId
+import js7.data_for_java.item.JVersionedItemId
 
 @javaApi
 final case class JWorkflowId(asScala: WorkflowId)
-extends JJsonable[JWorkflowId] with JItemId[WorkflowPath]
+extends JJsonable[JWorkflowId] with JVersionedItemId[WorkflowPath]
 {
   protected type AsScala = WorkflowId
   protected type ScalaPath = WorkflowPath

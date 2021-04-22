@@ -91,7 +91,7 @@ final case class Repo private(
       .map(o => o.path -> o)
       .toMap[ItemPath, VersionedItem]
     val updated = currentItems.view
-      .filter(o => base.pathToItem(o.path).exists(_.id.versionId != o.id.versionId))
+      .filter(o => base.pathToItem(o.path).exists(_.key.versionId != o.key.versionId))
     val deleted = base.currentItems.view
       .map(_.path)
       .filter(path => !exists(path) && !added.contains(path))
@@ -104,9 +104,9 @@ final case class Repo private(
 
   private def checkItemVersions(versionId: VersionId, signedItems: Iterable[Signed[VersionedItem]]): Checked[Vector[Signed[VersionedItem]]] =
     signedItems.toVector.traverse(o =>
-      o.value.id.versionId match {
+      o.value.key.versionId match {
         case `versionId` => Right(o)
-        case _ => Left(ItemVersionDoesNotMatchProblem(versionId, o.value.id))
+        case _ => Left(ItemVersionDoesNotMatchProblem(versionId, o.value.key))
       })
 
   private def toAddedOrChanged(signedItem: Signed[VersionedItem]): Option[VersionedEvent.VersionedItemEvent] =
@@ -183,7 +183,7 @@ final case class Repo private(
           .flatMap(item =>
             if (item.path.isAnonymous)
               Problem.pure(s"Adding an anonymous ${item.companion.typeName} is not allowed")
-            else if (item.id.versionId != versionId)
+            else if (item.key.versionId != versionId)
               EventVersionDoesNotMatchProblem(versionId, event)
             else
               Right(addEntry(item.path, Some(js7.base.crypt.Signed(item withVersion versionId, event.signedString)))))
@@ -377,7 +377,7 @@ object Repo
           versionIds.toSet,
           operations.view
             .reverse
-            .map(_.fold(o => (o.value.id.path, o.value.id.versionId -> Some(o)), o => (o.path, o.versionId -> None)))
+            .map(_.fold(o => (o.value.key.path, o.value.key.versionId -> Some(o)), o => (o.path, o.versionId -> None)))
             .groupMap(_._1)(_._2)
             .view
             .mapValues(_.map(o => Entry(o._1, o._2)).toList)

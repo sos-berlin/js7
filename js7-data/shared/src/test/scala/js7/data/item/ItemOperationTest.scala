@@ -21,7 +21,7 @@ final class ItemOperationTest extends AnyFreeSpec
           "TYPE": "AddOrChangeSimple",
           "item": {
             "TYPE": "Lock",
-            "id": "LOCK",
+            "path": "LOCK",
             "limit": 1
           }
         }""")
@@ -32,7 +32,7 @@ final class ItemOperationTest extends AnyFreeSpec
         DeleteSimple(LockPath("LOCK")),
         json"""{
           "TYPE": "DeleteSimple",
-          "id": "Lock:LOCK"
+          "path": "Lock:LOCK"
         } """)
     }
 

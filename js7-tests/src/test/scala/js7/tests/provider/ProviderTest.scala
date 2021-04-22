@@ -74,7 +74,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       s"""js7.provider.add-orders-every = 0.1s
          |js7.provider.add-orders-earlier = 0.1s
          |js7.provider.agents {
-         |  ${agentRef.id.string} {
+         |  ${agentRef.path.string} {
          |    uri = "${agentRef.uri}"
          |  }
          |}

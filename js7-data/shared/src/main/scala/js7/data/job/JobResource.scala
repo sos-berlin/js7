@@ -8,7 +8,7 @@ import js7.data.value.expression.Expression.ObjectExpression
 
 /** Job resources, for example environment variables. */
 final case class JobResource(
-  id: JobResourcePath,
+  path: JobResourcePath,
   env: ObjectExpression = ObjectExpression.empty,
   //dependsOn: Seq[JobResourcePath] = Nil,
   itemRevision: Option[ItemRevision] = None)
@@ -18,7 +18,7 @@ extends SignableSimpleItem
   val companion = JobResource
 
   def withId(id: JobResourcePath) =
-    copy(id = id)
+    copy(path = id)
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)

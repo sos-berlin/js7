@@ -70,14 +70,14 @@ final class FileWatchManager(
         .map(_.foldMap(identity)))
 
   def update(fileWatch: FileWatch): Task[Checked[Unit]] =
-    lockKeeper.lock(fileWatch.id) {
+    lockKeeper.lock(fileWatch.path) {
       persistence
         .persist(agentState =>
           Right(
             !agentState.allFileWatchesState.contains(fileWatch) thenList
               NoKey <-: ItemAttachedToAgent(fileWatch)))
         .flatMapT { case (_, agentState) =>
-          startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.id))
+          startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path))
             .map(Right(_))
         }
     }
@@ -158,10 +158,10 @@ final class FileWatchManager(
         .delayFileAdded(fileWatch.delay)  // buffers without limit all incoming event
         .bufferIntrospective(1024/*TODO?*/)
         .mapEval(dirEventSeqs =>
-          lockKeeper.lock(fileWatch.id)(
+          lockKeeper.lock(fileWatch.path)(
             persistence.awaitCurrentState
               .flatMap(agentState =>
-                if (!agentState.allFileWatchesState.pathToFileWatchState.contains(fileWatch.id))
+                if (!agentState.allFileWatchesState.pathToFileWatchState.contains(fileWatch.path))
                   Task.pure(Right(Nil -> agentState))
                 else
                   persistence.persist { agentState =>
@@ -173,7 +173,7 @@ final class FileWatchManager(
                         // We check this here.
                         .flatMap(dirEvent =>
                           agentState.allFileWatchesState.pathToFileWatchState
-                            .get(fileWatch.id)
+                            .get(fileWatch.path)
                             // Ignore late events after FileWatch has been removed
                             .flatMap(fileWatchState =>
                               dirEvent match {
@@ -193,14 +193,14 @@ final class FileWatchManager(
                                   logger.debug(s"Ignore $event")
                                   None
                               }))
-                        .map(fileWatch.id <-: _)
+                        .map(fileWatch.path <-: _)
                         .toVector)
                   }
               )))
         .foreachL {
           case Left(problem) => logger.error(problem.toString)
           case Right((_, agentState)) =>
-            directoryState = agentState.allFileWatchesState.pathToFileWatchState(fileWatch.id).directoryState
+            directoryState = agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path).directoryState
         }
         .onErrorRestartLoop(now) { (throwable, since, restart) =>
           val delay = (since + delayIterator.next()).timeLeftOrZero
@@ -213,7 +213,7 @@ final class FileWatchManager(
   private def pathToOrderId(fileWatch: FileWatch, relativePath: Path): Option[OrderId] =
     relativePathToOrderId(fileWatch, relativePath.toString)
       .flatMap { checkedOrderId =>
-        for (problem <- checkedOrderId.left) logger.error(s"${fileWatch.id} $relativePath: $problem")
+        for (problem <- checkedOrderId.left) logger.error(s"${fileWatch.path} $relativePath: $problem")
         checkedOrderId.toOption
       }
 
@@ -226,13 +226,13 @@ object FileWatchManager
   private val logger = Logger(getClass)
 
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] = {
-    lazy val default = OrderId.checked(s"file:${fileWatch.id.string}:$relativePath")
+    lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")
     val matcher = fileWatch.resolvedPattern.matcher(relativePath)
     matcher.matches() ? {
       fileWatch.orderIdExpression match {
         case None => default
         case Some(expr) =>
-          eval(fileWatch.id, expr, matcher)
+          eval(fileWatch.path, expr, matcher)
             .flatMap(_.toStringValueString)
             .flatMap(OrderId.checked)
       }

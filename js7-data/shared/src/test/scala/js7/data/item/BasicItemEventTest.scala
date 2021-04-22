@@ -16,37 +16,37 @@ final class BasicItemEventTest extends AnyFreeSpec
 
   "JSON" - {
     "ItemDeletionMarked" in {
-      testJson[BasicItemEvent](ItemDeletionMarked(OrderWatchPath("ID")), json"""
+      testJson[BasicItemEvent](ItemDeletionMarked(OrderWatchPath("PATH")), json"""
         {
           "TYPE": "ItemDeletionMarked",
-          "key": "OrderWatch:ID"
+          "key": "OrderWatch:PATH"
         }""")
     }
 
     "ItemDestroyed" in {
-      testJson[BasicItemEvent](ItemDestroyed(OrderWatchPath("ID")), json"""
+      testJson[BasicItemEvent](ItemDestroyed(OrderWatchPath("PATH")), json"""
         {
           "TYPE": "ItemDestroyed",
-          "key": "OrderWatch:ID"
+          "key": "OrderWatch:PATH"
         }""")
     }
 
     "ItemAttachable" in {
-      testJson[BasicItemEvent](ItemAttachable(OrderWatchPath("ID"), AgentPath("AGENT")),
+      testJson[BasicItemEvent](ItemAttachable(OrderWatchPath("PATH"), AgentPath("AGENT")),
         json"""
         {
           "TYPE": "ItemAttachable",
-          "key": "OrderWatch:ID",
+          "key": "OrderWatch:PATH",
           "agentPath": "AGENT"
         }""")
     }
 
     "ItemAttached" in {
-      testJson[BasicItemEvent](ItemAttached(OrderWatchPath("ID"), Some(ItemRevision(7)), AgentPath("AGENT")),
+      testJson[BasicItemEvent](ItemAttached(OrderWatchPath("PATH"), Some(ItemRevision(7)), AgentPath("AGENT")),
         json"""
         {
           "TYPE": "ItemAttached",
-          "key": "OrderWatch:ID",
+          "key": "OrderWatch:PATH",
           "itemRevision":  7,
           "agentPath": "AGENT"
         }""")
@@ -59,7 +59,7 @@ final class BasicItemEventTest extends AnyFreeSpec
           "TYPE": "ItemAttachedToAgent",
           "item": {
             "TYPE": "JobResource",
-            "id": "JOB-RESOURCE",
+            "path": "JOB-RESOURCE",
             "env": {},
             "itemRevision": 7
            }

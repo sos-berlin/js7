@@ -61,7 +61,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   "Add two files" in {
     createDirectory(sourceDirectory)
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id)
+    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobActorStarvationTest)
     aFile := ""
@@ -77,7 +77,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
     val eventId = controller.eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(pattern = Some(SimplePattern("NARROW-.+")))
     controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.id, after = eventId)
+    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path, after = eventId)
 
     // Now, the A file is not match and out of scope, and a ExternalOrderVanished is emitted.
 
@@ -85,7 +85,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
     // This must be the only ExternalOrderVanished event
     sleep(100.ms)
     assert(controller.eventWatch.keyedEvents[ExternalOrderVanished](after = EventId.BeforeFirst) ==
-      Seq(fileWatch.id <-: ExternalOrderVanished(ExternalOrderName("A"))))
+      Seq(fileWatch.path <-: ExternalOrderVanished(ExternalOrderName("A"))))
 
     semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
     controller.eventWatch.await[OrderRemoved](_.key == aOrderId)

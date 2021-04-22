@@ -16,25 +16,25 @@ final class FileWatchTest extends AnyFreeSpec
     "FileWatch minimum" in {
       val json = json"""{
         "TYPE": "FileWatch",
-        "id": "ID",
+        "path": "PATH",
         "workflowPath": "WORKFLOW",
         "agentPath": "AGENT",
         "directory": "/DIRECTORY"
       }"""
-      assert(json.as[OrderWatch].orThrow == FileWatch(OrderWatchPath("ID"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "/DIRECTORY"))
+      assert(json.as[OrderWatch].orThrow == FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "/DIRECTORY"))
     }
 
     "FileWatch complete" in {
       testJson[OrderWatch](
         FileWatch(
-          OrderWatchPath("ID"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "/DIRECTORY",
+          OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "/DIRECTORY",
           Some(SimplePattern("[a-z]+.csv")),
           Some(ExpressionParser.parse(
             """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$epochSecond-$orderWatchPath:$1"""").orThrow),
           2.s),
         json"""{
           "TYPE": "FileWatch",
-          "id": "ID",
+          "path": "PATH",
           "workflowPath": "WORKFLOW",
           "agentPath": "AGENT",
           "directory": "/DIRECTORY",

@@ -21,7 +21,7 @@ object RepoChange
 
     final def path: item.Path = id.path
 
-    def id: VersionedItemId[item.Path] = item.id
+    def id: VersionedItemId[item.Path] = item.key
 
     def toShortString = s"$productPrefix($id)"
   }
@@ -30,12 +30,12 @@ object RepoChange
   }
 
   final case class Added(item: VersionedItem) extends AddedOrChanged {
-    require(!item.id.path.isAnonymous, "Added event requires a path")
+    require(!item.key.path.isAnonymous, "Added event requires a path")
     //require(!item.id.versionId.isAnonymous, s"VersionId is required in $toString")
   }
 
   final case class Changed(item: VersionedItem) extends AddedOrChanged {
-    require(!item.id.path.isAnonymous, "FileChangedChanged event requires a path")
+    require(!item.key.path.isAnonymous, "FileChangedChanged event requires a path")
     //require(!item.id.versionId.isAnonymous, s"VersionId is required in $toString")
   }
 

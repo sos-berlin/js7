@@ -37,7 +37,7 @@ extends JournaledStateBuilder[AgentState]
       idToWorkflow.insert(workflow.id -> workflow)
 
     case jobResource: JobResource =>
-      pathToJobResource.insert(jobResource.id -> jobResource)
+      pathToJobResource.insert(jobResource.path -> jobResource)
 
     case snapshot: FileWatchState.Snapshot =>
       allFileWatchesState.addSnapshot(snapshot)

@@ -23,13 +23,13 @@ object UnsignedSimpleItemEvent
   final case class SimpleItemAdded(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged
   {
-    def key = item.id
+    def key = item.key
   }
 
   final case class SimpleItemChanged(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged
   {
-    def key = item.id
+    def key = item.key
   }
 
   def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
