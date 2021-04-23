@@ -381,7 +381,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     AgentRef, Lock, FileWatch, JobResource, Workflow)
 
   private[controller] final case class ItemAttachedStateSnapshot(
-    itemKey: InventoryItemKey,
+    key: InventoryItemKey,
     agentToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached])
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =

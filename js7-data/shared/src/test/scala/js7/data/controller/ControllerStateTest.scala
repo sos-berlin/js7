@@ -245,7 +245,7 @@ final class ControllerStateTest extends AsyncFreeSpec
                 "TYPE": "Attachable"
               }
             },
-            "itemKey": "JobResource:JOB-RESOURCE"
+            "key": "JobResource:JOB-RESOURCE"
           },
           {
             "TYPE": "Order",
