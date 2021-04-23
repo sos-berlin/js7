@@ -1,6 +1,6 @@
 # Workflow
 
-Beispiele:
+Beispiele in JSON:
 ```json
 {
   "instructions": [

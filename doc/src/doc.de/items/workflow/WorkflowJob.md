@@ -1,6 +1,6 @@
 # WorkflowJob
 
-Beispiel:
+Beispiel in JSON:
 ```json
 {
   "agentPath": "AGENT",

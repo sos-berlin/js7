@@ -1,6 +1,6 @@
 # Executable
 
-Beispiel
+Beispiel in JSON
 ````json
 {
   "TYPE": "PathExecutable",
