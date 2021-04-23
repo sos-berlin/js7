@@ -4,6 +4,7 @@ import java.util.ServiceLoader
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.RightUnit
+import js7.license.LicenseCheck
 import scala.jdk.CollectionConverters._
 
 object LicenseChecker

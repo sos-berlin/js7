@@ -172,7 +172,8 @@ lazy val js7 = (project in file("."))
     `js7-provider`,
     `js7-proxy`.jvm,
     `js7-tests`,
-    `js7-license-dummy`,
+    `js7-license`,
+    `js7-license-fake`,
     `js7-build-info`)
   .settings(publish / skip := true)
 
@@ -189,7 +190,7 @@ lazy val all = (project in file("target/project-all"))  // Not the default proje
   .aggregate(js7, js7JS)
 
 lazy val `js7-install` = project
-  .dependsOn(`js7-controller`, `js7-provider`, `js7-agent`, `js7-executor-for-java`, `js7-tests`)
+  .dependsOn(`js7-controller`, `js7-provider`, `js7-agent`, `js7-executor-for-java`, `js7-tests`, `js7-license-fake`)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
@@ -458,7 +459,7 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
     })
 
 lazy val `js7-core` = project
-  .dependsOn(`js7-journal`, `js7-common`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-journal`, `js7-common`, `js7-license`, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -514,7 +515,7 @@ lazy val `js7-journal` = project
   }
 
 lazy val `js7-cluster` = project
-  .dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test", `js7-license-fake` % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -581,22 +582,18 @@ lazy val `js7-agent-data` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-license-dummy` = project
-  .dependsOn(`js7-core`)
+lazy val `js7-license` = project
   .settings(commonSettings)
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      scalaTest % "test" ++
-      log4j % "test" ++
-      lmaxDisruptor % "test"
-  }
+
+lazy val `js7-license-fake` = project
+  .dependsOn(`js7-license`)
+  .settings(commonSettings)
 
 lazy val `js7-tests` = project
   .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
     `js7-core` % "test->test", `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test",
     `js7-executor-for-java` % "test->test",
-    `js7-license-dummy`)
+    `js7-license-fake` % "test")
   .settings(
     commonSettings,
     publish / skip := true,

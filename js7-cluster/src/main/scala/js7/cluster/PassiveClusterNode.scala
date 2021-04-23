@@ -25,10 +25,12 @@ import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces._
 import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
+import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.ObservablePauseDetector.RichPauseObservable
 import js7.cluster.PassiveClusterNode._
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
+import js7.core.license.LicenseChecker.checkLicense
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
@@ -92,51 +94,52 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S): Task[Checked[ClusterFollowUp[S]]] =
-    Task.deferAction { implicit s =>
-      val recoveredClusterState = recoveredState.clusterState
-      logger.debug(s"recoveredClusterState=$recoveredClusterState")
-      assertThat(!stopped)  // Single-use only
+    Task(checkLicense(ClusterProductName))
+      .flatMapT(_ => Task.deferAction { implicit s =>
+        val recoveredClusterState = recoveredState.clusterState
+        logger.debug(s"recoveredClusterState=$recoveredClusterState")
+        assertThat(!stopped)  // Single-use only
 
-      // Delete obsolete journal files left by last run
-      if (journalConf.deleteObsoleteFiles) {
-        for (f <- recovered.recoveredJournalFile) {
-          val eventId = f.fileEventId/*release files before the recovered file*/
-          eventWatch.releaseEvents(
-            recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds))
+        // Delete obsolete journal files left by last run
+        if (journalConf.deleteObsoleteFiles) {
+          for (f <- recovered.recoveredJournalFile) {
+            val eventId = f.fileEventId/*release files before the recovered file*/
+            eventWatch.releaseEvents(
+              recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds))
+          }
         }
-      }
 
-      for (o <- recovered.recoveredJournalFile) {
-        cutJournalFile(o.file, o.length, o.eventId)
-      }
-      if (!otherFailed)  // Other node failed-over while this node was active but lost? FailedOver event will be replicated.
-        (recoveredClusterState match {
-          case ClusterState.Empty =>
-            Task.unit
-          case _: Decoupled =>
-            tryEndlesslyToSendClusterPrepareCoupling
-          case _: PreparedToBeCoupled =>
-            common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
-          case _: Coupled =>
-            // After a quick restart of this passive node, the active node may not yet have noticed the loss.
-            // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
-            // Then the active node couples again with this passive node,
-            // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
-            // The active node ignores this command if it has emitted a ClusterPassiveLost event.
-            awaitingCoupledEvent = true
-            common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeId = activeId, passiveId = ownId))
-        })
-        .runAsyncUncancelable {
-          case Left(throwable) => logger.error("While notifying the active cluster node about restart of this passive node:" +
-            s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
-          case Right(()) =>
-            logger.debug("Notified active cluster node about restart of this passive node")
+        for (o <- recovered.recoveredJournalFile) {
+          cutJournalFile(o.file, o.length, o.eventId)
         }
-      replicateJournalFiles(recoveredClusterState)
-        .guarantee(Task {
-          stopped = true
-        })
-    }
+        if (!otherFailed)  // Other node failed-over while this node was active but lost? FailedOver event will be replicated.
+          (recoveredClusterState match {
+            case ClusterState.Empty =>
+              Task.unit
+            case _: Decoupled =>
+              tryEndlesslyToSendClusterPrepareCoupling
+            case _: PreparedToBeCoupled =>
+              common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
+            case _: Coupled =>
+              // After a quick restart of this passive node, the active node may not yet have noticed the loss.
+              // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
+              // Then the active node couples again with this passive node,
+              // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
+              // The active node ignores this command if it has emitted a ClusterPassiveLost event.
+              awaitingCoupledEvent = true
+              common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeId = activeId, passiveId = ownId))
+          })
+          .runAsyncUncancelable {
+            case Left(throwable) => logger.error("While notifying the active cluster node about restart of this passive node:" +
+              s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+            case Right(()) =>
+              logger.debug("Notified active cluster node about restart of this passive node")
+          }
+        replicateJournalFiles(recoveredClusterState)
+          .guarantee(Task {
+            stopped = true
+          })
+      })
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
     if (exists(file)) {

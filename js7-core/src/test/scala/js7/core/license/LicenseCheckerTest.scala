@@ -1,6 +1,7 @@
 package js7.core.license
 
 import js7.core.license.LicenseChecker.hasLicense
+import js7.license.LicenseCheck
 import org.scalatest.freespec.AnyFreeSpec
 
 final class LicenseCheckerTest extends AnyFreeSpec
