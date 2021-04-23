@@ -34,6 +34,7 @@ final case class Workflow private(
   rawLabeledInstructions: IndexedSeq[Instruction.Labeled],
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   orderRequirements: OrderRequirements,
+  jobResourcePaths: Seq[JobResourcePath] = Nil,
   source: Option[String],
   outer: Option[Workflow])
 extends VersionedItem
@@ -272,7 +273,7 @@ extends VersionedItem
     labeledInstructions.indices isDefinedAt nr.number
 
   lazy val referencedJobResourcePaths: Set[JobResourcePath] =
-    workflowJobs.flatMap(_.jobResourcePaths).toSet
+    (jobResourcePaths.view ++ workflowJobs.view.flatMap(_.jobResourcePaths)).toSet
 
   /** Searches a job bottom-up (from nested to root workflow).
     */
@@ -399,7 +400,8 @@ object Workflow extends VersionedItem.Companion[Workflow]
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderRequirements.empty, source, outer)
+    apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderRequirements.empty,
+      jobResourcePaths = Nil, source, outer)
 
   /** Test only. */
   def apply(
@@ -407,10 +409,12 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderRequirements: OrderRequirements = OrderRequirements.empty,
+    jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    checkedSub(id, labeledInstructions, nameToJob, orderRequirements, source, outer).orThrow
+    checkedSub(id, labeledInstructions, nameToJob, orderRequirements, jobResourcePaths,
+      source, outer).orThrow
 
   /** Checks a subworkflow.
     * Use `completelyChecked` to check a whole workflow incldung subworkfows. */
@@ -419,6 +423,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderRequirements: OrderRequirements = OrderRequirements.empty,
+    jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Checked[Workflow] =
@@ -427,15 +432,18 @@ object Workflow extends VersionedItem.Companion[Workflow]
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
       orderRequirements,
+      jobResourcePaths ,
       source,
       outer
     ).checked
 
   /** Checks a complete workflow including subworkflows. */
-  def completelyChecked(
+  private def completelyChecked(
     id: WorkflowId,
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    orderRequirements: OrderRequirements = OrderRequirements.empty,
+    jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Checked[Workflow] =
@@ -443,7 +451,8 @@ object Workflow extends VersionedItem.Companion[Workflow]
       id,
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
-      OrderRequirements.empty,
+      orderRequirements,
+      jobResourcePaths,
       source,
       outer
     ).completelyChecked
@@ -455,7 +464,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       of(WorkflowPath.NoId, instructions: _*)
 
   def of(id: WorkflowId, instructions: Instruction.Labeled*): Workflow =
-    Workflow(id, instructions.toVector)
+    Workflow(id, instructions.toVector, jobResourcePaths = Nil)
 
   def isCorrectlyEnded(labeledInstructions: IndexedSeq[Instruction.Labeled]): Boolean =
     labeledInstructions.nonEmpty &&
@@ -468,7 +477,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
   implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 
   private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
-    case Workflow(id, instructions, namedJobs, orderRequirements, source, _) =>
+    case Workflow(id, instructions, namedJobs, orderRequirements, jobResourcePaths, source, _) =>
       implicit val x: Encoder.AsObject[Instruction] = Instructions.jsonCodec
       id.asJsonObject ++
         JsonObject(
@@ -477,7 +486,8 @@ object Workflow extends VersionedItem.Companion[Workflow]
             .dropLastWhile(labeled =>
               labeled.instruction == ImplicitEnd.empty && labeled.maybePosition.isEmpty)
             .asJson,
-          "jobs" -> emptyToNone(namedJobs).asJson,
+          "jobs" -> namedJobs.??.asJson,
+          "jobResourcePaths" -> jobResourcePaths.??.asJson,
           "source" -> source.asJson)
   }
 
@@ -490,8 +500,10 @@ object Workflow extends VersionedItem.Companion[Workflow]
         instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
         namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
         orderRequirements <- cursor.getOrElse[OrderRequirements]("orderRequirements")(OrderRequirements.empty)
+        jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
         source <- cursor.get[Option[String]]("source")
-        workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderRequirements, source)
+        workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderRequirements,
+          jobResourcePaths = jobResourcePaths, source)
           .toDecoderResult(cursor.history)
       } yield workflow
     }

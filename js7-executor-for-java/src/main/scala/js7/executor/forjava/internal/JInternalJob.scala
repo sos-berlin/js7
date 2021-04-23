@@ -41,9 +41,8 @@ object JInternalJob
     def sendOut(string: String): CompletionStage[Void] =
       send(string, asScala.outObserver)
 
-    def sendErr(string: String): CompletionStage[Void] = {
+    def sendErr(string: String): CompletionStage[Void] =
       send(string, asScala.errObserver)
-    }
 
     private def send(string: String, observer: Observer[String]): CompletionStage[Void] =
       observer.onNext(string).flatMap {

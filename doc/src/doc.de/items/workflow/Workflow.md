@@ -33,6 +33,9 @@ Beispiele in JSON:
       }
     }
   },
+  "jobResourcePaths": [
+    "JOB-RESOURCE"
+  ],
   "instructions": [
     {
       "label": "TEST-LABEL",
@@ -66,6 +69,10 @@ Beispiele in JSON:
     * default (optional)
 
       Der voreingestellte Wert
+
+* `jobResourcePaths`
+  JobResourcePaths, die für die Jobs im Workflow verwendet werden sollen.
+  Sie gelten zusätzlich zu den an den einzelnen Jobs bestimmten JobResourcen.
 
 * `instructions`
 

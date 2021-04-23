@@ -70,3 +70,10 @@ dann gelten die _zuerst_ angegeben (links hat Vorrang).
 Dabei ist auch unter Windows ist die Groß/Kleinschreibung relevant.
 Für Jobs, die unter Windows laufen,
 sollte für Umgebungsvariablen eine einheitliche Großschreibung gewählt werden.
+
+
+### Abruf am Workflow
+
+JobResourcen, die jedem Job eines Workflows mitgegeben werden sollen,
+können am Workflow mit dem Parameter `jobResourcePaths` bestimmt werden.
+Sie werden der Liste der JobResourcen am Job angehängt.

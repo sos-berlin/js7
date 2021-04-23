@@ -1,6 +1,8 @@
 package js7.tests.jobresource
 
 import cats.implicits._
+import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
@@ -177,7 +179,7 @@ object JobResourceTest
         jobResourcePaths = Seq(envJobResource.path)))))
 
   private val sosJobResource = JobResource(
-    JobResourcePath("JOB-RESOURCE-SPS"),
+    JobResourcePath("JOB-RESOURCE-SOS"),
     env = ObjectExpression(Map(
       "JS7_CONTROLLER_ID"     -> ExpressionParser.parse("$js7ControllerId").orThrow,
       "JS7_WORKFLOW_NAME"     -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
@@ -198,11 +200,10 @@ object JobResourceTest
       "JS7_TASKSTART_HOUR"    -> ExpressionParser.parse("now(format='HH')").orThrow,
       "JS7_TASKSTART_MINUTE"  -> ExpressionParser.parse("now(format='mm')").orThrow,
       "JS7_TASKSTART_SECOND"  -> ExpressionParser.parse("now(format='SS')").orThrow)))
+  scribe.debug(sosJobResource.asJson.toPrettyString)
 
-  private val sosWorkflow = Workflow(
-    WorkflowPath("WORKFLOW-SOS") ~ "INITIAL",
-    Vector(Execute.Anonymous(
-      WorkflowJob(
+  private val sosWorkflow = {
+    val workflowJob = WorkflowJob(
         agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
@@ -219,7 +220,7 @@ object JobResourceTest
             |echo JS7_TASKSTART_HOUR=/$JS7_TASKSTART_HOUR/
             |echo JS7_TASKSTART_MINUTE=/$JS7_TASKSTART_MINUTE/
             |echo JS7_TASKSTART_SECOND=/$JS7_TASKSTART_SECOND/
-            |""".stripMargin),
+            |""".stripMargin))
         //echo JS7_SCHEDULED_DATE=/$JS7_SCHEDULED_DATE/
         //echo JS7_SCHEDULED_DAY=/$JS7_SCHEDULED_DAY/
         //echo JS7_SCHEDULED_MONTH=/$JS7_SCHEDULED_MONTH/
@@ -227,5 +228,9 @@ object JobResourceTest
         //echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
         //echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
         //echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
-        jobResourcePaths = Seq(sosJobResource.path)))))
+    Workflow(
+      WorkflowPath("WORKFLOW-SOS") ~ "INITIAL",
+      Vector(Execute.Anonymous(workflowJob)),
+      jobResourcePaths = Seq(sosJobResource.path))
+  }
 }

@@ -203,7 +203,8 @@ final class WorkflowTest extends AnyFreeSpec
               },
               "taskLimit": 3,
               "defaultArguments": { "JOB_B": "B-VALUE" }}
-          }
+          },
+          "jobResourcePaths": [ "JOB-RESOURCE" ]
         }""")
     }
 
@@ -380,7 +381,8 @@ final class WorkflowTest extends AnyFreeSpec
               },
               "taskLimit": 3,
               "defaultArguments": { "JOB_B": "B-VALUE" }}
-          }
+          },
+          "jobResourcePaths": [ "JOB-RESOURCE" ]
         }"""))
     }
 
@@ -1059,5 +1061,7 @@ private object WorkflowTest
     OrderRequirements(
       Some(WorkflowParameters(Seq(
         WorkflowParameter("stringParameter", StringValue, Some(StringValue("DEFAULT"))),
-        WorkflowParameter("numberParameter", NumberValue))))))
+        WorkflowParameter("numberParameter", NumberValue))))),
+    jobResourcePaths = Seq(
+      JobResourcePath("JOB-RESOURCE")))
 }
