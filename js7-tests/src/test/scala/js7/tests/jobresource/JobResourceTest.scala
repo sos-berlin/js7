@@ -193,7 +193,7 @@ object JobResourceTest
       //"JS7_SCHEDULED_HOUR"    -> ExpressionParser.parse("now(format='HH')").orThrow,
       //"JS7_SCHEDULED_MINUTE"  -> ExpressionParser.parse("now(format='mm')").orThrow,
       //"JS7_SCHEDULED_SECOND"  -> ExpressionParser.parse("now(format='SS')").orThrow,
-      "JS7_TASKSTART_DATE"    -> ExpressionParser.parse("now(format='yyyy-MM-dd')").orThrow,
+      "JS7_TASKSTART_DATE"    -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:SSZ')").orThrow,
       "JS7_TASKSTART_DAY"     -> ExpressionParser.parse("now(format='dd')").orThrow,
       "JS7_TASKSTART_MONTH"   -> ExpressionParser.parse("now(format='MM')").orThrow,
       "JS7_TASKSTART_YEAR"    -> ExpressionParser.parse("now(format='yyyy')").orThrow,
@@ -204,30 +204,30 @@ object JobResourceTest
 
   private val sosWorkflow = {
     val workflowJob = WorkflowJob(
-        agentPath,
-        ScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo JS7_CONTROLLER_ID=/$JS7_CONTROLLER_ID/
-            |echo JS7_WORKFLOW_NAME=/$JS7_WORKFLOW_NAME/
-            |echo JS7_WORKFLOW_POSITION=/$JS7_WORKFLOW_POSITION/
-            |echo JS7_ORDER_ID=/$JS7_ORDER_ID/
-            |echo JS7_JOB_NAME=/$JS7_JOB_NAME/
-            |echo JS7_TASKSTART_DATE=/$JS7_TASKSTART_DATE/
-            |echo JS7_TASKSTART_DAY=/$JS7_TASKSTART_DAY/
-            |echo JS7_TASKSTART_MONTH=/$JS7_TASKSTART_MONTH/
-            |echo JS7_TASKSTART_YEAR=/$JS7_TASKSTART_YEAR/
-            |echo JS7_TASKSTART_HOUR=/$JS7_TASKSTART_HOUR/
-            |echo JS7_TASKSTART_MINUTE=/$JS7_TASKSTART_MINUTE/
-            |echo JS7_TASKSTART_SECOND=/$JS7_TASKSTART_SECOND/
-            |""".stripMargin))
-        //echo JS7_SCHEDULED_DATE=/$JS7_SCHEDULED_DATE/
-        //echo JS7_SCHEDULED_DAY=/$JS7_SCHEDULED_DAY/
-        //echo JS7_SCHEDULED_MONTH=/$JS7_SCHEDULED_MONTH/
-        //echo JS7_SCHEDULED_YEAR=/$JS7_SCHEDULED_YEAR/
-        //echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
-        //echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
-        //echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
+      agentPath,
+      ScriptExecutable(
+        """#!/usr/bin/env bash
+          |set -euo pipefail
+          |echo JS7_CONTROLLER_ID=/$JS7_CONTROLLER_ID/
+          |echo JS7_WORKFLOW_NAME=/$JS7_WORKFLOW_NAME/
+          |echo JS7_WORKFLOW_POSITION=/$JS7_WORKFLOW_POSITION/
+          |echo JS7_ORDER_ID=/$JS7_ORDER_ID/
+          |echo JS7_JOB_NAME=/$JS7_JOB_NAME/
+          |echo JS7_TASKSTART_DATE=/$JS7_TASKSTART_DATE/
+          |echo JS7_TASKSTART_DAY=/$JS7_TASKSTART_DAY/
+          |echo JS7_TASKSTART_MONTH=/$JS7_TASKSTART_MONTH/
+          |echo JS7_TASKSTART_YEAR=/$JS7_TASKSTART_YEAR/
+          |echo JS7_TASKSTART_HOUR=/$JS7_TASKSTART_HOUR/
+          |echo JS7_TASKSTART_MINUTE=/$JS7_TASKSTART_MINUTE/
+          |echo JS7_TASKSTART_SECOND=/$JS7_TASKSTART_SECOND/
+          |""".stripMargin))
+      //echo JS7_SCHEDULED_DATE=/$JS7_SCHEDULED_DATE/
+      //echo JS7_SCHEDULED_DAY=/$JS7_SCHEDULED_DAY/
+      //echo JS7_SCHEDULED_MONTH=/$JS7_SCHEDULED_MONTH/
+      //echo JS7_SCHEDULED_YEAR=/$JS7_SCHEDULED_YEAR/
+      //echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
+      //echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
+      //echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
     Workflow(
       WorkflowPath("WORKFLOW-SOS") ~ "INITIAL",
       Vector(Execute.Anonymous(workflowJob)),

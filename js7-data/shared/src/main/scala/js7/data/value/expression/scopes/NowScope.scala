@@ -1,8 +1,9 @@
 package js7.data.value.expression.scopes
 
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime, ZoneId}
-import js7.data.value.expression.Expression.{Argument, FunctionCall, StringConstant}
+import java.time.{Instant, OffsetDateTime, ZoneId}
+import js7.base.problem.Checked
+import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.ValueSearch.{LastOccurred, Name}
 import js7.data.value.expression.{Expression, Scope, ValueSearch}
 import js7.data.value.{NumberValue, StringValue}
@@ -32,19 +33,24 @@ final class NowScope extends Scope
         Some(nowFunc(formatExpr, timezoneExpr))
 
       case FunctionCall("now", Seq(Argument(formatExpr, None | Some("format")))) =>
-        Some(nowFunc(formatExpr, StringConstant("UTC")))
+        Some(nowFunc2(formatExpr, ZoneId.systemDefault()))
 
       case _ => None
     }
 
   private def nowFunc(formatExpr: Expression, timezoneExpr: Expression) =
     for {
+      timezoneName <- evaluator.eval(timezoneExpr).flatMap(_.toStringValueString)
+      zoneId = if (timezoneName.nonEmpty) ZoneId.of(timezoneName) else ZoneId.systemDefault()
+      result <- nowFunc2(formatExpr, zoneId)
+    } yield result
+
+  private def nowFunc2(formatExpr: Expression, zoneId: ZoneId) =
+    for {
       format <- evaluator.eval(formatExpr).flatMap(_.toStringValueString)
-      timezone <- evaluator.eval(timezoneExpr).flatMap(_.toStringValueString)
-    } yield
-      StringValue(
-        LocalDateTime.ofInstant(now, ZoneId.of(timezone))
-          .format(DateTimeFormatter.ofPattern(format)))
+      result <- Checked.catchNonFatal(
+        OffsetDateTime.ofInstant(now, zoneId).format(DateTimeFormatter.ofPattern(format)))
+    } yield StringValue(result)
 }
 
 object NowScope

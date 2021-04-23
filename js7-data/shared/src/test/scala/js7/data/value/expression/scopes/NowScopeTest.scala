@@ -1,7 +1,7 @@
 package js7.data.value.expression.scopes
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, ZoneId}
+import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
@@ -18,6 +18,15 @@ final class NowScopeTest extends AnyFreeSpec
     val epochSecond = nowScope.now.toEpochMilli / 1000
 
     assert(checkedValue == Right(StringValue(s"#$yyyymmdd, $epochSecond")))
+  }
+
+  val format = "yyyy-MM-dd HH:mm:SSZ"
+  format in {
+    val now = nowScope.now
+    val checkedValue = nowScope.parseAndEval(s"now(format='$format')")
+    val expected = OffsetDateTime.ofInstant(now, ZoneId.systemDefault())
+      .format(DateTimeFormatter.ofPattern(format))
+    assert(checkedValue == Right(StringValue((expected))))
   }
 
   "$epochMilli" in {
