@@ -611,6 +611,7 @@ lazy val `js7-tests` = project
   }
 
 def isExcludedJar(path: String) =
+  path.startsWith("com.sos-berlin.js7.engine.js7-install-") ||
   path.startsWith("org.checkerframework.checker-qual-") ||
   path.startsWith("com.google.code.findbugs.jsr305-") ||
   path.startsWith("com.google.errorprone.error_prone_annotations-") ||
