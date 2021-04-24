@@ -587,9 +587,10 @@ with MainJournalingActor[ControllerState, Event]
                 .withRevision(Some(
                   existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
             val attaching = _controllerState.itemToAgentToAttachedState.get(item.key)
-              .map(_.view.map {
+              .map(_.view.collect {
                 case (agentPath, Attachable) => ItemAttachable(item.key, agentPath)
-                case (agentPath, Attached(rev)) if rev != item.itemRevision && agentRequiresItem(agentPath, item.key) =>
+                case (agentPath, Attached(rev))
+                  if rev != item.itemRevision && agentRequiresItem(agentPath, item.key) =>
                   ItemAttachable(item.key, agentPath)
                 //case (agentPath, Detachable) => Should not happen
                 //case (agentPath, Detached) => Nothing to do

@@ -10,12 +10,13 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class VersionedItemId[+P <: ItemPath](path: P, versionId: VersionId)
+final case class VersionedItemId[P <: ItemPath](path: P, versionId: VersionId)
   (implicit P: ItemPath.Companion[P])
 extends SignableItemKey
 {
-  def companion =
+  def companion: InventoryItemKey.Companion[VersionedItemId[P]] =
     path.companion.VersionedItemIdCompanion
+      .asInstanceOf[InventoryItemKey.Companion[VersionedItemId[P]]]
 
   def requireNonAnonymous(): this.type = {
     path.requireNonAnonymous()

@@ -82,9 +82,11 @@ extends JournaledState[AgentState]
           case ItemDetached(id: OrderWatchPath, agentPath/*`ownAgentPath`*/) =>
             Right(copy(
               allFileWatchesState = allFileWatchesState.detach(id)))
+
+          case _ => applyStandardEvent(keyedEvent)
         }
 
-      case keyedEvent => applyStandardEvent(keyedEvent)
+      case _ => applyStandardEvent(keyedEvent)
     }
 
   private def applyOrderEvent(orderId: OrderId, event: OrderEvent) =
