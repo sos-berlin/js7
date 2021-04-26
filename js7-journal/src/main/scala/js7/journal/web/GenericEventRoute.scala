@@ -4,17 +4,13 @@ import akka.NotUsed
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.marshalling.sse.EventStreamMarshalling._
 import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.model.MediaTypes.`text/event-stream`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.`Last-Event-ID`
-import akka.http.scaladsl.model.sse.ServerSentEvent
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
 import io.circe.syntax.EncoderOps
-import js7.base.BuildInfo
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
 import js7.base.log.Logger
@@ -112,14 +108,6 @@ trait GenericEventRoute extends RouteProvider
                       accept(`application/x-ndjson`) {
                         Route.seal(
                           jsonSeqEvents(eventWatch)(NdJsonStreamingSupport))
-                      } ~
-                      accept(`application/json-seq`) {
-                        Route.seal(
-                          jsonSeqEvents(eventWatch)(JsonSeqStreamingSupport))
-                      } ~
-                      accept(`text/event-stream`) {
-                        Route.seal(
-                          serverSentEvents(eventWatch))
                       } ~
                       Route.seal(
                         oneShot(eventWatch))
@@ -232,27 +220,6 @@ trait GenericEventRoute extends RouteProvider
           if (e.getStackTrace.nonEmpty) logger.debug(e.toStringWithCauses, e)
           Observable.empty  // The streaming event web service doesn't have an error channel, so we simply end the tail
         }
-
-    private def serverSentEvents(eventWatch: EventWatch): Route =
-      parameter("v" ? BuildInfo.buildId) { requestedBuildId =>
-        if (requestedBuildId != BuildInfo.buildId)
-          complete(HttpEntity(
-            `text/event-stream`,
-            s"data:${Problem("BUILD-CHANGED").asJson(Problem.typedJsonEncoder).printWith(CompactPrinter)}\n\n"))  // Exact this message is checked in experimental GUI
-        else
-          eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout) { request =>
-            optionalHeaderValueByType(`Last-Event-ID`) { lastEventIdHeader =>
-              val req = lastEventIdHeader.fold(request)(header =>
-                request.copy[Event](after = toLastEventId(header)))
-              complete(
-                observableToMarshallable(
-                  eventWatch.observe(req, predicate = isRelevantEvent)
-                    .map(stamped => ServerSentEvent(
-                      data = stamped.asJson.compactPrint,
-                      id = Some(stamped.eventId.toString)))))
-            }
-          }
-      }
 
     private def eventDirective(
       defaultAfter: EventId,

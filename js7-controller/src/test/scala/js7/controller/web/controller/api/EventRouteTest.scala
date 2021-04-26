@@ -1,25 +1,21 @@
 package js7.controller.web.controller.api
 
 import akka.http.scaladsl.model.ContentType
-import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/event-stream`}
+import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
-import akka.http.scaladsl.model.headers.{Accept, `Last-Event-ID`}
+import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.util.ByteString
-import com.google.common.base.Ascii
-import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.Threads.allThreadStackTraces
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceJsonSupport._
-import js7.common.http.JsonStreamingSupport.{`application/json-seq`, `application/x-ndjson`}
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.controller.web.controller.api.EventRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -33,7 +29,6 @@ import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -77,23 +72,6 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
         val EventSeq.NonEmpty(stampeds) = responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
         assert(stampeds == TestEvents)
       }
-    }
-  }
-
-  "/event application/json-seq" in {
-    Get(s"/event?after=0&limit=2") ~> Accept(`application/json-seq`) ~> route ~> check {
-      if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-      assert(response.entity.contentType == ContentType(`application/json-seq`))
-      val RS = Ascii.RS.toChar
-      assert(response.utf8StringFuture.await(99.s) ==
-        s"""$RS{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
-        s"""$RS{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
-
-      //implicit val x = JsonSeqStreamingSupport
-      //implicit val y = CirceJsonSeqSupport
-      //val stamped = responseAs[Source[Stamped[KeyedEvent[OrderEvent]], NotUsed]]
-      //  .runFold(Vector.empty[Stamped[KeyedEvent[OrderEvent]]])(_ :+ _) await 99.s
-      //assert(stamped == TestEvents)
     }
   }
 
@@ -236,56 +214,6 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
     }
-
-  "Server-sent events" - {
-    "/event?after=0" in {
-      Get(s"/event?after=0&limit=2") ~> Accept(`text/event-stream`) ~> route ~> check {
-        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-        assert(response.entity.contentType == ContentType(`text/event-stream`))
-        assert(response.utf8StringFuture.await(99.s) ==
-          """data:{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
-            |id:10
-            |
-            |data:{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
-            |id:20
-            |
-            |""".stripMargin)
-      }
-    }
-
-    "/event?after=0, retry with Last-Event-Id" in {
-      Get(s"/event?after=0&limit=2") ~> Accept(`text/event-stream`) ~> `Last-Event-ID`("20") ~> route ~> check {
-        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-        assert(response.entity.contentType == ContentType(`text/event-stream`))
-        assert(response.utf8StringFuture.await(99.s) ==
-          """data:{"eventId":30,"timestamp":999,"Key":"3","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
-            |id:30
-            |
-            |data:{"eventId":40,"timestamp":999,"Key":"4","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}
-            |id:40
-            |
-            |""".stripMargin)
-      }
-    }
-
-    "/event?v=XXX&after=0, buildId changed" in {
-    try
-      Get(s"/event?v=XXX&after=0") ~> Accept(`text/event-stream`) ~> `Last-Event-ID`("20") ~> route ~> check {
-        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-        assert(response.entity.contentType == ContentType(`text/event-stream`))
-        val string = response.utf8StringFuture.await(99.s)
-        assert(string ==
-          """data:{"TYPE":"Problem","message":"BUILD-CHANGED"}
-            |
-            |""".stripMargin)
-        assert(string.drop(5).parseJsonOrThrow.as[Problem].orThrow.toString == "BUILD-CHANGED")
-      }
-    catch { case NonFatal(t) =>
-      allThreadStackTraces() foreach { Logger(this.getClass).debug(_) }
-      throw t
-    }
-    }
-  }
 }
 
 object EventRouteTest

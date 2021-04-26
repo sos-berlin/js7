@@ -34,7 +34,6 @@ object JsonStreamingSupport
   private val RS = ByteString(Ascii.RS)
   private val LF = ByteString(Ascii.LF)
 
-  val JsonSeqStreamingSupport = jsonSeqStreamingSupport(`application/json-seq`, RS ++ _ ++ LF)
   val NdJsonStreamingSupport = jsonSeqStreamingSupport(`application/x-ndjson`, _ ++ LF)
 
   private def jsonSeqStreamingSupport(mediaType: MediaType.WithFixedCharset, frame: ByteString => ByteString): JsonEntityStreamingSupport =
@@ -48,4 +47,3 @@ object JsonStreamingSupport
     Marshaller.withFixedContentType(streamingSupport.contentType)(value =>
       HttpEntity.Strict(streamingSupport.contentType, value.asJson.toByteSequence[ByteString]))
 }
-
