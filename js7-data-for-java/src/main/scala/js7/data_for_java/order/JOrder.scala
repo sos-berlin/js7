@@ -45,7 +45,7 @@ extends JJsonable[JOrder]
     asScala.arguments.asJava
 
   @Nonnull
-  def maybeScheduledFor: Optional[Instant] =
+  def scheduledFor: Optional[Instant] =
     asScala.scheduledFor.map(_.toInstant).toJava
 
   @Nonnull
