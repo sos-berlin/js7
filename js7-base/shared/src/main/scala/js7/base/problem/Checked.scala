@@ -8,7 +8,6 @@ import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -90,12 +89,6 @@ object Checked
       underlying match {
         case Left(problem) => Failure(problem.throwable)
         case Right(o) => Success(o)
-      }
-
-    def toFuture: Future[A] =
-      underlying match {
-        case Left(problem) => Future.failed(problem.throwable)
-        case Right(o) => Future.successful(o)
       }
 
     def orElse[B >: A](other: => Checked[B]): Checked[B] =

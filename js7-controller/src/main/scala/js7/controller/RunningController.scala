@@ -64,7 +64,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future, Promise, blocking}
+import scala.concurrent.{Await, Future, Promise}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 import shapeless.tag
@@ -350,17 +350,20 @@ object RunningController
           recovered.eventWatch
         ).closeWithCloser
 
-      for (_ <- webServer.start().runToFuture) yield {
-        createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]])
-        controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
-        new RunningController(recovered.eventWatch.strict, webServer,
-          recoveredEventId = recovered.eventId,
-          itemApi, orderApi,
-          controllerState.map(_.orThrow),
-          commandExecutor,
-          itemUpdater,
-          whenReady.future, orderKeeperTerminated, testEventBus, closer, injector)
-      }
+      webServer.start()
+        .flatTap(_ =>
+          createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]]))
+        .map { _ =>
+          controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
+          new RunningController(recovered.eventWatch.strict, webServer,
+            recoveredEventId = recovered.eventId,
+            itemApi, orderApi,
+            controllerState.map(_.orThrow),
+            commandExecutor,
+            itemUpdater,
+            whenReady.future, orderKeeperTerminated, testEventBus, closer, injector)
+        }
+        .runToFuture
     }
 
     private def startCluster(
@@ -444,14 +447,16 @@ object RunningController
           Right(OrderKeeperStarted(tag[ControllerOrderKeeper](actor), termination))
       }
 
-    private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Unit = {
-      val sessionTokenFile = controllerConfiguration.stateDirectory / "session-token"
-      blocking {
+    private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Task[Unit] =
+      Task.defer {
+        val sessionTokenFile = controllerConfiguration.stateDirectory / "session-token"
         sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-          .runToFuture await controllerConfiguration.akkaAskTimeout.duration
+          .logWhenItTakesLonger("createSystemSession")
+          .guarantee(Task {
+            closer onClose { deleteIfExists(sessionTokenFile) }
+          })
+          .as(())
       }
-      closer onClose { deleteIfExists(sessionTokenFile) }
-    }
   }
 
   private class MyCommandExecutor(

@@ -14,15 +14,16 @@ import js7.base.log.LogLevel.syntax._
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.ioFuture
+import js7.base.thread.IOExecutor.{ioFuture, ioTask}
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.scalautil.ClosedFuture
 import js7.executor.process.RichProcess._
+import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -43,19 +44,21 @@ extends HasCloser with ClosedFuture
    */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
 
-  private lazy val _terminated: Future[ReturnCode] =
-    if (process.isAlive)
-      ioFuture {
-        waitForProcessTermination(process)
-      }
-    else
-      Future.successful(ReturnCode(process.exitValue))
+  private lazy val _terminated: Task[ReturnCode] =
+    Task.defer {
+      if (process.isAlive)
+        ioTask {
+          waitForProcessTermination(process)
+        }
+      else
+        Task.pure(ReturnCode(process.exitValue))
+    }.memoize
 
   //logger.debug(s"Process started " + (argumentsForLogging map { o => s"'$o'" } mkString ", "))
 
   def duration = runningSince.elapsed
 
-  def terminated: Future[ReturnCode] =
+  def terminated: Task[ReturnCode] =
     _terminated
 
   final def sendProcessSignal(signal: ProcessSignal): Unit =
@@ -141,14 +144,12 @@ object RichProcess {
   def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
     (StdoutOrStderr.values map { o => o -> newLogFile(directory, id, o) }).toMap
 
-  private def waitForProcessTermination(process: Process) =
-    ReturnCode(
-      blocking {
-        logger.trace(s"waitFor ${processToString(process)} ...")
-        val rc = process.waitFor()
-        logger.trace(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
-        rc
-      })
+  private def waitForProcessTermination(process: Process): ReturnCode = {
+    logger.trace(s"waitFor ${processToString(process)} ...")
+    val rc = process.waitFor()
+    logger.trace(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
+    ReturnCode(rc)
+  }
 
   def tryDeleteFile(file: Path) = tryDeleteFiles(file :: Nil)
 

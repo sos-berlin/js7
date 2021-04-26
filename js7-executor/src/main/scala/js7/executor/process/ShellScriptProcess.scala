@@ -4,11 +4,9 @@ import cats.effect.ExitCase
 import java.io.{InputStream, InputStreamReader}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes._
-import js7.base.io.process.ReturnCode
 import js7.base.log.Logger
 import js7.base.monixutils.UnbufferedReaderObservable
 import js7.base.system.OperatingSystem.isUnix
-import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.job.CommandLine
@@ -17,7 +15,7 @@ import js7.executor.process.RichProcess.{startProcessBuilder, tryDeleteFile}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Promise}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -51,12 +49,10 @@ object ShellScriptProcess
       new ShellScriptProcess(processConfiguration, process,
         argumentsForLogging = shellFile.toString :: Nil)
       {
-        override val terminated = promiseFuture[ReturnCode] { p =>
-          super.terminated onComplete { o =>
+        override val terminated =
+          super.terminated.guarantee(Task {
             tryDeleteFile(shellFile)
-            p.complete(o)
-          }
-        }
+          })
       }
     }
     catch { case NonFatal(t) =>
@@ -88,16 +84,16 @@ object ShellScriptProcess
 
     new ShellScriptProcess(conf, process, argumentsForLogging = commandLine.toString :: Nil) {
       override def terminated = for {
-        outTried <- outClosed.future transformWith Future.successful
-        errTried <- errClosed.future transformWith Future.successful
+        outTried <- Task.fromFuture(outClosed.future).materialize
+        errTried <- Task.fromFuture(errClosed.future).materialize
         returnCode <- super.terminated
         returnCode <-
           if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
             for (t <- outTried.failed) logger.warn(t.toStringWithCauses)
             for (t <- errTried.failed) logger.warn(t.toStringWithCauses)
-            Future.successful(returnCode)
+            Task.pure(returnCode)
           } else
-            Future.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
+            Task.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
       } yield returnCode
     }
   }

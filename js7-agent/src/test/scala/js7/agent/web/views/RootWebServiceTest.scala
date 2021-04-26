@@ -7,7 +7,7 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils._
 import js7.base.system.SystemInformation
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -16,6 +16,7 @@ import js7.common.http.CirceJsonSupport._
 import js7.data.system.JavaInformation
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 
@@ -68,13 +69,13 @@ final class RootWebServiceTest extends AnyFreeSpec with WebServiceTest with Root
     "Accept: application/json returns compact JSON" in {
       Get("/agent/api") ~> Accept(`application/json`) ~> route ~> check {
         assert(responseAs[Json] == expectedOverviewJson)
-        assert(!(response.utf8StringFuture.await(99.s) contains " ")) // Compact JSON
+        assert(!(response.utf8String.await(99.s) contains " ")) // Compact JSON
       }
     }
 
     "Accept: text/plain returns pretty YAML" in {
       Get("/agent/api") ~> Accept(`text/plain`) ~> route ~> check {
-        assert(response.utf8StringFuture.await(99.s) contains " ") // YAML
+        assert(response.utf8String.await(99.s) contains " ") // YAML
       }
     }
   }

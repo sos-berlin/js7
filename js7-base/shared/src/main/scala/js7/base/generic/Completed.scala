@@ -3,7 +3,7 @@ package js7.base.generic
 import cats.kernel.CommutativeMonoid
 
 /**
-  * May be used for Future[Completed].
+  * May be used for Task[Completed].
   * Like Akka's `Done`.
   *
   * @author Joacim Zschimmer

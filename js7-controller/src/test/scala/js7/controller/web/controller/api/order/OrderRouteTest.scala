@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import io.circe.Json
 import io.circe.syntax._
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
@@ -97,7 +97,7 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
     val order = FreshOrder.unchecked(OrderId("ORDER|🔵"), WorkflowPath("WORKFLOW"))
     Post(s"/controller/api/order", order) ~> route ~> check {
       assert(status == BadRequest)
-      assert(response.utf8StringFuture.await(99.s) == "JSON DecodingFailure at : OrderId must not contain reserved characters: |\n")
+      assert(response.utf8String.await(99.s) == "JSON DecodingFailure at : OrderId must not contain reserved characters: |\n")
     }
   }
 

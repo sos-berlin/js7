@@ -1,11 +1,9 @@
 package js7.base.thread
 
 import js7.base.thread.Futures.implicits._
-import js7.base.thread.Futures.promiseFuture
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.BuildFrom
-import scala.concurrent.Promise
 import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
 
@@ -33,7 +31,4 @@ object MonixBlocking
         Task.sequence(underlying)(cbf).runToFuture.awaitInfinite
     }
   }
-
-  def promiseTask[A](body: Promise[A] => Unit): Task[A] =
-    Task.deferFuture(promiseFuture(body))
 }

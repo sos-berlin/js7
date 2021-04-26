@@ -8,7 +8,7 @@ import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.SetOnce
+import js7.base.utils.{SetOnce, TaskLock}
 import js7.data.job.TaskId
 import js7.data.job.TaskId.newGenerator
 import js7.data.order.{OrderId, Outcome}
@@ -19,9 +19,7 @@ import js7.executor.process.ShellScriptProcess.startPipedShellScript
 import js7.executor.process.SimpleShellTaskRunner._
 import js7.executor.task.{BaseAgentTask, TaskRunner}
 import monix.eval.Task
-import monix.execution.Scheduler
-import scala.concurrent.{Future, Promise}
-import scala.util.Success
+import scala.concurrent.Promise
 import scala.util.control.NonFatal
 
 /**
@@ -30,13 +28,14 @@ import scala.util.control.NonFatal
 final class SimpleShellTaskRunner(
   conf: TaskConfiguration,
   taskId: TaskId,
-  synchronizedStartProcess: RichProcessStartSynchronizer,
   temporaryDirectory: Path,
   workingDirectory: Path,
   killScript: Option[ProcessKillScript])
-  (implicit scheduler: Scheduler, iox: IOExecutor)
+  (implicit iox: IOExecutor)
 extends TaskRunner
 {
+  private val startProcessLock = TaskLock("syncStartProcess")
+
   val asBaseAgentTask = new BaseAgentTask {
     def id = taskId
     def jobKey = conf.jobKey
@@ -61,8 +60,7 @@ extends TaskRunner
       returnValuesProvider.deleteFile()
       richProcessOnce.toOption match {
         case Some(richProcess) =>
-          Task.fromFuture(richProcess.terminated)
-            .map((_: ReturnCode) => ())
+          richProcess.terminated.map((_: ReturnCode) => ())
         case None =>
           Task.unit
       }
@@ -74,18 +72,20 @@ extends TaskRunner
       conf.toOutcome(fetchReturnValuesThenDeleteFile(), returnCode)
 
   private def runProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers): Task[ReturnCode] =
-    Task.deferFuture(
-      for {
-        richProcess <- startProcess(env, stdObservers) andThen {
-          case Success(richProcess) => logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
-        }
-        returnCode <- richProcess.terminated andThen { case tried =>
-          logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
-        }
-      } yield {
-        richProcess.close()
-        returnCode
-      })
+    for {
+      richProcess <- startProcess(env, stdObservers)
+      _ <- Task {
+        logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
+      }
+      tried <- richProcess.terminated.materialize
+      _ <- Task {
+        logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
+      }
+      returnCode <- Task.fromTry(tried)
+    } yield {
+      richProcess.close()
+      returnCode
+    }
 
   private def fetchReturnValuesThenDeleteFile(): NamedValues = {
     val result = returnValuesProvider.read() // TODO Catch exceptions
@@ -98,22 +98,26 @@ extends TaskRunner
     result
   }
 
-  private def startProcess(env: Map[String, String], stdObservers: StdObservers): Future[RichProcess] =
-    if (killedBeforeStart)
-      Future.failed(new RuntimeException(s"$taskId killed before start"))
-    else {
-      val processConfiguration = ProcessConfiguration(
-        stdFileMap = Map.empty,
-        encoding = JobExecutorConf.FileEncoding,
-        workingDirectory = Some(workingDirectory),
-        additionalEnvironment = env + returnValuesProvider.toEnv,
-        maybeTaskId = Some(taskId),
-        killScriptOption = killScript)
-      synchronizedStartProcess {
-        startPipedShellScript(conf.commandLine, processConfiguration, stdObservers)
-      } andThen { case Success(richProcess) =>
-        terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed))
-        richProcessOnce := richProcess
+  private def startProcess(env: Map[String, String], stdObservers: StdObservers): Task[RichProcess] =
+    Task.deferAction { implicit scheduler =>
+      if (killedBeforeStart)
+        Task.raiseError(new RuntimeException(s"$taskId killed before start"))
+      else {
+        val processConfiguration = ProcessConfiguration(
+          stdFileMap = Map.empty,
+          encoding = JobExecutorConf.FileEncoding,
+          workingDirectory = Some(workingDirectory),
+          additionalEnvironment = env + returnValuesProvider.toEnv,
+          maybeTaskId = Some(taskId),
+          killScriptOption = killScript)
+        startProcessLock
+          .lock(Task {
+            startPipedShellScript(conf.commandLine, processConfiguration, stdObservers)
+          })
+          .map { richProcess =>
+            terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
+            richProcessOnce := richProcess
+          }
       }
     }
 

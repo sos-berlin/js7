@@ -20,7 +20,7 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.{IterableFactory, IterableOps}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
-import scala.concurrent.{Future, TimeoutException}
+import scala.concurrent.{Future, Promise, TimeoutException}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.{Failure, Success, Try}
 
@@ -315,6 +315,13 @@ object MonixBase
   }
 
   import syntax._
+
+  def promiseTask[A](body: Promise[A] => Unit): Task[A] =
+    Task.deferFuture {
+      val promise = Promise[A]()
+      body(promise)
+      promise.future
+    }
 
   def durationOfTask[A](task: Task[A]): Task[(A, FiniteDuration)] =
     Task.deferAction { implicit s =>

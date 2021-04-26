@@ -2,9 +2,10 @@ package js7.controller.web
 
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -15,7 +16,7 @@ final class RootRouteTest extends AnyFreeSpec with ScalatestRouteTest with RootR
   "/" in {
     Get("/") ~> root ~> check {
       assert(status == NotFound)
-      assert(response.utf8StringFuture.await(99.s) == "Try http://example.com/controller/api\n")  // \n is for shell usage
+      assert(response.utf8String.await(99.s) == "Try http://example.com/controller/api\n")  // \n is for shell usage
     }
   }
 }

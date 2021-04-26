@@ -4,10 +4,10 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
 import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.thread.Futures.promiseFuture
-import js7.base.thread.MonixBlocking.promiseTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.Assertions.assertThat

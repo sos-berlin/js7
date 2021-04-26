@@ -7,8 +7,8 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.newTemporaryShellFile
 import js7.base.io.process.{ReturnCode, Stdout}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.withCloser
@@ -17,8 +17,8 @@ import js7.common.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.data.job.TaskId
 import js7.executor.configuration.ProcessKillScript
 import js7.executor.process.ShellScriptProcess.startShellScript
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer

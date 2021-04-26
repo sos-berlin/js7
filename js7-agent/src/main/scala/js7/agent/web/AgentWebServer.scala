@@ -14,6 +14,7 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline
@@ -34,10 +35,11 @@ extends AkkaWebServer with AkkaWebServer.HasUri
   protected val bindings = conf.webServerBindings
   private val apiOnce = SetOnce[CommandMeta => DirectAgentApi]("api")
 
-  def start(api: CommandMeta => DirectAgentApi): Future[Completed] = {
-    this.apiOnce := api
-    super.start().runToFuture
-  }
+  def start(api: CommandMeta => DirectAgentApi): Task[Completed] =
+    Task.defer {
+      this.apiOnce := api
+      super.start()
+    }
 
   private def api = apiOnce.orThrow
 

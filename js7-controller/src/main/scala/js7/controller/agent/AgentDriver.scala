@@ -12,13 +12,13 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
 import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.Futures.syntax.RichFuture
-import js7.base.thread.MonixBlocking.promiseTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat

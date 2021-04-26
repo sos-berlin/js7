@@ -18,7 +18,7 @@ import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.cluster.ClusterWatchRegister
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
-import js7.executor.process.{RichProcessStartSynchronizer, SimpleShellTaskRunner}
+import js7.executor.process.SimpleShellTaskRunner
 import js7.executor.task.TaskRunner
 import js7.journal.EventIdGenerator
 import monix.execution.Scheduler
@@ -67,7 +67,6 @@ extends AbstractModule
 
   @Provides @Singleton
   def shellTaskRunnerFactory(
-    synchronizedStartProcess: RichProcessStartSynchronizer,
     agentConf: AgentConfiguration)
     (implicit scheduler: Scheduler, iox: IOExecutor)
   : TaskRunner.Factory =
@@ -75,7 +74,7 @@ extends AbstractModule
       private val taskIdGenerator = new SimpleShellTaskRunner.TaskIdGenerator
       def apply(conf: TaskConfiguration) = {
         val taskId = taskIdGenerator.next()
-        new SimpleShellTaskRunner(conf, taskId, synchronizedStartProcess,
+        new SimpleShellTaskRunner(conf, taskId,
           temporaryDirectory = agentConf.temporaryDirectory,
           workingDirectory = agentConf.jobWorkingDirectory,
           killScript = agentConf.killScript)

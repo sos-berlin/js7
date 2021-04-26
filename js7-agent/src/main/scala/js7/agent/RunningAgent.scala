@@ -33,7 +33,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -162,18 +162,16 @@ object RunningAgent {
       agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
       val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
-      val sessionToken = blocking {
-        sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-          .runToFuture await agentConfiguration.akkaAskTimeout.duration
-      }
-      closer onClose { deleteIfExists(sessionTokenFile) }
 
-      for {
-        ready <- mainActorReadyPromise.future
+      val task = for {
+        sessionToken <- sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+        _ <- Task { closer onClose { deleteIfExists(sessionTokenFile) } }
+        ready <- Task.fromFuture(mainActorReadyPromise.future)
         api = ready.api
         _ <- webServer.start(api)
       } yield
         new RunningAgent(webServer, mainActor, terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
+      task.runToFuture
     }.flatten
   }
 }

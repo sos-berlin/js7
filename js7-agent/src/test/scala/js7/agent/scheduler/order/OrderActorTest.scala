@@ -39,7 +39,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
-import js7.executor.process.{SimpleShellTaskRunner, StandardRichProcessStartSynchronizer}
+import js7.executor.process.SimpleShellTaskRunner
 import js7.executor.task.TaskRunner
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
@@ -174,7 +174,6 @@ private object OrderActorTest {
         new SimpleShellTaskRunner(
           conf,
           taskIdGenerator.next(),
-          new StandardRichProcessStartSynchronizer()(context.system),
           temporaryDirectory = dir / "data" / "tmp",
           workingDirectory = dir / "data" / "tmp",
           killScript = None)

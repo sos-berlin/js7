@@ -10,7 +10,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.common.http.CirceToYaml._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer
@@ -29,20 +29,20 @@ trait TextApi
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(
-      httpClient.post[Json, Json](uri = commandUri, yamlToJson(command).orThrow).runToFuture)
+      httpClient.post[Json, Json](uri = commandUri, yamlToJson(command).orThrow))
     printer.doPrint(response.toYamlString)
   }
 
   def getApi(uri: String): Unit = {
     val u = if (uri == "?") "" else uri
-    val whenResponded = httpClient.get[Json](apiUri(u)).runToFuture
+    val whenResponded = httpClient.get[Json](apiUri(u))
     val response = awaitResult(whenResponded)
     printer.doPrint(response)
   }
 
   def requireIsResponding(): Unit =
     try {
-      val whenResponded = httpClient.get[Json](apiUri("")).runToFuture
+      val whenResponded = httpClient.get[Json](apiUri(""))
       awaitResult(whenResponded)
       print(s"$serverName is responding")
     } catch {
@@ -59,8 +59,8 @@ trait TextApi
       case ConnectionLost(_) => false
     }
 
-  private def awaitResult[A](future: Future[A]): A =
-    try Await.result(future, 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
+  private def awaitResult[A](task: Task[A]): A =
+    try Await.result(task.runToFuture, 65.s)  // TODO Use standard Futures method await when available in subproject 'base'
     catch {
       case t: Throwable =>
         t.appendCurrentStackTrace
