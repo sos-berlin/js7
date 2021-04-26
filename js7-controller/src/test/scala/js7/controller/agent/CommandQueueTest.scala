@@ -135,7 +135,7 @@ object CommandQueueTest {
   private def toQueuedInputResponse(order: Order[Order.IsFreshOrReady]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath), Right(AgentCommand.Response.Accepted))
 
-  private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh.StartImmediately)
+  private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh)
 
   private abstract class MyCommandQueue(logger: ScalaLogger, batchSize: Int)
   extends CommandQueue(logger, batchSize = batchSize)

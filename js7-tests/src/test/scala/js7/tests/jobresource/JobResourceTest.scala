@@ -2,11 +2,14 @@ package js7.tests.jobresource
 
 import cats.implicits._
 import io.circe.syntax.EncoderOps
+import java.time.format.DateTimeFormatter
+import java.time.{OffsetDateTime, ZoneId}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -100,17 +103,47 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
          |""".stripMargin)
   }
 
-  "Example for an SOS JobResource" in {
-    controllerApi.updateSignedSimpleItems(Seq(sign(sosJobResource))).await(99.s).orThrow
+  "Example for an SOS JobResource" - {
+    "with scheduledFor" in {
+      controllerApi.updateSignedSimpleItems(Seq(sign(sosJobResource))).await(99.s).orThrow
 
-    val orderId = OrderId("ORDER-SOS")
-    controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path)).await(99.s).orThrow
-    controller.eventWatch.await[OrderTerminated](_.key == orderId)
-    assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
-      Outcome.succeededRC0)
+      val orderId = OrderId("ORDER-SOS-SCHEDULED")
+      val scheduledFor = Timestamp.parse("2021-04-26T00:11:22.789Z")
+      controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path, scheduledFor = Some(scheduledFor)))
+        .await(99.s).orThrow
+      controller.eventWatch.await[OrderTerminated](_.key == orderId)
+      assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
+        Outcome.succeededRC0)
 
-    val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
-    scribe.info(stdouterr.trim)
+      val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
+      scribe.info(stdouterr.trim)
+      val dateTime = OffsetDateTime.ofInstant(scheduledFor.toInstant, ZoneId.systemDefault())
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssZ"))
+      assert(stdouterr contains s"JS7_SCHEDULED_DATE=/$dateTime/")
+      assert(stdouterr contains "JS7_SCHEDULED_YEAR=/2021/")  // May fail when year change
+      assert(stdouterr contains "JS7_SCHEDULED_MINUTE=/11/")
+      assert(stdouterr contains "JS7_SCHEDULED_SECOND=/22/")
+    }
+
+    "without scheduledFor" in {
+      controllerApi.updateSignedSimpleItems(Seq(sign(sosJobResource))).await(99.s).orThrow
+
+      val orderId = OrderId("ORDER-SOS")
+      controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path)).await(99.s).orThrow
+      controller.eventWatch.await[OrderTerminated](_.key == orderId)
+      assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
+        Outcome.succeededRC0)
+
+      val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
+      scribe.info(stdouterr.trim)
+      assert(stdouterr contains "JS7_SCHEDULED_DATE=//")
+      assert(stdouterr contains "JS7_SCHEDULED_YEAR=//")
+      assert(stdouterr contains "JS7_SCHEDULED_MONTH=//")
+      assert(stdouterr contains "JS7_SCHEDULED_DAY=//")
+      assert(stdouterr contains "JS7_SCHEDULED_HOUR=//")
+      assert(stdouterr contains "JS7_SCHEDULED_MINUTE=//")
+      assert(stdouterr contains "JS7_SCHEDULED_SECOND=//")
+    }
   }
 }
 
@@ -181,25 +214,25 @@ object JobResourceTest
   private val sosJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-SOS"),
     env = ObjectExpression(Map(
-      "JS7_CONTROLLER_ID"     -> ExpressionParser.parse("$js7ControllerId").orThrow,
+      "JS7_ORDER_ID"          -> ExpressionParser.parse("$js7OrderId").orThrow,
       "JS7_WORKFLOW_NAME"     -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
       "JS7_WORKFLOW_POSITION" -> ExpressionParser.parse("$js7WorkflowPosition").orThrow,
-      "JS7_ORDER_ID"          -> ExpressionParser.parse("$js7OrderId").orThrow,
       "JS7_JOB_NAME"          -> ExpressionParser.parse("$js7JobName").orThrow,
-      //"JS7_SCHEDULED_DATE"    -> ExpressionParser.parse("now(format='yyyy-MM-dd')").orThrow,
-      //"JS7_SCHEDULED_DAY"     -> ExpressionParser.parse("now(format='dd')").orThrow,
-      //"JS7_SCHEDULED_MONTH"   -> ExpressionParser.parse("now(format='MM')").orThrow,
-      //"JS7_SCHEDULED_YEAR"    -> ExpressionParser.parse("now(format='yyyy')").orThrow,
-      //"JS7_SCHEDULED_HOUR"    -> ExpressionParser.parse("now(format='HH')").orThrow,
-      //"JS7_SCHEDULED_MINUTE"  -> ExpressionParser.parse("now(format='mm')").orThrow,
-      //"JS7_SCHEDULED_SECOND"  -> ExpressionParser.parse("now(format='SS')").orThrow,
-      "JS7_TASKSTART_DATE"    -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:SSZ')").orThrow,
+      "JS7_CONTROLLER_ID"     -> ExpressionParser.parse("$js7ControllerId").orThrow,
+      "JS7_SCHEDULED_DATE"    -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
+      "JS7_SCHEDULED_YEAR"    -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy')").orThrow,
+      "JS7_SCHEDULED_MONTH"   -> ExpressionParser.parse("scheduledOrEmpty(format='MM')").orThrow,
+      "JS7_SCHEDULED_DAY"     -> ExpressionParser.parse("scheduledOrEmpty(format='dd')").orThrow,
+      "JS7_SCHEDULED_HOUR"    -> ExpressionParser.parse("scheduledOrEmpty(format='HH')").orThrow,
+      "JS7_SCHEDULED_MINUTE"  -> ExpressionParser.parse("scheduledOrEmpty(format='mm')").orThrow,
+      "JS7_SCHEDULED_SECOND"  -> ExpressionParser.parse("scheduledOrEmpty(format='ss')").orThrow,
+      "JS7_TASKSTART_DATE"    -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
       "JS7_TASKSTART_DAY"     -> ExpressionParser.parse("now(format='dd')").orThrow,
-      "JS7_TASKSTART_MONTH"   -> ExpressionParser.parse("now(format='MM')").orThrow,
       "JS7_TASKSTART_YEAR"    -> ExpressionParser.parse("now(format='yyyy')").orThrow,
+      "JS7_TASKSTART_MONTH"   -> ExpressionParser.parse("now(format='MM')").orThrow,
       "JS7_TASKSTART_HOUR"    -> ExpressionParser.parse("now(format='HH')").orThrow,
       "JS7_TASKSTART_MINUTE"  -> ExpressionParser.parse("now(format='mm')").orThrow,
-      "JS7_TASKSTART_SECOND"  -> ExpressionParser.parse("now(format='SS')").orThrow)))
+      "JS7_TASKSTART_SECOND"  -> ExpressionParser.parse("now(format='ss')").orThrow)))
   scribe.debug(sosJobResource.asJson.toPrettyString)
 
   private val sosWorkflow = {
@@ -208,10 +241,17 @@ object JobResourceTest
       ScriptExecutable(
         """#!/usr/bin/env bash
           |set -euo pipefail
-          |echo JS7_CONTROLLER_ID=/$JS7_CONTROLLER_ID/
-          |echo JS7_WORKFLOW_NAME=/$JS7_WORKFLOW_NAME/
-          |echo JS7_WORKFLOW_POSITION=/$JS7_WORKFLOW_POSITION/
           |echo JS7_ORDER_ID=/$JS7_ORDER_ID/
+          |echo JS7_WORKFLOW_POSITION=/$JS7_WORKFLOW_POSITION/
+          |echo JS7_WORKFLOW_NAME=/$JS7_WORKFLOW_NAME/
+          |echo JS7_CONTROLLER_ID=/$JS7_CONTROLLER_ID/
+          |echo JS7_SCHEDULED_DATE=/$JS7_SCHEDULED_DATE/
+          |echo JS7_SCHEDULED_DAY=/$JS7_SCHEDULED_DAY/
+          |echo JS7_SCHEDULED_MONTH=/$JS7_SCHEDULED_MONTH/
+          |echo JS7_SCHEDULED_YEAR=/$JS7_SCHEDULED_YEAR/
+          |echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
+          |echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
+          |echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
           |echo JS7_JOB_NAME=/$JS7_JOB_NAME/
           |echo JS7_TASKSTART_DATE=/$JS7_TASKSTART_DATE/
           |echo JS7_TASKSTART_DAY=/$JS7_TASKSTART_DAY/
@@ -221,13 +261,6 @@ object JobResourceTest
           |echo JS7_TASKSTART_MINUTE=/$JS7_TASKSTART_MINUTE/
           |echo JS7_TASKSTART_SECOND=/$JS7_TASKSTART_SECOND/
           |""".stripMargin))
-      //echo JS7_SCHEDULED_DATE=/$JS7_SCHEDULED_DATE/
-      //echo JS7_SCHEDULED_DAY=/$JS7_SCHEDULED_DAY/
-      //echo JS7_SCHEDULED_MONTH=/$JS7_SCHEDULED_MONTH/
-      //echo JS7_SCHEDULED_YEAR=/$JS7_SCHEDULED_YEAR/
-      //echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
-      //echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
-      //echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
     Workflow(
       WorkflowPath("WORKFLOW-SOS") ~ "INITIAL",
       Vector(Execute.Anonymous(workflowJob)),

@@ -65,6 +65,7 @@ final class OrderEventTest extends AnyFreeSpec
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
         Map("KEY" -> StringValue("VALUE")),
+        Some(Timestamp("2017-11-15T12:33:44.789Z")),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
         HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
         AgentPath("AGENT"),
@@ -87,6 +88,7 @@ final class OrderEventTest extends AnyFreeSpec
         "arguments": {
           "KEY": "VALUE"
         },
+        "scheduledFor": 1510749224789,
         "externalOrderKey": {
           "orderWatchPath": "ORDER-WATCH",
           "name": "ORDER-NAME"

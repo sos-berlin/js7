@@ -28,6 +28,7 @@ final case class Order[+S <: Order.State](
   workflowPosition: WorkflowPosition,
   state: S,
   arguments: NamedValues = Map.empty,
+  scheduledFor: Option[Timestamp] = None,
   externalOrderKey: Option[ExternalOrderKey] = None,
   historicOutcomes: Seq[HistoricOutcome] = Vector.empty,
   attachedState: Option[AttachedState] = None,
@@ -46,6 +47,7 @@ final case class Order[+S <: Order.State](
         workflowPosition.copy(position = workflowPosition.position / child.branchId.toBranchId % InstructionNr.First),
         Ready,
         arguments,
+        scheduledFor = scheduledFor,
         historicOutcomes = historicOutcomes,
         attachedState = attachedState,
         parent = Some(id))
@@ -305,6 +307,12 @@ final case class Order[+S <: Order.State](
   def withPosition(to: Position): Order[S] = copy(
     workflowPosition = workflowPosition.copy(position = to))
 
+  def maybeDelayedUntil: Option[Timestamp] =
+    if (isState[Fresh])
+      scheduledFor
+    else
+      state.maybeDelayedUntil
+
   def lastOutcome: Outcome =
     historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
 
@@ -426,10 +434,11 @@ final case class Order[+S <: Order.State](
 object Order
 {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
-    Order(id, event.workflowId, Fresh(event.scheduledFor), event.arguments, event.externalOrderKey)
+    Order(id, event.workflowId, Fresh, event.arguments, event.scheduledFor, event.externalOrderKey)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments,
+      event.scheduledFor,
       event.externalOrderKey,
       historicOutcomes = event.historicOutcomes,
       Some(Attached(event.agentPath)),
@@ -476,12 +485,8 @@ object Order
     def delayedUntil: Timestamp
   }
 
-  final case class Fresh(scheduledFor: Option[Timestamp] = None) extends IsFreshOrReady {
-    override def maybeDelayedUntil = scheduledFor
-  }
-  object Fresh {
-    val StartImmediately = Fresh(None)
-  }
+  type Fresh = Fresh.type
+  case object Fresh extends IsFreshOrReady
 
   type Ready = Ready.type
   case object Ready extends IsStarted with IsFreshOrReady
@@ -537,7 +542,7 @@ object Order
   case object Removed extends State
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
-    Subtype(deriveCodec[Fresh]),
+    Subtype(Fresh),
     Subtype(Ready))
 
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
@@ -564,6 +569,7 @@ object Order
       "workflowPosition" -> order.workflowPosition.asJson,
       "state" -> order.state.asJson,
       "arguments" -> order.arguments.??.asJson,
+      "scheduledFor" -> order.scheduledFor.asJson,
       "externalOrderKey" -> order.externalOrderKey.asJson,
       "attachedState" -> order.attachedState.asJson,
       "parent" -> order.parent.asJson,
@@ -578,6 +584,7 @@ object Order
       workflowPosition <- cursor.get[WorkflowPosition]("workflowPosition")
       state <- cursor.get[State]("state")
       arguments <- cursor.getOrElse[NamedValues]("arguments")(NamedValues.empty)
+      scheduledFor <- cursor.get[Option[Timestamp]]("scheduledFor")
       externalOrderKey <- cursor.get[Option[ExternalOrderKey]]("externalOrderKey")
       attachedState <- cursor.get[Option[AttachedState]]("attachedState")
       parent <- cursor.get[Option[OrderId]]("parent")
@@ -586,7 +593,7 @@ object Order
       removeWhenTerminated <- cursor.getOrElse[Boolean]("removeWhenTerminated")(false)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     } yield
-      Order(id, workflowPosition, state, arguments, externalOrderKey, historicOutcomes,
+      Order(id, workflowPosition, state, arguments, scheduledFor, externalOrderKey, historicOutcomes,
         attachedState, parent, mark, isSuspended, removeWhenTerminated)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)

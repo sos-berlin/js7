@@ -63,6 +63,7 @@ object OrderEvent
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
     arguments: NamedValues,
+    scheduledFor: Option[Timestamp],
     externalOrderKey: Option[ExternalOrderKey],
     historicOutcomes: Seq[HistoricOutcome],
     agentPath: AgentPath,

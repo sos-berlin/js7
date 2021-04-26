@@ -106,7 +106,7 @@ private object JControllerStateTest
       Order(
         OrderId("A-ORDER"),
         (WorkflowPath("A-WORKFLOW") ~ v1) /: Position(0),
-        Order.Fresh(None)),
+        Order.Fresh),
       Order(
         OrderId("B-ORDER"),
         (WorkflowPath("B-WORKFLOW") ~ v2) /: Position(0),

@@ -25,7 +25,6 @@ final class JobResourceTest extends AnyFreeSpec
           "MYPATH" -> Concat(
             StringConstant("/bin:"),
             FunctionCall("env", Seq(Argument(StringConstant("PATH"))))))),
-        //Seq(JobResourcePath("DEPENDS-ON")),
         Some(ItemRevision(1))),
       json"""{
         "path": "JOB-RESOURCE",

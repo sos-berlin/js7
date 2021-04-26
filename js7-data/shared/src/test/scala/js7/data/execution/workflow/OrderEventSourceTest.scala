@@ -218,7 +218,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     val detaching = Some(Order.Detaching(TestAgentPath))
 
     "Order.mark.isEmpty" - {
-      val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None))
+      val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh)
 
       "Fresh" - {
         val freshOrder = unmarkedOrder
@@ -354,7 +354,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "OrderMark.Cancelling(FreshOnly)" - {
-      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None),
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh,
         mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)))
 
       "Fresh" - {
@@ -386,7 +386,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "OrderMark.Cancelling(FreshOrStarted)" - {
-      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)))
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh, mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)))
 
       "Ready" - {
         val readyOrder = cancellingOrder.copy(state = Order.Ready)
@@ -529,7 +529,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Order.isSuspended" - {
-      val suspendedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh(None), isSuspended = true)
+      val suspendedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh, isSuspended = true)
 
       "Fresh" - {
         val freshOrder = suspendedOrder
@@ -801,7 +801,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     val failed7 = Outcome.Failed(NamedValues.rc(7))
 
     "failToPosition" in {
-      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
+      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh)
       def failToPosition(position: Position, uncatchable: Boolean = false) =
         eventSource(order).failToPosition(workflow, position, outcome = None, uncatchable = uncatchable)
 
@@ -819,7 +819,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Fresh at try instruction -> OrderMoved" in {
-      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh())
+      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh)
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
     }

@@ -39,7 +39,7 @@ final class FailExecutorTest extends AnyFreeSpec
 
   "toEvents" - {
     "Fresh order will be started" in {
-      assert(FailExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh()), stateView) ==
+      assert(FailExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh), stateView) ==
         Right(Seq(TestOrder.id <-: OrderStarted)))
     }
 

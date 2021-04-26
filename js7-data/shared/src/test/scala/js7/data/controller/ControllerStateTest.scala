@@ -74,7 +74,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       jobResource.path -> signedJobResource),
     Map(
       JobResourcePath("JOB-RESOURCE") -> Map(AgentPath("AGENT") -> Attachable)),
-    (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh(None),
+    (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh,
       externalOrderKey = Some(ExternalOrderKey(OrderWatchPath("WATCH"), ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))
 

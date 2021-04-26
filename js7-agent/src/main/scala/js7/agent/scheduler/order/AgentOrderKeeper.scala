@@ -517,7 +517,7 @@ with Stash {
     val orderEntry = orderRegister(orderId)
     val order = orderEntry.order
     if (order.isAttached) {
-      order.state.maybeDelayedUntil match {
+      order.maybeDelayedUntil match {
         case Some(until) if Timestamp.now < until =>
           orderEntry.at(until) {  // TODO Schedule only the next order ?
             self ! Internal.Due(orderId)

@@ -10,7 +10,6 @@ import js7.data.value.expression.Expression.ObjectExpression
 final case class JobResource(
   path: JobResourcePath,
   env: ObjectExpression = ObjectExpression.empty,
-  //dependsOn: Seq[JobResourcePath] = Nil,
   itemRevision: Option[ItemRevision] = None)
 extends SignableSimpleItem
 {

@@ -77,7 +77,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Add many files, forcing an overflow" in {
     val since = now
-    val filenames = (1 to 1000).map(_.toString).toVector
+    val filenames = (1 to 1).map(_.toString).toVector
     val orderIds = filenames.map(fileToOrderId).toSet
     val whenAllRemoved = controller.eventWatch
       .observe(EventRequest.singleClass[OrderRemoved](

@@ -34,14 +34,21 @@ Beispiele
 - `now(format='yyyy-MM-dd', timezone='Antarctica/Troll')`
 - `now(format='yyyy-MM-dd')`  (UTC-Zeitzone)
 
+### Funktion scheduledOrEmpty(format=FORMAT, timezone=TIMEZONE)
+Liefert analog zur Funktion `now` die geplante Startzeit des Auftrags,
+oder einen leeren String, wenn der Auftrag keine geplante Startzeit hat.
+
+Beispiele
+- `scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ss')`  (UTC-Zeitzone)
+
 ### Variablen
 - `$epochSecond`: Zahl der Sekunden seit dem 1. Januar 1970 UTC.
 - `$epochMilli`: Zahl der Millisekunden seit dem 1. Januar 1970 UTC.
-- `$js7ControllerId`
-- `$js7WorkflowPath`
-- `$js7WorkflowPosition`: WorkflowId (Path + VersionId) und Position im Workflow als String
 - `$js7OrderId`
 - `$js7JobName`
+- `$js7WorkflowPosition`: WorkflowId (Path + VersionId) und Position im Workflow als String
+- `$js7WorkflowPath`
+- `$js7ControllerId`
 
 JobResourcen können so in einem Job referenziert werden:
 ```json
@@ -70,6 +77,34 @@ dann gelten die _zuerst_ angegeben (links hat Vorrang).
 Dabei ist auch unter Windows ist die Groß/Kleinschreibung relevant.
 Für Jobs, die unter Windows laufen,
 sollte für Umgebungsvariablen eine einheitliche Großschreibung gewählt werden.
+
+### Beispiel für die allgemeinen Umgebungsvariablen der SOS
+````json
+{
+  "path": "SosStandard",
+  "env": {
+    "JS7_ORDER_ID": "$js7OrderId",
+    "JS7_WORKFLOW_POSITION": "$js7WorkflowPosition",
+    "JS7_WORKFLOW_NAME": "$js7WorkflowPath",
+    "JS7_JOB_NAME": "$js7JobName",
+    "JS7_CONTROLLER_ID": "$js7ControllerId",
+    "JS7_TASKSTART_DATE": "now(format='yyyy-MM-dd HH:mm:ssZ')",
+    "JS7_TASKSTART_YEAR": "now(format='yyyy')",
+    "JS7_TASKSTART_MONTH": "now(format='MM')",
+    "JS7_TASKSTART_DAY": "now(format='dd')",
+    "JS7_TASKSTART_HOUR": "now(format='HH')",
+    "JS7_TASKSTART_MINUTE": "now(format='mm')",
+    "JS7_TASKSTART_SECOND": "now(format='ss')",
+    "JS7_SCHEDULED_DATE": "scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')",
+    "JS7_SCHEDULED_YEAR": "scheduledOrEmpty(format='yyyy')",
+    "JS7_SCHEDULED_MONTH": "scheduledOrEmpty(format='MM')",
+    "JS7_SCHEDULED_HOUR": "scheduledOrEmpty(format='HH')",
+    "JS7_SCHEDULED_DAY": "scheduledOrEmpty(format='dd')",
+    "JS7_SCHEDULED_SECOND": "scheduledOrEmpty(format='ss')",
+    "JS7_SCHEDULED_MINUTE": "scheduledOrEmpty(format='mm')"
+  }
+}
+````
 
 
 ### Abruf am Workflow

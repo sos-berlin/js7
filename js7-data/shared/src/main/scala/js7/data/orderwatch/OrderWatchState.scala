@@ -158,11 +158,11 @@ extends SimpleItemState
         .get(externalOrderName)
         .flatMap {
           case Arised(orderId, arguments) =>
-            workflowPathToVersionId(orderWatch.workflowPath).map { v =>
-              val workflowId = orderWatch.workflowPath ~ v
-              orderId <-: OrderAdded(workflowId, arguments,
-                  externalOrderKey = Some(ExternalOrderKey(id, externalOrderName)))
-            }
+            workflowPathToVersionId(orderWatch.workflowPath)
+              .map(v => orderId <-: OrderAdded(
+                orderWatch.workflowPath ~ v,
+                arguments,
+                externalOrderKey = Some(ExternalOrderKey(id, externalOrderName))))
 
           case _ => None
         })

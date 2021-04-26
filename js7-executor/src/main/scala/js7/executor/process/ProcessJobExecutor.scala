@@ -9,7 +9,7 @@ import js7.data.order.Outcome
 import js7.data.value.StringValue
 import js7.data.value.expression.Evaluator
 import js7.data.value.expression.Expression.ObjectExpression
-import js7.data.value.expression.scopes.{EnvScope, NamedValueScope, NowScope}
+import js7.data.value.expression.scopes.{EnvScope, NamedValueScope, NowScope, OrderScope}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
@@ -28,15 +28,15 @@ trait ProcessJobExecutor extends JobExecutor
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
     import processOrder.order
-    val jobResourceScope = Seq(
-      new NowScope,
+    lazy val jobResourceScope = Seq(
+      NowScope() |+| OrderScope(processOrder.order),
       EnvScope,
       new NamedValueScope(Map(
-        "js7ControllerId" -> StringValue(jobConf.controllerId.string),
-        "js7WorkflowPath" -> StringValue(order.workflowId.path.string),
-        "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString),
         "js7OrderId" -> StringValue(order.id.string),
-        "js7JobName" -> StringValue(jobKey.name)))
+        "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString),
+        "js7WorkflowPath" -> StringValue(order.workflowId.path.string),
+        "js7JobName" -> StringValue(jobKey.name),
+        "js7ControllerId" -> StringValue(jobConf.controllerId.string)))
     ).combineAll
 
     val checkedJobResourcesEnv = checkedCurrentJobResources().flatMap(_

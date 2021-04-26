@@ -1,6 +1,7 @@
 package  js7.data_for_java.order
 
 import io.vavr.control.{Either => VEither}
+import java.time.Instant
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -42,6 +43,10 @@ extends JJsonable[JOrder]
   @Nonnull
   def arguments: java.util.Map[String, Value] =
     asScala.arguments.asJava
+
+  @Nonnull
+  def maybeScheduledFor: Optional[Instant] =
+    asScala.scheduledFor.map(_.toInstant).toJava
 
   @Nonnull
   def parent: Optional[OrderId] =

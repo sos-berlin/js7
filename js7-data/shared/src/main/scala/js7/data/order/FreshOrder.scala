@@ -59,7 +59,7 @@ object FreshOrder
       yield new FreshOrder(checkedId, workflowPath, arguments, scheduledFor)
 
   def fromOrder(order: Order[Order.Fresh]): FreshOrder =
-    new FreshOrder(order.id, order.workflowId.path, order.arguments, order.state.scheduledFor)
+    new FreshOrder(order.id, order.workflowId.path, order.arguments, order.scheduledFor)
 
   implicit val jsonEncoder: Encoder.AsObject[FreshOrder] =
     o => JsonObject(

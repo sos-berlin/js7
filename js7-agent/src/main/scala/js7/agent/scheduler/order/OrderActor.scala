@@ -81,11 +81,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     case command: Command =>
       command match {
         case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
-          arguments, externalOrderKey, historicOutcomes,
+          arguments, scheduledFor, externalOrderKey, historicOutcomes,
           Some(Order.Attached(agentPath)), parent, mark, isSuspended, removeWhenTerminated)
         ) =>
           becomeAsStateOf(attached, force = true)
-          persist(OrderAttachedToAgent(wfPos, state, arguments, externalOrderKey, historicOutcomes, agentPath, parent, mark,
+          persist(OrderAttachedToAgent(wfPos, state, arguments, scheduledFor, externalOrderKey,
+            historicOutcomes, agentPath, parent, mark,
             isSuspended = isSuspended, removeWhenTerminated = removeWhenTerminated)) {
             (event, updatedState) =>
               update(event :: Nil, updatedState)
@@ -116,7 +117,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
           def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
             observable
-              .doOnNext(string => Task(logger.debug(s"###    ${string.replace("\n", "\\n")}")))
               .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
               .flatMap(strings => Observable.fromIterable(combineStringsAndSplit(strings, conf.stdouterr.chunkSize)))
               .flatMap(chunk => Observable.fromTask(

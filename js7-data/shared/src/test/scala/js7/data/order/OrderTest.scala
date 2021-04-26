@@ -45,7 +45,8 @@ final class OrderTest extends AnyFreeSpec
         check(
           testOrder.copy(
             attachedState = Some(Attached(AgentPath("AGENT"))),
-            parent = Some(OrderId("PARENT"))),
+            parent = Some(OrderId("PARENT")),
+            scheduledFor = Some(Timestamp.parse("2121-04-26T12:33:44.789Z"))),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -62,6 +63,7 @@ final class OrderTest extends AnyFreeSpec
               "key1": "value1",
               "key2": "value2"
             },
+            "scheduledFor": 4775114024789,
             "historicOutcomes": [
               {
                 "position": [ 123 ],
@@ -83,7 +85,7 @@ final class OrderTest extends AnyFreeSpec
 
       "mark" in {
         check(
-          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Fresh(),
+          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Fresh,
             mark = Some(OrderMark.Cancelling(CancelMode.FreshOnly)),
             isSuspended = true),
           json"""{
@@ -112,16 +114,8 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "State" - {
-      "Fresh scheduled" in {
-        testJson[State](Fresh(Some(Timestamp.parse("2017-11-15T12:33:44.789Z"))),
-          json"""{
-            "TYPE": "Fresh",
-            "scheduledFor": 1510749224789
-          }""")
-      }
-
       "Fresh immediately" in {
-        testJson[State](Fresh(),
+        testJson[State](Fresh,
           json"""{
             "TYPE": "Fresh"
           }""")
@@ -250,7 +244,8 @@ final class OrderTest extends AnyFreeSpec
       OrderRemoved,
 
       OrderAttachable(agentPath),
-      OrderAttachedToAgent(workflowId /: Position(0), Fresh(), Map.empty, None, Nil, agentPath, None, None, false, false),
+      OrderAttachedToAgent(workflowId /: Position(0), Fresh, Map.empty, None, None, Nil,
+        agentPath, None, None, false, false),
       OrderAttached(agentPath),
 
       OrderStarted,
@@ -316,7 +311,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Fresh" in {
-      checkAllEvents(Order(orderId, workflowId, Fresh()),
+      checkAllEvents(Order(orderId, workflowId, Fresh),
         removeMarkable[Fresh] orElse
         markable[Fresh] orElse
         attachingAllowed[Fresh] orElse
