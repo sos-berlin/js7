@@ -35,6 +35,8 @@ trait ProcessJobExecutor extends JobExecutor
         "js7OrderId" -> StringValue(order.id.string),
         "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString),
         "js7WorkflowPath" -> StringValue(order.workflowId.path.string),
+        "js7Label" -> StringValue(processOrder.workflow.labeledInstruction(order.position)
+          .toOption.flatMap(_.maybeLabel).fold("")(_.string)),
         "js7JobName" -> StringValue(jobKey.name),
         "js7ControllerId" -> StringValue(jobConf.controllerId.string)))
     ).combineAll
