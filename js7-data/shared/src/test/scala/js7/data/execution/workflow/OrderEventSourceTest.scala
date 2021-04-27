@@ -20,7 +20,7 @@ import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, U
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fork, Gap, Goto, If, IfFailedGoto, LockInstruction, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, LockInstruction, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.test.ForkTestSetting
@@ -769,6 +769,20 @@ final class OrderEventSourceTest extends AnyFreeSpec
         eventSource.resume(order.id, Some(to), None)
       }
     }
+  }
+
+  "Failed" in {
+    lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(Fail()))
+    val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Failed)
+    val eventSource = new OrderEventSource(
+      Map(order.id -> order).checked,
+      Map(workflow.id -> workflow).checked,
+      _ => Left(Problem("OrderEventSourceTest does not know locks")),
+      isAgent = false)
+    assert(eventSource.nextEvents(order.id) == Nil)
+    assert(eventSource.suspend(order.id, SuspendMode()) == Left(CannotSuspendOrderProblem))
+    assert(eventSource.cancel(order.id, CancelMode.Default) == Right(Some(OrderCancelled)))
+    assert(eventSource.resume(order.id, None, None) == Right(Some(OrderResumed(None, None))))
   }
 
   "Try catch" - {

@@ -15,7 +15,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.lock.{LockPath, LockState}
-import js7.data.order.Order.{IsTerminated, ProcessingKilled}
+import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
@@ -268,8 +268,11 @@ final class OrderEventSource(
           case Some(_: OrderMark.Suspending) =>  // Already marked
             Right(None)
           case None | Some(_: OrderMark.Resuming) =>
-            Right((!order.isSuspended || order.isResuming) ?
-              trySuspend(order).getOrElse(OrderSuspendMarked(mode)))
+            if (order.isState[Failed] || order.isState[IsTerminated])
+              Left(CannotSuspendOrderProblem)
+            else
+              Right((!order.isSuspended || order.isResuming) ?
+                trySuspend(order).getOrElse(OrderSuspendMarked(mode)))
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
@@ -298,7 +301,7 @@ final class OrderEventSource(
           Left(CannotResumeOrderProblem)
 
         case Some(OrderMark.Resuming(`position`, `historicOutcomes`)) =>
-          Right(order.isDetached ? OrderResumed(position, historicOutcomes)/*should already be happened*/)
+          Right(order.isDetached ? OrderResumed(position, historicOutcomes)/*should already has happened*/)
 
         case Some(OrderMark.Resuming(_, _)) =>
            Left(CannotResumeOrderProblem)
@@ -307,7 +310,10 @@ final class OrderEventSource(
            Left(CannotResumeOrderProblem)
 
         case None | Some(OrderMark.Suspending(_)) =>
-          if (!order.isSuspended && !order.mark.exists(_.isInstanceOf[OrderMark.Suspending]))
+          val okay = order.isSuspended ||
+            order.mark.exists(_.isInstanceOf[OrderMark.Suspending]) ||
+            order.isState[Failed] && order.isDetached
+          if (!okay)
             Left(CannotResumeOrderProblem)
           else {
             lazy val checkedWorkflow = idToWorkflow(order.workflowId)

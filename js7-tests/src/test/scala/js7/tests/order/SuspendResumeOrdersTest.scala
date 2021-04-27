@@ -26,6 +26,7 @@ import js7.data.workflow.instructions.{Execute, Fail, Fork, Retry, TryInstructio
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tests.jobs.EmptyJob
 import js7.tests.order.SuspendResumeOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.waitingForFileScript
@@ -34,12 +35,16 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(singleJobWorkflow, twoJobsWorkflow, forkWorkflow, tryWorkflow)
   override def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""
+
+  override def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on"""
+
+  protected val agentPaths = Seq(agentPath)
+  protected val versionedItems = Seq(singleJobWorkflow, twoJobsWorkflow, forkWorkflow, tryWorkflow, failingWorkflow)
 
   private lazy val triggerFile = createTempFile("SuspendResumeOrdersTest-", ".tmp")
 
@@ -442,6 +447,48 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         HistoricOutcome(Position(2) / Try_ % 0, Outcome.failed) :+
         HistoricOutcome(Position(2) / try_(1) % 0, Outcome.failed)))))
   }
+
+  "Resume when Failed" in {
+    val order = FreshOrder(OrderId("🟫"), failingWorkflow.path)
+    addOrder(order).await(99.s).orThrow
+    eventWatch.await[OrderFailed](_.key == order.id)
+
+    var eventId = eventWatch.lastAddedEventId
+    assert(executeCommand(SuspendOrders(Seq(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
+    executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
+    eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
+
+    eventId = eventWatch.lastAddedEventId
+    executeCommand(ResumeOrder(order.id, Some(Position(0)))).await(99.s).orThrow
+
+    eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
+    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Seq(
+      OrderAdded(failingWorkflow.id, order.arguments, order.scheduledFor),
+
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderStarted,
+      OrderProcessingStarted,
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(1)),
+      OrderDetachable,
+      OrderDetached,
+
+      OrderFailed(Position(1), Some(Outcome.failed)),
+
+      OrderResumed(),
+      OrderFailed(Position(1), Some(Outcome.failed)),
+
+      OrderResumed(Some(Position(0))),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderProcessingStarted,
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(1)),
+      OrderDetachable,
+      OrderDetached,
+      OrderFailed(Position(1), Some(Outcome.failed))))
+  }
 }
 
 object SuspendResumeOrdersTest
@@ -477,4 +524,9 @@ object SuspendResumeOrdersTest
       Workflow.of(
         Retry()),
       maxTries = Some(2)))
+
+  private val failingWorkflow = Workflow.of(
+    WorkflowPath("FAILING") ~ versionId,
+    EmptyJob.execute(agentPath),
+    Fail())
 }

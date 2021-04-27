@@ -271,7 +271,7 @@ final case class Order[+S <: Order.State](
           copy(
             isSuspended = false,
             mark = None,
-            state = if (isState[Broken]) Ready else state,
+            state = if (isState[Broken] || isState[Failed]) Ready else state,
             historicOutcomes = maybeHistoricOutcomes getOrElse historicOutcomes
           ).withPosition(maybePosition getOrElse position))
 
@@ -423,8 +423,10 @@ final case class Order[+S <: Order.State](
     mark.exists(_.isInstanceOf[OrderMark.Resuming])
 
   def isResumable =
-    ((isState[IsFreshOrReady] && isSuspended /*|| isState[Failed]*/) ||
-      isState[Broken]) &&
+    (isState[IsFreshOrReady] && isSuspended ||
+      isState[Failed] && !isSuspended/*strict for test*/ && isDetached ||
+      isState[Broken]
+    ) &&
       (isDetached || isAttached)
 
   def isProcessable =

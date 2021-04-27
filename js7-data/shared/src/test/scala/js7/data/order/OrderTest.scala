@@ -431,6 +431,7 @@ final class OrderTest extends AnyFreeSpec
         markable[Failed] orElse
         detachingAllowed[Failed] orElse
         cancelMarkedAllowed[Failed] orElse {
+          case (_: OrderResumed, IsSuspended(false), IsDetached) => _.isInstanceOf[Ready]
           case (OrderCancelled, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken, _, _         ) => _.isInstanceOf[Broken]
         })
