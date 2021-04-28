@@ -46,6 +46,7 @@ Beispiele
 - `$epochMilli`: Zahl der Millisekunden seit dem 1. Januar 1970 UTC.
 - `$js7OrderId`
 - `$js7JobName`
+- `$js7Label`: Das Label oder der leere String
 - `$js7WorkflowPosition`: WorkflowId (Path + VersionId) und Position im Workflow als String
 - `$js7WorkflowPath`
 - `$js7ControllerId`
