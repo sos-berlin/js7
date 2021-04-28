@@ -148,12 +148,27 @@ object Expression
 
   final case class StringConstant(string: String) extends StringExpression {
     def precedence = Precedence.Factor
+    private val inhibitsSingleQuoteString = Set[Char]('\n', '\r', '\t', '\'')
     override def toString =
-      if (string.isEmpty) "\"\""
-      else if (string contains '\'')
-        s""""$string""""
-      else
+      if (string.isEmpty)
+        "\"\""
+      else if (!string.exists(inhibitsSingleQuoteString))
         s"'$string'"
+      else {
+        val sb = new StringBuilder(64)
+        sb.append('"')
+        string foreach {
+          case '\\' => sb.append("\\\\")
+          case '\"' => sb.append("\\\"")
+          case '\t' => sb.append("\\t")
+          case '\r' => sb.append("\\r")
+          case '\n' => sb.append("\\n")
+          case '$' => sb.append("\\$")
+          case c => sb.append(c)
+        }
+        sb.append('"')
+        sb.toString
+      }
   }
   object StringConstant {
     val empty = new StringConstant("")

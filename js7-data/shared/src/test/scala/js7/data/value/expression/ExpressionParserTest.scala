@@ -9,6 +9,7 @@ import js7.data.value.expression.ExpressionParser.{parse => _, _}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
+import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
@@ -84,6 +85,50 @@ final class ExpressionParserTest extends AnyFreeSpec
     testExpression(""" "" """.trim, StringConstant(""))
     testExpression(""" "x" """.trim, StringConstant("x"))
     testExpression(""" "ö" """.trim, StringConstant("ö"))
+
+    "Escaping special characters" - {
+      "Raw control characters are not escaped" in {
+        for (char <- (0 to 0x1d) ++ (0x7f to 0x9f)) {
+          val expr = s""" "'$char" """.trim
+          testExpressionRaw(expr, StringConstant(s"'$char"))
+        }
+      }
+
+      "Random high value characters" in {
+        for (char <- (0xA0 to 0xA0 + 0x7fff)) {
+          val expr = s""" "'$char" """.trim
+          testExpressionRaw(expr, StringConstant(s"'$char"))
+        }
+      }
+
+      val escapedChars = Seq(
+        'n' -> '\n',
+        'r' -> '\r',
+        't' -> '\t',
+        '"' -> '"',
+        '$' -> '$',
+        '\\' -> '\\')
+
+      for ((escaped, expected) <- escapedChars) {
+        testExpression(s""" "'\\$escaped" """.trim, StringConstant(s"'$expected"))
+        testExpression(s""" "\\$escaped" """.trim, StringConstant(s"$expected"))
+      }
+
+      "Invalid escaped characters" in {
+        val invalidEscaped = (0x20 to 0xff).map(_.toChar)
+          .filter(c => c != '\r' && c != '\n')
+          .filterNot(escapedChars.map(_._1).toSet)
+        for (escaped <- invalidEscaped) {
+          // With ' to render as "-string
+          assert(ExpressionParser.parse(s""" "'\\$escaped" """.trim) == Left(Problem(
+            """Error in expression: Expected blackslash (\) and one of the following characters: [\"trn$]:1:5, found "\""""")))
+
+          // Without ' to render as '-string
+          assert(ExpressionParser.parse(s""" "\\$escaped" """.trim) == Left(Problem(
+            """Error in expression: Expected blackslash (\) and one of the following characters: [\"trn$]:1:4, found "\""""")))
+        }
+      }
+    }
 
     testExpression(""""A"""", StringConstant("A"))
     testExpression(""""$A$B"""", InterpolatedString(List(NamedValue("A"), NamedValue("B"))))
@@ -237,10 +282,14 @@ final class ExpressionParserTest extends AnyFreeSpec
 
   private def testExpression(exprString: String, expr: Expression)(implicit pos: source.Position) =
     registerTest(exprString) {
-      def parser[_: P] = expression ~ End
-      assert(checkedParse(exprString, parser(_)) == Right(expr))
-      assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
+      testExpressionRaw(exprString, expr)
     }
+
+  private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) = {
+    def parser[_: P] = expression ~ End
+    assert(checkedParse(exprString, parser(_)) == Right(expr))
+    assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
+  }
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
     registerTest(exprString + " - should fail") {
