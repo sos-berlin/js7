@@ -38,7 +38,7 @@ object ControllerEvent
 
   case object ControllerTestEvent extends ControllerEvent
 
-  implicit val jsonCodec: TypedJsonCodec[ControllerEvent] = TypedJsonCodec(
+  implicit val jsonCodec = TypedJsonCodec[ControllerEvent](
     Subtype(deriveCodec[ControllerInitialized]),
     Subtype(deriveCodec[ControllerReady]),
     Subtype(deriveCodec[ControllerShutDown]),

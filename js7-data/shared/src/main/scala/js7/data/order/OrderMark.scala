@@ -20,7 +20,7 @@ object OrderMark
     historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderMark
 
-  implicit val jsonCodec = TypedJsonCodec.apply[OrderMark](
+  implicit val jsonCodec = TypedJsonCodec[OrderMark](
     Subtype(deriveCodec[Cancelling]),
     Subtype(deriveCodec[Suspending]),
     Subtype(deriveCodec[Resuming]))

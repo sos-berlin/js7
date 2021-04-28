@@ -145,7 +145,7 @@ object AgentState extends JournaledState.Companion[AgentState]
     Seq(FileWatch, Workflow, JobResource)
 
   val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
-    TypedJsonCodec[Any](
+    TypedJsonCodec("AgentState.Snapshot",
       Subtype[JournalState],
       Workflow.subtype,
       Subtype[Order[Order.State]],
@@ -153,7 +153,7 @@ object AgentState extends JournaledState.Companion[AgentState]
       Subtype(AgentState.signableSimpleItemJsonCodec))
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
-    KeyedEventTypedJsonCodec[Event](
+    KeyedEventTypedJsonCodec("AgentState.Event",
       KeyedSubtype[JournalEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[AgentControllerEvent],

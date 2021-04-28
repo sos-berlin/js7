@@ -20,5 +20,5 @@ object UnsignedSimpleItem
   }
 
   def jsonCodec[A <: UnsignedSimpleItem](companions: Seq[Companion_]) =
-    TypedJsonCodec.fromIterable(companions.map(_.subtype))
+    TypedJsonCodec.fromIterable("UnsignedSimpleItem", companions.map(_.subtype))
 }

@@ -34,7 +34,7 @@ private final class JournaledStateRecoverer[S <: JournaledState[S]](
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
-        fileJournaledStateBuilder.put(if (json.isObject) journalMeta.decodeJson(json).orThrow else json)
+        fileJournaledStateBuilder.put(journalMeta.decodeJson(json).orThrow)
         fileJournaledStateBuilder.journalProgress match {
           case AfterSnapshotSection =>
             _position = jsonReader.position

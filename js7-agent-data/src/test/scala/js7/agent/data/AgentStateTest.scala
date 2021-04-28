@@ -9,6 +9,7 @@ import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.io.file.watch.DirectoryState
 import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
@@ -143,6 +144,18 @@ final class AgentStateTest extends AsyncFreeSpec
               succeed
           }
     }
+  }
+
+  "Unknown TYPE for snapshotObjectJsonCodec" in {
+    assert(AgentState.implicits.snapshotObjectJsonCodec
+      .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
+      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'AgentState.Snapshot'""")))
+  }
+
+  "Unknown TYPE for keyedEventJsonCodec" in {
+    assert(AgentState.keyedEventJsonCodec
+      .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
+      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'AgentState.Event'""")))
   }
 
   "applyEvent" in {

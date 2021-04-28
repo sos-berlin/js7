@@ -47,11 +47,16 @@ with Decoder[KeyedEvent[E]]
   /** Union. */
   def |[B <: Event](other: KeyedEventTypedJsonCodec[B]): KeyedEventTypedJsonCodec[Event] = {
     val sameClasses = classToEncoder.keySet & other.classToEncoder.keySet
-    if (sameClasses.nonEmpty) throw new IllegalArgumentException(s"Union of KeyedEventTypedJsonCodec has non-unique classes: $sameClasses")
+    if (sameClasses.nonEmpty) throw new IllegalArgumentException(
+      s"Union of KeyedEventTypedJsonCodec has non-unique classes: $sameClasses")
+
     val sameClassNames = nameToClass.keySet & other.nameToClass.keySet
-    if (sameClassNames.nonEmpty) throw new IllegalArgumentException(s"Union of KeyedEventTypedJsonCodec has non-unique decoder names: $sameClassNames")
+    if (sameClassNames.nonEmpty) throw new IllegalArgumentException(
+      s"Union of KeyedEventTypedJsonCodec has non-unique decoder names: $sameClassNames")
+
     val sameDecoderNames = nameToDecoder.keySet & other.nameToDecoder.keySet
-    if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(s"Union of KeyedEventTypedJsonCodec has non-unique class names: $sameDecoderNames")
+    if (sameDecoderNames.nonEmpty) throw new IllegalArgumentException(
+      s"Union of KeyedEventTypedJsonCodec has non-unique class names: $sameDecoderNames")
 
     new KeyedEventTypedJsonCodec[Event](
       superclassName = "Event",
@@ -92,13 +97,12 @@ with Decoder[KeyedEvent[E]]
 
 object KeyedEventTypedJsonCodec
 {
-  def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*) = {
-    val superclass = implicitClass[E]
-    new KeyedEventTypedJsonCodec[E](
-      superclass.simpleScalaName,
-      superclass.shortClassName,
-      subtypes)
-  }
+  def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*): KeyedEventTypedJsonCodec[E] =
+    apply[E](implicitClass[E].shortClassName, subtypes: _*)
+
+  def apply[E <: Event: ClassTag](name: String, subtypes: KeyedSubtype[_ <: E]*)
+  : KeyedEventTypedJsonCodec[E] =
+    new KeyedEventTypedJsonCodec[E](implicitClass[E].simpleScalaName, printName = name, subtypes)
 
   final class KeyedSubtype[E <: Event](
     val classToEncoder: Map[Class[_], Encoder.AsObject[KeyedEvent[_ <: E]]],
@@ -117,10 +121,13 @@ object KeyedEventTypedJsonCodec
   }
 
   object KeyedSubtype {
-    def apply[E <: Event: ClassTag](implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E]): KeyedSubtype[E] =
+    def apply[E <: Event: ClassTag](implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E])
+    : KeyedSubtype[E] =
       of[E](typeName[E])
 
-    def singleEvent[E <: Event: ClassTag](implicit ke: Encoder[E#Key], kd: Decoder[E#Key], eventEncoder: Encoder.AsObject[E], eventDecoder: Decoder[E]): KeyedSubtype[E] = {
+    def singleEvent[E <: Event: ClassTag]
+    (implicit ke: Encoder[E#Key], kd: Decoder[E#Key], eventEncoder: Encoder.AsObject[E], eventDecoder: Decoder[E])
+    : KeyedSubtype[E] = {
       implicit val typedJsonCodec = TypedJsonCodec[E](Subtype[E])
       of[E](typeName[E])
     }
@@ -130,7 +137,9 @@ object KeyedEventTypedJsonCodec
       of[E](typeName[E])
     }
 
-    def of[E <: Event: ClassTag](name: String)(implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E]): KeyedSubtype[E] = {
+    def of[E <: Event: ClassTag](name: String)
+      (implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E])
+    : KeyedSubtype[E] = {
       new KeyedSubtype[E](
         classToEncoder = codec.classToEncoder
           .mapValuesStrict(_ => KeyedEvent.jsonEncoder[E]),

@@ -50,8 +50,9 @@ final class KeyedEventTypedJsonCodecTest extends AnyFreeSpec
   }
 
   "Unknown TYPE" in {
-    implicit val e0KeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E0.type] = KeyedEventTypedJsonCodec[E0.type](
-      KeyedSubtype(E0))
+    implicit val e0KeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[E0.type] =
+      KeyedEventTypedJsonCodec(
+        KeyedSubtype(E0))
 
     testJson[KeyedEvent[E0.type]](NoKey <-: E0, json"""{ "TYPE": "E0" }""")
     assert(json"""{ "TYPE": "E0" }""".as[KeyedEvent[E0.type]].isRight)
@@ -99,15 +100,18 @@ object KeyedEventTypedJsonCodecTest
   @JsonCodec
   final case class E3(int: Int) extends IntEvent
 
-  private implicit val StringEventJsonCodec: TypedJsonCodec[StringEvent] = TypedJsonCodec[StringEvent](
-    Subtype[E1],
-    Subtype[E2])
+  private implicit val StringEventJsonCodec: TypedJsonCodec[StringEvent] =
+    TypedJsonCodec(
+      Subtype[E1],
+      Subtype[E2])
 
-  private implicit val IntEventJsonCodec: TypedJsonCodec[IntEvent] = TypedJsonCodec[IntEvent](
-    Subtype[E3])
+  private implicit val IntEventJsonCodec: TypedJsonCodec[IntEvent] =
+    TypedJsonCodec(
+      Subtype[E3])
 
-  private implicit val TestEventKeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[TestEvent] = KeyedEventTypedJsonCodec[TestEvent](
-    KeyedSubtype(E0),
-    KeyedSubtype[StringEvent],
-    KeyedSubtype[IntEvent])
+  private implicit val TestEventKeyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[TestEvent] =
+    KeyedEventTypedJsonCodec(
+      KeyedSubtype(E0),
+      KeyedSubtype[StringEvent],
+      KeyedSubtype[IntEvent])
 }

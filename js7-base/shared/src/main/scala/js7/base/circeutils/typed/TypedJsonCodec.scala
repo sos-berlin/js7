@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final class TypedJsonCodec[A](
-  private val superclassName: String,
+  private val printName: String,
   private val subtypes: Seq[Subtype[_ <: A]])
 extends Codec.AsObject[A]
 {
@@ -20,7 +20,7 @@ extends Codec.AsObject[A]
     subtypes
       .flatMap(_.classToEncoder)
       .uniqueToMap
-      .withDefault(o => throw new UnknownClassForJsonException(o.shortClassName, superclassName))
+      .withDefault(o => throw new UnknownClassForJsonException(o.shortClassName, printName))
 
   val nameToDecoder: Map[String, Decoder[_ <: A]] =
     subtypes
@@ -53,7 +53,7 @@ extends Codec.AsObject[A]
       s"Union of TypedJsonCodec has non-unique class names: $sameDecoderNames")
 
     new TypedJsonCodec[Any](
-      s"$superclassName|${other.superclassName}",
+      s"$printName|${other.printName}",
       subtypes ++ other.subtypes)
   }
 
@@ -65,7 +65,7 @@ extends Codec.AsObject[A]
   def decode(c: HCursor): Decoder.Result[A] =
     c.get[String](TypeFieldName)
       .flatMap(name => nameToDecoder.get(name) match {
-        case None => Left(unknownJsonTypeFailure(name, superclassName, c.history))
+        case None => Left(unknownJsonTypeFailure(name, printName, c.history))
         case Some(decoder) => decoder.apply(c)
       })
 
@@ -94,7 +94,7 @@ extends Codec.AsObject[A]
     json.asObject
       .flatMap(_(TypeFieldName)).flatMap(_.asString).flatMap(nameToClass.get)
 
-  override def toString = s"TypedJsonCodec[$superclassName]"
+  override def toString = s"TypedJsonCodec[$printName]"
 }
 
 object TypedJsonCodec
@@ -111,10 +111,13 @@ object TypedJsonCodec
     cls.simpleScalaName
 
   def apply[A: ClassTag](subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] =
-    fromIterable(subtypes)
+    fromIterable(implicitClass[A].shortClassName, subtypes)
 
-  def fromIterable[A: ClassTag](subtypes: Iterable[Subtype[_ <: A]]): TypedJsonCodec[A] =
-    new TypedJsonCodec[A](implicitClass[A].shortClassName, subtypes.to(ArraySeq))
+  def apply[A: ClassTag](name: String, subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] =
+    fromIterable(name, subtypes)
+
+  def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[_ <: A]]): TypedJsonCodec[A] =
+    new TypedJsonCodec[A](name, subtypes.to(ArraySeq))
 
   implicit final class TypedJson(private val underlying: Json) extends AnyVal {
     def isOfType[A: TypedJsonCodec, A1 <: A: ClassTag]: Boolean =
