@@ -170,7 +170,7 @@ object CirceUtils
       io.circe.parser.parse(underlying).toChecked
 
     def parseJsonOrThrow: Json =
-      io.circe.parser.parse(underlying).orThrow
+      parseJson.orThrow
   }
 
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {

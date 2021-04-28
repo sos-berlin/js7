@@ -127,7 +127,7 @@ extends AutoCloseable
   private[recover] def readSnapshot: Observable[Any] =
     journalHeader +:
       Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
-        .mapParallelOrderedBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).orThrow)
+        .mapParallelOrderedBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).toChecked.orThrow)
 
   private[recover] def readSnapshotRaw: Observable[ByteArray] =
     ByteArray(journalHeader.asJson.compactPrint + '\n'/*for application/x-ndjson*/) +:
@@ -258,7 +258,7 @@ extends AutoCloseable
   private def deserialize(json: Json) = {
     import journalMeta.eventJsonCodec
     intelliJuseImport(eventJsonCodec)
-    json.as[Stamped[KeyedEvent[Event]]].orThrow
+    json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
   }
 
   def eventId = positionAndEventId.value
@@ -274,7 +274,6 @@ extends AutoCloseable
 
 object JournalReader
 {
-
   def snapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path): Observable[Any] =
     snapshot_(_.readSnapshot)(journalMeta, expectedJournalId, journalFile)
 

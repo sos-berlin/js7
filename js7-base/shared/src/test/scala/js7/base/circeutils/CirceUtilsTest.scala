@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString
-import js7.base.problem.Problem
+import js7.base.problem.{Problem, ProblemException}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.SeqMap
@@ -90,7 +90,7 @@ final class CirceUtilsTest extends AnyFreeSpec
 
   "parseJsonOrThrow" in {
     assert("7".parseJsonOrThrow == Json.fromInt(7))
-    intercept[io.circe.ParsingFailure] {
+    intercept[ProblemException] {
       "x".parseJsonOrThrow
     }
   }

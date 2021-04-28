@@ -17,6 +17,7 @@ object ExpressionParser
 {
   def parse(string: String): Checked[Expression] =
     checkedParse(string, expressionOnly(_))
+      .left.map(_.withPrefix("Error in expression:"))
 
   def constantExpression[_: P]: P[Expression] =
     expression

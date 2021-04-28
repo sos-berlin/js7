@@ -33,6 +33,6 @@ object CirceJsonSupport
       .forContentTypes(`application/json`)
       .map {
         case ByteString.empty => throw Unmarshaller.NoContentException
-        case byteString => jawn.parseByteBuffer(byteString.asByteBuffer).orThrow
+        case byteString => jawn.parseByteBuffer(byteString.asByteBuffer).toChecked.orThrow
       }
 }

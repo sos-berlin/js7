@@ -41,5 +41,5 @@ object JsonObservableForAkka
     a.asJson.toByteSequence[ByteString]
 
   private def decode[A: Decoder](byteString: ByteString): A =
-    byteString.utf8String.parseJson.orThrow.as[A].orThrow
+    byteString.utf8String.parseJson.flatMap(_.as[A].toChecked).orThrow
 }
