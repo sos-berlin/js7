@@ -14,6 +14,9 @@ trait DocumentSigner
 
   final def signString(document: String) =
     sign(ByteArray(document))
+
+  final def toSignedString(document:String): SignedString =
+    SignedString(document, signString(document).toGenericSignature)
 }
 
 object DocumentSigner

@@ -12,19 +12,12 @@ final class ItemSigner[A <: SignableItem](val signer: DocumentSigner, jsonEncode
   private def toSigned_[A1 <: A](item: A1): Signed[A1] =
     item match {
       case simpleItem: SignableSimpleItem =>
-        Signed(item, sign_(simpleItem.withRevision(None).asInstanceOf[A1]))
+        Signed(item, toSignedString(simpleItem.withRevision(None).asInstanceOf[A1]))
 
       case item: VersionedItem with (A1 @unchecked) =>
         Signed(item, toSignedString(item))
     }
 
-  def toSignedString[A1 <: A](item: A1): SignedString = {
-    val string = jsonEncoder(item).compactPrint
-    SignedString(string, signer.signString(string).toGenericSignature)
-  }
-
-  private def sign_(item: A): SignedString = {
-    val string = jsonEncoder(item).compactPrint
-    SignedString(string, signer.signString(string).toGenericSignature)
-  }
+  def toSignedString[A1 <: A](item: A1): SignedString =
+    signer.toSignedString(jsonEncoder(item).compactPrint)
 }
