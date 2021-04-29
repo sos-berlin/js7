@@ -13,6 +13,7 @@ import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime._
 import js7.base.utils.IOUtils.copyStream
 import js7.base.utils.ScalaUtils.syntax._
+import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -125,20 +126,24 @@ object Processes
       * @see https://change.sos-berlin.com/browse/JS-1581
       * @see https://bugs.openjdk.java.net/browse/JDK-8068370
       */
-    def startRobustly(durations: Iterator[FiniteDuration] = RobustlyStartProcess.DefaultDurations.iterator)
-    : Process =
-      try delegate.start()
-      catch {
-        case TextFileBusyIOException(e) if durations.hasNext =>
-          logger.warn(s"Retrying process start after error: $e")
-          // TODO make startRobustly asynchronoous
-          sleep(durations.next())
-          startRobustly(durations)
-      }
+    def startRobustly(durations: Iterable[FiniteDuration] = RobustlyStartProcess.DefaultDurations)
+    : Task[Process] = {
+      val durationsIterator = durations.iterator
+      Task(delegate.start())
+        .onErrorRestartLoop(()) {
+          case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
+            logger.warn(s"Retrying process start after error: $e")
+            restart(()).delayExecution(durationsIterator.next())
+
+          case (throwable, _, _) =>
+            Task.raiseError(throwable)
+        }
+    }
   }
 
   private[process] object RobustlyStartProcess {
-    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o => o.map(_.toMillis).sum.ms == 2.s }
+    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms)
+    assert(DefaultDurations.map(_.toMillis).sum.ms == 2.s)
 
     object TextFileBusyIOException {
       private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)

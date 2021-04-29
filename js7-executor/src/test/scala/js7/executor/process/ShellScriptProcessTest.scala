@@ -31,6 +31,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
     val exitCode = 42
     val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> envValue))
     val shellProcess = startShellScript(processConfig, name = "TEST", (isWindows ?? "@") + s"exit $exitCode")
+      .await(99.s)
     val returnCode = shellProcess.terminated await 99.s
     assert(returnCode == ReturnCode(exitCode))
     assert(!shellProcess.closed.isCompleted)
@@ -60,6 +61,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
           val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
           val processConfig = ProcessConfiguration.forTest.copy(stdFileMap)
           val shellProcess = startShellScript(processConfig, name = "TEST", scriptString = scriptString)
+            .await(99.s)
           shellProcess.terminated await 99.s
           shellProcess.close()
           assert(stdFileMap(Stdout).contentString ==
@@ -95,7 +97,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
           stdFileMap = stdFileMap,
           maybeTaskId = Some(taskId),
           killScriptOption = Some(ProcessKillScript(killScriptFile)))
-        val shellProcess = startShellScript(processConfig, scriptString = script)
+        val shellProcess = startShellScript(processConfig, scriptString = script).await(99.s)
         assert(shellProcess.processConfiguration.files.size == 2)
         sleep(3.s)
         assert(shellProcess.isAlive)
@@ -124,6 +126,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
       } else {
         val script = "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3"
         val shellProcess = startShellScript(ProcessConfiguration.forTest, scriptString = script)
+          .await(99.s)
         sleep(3.s)
         assert(shellProcess.isAlive)
         shellProcess.sendProcessSignal(SIGTERM)

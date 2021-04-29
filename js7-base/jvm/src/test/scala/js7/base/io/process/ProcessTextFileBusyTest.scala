@@ -2,17 +2,16 @@ package js7.base.io.process
 
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import java.util.concurrent.ForkJoinPool
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ProcessTextFileBusyTest._
 import js7.base.io.process.Processes._
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits.RichFutures
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.base.time.WaitForCondition.waitForCondition
+import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 /**
@@ -26,27 +25,27 @@ final class ProcessTextFileBusyTest extends AnyFreeSpec {
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors
 
-  s"$n concurrent process starts with $threadCount threads" in {
-    val forkJoinPool = new ForkJoinPool(threadCount)
-    implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
+  s"$n concurrent process starts with freshly written executables on $threadCount threads" in {
+    implicit val scheduler = Scheduler.forkJoin(parallelism = n, maxThreads = n)
     val stopwatch = new Stopwatch
-    val filesAndProcesses = for (i <- 0 until n) yield
-      Future {
-        val file = newTemporaryShellFile(s"#$i")
-        file := "exit"
-        val process = new ProcessBuilder(s"$file").startRobustly()
-        (file, process)
-      }
-    val (files, processes) = (filesAndProcesses await 300.s).unzip
-    waitForCondition(300.s, 100.ms) { !processes.exists(_.isAlive) }
-    info(stopwatch.itemsPerSecondString(n, "processes"))
+    val (files, processes) = Task
+      .parSequenceUnordered(
+        for (i <- (0 until n)) yield Task.defer {
+          val file = newTemporaryShellFile(s"#$i")
+          file := "exit"
+          new ProcessBuilder(s"$file").startRobustly()
+            .map(file -> _)
+        })
+      .await(99.s)
+      .unzip
     for (p <- processes) {
       val rc = p.waitFor()
       assert(rc == 0)
     }
+    info(stopwatch.itemsPerSecondString(n, "processes"))
     if (isWindows) sleep(500.ms)  // Windows may lock the files for a short while after process termination
     files foreach tryDelete
-    forkJoinPool.shutdown()
+    scheduler.shutdown()
   }
 }
 

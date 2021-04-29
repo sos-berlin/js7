@@ -14,12 +14,13 @@ import js7.base.io.process.Processes.{Pid, RobustlyStartProcess, processToPidOpt
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.job.TaskId
 import js7.executor.process.ProcessKillScriptTest._
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}
 import scala.jdk.CollectionConverters._
@@ -65,7 +66,8 @@ final class ProcessKillScriptTest extends AnyFreeSpec {
     val file = Processes.newTemporaryShellFile("test")
     file := Script
     val args = List(file.toString, s"--agent-task-id=${taskId.string}")
-    val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT).startRobustly()
+    val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT)
+      .startRobustly().await(99.s)
     logger.info(s"Started process ${processToPidOption(process)}")
     (file, process)
   }
@@ -75,7 +77,7 @@ final class ProcessKillScriptTest extends AnyFreeSpec {
       val tmp = createTempDirectory("test-")
       val killScript = provider.provideTo(temporaryDirectory)
       val args = killScript.toCommandArguments(taskId, pidOption)
-      val killProcess = new ProcessBuilder(args.asJava).startRobustly()
+      val killProcess = new ProcessBuilder(args.asJava).startRobustly().await(99.s)
       startLogStreams(killProcess, "Kill script") await 60.s
       killProcess.waitFor(60, SECONDS)
       assert(killProcess.exitValue == 0)
@@ -95,7 +97,7 @@ private object ProcessKillScriptTest {
 
   private def logProcessTree(): Unit = {
     if (isUnix && !isMac) {
-      val ps = new ProcessBuilder("ps", "fux").startRobustly()
+      val ps = new ProcessBuilder("ps", "fux").startRobustly().await(99.s)
       startLogStreams(ps, "ps (for information only, please ignore errors)") await 15.s
       ps.waitFor()
     }

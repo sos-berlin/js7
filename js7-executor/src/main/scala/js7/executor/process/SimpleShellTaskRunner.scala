@@ -111,9 +111,8 @@ extends TaskRunner
           maybeTaskId = Some(taskId),
           killScriptOption = killScript)
         startProcessLock
-          .lock(Task {
-            startPipedShellScript(conf.commandLine, processConfiguration, stdObservers)
-          })
+          .lock(
+            startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
           .map { richProcess =>
             terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
             richProcessOnce := richProcess

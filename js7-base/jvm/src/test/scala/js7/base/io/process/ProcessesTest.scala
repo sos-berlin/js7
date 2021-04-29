@@ -13,10 +13,11 @@ import js7.base.io.process.Processes._
 import js7.base.io.process.ProcessesTest._
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters._
@@ -30,14 +31,14 @@ final class ProcessesTest extends AnyFreeSpec {
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {
       val process = new ProcessBuilder(directShellCommandArguments("rem").asJava)
-        .startRobustly()
+        .startRobustly().await(99.s)
       assert(processToPidOption(process).isEmpty)
       process.waitFor()
     } else {
       val args = directShellCommandArguments("echo $$")
       assert(args == List("/bin/sh", "-c", "echo $$"))
       val process = new ProcessBuilder(args.asJava).redirectInput(PIPE)
-        .startRobustly()
+        .startRobustly().await(99.s)
       val echoLine = scala.io.Source.fromInputStream(process.getInputStream).getLines().next()
       assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
@@ -58,7 +59,7 @@ final class ProcessesTest extends AnyFreeSpec {
       file := ShellScript
       val process = new ProcessBuilder(toShellCommandArguments(file, Args).asJava)
         .redirectOutput(PIPE)
-        .startRobustly()
+        .startRobustly().await(99.s)
       val echoLines = scala.io.Source.fromInputStream(process.getInputStream).getLines().toList
       val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
       assert(normalizedFirstEcho == file.toString)

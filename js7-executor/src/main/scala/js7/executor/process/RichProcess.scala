@@ -118,25 +118,20 @@ extends HasCloser with ClosedFuture
     processToString(process, pidOption)
 }
 
-object RichProcess {
+object RichProcess
+{
   private val logger = Logger(getClass)
 
-  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
-    (implicit iox: IOExecutor, ec: ExecutionContext): RichProcess =
-  {
-    val process = startProcessBuilder(processConfiguration, file, arguments) { _.startRobustly() }
-    new RichProcess(processConfiguration, process, argumentsForLogging = file.toString +: arguments)
-  }
-
   private[process] def startProcessBuilder(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
-      (start: ProcessBuilder => Process): Process = {
-    import processConfiguration.{additionalEnvironment, stdFileMap}
-    val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption).asJava)
-    processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
-    processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
-    processBuilder.environment.putAll(additionalEnvironment.asJava)
-    start(processBuilder)
-  }
+      (start: ProcessBuilder => Task[Process]): Task[Process] =
+    Task.defer {
+      import processConfiguration.{additionalEnvironment, stdFileMap}
+      val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption).asJava)
+      processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
+      processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
+      processBuilder.environment.putAll(additionalEnvironment.asJava)
+      start(processBuilder)
+    }
 
   private def toRedirect(pathOption: Option[Path]) =
     pathOption.fold(INHERIT)(o => Redirect.to(o.toFile))
