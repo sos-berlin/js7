@@ -4,7 +4,7 @@ import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Files => GuavaFiles}
 import java.io.{BufferedOutputStream, File, FileOutputStream}
 import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
@@ -13,7 +13,7 @@ import js7.base.data.Writable.ops._
 import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.system.OperatingSystem.isUnix
+import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
@@ -118,7 +118,7 @@ object FileUtils
         GuavaFiles.asCharSource(delegate.toFile, encoding).read()
 
       def writeExecutable(string: String): Unit = {
-        this := string
+        write(string, if (isWindows) ISO_8859_1 else UTF_8)
         makeExecutable()
       }
 

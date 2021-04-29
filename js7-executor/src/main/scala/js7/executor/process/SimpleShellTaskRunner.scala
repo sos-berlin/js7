@@ -14,7 +14,7 @@ import js7.data.job.TaskId.newGenerator
 import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.executor.StdObservers
-import js7.executor.configuration.{JobExecutorConf, ProcessKillScript, TaskConfiguration}
+import js7.executor.configuration.{ProcessKillScript, TaskConfiguration}
 import js7.executor.process.ShellScriptProcess.startPipedShellScript
 import js7.executor.process.SimpleShellTaskRunner._
 import js7.executor.task.{BaseAgentTask, TaskRunner}
@@ -82,10 +82,7 @@ extends TaskRunner
         logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
       }
       returnCode <- Task.fromTry(tried)
-    } yield {
-      richProcess.close()
-      returnCode
-    }
+    } yield returnCode
 
   private def fetchReturnValuesThenDeleteFile(): NamedValues = {
     val result = returnValuesProvider.read() // TODO Catch exceptions
@@ -104,8 +101,6 @@ extends TaskRunner
         Task.raiseError(new RuntimeException(s"$taskId killed before start"))
       else {
         val processConfiguration = ProcessConfiguration(
-          stdFileMap = Map.empty,
-          encoding = JobExecutorConf.FileEncoding,
           workingDirectory = Some(workingDirectory),
           additionalEnvironment = env + returnValuesProvider.toEnv,
           maybeTaskId = Some(taskId),

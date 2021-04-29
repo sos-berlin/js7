@@ -1,11 +1,7 @@
 package js7.executor.process
 
-import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Path
 import js7.base.io.process.Processes.Pid
-import js7.base.io.process.StdoutOrStderr
-import js7.base.system.OperatingSystem.isWindows
 import js7.data.job.TaskId
 import js7.executor.configuration.ProcessKillScript
 
@@ -13,8 +9,6 @@ import js7.executor.configuration.ProcessKillScript
  * @author Joacim Zschimmer
  */
 final case class ProcessConfiguration(
-  stdFileMap: Map[StdoutOrStderr, Path] = Map(),
-  encoding: Charset,
   workingDirectory: Option[Path] = None,
   additionalEnvironment: Map[String, String] = Map(),
   maybeTaskId: Option[TaskId] = None,
@@ -24,16 +18,16 @@ final case class ProcessConfiguration(
 
   for (id <- maybeTaskId) require(id.nonEmpty)
 
-  def files: Seq[Path] = stdFileMap.values.toList
-
-  def idArgumentOption = maybeTaskId map { o => s"--agent-task-id=${o.string}" }
+  def idArgumentOption = maybeTaskId.map(o => s"--agent-task-id=${o.string}")
 
   def toKillScriptCommandArgumentsOption(pid: Option[Pid]) =
-    for (id <- maybeTaskId; killScript <- killScriptOption) yield killScript.toCommandArguments(id, pid)
+    for {
+      id <- maybeTaskId
+      killScript <- killScriptOption
+    } yield killScript.toCommandArguments(id, pid)
 }
 
 object ProcessConfiguration
 {
-  def forTest = ProcessConfiguration(
-    encoding = if (isWindows) ISO_8859_1 else UTF_8)
+  def forTest = ProcessConfiguration()
 }

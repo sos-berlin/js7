@@ -23,10 +23,9 @@ import scala.jdk.CollectionConverters._
   */
 class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
-  process: Process,
-  argumentsForLogging: Seq[String])
+  process: Process)
   (implicit ec: ExecutionContext, iox: IOExecutor)
-extends RichProcess(processConfiguration, process, argumentsForLogging)
+extends RichProcess(processConfiguration, process)
 {
   stdin.close() // Process gets an empty stdin
 }
@@ -34,31 +33,6 @@ extends RichProcess(processConfiguration, process, argumentsForLogging)
 object ShellScriptProcess
 {
   private val logger = Logger(getClass)
-
-  def startShellScript(
-    processConfiguration: ProcessConfiguration,
-    name: String = "shell-script",
-    scriptString: String)
-    (implicit ec: ExecutionContext, iox: IOExecutor)
-  : Task[ShellScriptProcess] =
-    Task.deferAction { implicit scheduler =>
-      val shellFile = newTemporaryShellFile(name)
-      Task.defer {
-        shellFile.write(scriptString, processConfiguration.encoding)
-        val out, err = PublishSubject[String]()
-        out.completedL.runAsyncAndForget
-        err.completedL.runAsyncAndForget
-        val stdObservers = new StdObservers(out, err, charBufferSize = 4096, keepLastErrLine = false)
-        startPipedShellScript(
-          CommandLine(shellFile.toString :: Nil),
-          processConfiguration,
-          stdObservers,
-          whenTerminated = Task { tryDeleteFile(shellFile) })
-        }.guaranteeCase {
-          case ExitCode.Success => Task.unit
-          case _ => Task { tryDeleteFile(shellFile) }
-        }
-      }
 
   def startPipedShellScript(
     commandLine: CommandLine,
@@ -85,20 +59,22 @@ object ShellScriptProcess
         toObservable(process.getInputStream, outClosed).subscribe(stdObservers.out)
         toObservable(process.getErrorStream, errClosed).subscribe(stdObservers.err)
 
-        new ShellScriptProcess(conf, process, argumentsForLogging = commandLine.toString :: Nil) {
-          override def terminated = for {
-            outTried <- Task.fromFuture(outClosed.future).materialize
-            errTried <- Task.fromFuture(errClosed.future).materialize
-            returnCode <- super.terminated
-            returnCode <-
-              if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
-                for (t <- outTried.failed) logger.warn(t.toStringWithCauses)
-                for (t <- errTried.failed) logger.warn(t.toStringWithCauses)
-                Task.pure(returnCode)
-              } else
-                Task.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
-            _ <- whenTerminated
-          } yield returnCode
+        new ShellScriptProcess(conf, process) {
+          override val terminated =
+            ( for {
+               outTried <- Task.fromFuture(outClosed.future).materialize
+               errTried <- Task.fromFuture(errClosed.future).materialize
+               returnCode <- super.terminated
+               returnCode <-
+                 if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
+                   for (t <- outTried.failed) logger.warn(t.toStringWithCauses)
+                   for (t <- errTried.failed) logger.warn(t.toStringWithCauses)
+                   Task.pure(returnCode)
+                 } else
+                   Task.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
+               _ <- whenTerminated
+              } yield returnCode
+            ).memoize
         }
       }
     }

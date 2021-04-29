@@ -9,16 +9,14 @@ import java.nio.file.Path
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes._
-import js7.base.io.process.{ProcessSignal, ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{ProcessSignal, ReturnCode, StdoutOrStderr}
 import js7.base.log.LogLevel.syntax._
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.{ioFuture, ioTask}
 import js7.base.time.ScalaTime._
-import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.ClosedFuture
 import js7.executor.process.RichProcess._
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
@@ -30,10 +28,10 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-class RichProcess protected[process](val processConfiguration: ProcessConfiguration,
-  process: Process, argumentsForLogging: Seq[String])
+class RichProcess protected[process](
+  val processConfiguration: ProcessConfiguration,
+  process: Process)
   (implicit iox: IOExecutor, ec: ExecutionContext)
-extends HasCloser with ClosedFuture
 {
   private val runningSince = now
   val pidOption: Option[Pid] = processToPidOption(process)
@@ -53,8 +51,6 @@ extends HasCloser with ClosedFuture
       else
         Task.pure(ReturnCode(process.exitValue))
     }.memoize
-
-  //logger.debug(s"Process started " + (argumentsForLogging map { o => s"'$o'" } mkString ", "))
 
   def duration = runningSince.elapsed
 
@@ -121,17 +117,6 @@ extends HasCloser with ClosedFuture
 object RichProcess
 {
   private val logger = Logger(getClass)
-
-  private[process] def startProcessBuilder(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
-      (start: ProcessBuilder => Task[Process]): Task[Process] =
-    Task.defer {
-      import processConfiguration.{additionalEnvironment, stdFileMap}
-      val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption).asJava)
-      processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
-      processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
-      processBuilder.environment.putAll(additionalEnvironment.asJava)
-      start(processBuilder)
-    }
 
   private def toRedirect(pathOption: Option[Path]) =
     pathOption.fold(INHERIT)(o => Redirect.to(o.toFile))
