@@ -36,7 +36,10 @@ object ScribeUtils
   private object Log4jWriter extends scribe.writer.Writer {
     def write[M](record: LogRecord[M], output: LogOutput, outputFormat: OutputFormat): Unit = {
       val slf4jLogger = classToLoggerCache.computeIfAbsent(record.className,
-        o => org.slf4j.LoggerFactory.getLogger(classToLoggerName(o)))
+        o => {
+          Slf4jUtils.initialize()
+          org.slf4j.LoggerFactory.getLogger(classToLoggerName(o))
+        })
       if (record.level.value >= Level.Error.value) {
         if (slf4jLogger.isErrorEnabled) {
           slf4jLogger.error("{}", record.message.value, record.throwable.orNull)
