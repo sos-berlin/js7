@@ -6,7 +6,6 @@ import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.Logger
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.system.JavaInformations
 import js7.common.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
 import js7.common.system.SystemInformations.totalPhysicalMemory
 import monix.execution.atomic.AtomicBoolean
@@ -37,8 +36,9 @@ object StartUp
 
   /** Log Java version, config and data directory, and classpath. */
   def startUpLine(): String =
-    sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "Java")) + " " +
-      JavaInformations.implementationVersion + " " +
+    "Java " + sys.props.getOrElse("java.version", "") + " · " +
+      sys.props.getOrElse("java.vm.name", sys.props.getOrElse("java.runtime.name", "vm")) + " " +
+      sys.props.getOrElse("java.vm.version", "") + " " +
       "(" + toKiBGiB(sys.runtime.maxMemory) + ") · " +
       sys.props("os.name") + distributionNameAndVersionOption.fold("")(o => s" ($o)") + " · " +
       cpuModel.fold("")(o => s"$o ") + "(" + sys.runtime.availableProcessors + " threads)" +
