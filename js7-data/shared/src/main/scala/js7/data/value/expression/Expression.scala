@@ -148,11 +148,20 @@ object Expression
 
   final case class StringConstant(string: String) extends StringExpression {
     def precedence = Precedence.Factor
-    private val inhibitsSingleQuoteString = Set[Char]('\n', '\r', '\t', '\'')
-    override def toString =
+    override def toString = StringConstant.quote(string)
+  }
+  object StringConstant {
+    val empty = new StringConstant("")
+
+    private val inhibitsSingleQuoteString: Set[Char] = (0 until 0x20).filter(_ != '\n')
+      .appendedAll((0x7f until 0xa0)
+      .appended('\''.toInt))
+      .map(_.toChar).toSet
+
+    def quote(string: String): String =
       if (string.isEmpty)
         "\"\""
-      else if (!string.exists(inhibitsSingleQuoteString))
+      else if (!string.exists(StringConstant.inhibitsSingleQuoteString))
         s"'$string'"
       else {
         val sb = new StringBuilder(64)
@@ -169,9 +178,6 @@ object Expression
         sb.append('"')
         sb.toString
       }
-  }
-  object StringConstant {
-    val empty = new StringConstant("")
   }
 
   final case class NamedValue(where: NamedValue.Where, what: NamedValue.What, default: Option[Expression] = None)

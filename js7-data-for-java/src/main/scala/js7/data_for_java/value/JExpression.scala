@@ -3,6 +3,7 @@ package js7.data_for_java.value
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.vavr.VavrConverters._
@@ -22,6 +23,10 @@ object JExpression extends JJsonable.Companion[JExpression]
       .parse(expression)
       .map(JExpression(_))
       .toVavr
+
+  @Nonnull
+  def quoteString(@Nonnull string: String): String =
+    StringConstant.quote(string)
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JExpression] =

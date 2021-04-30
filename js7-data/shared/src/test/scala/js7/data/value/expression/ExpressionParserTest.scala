@@ -9,7 +9,6 @@ import js7.data.value.expression.ExpressionParser.{parse => _, _}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
-import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
@@ -88,7 +87,7 @@ final class ExpressionParserTest extends AnyFreeSpec
 
     "Escaping special characters" - {
       "Raw control characters are not escaped" in {
-        for (char <- (0 to 0x1d) ++ (0x7f to 0x9f)) {
+        for (char <- (0 until 0x20) ++ (0x7f until 0xa0)) {
           val expr = s""" "'$char" """.trim
           testExpressionRaw(expr, StringConstant(s"'$char"))
         }
@@ -112,6 +111,19 @@ final class ExpressionParserTest extends AnyFreeSpec
       for ((escaped, expected) <- escapedChars) {
         testExpression(s""" "'\\$escaped" """.trim, StringConstant(s"'$expected"))
         testExpression(s""" "\\$escaped" """.trim, StringConstant(s"$expected"))
+      }
+
+      "Single quoted string" - {
+        testExpression(s"'ONE\nTWO'".trim, StringConstant("ONE\nTWO"))
+        testExpression(s"'ONE\r\nTWO'".trim, StringConstant("ONE\nTWO"))
+
+        // Bad syntax, because ' cannot be used at start or end of the string:
+        // TODO Delete this code
+        testExpression(s"''->'<-''".trim, StringConstant("->'<-"))
+        testExpression(s"'''->''<-'''".trim, StringConstant("->''<-"))
+        testExpression(s"''''->'''<-''''".trim, StringConstant("->'''<-"))
+        testExpression(s"'''''->''''<-'''''".trim, StringConstant("->''''<-"))
+        testError(s"''''''->'''''<-''''''".trim, """Expected (not | factor):1:15, found "-''''''"""")
       }
 
       "Invalid escaped characters" in {

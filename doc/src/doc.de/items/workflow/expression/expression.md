@@ -45,11 +45,50 @@ Zum Beispiel das Feld `predicate` in der If-Anweisung.
 Konstanten: `true` und `false`.
 
 ## Zeichenketten
-⚠️ TODO In Strings lassen sich noch nicht uneingeschränkt Zeichen unterbringen,
-die auch Metazeichen sind.
 
-Konstanten in Anführungszeichen " oder in Apostrophen '.
-* In Anführungszeichen sind die Zeichen \ und $ reserviert.
+Beispiele
+```
+""
+"\\ (write to backslashes to get one) is the escape character for \\ \$ \" \t \r \n"
+"String with \"nested\" quotes"
+"\$ has a special meaning: $VARIABLE, ${MY-VARIABLE} and $($VAR + 1)"
+"\t means the TAB control character"
+"\r means the CR control character"
+"\n means the LF control character"
+```
+
+String werden in Anführungszeichen gesetzt.
+Um die besondere Bedeutung der drei Zeichen " \ $ zu unterdrücken,
+stellt man denen ein \ voran.
+Die Steuerzeichen \t \r \n werden so geschrieben.
+Andere Zeichen sind nach \ nicht erlaubt.
+
+Steuerzeichen (außer über die Notation \t \r \n) sind nicht erlaubt.
+Alle Codepoints müssen im Bereich 0x20..0x7e, 0xa0..0x7fff(?) liegen
+
+Der Code in zum Schreiben eines Strings der Ausdruckssprache
+([Expression.scala](https://github.com/sos-berlin/js7/blob/3cf58799748b4c7f87736a6eab77ca95d5a4ffbd/js7-data/shared/src/main/scala/js7/data/value/expression/Expression.scala#L158-L169)):
+```scala
+val sb = new StringBuilder(64)
+sb.append('"')
+string foreach {
+  case '\\' => sb.append("\\\\")
+  case '\"' => sb.append("\\\"")
+  case '\t' => sb.append("\\t")
+  case '\r' => sb.append("\\r")
+  case '\n' => sb.append("\\n")
+  case '$' => sb.append("\\$")
+  case c => sb.append(c)
+}
+sb.append('"')
+```
+`JExpression.quoteString(String)` wandelt den String in einem parsbaren String der Ausdruckssprache.
+
+Daneben gibt es die manchmal besser lesbare Schreibweise mit Apostrophen ',
+für nicht-leere Strings, die kein Apostroph und kein anderes Steuerzeichen
+als LF (und CR) enthalten. \ ist hier kein Fluchtzeichen. CR wird ignoriert.
+Die Schreibweise kann nicht alle Strings darstellen.
+
 
 ## Zahlen
 Konstanten: Zahlen werden als Java `BigDecimal` dargestellt.
@@ -83,7 +122,7 @@ Addition und Subtraktion zweier Zahlen.
 
 * `++`
 Konkatenation zweier Strings.
-Andere Typen als String werden in String umgewandelt.
+Operanden vom Typ Number und Boolean werden zu einem String gewandelt.
 
 * `variable(NAME, label=LABEL, job=JOB, default=DEFAULT)`
    * `NAME` ist ein String-Ausdruck für den Namen der Variabeln.
