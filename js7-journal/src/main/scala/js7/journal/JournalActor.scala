@@ -110,6 +110,7 @@ extends Actor with Stash
       uncommittedState = committedState
       if (conf.slowCheckState) {
         journaledStateBuilder.initializeState(None, journaledState_.eventId, totalEventCount = 0, committedState)
+        assertEqualSnapshotState("Start", journaledStateBuilder.result().withEventId(uncommittedState.eventId))
       }
       requireClusterAcknowledgement = committedState.clusterState.isInstanceOf[ClusterState.Coupled]
       journalingObserver := observer_
@@ -407,6 +408,10 @@ extends Actor with Stash
       sys.error(msg)
     }
     uncommittedState = committedState    // Reduce duplicate allocated objects
+    if (conf.slowCheckState) {
+      assertEqualSnapshotState("onAllCommitsFinished",
+        journaledStateBuilder.result().withEventId(committedState.eventId))
+    }
     waitingForAcknowledgeTimer := Cancelable.empty
     maybeDoASnapshot()
   }
@@ -566,13 +571,15 @@ extends Actor with Stash
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
 
-    blocking {  // TODO Do not block the thread
+    locally {
       val builder = S.newBuilder()
+
+      // TODO Do not block the thread
       Await.result(
         committedState.toSnapshotObservable
           .filter {
             case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
-            case _  => true
+            case _ => true
           }
           .mapParallelOrderedBatch() { snapshotObject =>
             // TODO Crash with SerializationException like EventSnapshotWriter ?
@@ -588,7 +595,7 @@ extends Actor with Stash
       if (conf.slowCheckState) {
         builder.onAllSnapshotsAdded()
         assertEqualSnapshotState("Written snapshot",
-          builder.result().withEventId(journalHeader.eventId), Nil)
+          builder.result().withEventId(journalHeader.eventId))
       }
     }
 
@@ -624,7 +631,7 @@ extends Actor with Stash
     onReadyForAcknowledgement()
   }
 
-  private def assertEqualSnapshotState(what: String, snapshotState: S, stampedSeq: Seq[Stamped[AnyKeyedEvent]])
+  private def assertEqualSnapshotState(what: String, snapshotState: S, stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
   : Unit =
     if (snapshotState != uncommittedState) {
       var msg = s"$what does not match actual '$S'"

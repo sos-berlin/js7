@@ -27,6 +27,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
 import monix.execution.Scheduler.Implicits.global
+import js7.base.problem.Checked._
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 
@@ -140,130 +141,143 @@ final class ControllerStateTest extends AsyncFreeSpec
       .runToFuture
   }
 
-  "toSnapshotObservable JSON" in {
-    implicit val x = ControllerState.snapshotObjectJsonCodec
-    controllerState.toSnapshotObservable.toListL.runToFuture.map(snapshotObjects =>
-      testJson(snapshotObjects,
-        json"""[
-          {
-            "TYPE": "SnapshotEventId",
-            "eventId": 1001
-          }, {
-            "TYPE": "JournalState",
-            "userIdToReleasedEventId": {
-              "A": 1000
-            }
-          }, {
-            "TYPE": "ClusterStateSnapshot",
-            "clusterState": {
-              "TYPE": "Coupled",
-              "setting": {
-                "idToUri": {
-                  "A": "http://A",
-                  "B": "http://B"
-                },
-                "activeId": "A",
-                "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
-                "timing": {
-                  "heartbeat": 10,
-                  "heartbeatTimeout": 20
-                }
-              }
-            }
-          }, {
-            "TYPE": "ControllerMetaState",
-            "controllerId": "CONTROLLER-ID",
-            "startedAt": 1558699200000,
-            "timezone": "Europe/Berlin"
-          }, {
-            "TYPE": "AgentRefState",
-            "agentRef": {
-              "path": "AGENT",
-              "uri": "https://AGENT",
-              "itemRevision": 0
+  private val expectedSnapshotJsonArray = json"""[
+      {
+        "TYPE": "SnapshotEventId",
+        "eventId": 1001
+      }, {
+        "TYPE": "JournalState",
+        "userIdToReleasedEventId": {
+          "A": 1000
+        }
+      }, {
+        "TYPE": "ClusterStateSnapshot",
+        "clusterState": {
+          "TYPE": "Coupled",
+          "setting": {
+            "idToUri": {
+              "A": "http://A",
+              "B": "http://B"
             },
-            "couplingState": {
-              "TYPE": "Decoupled"
-            },
-            "eventId": 7
-          }, {
-            "TYPE": "LockState",
-            "lock": {
-              "path": "LOCK",
-              "limit": 1,
-              "itemRevision": 7
-            },
-            "acquired": {
-              "TYPE": "Available"
-            },
-            "queue": []
-          }, {
-            "TYPE": "OrderWatchState.Header",
-            "orderWatch": {
-              "TYPE": "FileWatch",
-              "path": "WATCH",
-              "workflowPath": "WORKFLOW",
-              "agentPath": "AGENT",
-              "directory": "/tmp/directory",
-              "delay": 0,
-              "itemRevision": 7
-            },
-            "agentPathToAttachedState": {
-              "AGENT": {
-                "TYPE": "Attached",
-                "itemRevision": 7
-               }
-            },
-            "delete": false
-          }, {
-            "TYPE": "ExternalOrder",
-            "orderWatchPath": "WATCH",
-            "externalOrderName": "ORDER-NAME",
-            "state": {
-              "TYPE": "HasOrder",
-              "orderId": "ORDER",
-              "queued": {
-                "TYPE": "VanishedAck"
-              }
-            }
-          }, {
-            "TYPE": "SignedItemAdded",
-            "signed": {
-              "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"env\":{}}",
-              "signature": {
-                "TYPE": "Silly",
-                "signatureString": "SILLY-SIGNATURE"
-              }
-            }
-          }, {
-            "TYPE": "VersionAdded",
-            "versionId": "1.0"
-          }, {
-            "TYPE": "ItemAttachedStateSnapshot",
-            "agentToAttachedState": {
-              "AGENT": {
-                "TYPE": "Attachable"
-              }
-            },
-            "key": "JobResource:JOB-RESOURCE"
-          },
-          {
-            "TYPE": "Order",
-            "id": "ORDER",
-            "state": {
-              "TYPE": "Fresh"
-            },
-            "externalOrderKey": {
-              "orderWatchPath": "WATCH",
-              "name": "ORDER-NAME"
-            },
-            "workflowPosition": {
-              "position": [ 1 ],
-              "workflowId": {
-                "path": "WORKFLOW"
-              }
+            "activeId": "A",
+            "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
             }
           }
-        ]"""))
+        }
+      }, {
+        "TYPE": "ControllerMetaState",
+        "controllerId": "CONTROLLER-ID",
+        "startedAt": 1558699200000,
+        "timezone": "Europe/Berlin"
+      }, {
+        "TYPE": "AgentRefState",
+        "agentRef": {
+          "path": "AGENT",
+          "uri": "https://AGENT",
+          "itemRevision": 0
+        },
+        "couplingState": {
+          "TYPE": "Decoupled"
+        },
+        "eventId": 7
+      }, {
+        "TYPE": "LockState",
+        "lock": {
+          "path": "LOCK",
+          "limit": 1,
+          "itemRevision": 7
+        },
+        "acquired": {
+          "TYPE": "Available"
+        },
+        "queue": []
+      }, {
+        "TYPE": "OrderWatchState.Header",
+        "orderWatch": {
+          "TYPE": "FileWatch",
+          "path": "WATCH",
+          "workflowPath": "WORKFLOW",
+          "agentPath": "AGENT",
+          "directory": "/tmp/directory",
+          "delay": 0,
+          "itemRevision": 7
+        },
+        "agentPathToAttachedState": {
+          "AGENT": {
+            "TYPE": "Attached",
+            "itemRevision": 7
+           }
+        },
+        "delete": false
+      }, {
+        "TYPE": "ExternalOrder",
+        "orderWatchPath": "WATCH",
+        "externalOrderName": "ORDER-NAME",
+        "state": {
+          "TYPE": "HasOrder",
+          "orderId": "ORDER",
+          "queued": {
+            "TYPE": "VanishedAck"
+          }
+        }
+      }, {
+        "TYPE": "SignedItemAdded",
+        "signed": {
+          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"env\":{}}",
+          "signature": {
+            "TYPE": "Silly",
+            "signatureString": "SILLY-SIGNATURE"
+          }
+        }
+      }, {
+        "TYPE": "VersionAdded",
+        "versionId": "1.0"
+      }, {
+        "TYPE": "ItemAttachedStateSnapshot",
+        "agentToAttachedState": {
+          "AGENT": {
+            "TYPE": "Attachable"
+          }
+        },
+        "key": "JobResource:JOB-RESOURCE"
+      },
+      {
+        "TYPE": "Order",
+        "id": "ORDER",
+        "state": {
+          "TYPE": "Fresh"
+        },
+        "externalOrderKey": {
+          "orderWatchPath": "WATCH",
+          "name": "ORDER-NAME"
+        },
+        "workflowPosition": {
+          "position": [ 1 ],
+          "workflowId": {
+            "path": "WORKFLOW"
+          }
+        }
+      }
+    ]"""
+
+  "toSnapshotObservable JSON" in {
+    implicit val x = ControllerState.snapshotObjectJsonCodec
+    for {
+      jsonArray <- controllerState.toSnapshotObservable.toListL.runToFuture
+      assertion <- testJson(jsonArray, expectedSnapshotJsonArray)
+    } yield assertion
+  }
+
+  "ControllerStateBuilder.addSnapshotObject" in {
+    ControllerState.snapshotObjectJsonCodec
+    val builder = new ControllerStateBuilder
+    expectedSnapshotJsonArray.asArray.get
+      .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
+      .foreach(builder.addSnapshotObject)
+    builder.onAllSnapshotsAdded()
+    assert(builder.result() == controllerState)
   }
 }

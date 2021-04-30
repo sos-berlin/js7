@@ -102,7 +102,8 @@ trait ControllerClusterForScalaTest
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
             js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """),
-        agentPorts = agentPorts
+        agentPorts = agentPorts,
+        agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on"""
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),

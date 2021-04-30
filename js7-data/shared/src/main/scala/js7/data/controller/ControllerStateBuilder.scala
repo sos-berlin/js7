@@ -39,8 +39,8 @@ extends JournaledStateBuilder[ControllerState]
   private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
 
   protected def onInitializeState(state: ControllerState): Unit = {
-    controllerMetaState = state.controllerMetaState
     standards = state.standards
+    controllerMetaState = state.controllerMetaState
     repo = state.repo
     idToOrder.clear()
     idToOrder ++= state.idToOrder
@@ -48,6 +48,8 @@ extends JournaledStateBuilder[ControllerState]
     pathToAgentRefState ++= state.pathToAgentRefState
     pathToLockState ++= state.pathToLockState
     allOrderWatchesState = state.allOrderWatchesState
+    idToSignedSimpleItem ++= state.idToSignedSimpleItem
+    itemToAgentToAttachedState ++= state.itemToAgentToAttachedState
   }
 
   protected def onAddSnapshotObject = {
