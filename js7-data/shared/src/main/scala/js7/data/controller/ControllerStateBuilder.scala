@@ -35,7 +35,7 @@ extends JournaledStateBuilder[ControllerState]
   private val pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
   private val pathToLockState = mutable.Map.empty[LockPath, LockState]
   private var allOrderWatchesState = AllOrderWatchesState.empty
-  private val idToSignedItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
+  private val idToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
   private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
 
   protected def onInitializeState(state: ControllerState): Unit = {
@@ -144,7 +144,7 @@ extends JournaledStateBuilder[ControllerState]
             case SignedItemChanged(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
-                  idToSignedItem += jobResource.path -> Signed(jobResource, signedString)
+                  idToSignedSimpleItem += jobResource.path -> Signed(jobResource, signedString)
               }
           }
 
@@ -258,7 +258,7 @@ extends JournaledStateBuilder[ControllerState]
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match {
       case jobResource: JobResource =>
-        idToSignedItem.insert(jobResource.path -> Signed(jobResource, added.signedString))
+        idToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, added.signedString))
     }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
@@ -298,7 +298,7 @@ extends JournaledStateBuilder[ControllerState]
       pathToLockState.toMap,
       allOrderWatchesState,
       repo,
-      idToSignedItem.toMap,
+      idToSignedSimpleItem.toMap,
       itemToAgentToAttachedState.toMap,
       idToOrder.toMap)
 
