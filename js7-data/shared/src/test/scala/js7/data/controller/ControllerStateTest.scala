@@ -94,7 +94,7 @@ final class ControllerStateTest extends AsyncFreeSpec
   "toSnapshotObservable" in {
     for (list <- controllerState.toSnapshotObservable.toListL.runToFuture)
       yield assert(list ==
-        List(
+        Seq(
           SnapshotEventId(1001L),
           JournalState(Map(UserId("A") -> EventId(1000))),
           ClusterStateSnapshot(
@@ -106,8 +106,7 @@ final class ControllerStateTest extends AsyncFreeSpec
                 activeId = NodeId("A"),
                 Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
                 ClusterTiming(10.s, 20.s)))),
-          controllerState.controllerMetaState,
-          VersionAdded(VersionId("1.0"))
+          controllerState.controllerMetaState
         ) ++
           controllerState.pathToAgentRefState.values ++
           controllerState.pathToLockState.values ++
@@ -126,6 +125,7 @@ final class ControllerStateTest extends AsyncFreeSpec
               ExternalOrderName("ORDER-NAME"),
               HasOrder(OrderId("ORDER"), Some(VanishedAck))),
             SignedItemAdded(signedJobResource),
+            VersionAdded(VersionId("1.0")),
             ItemAttachedStateSnapshot(jobResource.path, Map(AgentPath("AGENT") -> Attachable))
           ) ++
           controllerState.idToOrder.values)
@@ -175,9 +175,6 @@ final class ControllerStateTest extends AsyncFreeSpec
             "controllerId": "CONTROLLER-ID",
             "startedAt": 1558699200000,
             "timezone": "Europe/Berlin"
-          }, {
-            "TYPE": "VersionAdded",
-            "versionId": "1.0"
           }, {
             "TYPE": "AgentRefState",
             "agentRef": {
@@ -238,6 +235,9 @@ final class ControllerStateTest extends AsyncFreeSpec
                 "signatureString": "SILLY-SIGNATURE"
               }
             }
+          }, {
+            "TYPE": "VersionAdded",
+            "versionId": "1.0"
           }, {
             "TYPE": "ItemAttachedStateSnapshot",
             "agentToAttachedState": {

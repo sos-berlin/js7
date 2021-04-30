@@ -63,14 +63,12 @@ extends JournaledState[ControllerState]
     Observable.pure(SnapshotEventId(eventId)) ++
     standards.toSnapshotObservable ++
     Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState) ++
-    Observable.fromIterable(repo.toEvents) ++
     Observable.fromIterable(pathToAgentRefState.values) ++
     Observable.fromIterable(pathToLockState.values) ++
-    allOrderWatchesState.toSnapshot ++
-    Observable.fromIterable(idToSignedSimpleItem.values)
-      .map(SignedItemAdded(_)) ++
-    Observable.fromIterable(itemToAgentToAttachedState)
-      .map(o => ItemAttachedStateSnapshot(o._1, o._2)) ++
+    allOrderWatchesState.toSnapshot/*TODO Separate Item from its state?*/ ++
+    Observable.fromIterable(idToSignedSimpleItem.values).map(SignedItemAdded(_)) ++
+    Observable.fromIterable(repo.toEvents) ++
+    Observable.fromIterable(itemToAgentToAttachedState).map(o => ItemAttachedStateSnapshot(o._1, o._2)) ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
