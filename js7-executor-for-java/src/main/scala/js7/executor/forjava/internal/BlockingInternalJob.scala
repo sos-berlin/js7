@@ -5,8 +5,11 @@ import java.io.{PrintWriter, Writer}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
+import js7.data.value.Value
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.order.JOutcome
+import js7.data_for_java.value.JExpression
+import js7.data_for_java.vavr.VavrConverters._
 import js7.executor.forjava.internal.BlockingInternalJob._
 import js7.executor.internal.{InternalJob, InternalJobAdapter}
 import monix.execution.Scheduler
@@ -55,8 +58,8 @@ object BlockingInternalJob
   final case class Step(asScala: InternalJob.Step, outWriter: Writer, errWriter: Writer)
   extends JavaJobStep
   {
-    private lazy val outLazy = Lazy(new PrintWriter(outWriter, true))
-    private lazy val errLazy = Lazy(new PrintWriter(errWriter, true))
+    private val outLazy = Lazy(new PrintWriter(outWriter, true))
+    private val errLazy = Lazy(new PrintWriter(errWriter, true))
 
     lazy val out: PrintWriter = outLazy()
     lazy val err: PrintWriter = errLazy()
@@ -64,6 +67,9 @@ object BlockingInternalJob
     private[internal] def close(): Unit =
       try for (o <- outLazy) o.close()
       finally for (o <- errLazy) o.close()
+
+    def evalExpression(expression: JExpression): VEither[Problem, Value] =
+      asScala.processOrder.scope.evaluator.eval(expression.asScala).toVavr
   }
   object Step {
     def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =

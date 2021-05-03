@@ -10,7 +10,6 @@ import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{InternalExecutable, JobConf, JobResource, JobResourcePath}
-import js7.data.value.expression.Evaluator
 import js7.executor.ProcessOrder
 import js7.executor.internal.InternalJob.{JobContext, Step}
 import js7.executor.internal.InternalJobExecutor._
@@ -51,16 +50,13 @@ extends JobExecutor
         .map(internalJob.toOrderProcess))
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
-    Evaluator(processOrder.scope)
+    processOrder.scope.evaluator
       .evalObjectExpression(executable.arguments)
       .map(_.nameToValue)
       .map(arguments =>
         Step(
           arguments = arguments,
-          processOrder.order,
-          processOrder.workflow,
-          processOrder.scope,
-          processOrder.stdObservers))
+          processOrder))
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =
     Checked.catchNonFatal(

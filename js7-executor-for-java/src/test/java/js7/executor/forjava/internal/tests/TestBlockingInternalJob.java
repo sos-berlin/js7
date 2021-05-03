@@ -8,8 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import js7.base.problem.Problem;
 import js7.data.value.NumberValue;
 import js7.data.value.Value;
-import js7.data.workflow.instructions.executable.WorkflowJob;
 import js7.data_for_java.order.JOutcome;
+import js7.data_for_java.value.JExpression;
 import js7.executor.forjava.internal.BlockingInternalJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +17,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static io.vavr.control.Either.right;
 import static java.lang.Thread.currentThread;
 import static java.util.Collections.singletonMap;
+import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
+import static js7.data_for_java.vavr.VavrUtils.toVavr;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -54,14 +56,19 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         return () -> {
             assertThat(startCalled, equalTo(true));
 
-            Either<Problem,WorkflowJob.Name> maybeJobName =
-                step.workflow().checkedJobName(step.order().workflowPosition().position());
-
             logger.debug("toOrderProcess " + step.order().id());
             // Blocking is allowed here, because it is a BlockingInternalJob
             assertSpecialThread();
             Thread.sleep(500);
             doSomethingInParallel();
+
+            assertThat(
+                getOrThrow(
+                    JExpression.parse("$js7JobName")
+                        .flatMap(step::evalExpression)
+                        .flatMap(o -> toVavr(o.toStringValue()))
+                        .map(o -> o.string())),
+                equalTo(step.jobName()));
 
             step.out().println("TEST FOR OUT");
             step.out().println("FROM " + getClass().getName());

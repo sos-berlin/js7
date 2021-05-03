@@ -5,12 +5,8 @@ import js7.base.monixutils.TaskObserver
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.data.job.{InternalExecutable, JobConf}
-import js7.data.order.Order
-import js7.data.order.Order.Processing
 import js7.data.value.NamedValues
-import js7.data.value.expression.Scope
-import js7.data.workflow.Workflow
-import js7.executor.{OrderProcess, StdObservers}
+import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observer
@@ -40,15 +36,14 @@ object InternalJob
 
   final case class Step private(
     arguments: NamedValues,
-    order: Order[Processing],
-    workflow: Workflow,
-    scope: Scope,
-    stdObservers: StdObservers)
+    processOrder: ProcessOrder)
   { self =>
-    def outObserver = stdObservers.out
-    def errObserver = stdObservers.err
-    def outTaskObserver = stdObservers.outTaskObserver
-    def errTaskObserver = stdObservers.errTaskObserver
+    def order = processOrder.order
+    def workflow = processOrder.workflow
+    def outObserver = processOrder.stdObservers.out
+    def errObserver = processOrder.stdObservers.err
+    def outTaskObserver = processOrder.stdObservers.outTaskObserver
+    def errTaskObserver = processOrder.stdObservers.errTaskObserver
 
     def send(outErr: StdoutOrStderr, string: String): Task[Ack] =
       outErrTaskObserver(outErr).send(string)

@@ -38,4 +38,8 @@ object VavrUtils
   @throws[RuntimeException]("iff Left")
   def getOrThrow[A](@Nonnull either: Either[Problem, A]): A =
     getOrThrow(either.toVavr)
+
+  @javaApi
+  def toVavr[L, R](@Nonnull either: Either[L, R]): VEither[L, R] =
+    either.toVavr
 }
