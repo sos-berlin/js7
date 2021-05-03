@@ -87,16 +87,21 @@ final class ExpressionParserTest extends AnyFreeSpec
 
     "Escaping special characters" - {
       "Raw control characters are not escaped" in {
-        for (char <- (0 until 0x20) ++ (0x7f until 0xa0)) {
-          val expr = s""" "'$char" """.trim
-          testExpressionRaw(expr, StringConstant(s"'$char"))
+        for (char <- ((0 until 0x20) ++ (0x7f until 0xa0)).map(_.toChar)) {
+          val doubleQuoted = s""" "$char" """.trim
+          testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
+
+          val singleQuoted = s""" '$char' """.trim
+          testExpressionRaw(singleQuoted, StringConstant(s"$char"))
         }
       }
 
-      "Random high value characters" in {
-        for (char <- (0xA0 to 0xA0 + 0x7fff)) {
-          val expr = s""" "'$char" """.trim
-          testExpressionRaw(expr, StringConstant(s"'$char"))
+      "U+0080...U+7FFF" in {
+        for (char <- (0x80 to 0x7fff).map(_.toChar)) {
+          val doubleQuoted = s""" "$char" """.trim
+          testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
+          val singleQuoted = s""" "'$char" """.trim
+          testExpressionRaw(singleQuoted, StringConstant(s"'$char"))
         }
       }
 
@@ -305,7 +310,11 @@ final class ExpressionParserTest extends AnyFreeSpec
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
     registerTest(exprString + " - should fail") {
-      def parser[_: P] = expression ~ End
-      assert(checkedParse(exprString, parser(_)) == Left(Problem(errorMessage)))
+      testErrorRaw(exprString, errorMessage)
     }
+
+  private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) = {
+    def parser[_: P] = expression ~ End
+    assert(checkedParse(exprString, parser(_)) == Left(Problem(errorMessage)))
+  }
 }

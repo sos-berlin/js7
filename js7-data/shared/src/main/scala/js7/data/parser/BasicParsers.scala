@@ -65,7 +65,7 @@ object BasicParsers
       (head + pairs.map { case (a, b) => a + b }.mkString).replace("\r\n", "\n") })
 
   private def singleQuotedContent[_: P] = P[String](
-    CharsWhile(ch => ch != '\'' && (ch >= ' ' || ch == '\r' || ch == '\n'), /*min=*/0).!)
+    CharsWhile(ch => ch != '\'', /*min=*/0).!)
 
   //private def singleQuotedTooLong[_: P](n: Int) = P[String](
   //  P("'" * n).flatMap(_ => invalid(s"More than ${n - 1} '-quotes are not supported")))

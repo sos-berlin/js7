@@ -63,9 +63,6 @@ stellt man denen ein \ voran.
 Die Steuerzeichen \t \r \n werden so geschrieben.
 Andere Zeichen sind nach \ nicht erlaubt.
 
-Steuerzeichen (außer über die Notation \t \r \n) sind nicht erlaubt.
-Alle Codepoints müssen im Bereich 0x20..0x7e, 0xa0..0x7fff(?) liegen
-
 Der Code in zum Schreiben eines Strings der Ausdruckssprache
 ([Expression.scala](https://github.com/sos-berlin/js7/blob/3cf58799748b4c7f87736a6eab77ca95d5a4ffbd/js7-data/shared/src/main/scala/js7/data/value/expression/Expression.scala#L158-L169)):
 ```scala
