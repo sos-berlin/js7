@@ -2,7 +2,6 @@ package js7.base.utils
 
 import cats.data.Validated
 import cats.effect.{Resource, SyncIO}
-import cats.instances.vector._
 import cats.kernel.Monoid
 import cats.syntax.foldable._
 import java.io.{ByteArrayInputStream, InputStream}
@@ -15,8 +14,8 @@ import js7.base.utils.StackTraces._
   */
 object CatsUtils
 {
-  def combineArgs[A: Monoid](as: A*): A =
-    as.toVector.combineAll
+  def combine[A: Monoid](as: A*): A =
+    as.combineAll
 
   private def bytesToInputStreamResource(bytes: collection.Seq[Byte]): Resource[SyncIO, InputStream] =
     bytesToInputStreamResource(bytes.toArray)

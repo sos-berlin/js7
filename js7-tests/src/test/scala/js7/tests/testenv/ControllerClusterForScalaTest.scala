@@ -9,7 +9,7 @@ import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.CatsUtils.combineArgs
+import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
@@ -84,7 +84,7 @@ trait ControllerClusterForScalaTest
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentPaths.size)
       val primary = new DirectoryProvider(agentPaths, versionedItems, testName = Some(s"$testName-Primary"),
-        controllerConfig = combineArgs(
+        controllerConfig = combine(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""
             js7.journal.cluster.nodes = {
@@ -107,7 +107,7 @@ trait ControllerClusterForScalaTest
       ).closeWithCloser
 
       val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
-        controllerConfig = combineArgs(
+        controllerConfig = combine(
           backupControllerConfig,
           config"""
             js7.journal.cluster.node.is-backup = yes

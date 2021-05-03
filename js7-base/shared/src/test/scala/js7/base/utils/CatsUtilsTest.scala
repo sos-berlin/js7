@@ -13,9 +13,9 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class CatsUtilsTest extends AnyFreeSpec
 {
-  "combineArgs" in {
-    assert(combineArgs(1, 2, 3, 4) == 10)
-    assert(combineArgs("a", "-", "b") == "a-b")
+  "combine" in {
+    assert(combine(1, 2, 3, 4) == 10)
+    assert(combine("a", "-", "b") == "a-b")
   }
 
   "Validated[Throwable, _] orThrow" in {
