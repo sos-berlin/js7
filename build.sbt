@@ -639,7 +639,7 @@ releaseVersion := (
         val commitDate = BuildInfos.committedAt.value
           .getOrElse(sys.error("gitHeadCommitDate returned None (no Git?)"))
           .take(10)/*yyyy-mm-dd*/
-        // Remove hypens according to Semantic Versioning pre-release syntax
+        // Remove hyphens according to Semantic Versioning pre-release syntax
         val yyyymmdd = commitDate.substring(0, 4) + commitDate.substring(5, 7) + commitDate.substring(8, 10)
         "alpha." + yyyymmdd
       }
@@ -661,7 +661,7 @@ releaseNextVersion := (
     Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT"))
 
 releaseProcess := {
-  import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, runClean, runTest, setNextVersion, setReleaseVersion, tagRelease}
+  import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, runTest, setNextVersion, setReleaseVersion, tagRelease}
   if (isStandardRelease)
     releaseProcess.value
   else
@@ -669,7 +669,7 @@ releaseProcess := {
     Seq[ReleaseStep](
       checkSnapshotDependencies,
       inquireVersions,
-      runClean,
+      //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean theirself!
       runTest,
       setReleaseVersion,
       commitReleaseVersion,       // performs the initial git checks
