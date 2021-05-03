@@ -111,7 +111,9 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
               Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
               workflow,
               executor.jobConf.workflowJob,
+              executor.jobConf.jobKey,
               NamedValues("ORDER_ARG" -> arg),
+              ControllerId("CONTROLLER"),
               stdObservers))
           .orThrow
           .runToFuture(stdObservers))

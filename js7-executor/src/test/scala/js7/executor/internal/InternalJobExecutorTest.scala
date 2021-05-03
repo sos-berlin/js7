@@ -51,7 +51,9 @@ final class InternalJobExecutorTest extends AnyFreeSpec
         Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
         workflow,
         workflowJob,
+        JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB")),
         NamedValues("ARG" -> NumberValue(1)),
+        ControllerId("CONTROLLER"),
         stdObservers)
     ).orThrow
     val outcome = orderRun.runToFuture(stdObservers).await(99.s)

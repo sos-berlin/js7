@@ -199,7 +199,8 @@ private object OrderActorTest {
         _ => Left(Problem("No JobResource here"))))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
-        journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config))),
+        journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config)),
+        ControllerId("CONTROLLER")),
       s"Order-${TestOrder.id.string}"))
 
     private val orderChangeds = mutable.Buffer.empty[OrderActor.Output.OrderChanged]
@@ -233,7 +234,9 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed =>
-        orderActor ! OrderActor.Input.StartProcessing(jobActor, workflowJob, Map.empty)
+        orderActor ! OrderActor.Input.StartProcessing(jobActor, workflowJob,
+          JobKey.Named(WorkflowPath("WORKFLOW") ~ "1", WorkflowJob.Name("JOB")),
+          Map.empty)
         become(processing)
     }
 

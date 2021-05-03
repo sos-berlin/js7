@@ -23,7 +23,7 @@ trait PathProcessJobExecutor extends ProcessJobExecutor
   final def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess] =
     checkFile
       .flatMap(file =>
-        evalEnv(processOrder.evaluator, executable.env)
+        evalEnv(processOrder.scope, executable.env)
           .map(env =>
             makeOrderProcess(
               processOrder,

@@ -12,17 +12,18 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, InternalExecutable, RelativePathExecutable, ScriptExecutable}
-import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdoutWritten}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, RelativePathExecutable, ScriptExecutable}
+import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
+import js7.data.value.expression.ExpressionParser
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.tests.ExecuteTest._
+import js7.tests.ExecuteTest.{logger, _}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import org.scalactic.source
@@ -237,7 +238,91 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
+  "Special $js7 variables" - {
+    val nameToExpression = Map(
+      "ORDER_ID"          -> ExpressionParser.parse("$js7OrderId").orThrow,
+      "WORKFLOW_NAME"     -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
+      "WORKFLOW_POSITION" -> ExpressionParser.parse("$js7WorkflowPosition").orThrow,
+      "LABEL"             -> ExpressionParser.parse("$js7Label").orThrow,
+      "JOB_NAME"          -> ExpressionParser.parse("$js7JobName").orThrow,
+      "CONTROLLER_ID"     -> ExpressionParser.parse("$js7ControllerId").orThrow,
+      "SCHEDULED_DATE"    -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
+      "JOBSTART_DATE"     -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow)
+
+    "Special variables in InternalExecutable arguments" in {
+      testWithSpecialVariables(
+        InternalExecutable(
+          classOf[ReturnArgumentsInternalJob].getName,
+          arguments = ObjectExpression(nameToExpression)))
+    }
+
+    "Special variables in env expressions" in {
+      testWithSpecialVariables(
+        ScriptExecutable(
+          if (isWindows)
+            """@echo off
+              |echo ORDER_ID=%ORDER_ID%" >>%JS7_RETURN_VALUES%
+              |echo WORKFLOW_NAME=%WORKFLOW_NAME%" >>%JS7_RETURN_VALUES%
+              |echo WORKFLOW_POSITION=%WORKFLOW_POSITION%" >>%JS7_RETURN_VALUES%
+              |echo LABEL=%LABEL%" >>%JS7_RETURN_VALUES%
+              |echo JOB_NAME=%JOB_NAME%" >>%JS7_RETURN_VALUES%
+              |echo CONTROLLER_ID=%CONTROLLER_ID%" >>%JS7_RETURN_VALUES%
+              |echo SCHEDULED_DATE=%SCHEDULED_DATE%" >>%JS7_RETURN_VALUES%
+              |echo JOBSTART_DATE=%JOBSTART_DATE%" >>%JS7_RETURN_VALUES%
+              |""".stripMargin
+          else
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |( echo "ORDER_ID=$ORDER_ID"
+              |  echo "WORKFLOW_NAME=$WORKFLOW_NAME"
+              |  echo "WORKFLOW_POSITION=$WORKFLOW_POSITION"
+              |  echo "LABEL=$LABEL"
+              |  echo "JOB_NAME=$JOB_NAME"
+              |  echo "CONTROLLER_ID=$CONTROLLER_ID"
+              |  echo "SCHEDULED_DATE=$SCHEDULED_DATE"
+              |  echo "JOBSTART_DATE=$JOBSTART_DATE"
+              |)>>"$JS7_RETURN_VALUES"
+              |""".stripMargin,
+          env = ObjectExpression(nameToExpression)))
+    }
+
+    def testWithSpecialVariables(executable: Executable): Unit = {
+      val versionId = versionIdIterator.next()
+      val workflowId = workflowPathIterator.next() ~ versionId
+      val jobName = WorkflowJob.Name("TEST-JOB")
+
+      val workflow = Workflow(workflowId,
+        Vector(
+          "TEST-LABEL" @: Execute.Named(jobName)),
+        nameToJob = Map(jobName -> WorkflowJob(agentPath, executable)))
+
+      directoryProvider.updateVersionedItems(controller, workflow.id.versionId, Seq(workflow))
+
+      val order = FreshOrder(orderIdIterator.next(), workflow.path)
+      val events = controller.runOrder(order).map(_.value)
+      events.collect { case OrderStdWritten(_, chunk) => logger.warn(chunk) }
+      assert(events.last.isInstanceOf[OrderFinished])
+
+      val namedValues = events.collect { case OrderProcessed(outcome) => outcome }
+        .head
+        .asInstanceOf[Outcome.Succeeded]
+        .namedValues
+
+      assert(namedValues contains "SCHEDULED_DATE")
+      assert(namedValues contains "JOBSTART_DATE")
+      assert(namedValues - "SCHEDULED_DATE" - "JOBSTART_DATE" - "returnCode" ==
+        NamedValues(
+          "ORDER_ID" -> StringValue(order.id.string),
+          "WORKFLOW_NAME" -> StringValue(workflow.path.string),
+          "WORKFLOW_POSITION" -> StringValue(s"${workflow.path.string}~${workflow.id.versionId.string}:0"),
+          "LABEL" -> StringValue("TEST-LABEL"),
+          "JOB_NAME" -> StringValue("TEST-JOB"),
+          "CONTROLLER_ID" -> StringValue("Controller")))
+    }
+}
+
   "Jobs in nested workflow" in {
+    // TODO Forbid this?
     testWithWorkflow(
       WorkflowParser.parse("""
         define workflow {
@@ -251,10 +336,10 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
             }
           };
           define job aJob {
-              execute agent="AGENT", script="exit 1", successReturnCodes=[1];
+            execute agent="AGENT", script="exit 1", successReturnCodes=[1];
           }
           define job bJob {
-              execute agent="AGENT", script="exit 2", successReturnCodes=[2];
+            execute agent="AGENT", script="exit 2", successReturnCodes=[2];
           }
         }""").orThrow,
       expectedOutcomes = Seq(
@@ -348,5 +433,12 @@ object ExecuteTest
             for (number <- step.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
               Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
+  }
+
+  private final class ReturnArgumentsInternalJob extends InternalJob
+  {
+    def toOrderProcess(step: Step) =
+      OrderProcess(
+        Task.pure(Outcome.Succeeded(step.arguments)))
   }
 }

@@ -20,6 +20,8 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.CancelMode
+import js7.data.controller.ControllerId
+import js7.data.job.JobKey
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -44,7 +46,8 @@ final class OrderActor private(
   orderId: OrderId,
   workflow: Workflow,
   protected val journalActor: ActorRef @@ JournalActor.type,
-  conf: Conf)
+  conf: Conf,
+  controllerId: ControllerId)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
@@ -111,7 +114,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def startable: Receive =
     receiveEvent() orElse {
-      case Input.StartProcessing(jobActor, workflowJob, defaultArguments) =>
+      case Input.StartProcessing(jobActor, workflowJob, jobKey, defaultArguments) =>
         if (order.isProcessable) {
           val out, err = PublishSubject[String]()
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
@@ -143,7 +146,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               order.castState[Order.Processing],
               workflow,
               workflowJob,
+              jobKey,
               defaultArguments,
+              controllerId,
               stdObservers)
           }
         }
@@ -327,8 +332,14 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
 private[order] object OrderActor
 {
-  private[order] def props(orderId: OrderId, workflow: Workflow, journalActor: ActorRef @@ JournalActor.type, conf: OrderActor.Conf)(implicit s: Scheduler) =
-    Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf) }
+  private[order] def props(
+    orderId: OrderId,
+    workflow: Workflow,
+    journalActor: ActorRef @@ JournalActor.type,
+    conf: OrderActor.Conf,
+    controllerId: ControllerId)
+    (implicit s: Scheduler) =
+    Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf, controllerId) }
 
   private[order] def combineStringsAndSplit(strings: Seq[String], maxSize: Int): Iterable[String] = {
     val total = strings.view.map(_.length).sum
@@ -384,6 +395,7 @@ private[order] object OrderActor
     final case class StartProcessing(
       jobActor: ActorRef,
       workflowJob: WorkflowJob,
+      jobKey: JobKey,
       defaultArguments: NamedValues)
     extends Input
 

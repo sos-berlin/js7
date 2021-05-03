@@ -18,11 +18,11 @@ extends ProcessJobExecutor
   override def stop = Task.unit
 
   def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess] =
-    new CommandLineEvaluator(processOrder.evaluator)
+    new CommandLineEvaluator(processOrder.scope.evaluator)
       .eval(executable.commandLineExpression)
       .flatMap { commandLine =>
         warnIfNotExecutable(commandLine.file)
-        evalEnv(processOrder.evaluator, executable.env)
+        evalEnv(processOrder.scope, executable.env)
           .flatMap(env =>
             Right(makeOrderProcess(
               processOrder,

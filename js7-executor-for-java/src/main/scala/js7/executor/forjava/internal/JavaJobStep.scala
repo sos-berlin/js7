@@ -26,6 +26,10 @@ trait JavaJobStep extends JavaWrapper
     JWorkflow(asScala.workflow)
 
   @Nonnull
+  final lazy val jobName: String =
+    asScala.processOrder.jobName
+
+  @Nonnull
   final lazy val arguments: java.util.Map[String, Value] =
     asScala.arguments.asJava
 
@@ -40,5 +44,5 @@ trait JavaJobStep extends JavaWrapper
     * */
   @Nonnull
   def namedValue(name: String): Optional[Value] =
-    asScala.scope.namedValue(name).toJava
+    asScala.processOrder.scope.namedValue(name).toJava
 }

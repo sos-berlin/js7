@@ -483,7 +483,7 @@ with Stash {
 
   private def newOrderActor(order: Order[Order.State], workflow: Workflow) =
     watch(actorOf(
-      OrderActor.props(order.id, workflow, journalActor = journalActor, orderActorConf),
+      OrderActor.props(order.id, workflow, journalActor = journalActor, orderActorConf, controllerId),
       name = uniqueActorName(encodeAsActorName("Order-" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
@@ -591,7 +591,8 @@ with Stash {
       case _ => NamedValues.empty
     }
     orderEntry.actor !
-      OrderActor.Input.StartProcessing(jobEntry.actor, jobEntry.workflowJob, defaultArguments)
+      OrderActor.Input.StartProcessing(jobEntry.actor, jobEntry.workflowJob, jobEntry.jobKey,
+        defaultArguments)
   }
 
   private def removeOrder(orderId: OrderId): Unit =

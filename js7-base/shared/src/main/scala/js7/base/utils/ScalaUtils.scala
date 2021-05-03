@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.PublicException
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
 import scala.collection.Factory
@@ -66,6 +67,17 @@ object ScalaUtils
         NonEmptyList.fromList(iterable.view.collect { case Left(l) => l }.toList) match {
           case Some(ls) => Left(ls.reduce)
           case None => Right(iterable.collect { case Right(r) => r }.to(F))
+        }
+    }
+
+    implicit final class RichLeftProjection[L, R](private val leftProjection: Either.LeftProjection[L, R])
+    extends AnyVal
+    {
+      @throws[NoSuchElementException]
+      def orThrow: L =
+        leftProjection.e match {
+          case Left(a) => a
+          case _       => throw new NoSuchElementException(s"Either.left.get on: ${leftProjection.e}")
         }
     }
 
@@ -450,7 +462,6 @@ object ScalaUtils
       }
     }
   }
-  import syntax._
 
   @inline
   def reuseIfEqual[A <: AnyRef](a: A)(f: A => A): A =

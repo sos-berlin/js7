@@ -393,6 +393,11 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(t.getStackTrace.head.getMethodName startsWith "$anonfun$new$")
     }
 
+    ".left.orThrow" in {
+      intercept[RuntimeException](Right(1).left.orThrow)
+      assert(Left(1).left.orThrow == 1)
+    }
+
     "withStackTrace" - {
       "with stacktrace provided" in {
         assert(Right[Throwable, Int](7).withStackTrace == Right[Throwable, Int](7))

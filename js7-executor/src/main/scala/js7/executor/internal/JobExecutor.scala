@@ -31,7 +31,7 @@ trait JobExecutor
 
   // JobResources may change at any time
   protected final def checkedCurrentJobResources(): Checked[Seq[JobResource]] =
-    (jobConf.workflow.jobResourcePaths ++ jobConf.workflowJob.jobResourcePaths)
+    (jobConf.workflowJob.jobResourcePaths ++ jobConf.workflow.jobResourcePaths)
       .traverse(pathToJobResource)
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"

@@ -74,16 +74,15 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.path, after = eventId)
   }
 
-  "JobResourcePath with variable references (there are no variables)" in {
+  "JobResourcePath with order variable references (no order access)" in {
     val eventId = controller.eventWatch.lastAddedEventId
     controllerApi.updateSignedSimpleItems(Seq(sign(b2JobResource))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b2JobResource.path, after = eventId)
 
     val orderId = OrderId("ORDER-2")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
-      "E" -> StringValue("E OF ORDER")
-    ))).await(99.s).orThrow
-    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+    val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
+      "E" -> StringValue("E OF ORDER"))))
+    events.map(_.value).collect { case OrderStdWritten(outerr, chunk) => scribe.debug(s"$outerr: $chunk") }
 
     // JobResource must not use order variables
     val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event
@@ -117,6 +116,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
       scribe.info(stdouterr.trim)
       assert(stdouterr contains "JS7_ORDER_ID=/ORDER-SOS/\n")
       assert(stdouterr contains "JS7_WORKFLOW_NAME=/WORKFLOW-SOS/\n")
+      assert(stdouterr contains "JS7_JOB_NAME=/TEST-JOB/\n")
       assert(stdouterr contains "JS7_LABEL=/TEST-LABEL/\n")
       assert(stdouterr contains "JS7_SCHEDULED_DATE=//\n")
       assert(stdouterr contains "JS7_SCHEDULED_YEAR=//\n")
@@ -175,10 +175,13 @@ object JobResourceTest
       "B" -> StringConstant("IGNORED"),
       "E" -> ExpressionParser.parse(""""E=$E"""").orThrow)))
 
+  private val jobName = WorkflowJob.Name("TEST-JOB")
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
-    Vector(Execute.Anonymous(
-      WorkflowJob(
+    Vector(
+      Execute.Named(jobName, defaultArguments = Map("A" -> StringValue("A of Execute")))),
+    nameToJob = Map(
+      jobName -> WorkflowJob(
         agentPath,
         ScriptExecutable(
           """#!/usr/bin/env bash
@@ -193,8 +196,7 @@ object JobResourceTest
             "D" -> StringConstant("D OF JOB ENV"),
             "E" -> StringConstant("E OF JOB ENV")))),
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
-        jobResourcePaths = Seq(aJobResource.path, bJobResource.path)),
-      defaultArguments = Map("A" -> StringValue("A of Execute")))))
+        jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 
   private val envName = if (isWindows) "Path" else "PATH"
   private val envJobResource = JobResource(
@@ -230,13 +232,13 @@ object JobResourceTest
       "JS7_SCHEDULED_HOUR"    -> ExpressionParser.parse("scheduledOrEmpty(format='HH')").orThrow,
       "JS7_SCHEDULED_MINUTE"  -> ExpressionParser.parse("scheduledOrEmpty(format='mm')").orThrow,
       "JS7_SCHEDULED_SECOND"  -> ExpressionParser.parse("scheduledOrEmpty(format='ss')").orThrow,
-      "JS7_STEPSTART_DATE"    -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JS7_STEPSTART_DAY"     -> ExpressionParser.parse("now(format='dd')").orThrow,
-      "JS7_STEPSTART_YEAR"    -> ExpressionParser.parse("now(format='yyyy')").orThrow,
-      "JS7_STEPSTART_MONTH"   -> ExpressionParser.parse("now(format='MM')").orThrow,
-      "JS7_STEPSTART_HOUR"    -> ExpressionParser.parse("now(format='HH')").orThrow,
-      "JS7_STEPSTART_MINUTE"  -> ExpressionParser.parse("now(format='mm')").orThrow,
-      "JS7_STEPSTART_SECOND"  -> ExpressionParser.parse("now(format='ss')").orThrow)))
+      "JS7_JOBSTART_DATE"     -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
+      "JS7_JOBSTART_DAY"      -> ExpressionParser.parse("now(format='dd')").orThrow,
+      "JS7_JOBSTART_YEAR"     -> ExpressionParser.parse("now(format='yyyy')").orThrow,
+      "JS7_JOBSTART_MONTH"    -> ExpressionParser.parse("now(format='MM')").orThrow,
+      "JS7_JOBSTART_HOUR"     -> ExpressionParser.parse("now(format='HH')").orThrow,
+      "JS7_JOBSTART_MINUTE"   -> ExpressionParser.parse("now(format='mm')").orThrow,
+      "JS7_JOBSTART_SECOND"   -> ExpressionParser.parse("now(format='ss')").orThrow)))
   scribe.debug(sosJobResource.asJson.toPrettyString)
 
   private val sosWorkflow = {
@@ -262,13 +264,13 @@ object JobResourceTest
             |echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
             |echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
             |echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
-            |echo JS7_STEPSTART_DATE=/$JS7_STEPSTART_DATE/
-            |echo JS7_STEPSTART_DAY=/$JS7_STEPSTART_DAY/
-            |echo JS7_STEPSTART_MONTH=/$JS7_STEPSTART_MONTH/
-            |echo JS7_STEPSTART_YEAR=/$JS7_STEPSTART_YEAR/
-            |echo JS7_STEPSTART_HOUR=/$JS7_STEPSTART_HOUR/
-            |echo JS7_STEPSTART_MINUTE=/$JS7_STEPSTART_MINUTE/
-            |echo JS7_STEPSTART_SECOND=/$JS7_STEPSTART_SECOND/
+            |echo JS7_JOBSTART_DATE=/$JS7_JOBSTART_DATE/
+            |echo JS7_JOBSTART_DAY=/$JS7_JOBSTART_DAY/
+            |echo JS7_JOBSTART_MONTH=/$JS7_JOBSTART_MONTH/
+            |echo JS7_JOBSTART_YEAR=/$JS7_JOBSTART_YEAR/
+            |echo JS7_JOBSTART_HOUR=/$JS7_JOBSTART_HOUR/
+            |echo JS7_JOBSTART_MINUTE=/$JS7_JOBSTART_MINUTE/
+            |echo JS7_JOBSTART_SECOND=/$JS7_JOBSTART_SECOND/
             |""".stripMargin))),
       jobResourcePaths = Seq(sosJobResource.path))
   }

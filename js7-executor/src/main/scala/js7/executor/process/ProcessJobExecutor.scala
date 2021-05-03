@@ -7,9 +7,8 @@ import js7.base.problem.Checked
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
 import js7.data.value.StringValue
-import js7.data.value.expression.Evaluator
 import js7.data.value.expression.Expression.ObjectExpression
-import js7.data.value.expression.scopes.{EnvScope, NamedValueScope, NowScope, OrderScope}
+import js7.data.value.expression.Scope
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
@@ -28,18 +27,6 @@ trait ProcessJobExecutor extends JobExecutor
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
     import processOrder.order
-    lazy val jobResourceScope = Seq(
-      NowScope() |+| OrderScope(processOrder.order),
-      EnvScope,
-      new NamedValueScope(Map(
-        "js7OrderId" -> StringValue(order.id.string),
-        "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString),
-        "js7WorkflowPath" -> StringValue(order.workflowId.path.string),
-        "js7Label" -> StringValue(processOrder.workflow.labeledInstruction(order.position)
-          .toOption.flatMap(_.maybeLabel).fold("")(_.string)),
-        "js7JobName" -> StringValue(jobKey.name),
-        "js7ControllerId" -> StringValue(jobConf.controllerId.string)))
-    ).combineAll
 
     val checkedJobResourcesEnv = checkedCurrentJobResources().flatMap(_
       .view
@@ -47,7 +34,7 @@ trait ProcessJobExecutor extends JobExecutor
       .reverse/*left overrides right*/
       .fold(Map.empty)(_ ++ _)
       .toSeq
-      .traverse { case (k, v) => jobResourceScope.evalString(v).map(k -> _) }
+      .traverse { case (k, v) => processOrder.jobResourceScope.evalString(v).map(k -> _) }
       .map(_.toMap))
 
     val taskRunner = jobExecutorConf.newTaskRunner(
@@ -93,8 +80,8 @@ trait ProcessJobExecutor extends JobExecutor
         .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
         .toMap
 
-  protected final def evalEnv(evaluator: Evaluator, envExpr: ObjectExpression): Checked[Map[String, String]] =
-    evaluator.evalObjectExpression(envExpr)
+  protected final def evalEnv(scope: Scope, envExpr: ObjectExpression): Checked[Map[String, String]] =
+    scope.evaluator.evalObjectExpression(envExpr)
       .flatMap(_.nameToValue.toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
       .map(_.toMap)
 }
