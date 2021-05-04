@@ -10,7 +10,7 @@ import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.value.expression.Expression.{ObjectExpression, StringConstant}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.AttachSignedItemTest._
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -50,7 +50,7 @@ final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForSc
       // Tampered SignableSimpleItem
       val signedSimpleItem2 = itemSigner.sign(jobResource.copy(
         itemRevision = Some(ItemRevision(2)),
-        env = ObjectExpression(Map("ENV" -> StringConstant("TAMPERED")))))
+        env = Map("ENV" -> StringConstant("TAMPERED"))))
       val tamperedSimpleItem = signedSimpleItem2.copy(
         signedString = signedSimpleItem2.signedString.copy(
           string = signedSimpleItem2.signedString.string + " "))

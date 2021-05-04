@@ -18,6 +18,7 @@ import js7.proxy.javaapi.JControllerProxy;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyMap;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.data_for_java.item.JUpdateItemOperation.addOrChangeSigned;
 import static js7.data_for_java.item.JUpdateItemOperation.addVersion;
@@ -40,12 +41,14 @@ final class JJobResourceTester
     {
         JJobResource aJobResource = JJobResource.of(
             JobResourcePath.of("JOB-RESOURCE-A"),
+            emptyMap(),
             new HashMap<String, JExpression>() {{
                 put("A", getOrThrow(JExpression.parse("'a'")));
                 put("B", getOrThrow(JExpression.parse("'bb'")));
             }});
         JJobResource bJobResource = JJobResource.of(
             JobResourcePath.of("JOB-RESOURCE-B"),
+            emptyMap(),
             new HashMap<String, JExpression>() {{
                 put("B", getOrThrow(JExpression.parse("'IGNORED'")));
                 put("C", getOrThrow(JExpression.parse("'ccc'")));

@@ -1,19 +1,33 @@
 # JobResource
 
-Einem Job lassen sich JobResourcen zugeordnen, die Umgebungsvariablen für den Job bestimmen (wenn es nicht ein JVM-Job ist).
+Einem Job lassen sich JobResourcen zugeordnen.
+Eine JobResoure enthält
+
+* `settings`, errechnete benannte Einstellungen, und
+* `env`, errechnete Umgebungsvariablen für Shell-Jobs.
+
+`settings` und `env` sind Name-Ausdruck-Paare.
+
+In `env` können die Namen aus `setting` verwendet werden.
+Damit kann eine Einstellung in `setting` vorgenommen
+und in JVM- wie Shell-Jobs verwendet werden.
 
 Beispiel in JSON:
 
-````json
+```json
 {
   "path": "MY-JOB-RESOURCE",
   "TYPE": "JobResource",
+  "settings": {
+   "stringSetting": "\"STRING\"",
+   "numberSetting": "100"
+  },
   "env": {
     "MYENV": "\"VALUE\"",
     "MYPATH": "\"/bin:\" ++ env(\"PATH\")"
   }
 }
-````
+```
 
 Funktionen und Variablen der Ausdruckssprache speziell für JobResource:
 
@@ -113,3 +127,20 @@ sollte für Umgebungsvariablen eine einheitliche Großschreibung gewählt werden
 JobResourcen, die jedem Job eines Workflows mitgegeben werden sollen,
 können am Workflow mit dem Parameter `jobResourcePaths` bestimmt werden.
 Sie werden der Liste der JobResourcen am Job angehängt.
+
+
+### Nutzung in JVM-Jobs
+
+```java
+public final class MyInternalJob implements BlockingInternalJob
+{
+    public OrderProcess toOrderProcess(Step step) {
+        return () -> {
+          Map<JobResourcePath,Map<String,Value>> jobResourceToNameToValue =
+            step.jobResourceToNameToValue();
+          Either<Problem,Value> checkedValue =
+            step.byJobResourceAndName(JobResourcePath.of("A"), "stringSetting");
+        };
+    }
+}
+```

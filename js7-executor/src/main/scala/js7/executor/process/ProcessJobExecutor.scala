@@ -4,11 +4,12 @@ import cats.syntax.all._
 import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
+import js7.base.utils.Lazy
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
-import js7.data.value.StringValue
 import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.expression.Scope
+import js7.data.value.{StringValue, Value}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
@@ -28,14 +29,21 @@ trait ProcessJobExecutor extends JobExecutor
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
     import processOrder.order
 
-    val checkedJobResourcesEnv = checkedCurrentJobResources().flatMap(_
-      .view
-      .map(_.env.nameToExpr)
-      .reverse/*left overrides right*/
-      .fold(Map.empty)(_ ++ _)
-      .toSeq
-      .traverse { case (k, v) => processOrder.jobResourceScope.evalString(v).map(k -> _) }
-      .map(_.toMap))
+    val checkedJobResourcesEnv: Checked[Map[String, String]] =
+      checkedCurrentJobResources()
+        .flatMap(_
+          .reverse/*left overrides right*/
+          .traverse { jobResource =>
+            val lazyEvaluatedSettings: Map[String, Lazy[Checked[Value]]] =
+              jobResource.settings.view
+                .mapValues(expr => Lazy(processOrder.jobResourceScope.evaluator.eval(expr)))
+                .toMap
+            val scope = Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| processOrder.jobResourceScope
+            jobResource.env.toSeq
+              .traverse { case (k, v) => scope.evalString(v).map(k -> _) }
+              .map(_.toMap)
+          })
+        .map(_.fold(Map.empty)(_ ++ _))
 
     val taskRunner = jobExecutorConf.newTaskRunner(
       TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine,

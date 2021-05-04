@@ -64,7 +64,8 @@ final class Evaluator(scope: Scope)
           case NamedValue.KeyValue(stringExpr) =>
             for {
               key <- evalString(stringExpr).map(_.string)
-              value <- scope.findValue(ValueSearch(w, ValueSearch.Name(key)))
+              maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(key)))
+              value <- maybeValue
                 .map(Right(_))
                 .getOrElse(
                   default.map(evalString).toChecked(Problem(where match {
@@ -96,11 +97,14 @@ final class Evaluator(scope: Scope)
   private def evalListExpression(expr: ListExpression): Checked[ListValue] =
     expr.expressions.traverse(eval).map(ListValue.apply)
 
+  @deprecated
   def evalObjectExpression(expr: ObjectExpression): Checked[ObjectValue] =
-    expr.nameToExpr.toVector
+    evalExpressionMap(expr.nameToExpr).map(ObjectValue(_))
+
+  def evalExpressionMap(expr: Map[String, Expression]): Checked[Map[String, Value]] =
+    expr.toVector
       .traverse { case (k, v) => eval(v) map k.-> }
       .map(_.toMap)
-      .map(ObjectValue.apply)
 
   private def numNumToNum[A <: Expression, B <: Expression](a: A, b: B)(op: (NumberValue, NumberValue) => BigDecimal): Checked[NumberValue] =
     for {

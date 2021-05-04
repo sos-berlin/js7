@@ -5,6 +5,7 @@ import java.io.{PrintWriter, Writer}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
+import js7.data.job.JobResourcePath
 import js7.data.value.Value
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.order.JOutcome
@@ -13,6 +14,8 @@ import js7.data_for_java.vavr.VavrConverters._
 import js7.executor.forjava.internal.BlockingInternalJob._
 import js7.executor.internal.{InternalJob, InternalJobAdapter}
 import monix.execution.Scheduler
+import scala.collection.immutable.ListMap
+import scala.jdk.CollectionConverters._
 
 /** For non-asynchronous thread-blocking internal Jobs written in Java.
   * Constructor and methods are executed in (from call to call changing) threads
@@ -69,7 +72,16 @@ object BlockingInternalJob
       finally for (o <- errLazy) o.close()
 
     def evalExpression(expression: JExpression): VEither[Problem, Value] =
-      asScala.processOrder.scope.evaluator.eval(expression.asScala).toVavr
+      asScala.processOrder.scope.evaluator.eval(expression.asScala)
+        .toVavr
+
+    def jobResourceToNameToValue: java.util.Map[JobResourcePath, java.util.Map[String, Value]] =
+      asScala.jobResourceToSettings
+        .view.mapValues(_.asJava).to(ListMap).asJava
+
+    def byJobResourceAndName(jobResourcePath: JobResourcePath, name: String): VEither[Problem, Value] =
+      asScala.byJobResourceAndName(jobResourcePath, name)
+        .toVavr
   }
   object Step {
     def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =

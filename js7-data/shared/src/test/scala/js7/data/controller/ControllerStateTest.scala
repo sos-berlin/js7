@@ -27,7 +27,6 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
 import monix.execution.Scheduler.Implicits.global
-import js7.base.problem.Checked._
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 
@@ -226,7 +225,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       }, {
         "TYPE": "SignedItemAdded",
         "signed": {
-          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"env\":{}}",
+          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"settings\":{},\"env\":{}}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"

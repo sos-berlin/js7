@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import js7.base.problem.Problem;
+import js7.data.job.JobResourcePath;
 import js7.data.value.NumberValue;
 import js7.data.value.Value;
 import js7.data_for_java.order.JOutcome;
@@ -61,6 +62,9 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             assertSpecialThread();
             Thread.sleep(500);
             doSomethingInParallel();
+
+            Map<JobResourcePath,Map<String,Value>> jobResourceToNameToValue = step.jobResourceToNameToValue();
+            Either<Problem,Value> checkedValue = step.byJobResourceAndName(JobResourcePath.of("A"), "stringSetting");
 
             assertThat(
                 getOrThrow(

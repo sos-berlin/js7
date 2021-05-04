@@ -4,7 +4,6 @@ import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.value.expression.Expression.ObjectExpression
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JSignableItem
 import js7.data_for_java.value.JExpression
@@ -22,7 +21,7 @@ extends JJsonable[JJobResource] with JSignableItem
 
   @Nonnull
   def env: java.util.Map[String, JExpression] =
-    asScala.env.nameToExpr
+    asScala.env
       .view
       .mapValues(JExpression(_))
       .toMap
@@ -34,10 +33,14 @@ object JJobResource extends JJsonable.Companion[JJobResource]
   @Nonnull
   def of(
     @Nonnull path: JobResourcePath,
+    @Nonnull settings: java.util.Map[String, JExpression],
     @Nonnull env: java.util.Map[String, JExpression])
   : JJobResource =
     JJobResource(
-      JobResource(path, ObjectExpression(env.asScala.view.mapValues(_.asScala).toMap)))
+      JobResource(
+        path,
+        settings = settings.asScala.view.mapValues(_.asScala).toMap,
+        env = env.asScala.view.mapValues(_.asScala).toMap))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JJobResource] =

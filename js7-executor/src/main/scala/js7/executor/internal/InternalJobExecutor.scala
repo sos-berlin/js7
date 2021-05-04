@@ -1,5 +1,6 @@
 package js7.executor.internal
 
+import cats.syntax.traverse._
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.log.Logger
@@ -15,6 +16,7 @@ import js7.executor.internal.InternalJob.{JobContext, Step}
 import js7.executor.internal.InternalJobExecutor._
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.collection.immutable.ListMap
 import scala.util.control.NonFatal
 
 final class InternalJobExecutor(
@@ -45,18 +47,21 @@ extends JobExecutor
     }.memoize
 
   def toOrderProcess(processOrder: ProcessOrder) =
-    internalJobLazy()
-      .flatMap(internalJob => toStep(processOrder)
-        .map(internalJob.toOrderProcess))
+    for {
+      internalJob <- internalJobLazy()
+      jobResources <- checkedCurrentJobResources()
+      step <- toStep(processOrder, jobResources)
+    } yield internalJob.toOrderProcess(step)
 
-  private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
-    processOrder.scope.evaluator
-      .evalObjectExpression(executable.arguments)
-      .map(_.nameToValue)
-      .map(arguments =>
-        Step(
-          arguments = arguments,
-          processOrder))
+  private def toStep(processOrder: ProcessOrder, jobResources: Seq[JobResource]): Checked[InternalJob.Step] =
+    for {
+      args <- processOrder.scope.evaluator.evalExpressionMap(executable.arguments.nameToExpr)
+      resourceToArgs <- jobResources.traverse(o =>
+        processOrder.jobResourceScope.evaluator.evalExpressionMap(o.settings).map(o.path -> _))
+    } yield Step(
+      processOrder,
+      args,
+      resourceToArgs.to(ListMap))
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =
     Checked.catchNonFatal(

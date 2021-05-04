@@ -6,6 +6,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{OffsetDateTime, ZoneId}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -14,18 +15,22 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.job.{JobResource, JobResourcePath, ScriptExecutable}
-import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderTerminated}
+import js7.data.job.{InternalExecutable, JobResource, JobResourcePath, ScriptExecutable}
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression.{ObjectExpression, StringConstant}
+import js7.data.value.expression.Expression.{NamedValue, ObjectExpression, StringConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.OrderProcess
+import js7.executor.internal.InternalJob
 import js7.tests.jobresource.JobResourceTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 
 final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
@@ -40,7 +45,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(workflow, envWorkflow, sosWorkflow)
+  protected val versionedItems = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow)
 
   "JobResourcePath" in {
     controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)
@@ -50,19 +55,20 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val orderId = OrderId("ORDER")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
-      "A" -> StringValue("A OF ORDER")
+      "A" -> StringValue("A of ORDER")
     ))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == aJobResource.path)
     controller.eventWatch.await[ItemAttached](_.event.key == bJobResource.path)
-    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+    val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
+    assert(terminated.value.event.isInstanceOf[OrderFinished])
 
     val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
     assert(stdouterr.replaceAll("\r", "") ==
       """A=/A of JOB-RESOURCE-A/
         |B=/B of JOB-RESOURCE-A/
         |C=/C of JOB-RESOURCE-B/
-        |D=/D OF JOB ENV/
-        |E=/E OF JOB-RESOURCE-B/
+        |D=/D of JOB ENV/
+        |E=/E of JOB-RESOURCE-B/
         |""".stripMargin)
   }
 
@@ -81,7 +87,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val orderId = OrderId("ORDER-2")
     val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
-      "E" -> StringValue("E OF ORDER"))))
+      "E" -> StringValue("E of ORDER"))))
     events.map(_.value).collect { case OrderStdWritten(outerr, chunk) => scribe.debug(s"$outerr: $chunk") }
 
     // JobResource must not use order variables
@@ -94,7 +100,8 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val orderId = OrderId("ORDER-ENV")
     controllerApi.addOrder(FreshOrder(orderId, envWorkflow.path)).await(99.s).orThrow
-    controller.eventWatch.await[OrderTerminated](_.key == orderId)
+    val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
+    assert(terminated.value.event.isInstanceOf[OrderFinished])
 
     val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
     assert(stdouterr.replaceAll("\r", "") ==
@@ -108,7 +115,9 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       val orderId = OrderId("ORDER-SOS")
       controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path)).await(99.s).orThrow
-      controller.eventWatch.await[OrderTerminated](_.key == orderId)
+      val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
+      assert(terminated.value.event.isInstanceOf[OrderFinished])
+
       assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
         Outcome.succeededRC0)
 
@@ -134,7 +143,9 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val scheduledFor = Timestamp.parse("2021-04-26T00:11:22.789Z")
       controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path, scheduledFor = Some(scheduledFor)))
         .await(99.s).orThrow
-      controller.eventWatch.await[OrderTerminated](_.key == orderId)
+      val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
+      assert(terminated.value.event.isInstanceOf[OrderFinished])
+
       assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
         Outcome.succeededRC0)
 
@@ -148,6 +159,12 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(stdouterr contains "JS7_SCHEDULED_SECOND=/22/\n")
     }
   }
+
+  "JobResource.settings" in {
+    val orderId = OrderId("ORDER-INTERNAL")
+    val events = controller.runOrder(FreshOrder(orderId, internalWorkflow.path))
+    assert(events.last.value.isInstanceOf[OrderFinished])
+  }
 }
 
 object JobResourceTest
@@ -156,24 +173,31 @@ object JobResourceTest
 
   private val aJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-A"),
-    env = ObjectExpression(Map(
-      "A" -> StringConstant("A of JOB-RESOURCE-A"),
-      "B" -> StringConstant("B of JOB-RESOURCE-A"))))
+    settings = Map(
+      "a" -> StringConstant("A of JOB-RESOURCE-A"),
+      "b" -> StringConstant("B of JOB-RESOURCE-A")),
+    env = Map(
+      "A" -> NamedValue("a"),  // reference settings!
+      "B" -> NamedValue("b")))
 
   private val bJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-B"),
-    env = ObjectExpression(Map(
+    settings = Map(
+      "b" -> StringConstant("ignored"),
+      "c" -> StringConstant("C of JOB-RESOURCE-B"),
+      "e" -> StringConstant("E of JOB-RESOURCE-B")),
+    env = Map(
       "B" -> StringConstant("IGNORED"),
       "C" -> StringConstant("C of JOB-RESOURCE-B"),
-      "E" -> StringConstant("E OF JOB-RESOURCE-B"))))
+      "E" -> StringConstant("E of JOB-RESOURCE-B")))
 
   private val b1JobResource = JobResource(JobResourcePath("JOB-RESOURCE-B"))
 
   private val b2JobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-B"),
-    env = ObjectExpression(Map(
-      "B" -> StringConstant("IGNORED"),
-      "E" -> ExpressionParser.parse(""""E=$E"""").orThrow)))
+    env = Map(
+      "B" -> StringConstant("IGNORED IN FAVOR OF JOB-RESOURCE-A"),
+      "E" -> ExpressionParser.parse(""""E=$E"""").orThrow))
 
   private val jobName = WorkflowJob.Name("TEST-JOB")
   private val workflow = Workflow(
@@ -193,16 +217,16 @@ object JobResourceTest
             |echo E=/$E/
             |""".stripMargin,
           env = ObjectExpression(Map(
-            "D" -> StringConstant("D OF JOB ENV"),
-            "E" -> StringConstant("E OF JOB ENV")))),
+            "D" -> StringConstant("D of JOB ENV"),
+            "E" -> StringConstant("E of JOB ENV")))),
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 
   private val envName = if (isWindows) "Path" else "PATH"
   private val envJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-ENV"),
-    env = ObjectExpression(Map(
-      "ENV" -> ExpressionParser.parse(s"env('$envName')").orThrow)))
+    env = Map(
+      "ENV" -> ExpressionParser.parse(s"env('$envName')").orThrow))
 
   private val envWorkflow = Workflow(
     WorkflowPath("WORKFLOW-ENV") ~ "INITIAL",
@@ -218,7 +242,7 @@ object JobResourceTest
 
   private val sosJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-SOS"),
-    env = ObjectExpression(Map(
+    env = Map(
       "JS7_ORDER_ID"          -> ExpressionParser.parse("$js7OrderId").orThrow,
       "JS7_WORKFLOW_NAME"     -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
       "JS7_WORKFLOW_POSITION" -> ExpressionParser.parse("$js7WorkflowPosition").orThrow,
@@ -238,7 +262,7 @@ object JobResourceTest
       "JS7_JOBSTART_MONTH"    -> ExpressionParser.parse("now(format='MM')").orThrow,
       "JS7_JOBSTART_HOUR"     -> ExpressionParser.parse("now(format='HH')").orThrow,
       "JS7_JOBSTART_MINUTE"   -> ExpressionParser.parse("now(format='mm')").orThrow,
-      "JS7_JOBSTART_SECOND"   -> ExpressionParser.parse("now(format='ss')").orThrow)))
+      "JS7_JOBSTART_SECOND"   -> ExpressionParser.parse("now(format='ss')").orThrow))
   scribe.debug(sosJobResource.asJson.toPrettyString)
 
   private val sosWorkflow = {
@@ -273,5 +297,26 @@ object JobResourceTest
             |echo JS7_JOBSTART_SECOND=/$JS7_JOBSTART_SECOND/
             |""".stripMargin))),
       jobResourcePaths = Seq(sosJobResource.path))
+  }
+
+  private val internalWorkflow = {
+    val jobName = WorkflowJob.Name("TEST-JOB")
+    Workflow(
+      WorkflowPath("WORKFLOW-INTERNAL") ~ "INITIAL",
+      Vector("TEST-LABEL" @: Execute.Named(jobName)),
+      nameToJob = Map(jobName -> WorkflowJob(
+        agentPath,
+        InternalExecutable(classOf[TestInternalJob].getName))),
+      jobResourcePaths = Seq(aJobResource.path, bJobResource.path))
+  }
+
+  final class TestInternalJob extends InternalJob {
+    def toOrderProcess(step: Step) =
+      OrderProcess(Task {
+        assert(step.byJobResourceAndName(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
+        assert(step.byJobResourceAndName(aJobResource.path, "UNKNOWN") == Left(UnknownKeyProblem("Named value", "UNKNOWN")))
+        assert(step.byJobResourceAndName(JobResourcePath("UNKNOWN"), "X") == Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
+        Outcome.succeeded
+      })
   }
 }

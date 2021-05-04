@@ -127,6 +127,7 @@ final class AgentStateTest extends AsyncFreeSpec
           json"""{
             "TYPE": "JobResource",
             "path": "JOB-RESOURCE",
+            "settings": {},
             "env": {}
           }"""))
 

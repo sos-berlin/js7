@@ -3,7 +3,7 @@ package js7.data.job
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.controller.ControllerState.signableSimpleItemJsonCodec
 import js7.data.item.{ItemRevision, SignableSimpleItem}
-import js7.data.value.expression.Expression.{Argument, Concat, FunctionCall, ObjectExpression, StringConstant}
+import js7.data.value.expression.Expression.{Argument, Concat, FunctionCall, StringConstant}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -20,15 +20,20 @@ final class JobResourceTest extends AnyFreeSpec
     testJson[SignableSimpleItem](
       JobResource(
         JobResourcePath("JOB-RESOURCE"),
-        ObjectExpression(Map(
+        settings = Map(
+          "SETTING" -> StringConstant("DEFAULT")),
+        env = Map(
           "NAME" -> StringConstant("VALUE"),
           "MYPATH" -> Concat(
             StringConstant("/bin:"),
-            FunctionCall("env", Seq(Argument(StringConstant("PATH"))))))),
+            FunctionCall("env", Seq(Argument(StringConstant("PATH")))))),
         Some(ItemRevision(1))),
       json"""{
         "path": "JOB-RESOURCE",
         "TYPE": "JobResource",
+        "settings": {
+         "SETTING": "'DEFAULT'"
+        },
         "env": {
           "NAME": "'VALUE'",
           "MYPATH": "'/bin:' ++ env('PATH')"

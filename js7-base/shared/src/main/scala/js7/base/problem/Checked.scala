@@ -42,7 +42,9 @@ object Checked
   def catchNonFatal[A](f: => A): Checked[A] =
     try Right(f)
     catch {
-      case NonFatal(t) => Left(Problem.fromThrowable(t))
+      case NonFatal(t) =>
+        for (t <- t.ifStackTrace) scribe.debug(s"Checked.catchNonFatal: ${t.toStringWithCauses}", t)
+        Left(Problem.fromThrowable(t))
     }
 
   def catchProblem[A](f: => A): Checked[A] =

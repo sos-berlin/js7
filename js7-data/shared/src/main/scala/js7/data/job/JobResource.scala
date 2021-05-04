@@ -1,15 +1,15 @@
 package js7.data.job
 
-import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import js7.data.item.{ItemRevision, SignableSimpleItem}
-import js7.data.value.expression.Expression.ObjectExpression
+import js7.data.value.expression.Expression
 
 /** Job resources, for example environment variables. */
 final case class JobResource(
   path: JobResourcePath,
-  env: ObjectExpression = ObjectExpression.empty,
+  settings: Map[String, Expression] = Map.empty,
+  env: Map[String, Expression] = Map.empty,
   itemRevision: Option[ItemRevision] = None)
 extends SignableSimpleItem
 {
@@ -30,5 +30,5 @@ object JobResource extends SignableSimpleItem.Companion[JobResource]
   val cls = classOf[JobResource]
 
   private implicit val configuration = withDefaults
-  implicit val jsonCodec: Codec.AsObject[JobResource] = deriveConfiguredCodec[JobResource]
+  implicit val jsonCodec = deriveConfiguredCodec[JobResource]
 }
