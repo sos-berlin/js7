@@ -117,7 +117,7 @@ object TypedJsonCodec
     fromIterable(name, subtypes)
 
   def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[_ <: A]]): TypedJsonCodec[A] =
-    new TypedJsonCodec[A](name, subtypes.to(ArraySeq))
+    new TypedJsonCodec[A](name, subtypes.toSeq)
 
   implicit final class TypedJson(private val underlying: Json) extends AnyVal {
     def isOfType[A: TypedJsonCodec, A1 <: A: ClassTag]: Boolean =
