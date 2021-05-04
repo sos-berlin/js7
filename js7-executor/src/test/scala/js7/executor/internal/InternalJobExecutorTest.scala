@@ -10,7 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
+import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
@@ -29,7 +29,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
   "InternalJobExecutor" in {
     val executable = InternalExecutable(
       classOf[TestInternalJob].getName,
-      arguments = ObjectExpression(Map("ARG" -> NamedValue("ARG"))))
+      arguments = Map("ARG" -> NamedValue("ARG")))
     val workflowJob = WorkflowJob(AgentPath("AGENT"), executable)
     val executor = new InternalJobExecutor(
       executable,

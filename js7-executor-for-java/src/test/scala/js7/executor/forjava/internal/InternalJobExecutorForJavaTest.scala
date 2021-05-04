@@ -13,7 +13,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
+import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
@@ -41,7 +41,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
       val executable = InternalExecutable(
         testClass.getName,
         jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
-        arguments = ObjectExpression(Map("STEP_ARG" -> NamedValue("ORDER_ARG"))))
+        arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG")))
       implicit val executor = new InternalJobExecutor(
         executable,
         JobConf(

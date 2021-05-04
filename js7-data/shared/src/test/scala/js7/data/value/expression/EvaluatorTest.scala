@@ -5,7 +5,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.expressionOnly
-import js7.data.value.{BooleanValue, ListValue, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -310,15 +310,15 @@ final class EvaluatorTest extends AnyFreeSpec
       Right(FunctionCall("myFunction", Seq(Argument(NumericConstant(7))))))
 
     "objectExpression" in {
-      val expr = ObjectExpression(Map(
+      val expr = Map(
         "A" -> NumericConstant(1),
         "B" -> StringConstant("BBB"),
-        "LIST" -> ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3)))))
-      assert(evaluator.evalObjectExpression(expr) ==
-        Right(ObjectValue(Map(
+        "LIST" -> ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))
+      assert(evaluator.evalExpressionMap(expr) ==
+        Right(Map(
           "A" -> NumberValue(1),
           "B" -> StringValue("BBB"),
-          "LIST" -> ListValue(List(NumberValue(1), NumberValue(2), NumberValue(3)))))),
+          "LIST" -> ListValue(List(NumberValue(1), NumberValue(2), NumberValue(3))))),
         Right(
           In(LastReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
     }

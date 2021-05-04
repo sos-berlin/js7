@@ -55,7 +55,7 @@ extends JobExecutor
 
   private def toStep(processOrder: ProcessOrder, jobResources: Seq[JobResource]): Checked[InternalJob.Step] =
     for {
-      args <- processOrder.scope.evaluator.evalExpressionMap(executable.arguments.nameToExpr)
+      args <- processOrder.scope.evaluator.evalExpressionMap(executable.arguments)
       resourceToArgs <- jobResources.traverse(o =>
         processOrder.jobResourceScope.evaluator.evalExpressionMap(o.settings).map(o.path -> _))
     } yield Step(

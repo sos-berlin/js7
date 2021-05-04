@@ -122,16 +122,16 @@ object WorkflowParser
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
         executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
           case ("executable", path: String) =>
-            Pass(PathExecutable(path, env, v1Compatible = v1Compatible))
+            Pass(PathExecutable(path, env.nameToExpr, v1Compatible = v1Compatible))
           case ("command", command: String) =>
             if (v1Compatible) Fail.opaque(s"v1Compatible=true is inappropriate for a command")
-            else checkedToP(CommandLineParser.parse(command).map(CommandLineExecutable(_, env)))
+            else checkedToP(CommandLineParser.parse(command).map(CommandLineExecutable(_, env.nameToExpr)))
           case ("script", script: Expression) =>
             checkedToP(Evaluator.eval(script).flatMap(_.toStringValue)
-              .map(v => ScriptExecutable(v.string, env, v1Compatible = v1Compatible)))
+              .map(v => ScriptExecutable(v.string, env.nameToExpr, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
             checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
-              .map(v => InternalExecutable(v.string, jobArguments, arguments)))
+              .map(v => InternalExecutable(v.string, jobArguments, arguments.nameToExpr)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
         returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)

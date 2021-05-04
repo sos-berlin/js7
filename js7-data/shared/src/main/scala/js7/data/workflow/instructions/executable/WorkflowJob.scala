@@ -14,6 +14,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ScriptExecutable}
 import js7.data.order.Outcome
+import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.{NamedValues, NumberValue, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter
 import js7.data.workflow.instructions.ReturnCodeMeaning
@@ -50,7 +51,7 @@ final case class WorkflowJob private(
       case InternalExecutable(className, jobArguments, arguments) =>
         "internalJobClass=" + ValuePrinter.quoteString(className) ++
           (jobArguments.nonEmpty ?? ("jobArguments=" + WorkflowPrinter.namedValuesToString(jobArguments))) ++
-          (arguments.nonEmpty ?? ("arguments=" + ValuePrinter.objectExpressionToString(arguments)))
+          (arguments.nonEmpty ?? ("arguments=" + ValuePrinter.nameToExpressionToString(arguments)))
     }) +
     (returnCodeMeaning match {
       case ReturnCodeMeaning.Default => ""

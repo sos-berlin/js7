@@ -19,7 +19,7 @@ import js7.data.job.{InternalExecutable, JobResource, JobResourcePath, ScriptExe
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
-import js7.data.value.expression.Expression.{NamedValue, ObjectExpression, StringConstant}
+import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -216,9 +216,9 @@ object JobResourceTest
             |echo D=/$D/
             |echo E=/$E/
             |""".stripMargin,
-          env = ObjectExpression(Map(
+          env = Map(
             "D" -> StringConstant("D of JOB ENV"),
-            "E" -> StringConstant("E of JOB ENV")))),
+            "E" -> StringConstant("E of JOB ENV"))),
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 

@@ -1,18 +1,19 @@
 package js7.data.value
 
+import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.ObjectExpression
 
 object ValuePrinter
 {
-  def objectExpressionToString(objExpr: ObjectExpression): String = {
+  def nameToExpressionToString(nameToExpr: Map[String, Expression]): String = {
     val sb = new StringBuilder
-    appendObjectExpression(sb, objExpr)
+    appendNameToExpression(sb, nameToExpr)
     sb.toString
   }
 
-  def appendObjectExpression(sb: StringBuilder, env: ObjectExpression): Unit = {
+  def appendNameToExpression(sb: StringBuilder, nameToExpr: Map[String, Expression]): Unit = {
     sb.append('{')
-    for ((name, expr) <- env.nameToExpr) {
+    for ((name, expr) <- nameToExpr) {
       if (sb.last != '{') sb.append(", ")
       appendQuoted(sb, name)
       sb.append(": ")

@@ -10,7 +10,7 @@ import js7.data.job.{CommandLineExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
-import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, ObjectExpression, Or, StringConstant}
+import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -171,9 +171,9 @@ final class WorkflowParserTest extends AnyFreeSpec
               AgentPath("AGENT"),
               PathExecutable(
                 "my/executable",
-                env = ObjectExpression(Map(
+                env = Map(
                   "A" -> NumericConstant(1),
-                  "B" -> NamedValue.last("b")))),
+                  "B" -> NamedValue.last("b"))),
               returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)))))
   }
 

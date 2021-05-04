@@ -15,7 +15,7 @@ import js7.data.controller.ControllerCommand.{AddOrder, RemoveOrdersWhenTerminat
 import js7.data.job.ScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
+import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowParameters.MissingOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
@@ -106,8 +106,8 @@ object AddOrderTest
             |set -euo pipefail
             |echo "STRING=$STRING"
             |""".stripMargin,
-          env = ObjectExpression(Map(
-            "STRING" -> NamedValue.last("myString"))))))
+          env = Map(
+            "STRING" -> NamedValue.last("myString")))))
     ))
 
   private val paramWorkflow = Workflow(WorkflowPath("PARAMETERIZED-WORKFLOW"),
@@ -119,9 +119,9 @@ object AddOrderTest
             |echo "STRING=$STRING"
             |echo "NUMBER=$NUMBER"
             |""".stripMargin,
-          env = ObjectExpression(Map(
+          env = Map(
             "STRING" -> NamedValue.last("myString"),
-            "NUMBER" -> NamedValue.last("myNumber"))))))
+            "NUMBER" -> NamedValue.last("myNumber")))))
     ),
     orderRequirements = OrderRequirements(Some(WorkflowParameters(
       stringParameter,

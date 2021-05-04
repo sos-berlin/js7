@@ -16,7 +16,7 @@ import js7.data.item.VersionId
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderCancelMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
+import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.WorkflowPrinter.instructionToString
 import js7.data.workflow.instructions.Execute
@@ -120,7 +120,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
           InternalExecutable(
             jobClass.getName,
             jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
-            arguments = ObjectExpression(Map("STEP_ARG" -> NamedValue("ORDER_ARG")))),
+            arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG"))),
           taskLimit = n)),
         indexedOrderIds
           .map { case (i, orderId) => orderId -> Map("ORDER_ARG" -> NumberValue(i)) }
@@ -268,8 +268,8 @@ object InternalJobTest
         agentPath,
         InternalExecutable(
           implicitClass[A].getName,
-          arguments = ObjectExpression(Map(
-            "STEP_ARG" -> NamedValue("ORDER_ARG"))))))
+          arguments = Map(
+            "STEP_ARG" -> NamedValue("ORDER_ARG")))))
 
   private object SimpleJob extends InternalJob
   {

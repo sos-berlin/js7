@@ -7,8 +7,7 @@ import js7.base.problem.Checked
 import js7.base.utils.Lazy
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
-import js7.data.value.expression.Expression.ObjectExpression
-import js7.data.value.expression.Scope
+import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{StringValue, Value}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
@@ -88,9 +87,9 @@ trait ProcessJobExecutor extends JobExecutor
         .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
         .toMap
 
-  protected final def evalEnv(scope: Scope, envExpr: ObjectExpression): Checked[Map[String, String]] =
-    scope.evaluator.evalObjectExpression(envExpr)
-      .flatMap(_.nameToValue.toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
+  protected final def evalEnv(scope: Scope, nameToExpr: Map[String, Expression]): Checked[Map[String, String]] =
+    scope.evaluator.evalExpressionMap(nameToExpr)
+      .flatMap(_.toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
       .map(_.toMap)
 }
 

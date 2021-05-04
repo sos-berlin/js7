@@ -3,7 +3,7 @@ package js7.data.job
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.data.value.expression.Expression.{Add, NamedValue, NumericConstant, ObjectExpression, StringConstant}
+import js7.data.value.expression.Expression.{Add, NamedValue, NumericConstant, StringConstant}
 import js7.data.value.{NumberValue, StringValue}
 import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
@@ -27,9 +27,9 @@ final class ExecutableTest extends AnyFreeSpec
       testJson[Executable](
         RelativePathExecutable(
           "EXECUTABLE",
-          env = ObjectExpression(Map(
+          env = Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
-            "NUMBER" -> Add(NumericConstant(1), NumericConstant(2)))),
+            "NUMBER" -> Add(NumericConstant(1), NumericConstant(2))),
           v1Compatible = true),
         json"""
          {
@@ -57,9 +57,9 @@ final class ExecutableTest extends AnyFreeSpec
       testJson[Executable](
         AbsolutePathExecutable(
           "/EXECUTABLE",
-          env = ObjectExpression(Map(
+          env = Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
-            "NUMBER" -> NumericConstant(7))),
+            "NUMBER" -> NumericConstant(7)),
           v1Compatible = true),
         json"""
          {
@@ -86,9 +86,9 @@ final class ExecutableTest extends AnyFreeSpec
               StringConstant("ARG 3"),
               NamedValue.last("ARG4"),
               NamedValue.last("ARG5"))),
-          env = ObjectExpression(Map(
+          env = Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
-            "NUMBER" -> Add(NumericConstant(1), NumericConstant(2))))),
+            "NUMBER" -> Add(NumericConstant(1), NumericConstant(2)))),
         json"""
         {
           "TYPE": "CommandLineExecutable",
@@ -114,9 +114,9 @@ final class ExecutableTest extends AnyFreeSpec
       testJson[Executable](
         ScriptExecutable(
           "SCRIPT",
-          env = ObjectExpression(Map(
+          env = Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
-            "NUMBER" -> NumericConstant(7))),
+            "NUMBER" -> NumericConstant(7)),
           v1Compatible = true),
       json"""
         {
@@ -138,9 +138,9 @@ final class ExecutableTest extends AnyFreeSpec
           jobArguments = Map(
             "ARG" -> StringValue("An Argument for the intantiated class"),
             "NUMBER" -> NumberValue(3)),
-          arguments = ObjectExpression(Map(
+          arguments = Map(
             "MY-ARG" -> NamedValue.last("ARG"),
-            "NUMBER" -> NumericConstant(7)))),
+            "NUMBER" -> NumericConstant(7))),
       json"""
         {
           "TYPE": "InternalExecutable",

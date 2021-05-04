@@ -97,7 +97,6 @@ final class Evaluator(scope: Scope)
   private def evalListExpression(expr: ListExpression): Checked[ListValue] =
     expr.expressions.traverse(eval).map(ListValue.apply)
 
-  @deprecated
   def evalObjectExpression(expr: ObjectExpression): Checked[ObjectValue] =
     evalExpressionMap(expr.nameToExpr).map(ObjectValue(_))
 

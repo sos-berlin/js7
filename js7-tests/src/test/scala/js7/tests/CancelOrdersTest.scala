@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.value.Value.convenience._
-import js7.data.value.expression.Expression.{NamedValue, ObjectExpression}
+import js7.data.value.expression.Expression.NamedValue
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -228,7 +228,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 object CancelOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd",
-    ObjectExpression(Map("SLEEP" -> NamedValue.last("sleep"))))
+    Map("SLEEP" -> NamedValue.last("sleep")))
   private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 

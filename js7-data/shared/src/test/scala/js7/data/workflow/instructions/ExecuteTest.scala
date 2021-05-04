@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ScriptExecutable}
 import js7.data.source.SourcePos
-import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
@@ -65,9 +65,9 @@ final class ExecuteTest extends AnyFreeSpec
           WorkflowJob(
             AgentPath("AGENT"),
             ScriptExecutable("SCRIPT",
-              ObjectExpression(Map(
+              Map(
                 "ENV-VAR" -> NamedValue.last("VAR"),
-                "NUMBER" -> NumericConstant(7)))),
+                "NUMBER" -> NumericConstant(7))),
             Map("ARG" -> StringValue("VALUE"))),
           Map("ARG" -> NumberValue(1)),
           Some(SourcePos(1, 2))),

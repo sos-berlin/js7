@@ -6,7 +6,8 @@ import js7.base.utils.Identifier
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.value.ValuePrinter.{appendObjectExpression, appendQuoted, appendValue}
+import js7.data.value.ValuePrinter.{appendNameToExpression, appendQuoted, appendValue}
+import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter._
@@ -91,15 +92,15 @@ final class WorkflowPrinter(sb: StringBuilder) {
         }
         if (arguments.nonEmpty) {
           sb ++= ", arguments="
-          appendObjectExpression(sb, arguments)
+          appendNameToExpression(sb, arguments)
         }
     }
   }
 
-  def appendEnv(env: ObjectExpression): Unit =
+  def appendEnv(env: Map[String, Expression]): Unit =
     if (env.nonEmpty) {
       sb.append(", env=")
-      appendObjectExpression(sb, env)
+      appendNameToExpression(sb, env)
     }
 
   def appendWorkflowContent(nesting: Int, workflow: Workflow): Unit = {

@@ -15,7 +15,7 @@ import js7.data.item.VersionId
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.Expression.{NamedValue, NumericConstant, ObjectExpression}
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -88,7 +88,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
+        env = Map("myExitCode" -> NumericConstant(44))))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -96,7 +96,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
+        env = Map("myExitCode" -> NamedValue.last("orderValue"))))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
@@ -105,7 +105,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("defaultArg")))),
+        env = Map("myExitCode" -> NamedValue.last("defaultArg"))),
       defaultArguments = Map("defaultArg" -> NumberValue(44)))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
@@ -114,7 +114,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("NAME")))),
+        env = Map("myExitCode" -> NamedValue.last("NAME"))),
       defaultArguments = Map("NAME" -> NumberValue(99)))),  // ignored
     orderArguments = Map("NAME" -> NumberValue(44)),  // has priority
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
@@ -124,7 +124,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       RelativePathExecutable(
         "TEST-SCRIPT.cmd",
-        env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
+        env = Map("myExitCode" -> NumericConstant(44))))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -132,7 +132,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       AbsolutePathExecutable(
         myReturnCodeScriptFile.toString,
-        env = ObjectExpression(Map("myExitCode" -> NumericConstant(44)))))),
+        env = Map("myExitCode" -> NumericConstant(44))))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -147,7 +147,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       CommandLineExecutable(
         CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
-        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("orderValue")))))),
+        env = Map("myExitCode" -> NamedValue.last("orderValue"))))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
@@ -165,7 +165,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = ObjectExpression(Map("myExitCode" -> NamedValue.last("UNKNOWN")))))),
+        env = Map("myExitCode" -> NamedValue.last("UNKNOWN"))))),
     expectedOutcome = Outcome.Disrupted(Problem("No such named value: UNKNOWN")))
 
   addExecuteTest(
@@ -174,7 +174,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         agentPath,
         ScriptExecutable(
           returnCodeScript("myExitCode"),
-          env = ObjectExpression(Map("myExitCode" -> NamedValue.last("myExitCode")))),
+          env = Map("myExitCode" -> NamedValue.last("myExitCode"))),
         returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
     expectedOutcome = Outcome.Succeeded.rc(1))
@@ -182,7 +182,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Argument precedence" in {
     val executable = ScriptExecutable(
       returnCodeScript("myExitCode"),
-      env = ObjectExpression(Map("myExitCode" -> NamedValue.last("myExitCode"))))
+      env = Map("myExitCode" -> NamedValue.last("myExitCode")))
     testWithWorkflow(
       Workflow(WorkflowPath.Anonymous,
         Vector(
@@ -234,7 +234,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         agentPath,
         InternalExecutable(
           classOf[TestInternalJob].getName,
-          arguments = ObjectExpression(Map("ARG" -> NamedValue.last("ARG")))))),
+          arguments = Map("ARG" -> NamedValue.last("ARG"))))),
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
@@ -253,7 +253,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       testWithSpecialVariables(
         InternalExecutable(
           classOf[ReturnArgumentsInternalJob].getName,
-          arguments = ObjectExpression(nameToExpression)))
+          arguments = nameToExpression))
     }
 
     "Special variables in env expressions" in {
@@ -283,7 +283,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
               |  echo "JOBSTART_DATE=$JOBSTART_DATE"
               |)>>"$JS7_RETURN_VALUES"
               |""".stripMargin,
-          env = ObjectExpression(nameToExpression)))
+          env = nameToExpression))
     }
 
     def testWithSpecialVariables(executable: Executable): Unit = {

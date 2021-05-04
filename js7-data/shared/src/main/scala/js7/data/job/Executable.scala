@@ -14,20 +14,20 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.value.NamedValues
-import js7.data.value.expression.Expression.ObjectExpression
+import js7.data.value.expression.Expression
 
 sealed trait Executable
 {
-  def arguments: ObjectExpression
+  def arguments: Map[String, Expression]
 }
 
 sealed trait ProcessExecutable extends Executable
 {
-  final def arguments = ObjectExpression.empty
+  final def arguments = Map.empty
 
   def v1Compatible: Boolean
 
-  def env: ObjectExpression
+  def env: Map[String, Expression]
 }
 
 sealed trait PathExecutable
@@ -42,19 +42,19 @@ object PathExecutable
   def unapply(pathExecutable: PathExecutable) =
     Some((pathExecutable.path, pathExecutable.env, pathExecutable.v1Compatible))
 
-  def apply(path: String, env: ObjectExpression = ObjectExpression.empty, v1Compatible: Boolean = false) =
+  def apply(path: String, env: Map[String, Expression] = Map.empty, v1Compatible: Boolean = false) =
     unchecked(path, env, v1Compatible)
 
-  protected def unchecked(path: String, env: ObjectExpression, v1Compatible: Boolean = false) =
+  protected def unchecked(path: String, env: Map[String, Expression], v1Compatible: Boolean = false) =
     if (isAbsolute(path))
       AbsolutePathExecutable.checked(path, env, v1Compatible).orThrow
     else
       RelativePathExecutable.checked(path, env, v1Compatible).orThrow
 
-  def sh(path: String, env: ObjectExpression = ObjectExpression.empty) =
+  def sh(path: String, env: Map[String, Expression] = Map.empty) =
     apply(if (isWindows) s"$path.cmd" else path, env)
 
-  def checked(path: String, env: ObjectExpression = ObjectExpression.empty, v1Compatible: Boolean = false): Checked[PathExecutable] =
+  def checked(path: String, env: Map[String, Expression] = Map.empty, v1Compatible: Boolean = false): Checked[PathExecutable] =
     if (isAbsolute(path))
       AbsolutePathExecutable.checked(path, env, v1Compatible)
     else
@@ -73,7 +73,7 @@ object PathExecutable
   val jsonDecoder: Decoder[PathExecutable] =
     cursor => for {
       path <-cursor.get[String]("path")
-      env <- cursor.getOrElse[ObjectExpression]("env")(ObjectExpression.empty)
+      env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
       pathExecutable <- PathExecutable.checked(path, env, v1Compatible).toDecoderResult(cursor.history)
     } yield pathExecutable
@@ -81,7 +81,7 @@ object PathExecutable
 
 final case class AbsolutePathExecutable private(
   path: String,
-  env: ObjectExpression = ObjectExpression.empty,
+  env: Map[String, Expression] = Map.empty,
   v1Compatible: Boolean = false)
 extends PathExecutable
 {
@@ -90,7 +90,7 @@ extends PathExecutable
   def isAbsolute = true
 }
 object AbsolutePathExecutable {
-  def checked(path: String, env: ObjectExpression = ObjectExpression.empty, v1Compatible: Boolean) =
+  def checked(path: String, env: Map[String, Expression] = Map.empty, v1Compatible: Boolean) =
     if (path.isEmpty)
       Left(EmptyStringProblem(path))
     else if (!PathExecutable.isAbsolute(path))
@@ -101,7 +101,7 @@ object AbsolutePathExecutable {
 
 final case class RelativePathExecutable private(
   path: String,
-  env: ObjectExpression = ObjectExpression.empty,
+  env: Map[String, Expression] = Map.empty,
   v1Compatible: Boolean = false)
 extends PathExecutable
 {
@@ -115,7 +115,7 @@ extends PathExecutable
 object RelativePathExecutable {
   def checked(
     path: String,
-    env: ObjectExpression = ObjectExpression.empty,
+    env: Map[String, Expression] = Map.empty,
     v1Compatible: Boolean)
   : Checked[RelativePathExecutable] =
     if (path.isEmpty)
@@ -129,13 +129,13 @@ object RelativePathExecutable {
 
 final case class CommandLineExecutable(
   commandLineExpression: CommandLineExpression,
-  env: ObjectExpression = ObjectExpression.empty)
+  env: Map[String, Expression] = Map.empty)
 extends ProcessExecutable {
   def v1Compatible = false
 }
 object CommandLineExecutable
 {
-  def fromString(commandLine: String, env: ObjectExpression = ObjectExpression.empty) =
+  def fromString(commandLine: String, env: Map[String, Expression] = Map.empty) =
     CommandLineParser.parse(commandLine).map(apply(_, env))
 
   implicit val jsonEncoder: Encoder.AsObject[CommandLineExecutable] =
@@ -147,13 +147,13 @@ object CommandLineExecutable
     cursor => for {
       commandLine <- cursor.get[String]("command")
       commandExpr <- CommandLineParser.parse(commandLine).toDecoderResult(cursor.history)
-      env <- cursor.getOrElse[ObjectExpression]("env")(ObjectExpression.empty)
+      env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
     } yield CommandLineExecutable(commandExpr, env)
 }
 
 final case class ScriptExecutable(
   script: String,
-  env: ObjectExpression = ObjectExpression.empty,
+  env: Map[String, Expression] = Map.empty,
   v1Compatible: Boolean = false)
 extends ProcessExecutable
 object ScriptExecutable
@@ -167,7 +167,7 @@ object ScriptExecutable
   implicit val jsonDecoder: Decoder[ScriptExecutable] =
     cursor => for {
       script <- cursor.get[String]("script")
-      env <- cursor.getOrElse[ObjectExpression]("env")(ObjectExpression.empty)
+      env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
     } yield ScriptExecutable(script, env, v1Compatible)
 }
@@ -177,7 +177,7 @@ final case class InternalExecutable(
   /** Arguments for the job itself. */
   jobArguments: NamedValues = NamedValues.empty,
   /** Argument expressions evalutated for each `processOrder`. */
-  arguments: ObjectExpression = ObjectExpression.empty)
+  arguments: Map[String, Expression] = Map.empty)
   extends Executable
 
 object Executable
