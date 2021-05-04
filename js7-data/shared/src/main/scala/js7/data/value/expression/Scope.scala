@@ -2,10 +2,11 @@ package js7.data.value.expression
 
 import cats.kernel.Monoid
 import js7.base.problem.Checked
+import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.data.value.expression.Expression.FunctionCall
-import js7.data.value.expression.scopes.DoubleScope
-import js7.data.value.{NumberValue, Value}
+import js7.data.value.expression.scopes.{DoubleScope, LazyNamedValueScope, NamedValueScope}
+import js7.data.value.{NamedValues, NumberValue, Value}
 
 /**
   * @author Joacim Zschimmer
@@ -17,7 +18,8 @@ trait Scope
   def symbolToValue(symbol: String): Option[Checked[Value]] =
     None
 
-  val findValue: ValueSearch => Option[Value]
+  def findValue(valueSearch: ValueSearch): Checked[Option[Value]] =
+    Checked(None)
 
   final def evalBoolean(expression: Expression): Checked[Boolean] =
     evaluator.evalBoolean(expression).map(_.booleanValue)
@@ -28,7 +30,7 @@ trait Scope
   def evalFunctionCall(functionCall: FunctionCall): Option[Checked[Value]] =
     None
 
-  def namedValue(name: String): Option[Value] =
+  def namedValue(name: String): Checked[Option[Value]] =
     findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
 
   def parseAndEvalToBigDecimal(expression: String): Checked[BigDecimal] =
@@ -45,9 +47,16 @@ object Scope
 {
   val empty: Scope = Empty
 
-  private object Empty extends Scope {
-    val findValue = _ => None
-  }
+  def apply(namedValues: NamedValues): Scope =
+    fromNamedValues(namedValues)
+
+  def fromNamedValues(namedValues: NamedValues): Scope =
+    new NamedValueScope(namedValues)
+
+  def fromLazyNamedValues(namedValues: Map[String, Lazy[Checked[Value]]]): Scope =
+    new LazyNamedValueScope(namedValues)
+
+  private object Empty extends Scope
 
   implicit object monoid extends Monoid[Scope] {
     def empty: Scope =
