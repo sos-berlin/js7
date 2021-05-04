@@ -56,15 +56,16 @@ final class CommandLineEvaluatorTest extends AnyFreeSpec
     new CommandLineEvaluator(
       Evaluator(
         new Scope {
-          val findValue = {
-            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NAME")) =>
-              Some(StringValue("MY NAME"))
+          override def findValue(search: ValueSearch) =
+            Right(search match {
+              case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NAME")) =>
+                Some(StringValue("MY NAME"))
 
-            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NUMERIC")) =>
-              Some(NumberValue(7))
+              case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NUMERIC")) =>
+                Some(NumberValue(7))
 
-            case _ => None
-          }
+              case _ => None
+            })
         }))
 
   private def eval(commandLine: String): Checked[CommandLine] =

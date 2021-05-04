@@ -28,36 +28,37 @@ final class EvaluatorTest extends AnyFreeSpec
           case _ => None
         }
 
-        val findValue = {
-          case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
-            Map(
-              "ASTRING" -> StringValue("AA"),
-              "ANUMBER" -> NumberValue(7),
-              "ABOOLEAN" -> BooleanValue(true),
-              "returnCode" -> NumberValue(1)
-            ).get(name)
+        override def findValue(search: ValueSearch) =
+          Right(search match {
+            case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
+              Map(
+                "ASTRING" -> StringValue("AA"),
+                "ANUMBER" -> NumberValue(7),
+                "ABOOLEAN" -> BooleanValue(true),
+                "returnCode" -> NumberValue(1)
+              ).get(name)
 
-          case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
-            Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply
+            case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
+              Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply
 
-          case ValueSearch(LastExecuted(ByLabel(Label("LABEL"))), Name(name)) =>
-            Map(
-              "KEY" -> StringValue("LABEL-VALUE"),
-              "returnCode" -> NumberValue(2)
-            ).get(name)
+            case ValueSearch(LastExecuted(ByLabel(Label("LABEL"))), Name(name)) =>
+              Map(
+                "KEY" -> StringValue("LABEL-VALUE"),
+                "returnCode" -> NumberValue(2)
+              ).get(name)
 
-          case ValueSearch(LastExecuted(ByWorkflowJob(WorkflowJob.Name("JOB"))), Name(name)) =>
-            Map(
-              "KEY" -> StringValue("JOB-VALUE"),
-              "returnCode" -> NumberValue(3)
-            ).get(name)
+            case ValueSearch(LastExecuted(ByWorkflowJob(WorkflowJob.Name("JOB"))), Name(name)) =>
+              Map(
+                "KEY" -> StringValue("JOB-VALUE"),
+                "returnCode" -> NumberValue(3)
+              ).get(name)
 
-          case ValueSearch(ValueSearch.Argument, Name(name)) =>
-            Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply
+            case ValueSearch(ValueSearch.Argument, Name(name)) =>
+              Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply
 
-          case o =>
-            None
-        }
+            case o =>
+              None
+          })
 
         override def evalFunctionCall(functionCall: FunctionCall): Option[Checked[Value]] =
           functionCall match {

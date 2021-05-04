@@ -1,10 +1,13 @@
 package js7.executor.forjava.internal
 
+import io.vavr.control.{Either => VEither}
 import java.util.Optional
 import javax.annotation.Nonnull
+import js7.base.problem.Problem
 import js7.data.value.Value
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.order.JOrder
+import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.JWorkflow
 import js7.executor.internal.InternalJob.Step
 import scala.jdk.CollectionConverters._
@@ -41,8 +44,11 @@ trait JavaJobStep extends JavaWrapper
     * the default values is returned (in case it exists).
     * <p>
     * Does not return arguments declared in the job.
+    * <p>
+    * Returns `Left` only on lazy evaluation.
     * */
   @Nonnull
-  def namedValue(name: String): Optional[Value] =
-    asScala.processOrder.scope.namedValue(name).toJava
+  def namedValue(name: String): VEither[Problem, Optional[Value]] =
+    asScala.processOrder.scope.namedValue(name)
+      .map(_.toJava).toVavr
 }

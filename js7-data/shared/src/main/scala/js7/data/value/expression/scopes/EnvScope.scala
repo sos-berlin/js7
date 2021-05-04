@@ -8,8 +8,6 @@ import js7.data.value.expression.{Expression, Scope}
 
 object EnvScope extends Scope
 {
-  val findValue = _ => None
-
   override def evalFunctionCall(functionCall: Expression.FunctionCall) =
     functionCall match {
       case FunctionCall("env", Seq(Argument(nameExpr, None | Some("name")))) =>

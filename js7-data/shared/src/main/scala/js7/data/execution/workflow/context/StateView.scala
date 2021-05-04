@@ -68,31 +68,32 @@ object StateView
         case _ => None
       }
 
-      val findValue = {
-        case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
-          argument(name)
+      override def findValue(search: ValueSearch) =
+        Right(search match {
+          case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
+            argument(name)
 
-        case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
-          order.historicOutcomes
-            .reverseIterator
-            .collectFirst {
-              case HistoricOutcome(_, outcome: Outcome.Completed)
-                if outcome.namedValues.contains(name) =>
-                outcome.namedValues(name)
-            }
-            .orElse(argument(name))
-            .orElse(nameToMaybeDefault(name))
+          case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
+            order.historicOutcomes
+              .reverseIterator
+              .collectFirst {
+                case HistoricOutcome(_, outcome: Outcome.Completed)
+                  if outcome.namedValues.contains(name) =>
+                  outcome.namedValues(name)
+              }
+              .orElse(argument(name))
+              .orElse(nameToMaybeDefault(name))
 
-        case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
-          order.historicOutcomes
-            .reverseIterator
-            .collectFirst {
-              case HistoricOutcome(pos, outcome: Outcome.Completed)
-                if workflow.positionMatchesSearch(pos, positionSearch) =>
-                whatToValue(outcome, what)
-            }
-            .flatten
-      }
+          case ValueSearch(ValueSearch.LastExecuted(positionSearch), what) =>
+            order.historicOutcomes
+              .reverseIterator
+              .collectFirst {
+                case HistoricOutcome(pos, outcome: Outcome.Completed)
+                  if workflow.positionMatchesSearch(pos, positionSearch) =>
+                  whatToValue(outcome, what)
+              }
+              .flatten
+        })
 
       private def argument(name: String): Option[Value] =
         order.arguments.get(name) orElse

@@ -10,17 +10,18 @@ final class NowScope extends Scope
   lazy val now = Timestamp.now
   private val timestampScope = new TimestampScope("now", Some(now))
 
-  override val findValue = {
+  override def findValue(search: ValueSearch) =
+    Right(search match {
     // $epochMilli
-    case ValueSearch(LastOccurred, Name("epochMilli")) =>
-      Some(NumberValue(now.toEpochMilli))
+      case ValueSearch(LastOccurred, Name("epochMilli")) =>
+        Some(NumberValue(now.toEpochMilli))
 
-    // $epochSecond
-    case ValueSearch(LastOccurred, Name("epochSecond")) =>
-      Some(NumberValue(now.toEpochMilli / 1000))
+      // $epochSecond
+      case ValueSearch(LastOccurred, Name("epochSecond")) =>
+        Some(NumberValue(now.toEpochMilli / 1000))
 
-    case _ => None
-  }
+      case _ => None
+    })
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall) =
     timestampScope.evalFunctionCall(functionCall)

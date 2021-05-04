@@ -14,25 +14,26 @@ extends Scope
 {
   import ValueSearch.{LastOccurred, Name}
 
-  val findValue = {
-    // $orderWatchPath
-    case ValueSearch(LastOccurred, Name("orderWatchPath")) =>
-      Some(StringValue(orderWatchPath.string))
+  override def findValue(search: ValueSearch) =
+    Right(search match {
+      // $orderWatchPath
+      case ValueSearch(LastOccurred, Name("orderWatchPath")) =>
+        Some(StringValue(orderWatchPath.string))
 
-    // $0, $1, ...
-    case ValueSearch(LastOccurred, Name(NumberRegex(nr))) =>
-      try {
-        val index = nr.toInt
-        if (index >= 0 && index <= matchedMatcher.groupCount)
-          Option(StringValue(matchedMatcher.group(index)))
-        else
+      // $0, $1, ...
+      case ValueSearch(LastOccurred, Name(NumberRegex(nr))) =>
+        try {
+          val index = nr.toInt
+          if (index >= 0 && index <= matchedMatcher.groupCount)
+            Option(StringValue(matchedMatcher.group(index)))
+          else
+            None
+        } catch { case NonFatal(_) =>
           None
-      } catch { case NonFatal(_) =>
-        None
-      }
+        }
 
-    case _ => None
-  }
+      case _ => None
+    })
 }
 
 object FileWatchScope

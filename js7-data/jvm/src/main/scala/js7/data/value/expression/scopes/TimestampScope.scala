@@ -4,16 +4,13 @@ import java.time.format.DateTimeFormatter
 import java.time.{OffsetDateTime, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
+import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
-import js7.data.value.expression.{Expression, Scope, ValueSearch}
-import js7.data.value.{StringValue, Value}
+import js7.data.value.expression.{Expression, Scope}
 
 final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp]) extends Scope
 {
   private lazy val maybeInstant = lazyTimestamp.map(_.toInstant)
-
-  val findValue: ValueSearch => Option[Value] =
-    _ => None
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall) =
     functionCall match {

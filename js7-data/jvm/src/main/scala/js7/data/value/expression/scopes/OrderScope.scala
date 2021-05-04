@@ -5,7 +5,6 @@ import js7.data.value.expression.{Expression, Scope}
 
 final class OrderScope(order: Order[Order.Processing]) extends Scope
 {
-  val findValue = _ => None
   private val timestampScope = new TimestampScope("scheduledOrEmpty", order.scheduledFor)
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall) =
