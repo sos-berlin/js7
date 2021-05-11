@@ -179,7 +179,8 @@ final class ShellScriptProcessTest extends AnyFreeSpec
         CommandLine(executable.toString :: Nil),
         processConfiguration,
         stdObservers,
-        whenTerminated = Task.fromFuture(outErrFut).as(()))
+        whenTerminated = Task.fromFuture(outErrFut).as(())
+      ).map(_.orThrow)
     }
 
   private def withScriptFile[A](body: Path => A): A = {

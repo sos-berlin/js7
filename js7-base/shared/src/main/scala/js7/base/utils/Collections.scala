@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.Monoid
 import javax.annotation.Nullable
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
@@ -31,6 +32,9 @@ object Collections
     implicit final class RichIterableOnce[CC[x] <: IterableOnce[x], A](private val iterableOnce: CC[A])
     extends AnyVal
     {
+      def fold_(implicit A: Monoid[A]): A =
+        A.combineAll(iterableOnce)
+
       def countEquals: Map[A, Int] =
         iterableOnce.iterator.to(Iterable) groupBy identity map { case (k, v) => k -> v.size }
 

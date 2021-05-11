@@ -1,6 +1,6 @@
 package js7.executor.task
 
-import js7.base.io.process.ProcessSignal
+import js7.base.io.process.{KeyLogin, ProcessSignal}
 import js7.data.order.{OrderId, Outcome}
 import js7.executor.StdObservers
 import js7.executor.configuration.TaskConfiguration
@@ -13,7 +13,11 @@ trait TaskRunner
 {
   def terminate: Task[Unit]
 
-  def processOrder(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
+  def processOrder(
+    orderId: OrderId,
+    env: Map[String, String],
+    stdObservers: StdObservers,
+    login: Option[KeyLogin])
   : Task[Outcome.Completed]
 
   def kill(signal: ProcessSignal): Unit

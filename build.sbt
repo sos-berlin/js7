@@ -174,6 +174,7 @@ lazy val js7 = (project in file("."))
     `js7-tests`,
     `js7-license`,
     `js7-license-fake`,
+    `js7-executor-for-windows`,
     `js7-build-info`)
   .settings(publish / skip := true)
 
@@ -473,7 +474,7 @@ lazy val `js7-core` = project
   }
 
 lazy val `js7-executor` = project
-  .dependsOn(`js7-core`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-executor-for-windows`, `js7-core`, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -494,6 +495,18 @@ lazy val `js7-executor-for-java` = project
       hamcrest % "test" ++
       scalaTest % "test" ++
       scalaCheck % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
+lazy val `js7-executor-for-windows` = project
+  .dependsOn(`js7-base`.jvm, `js7-tester`.jvm % "test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      jna ++
+      scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
   }

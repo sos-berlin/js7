@@ -8,7 +8,6 @@ import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, 
 import js7.data.lock.LockPath
 import js7.data.value.ValuePrinter.{appendNameToExpression, appendQuoted, appendValue}
 import js7.data.value.expression.Expression
-import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter._
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -66,19 +65,19 @@ final class WorkflowPrinter(sb: StringBuilder) {
       sb.append(o.toBigDecimalSeconds)  // TODO Use floating point
     }
     job.executable match {
-      case PathExecutable(path, envExpr, v1Compatible) =>
+      case PathExecutable(path, envExpr, login, v1Compatible) =>
         if (v1Compatible) sb ++= ", v1Compatible=true"
         appendEnv(envExpr)
         sb ++= ", executable="
         appendQuoted(path)
 
-      case ScriptExecutable(script, envExpr, v1Compatible) =>
+      case ScriptExecutable(script, envExpr, login, v1Compatible) =>
         if (v1Compatible) sb ++= ", v1Compatible=true"
         appendEnv(envExpr)
         sb ++= ", script="
         appendQuotedExpression(script)  // Last argument, because the script may have multiple lines
 
-      case CommandLineExecutable(command, envExpr) =>
+      case CommandLineExecutable(command, envExpr, login) =>
         appendEnv(envExpr)
         sb ++= ", command="
         appendQuoted(command.toString)

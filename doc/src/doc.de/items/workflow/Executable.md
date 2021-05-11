@@ -75,12 +75,26 @@ Der Workflow, der den Code enthält, muss signiert sein.
 ```json
 {
   "TYPE": "ScriptExecutable",
-  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"HELLO!\""
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"HELLO!\"",
+  "env": {
+    "ENV-VAR": "$$VAR",
+    "NUMBER": "7"
+  },
+  "login": {
+    "credentialKey": "CREDENTIAL-KEY",
+    "withUserProfile": true
+  },
+  "v1Compatible": true
 }
 ```
 
 *Parameter*
-*script
+* `script` — Das Skript
+* `env` — optional, die errechneten Umgebungsvariablen für den Prozess
+* `login` — optional für Windows-Logon mit den Parametern
+  * `credentialKey` — der in Windows hinterlegte Credential Key
+  * `withUserProfile` — true/false, ob für den Prozess das Nutzer-Profil geladen werden soll.
+* `v1Compatible` — optional, true/false, zur Kompatibilität mit Jobs von JobScheduler 1.
 
 
 ## PathExecutable

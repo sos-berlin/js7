@@ -118,8 +118,7 @@ object Processes
         Seq(stderr.utf8String, stdout.utf8String).mkString("\n")
   }
 
-
-  implicit final class RobustlyStartProcess(private val delegate: ProcessBuilder) extends AnyVal {
+  implicit final class RobustlyStartProcess(private val processBuilder: ProcessBuilder) extends AnyVal {
     /**
       * Like ProcessBuilder.start, but retries after IOException("error=26, Text file busy").
       *
@@ -129,7 +128,7 @@ object Processes
     def startRobustly(durations: Iterable[FiniteDuration] = RobustlyStartProcess.DefaultDurations)
     : Task[Process] = {
       val durationsIterator = durations.iterator
-      Task(delegate.start())
+      Task(processBuilder.start())
         .onErrorRestartLoop(()) {
           case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
             logger.warn(s"Retrying process start after error: $e")

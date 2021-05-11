@@ -3,8 +3,9 @@ package js7.executor.process
 import java.nio.file.Path
 import javax.inject.Singleton
 import js7.base.generic.Completed
-import js7.base.io.process.{ProcessSignal, ReturnCode}
+import js7.base.io.process.{KeyLogin, ProcessSignal, ReturnCode}
 import js7.base.log.Logger
+import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
@@ -66,23 +67,25 @@ extends TaskRunner
       }
     }
 
-  def processOrder(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
+  def processOrder(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers, login: Option[KeyLogin])
   : Task[Outcome.Completed] =
-    for (returnCode <- runProcess(orderId, env, stdObservers)) yield
-      conf.toOutcome(fetchReturnValuesThenDeleteFile(), returnCode)
+    runProcess(orderId, env, stdObservers, login)
+      .map {
+        case Left(problem) => Outcome.Failed.fromProblem(problem)
+        case Right(returnCode) => conf.toOutcome(fetchReturnValuesThenDeleteFile(), returnCode)
+      }
 
-  private def runProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers): Task[ReturnCode] =
-    for {
-      richProcess <- startProcess(env, stdObservers)
-      _ <- Task {
+  private def runProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers, login: Option[KeyLogin])
+  : Task[Checked[ReturnCode]] =
+    startProcess(env, stdObservers, login)
+      .flatMapT { richProcess =>
         logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
+        richProcess.terminated.materialize
+          .flatMap { tried =>
+            logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
+            Task.fromTry(tried.map(Right(_)))
+          }
       }
-      tried <- richProcess.terminated.materialize
-      _ <- Task {
-        logger.info(s"Process '$richProcess' terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
-      }
-      returnCode <- Task.fromTry(tried)
-    } yield returnCode
 
   private def fetchReturnValuesThenDeleteFile(): NamedValues = {
     val result = returnValuesProvider.read() // TODO Catch exceptions
@@ -95,7 +98,8 @@ extends TaskRunner
     result
   }
 
-  private def startProcess(env: Map[String, String], stdObservers: StdObservers): Task[RichProcess] =
+  private def startProcess(env: Map[String, String], stdObservers: StdObservers, login: Option[KeyLogin])
+  : Task[Checked[RichProcess]] =
     Task.deferAction { implicit scheduler =>
       if (killedBeforeStart)
         Task.raiseError(new RuntimeException(s"$taskId killed before start"))
@@ -104,14 +108,15 @@ extends TaskRunner
           workingDirectory = Some(workingDirectory),
           additionalEnvironment = env + returnValuesProvider.toEnv,
           maybeTaskId = Some(taskId),
-          killScriptOption = killScript)
+          killScriptOption = killScript,
+          login = login)
         startProcessLock
           .lock(
             startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
-          .map { richProcess =>
+          .map(_.map { richProcess =>
             terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
             richProcessOnce := richProcess
-          }
+          })
       }
     }
 

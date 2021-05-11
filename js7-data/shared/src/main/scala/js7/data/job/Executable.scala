@@ -7,6 +7,7 @@ import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.io.process.KeyLogin
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidNameProblem
@@ -25,9 +26,11 @@ sealed trait ProcessExecutable extends Executable
 {
   final def arguments = Map.empty
 
-  def v1Compatible: Boolean
-
   def env: Map[String, Expression]
+
+  def login: Option[KeyLogin]
+
+  def v1Compatible: Boolean
 }
 
 sealed trait PathExecutable
@@ -40,25 +43,40 @@ extends ProcessExecutable
 object PathExecutable
 {
   def unapply(pathExecutable: PathExecutable) =
-    Some((pathExecutable.path, pathExecutable.env, pathExecutable.v1Compatible))
+    Some((pathExecutable.path, pathExecutable.env, pathExecutable.login, pathExecutable.v1Compatible))
 
-  def apply(path: String, env: Map[String, Expression] = Map.empty, v1Compatible: Boolean = false) =
-    unchecked(path, env, v1Compatible)
+  def apply(
+    path: String,
+    env: Map[String, Expression] = Map.empty,
+    login: Option[KeyLogin] = None,
+    v1Compatible: Boolean = false)
+  =
+    unchecked(path, env, login, v1Compatible)
 
-  protected def unchecked(path: String, env: Map[String, Expression], v1Compatible: Boolean = false) =
+  protected def unchecked(
+    path: String,
+    env: Map[String, Expression],
+    login: Option[KeyLogin] = None,
+    v1Compatible: Boolean = false)
+  =
     if (isAbsolute(path))
-      AbsolutePathExecutable.checked(path, env, v1Compatible).orThrow
+      AbsolutePathExecutable.checked(path, env, login, v1Compatible).orThrow
     else
-      RelativePathExecutable.checked(path, env, v1Compatible).orThrow
+      RelativePathExecutable.checked(path, env, login, v1Compatible).orThrow
 
   def sh(path: String, env: Map[String, Expression] = Map.empty) =
     apply(if (isWindows) s"$path.cmd" else path, env)
 
-  def checked(path: String, env: Map[String, Expression] = Map.empty, v1Compatible: Boolean = false): Checked[PathExecutable] =
+  def checked(
+    path: String,
+    env: Map[String, Expression] = Map.empty,
+    login: Option[KeyLogin] = None,
+    v1Compatible: Boolean = false)
+  : Checked[PathExecutable] =
     if (isAbsolute(path))
-      AbsolutePathExecutable.checked(path, env, v1Compatible)
+      AbsolutePathExecutable.checked(path, env, login, v1Compatible)
     else
-      RelativePathExecutable.checked(path, env, v1Compatible)
+      RelativePathExecutable.checked(path, env, login, v1Compatible)
 
   private[job] def isAbsolute(path: String) =
     path.startsWith("/") || path.startsWith("\\")/*also on Unix, to be reliable*/
@@ -68,20 +86,23 @@ object PathExecutable
       TypedJsonCodec.typeField[PathExecutable],
       "path" -> o.path.asJson,
       "env" -> o.env.??.asJson,
+      "login" -> o.login.asJson,
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
   val jsonDecoder: Decoder[PathExecutable] =
     cursor => for {
       path <-cursor.get[String]("path")
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
+      login <- cursor.get[Option[KeyLogin]]("login")
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
-      pathExecutable <- PathExecutable.checked(path, env, v1Compatible).toDecoderResult(cursor.history)
+      pathExecutable <- PathExecutable.checked(path, env, login, v1Compatible).toDecoderResult(cursor.history)
     } yield pathExecutable
 }
 
 final case class AbsolutePathExecutable private(
   path: String,
   env: Map[String, Expression] = Map.empty,
+  login: Option[KeyLogin] = None,
   v1Compatible: Boolean = false)
 extends PathExecutable
 {
@@ -90,18 +111,23 @@ extends PathExecutable
   def isAbsolute = true
 }
 object AbsolutePathExecutable {
-  def checked(path: String, env: Map[String, Expression] = Map.empty, v1Compatible: Boolean) =
+  def checked(
+    path: String,
+    env: Map[String, Expression] = Map.empty,
+    login: Option[KeyLogin] = None,
+    v1Compatible: Boolean) =
     if (path.isEmpty)
       Left(EmptyStringProblem(path))
     else if (!PathExecutable.isAbsolute(path))
       Left(InvalidNameProblem("AbsolutePathExecutable", path))
     else
-      Right(new AbsolutePathExecutable(path, env, v1Compatible))
+      Right(new AbsolutePathExecutable(path, env, login, v1Compatible))
 }
 
 final case class RelativePathExecutable private(
   path: String,
   env: Map[String, Expression] = Map.empty,
+  login: Option[KeyLogin] = None,
   v1Compatible: Boolean = false)
 extends PathExecutable
 {
@@ -116,7 +142,8 @@ object RelativePathExecutable {
   def checked(
     path: String,
     env: Map[String, Expression] = Map.empty,
-    v1Compatible: Boolean)
+    login: Option[KeyLogin] = None,
+    v1Compatible: Boolean = false)
   : Checked[RelativePathExecutable] =
     if (path.isEmpty)
       Left(EmptyStringProblem("RelativePathExecutable"))
@@ -124,12 +151,13 @@ object RelativePathExecutable {
       || path.contains("/.") || path.head.isWhitespace || path.last.isWhitespace)
       Left(InvalidNameProblem("RelativePathExecutable", path))
     else
-      Right(new RelativePathExecutable(path, env, v1Compatible))
+      Right(new RelativePathExecutable(path, env, login, v1Compatible))
 }
 
 final case class CommandLineExecutable(
   commandLineExpression: CommandLineExpression,
-  env: Map[String, Expression] = Map.empty)
+  env: Map[String, Expression] = Map.empty,
+  login: Option[KeyLogin] = None)
 extends ProcessExecutable {
   def v1Compatible = false
 }
@@ -141,19 +169,22 @@ object CommandLineExecutable
   implicit val jsonEncoder: Encoder.AsObject[CommandLineExecutable] =
     o => JsonObject(
       "command" -> o.commandLineExpression.toString.asJson,
-      "env" -> o.env.??.asJson)
+      "env" -> o.env.??.asJson,
+      "login" -> o.login.asJson)
 
   implicit val jsonDecoder: Decoder[CommandLineExecutable] =
     cursor => for {
       commandLine <- cursor.get[String]("command")
       commandExpr <- CommandLineParser.parse(commandLine).toDecoderResult(cursor.history)
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
-    } yield CommandLineExecutable(commandExpr, env)
+      login <- cursor.get[Option[KeyLogin]]("login")
+    } yield CommandLineExecutable(commandExpr, env, login)
 }
 
 final case class ScriptExecutable(
   script: String,
   env: Map[String, Expression] = Map.empty,
+  login: Option[KeyLogin] = None,
   v1Compatible: Boolean = false)
 extends ProcessExecutable
 object ScriptExecutable
@@ -162,14 +193,16 @@ object ScriptExecutable
     o => JsonObject(
       "script" -> o.script.asJson,
       "env" -> o.env.??.asJson,
+      "login" -> o.login.asJson,
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
   implicit val jsonDecoder: Decoder[ScriptExecutable] =
     cursor => for {
       script <- cursor.get[String]("script")
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
+      login <- cursor.get[Option[KeyLogin]]("login")
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
-    } yield ScriptExecutable(script, env, v1Compatible)
+    } yield ScriptExecutable(script, env, login, v1Compatible)
 }
 
 final case class InternalExecutable(

@@ -59,7 +59,8 @@ trait ProcessJobExecutor extends JobExecutor
               .processOrder(
                 order.id,
                 (v1Env(processOrder).view ++ startProcess.env ++ jobResourcesEnv).toMap,
-                processOrder.stdObservers)
+                processOrder.stdObservers,
+                executable.login)
               .guarantee(taskRunner.terminate)
         }
 

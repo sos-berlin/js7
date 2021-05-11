@@ -1,29 +1,28 @@
 package js7.executor.process
 
-import cats.effect.{ExitCase, ExitCode}
+import cats.effect.ExitCase
 import java.io.{InputStream, InputStreamReader}
-import js7.base.io.file.FileUtils.syntax._
+import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.io.process.Processes._
+import js7.base.io.process.{JavaProcess, Js7Process}
 import js7.base.log.Logger
 import js7.base.monixutils.UnbufferedReaderObservable
+import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.IOExecutor
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.CommandLine
 import js7.executor.StdObservers
-import js7.executor.process.RichProcess.tryDeleteFile
+import js7.executor.forwindows.WindowsProcess
+import js7.executor.forwindows.WindowsProcess.StartWindowsProcess
 import monix.eval.Task
 import monix.reactive.Observable
-import monix.reactive.subjects.PublishSubject
 import scala.concurrent.{ExecutionContext, Promise}
 import scala.jdk.CollectionConverters._
 
-/**
-  * @author Joacim Zschimmer
-  */
 class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
-  process: Process)
+  process: Js7Process)
   (implicit ec: ExecutionContext, iox: IOExecutor)
 extends RichProcess(processConfiguration, process)
 {
@@ -40,13 +39,33 @@ object ShellScriptProcess
     stdObservers: StdObservers,
     whenTerminated: Task[Unit] = Task.unit)
     (implicit iox: IOExecutor)
-  : Task[ShellScriptProcess] =
+  : Task[Checked[ShellScriptProcess]] =
     Task.deferAction { implicit scheduler =>
-      val processBuilder = new ProcessBuilder(toShellCommandArguments(
-        commandLine.file, commandLine.arguments.tail ++ conf.idArgumentOption/*TODO Should not be an argument*/).asJava)
-      for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
-      processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
-      for (process <- processBuilder.startRobustly()) yield {
+      val commandArgs = toShellCommandArguments(
+        commandLine.file,
+        commandLine.arguments.tail ++ conf.idArgumentOption/*TODO Should not be an argument*/)
+      // Check argsToCommandLine here to avoid exception in WindowsProcess.start
+      val checkedProcess: Task[Checked[Js7Process]] =
+        conf.login match {
+          case None =>
+            val processBuilder = new ProcessBuilder(commandArgs.asJava)
+            for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
+            processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
+            processBuilder.startRobustly().map(o => Right(JavaProcess(o)))
+          case Some(keyLogin) =>
+            Task.pure(
+              WindowsProcess.startWithKeyLogin(
+                StartWindowsProcess(
+                  commandArgs,
+                  stdinRedirect = PIPE,
+                  stdoutRedirect = PIPE,
+                  stderrRedirect = PIPE,
+                  additionalEnv = conf.additionalEnvironment),
+                  //conf.workingDirectory),
+                Some(keyLogin)))
+        }
+
+      checkedProcess.map(_.map { process =>
         def toObservable(in: InputStream, onTerminated: Promise[Unit]): Observable[String] =
           UnbufferedReaderObservable(Task(new InputStreamReader(in)), stdObservers.charBufferSize)
             .executeOn(iox.scheduler)
@@ -56,8 +75,8 @@ object ShellScriptProcess
             }
 
         val outClosed, errClosed = Promise[Unit]()
-        toObservable(process.getInputStream, outClosed).subscribe(stdObservers.out)
-        toObservable(process.getErrorStream, errClosed).subscribe(stdObservers.err)
+        toObservable(process.stdout, outClosed).subscribe(stdObservers.out)
+        toObservable(process.stderr, errClosed).subscribe(stdObservers.err)
 
         new ShellScriptProcess(conf, process) {
           override val terminated =
@@ -76,6 +95,6 @@ object ShellScriptProcess
               } yield returnCode
             ).memoize
         }
-      }
+      })
     }
 }

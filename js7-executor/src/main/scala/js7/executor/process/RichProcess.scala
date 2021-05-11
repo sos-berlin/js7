@@ -1,7 +1,6 @@
 package js7.executor.process
 
 import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
-import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
@@ -9,7 +8,7 @@ import java.nio.file.Path
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes._
-import js7.base.io.process.{ProcessSignal, ReturnCode, StdoutOrStderr}
+import js7.base.io.process.{JavaProcess, Js7Process, ProcessSignal, ReturnCode, StdoutOrStderr}
 import js7.base.log.LogLevel.syntax._
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
@@ -30,11 +29,11 @@ import scala.util.control.NonFatal
   */
 class RichProcess protected[process](
   val processConfiguration: ProcessConfiguration,
-  process: Process)
+  process: Js7Process)
   (implicit iox: IOExecutor, ec: ExecutionContext)
 {
   private val runningSince = now
-  val pidOption: Option[Pid] = processToPidOption(process)
+  val pidOption: Option[Pid] = process.pid
   @volatile var _killed = false
   private val logger = Logger.withPrefix[this.type](toString)
   /**
@@ -44,12 +43,10 @@ class RichProcess protected[process](
 
   private lazy val _terminated: Task[ReturnCode] =
     Task.defer {
-      if (process.isAlive)
+      process.returnCode.map(Task.pure).getOrElse(
         ioTask {
           waitForProcessTermination(process)
-        }
-      else
-        Task.pure(ReturnCode(process.exitValue))
+        })
     }.memoize
 
   def duration = runningSince.elapsed
@@ -88,7 +85,7 @@ class RichProcess protected[process](
       logger.info("Executing kill script: " + args.mkString("  "))
       val onKillProcess = new ProcessBuilder(args.asJava).redirectOutput(INHERIT).redirectError(INHERIT).start()
       ioFuture {
-        waitForProcessTermination(onKillProcess)
+        waitForProcessTermination(JavaProcess(onKillProcess))
         val exitCode = onKillProcess.exitValue
         logger.log(if (exitCode == 0) LogLevel.Debug else LogLevel.Warn, s"Kill script '${args(0)}' has returned exit code $exitCode")
         Completed
@@ -108,27 +105,24 @@ class RichProcess protected[process](
   private[process] final def isAlive = process.isAlive
 
   final def stdin: OutputStream =
-    process.getOutputStream
+    process.stdin
 
   override def toString =
-    processToString(process, pidOption)
+    process.toString
 }
 
 object RichProcess
 {
   private val logger = Logger(getClass)
 
-  private def toRedirect(pathOption: Option[Path]) =
-    pathOption.fold(INHERIT)(o => Redirect.to(o.toFile))
-
   def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
     (StdoutOrStderr.values map { o => o -> newLogFile(directory, id, o) }).toMap
 
-  private def waitForProcessTermination(process: Process): ReturnCode = {
-    logger.trace(s"waitFor ${processToString(process)} ...")
+  private def waitForProcessTermination(process: Js7Process): ReturnCode = {
+    logger.trace(s"waitFor $process ...")
     val rc = process.waitFor()
-    logger.trace(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
-    ReturnCode(rc)
+    logger.trace(s"waitFor $process exitCode=$rc")
+    rc
   }
 
   def tryDeleteFile(file: Path) = tryDeleteFiles(file :: Nil)

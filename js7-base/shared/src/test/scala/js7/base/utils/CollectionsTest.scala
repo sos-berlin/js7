@@ -37,6 +37,11 @@ final class CollectionsTest extends AnyFreeSpec
     assert(Iterator(1, 2, 3).unless(true).toList == Nil)
   }
 
+  "fold_" in {
+    assert(Seq[String]().fold_ == "")
+    assert(Seq("A", "BB", "CCC").fold_ == "ABBCCC")
+  }
+
   "foldFast" in {
     def op(a: String, b: String) = s"$a+$b"
     assert(Nil.foldFast("0")(op) == "0")

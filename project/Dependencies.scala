@@ -30,6 +30,7 @@ object Dependencies
   val diffxVersion = "0.4.0"
   val reactorVersion = "3.4.4"
   val vavrVersion = "0.10.3"
+  val jnaVersion = "5.8.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -79,4 +80,6 @@ object Dependencies
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.68"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
                             "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil
+  val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
+                            "net.java.dev.jna" % "jna" % jnaVersion :: Nil
 }

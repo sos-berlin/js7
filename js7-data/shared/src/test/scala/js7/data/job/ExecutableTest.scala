@@ -2,6 +2,7 @@ package js7.data.job
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
+import js7.base.io.process.KeyLogin
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.data.value.expression.Expression.{Add, NamedValue, NumericConstant, StringConstant}
 import js7.data.value.{NumberValue, StringValue}
@@ -117,6 +118,7 @@ final class ExecutableTest extends AnyFreeSpec
           env = Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
             "NUMBER" -> NumericConstant(7)),
+          login = Some(KeyLogin("CREDENTIAL-KEY", withUserProfile = true)),
           v1Compatible = true),
       json"""
         {
@@ -125,6 +127,10 @@ final class ExecutableTest extends AnyFreeSpec
           "env": {
             "ENV-VAR": "$$VAR",
             "NUMBER": "7"
+          },
+          "login": {
+            "credentialKey": "CREDENTIAL-KEY",
+            "withUserProfile": true
           },
           "v1Compatible": true
         }

@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.generic.GenericString
-import js7.base.io.process.ReturnCode
+import js7.base.io.process.{KeyLogin, ReturnCode}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Collections.implicits.RichIterable
@@ -14,7 +14,6 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ScriptExecutable}
 import js7.data.order.Outcome
-import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.value.{NamedValues, NumberValue, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter
 import js7.data.workflow.instructions.ReturnCodeMeaning
@@ -27,7 +26,7 @@ final case class WorkflowJob private(
   agentPath: AgentPath,
   executable: Executable,
   defaultArguments: NamedValues,
-  jobResourcePaths: Seq[JobResourcePath] = Nil,
+  jobResourcePaths: Seq[JobResourcePath],
   returnCodeMeaning: ReturnCodeMeaning/*TODO Move to ProcessExecutable*/,
   taskLimit: Int,/*TODO Rename as parallelism*/
   sigkillDelay: Option[FiniteDuration]/*TODO Move to ProcessExecutable*/,
@@ -45,9 +44,9 @@ final case class WorkflowJob private(
 
   def argumentsString = s"agent=${agentPath.string}, " +
     (executable match {
-      case PathExecutable(o, env, v1Compatible) => s"executable=$o"
-      case ScriptExecutable(o, env, v1Compatible) => s"script=$o"
-      case CommandLineExecutable(expr, env) => "command=" + ValuePrinter.quoteString(expr.toString)
+      case PathExecutable(o, env, login, v1Compatible) => s"executable=$o"
+      case ScriptExecutable(o, env, login, v1Compatible) => s"script=$o"
+      case CommandLineExecutable(expr, login, env) => "command=" + ValuePrinter.quoteString(expr.toString)
       case InternalExecutable(className, jobArguments, arguments) =>
         "internalJobClass=" + ValuePrinter.quoteString(className) ++
           (jobArguments.nonEmpty ?? ("jobArguments=" + WorkflowPrinter.namedValuesToString(jobArguments))) ++
@@ -72,6 +71,7 @@ object WorkflowJob
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     taskLimit: Int = DefaultTaskLimit,
     sigkillDelay: Option[FiniteDuration] = None,
+    login: Option[KeyLogin] = None,
     failOnErrWritten: Boolean = false)
   : WorkflowJob =
     checked(agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, taskLimit, sigkillDelay,
@@ -123,7 +123,8 @@ object WorkflowJob
       taskLimit <- cursor.getOrElse[Int]("taskLimit")(DefaultTaskLimit)
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
       failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
-      job <- checked(agentPath, executable, arguments, jobResourcePaths, rc, taskLimit, sigkillDelay, failOnErrWritten)
-        .toDecoderResult(cursor.history)
+      job <- checked(agentPath, executable, arguments, jobResourcePaths, rc, taskLimit,
+        sigkillDelay, failOnErrWritten
+      ).toDecoderResult(cursor.history)
     } yield job
 }
