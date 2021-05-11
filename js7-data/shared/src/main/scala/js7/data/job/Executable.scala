@@ -178,7 +178,7 @@ final case class InternalExecutable(
   jobArguments: NamedValues = NamedValues.empty,
   /** Argument expressions evalutated for each `processOrder`. */
   arguments: Map[String, Expression] = Map.empty)
-  extends Executable
+extends Executable
 
 object Executable
 {

@@ -288,7 +288,7 @@ object DirectoryProvider
       configDir / "private/private.conf" ++= s"""
          |js7.auth.users.${userAndPassword.userId.string}.password = "plain:${userAndPassword.password.string}"
          |js7.web.https.truststores += {
-         |  file = "$trustStore"
+         |  file = ${quoteString(trustStore.toString)}
          |  store-password = "jobscheduler"
          |}
          |""".stripMargin
@@ -331,7 +331,7 @@ object DirectoryProvider
           configDir / "private/private.conf" ++= s"""
              |js7.web.https.truststores = [
              |  {
-             |    file = "$configDir/private/controller-https-truststore.p12"
+             |    file = $${js7.config-directory}/private/controller-https-truststore.p12
              |    store-password = "jobscheduler"
              |  }
              |]""".stripMargin

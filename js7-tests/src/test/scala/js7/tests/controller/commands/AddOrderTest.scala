@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, RemoveOrdersWhenTerminated}
-import js7.data.job.ScriptExecutable
+import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.NamedValue
@@ -22,7 +22,10 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowPath}
+import js7.executor.OrderProcess
+import js7.executor.internal.InternalJob
 import js7.tests.controller.commands.AddOrderTest._
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -56,7 +59,7 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
-        OrderProcessed(Outcome.Disrupted(Problem("No such named value: myString"))),
+        OrderProcessed(Outcome.Disrupted(Problem("No such named value: unknownString"))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))
@@ -82,7 +85,7 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderStarted,
         OrderProcessingStarted,
         OrderStdoutWritten("STRING=DEFAULT\n" + "NUMBER=7\n"),
-        OrderProcessed(Outcome.succeededRC0),
+        OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
@@ -101,25 +104,21 @@ object AddOrderTest
   private val unknownArgWorkflow = Workflow(WorkflowPath("UNKNOWN-ARG"),
     labeledInstructions = Vector(
       Execute.Anonymous(WorkflowJob(agentPath,
-        ScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo "STRING=$STRING"
-            |""".stripMargin,
-          env = Map(
-            "STRING" -> NamedValue.last("myString")))))
-    ))
+        InternalExecutable(classOf[EmptyJob].getName,
+          arguments = Map("string" -> NamedValue("unknownString")))))))
 
+  private class EchoJob extends InternalJob {
+    def toOrderProcess(step: Step) =
+      OrderProcess(step
+        .outTaskObserver.send(
+          s"STRING=${step.arguments("STRING").convertToString}\n" +
+          s"NUMBER=${step.arguments("NUMBER").convertToString}\n")
+        .as(Outcome.succeeded))
+  }
   private val paramWorkflow = Workflow(WorkflowPath("PARAMETERIZED-WORKFLOW"),
     labeledInstructions = Vector(
       Execute.Anonymous(WorkflowJob(agentPath,
-        ScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo "STRING=$STRING"
-            |echo "NUMBER=$NUMBER"
-            |""".stripMargin,
-          env = Map(
+        InternalExecutable(classOf[EchoJob].getName, arguments = Map(
             "STRING" -> NamedValue.last("myString"),
             "NUMBER" -> NamedValue.last("myNumber")))))
     ),

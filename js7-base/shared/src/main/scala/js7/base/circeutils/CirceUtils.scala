@@ -70,7 +70,9 @@ object CirceUtils
 
   implicit final class RichCirceError(private val error: io.circe.Error) extends AnyVal
   {
-    def toProblem = Problem.pure("JSON " + error.show.replace("\n", "\\n"))
+    def toProblem = Problem.pure("JSON " + error.show
+      .replace("\r\n", "\\n")
+      .replace("\n", "\\n"))
   }
 
   implicit final class RichCirceEither[R](private val underlying: Either[io.circe.Error, R]) extends AnyVal

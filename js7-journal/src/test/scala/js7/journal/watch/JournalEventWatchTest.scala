@@ -12,6 +12,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -345,7 +346,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         == Left(Problem("Unknown journal file=123")))
 
       val jsons = mutable.Buffer[Json]()
-      eventWatch.observeFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
+      val observing = eventWatch.observeFile(JournalPosition(EventId.BeforeFirst, 0), timeout = 99.s)
         .await(99.s)
         .orThrow
         .onErrorRecoverWith {
@@ -368,6 +369,9 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
       writer.onCommitted(writer.fileLengthAndEventId, 1)
       waitForCondition(99.s, 10.ms) { jsons.size == 5 }
       assert(jsons(4).as[Stamped[KeyedEvent[Event]]] == Right(Stamped(3L, "3" <-: A1)))
+
+      observing.cancel()
+      if (isWindows) sleep(100.ms)  // Let observing close the read file to allow deletion
     }
   }
 

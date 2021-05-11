@@ -3,7 +3,7 @@ package js7.base.crypt.x509
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import js7.base.crypt.x509.Openssl.{assertPemFile, openssl}
+import js7.base.crypt.x509.Openssl.{assertPemFile, openssl, quote}
 import js7.base.crypt.x509.X509Algorithm.SHA512withRSA
 import js7.base.crypt.x509.X509Test._
 import js7.base.crypt.{GenericSignature, SignedString, SignerId}
@@ -50,14 +50,14 @@ final class X509Test extends AnyFreeSpec
       dir / "document" := document
 
       runProcess(s"$openssl req -x509 -newkey rsa:1024 -sha512 -days 2 -nodes -subj '/CN=SIGNER' " +
-        s"-keyout '$privateKeyFile' -out '$certificateFile' ")
+        s"-keyout ${quote(privateKeyFile)} -out ${quote(certificateFile)} ")
       assertPemFile("CERTIFICATE", certificateFile)
 
-      runProcess(s"sh -c 'openssl x509 -pubkey -noout -in \'$certificateFile\' >\'$publicKeyFile\''")
+      runProcess(s"""sh -c "openssl x509 -pubkey -noout -in ${quote(certificateFile)} >${quote(publicKeyFile)}"""")
       assertPemFile("PUBLIC KEY", publicKeyFile)
 
-      runProcess(s"$openssl dgst -sha512 -sign '$privateKeyFile' -out '$signatureFile' '$documentFile'")
-      runProcess(s"$openssl dgst -sha512 -verify '$publicKeyFile' -signature '$signatureFile' '$documentFile'")
+      runProcess(s"$openssl dgst -sha512 -sign ${quote(privateKeyFile)} -out ${quote(signatureFile)} ${quote(documentFile)}")
+      runProcess(s"$openssl dgst -sha512 -verify ${quote(publicKeyFile)} -signature ${quote(signatureFile)} ${quote(documentFile)}")
 
       val certificateBytes = certificateFile.byteArray
       val verifier = X509SignatureVerifier.checked(Seq(certificateBytes), origin = certificateFile.toString).orThrow

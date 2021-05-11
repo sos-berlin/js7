@@ -3,6 +3,7 @@ package js7.agent.data
 import com.softwaremill.diffx
 import com.softwaremill.diffx.generic.auto._
 import io.circe.syntax.EncoderOps
+import java.io.File.separator
 import java.nio.file.Paths
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.auth.UserId
@@ -53,7 +54,7 @@ final class AgentStateTest extends AsyncFreeSpec
           OrderWatchPath("ORDER-SOURCE-ID"),
           WorkflowPath("WORKFLOW"),
           AgentPath("AGENT"),
-          "/DIRECTORY",
+          s"${separator}DIRECTORY",
           Some(SimplePattern("""\.csv""".r.pattern.pattern)),
           Some(Expression.NamedValue("0")),
           3.s,
@@ -107,7 +108,7 @@ final class AgentStateTest extends AsyncFreeSpec
               "path": "ORDER-SOURCE-ID",
               "workflowPath": "WORKFLOW",
               "agentPath": "AGENT",
-              "directory": "/DIRECTORY",
+              "directory": "${separator}DIRECTORY",
               "pattern": "\\.csv",
               "delay": 3,
               "orderIdExpression": "$$0",
@@ -117,12 +118,12 @@ final class AgentStateTest extends AsyncFreeSpec
           json"""{
             "TYPE": "FileWatchState.File",
             "orderWatchPath": "ORDER-SOURCE-ID",
-            "path": "/DIRECTORY/1.csv"
+            "path": "${separator}DIRECTORY${separator}1.csv"
           }""",
           json"""{
             "TYPE": "FileWatchState.File",
             "orderWatchPath": "ORDER-SOURCE-ID",
-            "path": "/DIRECTORY/2.csv"
+            "path": "${separator}DIRECTORY${separator}2.csv"
           }""",
           json"""{
             "TYPE": "JobResource",
