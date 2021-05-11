@@ -115,7 +115,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
               NamedValues("ORDER_ARG" -> arg),
               ControllerId("CONTROLLER"),
               stdObservers))
-          .orThrow
+          .await(99.s).orThrow
           .runToFuture(stdObservers))
         .guarantee(Task {
           try out.onComplete()

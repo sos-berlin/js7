@@ -17,18 +17,20 @@ extends ProcessJobExecutor
 {
   override def stop = Task.unit
 
-  def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess] =
-    new CommandLineEvaluator(processOrder.scope.evaluator)
-      .eval(executable.commandLineExpression)
-      .flatMap { commandLine =>
-        warnIfNotExecutable(commandLine.file)
-        evalEnv(processOrder.scope, executable.env)
-          .flatMap(env =>
-            Right(makeOrderProcess(
-              processOrder,
-              StartProcess(
-                commandLine,
-                name = commandLine.file.getFileName.toString,
-                env))))
-      }
+  def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]] =
+    Task {
+      new CommandLineEvaluator(processOrder.scope.evaluator)
+        .eval(executable.commandLineExpression)
+        .flatMap { commandLine =>
+          warnIfNotExecutable(commandLine.file)
+          evalEnv(processOrder.scope, executable.env)
+            .flatMap(env =>
+              Right(makeOrderProcess(
+                processOrder,
+                StartProcess(
+                  commandLine,
+                  name = commandLine.file.getFileName.toString,
+                  env))))
+        }
+    }
 }

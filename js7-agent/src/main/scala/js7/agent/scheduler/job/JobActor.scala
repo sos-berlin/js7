@@ -38,6 +38,10 @@ extends Actor with Stash
 
   private val checkedJobExecutor: Checked[JobExecutor] =
     JobExecutor.checked(jobConf, jobExecutorConf, pathToJobResource)
+      .map { jobExecutor =>
+        jobExecutor.precheckAndWarn.runAsyncAndForget
+        jobExecutor
+      }
 
   for (problem <- checkedJobExecutor.left) logger.error(problem.toString)
 
@@ -77,35 +81,42 @@ extends Actor with Stash
 
         case Right(()) =>
           val sender = this.sender()
+          jobExecutor.toOrderProcess(processOrder)
+            .materializeIntoChecked
+            .foreach(o => self.!(Internal.Process(processOrder, o))(sender))
 
-          jobExecutor.toOrderProcess(processOrder) match {
-            case Left(problem) =>
-              logger.error(s"Order '${order.id.string}' step could not be started: $problem")
-              self.!(Internal.TaskFinished(order.id, Outcome.Disrupted(problem)))(sender)
-
-            case Right(orderProcess) =>
-              orderToProcess.insert(order.id -> orderProcess)
-              orderProcess
-                .runToFuture(processOrder.stdObservers)  // runToFuture completes the out/err observers
-                .onComplete { tried =>
-                  val outcome = tried match {
-                    case Success(outcome: Succeeded) =>
-                      processOrder.stdObservers.errorLine match {
-                        case None => outcome
-                        case Some(errorLine) =>
-                          assert(workflowJob.failOnErrWritten)  // see OrderActor
-                          Outcome.Failed(Some(s"The job's error channel: $errorLine"))
-                      }
-                    case Success(o) => o
-                    case Failure(t) =>
-                      logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                      Outcome.Failed.fromThrowable(t)
-                  }
-                  self.!(Internal.TaskFinished(order.id, outcome))(sender)
-                }
-          }
       }
       handleIfReadyForOrder()
+
+    case Internal.Process(processOrder: ProcessOrder, Left(problem)) =>
+      import processOrder.order
+      val sender = this.sender()
+      logger.error(s"Order '${order.id.string}' step could not be started: $problem")
+      self.!(Internal.TaskFinished(order.id, Outcome.Disrupted(problem)))(sender)
+
+    case Internal.Process(processOrder, Right(orderProcess)) =>
+      import processOrder.order
+      val sender = this.sender()
+      orderToProcess.insert(order.id -> orderProcess)
+      orderProcess
+        .runToFuture(processOrder.stdObservers)  // runToFuture completes the out/err observers
+        .onComplete { tried =>
+          val outcome = tried match {
+            case Success(outcome: Succeeded) =>
+              processOrder.stdObservers.errorLine match {
+                case None => outcome
+                case Some(errorLine) =>
+                  assert(workflowJob.failOnErrWritten)  // see OrderActor
+                  Outcome.Failed(Some(s"The job's error channel: $errorLine"))
+              }
+            case Success(o) => o
+            case Failure(t) =>
+              logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+              Outcome.Failed.fromThrowable(t)
+          }
+          self.!(Internal.TaskFinished(order.id, outcome))(sender)
+        }
+
 
     case Internal.TaskFinished(orderId, outcome) =>
       orderToProcess -= orderId
@@ -222,6 +233,7 @@ private[agent] object JobActor
 
   private object Internal {
     final case class Step(processOrder: ProcessOrder, jobExecutor: JobExecutor, checkedStart: Checked[Unit])
+    final case class Process(processOrder: ProcessOrder, checkedOrderProcess: Checked[OrderProcess])
     final case class TaskFinished(orderId: OrderId, outcome: Outcome)
     final case object KillAll extends DeadLetterSuppression
     final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression

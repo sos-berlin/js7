@@ -4,6 +4,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.globalIOX
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichPartialFunction}
 import js7.data.agent.AgentPath
@@ -55,7 +56,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
         NamedValues("ARG" -> NumberValue(1)),
         ControllerId("CONTROLLER"),
         stdObservers)
-    ).orThrow
+    ).await(99.s).orThrow
     val outcome = orderRun.runToFuture(stdObservers).await(99.s)
     assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))
     out.onComplete()

@@ -23,11 +23,13 @@ trait JobExecutor
   protected val jobConf: JobConf
   protected val pathToJobResource: JobResourcePath => Checked[JobResource]
 
+  def precheckAndWarn = Task.unit
+
   def start: Task[Checked[Unit]]
 
   def stop: Task[Unit]
 
-  def toOrderProcess(processOrder: ProcessOrder): Checked[OrderProcess]
+  def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]]
 
   // JobResources may change at any time
   protected final def checkedCurrentJobResources(): Checked[Seq[JobResource]] =

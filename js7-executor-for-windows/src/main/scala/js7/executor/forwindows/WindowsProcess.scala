@@ -140,17 +140,6 @@ object WindowsProcess
   private[forwindows] val TerminateProcessReturnCode = ReturnCode(999_999_999)
   val TargetSystemProperty = "js7.WindowsProcess.target"
   private val AuthenticatedUsersSid = "S-1-5-11"
-  private val InheritableEnvironmentVariables = Vector(  // JS-1747
-    "SCHEDULER_DATA",
-    "SCHEDULER_HOME",
-    "SCHEDULER_HTTP_PORT",
-    "SCHEDULER_HTTPS_PORT",
-    "SCHEDULER_LOG_DIR",
-    "SCHEDULER_LOGFILE",
-    "SCHEDULER_PID",
-    "SCHEDULER_PID_FILE",
-    "SCHEDULER_PORT",
-    "SCHEDULER_WORK_DIR")
   private val logger = Logger(getClass)
 
   final case class StartWindowsProcess(
@@ -191,9 +180,9 @@ object WindowsProcess
       val loggedOn = LoggedOn.logon(maybeLogon)
       val env = maybeLogon.fold(sys.env)(logon =>
         if (logon.withUserProfile)
-          inheritedEnvironmentOfUser(loggedOn.userToken)  // Only reliable if user profile has been loaded (see JS-1725)
+          WindowsApi.usersEnvironment(loggedOn.userToken)  // Only reliable if user profile has been loaded (see JS-1725)
         else
-          inheritedEnvironmentOfUser(null) ++  // Default system environment
+          WindowsApi.usersEnvironment(null) ++  // Default system environment
             Some("USERNAME" -> logon.user.withoutDomain) ++ // Default system environment contains default USERNAME and USERDOMAIN. We change this..
             logon.user.domain
               .orElse(sys.env.get("USERDOMAIN"))
@@ -214,12 +203,6 @@ object WindowsProcess
       new WindowsProcess(processInformation, inRedirection, outRedirection, errRedirection, loggedOn)
     }
   }
-
-  private def inheritedEnvironmentOfUser(userToken: HANDLE): Map[String, String] =
-    WindowsApi.usersEnvironment(userToken) ++ {
-      val env = sys.env
-      InheritableEnvironmentVariables collect { case k if env isDefinedAt k => k -> env(k) }
-    }
 
   private class LoggedOn(val userToken: HANDLE, val profileHandle: HANDLE = INVALID_HANDLE_VALUE)
   extends AutoCloseable {

@@ -14,10 +14,10 @@ final class AbsolutePathJobExecutor(
 extends PathProcessJobExecutor
 {
   protected val checkFile =
-    Checked.catchNonFatal(
-      Paths.get(executable.path))
-
-  warnAboutFile()
+    Task {
+      Checked.catchNonFatal(
+        Paths.get(executable.path))
+    }.memoize
 
   def stop = Task.unit
 }

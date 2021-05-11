@@ -13,13 +13,13 @@ final class RelativePathJobExecutor(
   protected val pathToJobResource: JobResourcePath => Checked[JobResource])
 extends PathProcessJobExecutor
 {
-  warnAboutFile()
-
   def stop = Task.unit
 
   // Evaluate file path again for each order
   protected def checkFile =
-    Checked.catchNonFatal(
-      executable.toFile(
-        jobExecutorConf.executablesDirectory.toRealPath(NOFOLLOW_LINKS)))
+    Task {
+      Checked.catchNonFatal(
+        executable.toFile(
+          jobExecutorConf.executablesDirectory.toRealPath(NOFOLLOW_LINKS)))
+    }
 }

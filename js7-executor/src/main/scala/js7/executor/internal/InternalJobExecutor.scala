@@ -47,11 +47,13 @@ extends JobExecutor
     }.memoize
 
   def toOrderProcess(processOrder: ProcessOrder) =
-    for {
-      internalJob <- internalJobLazy()
-      jobResources <- checkedCurrentJobResources()
-      step <- toStep(processOrder, jobResources)
-    } yield internalJob.toOrderProcess(step)
+    Task {
+      for {
+        internalJob <- internalJobLazy()
+        jobResources <- checkedCurrentJobResources()
+        step <- toStep(processOrder, jobResources)
+      } yield internalJob.toOrderProcess(step)
+    }
 
   private def toStep(processOrder: ProcessOrder, jobResources: Seq[JobResource]): Checked[InternalJob.Step] =
     for {
