@@ -18,7 +18,7 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.Pid
-import js7.base.io.process.{Js7Process, KeyLogin, ReturnCode}
+import js7.base.io.process.{Js7Process, KeyLogin, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.AutoClosing.autoClosing
@@ -48,26 +48,24 @@ extends Js7Process
   val pid = Some(Pid(processInformation.dwProcessId.intValue))
   private val returnCodeOnce = SetOnce[ReturnCode]
 
-  private val handleGuard = new ResourceGuard(processInformation.hProcess) {
-    def release(hProcess: HANDLE) = {
-      closeHandle(hProcess)
-      inRedirection.closePipe()
-      outRedirection.closePipe()
-      errRedirection.closePipe()
-      loggedOn.close()
-    }
+  private val hProcessGuard = ResourceGuard(processInformation.hProcess) { hProcess =>
+    closeHandle(hProcess)
+    inRedirection.closePipe()
+    outRedirection.closePipe()
+    errRedirection.closePipe()
+    loggedOn.close()
   }
 
   def isAlive =
     returnCodeOnce.isEmpty && !waitForProcess(timeout = 0)
 
   lazy val stdin: OutputStream = {
-    if (inRedirection.pipeHandle == INVALID_HANDLE_VALUE)
-      throw new IllegalStateException("WindowsProcess has no handle for stdin attached")
-    new PipeOutputStream(inRedirection.pipeHandle) {
-      override def close() = inRedirection.closePipe()
-    }
-  }
+     if (inRedirection.pipeHandle == INVALID_HANDLE_VALUE)
+       throw new IllegalStateException("WindowsProcess has no handle for stdin attached")
+     new PipeOutputStream(inRedirection.pipeHandle) {
+       override def close() = inRedirection.closePipe()
+     }
+   }
 
   lazy val stdout: InputStream = newOutErrInputStream(Stdout, outRedirection)
   lazy val stderr: InputStream = newOutErrInputStream(Stderr, errRedirection)
@@ -83,7 +81,7 @@ extends Js7Process
   def destroy() = destroyForcibly()
 
   def destroyForcibly() =
-    handleGuard {
+    hProcessGuard.use {
       case None =>
       case Some(hProcess) =>
         call("TerminateProcess") {
@@ -111,8 +109,9 @@ extends Js7Process
   def returnCode =
     returnCodeOnce.toOption
 
+  /** Must be called to release the hProcess handle. */
   private def waitForProcess(timeout: Int): Boolean =
-    handleGuard {
+    hProcessGuard.use {
       case None =>
         if (returnCodeOnce.isEmpty)
           throw new IllegalStateException("WindowsProcess has been closed before started")
@@ -122,7 +121,7 @@ extends Js7Process
         val terminated = waitForSingleObject(hProcess, timeout)
         if (terminated) {
           returnCodeOnce.trySet(ReturnCode(getExitCodeProcess(hProcess)))
-          handleGuard.releaseAfterUse()
+          hProcessGuard.releaseAfterUse()
         }
         terminated
     }
@@ -133,8 +132,6 @@ extends Js7Process
 object WindowsProcess
 {
   private[forwindows] val TerminateProcessReturnCode = ReturnCode(999_999_999)
-  val TargetSystemProperty = "js7.WindowsProcess.target"
-  private val AuthenticatedUsersSid = "S-1-5-11"
   private val logger = Logger(getClass)
 
   final case class StartWindowsProcess(
@@ -287,15 +284,8 @@ object WindowsProcess
   /**
     * Adds the needed ACL despite any existing ACL.
     */
-  def makeFileExecutableForEverybody(file: Path): file.type =
-    grantFileAccess(file, s"*$AuthenticatedUsersSid:RX")
-
-  /**
-    * Adds the needed ACL despite any existing ACL.
-    */
-  def makeFileAppendableForUser(file: Path, user: WindowsUserName): file.type = {
+  def makeFileAppendableForUser(file: Path, user: WindowsUserName): file.type =
     grantFileAccess(file, s"${injectableUserName(user)}:M")
-  }
 
   private val AllowedUserNameCharacters = Set('_', '.', '-', ',', ' ', '@')  // Only for icacls syntactically irrelevant characters and domain separators
 
@@ -305,9 +295,6 @@ object WindowsProcess
     require(name.nonEmpty && name.forall(isValid), s"Unsupported character in Windows user name: '$name'")  // Avoid code injection
     name
   }
-
-  def makeDirectoryAccessibleForEverybody(directory: Path): directory.type =
-    grantFileAccess(directory, s"*$AuthenticatedUsersSid:(OI)RX")
 
   /**
     * @param grant syntax is weakly checked!

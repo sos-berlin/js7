@@ -603,6 +603,7 @@ lazy val `js7-tests` = project
   .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
     `js7-core` % "test->test", `js7-provider`, `js7-tester`.jvm % "test", `js7-docker` % "test",
     `js7-executor-for-java` % "test->test",
+    `js7-executor-for-windows` % "test->test",
     `js7-license-fake`)
   .settings(
     commonSettings,

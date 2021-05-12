@@ -52,6 +52,7 @@ object ShellScriptProcess
             for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
             processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
             processBuilder.startRobustly().map(o => Right(JavaProcess(o)))
+
           case Some(keyLogin) =>
             Task.pure(
               WindowsProcess.startWithKeyLogin(

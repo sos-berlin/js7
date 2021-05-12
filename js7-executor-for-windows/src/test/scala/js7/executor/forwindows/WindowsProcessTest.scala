@@ -13,6 +13,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.executor.forwindows.WindowsApi.windowsDirectory
 import js7.executor.forwindows.WindowsProcess.StartWindowsProcess
+import js7.executor.forwindows.WindowsProcessTest._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.util.{Failure, Try}
@@ -24,7 +25,7 @@ final class WindowsProcessTest extends AnyFreeSpec
     val commandCharset = Charset forName "cp850"
     for (withUserProfile <- Seq(false, true))
       s"withUserProfile=$withUserProfile" - {
-        lazy val logon = sys.props.get(WindowsProcess.TargetSystemProperty)
+        lazy val logon = sys.props.get(TargetSystemProperty)
           .filter(_.nonEmpty)
           .map(o => WindowsLogon(
             WindowsProcessCredentials.byKey(o).orThrow,
@@ -298,4 +299,8 @@ final class WindowsProcessTest extends AnyFreeSpec
     intercept[IllegalArgumentException] { WindowsProcess.injectableUserName(WindowsUserName("")) }
     intercept[IllegalArgumentException] { WindowsProcess.injectableUserName(WindowsUserName("a%")) }
   }
+}
+
+object WindowsProcessTest {
+  val TargetSystemProperty = "js7.WindowsProcess.target"
 }

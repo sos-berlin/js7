@@ -14,14 +14,14 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.forwindows.{WindowsProcess, WindowsProcessCredentials}
+import js7.executor.forwindows.{WindowsProcessCredentials, WindowsProcessTest}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.windows.WindowsLogonTest._
 import org.scalatest.freespec.AnyFreeSpec
 
 final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  private lazy val targetKey = sys.props.get(WindowsProcess.TargetSystemProperty).filter(_.nonEmpty)
+  private lazy val targetKey = sys.props.get(WindowsProcessTest.TargetSystemProperty).filter(_.nonEmpty)
   private lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(agentPath,

@@ -8,48 +8,46 @@ import scala.concurrent.Future
 
 final class ResourceGuardTest extends AnyFreeSpec
 {
-  private final class G extends ResourceGuard("RESOURCE") {
-    var released = 0
-    def release(string: String) = released += 1
-  }
-
   "ResourceGuard immediately" in {
-    val g = new G
-    assert(g { o => o } == Some("RESOURCE"))
-    assert(g.released == 0)
+    var released = 0
+    val g = ResourceGuard("RESOURCE") { _ => released += 1 }
+    assert(g.use { o => o } == Some("RESOURCE"))
+    assert(released == 0)
 
     g.releaseAfterUse()
-    assert(g.released == 1)
+    assert(released == 1)
 
-    assert(g { o => o } == None)
-    assert(g.released == 1)
+    assert(g.use { o => o } == None)
+    assert(released == 1)
 
     g.releaseAfterUse()
-    assert(g.released == 1)
+    assert(released == 1)
   }
 
   "ResourceGuard delayed" in {
-    val g = new G
-    g {
+    var released = 0
+    val g = ResourceGuard("RESOURCE") { _ => released += 1 }
+    g.use {
       case Some("RESOURCE") =>
         g.releaseAfterUse()
-        assert(g.released == 0)
+        assert(released == 0)
       case _ =>
         fail()
     }
-    assert(g.released == 1)
+    assert(released == 1)
   }
 
   "ResourceGuard parallel" in {
-    val g = new G
+    var released = 0
+    val g = ResourceGuard("RESOURCE") { _ => released += 1 }
     var notReleased = 0
     val futures = for (_ <- 1 to (Runtime.getRuntime.availableProcessors / 2).min(1)) yield
       Future {
         var stop = false
         while (!stop) {
-          g {
+          g.use {
             case Some("RESOURCE") =>
-              assert(g.released == 0)
+              assert(released == 0)
               notReleased += 1
             case Some(_) =>
               fail()
@@ -61,7 +59,7 @@ final class ResourceGuardTest extends AnyFreeSpec
     sleep(100.ms)
     g.releaseAfterUse()
     futures await 99.s
-    assert(g.released == 1)
+    assert(released == 1)
     assert(notReleased > 1)
   }
 }
