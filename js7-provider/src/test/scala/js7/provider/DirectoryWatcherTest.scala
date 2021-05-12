@@ -1,9 +1,8 @@
 package js7.provider
 
-import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.{createTempDirectory, delete}
-import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, touchFile}
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
@@ -48,7 +47,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec with BeforeAndAfterAll
     "Add some files" - {
       for (i <- 1 to 2) s"file #$i" in {
         testUpdate {
-          touch(dir / i.toString)
+          touchFile(dir / i.toString)
         }
       }
     }

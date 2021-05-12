@@ -1,11 +1,10 @@
 package js7.base.io.file.watch
 
-import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.{createDirectory, delete}
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE}
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.withTemporaryDirectory
+import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
@@ -29,16 +28,16 @@ final class DirectoryWatcherTest extends AnyFreeSpec
 
   "readDirectory, readDirectoryAsEvents" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
-      touch(dir / "TEST-1")
-      touch(dir / "IGNORED")
-      touch(dir / "TEST-2")
+      touchFile(dir / "TEST-1")
+      touchFile(dir / "IGNORED")
+      touchFile(dir / "TEST-2")
       val state = DirectoryState.readDirectory(dir, _.toString startsWith "TEST-")
       assert(state == DirectoryState(Map(
         Paths.get("TEST-1") -> DirectoryState.Entry(Paths.get("TEST-1")),
         Paths.get("TEST-2") -> DirectoryState.Entry(Paths.get("TEST-2")))))
 
-      touch(dir / "TEST-A")
-      touch(dir / "TEST-1")
+      touchFile(dir / "TEST-A")
+      touchFile(dir / "TEST-1")
 
       assert(state.diffTo(DirectoryState.readDirectory(dir, _.toString startsWith "TEST-")).toSet ==
         Set(FileAdded(Paths.get("TEST-A"))))
@@ -92,7 +91,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
         .foreach(buffer += _.toSet)
       subscribed.future await 99.s
       assert(buffer.isEmpty)
-      touch(dir / "TEST-1")
+      touchFile(dir / "TEST-1")
       waitForCondition(11.s, 10.ms)(buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
       assert(buffer == Seq(Set(FileAdded(Paths.get("TEST-1")))))
       stop.onComplete()
@@ -115,7 +114,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
       createDirectory(dir)
       subscribed.future await 99.s
       assert(buffer.isEmpty)
-      touch(dir / "TEST-1")
+      touchFile(dir / "TEST-1")
       waitForCondition(11.s, 10.ms)(buffer contains FileAdded(Paths.get("TEST-1")))
       assert(buffer contains FileAdded(Paths.get("TEST-1")))
       delete(dir / "TEST-1")
@@ -123,7 +122,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
       delete(dir)
       sleep(300.ms)
       createDirectory(dir)
-      touch(dir / "TEST-2")
+      touchFile(dir / "TEST-2")
       waitForCondition(11.s, 10.ms)(buffer.contains(FileDeleted(Paths.get("TEST-1"))) && buffer.contains(FileAdded(Paths.get("TEST-2"))))
       assert(buffer.contains(FileDeleted(Paths.get("TEST-1"))) && buffer.contains(FileAdded(Paths.get("TEST-2"))))
       stop.onComplete()
@@ -143,7 +142,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
         buffer.clear()
         val indices = first + 0 until first + n
         val fileCreationFuture = Observable.fromIterable(indices).executeAsync.foreach { i =>
-          touch(dir / i.toString)
+          touchFile(dir / i.toString)
         }
         waitForCondition(99.s, 10.ms)(buffer.view.map(_.size).sum == indices.size)
         fileCreationFuture.await(100.ms)

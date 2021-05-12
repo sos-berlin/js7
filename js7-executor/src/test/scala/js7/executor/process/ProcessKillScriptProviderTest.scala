@@ -1,12 +1,11 @@
 package js7.executor.process
 
-import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
-import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, touchFile}
 import js7.base.io.process.Processes.ShellFileExtension
 import js7.base.system.OperatingSystem.isUnix
 import org.scalatest.BeforeAndAfterAll
@@ -46,7 +45,7 @@ final class ProcessKillScriptProviderTest extends AnyFreeSpec with BeforeAndAfte
   }
 
   "Existing file is overwritten" in {
-    touch(expectedFile)
+    touchFile(expectedFile)
     val provider = new ProcessKillScriptProvider
     provider.provideTo(tmp)
     assert(exists(expectedFile))

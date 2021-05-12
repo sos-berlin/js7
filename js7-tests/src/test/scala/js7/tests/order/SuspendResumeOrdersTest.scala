@@ -1,8 +1,8 @@
 package js7.tests.order
 
-import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.{createTempFile, deleteIfExists}
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.io.file.FileUtils.touchFile
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -83,7 +83,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderSuspended))
     val lastEventId = eventWatch.lastAddedEventId
 
-    touch(triggerFile)
+    touchFile(triggerFile)
     executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
 
     // TODO Modify order start time here, when possible. Otherwise we wait until the scheduled start time
@@ -112,7 +112,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
     assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
@@ -172,7 +172,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderSuspended))
 
     val lastEventId = eventWatch.lastAddedEventId
-    touch(triggerFile)
+    touchFile(triggerFile)
     executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == order.id)
 
@@ -196,7 +196,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     executeCommand(SuspendOrders(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
-    touch(triggerFile)
+    touchFile(triggerFile)
 
     eventWatch.await[OrderSuspended](_.key == order.id)
       assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -214,7 +214,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderSuspended))
 
     val lastEventId = eventWatch.lastAddedEventId
-    touch(triggerFile)
+    touchFile(triggerFile)
     executeCommand(ResumeOrders(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == order.id)
     assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
@@ -240,7 +240,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(executeCommand(SuspendOrders(Set(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
     eventWatch.await[OrderCancelMarkedOnAgent](_.key == order.id)
 
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderCancelled](_.key == order.id)
   }
 
@@ -251,11 +251,11 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderProcessed](_.key == (order.id | "🥕"))
 
     //eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
-    //touch(bTriggerFile)
+    //touchFile(bTriggerFile)
     //waitForCondition(10.s, 10.ms) { !exists(triggerFile) }
     //assert(!exists(triggerFile))
     eventWatch.await[OrderJoined](_.key == order.id)
@@ -310,10 +310,10 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderResumeMarked](_.key == order.id)
 
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderProcessed](_.key == order.id)
 
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderFinished](_.key == order.id)
 
     assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -355,7 +355,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(executeCommand(ResumeOrder(order.id, Some(Position(0)))).await(99.s) ==
       Left(CannotResumeOrderProblem))
 
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
     assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
@@ -384,7 +384,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
 
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
     assert(
       executeCommand(ResumeOrder(order.id, Some(Position(99)))).await(99.s) ==
@@ -406,7 +406,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
-    touch(triggerFile)
+    touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
 
     assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(

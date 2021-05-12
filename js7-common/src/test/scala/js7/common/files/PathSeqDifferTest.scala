@@ -1,9 +1,8 @@
 package js7.common.files
 
-import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.delete
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.withTemporaryDirectory
+import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -13,11 +12,11 @@ final class PathSeqDifferTest extends AnyFreeSpec
 {
   "diff" in {
     withTemporaryDirectory("Z-") { dir =>
-      touch(dir / "A")
+      touchFile(dir / "A")
       val entries1 = DirectoryReader.entries(dir)
       assert(PathSeqDiffer.diff(entries1, DirectoryReader.entries(dir)) == PathSeqDiff(Nil, Nil, Nil))
 
-      touch(dir / "B")
+      touchFile(dir / "B")
       val entries2 = DirectoryReader.entries(dir)
       assert(PathSeqDiffer.diff(entries2, entries1) == PathSeqDiff(added = dir / "B" :: Nil))
 

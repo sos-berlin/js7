@@ -4,13 +4,11 @@ import akka.http.scaladsl.model.headers.`Timeout-Access`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Directive1, Route, ValidationRejection}
 import cats.syntax.option._
-import com.google.common.base.Splitter
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.common.akkahttp.StandardMarshallers._
 import js7.data.event._
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 import scala.reflect.ClassTag
 
 /**
@@ -22,7 +20,6 @@ object EventDirectives
   val DefaultDelay = 500.ms
   val MinimumDelay = 100.ms
   private val AkkaTimeoutTolerance = 1.s  // To let event reader timeout before Akka
-  private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[EventRequest[E]] =
     eventRequest[E](None)
@@ -41,7 +38,7 @@ object EventDirectives
           case None => reject(ValidationRejection("Missing parameter return="))
           case Some(returnType) =>
             val eventSuperclass = implicitClass[E]
-            val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
+            val returnTypeNames = if (returnType.isEmpty) Set.empty else returnType.split(',').toSet
             val eventClasses = returnTypeNames flatMap { t =>
               keyedEventTypedJsonCodec.typenameToClassOption(t)
             } collect {

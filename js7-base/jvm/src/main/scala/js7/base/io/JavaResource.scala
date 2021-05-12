@@ -1,13 +1,11 @@
 package js7.base.io
 
 import cats.effect.SyncIO
-import com.google.common.base.Charsets._
-import com.google.common.io.{ByteStreams, Resources}
 import java.io.{File, InputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import java.util.Objects.requireNonNull
-import js7.base.data.ByteSequence
+import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.io.JavaResource._
 import js7.base.log.Logger
 import js7.base.problem.Checked._
@@ -72,13 +70,13 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     file
   }
 
-  def readAs[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
-    ByteSeq.unsafeWrap(contentBytes)
-
   def contentBytes: Array[Byte] =
-    autoClosing(openStream())(ByteStreams.toByteArray)
+    readAs[ByteArray].unsafeArray
 
-  def asUTF8String = Resources.toString(url, UTF_8)
+  def readAs[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq]): ByteSeq =
+    autoClosing(openStream())(ByteSeq.fromInputStreamUnlimited)
+
+  def asUTF8String = readAs[ByteArray].utf8String
 
   def simpleName = new File(path).getName
 

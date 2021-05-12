@@ -1,11 +1,10 @@
 package js7.common.files
 
-import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.util.Comparator
-import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.{touchFile, _}
 import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
@@ -23,13 +22,13 @@ final class DirectoryReaderTest extends AnyFreeSpec
 {
   "entries" in {
     withTemporaryDirectory("Z-") { dir =>
-      touch(dir / "C")
-      touch(dir / "A")
-      touch(dir / "B")
+      touchFile(dir / "C")
+      touchFile(dir / "A")
+      touchFile(dir / "B")
       val subdir = dir / "DIR"
       createDirectory(subdir)
-      touch(subdir / "A")
-      touch(subdir / "B")
+      touchFile(subdir / "A")
+      touchFile(subdir / "B")
 
       val entries = DirectoryReader.entries(dir)
       assert(entries.map(_.file) ==

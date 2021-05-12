@@ -1,9 +1,8 @@
 package js7.tests
 
-import com.google.common.io.MoreFiles.touch
 import java.nio.file.Files.delete
 import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.withTemporaryFile
+import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax._
@@ -73,7 +72,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         assert(controller.eventWatch.await[OrderLockQueued](_.key == orderId).map(_.value).nonEmpty)
       }
 
-      touch(file)
+      touchFile(file)
 
       assert(controller.eventWatch.await[OrderTerminated](_.key == a).map(_.value) == Seq(a <-: OrderFinished))
       assert(controller.eventWatch.keyedEvents[OrderEvent](a) == Seq(

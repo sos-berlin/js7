@@ -129,7 +129,7 @@ val commonSettings = Seq(
         ("org.typelevel" %% "cats-core" % catsVersion) ++
         ("org.typelevel" %% "cats-effect" % catsEffectVersion) ++
         circe ++
-        scalaXml ++ guava ++ slf4j
+        scalaXml ++ slf4j
       }
   },
   Compile / doc / sources := Nil, // No ScalaDoc
@@ -273,7 +273,6 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     import Dependencies._
     libraryDependencies ++=
       scalaLogging ++
-      guava ++
       typesafeConfig
   }
   .jvmSettings(
@@ -548,7 +547,6 @@ lazy val `js7-agent` = project
     import Dependencies._
     libraryDependencies ++=
       scalaXml ++
-      guava ++
       findbugs ++
       akkaActor ++
       akkaStream ++
@@ -587,7 +585,6 @@ lazy val `js7-agent-data` = project
     import Dependencies._
     libraryDependencies ++=
       scalaXml ++
-      guava ++
       findbugs ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++

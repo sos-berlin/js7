@@ -1,13 +1,12 @@
 package js7.base.io
 
 import cats.effect.SyncIO
-import com.google.common.io.Resources.getResource
-import com.google.common.io.{ByteStreams, Resources}
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import js7.base.data.ByteArray
 import js7.base.io.JavaResourceTest._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.ProblemException
@@ -65,13 +64,9 @@ final class JavaResourceTest extends AnyFreeSpec
     delete(dir)
   }
 
-  "url" in {
-    javaResource.url shouldEqual getResource(path)
-  }
-
   "openStream" in {
     autoClosing(javaResource.openStream()) { in =>
-      assert(ByteStreams.toByteArray(in).toSeq == Resources.toByteArray(javaResource.url).toSeq)
+      assert(ByteArray.fromInputStreamUnlimited(in).utf8String == expectedString)
     }
   }
 
@@ -114,7 +109,7 @@ object JavaResourceTest
   private val dirPath = "js7/base/io"
   private val path = "js7/base/io/test.txt"
   private val nonExistentPath = "js7/base/io/non-existent"
-  private val expectedString = "TEST CONTENT IN -> UTF-8\n"
+  private val expectedString = "TEST CONTENT IN UTF-8: äöüß\n"
   private val javaResource = JavaResource(getClass.getClassLoader, path)
   private val nonExistentJavaResource = JavaResource(getClass.getClassLoader, nonExistentPath)
 }

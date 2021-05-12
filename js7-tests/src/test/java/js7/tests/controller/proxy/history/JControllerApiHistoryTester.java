@@ -1,6 +1,5 @@
 package js7.tests.controller.proxy.history;
 
-import com.google.common.collect.ImmutableMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -29,6 +28,7 @@ import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
+import static java.util.Collections.singletonMap;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.data_for_java.vavr.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -73,7 +73,7 @@ final class JControllerApiHistoryTester
             JControllerState state;
             try {
                 JFreshOrder freshOrder = JFreshOrder.of(TestOrderId, workflowPath, Optional.empty(),
-                    ImmutableMap.of("KEY", StringValue.of("VALUE")));
+                    singletonMap("KEY", StringValue.of("VALUE")));
                 await(api.addOrder(freshOrder));
                 state = whenFirstFluxTerminated.get(99, SECONDS).get();
                 assertThat(
@@ -133,7 +133,7 @@ final class JControllerApiHistoryTester
                     .toFuture();
 
             JFreshOrder freshOrder = JFreshOrder.of(orderId, workflowPath, Optional.empty(),
-                ImmutableMap.of("KEY", StringValue.of("VALUE")));
+                singletonMap("KEY", StringValue.of("VALUE")));
             await(api.addOrder(freshOrder));
             Event lastEvent = whenFirstFluxTerminated.get(99, SECONDS).stampedEvent().value().event();
             assertThat(

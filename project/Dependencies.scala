@@ -76,7 +76,7 @@ object Dependencies
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.28"
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
-  val guava               = "com.google.guava" % "guava" % "30.1.1-jre"
+  //val guava               = "com.google.guava" % "guava" % "30.1.1-jre"
   val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.68"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
                             "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil

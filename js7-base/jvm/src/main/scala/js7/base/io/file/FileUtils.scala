@@ -1,8 +1,6 @@
 package js7.base.io.file
 
-import com.google.common.io.FileWriteMode.APPEND
-import com.google.common.io.{Files => GuavaFiles}
-import java.io.{BufferedOutputStream, File, FileOutputStream}
+import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
@@ -34,9 +32,15 @@ object FileUtils
    * Used mainly by tests.
    */
   def touchAndDeleteWithCloser[A <: Path](path: A)(implicit closer: Closer): path.type = {
-    GuavaFiles.touch(path.toFile)
+    touchFile(path)
     path withCloser delete
     path
+  }
+
+  def touchFile(path: Path): Unit = {
+    val file = path.toFile
+    if (!file.createNewFile() && !file.setLastModified(System.currentTimeMillis))
+      throw new IOException("touchFile file: unable to update modification time of " + file)
   }
 
   object implicits {
@@ -58,22 +62,15 @@ object FileUtils
         delegate resolve checkRelativePath(relative).orThrow
 
       /** Writes `string` encoded with UTF-8 to file. */
-      def :=[A <: CharSequence](string: A): Unit =
+      def :=(string: String): Unit =
         contentString = string
 
       def :=(bytes: collection.Seq[Byte]) = write(bytes)
-
-      def write(bytes: collection.Seq[Byte]): Unit =
-        write(bytes.toArray)
 
       def :=(bytes: Array[Byte]) = write(bytes)
 
       def write(bytes: Array[Byte]): Unit =
         Files.write(delegate, bytes)
-
-      def write(string: CharSequence, encoding: Charset = UTF_8): Unit =
-        // Java 11: Files.writeString(delegate, string, encoding, CREATE, TRUNCATE_EXISTING)
-        GuavaFiles.asCharSink(delegate.toFile, encoding).write(string)
 
       def :=(byteSeq: ByteArray) = write(byteSeq)
 
@@ -83,17 +80,28 @@ object FileUtils
 
       def :=[W: Writable](w: W) = write(w)
 
+      /** Appends `string` encoded with UTF-8 to file. */
+      def ++=(string: String): Unit =
+        append(string)
+
+      def append(string: String, encoding: Charset = UTF_8): Unit =
+        write(string, encoding, append = true)
+
       def write[W: Writable](w: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
           w.writeToStream(_))
 
-      /** Appends `string` encoded with UTF-8 to file. */
-      def ++=(string: CharSequence): Unit =
-        append(string)
+      def write(bytes: collection.Seq[Byte]): Unit =
+        write(bytes.toArray)
 
-      def append(string: CharSequence, encoding: Charset = UTF_8): Unit =
+      def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit = {
         // Java 11: Files.writeString(delegate, string, encoding, CREATE, APPEND)
-        GuavaFiles.asCharSink(delegate.toFile, encoding, APPEND).write(string)
+        val w = new OutputStreamWriter(new BufferedOutputStream(
+          new FileOutputStream(delegate.toFile, append)), encoding)
+        autoClosing(w) { _ =>
+          w.write(string)
+        }
+      }
 
       def ++=[B: ByteSequence](byteSeq: B): Unit=
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile, true)))(
@@ -110,12 +118,12 @@ object FileUtils
 
       def contentString: String = contentString(UTF_8)
 
-      def contentString_=(string: CharSequence): Unit =
+      def contentString_=(string: String): Unit =
         write(string, UTF_8)
 
       def contentString(encoding: Charset) =
         // Java 11: Files.readString(encoding)
-        GuavaFiles.asCharSource(delegate.toFile, encoding).read()
+        new String(ByteArray.fromFileUnlimited(delegate).unsafeArray, encoding)
 
       def writeExecutable(string: String): Unit = {
         write(string, if (isWindows) ISO_8859_1 else UTF_8)

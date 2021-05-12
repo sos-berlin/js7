@@ -3,13 +3,15 @@ package js7.base.data
 import cats.effect.{Resource, SyncIO}
 import cats.{Eq, Monoid, Show}
 import io.circe.{Decoder, Json}
-import java.io.{InputStream, OutputStream}
+import java.io.{FileInputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Path
 import java.util.Base64
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteSequence.{byteToPrintable, maxShowLength}
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.IOUtils
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable
@@ -59,6 +61,10 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
     catch { case e: IllegalArgumentException =>
       Left(Problem(s"Invalid MIME base64 encoding: " + e.getMessage))
     }
+
+  def fromFileUnlimited(file: Path): ByteSeq =
+    autoClosing(new FileInputStream(file.toFile))(in =>
+      fromInputStreamUnlimited(in))
 
   def fromInputStreamUnlimited(in: InputStream): ByteSeq =
     fromInputStreamLimited(in, Int.MaxValue)

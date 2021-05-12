@@ -1,11 +1,10 @@
 package js7.provider.scheduledorder.oldruntime
 
-import com.google.common.collect.{AbstractIterator => GuavaIterator}
 import java.time._
+import java.util.NoSuchElementException
 import js7.base.time.JavaTime._
 import js7.provider.scheduledorder.oldruntime.OldSchedule._
 import scala.annotation.tailrec
-import scala.jdk.CollectionConverters._
 
 final case class OldSchedule(
   timeZone: ZoneId,
@@ -20,33 +19,45 @@ extends Schedule {
     instants(instantInterval, limit = 1).buffered.headOption
 
   def instants(instantInterval: InstantInterval, limit: Int = Int.MaxValue): Iterator[Instant] =
-    new GuavaIterator[Instant] {
+    new Iterator[Instant] {
       private var remaining = limit
       private var from = instantInterval.from minusNanos 1
+      private var _next: Instant = null
 
-      def computeNext() = {
-        @tailrec def find(): Instant = {
-          if (remaining > 0 && from < instantInterval.until) {
-            val local = LocalDateTime.ofInstant(from, timeZone)
-            periodSeq(local.toLocalDate).flatMap(_.nextLocalTime(local.toLocalTime))
-              .map(_.atDate(local.toLocalDate).toInstant(timeZone))
-              match {
-                case Some(o) if o < instantInterval.until =>
-                  remaining -= 1
-                  from = o plusNanos 1
-                  o
-                case Some(_) =>
-                  endOfData
-                case None =>
-                  from = local.toLocalDate.plusDays(1).atStartOfDay.toInstant(timeZone)
-                  find()
-              }
-          } else
-            endOfData
+      def hasNext = {
+        if (_next == null) {
+          _next = find()
         }
-        find()
+        _next != null
       }
-    }.asScala
+
+      def next() = {
+        if (!hasNext) throw new NoSuchElementException
+        val result = _next
+        _next = null
+        result
+      }
+
+      @tailrec private def find(): Instant = {
+        if (remaining > 0 && from < instantInterval.until) {
+          val local = LocalDateTime.ofInstant(from, timeZone)
+          periodSeq(local.toLocalDate).flatMap(_.nextLocalTime(local.toLocalTime))
+            .map(_.atDate(local.toLocalDate).toInstant(timeZone))
+            match {
+              case Some(o) if o < instantInterval.until =>
+                remaining -= 1
+                from = o plusNanos 1
+                o
+              case Some(_) =>
+                null
+              case None =>
+                from = local.toLocalDate.plusDays(1).atStartOfDay.toInstant(timeZone)
+                find()
+            }
+        } else
+          null
+      }
+    }
 
   private def periodSeq(date: LocalDate) =
     weekdays.lift(date.getDayOfWeek)

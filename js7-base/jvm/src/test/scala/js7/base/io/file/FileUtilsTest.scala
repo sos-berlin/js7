@@ -1,6 +1,5 @@
 package js7.base.io.file
 
-import com.google.common.io.MoreFiles.touch
 import io.circe.Json
 import java.io.File
 import java.io.File.separator
@@ -11,7 +10,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.implicits._
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, withTemporaryFile}
+import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, touchFile, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest._
 import js7.base.problem.ProblemException
 import org.scalatest.BeforeAndAfterAll
@@ -135,7 +134,7 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
       val dir = createTempDirectory("FileUtilsTest-")
       assert(dir.directoryContentsAs(Set).isEmpty)
       val files = Set("a.tmp", "b.tmp") map dir.resolve
-      files foreach { o => touch(o) }
+      files foreach { o => touchFile(o) }
       assert(dir.directoryContentsAs(Set) == files)
       assert(dir.directoryContentsAs(Set) == files)
       files foreach delete

@@ -1,8 +1,7 @@
 package js7.journal.files
 
-import com.google.common.io.MoreFiles.touch
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, withTemporaryDirectory}
+import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
 import js7.base.problem.Problem
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -14,13 +13,13 @@ final class JournalFilesTest extends AnyFreeSpec
   "listJournalFiles, currentFile" in {
     withTemporaryDirectory("JournalHistoryTest-") { dir =>
       dir / "test--0.journal" := "TEST-CONTENT"
-      touch(dir / "test--2000.journal")
-      touch(dir / "test--1000.journal")
-      touch(dir / "test-30.journal")
-      touch(dir / "test.journal")
-      touch(dir / "test-XX.journal")
-      touch(dir / "test--100.journal.tmp")
-      touch(dir / "test--1000.journal~garbage")
+      touchFile(dir / "test--2000.journal")
+      touchFile(dir / "test--1000.journal")
+      touchFile(dir / "test-30.journal")
+      touchFile(dir / "test.journal")
+      touchFile(dir / "test-XX.journal")
+      touchFile(dir / "test--100.journal.tmp")
+      touchFile(dir / "test--1000.journal~garbage")
       assert(JournalFiles.listJournalFiles(dir / "test") == Vector(
         JournalFile(   0, dir / "test--0.journal"),
         JournalFile(1000, dir / "test--1000.journal"),
