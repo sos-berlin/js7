@@ -11,6 +11,7 @@ import js7.data.agent.AgentPath
 import js7.data.job.ScriptExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStderrWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.value.expression.Expression.{Argument, FunctionCall, StringConstant}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -29,6 +30,7 @@ final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTes
           """echo WindowsLogonTest
             |set
             |""".stripMargin,
+          env = Map("ORIGINAL_PATH" -> FunctionCall("env", Seq(Argument(StringConstant("PATH"))))),
           login = targetKey.map(KeyLogin(_, withUserProfile = false)))))))
 
   protected def agentPaths = Seq(agentPath)
@@ -39,7 +41,7 @@ final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTes
     """
 
   if (isWindows) {
-    "Windows Login" in {
+    "Windows Logon" in {
       val events = controller.runOrder(FreshOrder(OrderId("WindowsLogonTest"), workflow.path))
         .map(_.value)
       val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.fold_
@@ -53,6 +55,7 @@ final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTes
         .getOrElse(sys.env("USERNAME"))
         .toLowerCase(Locale.ROOT)
       assert(stdout.toLowerCase(Locale.ROOT).contains(s"username=$userName\r\n"))
+      assert(stdout.contains(s"ORIGINAL_PATH=${sys.env("PATH")}\r\n"))
     }
   }
 }
