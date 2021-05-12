@@ -31,9 +31,9 @@ Beispiel in JSON:
 
 Funktionen und Variablen der Ausdruckssprache speziell für JobResource:
 
-### Funktion env(name)
+### Funktion env(name, default)
 liefert den Wert einer Umgebungsvariablen des Agenten-Prozesses.
-Die Funktion scheitert, wenn die Umgebungsvariable unbekannt ist.
+Die Funktion scheitert, wenn die Umgebungsvariable unbekannt ist und kein default-Wert angegenben ist.
 
 ### Funktion now(format=FORMAT, timezone=TIMEZONE)
 (Wie schon für FileWatch.)

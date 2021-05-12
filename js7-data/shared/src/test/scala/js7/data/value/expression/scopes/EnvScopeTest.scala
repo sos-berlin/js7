@@ -19,6 +19,11 @@ final class EnvScopeTest extends AnyFreeSpec
         assert(EnvScope.parseAndEval(s"env('$unknown')") ==
           Left(UnknownKeyProblem("environment variable", unknown)))
       }
+
+      "Default value" in {
+        val unknown = Random.nextString(32)
+        assert(EnvScope.parseAndEval(s"env('$unknown', 'DEFAULT')") == Right(StringValue("DEFAULT")))
+      }
     }
   }
 }
