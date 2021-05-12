@@ -69,19 +69,14 @@ extends Js7Process
     }
   }
 
-  lazy val stdout: InputStream = {
-    if (outRedirection.pipeHandle == INVALID_HANDLE_VALUE)
-      throw new IllegalStateException("WindowsProcess has no handle for stdout attached")
-    new PipeInputStream(outRedirection.pipeHandle) {
-      override def close() = inRedirection.closePipe()
-    }
-  }
+  lazy val stdout: InputStream = newOutErrInputStream(Stdout, outRedirection)
+  lazy val stderr: InputStream = newOutErrInputStream(Stderr, errRedirection)
 
-  lazy val stderr: InputStream = {
-    if (errRedirection.pipeHandle == INVALID_HANDLE_VALUE)
-      throw new IllegalStateException("WindowsProcess has no handle for stderr attached")
-    new PipeInputStream(errRedirection.pipeHandle) {
-      override def close() = inRedirection.closePipe()
+  def newOutErrInputStream(outerr: StdoutOrStderr, redirection: Redirection) = {
+    if (redirection.pipeHandle == INVALID_HANDLE_VALUE)
+      throw new IllegalStateException(s"WindowsProcess has no handle for $outerr attached")
+    new PipeInputStream(redirection.pipeHandle) {
+      override def close() = redirection.closePipe()
     }
   }
 
