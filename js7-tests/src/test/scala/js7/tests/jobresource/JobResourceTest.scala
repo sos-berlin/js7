@@ -7,7 +7,6 @@ import java.time.{OffsetDateTime, ZoneId}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -105,7 +104,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
     assert(stdouterr.replaceAll("\r", "") ==
-      s"""ENV=/${sys.env(envName)}/
+      s"""ORIGINAL_PATH=/${sys.env("PATH")}/
          |""".stripMargin)
   }
 
@@ -222,11 +221,10 @@ object JobResourceTest
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 
-  private val envName = if (isWindows) "Path" else "PATH"
   private val envJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-ENV"),
     env = Map(
-      "ENV" -> ExpressionParser.parse(s"env('$envName')").orThrow))
+      "ORIGINAL_PATH" -> ExpressionParser.parse("env('PATH')").orThrow))
 
   private val envWorkflow = Workflow(
     WorkflowPath("WORKFLOW-ENV") ~ "INITIAL",
@@ -236,7 +234,7 @@ object JobResourceTest
         ScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
-            |echo ENV=/$ENV/
+            |echo ORIGINAL_PATH=/$ORIGINAL_PATH/
             |""".stripMargin),
         jobResourcePaths = Seq(envJobResource.path)))))
 
