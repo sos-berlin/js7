@@ -22,7 +22,15 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
+  protected def agentPaths = Seq(agentPath)
+  protected def versionedItems = Seq(workflow)
+
+  override protected def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
+    """
+
   private lazy val targetKey = sys.props.get(WindowsProcessTest.TargetSystemProperty).filter(_.nonEmpty)
+
   private lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(agentPath,
@@ -32,13 +40,6 @@ final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTes
             |""".stripMargin,
           env = Map("ORIGINAL_PATH" -> FunctionCall("env", Seq(Argument(StringConstant("PATH"))))),
           login = targetKey.map(KeyLogin(_, withUserProfile = false)))))))
-
-  protected def agentPaths = Seq(agentPath)
-  protected def versionedItems = Seq(workflow)
-
-  override protected def agentConfig = config"""
-    js7.job.execution.signed-script-injection-allowed = on
-    """
 
   if (isWindows) {
     "Windows Logon" in {

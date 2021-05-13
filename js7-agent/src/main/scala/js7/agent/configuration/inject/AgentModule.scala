@@ -17,9 +17,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.cluster.ClusterWatchRegister
-import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
-import js7.executor.process.SimpleShellTaskRunner
-import js7.executor.task.TaskRunner
+import js7.executor.configuration.JobExecutorConf
 import js7.journal.EventIdGenerator
 import monix.execution.Scheduler
 import monix.execution.schedulers.SchedulerService
@@ -66,30 +64,15 @@ extends AbstractModule
     ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
 
   @Provides @Singleton
-  def shellTaskRunnerFactory(
-    agentConf: AgentConfiguration)
-    (implicit scheduler: Scheduler, iox: IOExecutor)
-  : TaskRunner.Factory =
-    new TaskRunner.Factory {
-      private val taskIdGenerator = new SimpleShellTaskRunner.TaskIdGenerator
-      def apply(conf: TaskConfiguration) = {
-        val taskId = taskIdGenerator.next()
-        new SimpleShellTaskRunner(conf, taskId,
-          temporaryDirectory = agentConf.temporaryDirectory,
-          workingDirectory = agentConf.jobWorkingDirectory,
-          killScript = agentConf.killScript)
-      }
-    }
-
-  @Provides @Singleton
-  def jobExecutorConf(conf: AgentConfiguration, newTaskRunner: TaskRunner.Factory, closer: Closer)
+  def jobExecutorConf(conf: AgentConfiguration, iox: IOExecutor, closer: Closer)
   : JobExecutorConf = {
     val blockingJobScheduler: SchedulerService = {
+      // For BlockingInternalJob (thread-blocking Java jobs)
       val scheduler = newUnlimitedScheduler("JS7 blocking job")
       closer.onClose(scheduler.shutdown())
       scheduler
     }
-    conf.toExecutorConf(newTaskRunner, blockingJobScheduler)
+    conf.toExecutorConf(iox, blockingJobScheduler)
   }
 
   @Provides @Singleton

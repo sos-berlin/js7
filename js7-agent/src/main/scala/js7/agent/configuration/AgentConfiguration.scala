@@ -12,6 +12,7 @@ import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
+import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
 import js7.common.akkahttp.web.data.WebServerPort
@@ -22,7 +23,6 @@ import js7.common.utils.Tests.isTest
 import js7.core.configuration.CommonConfiguration
 import js7.executor.configuration.{JobExecutorConf, ProcessKillScript}
 import js7.executor.process.ProcessKillScriptProvider
-import js7.executor.task.TaskRunner
 import js7.journal.configuration.JournalConf
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.duration.FiniteDuration
@@ -103,12 +103,14 @@ extends CommonConfiguration
 
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  def toExecutorConf(newTaskRunner: TaskRunner.Factory, blockingJobScheduler: SchedulerService) =
+  def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService) =
     JobExecutorConf(
       executablesDirectory = executablesDirectory,
       temporaryDirectory = temporaryDirectory,
+      workingDirectory = jobWorkingDirectory,
+      killScript = killScript,
       scriptInjectionAllowed = scriptInjectionAllowed,
-      newTaskRunner = newTaskRunner,
+      iox,
       blockingJobScheduler = blockingJobScheduler)
 
   // Suppresses Config (which may contain secrets)

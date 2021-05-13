@@ -179,13 +179,13 @@ object WindowsProcess
             logon.user.domain
               .orElse(sys.env.get("USERDOMAIN"))
               .map("USERDOMAIN" -> _))
-      val directory = windowsDirectory.getRoot.toString  // Need a readable directory, ignoring a given working directory
+      val workingDirectory = windowsDirectory.getRoot.toString  // Need a readable directory, ignoring a given working directory
       val processInformation = new PROCESS_INFORMATION
-      call("CreateProcessAsUser", application, commandLine, s"directory=$directory") {
+      call("CreateProcessAsUser", application, commandLine, s"directory=$workingDirectory") {
         advapi32.CreateProcessAsUser(loggedOn.userToken, application, commandLine,
           null: SECURITY_ATTRIBUTES, null: SECURITY_ATTRIBUTES, /*inheritHandles=*/true, creationFlags,
           getEnvironmentBlock((env ++ additionalEnv).asJava),
-          directory, startupInfo, processInformation)
+          workingDirectory, startupInfo, processInformation)
       }
       inRedirection.releaseStartupInfoHandle()
       outRedirection.releaseStartupInfoHandle()

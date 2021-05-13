@@ -3,14 +3,16 @@ package js7.executor.configuration
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Path
 import js7.base.system.OperatingSystem.isWindows
-import js7.executor.task.TaskRunner
+import js7.base.thread.IOExecutor
 import monix.execution.Scheduler
 
 final case class JobExecutorConf(
   executablesDirectory: Path,
   temporaryDirectory: Path,
+  workingDirectory: Path,
+  killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
-  newTaskRunner: TaskRunner.Factory,
+  implicit val iox: IOExecutor,
   blockingJobScheduler: Scheduler)
 
 object JobExecutorConf

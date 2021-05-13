@@ -38,9 +38,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
-import js7.executor.process.SimpleShellTaskRunner
-import js7.executor.task.TaskRunner
+import js7.executor.configuration.JobExecutorConf
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
@@ -168,22 +166,13 @@ private object OrderActorTest {
     override val supervisorStrategy = SupervisorStrategies.escalate
     if (!exists(dir / "tmp")) createDirectory(dir / "tmp")
 
-    private val taskRunnerFactory: TaskRunner.Factory = new TaskRunner.Factory {
-      private val taskIdGenerator = new SimpleShellTaskRunner.TaskIdGenerator
-      def apply(conf: TaskConfiguration) =
-        new SimpleShellTaskRunner(
-          conf,
-          taskIdGenerator.next(),
-          temporaryDirectory = dir / "data" / "tmp",
-          workingDirectory = dir / "data" / "tmp",
-          killScript = None)
-    }
-
     private val executorConf = JobExecutorConf(
       executablesDirectory = (dir / "config" / "executables").toRealPath(),
       temporaryDirectory = dir / "data" / "tmp",
+      workingDirectory = dir / "data" / "tmp",
+      killScript = None,
       scriptInjectionAllowed = false,
-      taskRunnerFactory,
+      globalIOX,
       blockingJobScheduler = globalIOX.scheduler)
 
     private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")

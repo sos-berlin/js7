@@ -44,9 +44,10 @@ trait ProcessJobExecutor extends JobExecutor
           })
         .map(_.fold(Map.empty)(_ ++ _))
 
-    val taskRunner = jobExecutorConf.newTaskRunner(
-      TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine,
-        v1Compatible = v1Compatible))
+    val processDriver = new ProcessDriver(
+      TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine, executable.login,
+        v1Compatible = v1Compatible),
+      jobExecutorConf)
 
     new OrderProcess {
       def run =
@@ -55,18 +56,17 @@ trait ProcessJobExecutor extends JobExecutor
             Task.pure(Outcome.Failed.fromProblem(problem))
 
           case Right(jobResourcesEnv) =>
-            taskRunner
+            processDriver
               .processOrder(
                 order.id,
                 (v1Env(processOrder).view ++ startProcess.env ++ jobResourcesEnv).toMap,
-                processOrder.stdObservers,
-                executable.login)
-              .guarantee(taskRunner.terminate)
+                processOrder.stdObservers)
+              .guarantee(processDriver.terminate)
         }
 
       override def cancel(immediately: Boolean) =
         Task {
-          taskRunner.kill(if (immediately: Boolean) SIGKILL else SIGTERM)
+          processDriver.kill(if (immediately: Boolean) SIGKILL else SIGTERM)
         }
     }
   }

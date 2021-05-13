@@ -1,16 +1,15 @@
 package js7.agent.tests
 
 import com.google.inject.Guice
-import java.nio.file.Files.{createTempDirectory, setPosixFilePermissions}
-import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.Files.createTempDirectory
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
-import js7.agent.tests.TaskRunnerTest.TestScript
+import js7.agent.tests.ProcessDriverTest.TestScript
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.io.process.ReturnCode
-import js7.base.system.OperatingSystem.{isUnix, isWindows}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -23,9 +22,8 @@ import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.executor.StdObservers
-import js7.executor.configuration.TaskConfiguration
-import js7.executor.process.RichProcess
-import js7.executor.task.TaskRunner
+import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
+import js7.executor.process.{ProcessDriver, RichProcess}
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
@@ -34,7 +32,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestAgentDirectoryProvider
+final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with TestAgentDirectoryProvider
 {
   private lazy val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(agentDirectory)))
 
@@ -44,14 +42,12 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
     super.afterAll()
   }
 
-  "SimpleShellTaskRunner" in {
-    val newTaskRunner = injector.instance[TaskRunner.Factory]
-    val executableDirectory = createTempDirectory("TaskRunnerTest-")
+  "ProcessDriver" in {
+    val executableDirectory = createTempDirectory("ProcessDriverTest-")
 
     val pathExecutable = RelativePathExecutable(s"TEST$sh", v1Compatible = true)
     val shellFile = pathExecutable.toFile(executableDirectory)
-    shellFile := TestScript
-    if (isUnix) setPosixFilePermissions(shellFile, PosixFilePermissions.fromString("rwx------"))
+    shellFile.writeExecutable(TestScript)
     def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
       Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(returnCode.number)))
     val taskConfiguration = TaskConfiguration(JobKey.forTest, toOutcome, CommandLine.fromFile(shellFile))
@@ -61,12 +57,12 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
         WorkflowPath("JOBCHAIN") ~ "VERSION",
         Order.Processing,
         historicOutcomes = Seq(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
-      val taskRunner = newTaskRunner(taskConfiguration)
+      val taskRunner = new ProcessDriver(taskConfiguration, injector.instance[JobExecutorConf])
       val out, err = PublishSubject[String]()
       val stdObservers = new StdObservers(out, err, charBufferSize = 7, keepLastErrLine = false)
       val whenOut = out.foldL.runToFuture
       val whenErr = err.foldL.runToFuture
-      val ended = taskRunner.processOrder(order.id, Map("VAR1" -> "VALUE1"), stdObservers, login = None)
+      val ended = taskRunner.processOrder(order.id, Map("VAR1" -> "VALUE1"), stdObservers)
         .guarantee(taskRunner.terminate) await 30.s
       assert(ended == Outcome.Succeeded(Map(
         "result" -> StringValue("TEST-RESULT-VALUE1"),
@@ -80,7 +76,7 @@ final class TaskRunnerTest extends AnyFreeSpec with BeforeAndAfterAll with TestA
   }
 }
 
-object TaskRunnerTest {
+object ProcessDriverTest {
   private val TestScript =
     if (isWindows) """
       |@echo off
