@@ -108,7 +108,7 @@ final class JControllerProxyRepoTester
                 .map(JUpdateItemOperation::addOrChangeSimple),
             Flux.just(addVersion(versionId)),
             Flux.fromIterable(signedItemJsons)
-                .map(JUpdateItemOperation::addOrChangeVersioned))));
+                .map(JUpdateItemOperation::addOrChangeSigned))));
     }
 
     void deleteWorkflow() throws InterruptedException, ExecutionException, TimeoutException {

@@ -23,7 +23,8 @@ final class JFileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private lazy val jControllerApi = new JControllerApi(controllerApi)
 
   "JFileWatch" in {
-    JFileWatchTester.test(jControllerApi)
+    JFileWatchTester.testFileOrder(jControllerApi)
+    JFileWatchTester.testFileWatchApi(jControllerApi)
   }
 }
 

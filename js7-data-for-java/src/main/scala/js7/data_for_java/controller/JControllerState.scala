@@ -9,16 +9,20 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderId}
+import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.item.{JInventoryItem, JRepo}
+import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
 import js7.data_for_java.order.JOrder
 import js7.data_for_java.order.JOrderPredicates.any
+import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.{JWorkflow, JWorkflowId}
 import scala.jdk.CollectionConverters._
@@ -88,6 +92,32 @@ extends JJournaledState[JControllerState, ControllerState]
   def pathToLockState(@Nonnull lockPath: LockPath): VEither[Problem, JLockState] =
     asScala.pathToLockState.checked(lockPath)
       .map(JLockState.apply)
+      .toVavr
+
+  /** Looks up a JFileWatch. */
+  @Nonnull
+  def pathToFileWatch(@Nonnull path: OrderWatchPath): VEither[Problem, JFileWatch] =
+    asScala.pathToSimpleItem.checked(path)
+      .flatMap {
+        case o: FileWatch => Right(JFileWatch(o))
+        case _ => Left(Problem(s"Path '$path' does not denote a FileWatch"))
+      }
+      .toVavr
+
+  @Nonnull
+  def fileWatches(): java.util.Collection[JFileWatch] =
+    asScala.pathToSimpleItem.values
+      .flatMap {
+        case o: FileWatch => JFileWatch(o) :: Nil
+        case _ => Nil
+      }
+      .asJavaCollection
+
+  /** Looks up a JJobResource. */
+  @Nonnull
+  def pathToJobResource(@Nonnull path: JobResourcePath): VEither[Problem, JJobResource] =
+    asScala.pathToSimpleItem.checked(path)
+      .map(o => JJobResource(o.asInstanceOf[JobResource]))
       .toVavr
 
   @Nonnull
