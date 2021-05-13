@@ -432,7 +432,7 @@ object RunningController
       testEventPublisher: EventPublisher[Any])
     : Either[ControllerTermination.Terminate, OrderKeeperStarted] =
       followUp match {
-        case ClusterFollowUp.BecomeActive(recovered: Recovered[ControllerState @unchecked]) =>
+        case ClusterFollowUp.BecomeActive(recovered) =>
           val terminationPromise = Promise[ControllerTermination]()
           val actor = actorSystem.actorOf(
             Props {

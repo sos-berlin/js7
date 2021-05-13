@@ -52,7 +52,10 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
   def startIfNonEmpty(clusterState: ClusterState, eventId: EventId): Task[Checked[Completed]] =
     clusterState match {
       case ClusterState.Empty => Task.pure(Right(Completed))
-      case clusterState: HasNodes => startActiveClusterNode(clusterState, eventId)
+      case clusterState: HasNodes =>
+        Task(checkLicense(ClusterProductName))
+          .flatMapT(_ =>
+            startActiveClusterNode(clusterState, eventId))
     }
 
   def close(): Unit =
@@ -111,15 +114,17 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
   private def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
     currentClusterState.flatMap {
       case ClusterState.Empty =>
-        persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
-          .flatMapT { case (_, state) =>
-            state.clusterState match {
-              case clusterState: HasNodes =>
-                startActiveClusterNode(clusterState, state.eventId)
-              case clusterState => Task.pure(Left(Problem.pure(
-                s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
-            }
-          }
+        Task(checkLicense(ClusterProductName))
+          .flatMapT(_ =>
+            persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
+              .flatMapT { case (_, state) =>
+                state.clusterState match {
+                  case clusterState: HasNodes =>
+                    startActiveClusterNode(clusterState, state.eventId)
+                  case clusterState => Task.pure(Left(Problem.pure(
+                    s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
+                }
+              })
 
       case _: HasNodes =>
         activeClusterNodeTask
@@ -127,14 +132,13 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
     }
 
   private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Completed]] =
-    Task(checkLicense(ClusterProductName))
-      .flatMapT { _ =>
-        val activeClusterNode = new ActiveClusterNode(clusterState, persistence, eventWatch, common, clusterConf)
-        if (_activeClusterNode.trySet(activeClusterNode))
-          activeClusterNode.start(eventId)
-        else
-          Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
-      }
+    Task.defer {
+      val activeClusterNode = new ActiveClusterNode(clusterState, persistence, eventWatch, common, clusterConf)
+      if (_activeClusterNode.trySet(activeClusterNode))
+        activeClusterNode.start(eventId)
+      else
+        Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
+    }
 
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =
     _activeClusterNode.task
