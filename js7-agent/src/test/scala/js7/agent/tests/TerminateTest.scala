@@ -34,6 +34,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
   override def beforeAll() = {
     (agentDirectory / "config" / "private" / "private.conf") ++= """
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
+        |js7.web.server.delay-shutdown = 1000ms
         |""".stripMargin
     APathExecutable.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
     BPathExecutable.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
