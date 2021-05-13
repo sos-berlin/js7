@@ -13,7 +13,7 @@ import js7.base.utils.TaskLock
 import js7.data.job.{JobConf, JobResource, JobResourcePath, ScriptExecutable}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
-import js7.executor.forwindows.{WindowsProcess, WindowsProcessCredentials, WindowsUserName}
+import js7.executor.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
 import js7.executor.process.RichProcess.{tryDeleteFile, tryDeleteFiles}
 import js7.executor.process.ScriptJobExecutor.writeScriptToFile
 import monix.eval.Task
@@ -32,7 +32,7 @@ extends PathProcessJobExecutor
   protected def checkFile =
     Task(
       executable.login
-        .traverse(login => WindowsProcessCredentials.keyToUser(login.credentialKey))
+        .traverse(login => WindowsProcessCredential.keyToUser(login.credentialKey))
     ).flatMapT(maybeUserName =>
         userToFileLock.lock(Task {
           userToFile.get(maybeUserName) match {

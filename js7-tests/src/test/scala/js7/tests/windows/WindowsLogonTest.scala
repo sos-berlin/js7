@@ -15,7 +15,7 @@ import js7.data.value.expression.Expression.{Argument, FunctionCall, StringConst
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.forwindows.{WindowsProcessCredentials, WindowsProcessTest}
+import js7.executor.forwindows.{WindowsProcessCredential, WindowsProcessTest}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.windows.WindowsLogonTest._
 import org.scalatest.freespec.AnyFreeSpec
@@ -52,7 +52,7 @@ final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTes
       assert(events.collect { case o: OrderProcessed => o } == Seq(OrderProcessed(Outcome.succeededRC0)))
       assert(events.last == OrderFinished)
 
-      val userName = targetKey.map(key => WindowsProcessCredentials.keyToUser(key).orThrow.string)
+      val userName = targetKey.map(key => WindowsProcessCredential.keyToUser(key).orThrow.string)
         .getOrElse(sys.env("USERNAME"))
         .toLowerCase(Locale.ROOT)
       assert(stdout.toLowerCase(Locale.ROOT).contains(s"username=$userName\r\n"))

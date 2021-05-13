@@ -220,10 +220,10 @@ object WindowsProcess
       }
 
     private def logon(logon: WindowsLogon): LoggedOn = {
-      import logon.{credentials, user, withUserProfile}
+      import logon.{credential, user, withUserProfile}
       logger.debug(s"LogonUser '$user'")
       val userToken = handleCall("LogonUser")(
-        advapi32.LogonUser(user.string, null, credentials.password.string, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT, _))
+        advapi32.LogonUser(user.string, null, credential.password.string, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT, _))
       new LoggedOn(
         userToken,
         profileHandle =

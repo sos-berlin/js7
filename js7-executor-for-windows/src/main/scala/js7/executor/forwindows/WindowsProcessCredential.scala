@@ -9,18 +9,18 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.executor.forwindows.WindowsApi.{MyAdvapi32, call, myAdvapi32}
 import scala.util.control.NonFatal
 
-private[forwindows] final case class WindowsProcessCredentials(
+private[forwindows] final case class WindowsProcessCredential(
   user: WindowsUserName,
   password: SecretString)
 
-object WindowsProcessCredentials
+object WindowsProcessCredential
 {
-  private[forwindows] def byKey(key: String): Checked[WindowsProcessCredentials] =
+  private[forwindows] def byKey(key: String): Checked[WindowsProcessCredential] =
     readCredential(key) { cred =>
       val passwordBytes = cred.credentialBlob.getByteArray(0, cred.credentialBlobSize)
       val password = SecretString(new String(passwordBytes, UTF_16LE))
       java.util.Arrays.fill(passwordBytes, 0: Byte)
-      WindowsProcessCredentials(toUser(cred), password)
+      WindowsProcessCredential(toUser(cred), password)
     }
 
   def keyToUser(key: String): Checked[WindowsUserName] =
@@ -31,7 +31,7 @@ object WindowsProcessCredentials
 
   private def readCredential[A](key: String)(read: CREDENTIAL => A): Checked[A] =
     if (!isWindows)
-      Left(Problem.pure("Windows credentials can only be read under Microsoft Windows"))
+      Left(Problem.pure("Windows credential can only be read under Microsoft Windows"))
     else
       try {
         val ref = new PointerByReference

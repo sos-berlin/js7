@@ -28,12 +28,12 @@ final class WindowsProcessTest extends AnyFreeSpec
         lazy val logon = sys.props.get(TargetSystemProperty)
           .filter(_.nonEmpty)
           .map(o => WindowsLogon(
-            WindowsProcessCredentials.byKey(o).orThrow,
+            WindowsProcessCredential.byKey(o).orThrow,
             withUserProfile = withUserProfile))
 
         "CreateProcess" in {
-          val batchFile = /*credentials match {
-            case Some(WindowsProcessCredentials(user, _)) =>
+          val batchFile = /*credential match {
+            case Some(WindowsProcessCredential(user, _)) =>
               val directory = createTempFile(WindowsApi.windowsDirectory / "Temp", "WindowsProcessTest-", ".cmd")
               WindowsProcess.makeFileExecutableForUser(directory, user)
             case None =>*/
@@ -79,7 +79,7 @@ final class WindowsProcessTest extends AnyFreeSpec
           assert(userNameLines exists { _ endsWith "self-test" })
           val me = sys.env("USERNAME").toLowerCase(Locale.ROOT)
           logon match {
-            case Some(WindowsLogon(WindowsProcessCredentials(WindowsUserName(user), _), _)) =>
+            case Some(WindowsLogon(WindowsProcessCredential(WindowsUserName(user), _), _)) =>
               assert(stdout.toLowerCase(Locale.ROOT) contains s"env-username=$user".toLowerCase(Locale.ROOT))
               assert(userNameLines.forall(o => !o.endsWith("\\" ++ me)))
               // whoami outputs nothing, but quits whole command ???
