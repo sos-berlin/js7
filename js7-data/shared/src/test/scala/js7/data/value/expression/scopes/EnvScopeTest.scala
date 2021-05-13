@@ -20,9 +20,20 @@ final class EnvScopeTest extends AnyFreeSpec
           Left(UnknownKeyProblem("environment variable", unknown)))
       }
 
-      "Default value" in {
+      "Default constant" in {
         val unknown = Random.nextString(32)
         assert(EnvScope.parseAndEval(s"env('$unknown', 'DEFAULT')") == Right(StringValue("DEFAULT")))
+      }
+
+      "Default environment variable" in {
+        val unknown = Random.nextString(32)
+        val unknownDefault = Random.nextString(32)
+        assert(EnvScope.parseAndEval(s"env('$unknown', env('$unknownDefault', 'DEFAULT'))") == Right(StringValue("DEFAULT")))
+      }
+
+      "Default parameter is lazy" in {
+        val unknownDefault = Random.nextString(32)
+        assert(EnvScope.parseAndEval(s"env('PATH', env('$unknownDefault'))") == Right(StringValue(sys.env("PATH"))))
       }
     }
   }
