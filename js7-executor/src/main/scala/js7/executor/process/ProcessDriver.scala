@@ -1,5 +1,6 @@
 package js7.executor.process
 
+import cats.syntax.traverse._
 import js7.base.generic.Completed
 import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.log.Logger
@@ -13,6 +14,7 @@ import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.executor.StdObservers
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
+import js7.executor.forwindows.{WindowsLogon, WindowsProcess}
 import js7.executor.process.ProcessDriver._
 import js7.executor.process.ShellScriptProcess.startPipedShellScript
 import monix.eval.Task
@@ -26,12 +28,11 @@ final class ProcessDriver(
   import jobExecutorConf.iox
 
   private val taskId = taskIdGenerator.next()
-  private val startProcessLock = TaskLock("syncStartProcess")
-
-  private val terminatedPromise = Promise[Completed]()
+  private val checkedWindowsLogon = conf.login.traverse(WindowsLogon.fromKeyLogin)
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(
     jobExecutorConf.temporaryDirectory,
     v1Compatible = conf.v1Compatible)
+  private val terminatedPromise = Promise[Completed]()
   private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
 
@@ -68,7 +69,7 @@ final class ProcessDriver(
 
   private def fetchReturnValuesThenDeleteFile(): NamedValues = {
     val result = returnValuesProvider.read() // TODO Catch exceptions
-    // TODO When Windows locks the file, try delete it later, asynchronously, and block file in FilePool
+    // TODO When Windows locks the file, try delete it later, asynchronously
     try returnValuesProvider.deleteFile()
     catch { case NonFatal(t) =>
       logger.error(s"Cannot delete file '$returnValuesProvider': ${t.toStringWithCauses}")
@@ -82,21 +83,30 @@ final class ProcessDriver(
     Task.deferAction { implicit scheduler =>
       if (killedBeforeStart)
         Task.raiseError(new RuntimeException(s"$taskId killed before start"))
-      else {
-        val processConfiguration = ProcessConfiguration(
-          workingDirectory = Some(jobExecutorConf.workingDirectory),
-          additionalEnvironment = env + returnValuesProvider.toEnv,
-          maybeTaskId = Some(taskId),
-          killScriptOption = jobExecutorConf.killScript,
-          login = conf.login)
-        startProcessLock
-          .lock(
-            startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
-          .map(_.map { richProcess =>
-            terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
-            richProcessOnce := richProcess
-          })
-      }
+      else
+        Task(
+          checkedWindowsLogon
+            .flatMap { maybeWindowsLogon =>
+              Checked.catchNonFatal {
+                for (o <- maybeWindowsLogon)
+                  WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
+              }
+            .map(_ =>
+              ProcessConfiguration(
+                workingDirectory = Some(jobExecutorConf.workingDirectory),
+                additionalEnvironment = env + returnValuesProvider.toEnv,
+                maybeTaskId = Some(taskId),
+                killScriptOption = jobExecutorConf.killScript,
+                maybeWindowsLogon))
+          }
+        ) .flatMapT(processConfiguration =>
+            startProcessLock/*required due to a Linux problem with many process starts ???*/
+              .lock(
+                startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
+              .map(_.map { richProcess =>
+                terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
+                richProcessOnce := richProcess
+              }))
     }
 
   def kill(signal: ProcessSignal): Unit =
@@ -114,6 +124,8 @@ final class ProcessDriver(
 object ProcessDriver
 {
   private val logger = Logger(getClass)
+
+  private val startProcessLock = TaskLock("syncStartProcess")
 
   private object taskIdGenerator extends Iterator[TaskId] {
     private val generator = newGenerator()

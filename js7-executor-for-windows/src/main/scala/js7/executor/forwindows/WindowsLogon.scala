@@ -3,14 +3,14 @@ package js7.executor.forwindows
 import js7.base.io.process.KeyLogin
 import js7.base.problem.Checked
 
-private final case class WindowsLogon(
+private[executor] final case class WindowsLogon(
   credential: WindowsProcessCredential,
   withUserProfile: Boolean)
 {
-  def user = credential.user
+  def userName = credential.userName
 }
 
-private object WindowsLogon
+private[executor] object WindowsLogon
 {
   def fromKeyLogin(keyLogin: KeyLogin): Checked[WindowsLogon] =
     for (cred <- WindowsProcessCredential.byKey(keyLogin.credentialKey)) yield

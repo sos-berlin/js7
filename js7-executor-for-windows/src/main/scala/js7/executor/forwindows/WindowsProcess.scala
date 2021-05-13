@@ -1,6 +1,5 @@
 package js7.executor.forwindows
 
-import cats.syntax.traverse._
 import com.sun.jna.platform.win32.Advapi32Util.getEnvironmentBlock
 import com.sun.jna.platform.win32.Kernel32Util.closeHandle
 import com.sun.jna.platform.win32.WinBase._
@@ -18,14 +17,13 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.Pid
-import js7.base.io.process.{Js7Process, KeyLogin, ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{Js7Process, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.SetOnce
 import js7.executor.forwindows.WindowsApi.{advapi32, call, handleCall, kernel32, myUserenv, openProcessToken, waitForSingleObject, windowsDirectory}
 import js7.executor.forwindows.WindowsProcess._
-import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Codec
@@ -95,8 +93,7 @@ extends Js7Process
         }
     }
 
-  @TestOnly
-  private[forwindows] def waitFor(timeout: FiniteDuration): Boolean =
+  def waitFor(timeout: FiniteDuration): Boolean =
     returnCodeOnce.isDefined ||
       waitForProcess(max(0, min(Int.MaxValue, timeout.toMillis)).toInt)
 
@@ -129,7 +126,7 @@ extends Js7Process
   override def toString = s"WindowsProcess($pid)"
 }
 
-object WindowsProcess
+private[executor] object WindowsProcess
 {
   private[forwindows] val TerminateProcessReturnCode = ReturnCode(999_999_999)
   private val logger = Logger(getClass)
@@ -141,19 +138,10 @@ object WindowsProcess
     stderrRedirect: Redirect,
     additionalEnv: Map[String, String] = Map.empty)
 
-  def startWithKeyLogin(
-    startWindowsProcess: StartWindowsProcess,
-    keyLogin: Option[KeyLogin])
-  : Checked[Js7Process] =
-    keyLogin
-      .traverse(WindowsLogon.fromKeyLogin)
-      .flatMap(
-        startWithWindowsLogon(startWindowsProcess, _))
-
-  private[forwindows] def startWithWindowsLogon(
+  private[executor] def startWithWindowsLogon(
     startWindowsProcess: StartWindowsProcess,
     maybeLogon: Option[WindowsLogon] = None)
-  : Checked[WindowsProcess] = {
+  : Checked[Js7Process] = {
     import startWindowsProcess.{additionalEnv, args, stderrRedirect, stdinRedirect, stdoutRedirect}
 
     for (commandLine <- argsToCommandLine(args.toIndexedSeq)) yield {
@@ -175,8 +163,8 @@ object WindowsProcess
           WindowsApi.usersEnvironment(loggedOn.userToken)  // Only reliable if user profile has been loaded (see JS-1725)
         else
           WindowsApi.usersEnvironment(null) ++  // Default system environment
-            Some("USERNAME" -> logon.user.withoutDomain) ++ // Default system environment contains default USERNAME and USERDOMAIN. We change this..
-            logon.user.domain
+            Some("USERNAME" -> logon.userName.withoutDomain) ++ // Default system environment contains default USERNAME and USERDOMAIN. We change this..
+            logon.userName.domain
               .orElse(sys.env.get("USERDOMAIN"))
               .map("USERDOMAIN" -> _))
       val workingDirectory = windowsDirectory.getRoot.toString  // Need a readable directory, ignoring a given working directory
@@ -220,15 +208,15 @@ object WindowsProcess
       }
 
     private def logon(logon: WindowsLogon): LoggedOn = {
-      import logon.{credential, user, withUserProfile}
-      logger.debug(s"LogonUser '$user'")
+      import logon.{credential, userName, withUserProfile}
+      logger.debug(s"LogonUser '$userName'")
       val userToken = handleCall("LogonUser")(
-        advapi32.LogonUser(user.string, null, credential.password.string, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT, _))
+        advapi32.LogonUser(userName.string, null, credential.password.string, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT, _))
       new LoggedOn(
         userToken,
         profileHandle =
           if (withUserProfile)
-            loadUserProfile(userToken, user)
+            loadUserProfile(userToken, userName)
           else
             INVALID_HANDLE_VALUE)
     }

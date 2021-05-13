@@ -1,10 +1,10 @@
 package js7.executor.process
 
 import java.nio.file.Path
-import js7.base.io.process.KeyLogin
 import js7.base.io.process.Processes.Pid
 import js7.data.job.TaskId
 import js7.executor.configuration.ProcessKillScript
+import js7.executor.forwindows.WindowsLogon
 
 /**
  * @author Joacim Zschimmer
@@ -14,7 +14,7 @@ final case class ProcessConfiguration(
   additionalEnvironment: Map[String, String] = Map(),
   maybeTaskId: Option[TaskId] = None,
   killScriptOption: Option[ProcessKillScript] = None,
-  login: Option[KeyLogin] = None)
+  windowsLogon: Option[WindowsLogon] = None)
 {
   require(killScriptOption.isEmpty || maybeTaskId.nonEmpty, "killScriptFile requires idString")
 

@@ -172,7 +172,7 @@ final class WindowsProcessTest extends AnyFreeSpec
           delete(scriptFile)
         }
 
-        for (user <- logon.map(_.user)) {
+        for (user <- logon.map(_.userName)) {
           "makeFileExecutableForUser" in {
             check("(RX)")(WindowsProcess.makeFileExecutableForUser(_, user))
           }

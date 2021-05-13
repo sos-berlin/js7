@@ -46,16 +46,16 @@ object ShellScriptProcess
         commandLine.arguments.tail ++ conf.idArgumentOption/*TODO Should not be an argument*/)
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
       val checkedProcess: Task[Checked[Js7Process]] =
-        conf.login match {
+        conf.windowsLogon match {
           case None =>
             val processBuilder = new ProcessBuilder(commandArgs.asJava)
             for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
             processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
             processBuilder.startRobustly().map(o => Right(JavaProcess(o)))
 
-          case Some(keyLogin) =>
+          case Some(logon) =>
             Task.pure(
-              WindowsProcess.startWithKeyLogin(
+              WindowsProcess.startWithWindowsLogon(
                 StartWindowsProcess(
                   commandArgs,
                   stdinRedirect = PIPE,
@@ -63,7 +63,7 @@ object ShellScriptProcess
                   stderrRedirect = PIPE,
                   additionalEnv = conf.additionalEnvironment),
                   //conf.workingDirectory),
-                Some(keyLogin)))
+                Some(logon)))
         }
 
       checkedProcess.map(_.map { process =>

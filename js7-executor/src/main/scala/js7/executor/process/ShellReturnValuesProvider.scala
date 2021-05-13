@@ -11,7 +11,7 @@ import js7.executor.process.ShellReturnValuesProvider._
 /**
   * @author Joacim Zschimmer
   */
-final class ShellReturnValuesProvider(temporaryDirectory: Path, v1Compatible: Boolean = false)
+private final class ShellReturnValuesProvider(temporaryDirectory: Path, v1Compatible: Boolean = false)
 {
   private var fileExists = false
 
@@ -51,7 +51,7 @@ final class ShellReturnValuesProvider(temporaryDirectory: Path, v1Compatible: Bo
   override def toString = file.toString
 }
 
-object ShellReturnValuesProvider
+private object ShellReturnValuesProvider
 {
   private val V1VarName = "SCHEDULER_RETURN_VALUES"
   private val VarName = "JS7_RETURN_VALUES"

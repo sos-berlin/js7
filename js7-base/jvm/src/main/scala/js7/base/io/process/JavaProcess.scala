@@ -2,6 +2,7 @@ package js7.base.io.process
 
 import js7.base.io.process.Processes.{processToPidOption, processToString}
 import js7.base.utils.ScalaUtils.syntax._
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 final class JavaProcess(process: Process) extends Js7Process
 {
@@ -25,6 +26,9 @@ final class JavaProcess(process: Process) extends Js7Process
 
   def waitFor() =
     ReturnCode(process.waitFor())
+
+  def waitFor(duration: FiniteDuration) =
+    process.waitFor(duration.toMillis, MILLISECONDS)
 
   def stdout =
     process.getInputStream

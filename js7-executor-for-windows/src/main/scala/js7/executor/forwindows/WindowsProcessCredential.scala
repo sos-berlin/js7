@@ -9,13 +9,13 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.executor.forwindows.WindowsApi.{MyAdvapi32, call, myAdvapi32}
 import scala.util.control.NonFatal
 
-private[forwindows] final case class WindowsProcessCredential(
-  user: WindowsUserName,
+private[executor] final case class WindowsProcessCredential(
+  userName: WindowsUserName,
   password: SecretString)
 
 object WindowsProcessCredential
 {
-  private[forwindows] def byKey(key: String): Checked[WindowsProcessCredential] =
+  private[executor] def byKey(key: String): Checked[WindowsProcessCredential] =
     readCredential(key) { cred =>
       val passwordBytes = cred.credentialBlob.getByteArray(0, cred.credentialBlobSize)
       val password = SecretString(new String(passwordBytes, UTF_16LE))
