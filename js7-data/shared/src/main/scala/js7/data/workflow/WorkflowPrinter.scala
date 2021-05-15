@@ -2,10 +2,10 @@ package js7.data.workflow
 
 import cats.Show
 import js7.base.time.ScalaTime._
-import js7.base.utils.Identifier
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ScriptExecutable}
 import js7.data.lock.LockPath
+import js7.data.parser.BasicPrinter
 import js7.data.value.ValuePrinter.{appendNameToExpression, appendQuoted, appendValue}
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, ValuePrinter}
@@ -257,13 +257,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
   }
 
   private def appendIdentifier(identifier: String): Unit =
-    if (Identifier.isIdentifier(identifier)) {
-      sb.append(identifier)
-    } else {
-      sb.append('`')
-      sb.append(identifier)
-      sb.append('`')
-    }
+    BasicPrinter.appendIdentifier(sb, identifier)
 }
 
 object WorkflowPrinter

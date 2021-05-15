@@ -550,4 +550,13 @@ object ScalaUtils
     }
     sb.toString
   }
+
+  def withStringBuilder(body: StringBuilder => Unit): String =
+    withStringBuilder(16)(body)
+
+  def withStringBuilder(size: Int = 16)(body: StringBuilder => Unit): String = {
+    val sb = new StringBuilder(size)
+    body(sb)
+    sb.toString
+  }
 }

@@ -63,8 +63,8 @@ object ExpressionParser
     def simpleConstant = P(CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$').!)
     def constant = P(((simpleConstant | escapedCharInString).rep.map(_.mkString)).map(StringConstant(_)))
 
-    def curlyName = P("{" ~~/ simpleName ~~/ "}")
-    def namedValue = (simpleName | digits/*regex group*/ | curlyName).map(NamedValue(_))
+    def curlyName = P("{" ~~/ identifier ~~/ "}")
+    def namedValue = (identifier | digits/*regex group*/ | curlyName).map(NamedValue(_))
     def expr = P("$" ~~/ (namedValue | ("(" ~~/ expression ~~/ ")")))
 
     (constant ~~/ (expr ~~/ constant).rep)
@@ -91,11 +91,8 @@ object ExpressionParser
     //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), NamedValue.KeyValue(StringConstant(key))) })
     def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
 
-    "$" ~~ (nameOnly(simpleName | digits/*regex group*/) | curlyName)
+    "$" ~~ (nameOnly(identifier | digits/*regex group*/) | curlyName)
   }
-
-  private def simpleName[_: P] = P[String](
-    (CharPred(NamedValue.isSimpleNameStart) ~ CharsWhile(NamedValue.isSimpleNamePart, 0)).!)
 
   private def argumentFunctionCall[_: P] = P[NamedValue](
     keyword("argument") ~ w ~

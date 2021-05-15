@@ -1,8 +1,8 @@
 package js7.base.utils
 
 import cats.instances.either._
-import cats.instances.option._
 import cats.instances.list._
+import cats.instances.option._
 import cats.syntax.option._
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.StandardPublicException
@@ -571,6 +571,11 @@ final class ScalaUtilsTest extends AnyFreeSpec
       "d0d1d2d3d4d5d6d7d8d9dadbdcdddedf" +
       "e0e1e2e3e4e5e6e7e8e9eaebecedeeef" +
       "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff")
+  }
+
+  "withStringBuidler" in {
+    assert(withStringBuilder(_.append("*")) == "*")
+    assert(withStringBuilder()(_.append("*")) == "*")
   }
 
   "Monoid" in {

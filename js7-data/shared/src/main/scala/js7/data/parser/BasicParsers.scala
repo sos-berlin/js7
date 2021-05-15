@@ -2,14 +2,15 @@ package js7.data.parser
 
 import fastparse.NoWhitespace._
 import fastparse._
+import java.lang.Character.isUnicodeIdentifierPart
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
-import js7.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.item.ItemPath
 import js7.data.lock.LockPath
+import js7.data.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
 import scala.reflect.ClassTag
 
 /**
@@ -33,11 +34,31 @@ object BasicParsers
   //def commaOrNewLine[_: P] = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
   def int[_: P] = P[Int](("-".? ~ digits).!.map(_.toInt))
   def digits[_: P] = P[String](CharsWhile(c => c >= '0' && c <= '9').!)
-  def identifierEnd[_: P] = P(&(CharPred(c => !isIdentifierPart(c))) | End)
-  def identifier[_: P] = P[String](  // TODO Compare and test code with Identifier.isIdentifier
-    ("`" ~/ CharsWhile(c => c != '`' && c != '\n').! ~/ "`") |
-      (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).! ~
-        identifierEnd)
+
+  def identifier[_: P] = P[String](
+    simpleIdentifier | backtickIdentifier)
+
+  def simpleIdentifier[_: P] = P[String](
+    (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).!)
+
+  private def backtickIdentifier[_: P] = P[String](
+    rawIdentifierPart.rep(1).map(_.mkString("`"))
+      .flatMap {
+        case "" => Fail.opaque("Identifier in backticks ` must not be empty")
+        case o => Pass(o)
+      })
+
+  private def rawIdentifierPart[_: P] = P[String](
+    "`" ~/ CharsWhile(c => c != '`' && c != '\n', 0).! ~/ "`")
+
+  def identifierEnd[_: P] = P(&(CharPred(c => !isUnicodeIdentifierPart(c))) | End)
+
+  def keyword[_: P] = P(
+    (CharPred(isIdentifierStart).opaque("keyword start") ~
+      CharsWhile(isUnicodeIdentifierPart, 0)
+    ).!)
+
+  def keyword[_: P](name: String) = P[Unit](name ~ identifierEnd)
 
   def quotedString[_: P] = P[String](
     doubleQuoted | singleQuoted)
@@ -95,10 +116,6 @@ object BasicParsers
       })
 
   def pathString[_: P] = P[String](quotedString)
-
-  def keyword[_: P] = P(identifier)
-
-  def keyword[_: P](name: String) = P[Unit](name ~ identifierEnd)
 
   def path[A <: ItemPath](implicit ctx: P[_], A: ItemPath.Companion[A]) = P[A](
     pathString.flatMap(p => checkedToP(A.checked(p))))

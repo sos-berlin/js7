@@ -35,6 +35,9 @@ final class ExpressionParserTest extends AnyFreeSpec
     testExpression("""$clé""", NamedValue.last("clé"))
     testExpression("""$A""", NamedValue.last("A"))
     testExpression("""${SOME_KEY}""", NamedValue("SOME_KEY"))
+    testExpression("""$`weird name, with dot., and comma`""", NamedValue("weird name, with dot., and comma"))
+    testExpression("""${`weird name, with dot., and comma`}""", NamedValue("weird name, with dot., and comma"))
+    testExpression(""""${`weird name, with dot., and comma`}"""", InterpolatedString(List(NamedValue("weird name, with dot., and comma"))))
     //testExpression("""${arg::SOME-KEY}""", NamedValue(NamedValue.Argument, NamedValue.KeyValue("SOME-KEY")))
     //testExpression("""${label::LABEL.SOME-KEY}""", NamedValue(NamedValue.ByLabel(Label("LABEL")), NamedValue.KeyValue("SOME-KEY")))
     //testExpression("""${job::JOB.SOME-KEY}""", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("SOME-KEY")))
@@ -149,8 +152,10 @@ final class ExpressionParserTest extends AnyFreeSpec
 
     testExpression(""""A"""", StringConstant("A"))
     testExpression(""""$A$B"""", InterpolatedString(List(NamedValue("A"), NamedValue("B"))))
+    testExpression(""""$`A:1`B"""", InterpolatedString(List(NamedValue("A:1"), StringConstant("B"))))
     testExpression(""""${A}B"""", InterpolatedString(List(NamedValue("A"), StringConstant("B"))))
-    testExpression(""""$A-B"""", InterpolatedString(List(NamedValue("A"), StringConstant("-B"))))
+    testExpression(""""${`A:1`}B"""", InterpolatedString(List(NamedValue("A:1"), StringConstant("B"))))
+    testExpression(""""$A:B"""", InterpolatedString(List(NamedValue("A"), StringConstant(":B"))))
 
     "Interpolated string" in {
       assert(checkedParse(""""$A"""", expression(_)) == Right(InterpolatedString(NamedValue("A") :: Nil)))

@@ -4,8 +4,9 @@ import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
-import js7.base.utils.Identifier.{isIdentifier, isIdentifierPart}
+import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
+import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, isIdentifierPart}
 import js7.data.value.ValuePrinter.{appendQuotedContent, quoteString}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -185,11 +186,11 @@ object Expression
     import NamedValue._
     def precedence = Precedence.Factor
     override def toString = (where, what, default) match {
-      case (LastOccurred, KeyValue(StringConstant(key)), None)
-        if isSimpleName(key) || key.forall(c => c >= '0' && c <= '9') => "$" + key
-
-      case (LastOccurred, KeyValue(StringConstant(key)), None)
-        if isIdentifier(key) => s"$${$key}"
+      case (LastOccurred, KeyValue(StringConstant(key)), None) if !key.contains('`') =>
+        if (isSimpleName(key) || key.forall(c => c >= '0' && c <= '9'))
+          s"$$$key"
+        else
+          s"$$`$key`"
 
       case (LastOccurred, KeyValue(expression), None) => s"variable($expression)"
 
@@ -199,6 +200,7 @@ object Expression
       //case (LastExecutedJob(WorkflowJob.Name(jobName)), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${job::$jobName.$key}"
       case _ =>
         val args = mutable.Buffer.empty[String]
+        lazy val sb = new StringBuilder
         what match {
           case NamedValue.KeyValue(expr) => args += s"key=$expr"
           case _ =>
@@ -208,18 +210,18 @@ object Expression
           case NamedValue.LastOccurred =>
           case NamedValue.LastOccurredByPrefix(prefix) =>
             args += "prefix=" + prefix   // Not used
+
           case NamedValue.LastExecutedJob(jobName) =>
-            if (isIdentifier(jobName.string)) {
-              args += "job=" + jobName.string
-            } else {
-              args += "job=`" + jobName.string + '`'
-            }
+            sb.clear()
+            sb.append("job=")
+            appendIdentifier(sb, jobName.string)
+            args += sb.toString
+
           case NamedValue.ByLabel(label) =>
-            if (isIdentifier(label.string)) {
-              args += "label=" + label.string
-            } else {
-              args += "label=`" + label.string + '`'
-            }
+            sb.clear()
+            sb.append("label=")
+            appendIdentifier(sb, label.string)
+            args += sb.toString
         }
         for (d <- default) args += "default=" + d.toString
         (where, what) match {
@@ -288,39 +290,31 @@ object Expression
   final case class InterpolatedString(expressions: List[Expression]) extends StringExpression {
     def precedence = Precedence.Factor
 
-    override def toString = {
-      val sb = new StringBuilder
-      sb.append('"')
-      expressions.tails foreach {
-        case StringConstant(string) :: _ =>
-          appendQuotedContent(sb, string)
+    override def toString =
+      withStringBuilder { sb =>
+        sb.append('"')
+        expressions.tails foreach {
+          case StringConstant(string) :: _ =>
+            appendQuotedContent(sb, string)
 
-        case NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(StringConstant(name)), None) :: next =>
-          val noBraces = next match {
-            case StringConstant(next) :: Nil =>
-              !next.headOption.forall(isIdentifierPart)
-            case _ =>
-              isIdentifier(name) || name.forall(c => c >= '0' && c <= '9')
-          }
-          if (noBraces) {
+          case NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(StringConstant(name)), None) :: next =>
             sb.append('$')
-            sb.append(name)
-          } else {
-            sb.append("${")
-            sb.append(name)
-            sb.append("}")
-          }
+            next match {
+              case StringConstant(next) :: Nil if next.headOption.forall(isIdentifierPart) =>
+                appendIdentifierWithBackticks(sb, name)
+              case _ =>
+                appendIdentifier(sb, name)
+            }
 
-        case expr :: _ =>
-          sb.append("$(")
-          sb.append(expr)
-          sb.append(")")
+          case expr :: _ =>
+            sb.append("$(")
+            sb.append(expr)
+            sb.append(')')
 
-        case Nil =>
+          case Nil =>
+        }
+        sb.append('"')
       }
-      sb += '"'
-      sb.toString
-    }
   }
 
   sealed trait Precedence {

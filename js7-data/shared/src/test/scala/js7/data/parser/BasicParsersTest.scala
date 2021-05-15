@@ -2,8 +2,10 @@ package js7.data.parser
 
 import fastparse.NoWhitespace._
 import fastparse._
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.data.parser.BasicParsers._
+import js7.data.parser.BasicPrinter.appendIdentifier
 import js7.data.parser.Parsers.checkedParse
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -29,9 +31,22 @@ final class BasicParsersTest extends AnyFreeSpec
   }
 
   "identifier" in {
-    assert(checkedParse("name", identifier(_)) == Right("name"))
-    assert(checkedParse("name123", identifier(_)) == Right("name123"))
-    assert(checkedParse("1name", identifier(_)).isLeft/*TODO error message?*/)
+    assertIdentifier("name", Right("name"))
+    assertIdentifier("name123", Right("name123"))
+    assertIdentifier("a.b", Left(Problem("Expected end-of-input:1:2, found \".b\"")))
+    assertIdentifier("`a.b`", Right("a.b"))
+    assertIdentifier("`a``b`", Right("a`b"))
+    assertIdentifier("`a````b`", Right("a``b"))
+    assertIdentifier("```a````b```", Right("`a``b`"))
+    assertIdentifier("1name", Left(Problem("Expected (simpleIdentifier | backtickIdentifier):1:1, found \"1name\"")))
+
+    def assertIdentifier[T, V, R](expr: String, expected: Checked[String]) = {
+      val result = checkedParse(expr, identifier(_))
+      assert(result == expected)
+      for (r <- result) {
+        assert(withStringBuilder(appendIdentifier(_, r)) == expr)
+      }
+    }
   }
 
   "String in single-quotes" - {
