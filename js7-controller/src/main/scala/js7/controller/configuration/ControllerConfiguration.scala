@@ -40,9 +40,6 @@ final case class ControllerConfiguration(
   config: Config)
 extends CommonConfiguration
 {
-  private def withCommandLineArguments(a: CommandLineArguments): ControllerConfiguration =
-    copy(controllerId = a.as("--id=", controllerId))
-
   def itemDirectory: Path = configDirectory / "live"
 
   def stateDirectory: Path = dataDirectory / "state"
@@ -90,27 +87,27 @@ object ControllerConfiguration
       configDirectory = common.configDirectory,
       dataDirectory = common.dataDirectory,
       config,
+      commandLineArguments.optionAs[ControllerId]("--id="),
       name = ControllerConfiguration.DefaultName)
     conf.copy(webServerPorts = common.webServerPorts ++ conf.webServerPorts)
-      .withCommandLineArguments(commandLineArguments)
   }
 
   private def fromDirectories(
     configDirectory: Path,
     dataDirectory: Path,
     extraDefaultConfig: Config,
-    name: String
-  ): ControllerConfiguration = {
+    maybeControllerId: Option[ControllerId] = None,
+    name: String)
+  : ControllerConfiguration = {
     val dataDir = dataDirectory.toAbsolutePath
     val configDir = configDirectory.toAbsolutePath
     val config = resolvedConfig(configDir, dataDir, extraDefaultConfig)
-    val controllerId = ControllerId(config.getString("js7.controller.id"))
+    val controllerId = maybeControllerId getOrElse ControllerId(config.getString("js7.controller.id"))
     new ControllerConfiguration(
       controllerId = controllerId,
       dataDirectory = dataDir,
       configDirectory = configDir,
       webServerPorts = Nil,
-        //config.seqAs("js7.web.server.http.ports")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       timeZone = ZoneId.systemDefault,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
