@@ -18,6 +18,7 @@ import js7.base.utils.SetOnce
 import js7.cluster.Cluster._
 import js7.cluster.ClusterCommon.truncateFile
 import js7.cluster.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
+import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
@@ -46,6 +47,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   httpsConfig: HttpsConfig,
   config: Config,
   eventIdGenerator: EventIdGenerator,
+  licenseChecker: LicenseChecker,
   testEventPublisher: EventPublisher[Any])
   (implicit
     S: JournaledState.Companion[S],
@@ -56,7 +58,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   import clusterConf.ownId
 
   private val common = new ClusterCommon(controllerId, ownId, clusterContext,
-    httpsConfig, config, testEventPublisher)
+    httpsConfig, config, licenseChecker, testEventPublisher)
   import common.activationInhibitor
   @volatile private var _passiveOrWorkingNode: Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]] = None
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]

@@ -28,7 +28,7 @@ final case class ClusterConf(
 
 object ClusterConf
 {
-  val ClusterProductName = "JS7 Controller Cluster"
+  val ClusterProductName = "js7.controller.cluster"
 
   def fromConfig(userId: UserId, config: Config): Checked[ClusterConf] = {
     val isBackup = config.getBoolean("js7.journal.cluster.node.is-backup")

@@ -23,6 +23,7 @@ import js7.base.web.Uri
 import js7.cluster.ClusterCommon._
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
+import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
@@ -36,6 +37,7 @@ private[cluster] final class ClusterCommon(
   val clusterContext: ClusterContext,
   httpsConfig: HttpsConfig,
   config: Config,
+  val licenseChecker: LicenseChecker,
   testEventPublisher: EventPublisher[Any])
   (implicit actorSystem: ActorSystem)
 {

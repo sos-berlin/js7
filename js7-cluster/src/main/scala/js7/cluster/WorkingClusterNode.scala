@@ -14,7 +14,6 @@ import js7.base.web.Uri
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.Problems.ClusterNodesAlreadyAppointed
 import js7.cluster.WorkingClusterNode._
-import js7.core.license.LicenseChecker.checkLicense
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
@@ -53,7 +52,7 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
     clusterState match {
       case ClusterState.Empty => Task.pure(Right(Completed))
       case clusterState: HasNodes =>
-        Task(checkLicense(ClusterProductName))
+        Task(common.licenseChecker.checkLicense(ClusterProductName))
           .flatMapT(_ =>
             startActiveClusterNode(clusterState, eventId))
     }
@@ -114,7 +113,7 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
   private def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
     currentClusterState.flatMap {
       case ClusterState.Empty =>
-        Task(checkLicense(ClusterProductName))
+        Task(common.licenseChecker.checkLicense(ClusterProductName))
           .flatMapT(_ =>
             persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
               .flatMapT { case (_, state) =>

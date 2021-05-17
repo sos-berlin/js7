@@ -30,7 +30,6 @@ import js7.cluster.ObservablePauseDetector.RichPauseObservable
 import js7.cluster.PassiveClusterNode._
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
-import js7.core.license.LicenseChecker.checkLicense
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
@@ -94,7 +93,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S): Task[Checked[ClusterFollowUp[S]]] =
-    Task(checkLicense(ClusterProductName))
+    Task(common.licenseChecker.checkLicense(ClusterProductName))
       .flatMapT(_ => Task.deferAction { implicit s =>
         val recoveredClusterState = recoveredState.clusterState
         logger.debug(s"recoveredClusterState=$recoveredClusterState")

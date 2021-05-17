@@ -45,6 +45,7 @@ import js7.controller.configuration.inject.ControllerModule
 import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
+import js7.core.license.LicenseChecker
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrder
@@ -59,6 +60,7 @@ import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
+import js7.license.LicenseCheckContext
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -392,6 +394,7 @@ object RunningController
           httpsConfig,
           config,
           injector.instance[EventIdGenerator],
+          new LicenseChecker(LicenseCheckContext(controllerConfiguration.configDirectory)),
           testEventBus)
       }
 
