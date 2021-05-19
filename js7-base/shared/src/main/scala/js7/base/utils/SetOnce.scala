@@ -57,6 +57,9 @@ class SetOnce[A](label: => String, notYetSetProblem: Problem)
 
   final def nonEmpty = promise.future.isCompleted
 
+  final def contains(a: A) =
+    toOption contains a
+
   final def foreach(f: A => Unit) =
     toOption.foreach(f)
 

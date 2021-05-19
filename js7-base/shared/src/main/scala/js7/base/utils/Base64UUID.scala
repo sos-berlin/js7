@@ -9,6 +9,8 @@ final case class Base64UUID private(uuid: UUID, string: String) extends GenericS
 
 object Base64UUID extends GenericString.Checked_[Base64UUID]
 {
+  val zero = apply(new UUID(0, 0))
+
   def apply(uuid: UUID) = new Base64UUID(uuid, uuidToBase64(uuid))
 
   def random() = apply(UUID.randomUUID())
@@ -20,7 +22,7 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
   override def checked(string: String) =
     for (uuid <- base64ToUUID(string)) yield new Base64UUID(uuid, string)
 
-  private val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
+  private lazy val toUrlBase64 = Base64.getUrlEncoder.withoutPadding.encodeToString _
 
   def uuidToBase64(uuid: UUID): String = {
     val buffer = ByteBuffer.wrap(new Array[Byte](16))

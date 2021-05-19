@@ -2,14 +2,13 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
-import akka.util.Timeout
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
-import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
+import js7.agent.data.event.AgentControllerEvent.AgentReady
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.JobRegister.JobEntry
@@ -30,8 +29,6 @@ import js7.common.akkautils.SupervisorStrategies
 import js7.common.http.CirceToYaml.ToYamlString
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
@@ -63,19 +60,21 @@ import shapeless.tag
   * @author Joacim Zschimmer
   */
 final class AgentOrderKeeper(
-  controllerId: ControllerId,
-  ownAgentPath: AgentPath,
+  journalHeader: JournalHeader,
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   executorConf: JobExecutorConf,
   persistence: JournaledStatePersistence[AgentState],
-  implicit private val askTimeout: Timeout,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentState, Event]
-with Stash {
-
+with Stash
+{
+  import conf.akkaAskTimeout
   import context.{actorOf, watch}
+
+  private val ownAgentPath = persistence.currentState.meta.agentPath
+  private val controllerId = persistence.currentState.meta.controllerId
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
@@ -175,14 +174,7 @@ with Stash {
       val state = recovered.state
       journalState = state.journalState
 
-      val sender = this.sender()
-      recovered.startJournaling(journalActor)
-        .tapEval(_ => persistence.start(state))
-        .tapEval(_ => persistence.onJournalActorStarted)
-        .foreach { journalHeader =>
-          (self ! Internal.JournalIsReady(journalHeader, state))(sender)
-        }
-
+      self.forward(Internal.JournalIsReady(state))
       become("Recovering")(recovering(state))
       unstashAll()
 
@@ -191,29 +183,26 @@ with Stash {
 
   private def recovering(recoveredState: AgentState): Receive = {
     var remainingOrders = recoveredState.idToOrder.size
-    var _journalHeader: Option[JournalHeader] = None
 
     def continue() =
-      _journalHeader match {
-        case Some(journalHeader) if remainingOrders == 0 =>
-          if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
-            // Automatically add Controller's UserId to list of users allowed to release events,
-            // to avoid deletion of journal files due to an empty list, before controller has read the events.
-            // The controller has to send ReleaseEvents commands to release obsolete journal files.
-            persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)) {
-              case (Stamped(_,_, _ <-: event), journaledState) =>
-                journalState = journalState.applyEvent(event)
-            }
+      if (remainingOrders == 0) {
+        if (!journalState.userIdToReleasedEventId.contains(controllerId.toUserId)) {
+          // Automatically add Controller's UserId to list of users allowed to release events,
+          // to avoid deletion of journal files due to an empty list, before controller has read the events.
+          // The controller has to send ReleaseEvents commands to release obsolete journal files.
+          persist(JournalEventsReleased(controllerId.toUserId, EventId.BeforeFirst)) {
+            case (Stamped(_,_, _ <-: event), journaledState) =>
+              journalState = journalState.applyEvent(event)
           }
-          persist(AgentReadyForController(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
-            become("ready")(ready)
-            unstashAll()
-            logger.info("Ready")
-          }
-          fileWatchManager.start()
-            .runAsyncAndForget
+        }
 
-        case _ =>
+        persist(AgentReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
+          become("ready")(ready)
+          unstashAll()
+          logger.info("Ready")
+        }
+        fileWatchManager.start()
+          .runAsyncAndForget
       }
 
     val receive: Receive = {
@@ -223,9 +212,8 @@ with Stash {
         remainingOrders -= 1
         continue()
 
-      case Internal.JournalIsReady(journalHeader, state) =>
+      case Internal.JournalIsReady(state) =>
         logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-        _journalHeader = Some(journalHeader)
 
         for (workflow <- state.idToWorkflow.values)
           wrapException(s"Error while recovering ${workflow.path}") {
@@ -644,7 +632,7 @@ object AgentOrderKeeper {
 
   private object Internal {
     final case class Recover(recovered: Recovered[AgentState])
-    final case class JournalIsReady(journalHeader: JournalHeader, agentState: AgentState)
+    final case class JournalIsReady(agentState: AgentState)
     final case class Due(orderId: OrderId)
     object StillTerminating extends DeadLetterSuppression
   }

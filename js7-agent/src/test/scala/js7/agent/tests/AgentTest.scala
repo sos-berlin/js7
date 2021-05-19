@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, RegisterAsController}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CreateAgent}
 import js7.agent.tests.AgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.auth.SimpleUser
@@ -55,15 +55,15 @@ final class AgentTest extends AnyFreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            assert(agentApi.commandExecute(RegisterAsController(agentPath)).await(99.s).toOption.get
-              .isInstanceOf[RegisterAsController.Response])
+            assert(agentApi.commandExecute(CreateAgent(controllerId, agentPath)).await(99.s).toOption.get
+              .isInstanceOf[CreateAgent.Response])
 
             assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
               == Right(AgentCommand.Response.Accepted))
-            val Right(eventWatch) = agentApi.eventWatchForController(TestControllerId).await(99.s)
+            val Right(eventWatch) = agentApi.eventWatch.await(99.s)
             val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.outcome == Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "WORKDIR" -> StringValue(workingDirectory.toString))))
             agent.terminate() await 99.s
@@ -75,8 +75,8 @@ final class AgentTest extends AnyFreeSpec with AgentTester
 
 object AgentTest
 {
-  private val TestControllerId = ControllerId("CONTROLLER")
-  private val TestUser = SimpleUser(TestControllerId.toUserId)
+  private val controllerId = ControllerId("CONTROLLER")
+  private val TestUser = SimpleUser(controllerId.toUserId)
   private val agentPath = AgentPath("AGENT")
 
   private val TestScript =

@@ -8,10 +8,10 @@ import js7.agent.scheduler.AgentHandle
 import js7.base.problem.Checked
 import js7.core.command.CommandMeta
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
-import js7.data.controller.ControllerId
 import js7.data.order.{Order, OrderId}
 import js7.journal.watch.EventWatch
 import monix.eval.Task
+
 /**
   * @author Joacim Zschimmer
   */
@@ -42,6 +42,6 @@ extends AgentApi
     commandHandler.typedExecute(AgentCommand.GetOrders, meta)
       .map(_.map(_.orders))
 
-  def eventWatchForController(controllerId: ControllerId): Task[Checked[EventWatch]] =
-    agentHandle.eventWatch(controllerId)
+  def eventWatch: Task[Checked[EventWatch]] =
+    agentHandle.eventWatch
 }

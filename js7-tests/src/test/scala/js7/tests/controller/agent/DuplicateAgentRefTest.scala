@@ -1,7 +1,7 @@
 package js7.tests.controller.agent
 
 import com.typesafe.config.ConfigUtil.quoteString
-import js7.agent.data.Problems.DuplicateAgentRef
+import js7.agent.data.Problems.AgentPathMismatchProblem
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
@@ -46,7 +46,7 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
     val orderId = OrderId("ORDER")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     val a = controller.eventWatch.await[AgentCouplingFailed]().head.value.event
-    val b = AgentCouplingFailed(DuplicateAgentRef(first = aAgentPath, second = bAgentPath))
+    val b = AgentCouplingFailed(AgentPathMismatchProblem(bAgentPath, aAgentPath))
     assert(a == b)
   }
 }

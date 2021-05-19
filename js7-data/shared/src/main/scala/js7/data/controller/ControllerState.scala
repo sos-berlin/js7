@@ -47,6 +47,8 @@ final case class ControllerState(
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
+  def companion = ControllerState
+
   def estimatedSnapshotSize: Int =
     1 +
     standards.snapshotSize +

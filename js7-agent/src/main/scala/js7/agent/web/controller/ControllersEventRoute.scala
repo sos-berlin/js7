@@ -6,7 +6,6 @@ import js7.agent.data.AgentState
 import js7.agent.web.common.AgentRouteProvider
 import js7.base.auth.SimpleUser
 import js7.core.command.CommandMeta
-import js7.data.controller.ControllerId
 import js7.journal.web.GenericEventRoute
 
 /**
@@ -24,6 +23,6 @@ trait ControllersEventRoute extends AgentRouteProvider with GenericEventRoute
     def keyedEventTypedJsonCodec = AgentState.keyedEventJsonCodec
 
     def eventWatchFor(user: SimpleUser) =
-      agentApi(CommandMeta(user)).eventWatchForController(ControllerId.fromUserId(user.id))
+      agentApi(CommandMeta(user)).eventWatch
   }
 }

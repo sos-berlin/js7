@@ -4,10 +4,9 @@ import akka.pattern.ask
 import akka.util.Timeout
 import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CoupleController, DetachOrder, GetOrders, RegisterAsController}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CoupleController, CreateAgent, DetachOrder, GetOrders}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
-import js7.base.auth.UserId
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
@@ -45,9 +44,9 @@ final class AgentActorTest extends AnyFreeSpec
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
-        val agentRunId = executeCommand(RegisterAsController(agentPath))
-          .await(99.s).orThrow.asInstanceOf[RegisterAsController.Response].agentRunId
-        val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch(ControllerId.fromUserId(UserId.Anonymous)))(Timeout(88.s))
+        val agentRunId = executeCommand(CreateAgent(controllerId, agentPath))
+          .await(99.s).orThrow.asInstanceOf[CreateAgent.Response].agentRunId
+        val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch)(Timeout(88.s))
           .mapTo[Checked[EventWatch]].await(99.s).orThrow
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
@@ -97,6 +96,7 @@ final class AgentActorTest extends AnyFreeSpec
 object AgentActorTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val controllerId = ControllerId("CONTROLLER")
   private val TestScript =
     if (isWindows) """
       |@echo off

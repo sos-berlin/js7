@@ -1,7 +1,7 @@
 package js7.tests
 
 import js7.agent.RunningAgent
-import js7.agent.data.Problems.UnknownController
+import js7.agent.data.Problems.AgentRunIdMismatchProblem
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked._
@@ -13,7 +13,6 @@ import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentPath, AgentRef}
-import js7.data.controller.ControllerId
 import js7.data.job.{PathExecutable, RelativePathExecutable}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -74,7 +73,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     controller.updateUnsignedSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
     controller.addOrderBlocking(FreshOrder(OrderId("❌"), workflow.path))
     controller.eventWatch.await[AgentCouplingFailed](
-      _.event.problem == UnknownController(ControllerId("Controller")),
+      _.event.problem == AgentRunIdMismatchProblem(agentPath),
       after = beforeUpdate)
     agent.terminate() await 99.s
   }

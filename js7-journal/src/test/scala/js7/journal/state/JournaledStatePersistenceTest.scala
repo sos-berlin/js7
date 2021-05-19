@@ -258,6 +258,8 @@ private object JournaledStatePersistenceTest
     protected type Snapshot = NumberThing
     protected type E = NumberEvent
 
+    def companion = TestState
+
     def withEventId(eventId: EventId) =
       copy(eventId = eventId)
 

@@ -52,6 +52,8 @@ private object JournaledStateTest
   private case class MyState(eventId: EventId, standards: JournaledState.Standards)
   extends JournaledState[MyState]
   {
+    def companion = MyState
+
     def estimatedSnapshotSize = standards.snapshotSize
 
     def toSnapshotObservable = standards.toSnapshotObservable
@@ -64,7 +66,13 @@ private object JournaledStateTest
 
     def withEventId(eventId: EventId) = copy(eventId = eventId)
   }
-  private object MyState {
+  private object MyState extends JournaledState.Companion[MyState] {
     val empty = MyState(EventId.BeforeFirst, JournaledState.Standards.empty)
+
+    // TODO Refactor this into a separate common trait
+    protected def InventoryItems = throw new NotImplementedError
+    def snapshotObjectJsonCodec = throw new NotImplementedError
+    implicit def keyedEventJsonCodec = throw new NotImplementedError
+    def newBuilder() = throw new NotImplementedError
   }
 }

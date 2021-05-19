@@ -52,7 +52,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
   // But ControllersEventRouteTest has an equivalent test.
   if (false) "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in {
     directoryProvider.runController() { controller =>
-      val firstJournalFile = agentStateDir / "controller-Controller--0.journal"
+      val firstJournalFile = agentStateDir / "agent--0.journal"
       var lastEventId = EventId.BeforeFirst
       directoryProvider.runAgents() { _ =>
         val order = orderGenerator.next()
@@ -86,7 +86,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
         controller.eventWatch.await[AgentReady](after = controller.recoveredEventId)
       }
     }
-    def agentJournalFiles() = listJournalFiles(agentStateDir / "controller-Controller").map(_.file)
+    def agentJournalFiles() = listJournalFiles(agentStateDir / "agent").map(_.file)
     val firstAgentJournalFiles = agentJournalFiles()
     assert(firstAgentJournalFiles.size == 2)
     directoryProvider.runAgents() { _ =>
@@ -128,15 +128,15 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
     }
   }
 
-  "CoupleController command fails with UnknownEventIdProblem if Agent restarts without journal" in {
+  "CoupleController command fails with UnknownEventIdProblem if the agent journal's tail has been deleted" in {
     directoryProvider.runController() { controller =>
       directoryProvider.runAgents() { _ =>
         val order = orderGenerator.next()
         controller.addOrderBlocking(order)
         controller.eventWatch.await[OrderFinished](predicate = _.key == order.id)
       }
-      // Delete Agent journal
-      listJournalFiles(agentStateDir / "controller-Controller").map(_.file) foreach delete
+      // Delete the last two agent journal files
+      listJournalFiles(agentStateDir / "agent").takeRight(2).map(_.file) foreach delete
       directoryProvider.runAgents() { _ =>
         controller.eventWatch.await[AgentCouplingFailed](after = controller.recoveredEventId,
           predicate = ke =>

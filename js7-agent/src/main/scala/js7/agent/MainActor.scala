@@ -11,7 +11,6 @@ import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.auth.UserId
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.core.command.CommandMeta
@@ -24,7 +23,6 @@ import scala.util.control.NoStackTrace
   */
 final class MainActor(
   agentConfiguration: AgentConfiguration,
-  sessionRegister: SessionRegister[SimpleSession],
   injector: Injector,
   readyPromise: Promise[Ready],
   terminationPromise: Promise[AgentTermination.Terminate])
@@ -77,7 +75,8 @@ extends Actor {
   }
 }
 
-object MainActor {
+object MainActor
+{
   private val logger = Logger(getClass)
 
   final case class Ready(api: CommandMeta => DirectAgentApi)

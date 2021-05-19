@@ -152,16 +152,16 @@ object RunningAgent {
       val closer = injector.instance[Closer]
       val webServer = injector.instance[AgentWebServer]
 
-      val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
       val mainActorReadyPromise = Promise[MainActor.Ready]()
       val terminationPromise = Promise[AgentTermination.Terminate]()
       val mainActor = actorSystem.actorOf(
-        Props { new MainActor(agentConfiguration, sessionRegister, injector, mainActorReadyPromise, terminationPromise) },
+        Props { new MainActor(agentConfiguration, injector, mainActorReadyPromise, terminationPromise) },
         "main")
 
       agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
       val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
+      val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
 
       val task = for {
         sessionToken <- sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)

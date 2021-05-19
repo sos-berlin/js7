@@ -1,11 +1,12 @@
 package js7.agent.web.controller
 
 import js7.agent.client.AgentClient
-import js7.agent.data.Problems.{ControllerAgentMismatch, DuplicateAgentRef, UnknownController}
-import js7.agent.data.commands.AgentCommand.{CoupleController, RegisterAsController, ReleaseEvents, TakeSnapshot}
-import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
+import js7.agent.data.Problems.{AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
+import js7.agent.data.commands.AgentCommand.{CoupleController, CreateAgent, ReleaseEvents, TakeSnapshot}
+import js7.agent.data.event.AgentControllerEvent.AgentReady
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider._
+import js7.agent.web.controller.ControllersEventRouteTest._
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
@@ -31,7 +32,6 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   implicit private lazy val scheduler = agent.injector.instance[Scheduler]
   implicit private lazy val actorSystem = agent.actorSystem
   private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
-  private val agentPath = AgentPath("AGENT")
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst
   private var snapshotEventId = EventId.BeforeFirst
@@ -41,30 +41,31 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   }
 
   "Requesting events of unregistered Controller" in {
-    assert(agentClient.controllersEvents(EventRequest.singleClass[Event](after = 1)).await(99.s) ==
-      Left(UnknownController(ControllerId.fromUserId(TestUserAndPassword.userId))))
+    assert(agentClient.events(EventRequest.singleClass[Event](after = 1)).await(99.s) ==
+      Left(AgentNotCreatedProblem))
   }
 
-  "(RegisterAsController)" in {
-    val RegisterAsController.Response(agentRunId_) = agentClient.commandExecute(RegisterAsController(agentPath)).await(99.s).orThrow
-    this.agentRunId = agentRunId_
+  "(CreateAgent)" in {
+    val CreateAgent.Response(agentRunId) = agentClient.commandExecute(CreateAgent(controllerId, agentPath))
+      .await(99.s).orThrow
+    this.agentRunId = agentRunId
   }
 
   "Request events after known EventId" in {
-    val Right(EventSeq.NonEmpty(events)) = agentClient.controllersEvents(
+    val Right(EventSeq.NonEmpty(events)) = agentClient.events(
       EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
   }
 
-  "AgentReadyForController" in {
-    val Right(EventSeq.NonEmpty(events)) = agentClient.controllersEvents(
-      EventRequest[Event](Set(classOf[AgentReadyForController]), after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
+  "AgentReady" in {
+    val Right(EventSeq.NonEmpty(events)) = agentClient.events(
+      EventRequest[Event](Set(classOf[AgentReady]), after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     eventId = events.last.eventId
   }
 
   "Requesting events after unknown EventId returns Torn" in {
     // When Controller requests events, the requested EventId (after=) must be known
-    val Right(TearableEventSeq.Torn(0)) = agentClient.controllersEvents(EventRequest.singleClass[Event](after = 1L)).await(99.s)
+    val Right(TearableEventSeq.Torn(0)) = agentClient.events(EventRequest.singleClass[Event](after = 1L)).await(99.s)
   }
 
   "Login again"  in {
@@ -74,10 +75,10 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
 
   "Recoupling with changed AgentRunId or different AgentPath fails" in {
     assert(agentClient.commandExecute(CoupleController(agentPath, AgentRunId(JournalId.random()), eventId)).await(99.s) ==
-      Left(ControllerAgentMismatch(agentPath)))
+      Left(AgentRunIdMismatchProblem(agentPath)))
     assert(agentClient.commandExecute(CoupleController(AgentPath("OTHER"), agentRunId, eventId)).await(99.s) ==
-      Left(DuplicateAgentRef(first = agentPath, second = AgentPath("OTHER"))))
-    val Right(EventSeq.NonEmpty(events)) = agentClient.controllersEvents(
+      Left(AgentPathMismatchProblem(AgentPath("OTHER"), agentPath)))
+    val Right(EventSeq.NonEmpty(events)) = agentClient.events(
       EventRequest.singleClass[Event](after = EventId.BeforeFirst, timeout = Some(99.s))).await(99.s)
     assert(events.head.eventId > EventId.BeforeFirst)
   }
@@ -86,18 +87,18 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
     // Take snapshot, then delete old journal files
     snapshotEventId = eventId
     agentClient.commandExecute(TakeSnapshot).await(99.s).orThrow
-    val Right(EventSeq.NonEmpty(stampedEvents)) = agentClient.controllersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s)
+    val Right(EventSeq.NonEmpty(stampedEvents)) = agentClient.events(EventRequest.singleClass[Event](after = eventId)).await(99.s)
     assert(stampedEvents.size == 1)
     assert(stampedEvents.head.value.event == JournalEvent.SnapshotTaken)
     eventId = stampedEvents.head.eventId
 
-    def journalFiles = listJournalFiles(agentConfiguration.stateDirectory / s"controller-${TestUserAndPassword.userId.string}")
+    def journalFiles = listJournalFiles(agentConfiguration.stateDirectory / "agent")
     assert(journalFiles.head.afterEventId == EventId.BeforeFirst)
 
     // Remove obsolete journal files
     agentClient.commandExecute(ReleaseEvents(eventId)).await(99.s).orThrow
     // Await JournalEventsReleased
-    eventId = agentClient.controllersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s).orThrow
+    eventId = agentClient.events(EventRequest.singleClass[Event](after = eventId)).await(99.s).orThrow
       .asInstanceOf[EventSeq.NonEmpty[Seq, AnyKeyedEvent]].stamped.last.eventId
 
     // Wait until ReleaseEvents takes effect (otherwise CoupleController may succeed or fail with watch.ClosedException)
@@ -122,13 +123,13 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   }
 
   "Continue fetching events" in {
-    val Right(EventSeq.Empty(lastEventId)) = agentClient.controllersEvents(EventRequest.singleClass[Event](after = eventId)).await(99.s)
+    val Right(EventSeq.Empty(lastEventId)) = agentClient.events(EventRequest.singleClass[Event](after = eventId)).await(99.s)
     assert(lastEventId == eventId)
   }
 
   "Torn EventSeq" in {
     val Right(TearableEventSeq.Torn(tornEventId)) =
-      agentClient.controllersEvents(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
+      agentClient.events(EventRequest.singleClass[Event](after = EventId.BeforeFirst)).await(99.s)
     assert(tornEventId == snapshotEventId)
   }
 
@@ -136,7 +137,12 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
     // Controller does not use this feature provided by GenericEventRoute. We test anyway.
     val futureEventId = eventId + 1
     val Right(EventSeq.Empty(lastEventId)) =
-      agentClient.controllersEvents(EventRequest.singleClass[Event](after = futureEventId)).await(99.s)
+      agentClient.events(EventRequest.singleClass[Event](after = futureEventId)).await(99.s)
     assert(lastEventId == eventId)
   }
+}
+
+object ControllersEventRouteTest {
+  private val agentPath = AgentPath("AGENT")
+  private val controllerId = ControllerId("CONTROLLER")
 }

@@ -1,14 +1,15 @@
 package js7.agent.scheduler
 
-import akka.actor.{ActorRef, PoisonPill, Props, Terminated}
+import akka.actor.{Actor, ActorRef, PoisonPill, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.data.EitherT
 import com.softwaremill.diffx.generic.auto._
+import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
-import js7.agent.data.Problems.{AgentIsShuttingDown, ControllerAgentMismatch, DuplicateAgentRef, UnknownController}
+import js7.agent.data.Problems.{AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
+import js7.agent.data.event.AgentControllerEvent.AgentCreated
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.{AgentState, AgentTermination}
 import js7.agent.scheduler.AgentActor._
@@ -21,27 +22,24 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.thread.IOExecutor
-import js7.base.utils.Assertions.assertThat
-import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.{Closer, SetOnce}
-import js7.common.akkautils.{Akkas, SupervisorStrategies}
+import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
-import js7.core.common.ActorRegister
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.controller.ControllerId
-import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalId, KeyedEvent, Stamped}
+import js7.data.event.{EventId, JournalHeader}
 import js7.executor.configuration.JobExecutorConf
 import js7.journal.data.JournalMeta
-import js7.journal.recover.JournaledStateRecoverer
+import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.JournalEventWatch
-import js7.journal.{EventIdGenerator, JournalActor, MainJournalingActor, StampedKeyedEventBus}
+import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success, Try}
 import shapeless.tag
 
 /**
@@ -49,48 +47,51 @@ import shapeless.tag
   */
 private[agent] final class AgentActor private(
   terminatePromise: Promise[AgentTermination.Terminate],
-  agentConfiguration: AgentConfiguration,
+  agentConf: AgentConfiguration,
   executorConf: JobExecutorConf,
   eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
   (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
-extends MainJournalingActor[AgentServerState, AgentServerEvent] {
-
-  import agentConfiguration.{akkaAskTimeout, stateDirectory}
+extends Actor with Stash with SimpleStateActor
+{
+  import agentConf.{akkaAskTimeout, stateDirectory}
   import context.{actorOf, watch}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
-  protected def journalConf = agentConfiguration.journalConf
 
-  private val journalMeta = JournalMeta(AgentServerState, stateDirectory / "agent")
+  private val signatureVerifier = GenericSignatureVerifier(agentConf.config).orThrow
+  private val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
   protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props[AgentServerState](journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler, eventIdGenerator),
+    JournalActor.props[AgentState](journalMeta, agentConf.journalConf, keyedEventBus, scheduler, eventIdGenerator),
     "Journal")))
-  private var state = AgentServerState.empty
-  private val controllerToOrderKeeper = new ControllerRegister
-  private val signatureVerifier = GenericSignatureVerifier(agentConfiguration.config).orThrow
+  private var journalHeader: JournalHeader = null
+  private var persistence: JournaledStatePersistence[AgentState] = null
+  private var recovered: Recovered[AgentState] = null
+  private var eventWatch: JournalEventWatch = null
+  private val agentOrderKeeperActor = SetOnce[ActorRef]
   private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
   override def preStart() = {
     super.preStart()
-    val recovered = JournaledStateRecoverer.recover[AgentServerState](
-      journalMeta,
-      agentConfiguration.config)
-    state = recovered.state
-    for (o <- state.idToController.values) {
-      addOrderKeeper(o.controllerId, o.agentPath, o.agentRunId)
-    }
+    recovered = JournaledStateRecoverer.recover[AgentState](journalMeta, agentConf.config)
+    eventWatch = recovered.eventWatch
+
     val sender = this.sender()
     recovered.startJournaling(journalActor)
-      .foreach { _ =>
-        (self ! Internal.JournalIsReady)(sender)
+      .flatMap { journalHeader =>
+        this.journalHeader = journalHeader
+        JournaledStatePersistence.start(recovered.state, journalActor, agentConf.journalConf)
+          .map { persistence = _ }
       }
+      .runToFuture
+      .onComplete(tried =>
+        (self ! Internal.JournalIsReady(tried))(sender))
   }
 
   override def postStop() = {
-    for (m <- controllerToOrderKeeper.values) m.eventWatch.close()
+    if (eventWatch != null) eventWatch.close()
     super.postStop()
     terminatePromise.trySuccess(
       AgentTermination.Terminate(restart = shutDownCommand.toOption.fold(false)(_.restart)))
@@ -98,9 +99,14 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
   }
 
   def receive = {
-    case Internal.JournalIsReady =>
-      if (controllerToOrderKeeper.nonEmpty) {
-        logger.info(s"${controllerToOrderKeeper.size} recovered Controller registrations: ${controllerToOrderKeeper.keys.mkString(", ")}")
+    case Internal.JournalIsReady(Failure(throwable)) =>
+      logger.error("JournalIsReady failed: " + throwable.toStringWithCauses)
+      throw throwable
+
+    case Internal.JournalIsReady(Success(())) =>
+      val state = recovered.state
+      if (state.isCreated) {
+        addOrderKeeper()
       }
       become("startable")(startable)
       unstashAll()
@@ -119,20 +125,20 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
     case cmd: Input.ExternalCommand =>
       executeExternalCommand(cmd)
 
-    case Input.GetEventWatch(controllerId) =>
-      controllerToOrderKeeper.checked(controllerId) match {
-        case Right(entry) => entry.eventWatch.whenStarted.map(Right.apply) pipeTo sender()
-        case o @ Left(_) => sender() ! o
+    case Input.GetEventWatch =>
+      if (!persistence.currentState.isCreated) {
+        sender() ! Left(AgentNotCreatedProblem)
+      } else {
+        eventWatch.whenStarted.map(Right.apply) pipeTo sender()
       }
 
     case msg: JobActor.Output.ReadyForOrder.type =>
-      for (entry <- controllerToOrderKeeper.values) {
-        entry.actor.forward(msg)
+      for (actor <- agentOrderKeeperActor) {
+        actor.forward(msg)
       }
 
-    case Terminated(a) if controllerToOrderKeeper.contains(a) =>
-      logger.debug("Actor for controller " + controllerToOrderKeeper.actorToKey(a) + " terminated")
-      controllerToOrderKeeper -= a
+    case Terminated(a) if agentOrderKeeperActor contains a =>
+      logger.debug("AgentOrderKeeper terminated")
       continueTermination()
 
     case Terminated(`journalActor`) if terminating =>
@@ -149,134 +155,108 @@ extends MainJournalingActor[AgentServerState, AgentServerEvent] {
   }
 
   private def executeExternalCommand(externalCommand: Input.ExternalCommand): Unit = {
-    import externalCommand.{command, response, userId}
-    val controllerId = ControllerId.fromUserId(userId)
+    import externalCommand.{command, response}
     command match {
       case command: AgentCommand.ShutDown =>
         if (!terminating) {
           shutDownCommand := command
-          terminateOrderKeepers(command) onComplete { ordersTerminated =>
+          terminateOrderKeeper(command) onComplete { ordersTerminated =>
             response.complete(ordersTerminated map Right.apply)
             terminateCompleted.success(Completed)  // Wait for child Actor termination
             continueTermination()
           }
         }
 
-      case AgentCommand.RegisterAsController(agentPath) if !terminating =>
-        state.idToController.get(controllerId) match {
-          case None =>
-            val agentRunId = AgentRunId(JournalId.random())
-            response completeWith
-              persist(AgentServerEvent.ControllerRegistered(controllerId, agentPath, agentRunId)) {
-                case (Stamped(_, _, KeyedEvent(NoKey, event)), _) =>
-                  update(event)
-                  Right(AgentCommand.RegisterAsController.Response(agentRunId))
-                }
-
-          case Some(registeredController) =>
-            response.completeWith(
-              checkController(controllerId, agentPath, None, EventId.BeforeFirst)
-                .map(_.map((_: ControllerRegister.Entry) => AgentCommand.RegisterAsController.Response(registeredController.agentRunId)))
-                .runToFuture)
+      case AgentCommand.CreateAgent(controllerId, agentPath) if !terminating =>
+        if (!persistence.currentState.isCreated) {
+          val agentRunId = AgentRunId(journalHeader.journalId)
+          persistence.persistKeyedEvent(AgentCreated(agentPath, agentRunId, controllerId))
+            .tapEval(checked => Task {
+              if (checked.isRight) {
+                addOrderKeeper()
+              }
+            })
+            .runToFuture
+            .onComplete { tried =>
+              response.complete(tried.map(_.map(_ => AgentCommand.CreateAgent.Response(agentRunId))))
+            }
+        } else {
+          response.success(
+            checkAgentPath(agentPath, EventId.BeforeFirst)
+              .map(_ => AgentCommand.CreateAgent.Response(persistence.currentState.meta.agentRunId)))
         }
 
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
-        response.completeWith(
-          ( for {
-              entry <- EitherT(checkController(controllerId, agentPath, Some(agentRunId), eventId))
-              response <- EitherT(entry.persistence.awaitCurrentState
-                .map(state => Checked(CoupleController.Response(state.idToOrder.keySet))))
-            } yield response
-          ).value
-            .runToFuture)
+        response.success(
+         if (agentRunId != persistence.currentState.meta.agentRunId)
+            Left(AgentRunIdMismatchProblem(agentPath))
+         else
+           for (_ <- checkAgentPath(agentPath, eventId)) yield
+             CoupleController.Response(persistence.currentState.idToOrder.keySet))
 
       case command @ (_: AgentCommand.OrderCommand |
-                      _: AgentCommand.TakeSnapshot.type |
+                      _: AgentCommand.TakeSnapshot |
                       _: AgentCommand.AttachItem |
                       _: AgentCommand.AttachSignedItem |
                       _: AgentCommand.DetachItem) =>
-        controllerToOrderKeeper.checked(controllerId) match {
-          case Right(entry) =>
-            entry.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
-          case Left(problem) =>
-            response.failure(problem.throwable)
+        // TODO Check AgentRunId ?
+        agentOrderKeeperActor.toOption match {
+          case None =>
+            response.success(Left(AgentNotCreatedProblem))
+          case Some(actor) =>
+            actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
         }
 
       case command =>
         response.failure(
-          if (terminating) AgentIsShuttingDown.throwable
-          else new RuntimeException(s"Unexpected command for AgentActor: $command"))
+          if (terminating)
+            AgentIsShuttingDown.throwable
+          else
+            new RuntimeException(s"Unexpected command for AgentActor: $command"))
     }
   }
 
-  private def checkController(controllerId: ControllerId, requestedAgentPath: AgentPath, requestedAgentRunId: Option[AgentRunId], eventId: EventId)
-  : Task[Checked[ControllerRegister.Entry]] = {
-    def pure[A](a: Checked[A]) = EitherT(Task.pure(a))
-    ( for {
-        registeredController <- pure(state.idToController.get(controllerId).toChecked(UnknownController(controllerId)))
-        entry <- pure(controllerToOrderKeeper.checked(controllerId))
-        eventWatch <- EitherT(entry.eventWatch.started map Checked.apply)
-        _ <- pure {
-            assertThat(entry.agentRunId == registeredController.agentRunId)
-            if (requestedAgentPath != registeredController.agentPath)
-              Left(DuplicateAgentRef(first = registeredController.agentPath, second = requestedAgentPath))
-            else if (!requestedAgentRunId.forall(_ == registeredController.agentRunId))
-              Left(ControllerAgentMismatch(registeredController.agentPath))
-            else
-              Right(())
-          }
-        _ <- pure(eventWatch.checkEventId(eventId))
-      } yield entry
-    ).value
+  private def checkAgentPath(requestedAgentPath: AgentPath, eventId: EventId): Checked[Unit] = {
+    val agentState = persistence.currentState
+    if (!agentState.isCreated)
+      Left(AgentNotCreatedProblem)
+    else if (requestedAgentPath != agentState.agentPath)
+      Left(AgentPathMismatchProblem(requestedAgentPath, agentState.agentPath))
+    else
+      eventWatch.checkEventId(eventId)
   }
 
   private def continueTermination(): Unit =
-    if (terminating && controllerToOrderKeeper.isEmpty) {
-      journalActor ! JournalActor.Input.Terminate
+    if (terminating) {
+      if (agentOrderKeeperActor.isEmpty) {
+        // When no AgentOrderKeeper has been startet, we need to stop the journal ourselves
+        journalActor ! JournalActor.Input.Terminate
+      }
     }
 
-  private def terminateOrderKeepers(terminate: AgentCommand.ShutDown): Future[AgentCommand.Response.Accepted] =
-    Future.sequence(
-      for (a <- controllerToOrderKeeper.values.map(_.actor)) yield
-        (a ? terminate).mapTo[AgentCommand.Response.Accepted]
-    ).map(_ => AgentCommand.Response.Accepted)
-
-  private def update(event: AgentServerEvent): Unit = {
-    state = state.applyEvent(event).orThrow
-    event match {
-      case AgentServerEvent.ControllerRegistered(controllerId, agentPath, agentRunId) =>
-        addOrderKeeper(controllerId, agentPath, agentRunId)
+  private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown): Future[AgentCommand.Response.Accepted] =
+    agentOrderKeeperActor.toOption match {
+      case None => Future.successful(AgentCommand.Response.Accepted)
+      case Some(actor) => (actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
     }
-  }
 
-  private def addOrderKeeper(controllerId: ControllerId, agentPath: AgentPath, agentRunId: AgentRunId): ActorRef = {
-    val journalMeta = JournalMeta(AgentState, stateDirectory / s"controller-$controllerId")
-
-    // May take minutes !!!
-    val recovered = JournaledStateRecoverer.recover[AgentState](journalMeta, agentConfiguration.config)
-      .closeWithCloser
-
-    val journalActor = tag[JournalActor.type](actorOf(
-      JournalActor.props[AgentState](journalMeta, agentConfiguration.journalConf, keyedEventBus, scheduler, eventIdGenerator),
-      Akkas.encodeAsActorName(s"JournalActor-for-$controllerId")))
-    val persistence = new JournaledStatePersistence[AgentState](journalActor, agentConfiguration.journalConf)
+  private def addOrderKeeper(): ActorRef = {
+    val recovered = this.recovered
+    this.recovered = null  // release memory
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
-          controllerId,
-          agentPath,
-          recovered,
+          journalHeader,
+          requireNonNull(recovered),
           signatureVerifier,
           executorConf,
           persistence,
-          askTimeout = akkaAskTimeout,
-          agentConfiguration)
+          agentConf)
         },
-      Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$controllerId"))
-    controllerToOrderKeeper.insert(controllerId ->
-      ControllerRegister.Entry(controllerId, agentRunId, persistence, actor, recovered.eventWatch))
+      "AgentOrderKeeper")
     watch(actor)
+    agentOrderKeeperActor := actor
   }
 
   override def toString = "AgentActor"
@@ -293,7 +273,7 @@ object AgentActor
   object Input {
     final case object Start
     final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])
-    final case class GetEventWatch(controllerId: ControllerId)
+    case object GetEventWatch
   }
 
   object Output {
@@ -301,23 +281,7 @@ object AgentActor
   }
 
   private object Internal {
-    case object JournalIsReady
-  }
-
-  private final class ControllerRegister extends ActorRegister[ControllerId, ControllerRegister.Entry](_.actor) {
-    override protected def noSuchKeyProblem(controllerId: ControllerId) = UnknownController(controllerId)
-
-    override def insert(kv: (ControllerId, ControllerRegister.Entry)) = super.insert(kv)
-
-    override def -=(a: ActorRef) = super.-=(a)
-  }
-  object ControllerRegister {
-    final case class Entry(
-      controllerId: ControllerId,
-      agentRunId: AgentRunId,
-      persistence: JournaledStatePersistence[AgentState],
-      actor: ActorRef,
-      eventWatch: JournalEventWatch)
+    final case class JournalIsReady(tried: Try[Unit])
   }
 
   @Singleton

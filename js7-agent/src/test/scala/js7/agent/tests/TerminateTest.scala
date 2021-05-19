@@ -2,7 +2,7 @@ package js7.agent.tests
 
 import js7.agent.client.AgentClient
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, RegisterAsController, ShutDown}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CreateAgent, ShutDown}
 import js7.agent.tests.TerminateTest._
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.generic.SecretString
@@ -48,10 +48,10 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
     val client = AgentClient(agentUri = agent.localUri, Some(userId -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(RegisterAsController(agentPath)) await 99.s
+    client.commandExecute(CreateAgent(controllerId, agentPath)) await 99.s
 
     val eventWatch = agent.api(CommandMeta(SimpleUser(userId)))
-      .eventWatchForController(ControllerId.fromUserId(userId))
+      .eventWatch
       .await(99.s).orThrow
 
     client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
@@ -87,5 +87,6 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 object TerminateTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val controllerId = ControllerId("CONTROLLER")
   private val AScript = operatingSystem.sleepingShellScript(10.s)
 }

@@ -19,6 +19,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
+import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournaledState}
 import js7.data.item.{InventoryItem, InventoryItemKey, SignableItem}
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -36,8 +37,8 @@ object AgentCommand extends CommonCommand.Companion
 
   trait Response
   object Response {
-    sealed trait Accepted extends Response
-    case object Accepted extends Accepted {
+    type Accepted = Accepted.type
+    case object Accepted extends Response {
       implicit val jsonCodec: CirceCodec[Accepted] = singletonCodec(Accepted)
     }
   }
@@ -92,17 +93,18 @@ object AgentCommand extends CommonCommand.Companion
     * The Agent Server starts a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class RegisterAsController(agentPath: AgentPath) extends AgentCommand {
-    type Response = RegisterAsController.Response
+  final case class CreateAgent(controllerId: ControllerId, agentPath: AgentPath)
+  extends AgentCommand {
+    type Response = CreateAgent.Response
   }
-  object RegisterAsController {
+  object CreateAgent {
     /**
       * @param agentRunId Use the value for `CoupleController`. */
     final case class Response(agentRunId: AgentRunId) extends AgentCommand.Response
   }
 
   /** Couples the registered Controller identified by current User.
-    * @param agentRunId Must be the value returned by `RegisterAsController`. */
+    * @param agentRunId Must be the value returned by `CreateAgent`. */
   final case class CoupleController(agentPath: AgentPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
     type Response = CoupleController.Response
   }
@@ -111,6 +113,7 @@ object AgentCommand extends CommonCommand.Companion
     extends AgentCommand.Response with Big
   }
 
+  type TakeSnapshot = TakeSnapshot.type
   case object TakeSnapshot extends AgentCommand {
     type Response = Response.Accepted
   }
@@ -204,7 +207,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype[EmergencyStop],
       Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
-      Subtype(deriveCodec[RegisterAsController]),
+      Subtype(deriveCodec[CreateAgent]),
       Subtype(deriveCodec[CoupleController]),
       Subtype[ShutDown],
       Subtype(deriveCodec[AttachItem]),
@@ -223,7 +226,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype.named(deriveCodec[CoupleController.Response], "CoupleController.Response"),
       Subtype.named(deriveCodec[Batch.Response], "Batch.Response"),
       Subtype(Response.Accepted),
-      Subtype.named(deriveCodec[RegisterAsController.Response], "RegisterAsController.Response"))
+      Subtype.named(deriveCodec[CreateAgent.Response], "CreateAgent.Response"))
 
   intelliJuseImport((FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],

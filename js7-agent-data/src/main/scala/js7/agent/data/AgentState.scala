@@ -1,10 +1,15 @@
 package js7.agent.data
 
+import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentControllerEvent
+import js7.agent.data.event.AgentControllerEvent.AgentCreated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
+import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
@@ -23,14 +28,18 @@ import monix.reactive.Observable
 final case class AgentState(
   eventId: EventId,
   standards: JournaledState.Standards,
+  meta: AgentMetaState,
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow],
   allFileWatchesState: AllFileWatchesState,
   pathToJobResource: Map[JobResourcePath, JobResource])
 extends JournaledState[AgentState]
 {
+  def companion = AgentState
+
   def estimatedSnapshotSize =
     standards.snapshotSize +
+      1 +
       idToWorkflow.size +
       idToOrder.size +
       allFileWatchesState.estimatedSnapshotSize +
@@ -38,6 +47,7 @@ extends JournaledState[AgentState]
 
   def toSnapshotObservable =
     standards.toSnapshotObservable ++
+      Observable.fromIterable((meta != AgentMetaState.empty) thenList meta) ++
       Observable.fromIterable(idToWorkflow.values) ++
       Observable.fromIterable(idToOrder.values) ++
       allFileWatchesState.toSnapshot ++
@@ -54,7 +64,7 @@ extends JournaledState[AgentState]
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)
 
-      case KeyedEvent(_, _: AgentControllerEvent.AgentReadyForController) =>
+      case KeyedEvent(_, _: AgentControllerEvent.AgentReady) =>
         Right(this)
 
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
@@ -79,12 +89,18 @@ extends JournaledState[AgentState]
             Right(copy(
               pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
-          case ItemDetached(id: OrderWatchPath, agentPath/*`ownAgentPath`*/) =>
+          case ItemDetached(id: OrderWatchPath, meta.agentPath) =>
             Right(copy(
               allFileWatchesState = allFileWatchesState.detach(id)))
 
           case _ => applyStandardEvent(keyedEvent)
         }
+
+      case KeyedEvent(_: NoKey, AgentCreated(agentPath, agentRunId, controllerId)) =>
+        Right(copy(meta = meta.copy(
+          agentPath = agentPath,
+          agentRunId = agentRunId,
+          controllerId = controllerId)))
 
       case _ => applyStandardEvent(keyedEvent)
     }
@@ -132,21 +148,37 @@ extends JournaledState[AgentState]
         // OrderStdWritten is not applied (but forwarded to Controller)
         Right(this)
     }
+
+  def isCreated = agentPath.nonEmpty
+
+  def agentPath = meta.agentPath
 }
 
 object AgentState extends JournaledState.Companion[AgentState]
 {
-  val empty = AgentState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty, Map.empty,
-    AllFileWatchesState.empty, Map.empty)
+  val empty = AgentState(EventId.BeforeFirst, JournaledState.Standards.empty,
+    AgentMetaState.empty,
+    Map.empty, Map.empty, AllFileWatchesState.empty, Map.empty)
 
   def newBuilder() = new AgentStateBuilder
 
   protected val InventoryItems: Seq[InventoryItem.Companion_] =
     Seq(FileWatch, Workflow, JobResource)
 
+
+  final case class AgentMetaState(
+    agentPath: AgentPath,
+    agentRunId: AgentRunId,
+    controllerId: ControllerId)
+  object AgentMetaState {
+    val empty = AgentMetaState(AgentPath.empty, AgentRunId.empty, ControllerId("NOT-YET-INITIALIZED"))
+    implicit val jsonCodec = deriveCodec[AgentMetaState]
+  }
+
   val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec("AgentState.Snapshot",
       Subtype[JournalState],
+      Subtype[AgentMetaState],
       Workflow.subtype,
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],

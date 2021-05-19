@@ -2,7 +2,7 @@ package js7.tests.filewatch
 
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
-import js7.agent.data.event.AgentControllerEvent.AgentReadyForController
+import js7.agent.data.event.AgentControllerEvent.AgentReady
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
@@ -298,18 +298,18 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
 
   private def checkAgentEvents(client: AgentClient): Unit = {
     client.login().await(99.s)
-    val keyedEvents = client.controllersEventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
+    val keyedEvents = client.eventObservable(EventRequest.singleClass[Event](after = EventId.BeforeFirst))
       .await(99.s).orThrow.map(_.value)
       .flatMap(ke => Observable.fromIterable(Some(ke.event)
         .collect {
-          case e: AgentReadyForController => e.copy(timezone = "UTC", totalRunningTime = 1.s)
+          case e: AgentReady => e.copy(timezone = "UTC", totalRunningTime = 1.s)
           case e: InventoryItemEvent => e
           case e: OrderWatchEvent => e
         }
         .map(e => ke.copy(event = e))))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
-      NoKey <-: AgentReadyForController("UTC", 1.s),
+      NoKey <-: AgentReady("UTC", 1.s),
       NoKey <-: ItemAttachedToAgent(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("1"),
@@ -325,7 +325,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("3"),
         OrderId("file:FILE-WATCH:3"),
         Map("file" -> StringValue(s"$aDirectory/3"))),
-      NoKey <-: AgentReadyForController("UTC", 1.s),
+      NoKey <-: AgentReady("UTC", 1.s),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("3")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("4"),

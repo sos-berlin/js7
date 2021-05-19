@@ -5,6 +5,9 @@ import com.softwaremill.diffx.generic.auto._
 import io.circe.syntax.EncoderOps
 import java.io.File.separator
 import java.nio.file.Paths
+import java.util.UUID
+import js7.agent.data.AgentState.AgentMetaState
+import js7.agent.data.event.AgentControllerEvent.AgentCreated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
@@ -13,10 +16,11 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.cluster.ClusterState
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.event.{EventId, JournalId, JournalState, JournaledState}
 import js7.data.item.BasicItemEvent.ItemAttachedToAgent
 import js7.data.item.ItemRevision
 import js7.data.job.{JobResource, JobResourcePath}
@@ -44,6 +48,10 @@ final class AgentStateTest extends AsyncFreeSpec
     JournaledState.Standards(
       JournalState(Map(UserId("USER") -> 500L)),
       ClusterState.Empty),
+    AgentMetaState(
+      AgentPath("AGENT"),
+      AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
+      ControllerId("CONTROLLER")),
     Map(
       OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflowId))),
     Map(
@@ -66,7 +74,7 @@ final class AgentStateTest extends AsyncFreeSpec
       jobResourcePath -> JobResource(jobResourcePath)))
 
   "estimatedSnapshotSize" in {
-    assert(agentState.estimatedSnapshotSize == 7)
+    assert(agentState.estimatedSnapshotSize == 8)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
   }
@@ -81,6 +89,12 @@ final class AgentStateTest extends AsyncFreeSpec
             "userIdToReleasedEventId": {
               "USER": 500
             }
+          }""",
+          json"""{
+            "TYPE": "AgentMetaState",
+            "agentPath": "AGENT",
+            "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+            "controllerId": "CONTROLLER"
           }""",
           json"""{
             "TYPE": "Workflow",
@@ -167,7 +181,11 @@ final class AgentStateTest extends AsyncFreeSpec
     val workflow = Workflow.of(workflowId)
     val agentPath = AgentPath("AGENT")
     var agentState = AgentState.empty
-
+    val meta = AgentMetaState(
+      AgentPath("AGENT"),
+      AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
+      ControllerId("CONTROLLER"))
+    agentState = agentState.applyEvent(AgentCreated(meta.agentPath, meta.agentRunId, meta.controllerId)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToAgent(workflow)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
@@ -178,6 +196,7 @@ final class AgentStateTest extends AsyncFreeSpec
     assert(agentState == AgentState(
       EventId.BeforeFirst,
       JournaledState.Standards.empty,
+      meta,
       Map(
         orderId ->
           Order(orderId, workflowId, Forked(Seq(Forked.Child("BRANCH", childOrderId))),

@@ -1,11 +1,8 @@
 package js7.tests
 
-import java.nio.file.Path
 import js7.agent.RunningAgent
-import js7.agent.scheduler.{AgentServerEvent, AgentServerState}
 import js7.base.configutils.Configs._
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
-import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
@@ -13,13 +10,11 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas
-import js7.common.jsonseq.InputStreamJsonSeqReader
-import js7.common.utils.UntilNoneIterator
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
-import js7.data.controller.{ControllerEvent, ControllerId}
+import js7.data.controller.ControllerEvent
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{<-:, Event, EventId, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{VersionId, VersionedEvent}
 import js7.data.job.RelativePathExecutable
@@ -82,8 +77,6 @@ final class RecoveryTest extends AnyFreeSpec
             controller.addOrderBlocking(order2)
             lastEventId = lastEventIdOf(controller.eventWatch.await[OrderProcessed](after = lastEventId, predicate = _.key == order1.id))
           }
-          val Vector(Stamped(_, _, NoKey <-: AgentServerEvent.ControllerRegistered(ControllerId("Controller")/*see default controller.conf*/, _, _/*agentRunId*/))) =
-            readAgentEvents(directoryProvider.agents(0).dataDir / "state/agent--0.journal")
 
           logger.info("*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ =>
@@ -143,20 +136,6 @@ final class RecoveryTest extends AnyFreeSpec
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
       // Kill Agents ActorSystems
       for (agent <- agents) Akkas.terminateAndWait(agent.actorSystem, 99.s)
-    }
-
-  private def readAgentEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentServerEvent]]] =
-    autoClosing(InputStreamJsonSeqReader.open(journalFile)) { reader =>
-      UntilNoneIterator(reader.read()).toVector
-        .map(_.value)
-        .collect {
-          case json if AgentServerState.keyedEventJsonCodec canDeserialize json =>
-            import AgentServerState.keyedEventJsonCodec
-            json.as[Stamped[KeyedEvent[Event]]].orThrow
-        }
-        .collect {
-          case o @ Stamped(_, _, KeyedEvent(_, _: AgentServerEvent)) => o.asInstanceOf[Stamped[KeyedEvent[AgentServerEvent]]]  // Ignore SnapshotTaken
-        }
     }
 }
 

@@ -137,7 +137,6 @@ extends Actor with Stash
       continueTermination()
 
     case Input.KillProcess(orderId, maybeSignal) =>
-      logger.debug(s"KillProcess $orderId")
       for (signal <- maybeSignal) {
         killOrder(orderId, signal)
       }

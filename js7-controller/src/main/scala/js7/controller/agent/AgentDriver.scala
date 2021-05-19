@@ -5,7 +5,7 @@ import cats.data.EitherT
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{CoupleController, RegisterAsController}
+import js7.agent.data.commands.AgentCommand.{CoupleController, CreateAgent}
 import js7.agent.data.event.AgentControllerEvent
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -66,6 +66,8 @@ final class AgentDriver private(agentPath: AgentPath,
 extends KeyedJournalingActor[ControllerState, AgentRefStateEvent]
 with ReceiveLoggingActor.WithStash
 {
+  import controllerConfiguration.controllerId
+
   protected def journalConf = controllerConfiguration.journalConf
 
   private val logger = Logger.withPrefix[this.type](agentPath.string)
@@ -109,7 +111,7 @@ with ReceiveLoggingActor.WithStash
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>
-        api.controllersEventObservable(EventRequest[Event](EventClasses, after = after,
+        api.eventObservable(EventRequest[Event](EventClasses, after = after,
           timeout = Some(requestTimeout)))
 
     override protected def onCouplingFailed(api: AgentClient, problem: Problem) =
@@ -407,7 +409,7 @@ with ReceiveLoggingActor.WithStash
       else
         (for {
           agentRunId <- EitherT(
-            client.commandExecute(RegisterAsController(agentPath)).map(_.map(_.agentRunId)))
+            client.commandExecute(CreateAgent(controllerId, agentPath)).map(_.map(_.agentRunId)))
           completed <- EitherT(
             if (noJournal)
               Task.pure(Right(Completed))
@@ -461,7 +463,7 @@ private[controller] object AgentDriver
 {
   private val EventClasses = Set[Class[_ <: Event]](
     classOf[OrderEvent],
-    classOf[AgentControllerEvent.AgentReadyForController],
+    classOf[AgentControllerEvent.AgentReady],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")

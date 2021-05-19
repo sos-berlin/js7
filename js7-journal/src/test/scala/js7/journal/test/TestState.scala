@@ -15,6 +15,8 @@ final case class TestState(
   keyToAggregate: Map[String, TestAggregate])
 extends JournaledState[TestState]
 {
+  def companion = TestState
+
   def estimatedSnapshotSize = standards.snapshotSize + keyToAggregate.size
 
   def toSnapshotObservable =

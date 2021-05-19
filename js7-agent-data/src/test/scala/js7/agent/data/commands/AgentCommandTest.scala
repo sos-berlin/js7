@@ -11,6 +11,7 @@ import js7.base.problem.TestCodeProblem
 import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CancelMode
+import js7.data.controller.ControllerId
 import js7.data.event.JournalId
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -104,19 +105,20 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "RegisterAsController" in {
-    check(AgentCommand.RegisterAsController(AgentPath("AGENT")),
+  "CreateAgent" in {
+    check(AgentCommand.CreateAgent(ControllerId("CONTROLLER"), AgentPath("AGENT")),
       json"""{
-        "TYPE": "RegisterAsController",
+        "TYPE": "CreateAgent",
+        "controllerId": "CONTROLLER",
         "agentPath": "AGENT"
       }""")
   }
 
-  "RegisterAsController.Response" in {
+  "CreateAgent.Response" in {
     testJson[AgentCommand.Response](
-      AgentCommand.RegisterAsController.Response(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555")))),
+      AgentCommand.CreateAgent.Response(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555")))),
       json"""{
-        "TYPE": "RegisterAsController.Response",
+        "TYPE": "CreateAgent.Response",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ"
       }""")
   }

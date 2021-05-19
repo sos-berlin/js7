@@ -17,6 +17,8 @@ extends EventDrivenState[S, Event]
 {
   this: S =>
 
+  def companion: JournaledState.Companion[S]
+
   def toSnapshotObservable: Observable[Any]
 
   def estimatedSnapshotSize: Int

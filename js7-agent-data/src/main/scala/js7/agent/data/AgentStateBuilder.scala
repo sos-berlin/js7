@@ -1,5 +1,6 @@
 package js7.agent.data
 
+import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
@@ -17,6 +18,7 @@ extends JournaledStateBuilder[AgentState]
 
   private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
+  private var agentMetaState = AgentMetaState.empty
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
   private val allFileWatchesState = new AllFileWatchesState.Builder
@@ -27,9 +29,6 @@ extends JournaledStateBuilder[AgentState]
     _state = state
 
   protected def onAddSnapshotObject = {
-    case o: JournalState =>
-      _journalState = o
-
     case order: Order[Order.State] =>
       idToOrder.insert(order.id -> order)
 
@@ -41,12 +40,19 @@ extends JournaledStateBuilder[AgentState]
 
     case snapshot: FileWatchState.Snapshot =>
       allFileWatchesState.addSnapshot(snapshot)
+
+    case o: JournalState =>
+      _journalState = o
+
+    case o: AgentMetaState =>
+      agentMetaState = o
   }
 
   override protected def onOnAllSnapshotsAdded() = {
     _state = AgentState(
       _eventId,
       JournaledState.Standards(_journalState, ClusterState.Empty),
+      agentMetaState,
       idToOrder.toMap,
       idToWorkflow.toMap,
       allFileWatchesState.result(),
