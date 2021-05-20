@@ -16,7 +16,7 @@ object AgentRefStateEvent
 {
   final case class AgentCouplingFailed(problem: Problem) extends AgentRefStateEvent
 
-  /** The Agent Server has registered the Controller and has started a new Agent for the Controller. */
+  /** The Agent has registered the Controller and has started a new Agent for the Controller. */
   final case class AgentRegisteredController(agentRunId: AgentRunId) extends AgentRefStateEvent
   object AgentRegisteredController {
     implicit val jsonCodec = deriveCodec[AgentRegisteredController]

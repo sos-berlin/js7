@@ -54,21 +54,21 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
     assert(output(2) contains "isTerminating: false")
   }
 
-  "main with Agent URI only checks wether Agent Server is responding (it is)" in {
+  "main with Agent URI only checks wether Agent is responding (it is)" in {
     val output = mutable.Buffer.empty[String]
     assertResult(0) {
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
     }
-    assert(output == List("JS7 JobScheduler Agent Server is responding"))
+    assert(output == List("JS7 JobScheduler Agent is responding"))
   }
 
-  "main with Agent URI only checks wether Agent Server is responding (it is not)" in {
+  "main with Agent URI only checks wether Agent is responding (it is not)" in {
     val port = findFreeTcpPort()
     val output = mutable.Buffer.empty[String]
     assertResult(1) {
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", s"http://127.0.0.1:$port"), output += _)
     }
-    assert(output.head contains "JS7 JobScheduler Agent Server is not responding: ")
+    assert(output.head contains "JS7 JobScheduler Agent is not responding: ")
     assert(output.head contains "Connection refused")
   }
 }

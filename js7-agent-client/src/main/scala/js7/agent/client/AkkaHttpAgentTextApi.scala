@@ -43,7 +43,7 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def uriPrefixPath = "/agent"
 
-  protected def serverName = "JS7 JobScheduler Agent Server"
+  protected def serverName = "JS7 JobScheduler Agent"
 
   protected val sessionUri = agentUris.session
 

@@ -19,7 +19,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 
 /**
- * Client for JS7 Agent Server.
+ * Client for JS7 Agent.
  * The HTTP requests are considerd to be responded within `RequestTimeout`.
  *
  * @author Joacim Zschimmer

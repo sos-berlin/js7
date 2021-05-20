@@ -37,7 +37,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 /**
- * JS7 Agent Server.
+ * JS7 Agent.
  *
  * Integration test in engine-tests, for example js7.tests.jira.js1291.JS1291AgentIT.
  *

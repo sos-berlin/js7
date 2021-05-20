@@ -89,7 +89,7 @@ extends CommonConfiguration
   private def provideKillScript(): AgentConfiguration = {
     killScript match {
       case Some(DelayUntilFinishKillScript) =>
-        val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent Server termination, leave behind the kill script, in case of regular termination after error.
+        val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent termination, leave behind the kill script, in case of regular termination after error.
         copy(killScript = Some(provider.provideTo(temporaryDirectory)))
       case _ => this
     }

@@ -11,7 +11,7 @@ import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 
 /**
- * Simple client for JS7 Agent Server.
+ * Simple client for JS7 Agent.
  * <p>
  * Should be closed after use, to close all remaining HTTP connections.
  *

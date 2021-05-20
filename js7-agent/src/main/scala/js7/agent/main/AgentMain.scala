@@ -19,7 +19,7 @@ import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.printlnWithClock
 
 /**
- * JS7 Agent Server.
+ * JS7 Agent.
  *
  * @author Joacim Zschimmer
  */
@@ -28,7 +28,7 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
-    logger.info(s"JS7 JobScheduler Agent Server ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JS7 JobScheduler Agent ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
@@ -42,14 +42,14 @@ final class AgentMain
       }
     }
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JS7 JobScheduler Agent Server terminates at ${Timestamp.now.show}"
+    val msg = s"JS7 JobScheduler Agent terminates at ${Timestamp.now.show}"
     logger.info(msg)
     printlnWithClock(msg)
     terminated
   }
 
   private def onJavaShutdown(agent: RunningAgent): Unit = {
-    logger.warn("Trying to shut down JS7 Agent Server due to Java shutdown")
+    logger.warn("Trying to shut down JS7 Agent due to Java shutdown")
     import agent.scheduler
     agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
       .runAsyncUncancelable {
@@ -67,7 +67,7 @@ object AgentMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JS7 JobScheduler Agent Server ${BuildInfo.longVersion}")
+    printlnWithClock(s"JS7 JobScheduler Agent ${BuildInfo.longVersion}")
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)

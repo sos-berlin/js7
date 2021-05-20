@@ -123,7 +123,7 @@ while true; do
 
   terminate() {
     echo
-    echo "ShutDown JS7 Agent Server"
+    echo "ShutDown JS7 Agent"
     # Add some seconds to start Java with AgentClientMain
     terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
@@ -148,7 +148,7 @@ while true; do
   returnCode=0
   wait $pid || {
     returnCode=$?
-    echo "JS7 Agent Server exited with exit code $returnCode"
+    echo "JS7 Agent exited with exit code $returnCode"
   }
   rm "$pidFile"
   trap - SIGTERM SIGINT
@@ -160,7 +160,7 @@ while true; do
     (. "$crashKillScript" || true)
     ps fux || true
   fi
-  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JS7 Agent Server has been shut down" >>"$logs/stdouterr.log")
+  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JS7 Agent has been shut down" >>"$logs/stdouterr.log")
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode
