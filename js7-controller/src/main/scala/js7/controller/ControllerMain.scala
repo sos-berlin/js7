@@ -24,23 +24,24 @@ final class ControllerMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ControllerTermination.Terminate = {
+    logger.info("—" * 100)  // In case, the previous file is appended
     logger.info(s"JS7 JobScheduler Controller ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.info(startUpLine())
     logger.debug(arguments.toString)
-    val controllerConfiguration = ControllerConfiguration.fromCommandLine(arguments)
-    logger.info(s"config=${controllerConfiguration.configDirectory} data=${controllerConfiguration.dataDirectory}")
-    logConfig(controllerConfiguration.config)
+    val conf = ControllerConfiguration.fromCommandLine(arguments)
+    logger.info(s"id=${conf.controllerId} config=${conf.configDirectory} data=${conf.dataDirectory}")
+    logConfig(conf.config)
     logJavaSettings()
     var restartInProcess = false
     var terminate = ControllerTermination.Terminate()
-    /** val restartJvmWhenDeactivated = controllerConfiguration.config.getBoolean("js7.journal.cluster.when-deactivated-restart-jvm")
+    /** val restartJvmWhenDeactivated = conf.config.getBoolean("js7.journal.cluster.when-deactivated-restart-jvm")
        - Erste HTTP-Anforderungen an deaktivierten Knoten können in ins Leere laufen (mit Timeout abgefangen)
        - Heap platzt nach vielen Deaktivierungen */
     val restartJvmWhenDeactivated = true
     do {
-      autoClosing(RunningController(controllerConfiguration).awaitInfinite) { runningController =>
+      autoClosing(RunningController(conf).awaitInfinite) { runningController =>
         import runningController.scheduler
-        withShutdownHooks(controllerConfiguration.config, "ControllerMain", () => onJavaShutdown(runningController)) {
+        withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(runningController)) {
           runningController.terminated.awaitInfinite match {
             case t: ControllerTermination.Terminate =>
               restartInProcess = false

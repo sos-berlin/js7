@@ -28,6 +28,7 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
+    logger.info("—" * 100)  // In case, the previous file is appended
     logger.info(s"JS7 JobScheduler Agent ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
