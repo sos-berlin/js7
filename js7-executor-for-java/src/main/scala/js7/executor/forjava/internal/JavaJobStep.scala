@@ -4,7 +4,9 @@ import io.vavr.control.{Either => VEither}
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
+import js7.data.controller.ControllerId
 import js7.data.value.Value
+import js7.data.workflow.Label
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.order.JOrder
 import js7.data_for_java.vavr.VavrConverters._
@@ -21,20 +23,28 @@ trait JavaJobStep extends JavaWrapper
   def asScala: Step
 
   @Nonnull
+  final lazy val arguments: java.util.Map[String, Value] =
+    asScala.arguments.asJava
+
+  @Nonnull
   final lazy val order =
     JOrder(asScala.order)
+
+  @Nonnull
+  final lazy val jobName: String =
+    asScala.processOrder.simpleJobName
 
   @Nonnull
   final lazy val workflow =
     JWorkflow(asScala.workflow)
 
   @Nonnull
-  final lazy val jobName: String =
-    asScala.processOrder.jobName
+  def instructionLabel: Optional[Label] =
+    asScala.processOrder.instructionLabel.toJava
 
   @Nonnull
-  final lazy val arguments: java.util.Map[String, Value] =
-    asScala.arguments.asJava
+  def controllerId: ControllerId =
+    asScala.processOrder.controllerId
 
   /** Read any (maybe undeclared) names value.
     * <p>

@@ -2,11 +2,15 @@ package js7.executor.forjava.internal
 
 import io.vavr.control.{Either => VEither}
 import java.io.{PrintWriter, Writer}
+import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
+import js7.data.controller.ControllerId
 import js7.data.job.JobResourcePath
 import js7.data.value.Value
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Label, Workflow}
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.order.JOutcome
 import js7.data_for_java.value.JExpression
@@ -16,6 +20,7 @@ import js7.executor.internal.{InternalJob, InternalJobAdapter}
 import monix.execution.Scheduler
 import scala.collection.immutable.ListMap
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 /** For non-asynchronous thread-blocking internal Jobs written in Java.
   * Constructor and methods are executed in (from call to call changing) threads

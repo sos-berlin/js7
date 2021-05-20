@@ -8,8 +8,8 @@ import js7.data.order.Order
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{EnvScope, NamedValueScope, NowScope, OrderScope}
 import js7.data.value.{NamedValues, StringValue}
-import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.{Label, Workflow}
 
 final case class ProcessOrder(
   order: Order[Order.Processing],
@@ -20,11 +20,14 @@ final case class ProcessOrder(
   controllerId: ControllerId,
   stdObservers: StdObservers)
 {
-  lazy val jobName: String =
+  lazy val simpleJobName: String =
     jobKey match {
       case JobKey.Named(_, name) => name.string
       case _ => jobKey.name
     }
+
+  lazy val instructionLabel: Option[Label] = workflow.labeledInstruction(order.position)
+    .toOption.flatMap(_.maybeLabel)
 
   lazy val jobResourceScope: Scope =
     combine(
@@ -32,9 +35,8 @@ final case class ProcessOrder(
         "js7OrderId" -> StringValue(order.id.string),
         "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString),
         "js7WorkflowPath" -> StringValue(order.workflowId.path.string),
-        "js7Label" -> StringValue(workflow.labeledInstruction(order.position)
-          .toOption.flatMap(_.maybeLabel).fold("")(_.string)),
-        "js7JobName" -> StringValue(jobName),
+        "js7JobName" -> StringValue(simpleJobName),
+        "js7Label" -> StringValue(instructionLabel.fold("")(_.string)),
         "js7ControllerId" -> StringValue(controllerId.string))),
       NowScope(),
       OrderScope(order),

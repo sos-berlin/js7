@@ -20,6 +20,7 @@ import static java.lang.Thread.currentThread;
 import static java.util.Collections.singletonMap;
 import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
 import static js7.data_for_java.vavr.VavrUtils.toVavr;
+import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -65,6 +66,10 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
 
             Map<JobResourcePath,Map<String,Value>> jobResourceToNameToValue = step.jobResourceToNameToValue();
             Either<Problem,Value> checkedValue = step.byJobResourceAndName(JobResourcePath.of("A"), "stringSetting");
+            assertThat(step.instructionLabel().isPresent(), equalTo(false));
+            assertThat(step.jobName(), anyOf(
+                equalTo("JOB"),
+                equalTo("WORKFLOW-9~v9:0")/*inline job*/));
 
             assertThat(
                 getOrThrow(
