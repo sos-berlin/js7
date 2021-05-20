@@ -30,7 +30,6 @@ import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
-import js7.journal.watch.RealEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
@@ -39,7 +38,6 @@ import scala.reflect.runtime.universe._
 final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   journalMeta: JournalMeta,
   persistence: JournaledStatePersistence[S],
-  eventWatch: RealEventWatch,
   clusterContext: ClusterContext,
   controllerId: ControllerId,
   journalConf: JournalConf,
@@ -88,7 +86,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     val (currentPassiveReplicatedState, followUp) = startNode(recovered)
     val workingFollowUp = followUp.flatMapT {
       case followUp: ClusterFollowUp.BecomeActive[S] =>
-        val workingClusterNode = new WorkingClusterNode(persistence, eventWatch, common, clusterConf)
+        val workingClusterNode = new WorkingClusterNode(persistence, common, clusterConf)
         assertThat(!_passiveOrWorkingNode.exists(_.isRight))
         _passiveOrWorkingNode = Some(Right(workingClusterNode))
         workingClusterNode.startIfNonEmpty(followUp.recovered.clusterState, followUp.recovered.eventId)

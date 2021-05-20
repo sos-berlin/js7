@@ -30,7 +30,7 @@ import js7.common.http.CirceToYaml.ToYamlString
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.event.JournalEvent.JournalEventsReleased
-import js7.data.event.{<-:, Event, EventId, JournalHeader, JournalState, KeyedEvent, Stamped}
+import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.ItemAttachedToAgent
@@ -60,7 +60,7 @@ import shapeless.tag
   * @author Joacim Zschimmer
   */
 final class AgentOrderKeeper(
-  journalHeader: JournalHeader,
+  totalRunningSince: Deadline,
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   executorConf: JobExecutorConf,
@@ -150,7 +150,7 @@ with Stash
             }
             if (jobRegister.isEmpty && !terminatingJournal) {
               terminatingJournal = true
-              journalActor ! JournalActor.Input.Terminate
+              persistence.stop.runAsyncAndForget
             }
           }
         }
@@ -196,7 +196,7 @@ with Stash
           }
         }
 
-        persist(AgentReady(ZoneId.systemDefault.getId, totalRunningTime = journalHeader.totalRunningTime)) { (_, _) =>
+        persist(AgentReady(ZoneId.systemDefault.getId, totalRunningTime = totalRunningSince.elapsed)) { (_, _) =>
           become("ready")(ready)
           unstashAll()
           logger.info("Ready")

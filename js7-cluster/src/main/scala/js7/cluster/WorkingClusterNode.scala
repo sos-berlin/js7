@@ -21,7 +21,6 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournaledState}
 import js7.data.node.NodeId
 import js7.journal.state.JournaledStatePersistence
-import js7.journal.watch.RealEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.reflect.runtime.universe._
@@ -36,7 +35,6 @@ import scala.reflect.runtime.universe._
   */
 final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion: diffx.Diff: TypeTag](
   persistence: JournaledStatePersistence[S],
-  eventWatch: RealEventWatch,
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler, actorSystem: ActorSystem, journalActorAskTimeout: Timeout)
@@ -132,7 +130,7 @@ final class WorkingClusterNode[S <: JournaledState[S]: JournaledState.Companion:
 
   private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Completed]] =
     Task.defer {
-      val activeClusterNode = new ActiveClusterNode(clusterState, persistence, eventWatch, common, clusterConf)
+      val activeClusterNode = new ActiveClusterNode(clusterState, persistence, common, clusterConf)
       if (_activeClusterNode.trySet(activeClusterNode))
         activeClusterNode.start(eventId)
       else

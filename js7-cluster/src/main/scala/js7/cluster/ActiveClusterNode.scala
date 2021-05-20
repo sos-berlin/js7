@@ -31,7 +31,6 @@ import js7.data.event.{EventId, JournaledState, KeyedEvent, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
 import js7.journal.state.JournaledStatePersistence
-import js7.journal.watch.RealEventWatch
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
@@ -45,7 +44,6 @@ import scala.util.{Failure, Success}
 final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   initialClusterState: ClusterState.HasNodes,
   persistence: JournaledStatePersistence[S],
-  eventWatch: RealEventWatch,
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit
@@ -322,13 +320,13 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): Unit = {
     val sending =
-      eventWatch.started
+      persistence.eventWatch.started
         .flatMap(_ => common
           .tryEndlesslyToSendCommand(
             clusterState.passiveUri,
             ClusterStartBackupNode(
               clusterState.setting,
-              fileEventId = eventWatch.lastFileTornEventId)))
+              fileEventId = persistence.eventWatch.lastFileTornEventId)))
         .runToFuture
     sending.onComplete {
       case Success(()) =>

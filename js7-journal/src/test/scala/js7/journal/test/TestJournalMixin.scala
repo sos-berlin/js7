@@ -26,7 +26,6 @@ import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.data.event.{Event, JournalId, KeyedEvent, Stamped}
-import js7.journal.JournalActor
 import js7.journal.files.JournalFiles
 import js7.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.journal.test.TestJournalMixin._
@@ -60,12 +59,12 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     val actorSystem = newActorSystem(getClass.simpleScalaName, config_)
     try {
       DeadLetterActor.subscribe(actorSystem, (logLevel,  msg) => logger.log(logLevel, msg()))
-      val whenJournalStopped = Promise[JournalActor.Stopped]()
+      val whenJournalStopped = Promise[Unit]()
       val actor = actorSystem.actorOf(Props { new TestActor(config_, journalMeta, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
       sleep(100.ms)  // Wait to let Terminated message of aggregate actors arrive at JournalActor (???)
       (actor ? TestActor.Input.Terminate) await 99.s
-      assert(whenJournalStopped.future.await(99.s) == JournalActor.Stopped)  // No memory leak
+      whenJournalStopped.future.await(99.s)   // No memory leak
     }
     finally Akkas.terminateAndWait(actorSystem, 99.s)
   }

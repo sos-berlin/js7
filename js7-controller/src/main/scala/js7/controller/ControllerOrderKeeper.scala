@@ -67,6 +67,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
 import js7.journal.recover.Recovered
+import js7.journal.state.JournaledStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -76,14 +77,13 @@ import scala.collection.{View, mutable}
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
-import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ControllerTermination],
-  protected val journalActor: ActorRef @@ JournalActor.type,
+  persistence: JournaledStatePersistence[ControllerState],
   clusterNode: WorkingClusterNode[ControllerState],
   controllerConfiguration: ControllerConfiguration,
   testEventPublisher: EventPublisher[Any])
@@ -97,6 +97,7 @@ with MainJournalingActor[ControllerState, Event]
 
   override val supervisorStrategy = SupervisorStrategies.escalate
   protected def journalConf = controllerConfiguration.journalConf
+  protected def journalActor = persistence.journalActor
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
@@ -169,12 +170,11 @@ with MainJournalingActor[ControllerState, Event]
             // The event forces the cluster to acknowledge this event and the snapshot taken
             terminatingJournal = true
             persistKeyedEventTask(NoKey <-: ControllerShutDown())((_, _) => Completed)
-              .runToFuture.onComplete { tried =>
-                tried match {
-                  case Success(Right(Completed)) =>
-                  case other => logger.error(s"While shutting down: $other")
-                }
-                journalActor ! JournalActor.Input.Terminate
+              .tapEval(_ => persistence.stop)
+              .runToFuture
+              .onComplete {
+                case Success(Right(Completed)) =>
+                case other => logger.error(s"While shutting down: $other")
               }
           }
         }
@@ -224,10 +224,7 @@ with MainJournalingActor[ControllerState, Event]
 
     def start(): Task[Checked[Completed]] =
       clusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
-        .map(_.map { case Completed =>
-          journalActor ! JournalActor.Input.Terminate
-          Completed
-        })
+        .flatMapT(o => persistence.stop.as(Right(o)))
 
     def close() = stillSwitchingOverSchedule.cancel()
   }
@@ -256,7 +253,7 @@ with MainJournalingActor[ControllerState, Event]
       unstashAll()
       clusterNode.beforeJournalingStarts
         .map(_.orThrow)
-        .map((_: Completed) => recovered)
+        .map((_: Completed) => ())
         .materialize
         .map(Internal.Activated.apply)
         .runToFuture
@@ -297,12 +294,11 @@ with MainJournalingActor[ControllerState, Event]
       if (t.getStackTrace.nonEmpty) logger.debug(t.toStringWithCauses, t)
       throw t.appendCurrentStackTrace
 
-    case Internal.Activated(Success(recovered)) =>
+    case Internal.Activated(Success(())) =>
       val sender = this.sender()
-      recovered.startJournaling(journalActor)
-        .foreach { journalHeader =>
-          (self ! Internal.JournalIsReady(journalHeader))(sender)
-        }
+      persistence.journalHeader
+        .runToFuture
+        .onComplete { tried => (self ! Internal.JournalIsReady(tried))(sender) }
       become("journalIsStarting")(journalIsStarting)
       unstashAll()
 
@@ -330,7 +326,11 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def journalIsStarting: Receive = {
-    case Internal.JournalIsReady(journalHeader) =>
+    case Internal.JournalIsReady(Failure(t)) =>
+      logger.error(t.toStringWithCauses)
+      throw t
+
+    case Internal.JournalIsReady(Success(journalHeader)) =>
       become("becomingReady")(becomingReady)  // `become` must be called early, before any persist!
 
       locally {
@@ -647,7 +647,7 @@ with MainJournalingActor[ControllerState, Event]
   override def journaling = handleExceptionalMessage orElse super.journaling
 
   private def handleExceptionalMessage: Receive = {
-    case Terminated(`journalActor`) =>
+    case Terminated(actor) if actor == journalActor =>
       journalTerminated = true
       if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
       if (switchover.isDefined && agentRegister.runningActorCount > 0) {
@@ -1220,10 +1220,10 @@ private[controller] object ControllerOrderKeeper
   }
 
   private object Internal {
-    final case class JournalIsReady(journalHeader: JournalHeader)
+    final case class JournalIsReady(journalHeader: Try[JournalHeader])
     case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
-    final case class Activated(recovered: Try[Recovered[ControllerState]])
+    final case class Activated(recovered: Try[Unit])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])
     case object StillShuttingDown extends DeadLetterSuppression

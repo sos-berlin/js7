@@ -30,14 +30,13 @@ import js7.journal.recover.JournaledStateRecoverer
 import js7.journal.state.JournaledStatePersistenceTest._
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
-import js7.journal.{EventIdClock, EventIdGenerator, JournalActor, StampedKeyedEventBus}
+import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.{Future, Promise}
-import shapeless.tag
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -131,37 +130,25 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
 
   private class RunningPersistence extends ProvideActorSystem {
     protected def config = TestConfig
-    private var journaledStatePersistence: JournaledStatePersistence[TestState] = null
-    private lazy val journalStopped = Promise[JournalActor.Stopped]()
-
-    private lazy val journalActor = tag[JournalActor.type](
-      actorSystem.actorOf(
-        JournalActor.props[TestState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global,
-          new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
-          journalStopped)))
+    private var persistence: JournaledStatePersistence[TestState] = null
 
     def start() = {
       val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
-      recovered.startJournaling(journalActor)(actorSystem)
-        .runAsyncAndForget
       implicit val a = actorSystem
       implicit val timeout = Timeout(99.s)
-      journaledStatePersistence = JournaledStatePersistence.
-        start(
-          recovered.recoveredState getOrElse TestState.empty,
-          journalActor,
-          JournalConf.fromConfig(TestConfig))
+      persistence = JournaledStatePersistence
+        .start(recovered, journalMeta, JournalConf.fromConfig(TestConfig),
+          new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)))
         .await(99.s)
-      journaledStatePersistence
+      persistence
     }
 
     def stop() = {
-      (journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
-      if (journaledStatePersistence != null) {
-        journaledStatePersistence.close()
+      (persistence.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
+      if (persistence != null) {
+        persistence.close()
       }
-      journalActor ! JournalActor.Input.Terminate
-      journalStopped.future await 99.s
+      persistence.stop.await(99.s)
       close()
     }
   }

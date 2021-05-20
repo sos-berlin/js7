@@ -29,18 +29,17 @@ import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.event.{EventId, JournalHeader}
+import js7.data.event.EventId
 import js7.executor.configuration.JobExecutorConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.JournalEventWatch
-import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
+import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
-import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
@@ -60,11 +59,6 @@ extends Actor with Stash with SimpleStateActor
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val signatureVerifier = GenericSignatureVerifier(agentConf.config).orThrow
-  private val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
-  protected val journalActor = tag[JournalActor.type](watch(actorOf(
-    JournalActor.props[AgentState](journalMeta, agentConf.journalConf, keyedEventBus, scheduler, eventIdGenerator),
-    "Journal")))
-  private var journalHeader: JournalHeader = null
   private var persistence: JournaledStatePersistence[AgentState] = null
   private var recovered: Recovered[AgentState] = null
   private var eventWatch: JournalEventWatch = null
@@ -75,15 +69,16 @@ extends Actor with Stash with SimpleStateActor
 
   override def preStart() = {
     super.preStart()
+    val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
     recovered = JournaledStateRecoverer.recover[AgentState](journalMeta, agentConf.config)
     eventWatch = recovered.eventWatch
 
     val sender = this.sender()
-    recovered.startJournaling(journalActor)
-      .flatMap { journalHeader =>
-        this.journalHeader = journalHeader
-        JournaledStatePersistence.start(recovered.state, journalActor, agentConf.journalConf)
-          .map { persistence = _ }
+    JournaledStatePersistence
+      .start(recovered, journalMeta, agentConf.journalConf, eventIdGenerator, keyedEventBus)
+      .map { persistence =>
+        watch(persistence.journalActor)
+        this.persistence = persistence
       }
       .runToFuture
       .onComplete(tried =>
@@ -141,7 +136,7 @@ extends Actor with Stash with SimpleStateActor
       logger.debug("AgentOrderKeeper terminated")
       continueTermination()
 
-    case Terminated(`journalActor`) if terminating =>
+    case Terminated(actor) if actor == persistence.journalActor && terminating =>
       for (_ <- terminateCompleted.future) context.self ! PoisonPill
 
     case Command.GetOverview =>
@@ -169,7 +164,7 @@ extends Actor with Stash with SimpleStateActor
 
       case AgentCommand.CreateAgent(controllerId, agentPath) if !terminating =>
         if (!persistence.currentState.isCreated) {
-          val agentRunId = AgentRunId(journalHeader.journalId)
+          val agentRunId = AgentRunId(persistence.journalId)
           persistence.persistKeyedEvent(AgentCreated(agentPath, agentRunId, controllerId))
             .tapEval(checked => Task {
               if (checked.isRight) {
@@ -231,7 +226,8 @@ extends Actor with Stash with SimpleStateActor
     if (terminating) {
       if (agentOrderKeeperActor.isEmpty) {
         // When no AgentOrderKeeper has been startet, we need to stop the journal ourselves
-        journalActor ! JournalActor.Input.Terminate
+        //persistence.journalActor ! JournalActor.Input.Terminate
+        persistence.stop.runAsyncAndForget
       }
     }
 
@@ -247,7 +243,7 @@ extends Actor with Stash with SimpleStateActor
     val actor = actorOf(
       Props {
         new AgentOrderKeeper(
-          journalHeader,
+          recovered.totalRunningSince,
           requireNonNull(recovered),
           signatureVerifier,
           executorConf,

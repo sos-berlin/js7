@@ -6,66 +6,61 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.Config
-import js7.base.log.Logger
-import js7.base.thread.Futures.implicits.SuccessFuture
+import js7.base.thread.Futures.implicits._
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.JournaledStateRecoverer
+import js7.journal.state.JournaledStatePersistence
 import js7.journal.test.TestActor._
-import js7.journal.{EventIdClock, EventIdGenerator, JournalActor, StampedKeyedEventBus}
-import monix.execution.Scheduler
+import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
-import shapeless.tag
 
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class TestActor(config: Config, journalMeta: JournalMeta, journalStopped: Promise[JournalActor.Stopped])
+private[journal] final class TestActor(config: Config, journalMeta: JournalMeta, journalStopped: Promise[Unit])
 extends Actor with Stash
 {
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(99.seconds)
   private val journalConf = JournalConf.fromConfig(config)
-  private val journalActor = tag[JournalActor.type](context.watch(context.actorOf(
-    JournalActor.props[TestState](journalMeta, journalConf, new StampedKeyedEventBus, Scheduler.global,
-      new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)),
-      journalStopped),
-    "Journal")))
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
+  private var persistence: JournaledStatePersistence[TestState] = null
+
+  private def journalActor = persistence.journalActor
 
   override def preStart() = {
     super.preStart()
     JournaledStateRecoverer.recover[TestState](journalMeta, config)
     val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, config)
+    persistence = JournaledStatePersistence
+      .start(recovered, journalMeta, journalConf,
+        new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)))
+      .runToFuture
+      .await(99.s)
+
     val state = recovered.state
     for (aggregate <- state.keyToAggregate.values) {
       val actor = newAggregateActor(aggregate.key)
       actor ! TestAggregateActor.Input.RecoverFromSnapshot(aggregate)
       keyToAggregate += aggregate.key -> actor
     }
-    val sender = this.sender()
-    recovered.startJournaling(journalActor)
-      .map(_ => (self ! Internal.JournalIsReady)(sender))
-      .runAsyncAndForget
+  }
+
+  override def postStop() = {
+    persistence.stop await 99.s
+    journalStopped.success(())
+    super.postStop()
   }
 
   def receive = {
-    case Internal.JournalIsReady =>
-      context.become(ready)
-      unstashAll()
-      logger.info("Ready")
-
-    case _ =>
-      stash()
-  }
-
-  private def ready: Receive = {
     case Input.WaitUntilReady =>
       sender() ! Done
 
@@ -113,21 +108,18 @@ extends Actor with Stash
 
     case Input.Terminate =>
       terminator = sender()
+      keyToAggregate.values foreach context.stop
       if (keyToAggregate.isEmpty) {
-        journalActor ! JournalActor.Input.Terminate
-      } else {
-        keyToAggregate.values foreach context.stop
+        context.stop(self)
+        terminator ! Done
       }
-
-    case Terminated(`journalActor`) if terminator != null =>
-      context.stop(self)
-      terminator ! Done
 
     case Terminated(actorRef) =>
       val key = keyToAggregate collectFirst { case (k, `actorRef`) => k }
       keyToAggregate --= key
       if (terminator != null && keyToAggregate.isEmpty) {
-        journalActor ! JournalActor.Input.Terminate
+        context.stop(self)
+        terminator ! Done
       }
   }
 
@@ -139,8 +131,6 @@ extends Actor with Stash
 
 private[journal] object TestActor
 {
-  private val logger = Logger(getClass)
-
   object Input {
     final case object WaitUntilReady
     final case object TakeSnapshot
@@ -148,9 +138,5 @@ private[journal] object TestActor
     final case object GetJournalState
     final case object GetAll
     final case object Terminate
-  }
-
-  private object Internal {
-    case object JournalIsReady
   }
 }

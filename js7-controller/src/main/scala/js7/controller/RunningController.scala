@@ -185,7 +185,8 @@ extends AutoCloseable
 
   @TestOnly
   def waitUntilReady(): Unit =
-    whenReady await 99.s
+    Task.fromFuture(whenReady)
+      .logWhenItTakesLonger("waitUntilReady") await 99.s
 
   @TestOnly
   lazy val localUri = webServer.localUri
@@ -276,7 +277,8 @@ object RunningController
     @volatile private var clusterStartupTermination = ControllerTermination.Terminate()
 
     private[RunningController] def start(): Future[RunningController] = {
-      val whenRecovered = Future {  // May take several seconds !!!
+      val whenRecovered = Future {
+        // May take several seconds !!!
         JournaledStateRecoverer.recover[ControllerState](journalMeta, controllerConfiguration.config)
       }
       val testEventBus = injector.instance[StandardEventBus[Any]]
@@ -285,19 +287,19 @@ object RunningController
         testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
       // Start-up some stuff while recovering
       itemVerifier
-      val journalActor = tag[JournalActor.type](actorSystem.actorOf(
-        JournalActor.props[ControllerState](journalMeta, controllerConfiguration.journalConf,
-          injector.instance[StampedKeyedEventBus], scheduler, injector.instance[EventIdGenerator]),
-        "Journal"))
-      val recovered = Await.result(whenRecovered, Duration.Inf)
-        .closeWithCloser
-      val (cluster, controllerState, clusterFollowUp) = startCluster(recovered, journalActor, testEventBus)
+
+      val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
+      val persistence = JournaledStatePersistence.prepare[ControllerState](
+        recovered.journalId, recovered.eventWatch,
+        journalMeta, controllerConfiguration.journalConf,
+        injector.instance[EventIdGenerator], injector.instance[StampedKeyedEventBus])
+      val (cluster, controllerState, clusterFollowUp) = startCluster(recovered, persistence, testEventBus)
 
       val clusterFollowUpFuture = clusterFollowUp.runToFuture
 
       val (orderKeeperActor, orderKeeperTerminated) = {
         val orderKeeperStarted = clusterFollowUpFuture.map(_.flatMap(
-          startControllerOrderKeeper(journalActor, cluster.workingClusterNode.orThrow/*TODO*/, _, testEventBus)))
+          startControllerOrderKeeper(persistence, cluster.workingClusterNode.orThrow/*TODO*/, _, testEventBus)))
 
         val actorTask: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
           Task.defer {
@@ -370,20 +372,17 @@ object RunningController
 
     private def startCluster(
       recovered: Recovered[ControllerState],
-      journalActor: ActorRef @@ JournalActor.type,
+      persistence: JournaledStatePersistence[ControllerState],
       testEventBus: StandardEventBus[Any])
     : (Cluster[ControllerState],
       Task[Checked[ControllerState]],
       Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]])
     = {
-      val persistence = new JournaledStatePersistence[ControllerState](journalActor, controllerConfiguration.journalConf)
-        .closeWithCloser
       val cluster = {
         import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
         new Cluster(
           journalMeta,
           persistence,
-          recovered.eventWatch,
           new ClusterContext {
             def clusterNodeApi(uri: Uri, name: String) =
               AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)
@@ -412,7 +411,7 @@ object RunningController
         }
         .flatTap {
           case Right(ClusterFollowUp.BecomeActive(recovered)) =>
-            persistence.start(recovered.state)
+            persistence.start(recovered)
           case _ =>
             cluster.stop
               .onErrorHandle(t => Task {
@@ -429,7 +428,7 @@ object RunningController
     }
 
     private def startControllerOrderKeeper(
-      journalActor: ActorRef @@ JournalActor.type,
+      persistence: JournaledStatePersistence[ControllerState],
       workingClusterNode: WorkingClusterNode[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])
@@ -439,7 +438,7 @@ object RunningController
           val terminationPromise = Promise[ControllerTermination]()
           val actor = actorSystem.actorOf(
             Props {
-              new ControllerOrderKeeper(terminationPromise, journalActor, workingClusterNode, controllerConfiguration,
+              new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode, controllerConfiguration,
                 testEventPublisher)
             },
             "ControllerOrderKeeper")

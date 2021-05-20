@@ -2,20 +2,29 @@ package js7.journal.state
 
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
+import akka.util.Timeout
+import com.softwaremill.diffx
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.data.cluster.ClusterState
-import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
-import js7.journal.JournalActor
+import js7.data.event.{Event, JournalHeader, JournalHeaders, JournalId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
+import js7.journal.data.JournalMeta
+import js7.journal.recover.Recovered
+import js7.journal.state.JournaledStatePersistence.logger
 import js7.journal.state.StateJournalingActor.{PersistFunction, StateToEvents}
+import js7.journal.watch.EventWatch
+import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.reflect.runtime.universe._
+import shapeless.tag
 import shapeless.tag.@@
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
@@ -24,11 +33,16 @@ import shapeless.tag.@@
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
 final class JournaledStatePersistence[S <: JournaledState[S]](
-  val/*???*/ journalActor: ActorRef @@ JournalActor.type,
-  journalConf: JournalConf)
+  val recoveredJournalId: Option[JournalId],
+  val eventWatch: EventWatch,
+  val journalActor: ActorRef @@ JournalActor.type,
+  journalConf: JournalConf,
+  journalActorStopped: Future[Unit])
   (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
 extends AutoCloseable
 {
+  lazy val journalId = recoveredJournalId getOrElse JournalId.random()
+
   private val lockKeeper = new LockKeeper[Any]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
   import lockKeeper.lock
   private val persistPromise = Promise[PersistFunction[S, Event]]()
@@ -36,23 +50,48 @@ extends AutoCloseable
 
   private val actorOnce = SetOnce[ActorRef]
   private val getCurrentState = SetOnce[() => S]
+  private val journalHeaderOnce = SetOnce[JournalHeader]
+
+  def journalHeader: Task[JournalHeader] =
+    journalHeaderOnce.task
 
   def actor = actorOnce.orThrow
 
   def close(): Unit =
-    actorOnce.foreach(actorRefFactory.stop)
+    stop.runAsyncAndForget
 
-  def start(state: S): Task[Unit] =
-    Task {
+  def start(recovered: Recovered[S]): Task[JournalHeader] =
+    Task.defer {
+      if (recovered.recoveredJournalFile.isEmpty) {
+        logger.info("Starting a new empty journal")
+      }
+      val start = JournalActor.Input.Start(
+        recovered.state,
+        Some(recovered.eventWatch),
+        recovered.recoveredJournalFile
+          .map(_.nextJournalHeader)
+          .getOrElse(JournalHeaders.initial(journalId)),
+        recovered.totalRunningSince)
+
       actorOnce := actorRefFactory.actorOf(
-        StateJournalingActor.props[S, Event](state, journalActor, journalConf, persistPromise),
+        StateJournalingActor.props[S, Event](recovered.state, journalActor, journalConf, persistPromise),
         encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
+
+      Task.fromFuture((journalActor ? start)(Timeout(1.h/*???*/)).mapTo[JournalActor.Output.Ready])
+        .map { case JournalActor.Output.Ready(journalHeader) =>
+          logger.debug(s"JournalIsReady")
+          journalHeaderOnce := journalHeader
+          journalHeader
+        }
+        .tapEval(_ => provideGetCurrentState)
     }
 
-  // TODO Call start() only after JournalActor has been started
-  // Then fill getCurrentState in start() and delete this method.
-  def onJournalActorStarted: Task[Unit] =
-    provideGetCurrentState
+  val stop: Task[Unit] =
+    Task.defer {
+      actorOnce foreach actorRefFactory.stop
+      journalActor ! JournalActor.Input.Terminate
+      Task.fromFuture(journalActorStopped)
+    }.memoize
 
   def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
     requireStarted()
@@ -66,7 +105,8 @@ extends AutoCloseable
         stateToEvent.andThen(_.map(KeyedEvent(key, _)))))
   }
 
-  private def persistEventUnlocked[E <: Event](stateToEvent: S => Checked[KeyedEvent[E]]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
+  private def persistEventUnlocked[E <: Event](stateToEvent: S => Checked[KeyedEvent[E]])
+  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistTask
       .flatMap(_(state => stateToEvent(state).map(_ :: Nil), /*transaction=*/false))
       .map(_ map {
@@ -75,13 +115,15 @@ extends AutoCloseable
           stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
       })
 
-  def persist[E <: Event]: (S => Checked[Seq[KeyedEvent[E]]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
+  def persist[E <: Event]
+  : (S => Checked[Seq[KeyedEvent[E]]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     stateToEvents => persistUnlocked(stateToEvents, transaction = false)
   }
 
   /** Persist multiple events in a transaction. */
-  def persistTransaction[E <: Event](key: E#Key): (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
+  def persistTransaction[E <: Event](key: E#Key)
+  : (S => Checked[Seq[E]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     stateToEvents =>
       lock(key)(
@@ -135,16 +177,39 @@ extends AutoCloseable
 
 object JournaledStatePersistence
 {
-  def start[S <: JournaledState[S]](
-    initialState: S,
-    journalActor: ActorRef @@ JournalActor.type,
-    journalConf: JournalConf)
-    (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
-  = Task.defer {
-    val persistence = new JournaledStatePersistence[S](journalActor, journalConf)
-    persistence
-      .start(initialState)
-      .tapEval(_ => persistence.onJournalActorStarted)
+  private val logger = Logger[this.type]
+
+  def start[S <: JournaledState[S]: JournaledState.Companion: diffx.Diff](
+    recovered: Recovered[S],
+    journalMeta: JournalMeta,
+    journalConf: JournalConf,
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+    keyedEventBus: StampedKeyedEventBus = new StampedKeyedEventBus)
+    (implicit S: TypeTag[S], scheduler: Scheduler,
+      actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
+  : Task[JournaledStatePersistence[S]] = {
+    val persistence = prepare(recovered.journalId, recovered.eventWatch, journalMeta, journalConf,
+      eventIdGenerator, keyedEventBus)
+    persistence.start(recovered)
       .as(persistence)
   }
+
+  def prepare[S <: JournaledState[S]: JournaledState.Companion: diffx.Diff](
+    recoveredJournalId: Option[JournalId],
+    eventWatch: EventWatch,
+    journalMeta: JournalMeta,
+    journalConf: JournalConf,
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+    keyedEventBus: StampedKeyedEventBus = new StampedKeyedEventBus)
+    (implicit S: TypeTag[S], scheduler: Scheduler,
+      actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
+  : JournaledStatePersistence[S] = {
+      val journalActorStopped = Promise[JournalActor.Stopped]()
+      val journalActor = tag[JournalActor.type](actorRefFactory.actorOf(
+        JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler, eventIdGenerator, journalActorStopped),
+        "Journal"))
+
+      new JournaledStatePersistence[S](recoveredJournalId, eventWatch, journalActor, journalConf,
+        journalActorStopped.future.map(_ => ()))
+    }
 }
