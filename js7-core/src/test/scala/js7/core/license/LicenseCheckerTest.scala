@@ -14,11 +14,11 @@ final class LicenseCheckerTest extends AnyFreeSpec
 
   "hasLicense" in {
     val licenseChecker = new LicenseChecker(licenseCheckContext)
-    assert(!licenseChecker.hasLicense(Nil, ""))
-    assert(!licenseChecker.hasLicense(Seq(TestLicenseCheck(false)), ""))
-    assert(!licenseChecker.hasLicense(Seq(TestLicenseCheck(false), TestLicenseCheck(false)), ""))
-    assert(licenseChecker.hasLicense(Seq(TestLicenseCheck(true)), ""))
-    assert(licenseChecker.hasLicense(Seq(TestLicenseCheck(true), TestLicenseCheck(false)), ""))
-    assert(licenseChecker.hasLicense(Seq(TestLicenseCheck(false), TestLicenseCheck(true)), ""))
+    assert(!licenseChecker.hasLicense(Nil, "PRODUCT"))
+    assert(!licenseChecker.hasLicense(Seq(TestLicenseCheck(false)), "PRODUCT"))
+    assert(!licenseChecker.hasLicense(Seq(TestLicenseCheck(false), TestLicenseCheck(false)), "PRODUCT"))
+    assert(licenseChecker.hasLicense(Seq(TestLicenseCheck(true)), "PRODUCT"))
+    assert(licenseChecker.hasLicense(Seq(TestLicenseCheck(true), TestLicenseCheck(false)), "PRODUCT"))
+    assert(licenseChecker.hasLicense(Seq(TestLicenseCheck(false), TestLicenseCheck(true)), "PRODUCT"))
   }
 }

@@ -36,6 +36,10 @@ final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
   private[license] def hasLicense(licenseChecks: Seq[LicenseCheck], productName: String): Boolean =
     licenseChecks
       .view
-      .dropWhile(o => !o.hasLicense(productName))
+      .dropWhile { o =>
+        val hasLicense = o.hasLicense(productName)
+        logger.debug(s"${o.getClass.getName} hasLicense($productName) => $hasLicense")
+        !hasLicense
+      }
       .nonEmpty
 }
