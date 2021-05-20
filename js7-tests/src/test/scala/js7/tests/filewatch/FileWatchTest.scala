@@ -1,6 +1,6 @@
 package js7.tests.filewatch
 
-import java.nio.file.Files.{createDirectory, exists}
+import java.nio.file.Files.{createDirectory, delete, exists}
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
@@ -12,28 +12,39 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.data.Problems.CannotRemoveWatchingOrderProblem
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.item.UnsignedSimpleItemEvent.SimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
-import js7.data.order.OrderEvent.OrderRemoved
-import js7.data.order.OrderId
+import js7.data.job.InternalExecutable
+import js7.data.order.OrderEvent.{OrderCancelMarkedOnAgent, OrderFinished, OrderProcessingStarted, OrderRemoved}
+import js7.data.order.{OrderId, Outcome}
+import js7.data.orderwatch.OrderWatchEvent.ExternalOrderVanished
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.OrderProcess
+import js7.executor.internal.InternalJob
 import js7.tests.filewatch.FileWatchTest._
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import monix.catnap.Semaphore
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.TimeoutException
 
 final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
-  protected val versionedItems = Seq(workflow)
+  protected val versionedItems = Seq(workflow, waitingWorkflow)
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -45,30 +56,41 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
-
+  private val watchDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
     aAgentPath,
-    sourceDirectory.toString)
+    watchDirectory.toString)
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
 
+  private lazy val waitingWatchDirectory = directoryProvider.agents(0).dataDir / "tmp/files-waiting"
+  private lazy val waitingFileWatch = FileWatch(
+    OrderWatchPath("WAITING-WATCH"),
+    waitingWorkflow.path,
+    aAgentPath,
+    waitingWatchDirectory.toString)
+
+  def watchedFileToOrderId(filename: String): OrderId =
+    FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
+
   "Start with existing file" in {
-    createDirectory(sourceDirectory)
-    val file = sourceDirectory / "1"
+    createDirectory(watchDirectory)
+    createDirectory(waitingWatchDirectory)
+    val file = watchDirectory / "1"
     val orderId = fileToOrderId("1")
     file := ""
-    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch, waitingFileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
+    controller.eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
     assert(!exists(file))
   }
 
   "Add a file" in {
-    val file = sourceDirectory / "2"
+    val file = watchDirectory / "2"
     val orderId = fileToOrderId("2")
     file := ""
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
@@ -88,12 +110,57 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .headL
       .runToFuture
     for (files <- filenames.grouped(100)) {
-      for (f <- files) sourceDirectory / f := ""
+      for (f <- files) watchDirectory / f := ""
       sleep(10.ms)
     }
     whenAllRemoved.await(99.s)
-    assert(sourceDirectory.directoryContents.isEmpty)
+    assert(watchDirectory.directoryContents.isEmpty)
     logger.info(itemsPerSecondString(since.elapsed, filenames.size, "files"))
+  }
+
+  "RemoveOrdersWhenTerminated is rejected" in {
+    val file = waitingWatchDirectory / "REMOVE"
+    val orderId = watchedFileToOrderId("REMOVE")
+    file := ""
+    controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+
+    assert(controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
+      Left(CannotRemoveWatchingOrderProblem(orderId)))
+
+    semaphore.flatMap(_.release).runSyncUnsafe()
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+    intercept[TimeoutException] {
+      controller.eventWatch.await[OrderRemoved](_.key == orderId, timeout = 100.ms)
+    }
+
+    delete(file)
+    val vanished = controller.eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
+    val removed = controller.eventWatch.await[OrderRemoved](_.key == orderId).head
+    assert(vanished.timestamp < removed.timestamp)
+  }
+
+  "CancelOrder does not remove the order until the file has vanished" in {
+    val file = waitingWatchDirectory / "CANCEL"
+    val orderId = watchedFileToOrderId("CANCEL")
+    file := ""
+    controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+
+    controllerApi.executeCommand(CancelOrders(orderId :: Nil)).await(99.s).orThrow
+    controller.eventWatch.await[OrderCancelMarkedOnAgent](_.key == orderId)
+
+    semaphore.flatMap(_.release).runSyncUnsafe()
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+    intercept[TimeoutException] {
+      controller.eventWatch.await[OrderRemoved](_.key == orderId, timeout = 100.ms)
+    }
+
+    assert(controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
+      Left(CannotRemoveWatchingOrderProblem(orderId)))
+
+    delete(file)
+    val vanished = controller.eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
+    val removed = controller.eventWatch.await[OrderRemoved](_.key == orderId).head
+    assert(vanished.timestamp < removed.timestamp)
   }
 
   private var itemRevision = ItemRevision(0)
@@ -129,10 +196,13 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Delete a FileWatch" in {
     val eventId = controller.eventWatch.lastAddedEventId
-    assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
-      Right(Completed))
+    assert(controllerApi.updateItems(Observable(
+      DeleteSimple(fileWatch.path),
+      DeleteSimple(waitingFileWatch.path))
+    ).await(99.s) == Right(Completed))
     controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.path, after = eventId)
     val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
+      .filter(_.event.key == fileWatch.path)
     assert(events == Seq(
       NoKey <-: ItemDeletionMarked(fileWatch.path),
       NoKey <-: ItemDetachable(fileWatch.path, bAgentPath),
@@ -151,4 +221,21 @@ object FileWatchTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(DeleteFileJob.execute(aAgentPath)))
+
+  private val waitingWorkflow = Workflow(
+    WorkflowPath("WAITING-WORKFLOW") ~ "INITIAL",
+    Vector(
+      Execute(WorkflowJob(
+        aAgentPath,
+        InternalExecutable(classOf[SemaphoreJob].getName)))))
+
+  private val semaphore = Semaphore[Task](0).memoize
+
+  final class SemaphoreJob extends InternalJob
+  {
+    def toOrderProcess(step: Step) =
+      OrderProcess(
+        semaphore.flatMap(_.acquire)
+          .as(Outcome.succeeded))
+  }
 }

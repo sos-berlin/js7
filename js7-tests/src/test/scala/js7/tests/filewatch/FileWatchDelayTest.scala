@@ -52,7 +52,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
     workflow.path,
     agentPath,
     watchedDirectory.toString,
-    delay = systemWatchDelay + 300.ms)
+    delay = systemWatchDelay + 500.ms)
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow

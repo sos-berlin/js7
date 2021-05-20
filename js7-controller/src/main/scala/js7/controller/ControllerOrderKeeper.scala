@@ -42,7 +42,7 @@ import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.Problems.{CannotRemoveOrderProblem, UnknownOrderProblem}
+import js7.data.Problems.{CannotRemoveChildOrderProblem, CannotRemoveWatchingOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -706,7 +706,12 @@ with MainJournalingActor[ControllerState, Event]
           .traverse(_controllerState.idToOrder.checked)
           .traverse(orders =>
             orders.traverse(order =>
-              check(order.parent.isEmpty, order, CannotRemoveOrderProblem)))
+              if (order.parent.isDefined)
+                Left(CannotRemoveChildOrderProblem(order.id): Problem)
+              else if (order.externalOrderKey.isDefined)
+                Left(CannotRemoveWatchingOrderProblem(order.id): Problem)
+              else
+                Right(order)))
           .flatten
           .map(_
             .filterNot(_.removeWhenTerminated)
