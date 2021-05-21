@@ -41,7 +41,7 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
 
   import configuration.{getIsPublic, idToUser, isPublic, loopbackIsPublic, realm}
 
-  private val htttpClientAuthRequired = scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
+  private val httpClientAuthRequired = scheme == WebServerBinding.Https && configuration.httpsClientAuthRequired
   private val authenticator = new OurMemoizingAuthenticator(idToUser)
   private val basicChallenge = HttpChallenges.basic(realm)
   val credentialsMissing = AuthenticationFailedRejection(CredentialsMissing, basicChallenge)
@@ -88,22 +88,23 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
     Directive(inner =>
       seal {
         httpAuthenticate { httpUser =>
-          if (!htttpClientAuthRequired)
+          if (!httpClientAuthRequired)
             inner(Tuple1(Right(httpUser)))
-          else clientHttpsAuthenticate {
-            case idsOrUser if httpUser.isAnonymous || idsOrUser == Right(httpUser) =>
-              inner(Tuple1(idsOrUser))
+          else
+            clientHttpsAuthenticate {
+              case idsOrUser if httpUser.isAnonymous || idsOrUser == Right(httpUser) =>
+                inner(Tuple1(idsOrUser))
 
-            case Left(allowedHttpsUserIds) if allowedHttpsUserIds contains httpUser.id =>
-              inner(Tuple1(Right(httpUser)))
+              case Left(allowedHttpsUserIds) if allowedHttpsUserIds contains httpUser.id =>
+                inner(Tuple1(Right(httpUser)))
 
-            case _ =>
-              respondWithHeader(wwwAuthenticateHeader) {
-                completeDelayed(
-                  Forbidden -> Problem.pure(
-                    "HTTP user does not match UserIds allowed by HTTPS client distinguished name"))
-              }
-          }
+              case _ =>
+                respondWithHeader(wwwAuthenticateHeader) {
+                  completeDelayed(
+                    Forbidden -> Problem.pure(
+                      "HTTP user does not match UserIds allowed by HTTPS client distinguished name"))
+                }
+            }
         }
       })
 
@@ -230,7 +231,7 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
       " - ACCESS VIA LOOPBACK (127.*.*.*) INTERFACE IS PUBLIC (loopback-is-public = true)"
     else if (configuration.getIsPublic)
       " - ACCESS VIA HTTP METHODS GET OR HEAD IS PUBLIC (get-is-public = true)"
-    else if (htttpClientAuthRequired)
+    else if (httpClientAuthRequired)
       " - HTTPS client authentication (mutual TLS) required"
     else
       ""
