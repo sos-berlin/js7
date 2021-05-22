@@ -1,6 +1,6 @@
 package js7.controller.agent
 
-import akka.actor.{ActorRef, DeadLetterSuppression, Props}
+import akka.actor.{DeadLetterSuppression, Props}
 import cats.data.EitherT
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
@@ -38,9 +38,9 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, Signa
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
-import js7.journal.{JournalActor, KeyedJournalingActor}
+import js7.journal.state.JournaledStatePersistence
 import monix.eval.Task
-import monix.execution.atomic.{AtomicInt, AtomicLong}
+import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
@@ -48,7 +48,6 @@ import scala.concurrent.duration._
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
-import shapeless.tag.@@
 
 /**
   * Couples to an Agent, sends orders, and fetches events.
@@ -59,12 +58,11 @@ final class AgentDriver private(agentPath: AgentPath,
   initialUri: Uri,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
+  persistence: JournaledStatePersistence[ControllerState],
   conf: AgentDriverConfiguration,
-  controllerConfiguration: ControllerConfiguration,
-  protected val journalActor: ActorRef @@ JournalActor.type)
+  controllerConfiguration: ControllerConfiguration)
   (implicit protected val scheduler: Scheduler)
-extends KeyedJournalingActor[ControllerState, AgentRefStateEvent]
-with ReceiveLoggingActor.WithStash
+extends ReceiveLoggingActor.WithStash
 {
   import controllerConfiguration.controllerId
 
@@ -127,9 +125,9 @@ with ReceiveLoggingActor.WithStash
           if (noJournal)
             Task.pure(true)
           else
-            persistTask(agentCouplingFailed, async = true) { (_, _) =>
-              true  // recouple and continue after onCouplingFailed
-            }.map(_.orThrow)
+            persistence.persistKeyedEvent(agentPath <-: agentCouplingFailed)
+              .map(_.map(_ => true))  // recouple and continue after onCouplingFailed
+              .map(_.orThrow)
         }
       }
 
@@ -414,23 +412,14 @@ with ReceiveLoggingActor.WithStash
             if (noJournal)
               Task.pure(Right(Completed))
             else
-              persistTask(AgentCreated(agentRunId), async = true) { (_, _) =>
-                // asynchronous
-                agentRunIdOnce := agentRunId
-                Completed
-              })
+              persistence.persistKeyedEvent(agentPath <-: AgentCreated(agentRunId))
+                .map(_.map { case (_, _) =>
+                  // asynchronous
+                  agentRunIdOnce := agentRunId
+                  Completed
+                }))
         } yield completed).value
     }
-
-  private object logEvent {
-    // This object is used asynchronously
-    private val logEventCount = AtomicLong(0)
-    def apply(stampedEvent: Stamped[AnyKeyedEvent]): Unit =
-      logger.whenTraceEnabled {
-        val i = logEventCount.incrementAndGet()
-        logger.trace(s"#$i $stampedEvent")
-      }
-  }
 
   private def stopIfTerminated() =
     if (commandQueue.isTerminated) {
@@ -469,10 +458,12 @@ private[controller] object AgentDriver
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
   def props(agentPath: AgentPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
-    agentDriverConfiguration: AgentDriverConfiguration, controllerConfiguration: ControllerConfiguration,
-    journalActor: ActorRef @@ JournalActor.type)(implicit s: Scheduler)
+    persistence: JournaledStatePersistence[ControllerState],
+    agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration)
+    (implicit s: Scheduler)
   =
-    Props { new AgentDriver(agentPath, uri, agentRunId, eventId, agentDriverConfiguration, controllerConfiguration, journalActor) }
+    Props { new AgentDriver(agentPath, uri, agentRunId, eventId,
+      persistence, agentDriverConf, controllerConf) }
 
   sealed trait Queueable extends Input {
     def toShortString = toString
