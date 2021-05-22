@@ -837,8 +837,8 @@ with MainJournalingActor[ControllerState, Event]
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
-      AgentDriver.props(agent.path, agent.uri, agentRunId, eventId = eventId, agentDriverConfiguration, controllerConfiguration,
-        journalActor = journalActor),
+      AgentDriver.props(agent.path, agent.uri, agentRunId, eventId = eventId,
+        persistence, agentDriverConfiguration, controllerConfiguration),
       encodeAsActorName("Agent-" + agent.path)))
     val entry = AgentEntry(agent, actor)
     agentRegister.insert(agent.path -> entry)

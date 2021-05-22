@@ -16,7 +16,7 @@ import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
 
 private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Event](
-  initialState: S,
+  state: => S,
   protected val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf,
   persistPromise: Promise[PersistFunction[S, E]])
@@ -24,8 +24,6 @@ private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Eve
 extends MainJournalingActor[S, E]
 {
   override def supervisorStrategy = SupervisorStrategies.escalate
-
-  private var state: S = initialState
 
   override def preStart() = {
     super.preStart()
@@ -47,15 +45,10 @@ extends MainJournalingActor[S, E]
         case Success(Right(keyedEvents)) =>
           promise.completeWith(
             persistKeyedEvents(toTimestamped(keyedEvents), transaction = transaction, async = true) { (stampedKeyedEvents, journaledState) =>
-              val updated = applyPersistedEvents(stampedKeyedEvents)
-              state = updated
-              Right(stampedKeyedEvents -> updated)
+              Right(stampedKeyedEvents -> journaledState)
             })
       }
   }
-
-  private def applyPersistedEvents(stampedKeyedEvents: Seq[Stamped[KeyedEvent[E]]]): S =
-    stampedKeyedEvents.scanLeft(state)(applyPersistedEvent[S, E]).last
 
   override lazy val toString = s"StateJournalingActor[${S.tpe.toString.replaceAll("""^.*\.""", "")}]"
 
@@ -73,20 +66,13 @@ private[state] object StateJournalingActor
       Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   def props[S <: JournaledState[S], E <: Event](
-    initialState: S,
+    currentState: => S,
     journalActor: ActorRef @@ JournalActor.type,
     journalConf: JournalConf,
     persistPromise: Promise[PersistFunction[S, E]])
     (implicit S: TypeTag[S], s: Scheduler)
   =
-    Props { new StateJournalingActor(initialState, journalActor, journalConf, persistPromise) }
-
-  private def applyPersistedEvent[S <: JournaledState[S], E <: Event] (state: S, stampedKeyedEvent: Stamped[KeyedEvent[E]]): S =
-    state.withEventId(stampedKeyedEvent.eventId)
-      .applyEvent(stampedKeyedEvent.value) match {
-        case Left(problem) => throw new IllegalStateChangeWhilePersistingException(stampedKeyedEvent, problem)  // Serious problem !!!
-        case Right(updated) => updated
-      }
+    Props { new StateJournalingActor(currentState, journalActor, journalConf, persistPromise) }
 
   private final class IllegalStateChangeWhilePersistingException(stamped: Stamped[KeyedEvent[_]], problem: Problem)
   extends RuntimeException(s"Application of event failed after persisted: $stamped: $problem")

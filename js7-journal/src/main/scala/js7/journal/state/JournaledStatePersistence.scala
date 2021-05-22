@@ -68,22 +68,24 @@ extends AutoCloseable
       val start = JournalActor.Input.Start(
         recovered.state,
         Some(recovered.eventWatch),
-        recovered.recoveredJournalFile
-          .map(_.nextJournalHeader)
-          .getOrElse(JournalHeaders.initial(journalId)),
+        recovered.recoveredJournalFile.fold(JournalHeaders.initial(journalId))(_.nextJournalHeader),
         recovered.totalRunningSince)
-
-      actorOnce := actorRefFactory.actorOf(
-        StateJournalingActor.props[S, Event](recovered.state, journalActor, journalConf, persistPromise),
-        encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
-
       Task.fromFuture((journalActor ? start)(Timeout(1.h/*???*/)).mapTo[JournalActor.Output.Ready])
-        .map { case JournalActor.Output.Ready(journalHeader) =>
+        .flatMap { case JournalActor.Output.Ready(journalHeader) =>
           logger.debug(s"JournalIsReady")
           journalHeaderOnce := journalHeader
-          journalHeader
+          Task
+            .deferFuture(
+              (journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
+            .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
+            .map { getCurrentState := _ }
+            .as(journalHeader)
         }
-        .tapEval(_ => provideGetCurrentState)
+        .tapEval(_ => Task {
+          actorOnce := actorRefFactory.actorOf(
+            StateJournalingActor.props[S, Event](currentState, journalActor, journalConf, persistPromise),
+            encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
+        })
     }
 
   val stop: Task[Unit] =
@@ -150,19 +152,8 @@ extends AutoCloseable
   def clusterState: Task[ClusterState] =
     awaitCurrentState.map(_.clusterState)
 
-  private val provideGetCurrentState: Task[Unit] =
-    (waitUntilStarted >>
-      Task
-        .deferFuture(
-          (journalActor ? JournalActor.Input.GetJournaledState).mapTo[() => S])
-        .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
-        .map(getCurrentState := _)
-        .as(())
-    ).memoize
-
   def awaitCurrentState: Task[S] =
-    provideGetCurrentState >>
-      Task(currentState)
+    waitUntilStarted >> Task(currentState)
 
   def currentState: S =
     getCurrentState.orThrow()
