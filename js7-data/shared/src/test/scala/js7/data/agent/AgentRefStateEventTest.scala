@@ -3,7 +3,7 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentEventsObserved, AgentReady, AgentRegisteredController}
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset}
 import js7.data.event.{JournalId, KeyedEvent}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -31,11 +31,11 @@ final class AgentRefStateEventTest extends AnyFreeSpec
         }""")
     }
 
-    "AgentRegisteredController" in {
+    "AgentCreated" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentPath("AGENT") <-: AgentRegisteredController(AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
+        AgentPath("AGENT") <-: AgentCreated(AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
         json"""{
-          "TYPE": "AgentRegisteredController",
+          "TYPE": "AgentCreated",
           "Key": "AGENT",
           "agentRunId": "ABEiM0RVZneImaq7zN3u_w"
         }""")

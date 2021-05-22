@@ -1,8 +1,8 @@
 package js7.agent.data
 
 import js7.agent.data.AgentState.AgentMetaState
-import js7.agent.data.event.AgentControllerEvent
-import js7.agent.data.event.AgentControllerEvent.AgentCreated
+import js7.agent.data.event.AgentEvent
+import js7.agent.data.event.AgentEvent.AgentCreated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -64,7 +64,7 @@ extends JournaledState[AgentState]
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         applyOrderEvent(orderId, event)
 
-      case KeyedEvent(_, _: AgentControllerEvent.AgentReady) =>
+      case KeyedEvent(_, _: AgentEvent.AgentReady) =>
         Right(this)
 
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
@@ -188,7 +188,7 @@ object AgentState extends JournaledState.Companion[AgentState]
     KeyedEventTypedJsonCodec("AgentState.Event",
       KeyedSubtype[JournalEvent],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[AgentControllerEvent],
+      KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[OrderWatchEvent])
 

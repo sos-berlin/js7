@@ -9,7 +9,7 @@ import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import js7.agent.data.Problems.{AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
-import js7.agent.data.event.AgentControllerEvent.AgentCreated
+import js7.agent.data.event.AgentEvent.AgentCreated
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.{AgentState, AgentTermination}
 import js7.agent.scheduler.AgentActor._

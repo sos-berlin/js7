@@ -2,7 +2,7 @@ package js7.tests.filewatch
 
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
-import js7.agent.data.event.AgentControllerEvent.AgentReady
+import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._

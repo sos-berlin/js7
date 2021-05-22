@@ -6,7 +6,7 @@ import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{CoupleController, CreateAgent}
-import js7.agent.data.event.AgentControllerEvent
+import js7.agent.data.event.AgentEvent
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
@@ -30,7 +30,7 @@ import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentRegisteredController}
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated}
 import js7.data.agent.{AgentPath, AgentRefStateEvent, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -99,7 +99,7 @@ with ReceiveLoggingActor.WithStash
 
     override protected def couple(eventId: EventId) =
       (for {
-        _ <- EitherT(registerAsControllerIfNeeded)
+        _ <- EitherT(createAgentIfNeeded)
         completed <- EitherT(
           client.commandExecute(CoupleController(agentPath, agentRunIdOnce.orThrow, eventId = eventId))
             .map(_.map { case CoupleController.Response(orderIds) =>
@@ -402,7 +402,7 @@ with ReceiveLoggingActor.WithStash
         .map(_ => Completed)
     }
 
-  private def registerAsControllerIfNeeded: Task[Checked[Completed]] =
+  private def createAgentIfNeeded: Task[Checked[Completed]] =
     Task.defer {
       if (agentRunIdOnce.nonEmpty)
         Task.pure(Right(Completed))
@@ -414,7 +414,7 @@ with ReceiveLoggingActor.WithStash
             if (noJournal)
               Task.pure(Right(Completed))
             else
-              persistTask(AgentRegisteredController(agentRunId), async = true) { (_, _) =>
+              persistTask(AgentCreated(agentRunId), async = true) { (_, _) =>
                 // asynchronous
                 agentRunIdOnce := agentRunId
                 Completed
@@ -463,7 +463,7 @@ private[controller] object AgentDriver
 {
   private val EventClasses = Set[Class[_ <: Event]](
     classOf[OrderEvent],
-    classOf[AgentControllerEvent.AgentReady],
+    classOf[AgentEvent.AgentReady],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")

@@ -12,9 +12,9 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-trait AgentControllerEvent extends NoKeyEvent
+trait AgentEvent extends NoKeyEvent
 
-object AgentControllerEvent
+object AgentEvent
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
@@ -22,14 +22,14 @@ object AgentControllerEvent
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId)
-  extends AgentControllerEvent
+  extends AgentEvent
 
   final case class AgentReady(
     timezone: String,
     totalRunningTime: FiniteDuration)
-  extends AgentControllerEvent
+  extends AgentEvent
 
-  implicit val jsonCodec = TypedJsonCodec[AgentControllerEvent](
+  implicit val jsonCodec = TypedJsonCodec[AgentEvent](
     Subtype(deriveCodec[AgentCreated]),
     Subtype(deriveCodec[AgentReady]))
 }

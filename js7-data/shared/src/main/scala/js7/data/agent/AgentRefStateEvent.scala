@@ -14,13 +14,10 @@ sealed trait AgentRefStateEvent extends Event {
 
 object AgentRefStateEvent
 {
-  final case class AgentCouplingFailed(problem: Problem) extends AgentRefStateEvent
+  /** A new Agent has been created and is running. */
+  final case class AgentCreated(agentRunId: AgentRunId) extends AgentRefStateEvent
 
-  /** The Agent has registered the Controller and has started a new Agent for the Controller. */
-  final case class AgentRegisteredController(agentRunId: AgentRunId) extends AgentRefStateEvent
-  object AgentRegisteredController {
-    implicit val jsonCodec = deriveCodec[AgentRegisteredController]
-  }
+  final case class AgentCouplingFailed(problem: Problem) extends AgentRefStateEvent
 
   final case class AgentReady(timezone: String) extends AgentRefStateEvent
 
@@ -30,8 +27,8 @@ object AgentRefStateEvent
   }
 
   implicit val jsonCodec = TypedJsonCodec[AgentRefStateEvent](
+    Subtype(deriveCodec[AgentCreated]),
     Subtype(deriveCodec[AgentCouplingFailed]),
-    Subtype[AgentRegisteredController],
     Subtype(deriveCodec[AgentReady]),
     Subtype(deriveCodec[AgentEventsObserved]))
 }

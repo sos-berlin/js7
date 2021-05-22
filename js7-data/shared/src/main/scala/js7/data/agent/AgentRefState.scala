@@ -24,9 +24,9 @@ extends SimpleItemState
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match {
-      case AgentRegisteredController(agentRunId_) =>
+      case AgentCreated(agentRunId_) =>
         if (agentRunId.isDefined || eventId != EventId.BeforeFirst)
-          Left(Problem("Duplicate AgentRegisteredController event: " + event))
+          Left(Problem("Duplicate AgentCreated event: " + event))
         else
           Right(copy(
             agentRunId = Some(agentRunId_)))

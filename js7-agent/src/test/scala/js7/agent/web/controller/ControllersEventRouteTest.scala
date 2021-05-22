@@ -3,7 +3,7 @@ package js7.agent.web.controller
 import js7.agent.client.AgentClient
 import js7.agent.data.Problems.{AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.agent.data.commands.AgentCommand.{CoupleController, CreateAgent, ReleaseEvents, TakeSnapshot}
-import js7.agent.data.event.AgentControllerEvent.AgentReady
+import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider._
 import js7.agent.web.controller.ControllersEventRouteTest._

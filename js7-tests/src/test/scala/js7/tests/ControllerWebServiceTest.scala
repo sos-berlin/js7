@@ -31,7 +31,7 @@ import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.CirceToYaml.yamlToJson
 import js7.common.system.ServerOperatingSystem.operatingSystem
-import js7.data.agent.AgentRefStateEvent.AgentRegisteredController
+import js7.data.agent.AgentRefStateEvent.AgentCreated
 import js7.data.agent.{AgentPath, AgentRefStateEvent}
 import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.controller.{ControllerMetaState, ControllerState}
@@ -499,7 +499,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     val eventsJson = httpClient.get[Json](Uri(s"$uri/controller/api/event?after=0"), headers) await 99.s
     val keyedEvents: Seq[KeyedEvent[Event]] =
       eventsJson.asObject.get("stamped").get.asArray.get.map(_.as(ControllerState.keyedEventJsonCodec).orThrow)
-    val agentRunId = keyedEvents.collectFirst { case AgentPath("AGENT") <-: (e: AgentRegisteredController) => e.agentRunId }.get
+    val agentRunId = keyedEvents.collectFirst { case AgentPath("AGENT") <-: (e: AgentCreated) => e.agentRunId }.get
     val totalRunningTime = keyedEvents.collectFirst { case _ <-: (e: ControllerReady) => e.totalRunningTime }.get
     // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
     assert(manipulateEventsForTest(eventsJson) == json"""{
@@ -539,7 +539,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         }, {
           "eventId": 1006,
           "Key": "AGENT",
-          "TYPE": "AgentRegisteredController",
+          "TYPE": "AgentCreated",
           "agentRunId": "${agentRunId.string}"
         }, {
           "eventId": 1007,
@@ -635,7 +635,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
     def manipulateEventsForTest(eventResponse: Json): Json = {
       def ignoreIt(json: Json): Boolean = {
         val obj = json.asObject.get.toMap
-        (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentRegisteredController")) &&
+        (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentCreated")) &&
             json.as[KeyedEvent[AgentRefStateEvent]].orThrow.key != TestAgentPath || // Let through only Events for one AgentRef, because ordering is undefined
           obj("TYPE") == Json.fromString("AgentCouplingFailed") ||
           obj("TYPE") == Json.fromString("AgentEventsObserved")

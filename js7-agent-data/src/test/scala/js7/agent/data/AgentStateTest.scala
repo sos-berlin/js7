@@ -7,7 +7,7 @@ import java.io.File.separator
 import java.nio.file.Paths
 import java.util.UUID
 import js7.agent.data.AgentState.AgentMetaState
-import js7.agent.data.event.AgentControllerEvent.AgentCreated
+import js7.agent.data.event.AgentEvent.AgentCreated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}

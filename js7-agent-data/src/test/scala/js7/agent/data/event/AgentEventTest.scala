@@ -9,10 +9,10 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class AgentControllerEventTest extends AnyFreeSpec
+final class AgentEventTest extends AnyFreeSpec
 {
   "AgentReady" in {
-    testJson[KeyedEvent[AgentControllerEvent]](AgentControllerEvent.AgentReady("Europe/Berlin", 1.hour),
+    testJson[KeyedEvent[AgentEvent]](AgentEvent.AgentReady("Europe/Berlin", 1.hour),
       json"""{
         "TYPE": "AgentReady",
         "timezone": "Europe/Berlin",

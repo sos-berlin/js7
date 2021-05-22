@@ -9,7 +9,7 @@ import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import java.time.ZoneId
-import js7.agent.data.event.AgentControllerEvent
+import js7.agent.data.event.AgentEvent
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
@@ -482,7 +482,7 @@ with MainJournalingActor[ControllerState, Event]
                 }
                 Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
 
-              case KeyedEvent(_: NoKey, AgentControllerEvent.AgentReady(timezone, _)) =>
+              case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _)) =>
                 Timestamped(agentEntry.agentPath <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
 
               case KeyedEvent(_: NoKey, ItemAttachedToAgent(item)) =>
