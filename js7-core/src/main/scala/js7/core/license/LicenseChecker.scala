@@ -14,7 +14,9 @@ final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
   private val logger = Logger[this.type]
 
   private lazy val licenseChecks: Seq[LicenseCheck] = {
-    val serviceLoader = ServiceLoader.load(classOf[LicenseCheck])
+    val serviceLoader = ServiceLoader.load(
+      classOf[LicenseCheck],
+      classOf[LicenseChecker].getClassLoader/*required for testing with sbt, sometimes*/)
     val licenseChecks = serviceLoader.asScala.toSeq
     if (licenseChecks.isEmpty) logger.debug("No LicenseCheck")
     for (o <- licenseChecks) logger.debug("ServiceLoader => " + o.getClass.getName)
