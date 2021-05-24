@@ -21,7 +21,7 @@ import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.controller.ControllerCommand.ShutDown
-import js7.data.item.VersionedItem
+import js7.data.item.InventoryItem
 import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId
 import js7.journal.files.JournalFiles.listJournalFiles
@@ -39,7 +39,7 @@ trait ControllerClusterForScalaTest
   this: TestSuite =>
 
   protected def agentPaths: Seq[AgentPath] = AgentPath("AGENT") :: Nil
-  protected def versionedItems: Seq[VersionedItem]
+  protected def items: Seq[InventoryItem]
   protected def shellScript = script(0.s)
 
   protected def configureClusterNodes = true
@@ -83,7 +83,7 @@ trait ControllerClusterForScalaTest
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentPaths.size)
-      val primary = new DirectoryProvider(agentPaths, versionedItems, testName = Some(s"$testName-Primary"),
+      val primary = new DirectoryProvider(agentPaths, items, testName = Some(s"$testName-Primary"),
         controllerConfig = combine(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""

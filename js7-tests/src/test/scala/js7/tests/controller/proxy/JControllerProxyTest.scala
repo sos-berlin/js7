@@ -44,7 +44,7 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
     """
 
   protected val agentPaths = AgentPath("AGENT") :: Nil
-  protected val versionedItems = Nil
+  protected val items = Nil
 
   override def beforeAll() = {
     super.beforeAll()

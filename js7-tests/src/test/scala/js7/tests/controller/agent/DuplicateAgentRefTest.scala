@@ -27,7 +27,7 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
     """
 
   protected val agentPaths = aAgentPath :: Nil
-  protected val versionedItems = workflow :: Nil
+  protected val items = Nil
 
   import controller.scheduler
 

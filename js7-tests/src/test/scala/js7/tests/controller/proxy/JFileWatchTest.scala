@@ -13,7 +13,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class JFileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected def agentPaths = Seq(agentPath)
-  protected def versionedItems = Seq(workflow)
+  protected def items = Seq(workflow)
   override protected def controllerConfig = config"""
     js7.web.server.auth.public = on
     """

@@ -35,7 +35,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
-import js7.data.item.{ItemOperation, ItemPath, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem}
+import js7.data.item.{InventoryItem, ItemOperation, ItemPath, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -53,8 +53,7 @@ import scala.util.control.NonFatal
   */
 final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
-  versionedItems: Seq[VersionedItem] = Nil,
-  simpleItems: Seq[UnsignedSimpleItem] = Nil,
+  items: Seq[InventoryItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
@@ -100,7 +99,7 @@ extends HasCloser
       .toMap
   val agents: Vector[AgentTree] = agentToTree.values.toVector
   lazy val agentRefs: Vector[AgentRef] = for (a <- agents) yield AgentRef(a.agentPath, uri = a.agentConfiguration.localUri)
-  private val itemHasBeenAdded = AtomicBoolean(false)
+  private val itemsHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
     controller.createDirectoriesAndFiles()
@@ -155,8 +154,7 @@ extends HasCloser
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    simpleItems: Seq[UnsignedSimpleItem] = simpleItems,
-    versionedItems: Seq[VersionedItem] = versionedItems,
+    items: Seq[InventoryItem] = items,
     name: String = controllerName)
   : Task[RunningController]
   =
@@ -165,18 +163,18 @@ extends HasCloser
         RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
           httpPort = httpPort, httpsPort = httpsPort, name = name)))
     .map { runningController =>
-      if (!doNotAddItems && (agentRefs.nonEmpty || versionedItems.nonEmpty)) {
-        if (!itemHasBeenAdded.getAndSet(true)) {
+      if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
+        if (!itemsHasBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
           runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs).await(99.s).orThrow
-          if (simpleItems.nonEmpty || versionedItems.nonEmpty) {
+          if (items.nonEmpty) {
+            val versionedItems = items.collect { case o: VersionedItem => o }.map(_ withVersion Vinitial)
+            val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
             runningController
               .updateItemsAsSystemUser(
-                Observable.fromIterable(simpleItems).map(ItemOperation.AddOrChangeSimple) ++
-                  Observable.fromIterable(
-                    versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
-                  Observable.fromIterable(versionedItems)
-                    .map(_ withVersion Vinitial)
+                Observable.from(items).collect { case o: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(o) } ++
+                  Observable.fromIterable(versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
+                  Observable.fromIterable(signableItems)
                     .map(itemSigner.toSignedString)
                     .map(ItemOperation.AddOrChangeSigned.apply))
               .await(99.s).orThrow

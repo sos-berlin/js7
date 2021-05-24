@@ -44,7 +44,7 @@ import scala.concurrent.TimeoutException
 final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
-  protected val versionedItems = Seq(workflow, waitingWorkflow)
+  protected val items = Seq(workflow, waitingWorkflow)
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

@@ -29,7 +29,7 @@ final class FailOnErrWrittenTest extends AnyFreeSpec with ControllerAgentForScal
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(workflow)
+  protected val items = Seq(workflow)
 
   "JobResourcePath" in {
     val orderId = OrderId("ORDER")

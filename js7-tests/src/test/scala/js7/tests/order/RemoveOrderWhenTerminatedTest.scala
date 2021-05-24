@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
-  protected val versionedItems = quickWorkflow:: Nil
+  protected val items = Seq(quickWorkflow)
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {

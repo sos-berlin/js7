@@ -21,7 +21,7 @@ final class FeedMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
   protected def agentPaths = Nil
-  protected def versionedItems = Nil
+  protected def items = Nil
 
   "test" in {
     val ops = Vector[Any](AddOrChangeSimple(Lock(LockPath("TEST"))))

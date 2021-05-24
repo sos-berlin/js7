@@ -40,7 +40,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
-  protected val versionedItems = Seq(workflow)
+  protected val items = Seq(workflow)
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms

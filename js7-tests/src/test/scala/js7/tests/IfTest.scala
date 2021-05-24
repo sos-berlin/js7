@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class IfTest extends AnyFreeSpec
 {
   "test" in {
-    autoClosing(new DirectoryProvider(agentPath :: Nil, versionedItems = TestWorkflow :: Nil, testName = Some("IfTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(agentPath :: Nil, items = Seq(TestWorkflow), testName = Some("IfTest"))) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST-RC$sh"), jobScript)
 
@@ -48,7 +48,7 @@ final class IfTest extends AnyFreeSpec
        |  }
        |}""".stripMargin
     val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
-    val directoryProvider = new DirectoryProvider(agentPath :: Nil, versionedItems = workflow :: Nil,
+    val directoryProvider = new DirectoryProvider(agentPath :: Nil, items = Seq(workflow),
       testName = Some("IfTest"))
     autoClosing(directoryProvider) { directoryProvider =>
       for (a <- directoryProvider.agents) a.writeExecutable(RelativePathExecutable(s"TEST$sh"), ":")

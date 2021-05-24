@@ -33,7 +33,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(emptyWorkflow, unknownArgWorkflow, paramWorkflow)
+  protected val items = Seq(emptyWorkflow, unknownArgWorkflow, paramWorkflow)
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """

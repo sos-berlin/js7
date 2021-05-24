@@ -29,7 +29,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
-  protected val versionedItems = TestWorkflow :: Nil
+  protected val items = Seq(TestWorkflow)
 
   override protected def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false

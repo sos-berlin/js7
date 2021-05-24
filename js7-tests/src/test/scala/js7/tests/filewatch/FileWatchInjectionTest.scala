@@ -18,7 +18,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
 {
   private val aAgentPath = AgentPath("AGENT-A")
   protected val agentPaths = Seq(aAgentPath)
-  protected val versionedItems = Nil
+  protected val items = Nil
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 

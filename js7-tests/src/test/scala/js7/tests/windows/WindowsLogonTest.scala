@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected def agentPaths = Seq(agentPath)
-  protected def versionedItems = Seq(workflow)
+  protected def items = Seq(workflow)
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on

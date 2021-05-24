@@ -42,7 +42,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
     """
 
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(workflow)
+  protected val items = Seq(workflow)
 
   private lazy val watchedDirectory = directoryProvider.agents(0).dataDir / "tmp/a-files"
   private val orderWatchPath = OrderWatchPath("FILE-WATCH")

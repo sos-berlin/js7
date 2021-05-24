@@ -25,7 +25,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(workflow)
+  protected val items = Seq(workflow)
 
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -49,7 +49,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
 
-  "Start with a filel" in {
+  "Start with a file" in {
     createDirectory(sourceDirectory)
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     val file = sourceDirectory / "1"

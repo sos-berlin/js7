@@ -48,7 +48,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected def doNotAddItems = true
   protected val agentPaths = agentPath :: Nil
-  protected val versionedItems = Nil
+  protected val items = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
   private lazy val privateKeyPassword = SecretString("")
   private val privateKey = ByteArray("SILLY")

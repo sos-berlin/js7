@@ -23,7 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
-  protected val versionedItems = workflow ::  Nil
+  protected val items = Seq(workflow)
   protected val agentPaths = Nil
   override protected def provideAgentClientCertificate = false
 

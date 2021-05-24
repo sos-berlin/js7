@@ -22,7 +22,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class PlayTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = PlayTest.agentPaths
-  protected val versionedItems = Nil
+  protected val items = Nil
   override protected val controllerConfig = config"""
     js7.web.server.auth.public = on
     js7.journal.remove-obsolete-files = false

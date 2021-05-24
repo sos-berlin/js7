@@ -26,7 +26,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
-  protected val versionedItems = Nil
+  protected val items = Nil
   //private lazy val (signer_, verifier_) = X509Signer.forTest()
   //override protected def verifier = verifier_
   private lazy val workDir = createTempDirectory("UpdateRepoX509RootTest")

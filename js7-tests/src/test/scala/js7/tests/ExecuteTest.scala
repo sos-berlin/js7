@@ -32,7 +32,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
-  protected val versionedItems = Nil
+  protected val items = Nil
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms

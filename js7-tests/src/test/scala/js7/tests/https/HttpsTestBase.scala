@@ -144,7 +144,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
 
   override protected final def agentHttps = true
   protected final val agentPaths = AgentPath("TEST-AGENT") :: Nil
-  protected final val versionedItems = TestWorkflow :: Nil
+  protected final val items = Seq(TestWorkflow)
 
   override def beforeAll() = {
     clientKeyStore := ClientKeyStoreResource.contentBytes

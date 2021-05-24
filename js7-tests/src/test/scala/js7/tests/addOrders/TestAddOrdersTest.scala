@@ -20,7 +20,7 @@ import scala.concurrent.duration.FiniteDuration
 final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
-  protected val versionedItems = Seq(workflow)
+  protected val items = Seq(workflow)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TestAddOrders.password = "plain:TEST-PASSWORD"

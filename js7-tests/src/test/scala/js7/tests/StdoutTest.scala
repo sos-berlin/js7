@@ -27,7 +27,7 @@ import scala.util.Try
 final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Nil
+  protected val items = Nil
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

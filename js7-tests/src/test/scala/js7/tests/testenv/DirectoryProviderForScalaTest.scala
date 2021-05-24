@@ -11,7 +11,7 @@ import js7.base.utils.HasCloser
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
-import js7.data.item.{SignableItem, UnsignedSimpleItem, VersionedItem}
+import js7.data.item.{InventoryItem, SignableItem}
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
 
@@ -31,8 +31,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentPaths,
-    versionedItems = versionedItems,
-    simpleItems = simpleItems,
+    items = items,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,
     agentHttpsMutual = agentHttpsMutual,
@@ -56,8 +55,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def provideAgentClientCertificate = false
   protected def controllerTrustStores: Iterable[JavaResource] = Nil
   protected def controllerConfig: Config = ConfigFactory.empty
-  protected def simpleItems: Seq[UnsignedSimpleItem] = Nil
-  protected def versionedItems: Seq[VersionedItem]
+  protected def items: Seq[InventoryItem]
   protected def signer: DocumentSigner = DirectoryProvider.defaultSigner
   protected def verifier: SignatureVerifier = DirectoryProvider.defaultVerifier
 

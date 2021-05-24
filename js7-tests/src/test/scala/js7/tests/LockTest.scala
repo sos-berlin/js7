@@ -30,8 +30,7 @@ import scala.util.Random
 final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath, bAgentPath)
-  protected val versionedItems = Nil
-  override protected val simpleItems = Seq(
+  protected val items = Seq(
     Lock(lockPath, limit = 1),
     Lock(lock2Id, limit = 1),
     Lock(limit2LockPath, limit = 2))

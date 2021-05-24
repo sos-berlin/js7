@@ -44,7 +44,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(singleJobWorkflow, twoJobsWorkflow, forkWorkflow, tryWorkflow, failingWorkflow)
+  protected val items = Seq(singleJobWorkflow, twoJobsWorkflow, forkWorkflow, tryWorkflow, failingWorkflow)
 
   private lazy val triggerFile = createTempFile("SuspendResumeOrdersTest-", ".tmp")
 

@@ -21,7 +21,7 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
 {
   this: TestSuite =>
 
-  protected val versionedItems = workflow :: Nil
+  protected val items = Seq(workflow)
   protected def config = ProxyConfs.defaultConfig
 
   protected val admissions = List(

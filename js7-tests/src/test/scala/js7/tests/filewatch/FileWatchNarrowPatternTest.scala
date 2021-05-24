@@ -32,7 +32,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(workflow)
+  protected val items = Seq(workflow)
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false

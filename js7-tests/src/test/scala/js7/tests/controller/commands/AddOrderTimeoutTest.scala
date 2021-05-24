@@ -16,7 +16,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
-  protected val versionedItems = workflow :: Nil
+  protected val items = Seq(workflow)
   override protected val controllerConfig = config"""
     js7.akka.ask-timeout = 2s
     js7.TEST-ONLY.add-order-delay = 10s

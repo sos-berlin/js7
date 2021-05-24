@@ -44,7 +44,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow)
+  protected val items = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow)
 
   "JobResourcePath" in {
     controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)

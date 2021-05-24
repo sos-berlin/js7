@@ -20,8 +20,8 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  protected val versionedItems = Nil
   protected val agentPaths = Seq(agentPath)
+  protected val items = Nil
 
   "AttachSignedItem command verifies signature" in {
     import directoryProvider.itemSigner

@@ -22,7 +22,7 @@ import scala.reflect.runtime.universe._
 final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
-  protected val versionedItems = Nil
+  protected val items = Nil
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
