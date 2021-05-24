@@ -19,6 +19,15 @@ object ItemAttachedState
 
   final case class Attached(itemRevision: Option[ItemRevision])
   extends NotDetached
+  object Attached {
+    private val none = new Attached(None)
+
+    def apply(itemRevision: Option[ItemRevision]): Attached =
+      if (itemRevision.isEmpty)
+        none
+      else
+        new Attached(itemRevision)
+  }
 
   case object Detachable
   extends NotDetached

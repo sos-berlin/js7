@@ -21,7 +21,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarke
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
@@ -219,11 +219,11 @@ extends JournaledState[ControllerState]
         copy(repo = o)
 
     case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
-      pathToAgentRefState.checked(agentPath)
-        .flatMap(agentRefState =>
-          agentRefState.applyEvent(event)
-            .map(updated => copy(
-              pathToAgentRefState = pathToAgentRefState + (agentPath -> updated))))
+      for {
+        agentRefState <- pathToAgentRefState.checked(agentPath)
+        agentRefState <- agentRefState.applyEvent(event)
+      } yield copy(
+        pathToAgentRefState = pathToAgentRefState + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
@@ -323,8 +323,8 @@ extends JournaledState[ControllerState]
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
     itemKey match {
-      case id: VersionedItemId_ =>
-        repo.attachedState(id, agentPath)
+      case _: UnsignedSimpleItemPath =>
+        Detached
 
       case path: SignableSimpleItemPath =>
         itemToAgentToAttachedState
@@ -335,6 +335,9 @@ extends JournaledState[ControllerState]
             case Attached(_) => Detached
           }
           .getOrElse(Detached)
+
+      case id: VersionedItemId_ =>
+        repo.attachedState(id, agentPath)
     }
 
   lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =

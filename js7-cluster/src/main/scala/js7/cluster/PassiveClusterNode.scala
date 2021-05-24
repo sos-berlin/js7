@@ -78,7 +78,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
     common.clusterContext.clusterNodeApi(setting.activeUri, "ClusterPassiveDown")
       .use(api =>
         (api.login(onlyIfNotLoggedIn = true) >>
-          api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)).as(())
+          api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)).void
         ).onErrorHandle(throwable => Task {
           logger.debug(s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
             throwable.nullIfNoStackTrace)

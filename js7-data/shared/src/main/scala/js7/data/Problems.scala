@@ -1,6 +1,7 @@
 package js7.data
 
 import js7.base.problem.Problem
+import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
 import js7.data.item.{ItemPath, VersionId, VersionedItemId}
@@ -20,6 +21,10 @@ object Problems
 
   final case class UnknownOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" -> orderId.string)
+  }
+
+  final case class AgentResetProblem(agentPath: AgentPath) extends Problem.Coded {
+    def arguments = Map("agentPath" -> agentPath.string)
   }
 
   final case class VersionedItemDeletedProblem(path: ItemPath) extends Problem.Coded {

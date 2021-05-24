@@ -1,15 +1,19 @@
 package js7.data.controller
 
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
+import js7.data.Problems.AgentResetProblem
+import js7.data.agent.AgentPath
+import js7.data.agent.AgentRefStateEvent.AgentReset
 import js7.data.controller.ControllerStateExecutor._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestroyed, ItemDetachable}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, VersionId}
-import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderForked, OrderLockEvent, OrderRemoveMarked}
-import js7.data.order.{OrderEvent, OrderId}
+import js7.data.order.Order.State
+import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed, OrderRemoveMarked}
+import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.annotation.tailrec
@@ -23,6 +27,44 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
 
   private def workflowPathToVersionId(workflowPath: WorkflowPath): Option[VersionId] =
     _controllerState.repo.pathTo[Workflow](workflowPath).toOption.map(_.id.versionId)
+
+  def resetAgent(agentPath: AgentPath): Seq[KeyedEvent[Event]] = {
+    val agentReset = View(agentPath <-: AgentReset)
+    val ordersDetached = controllerState.idToOrder.values.view
+      .flatMap(resetAgentForOrder(_, agentPath))
+    val itemsDetached = controllerState.itemToAgentToAttachedState.to(View)
+      .filter(_._2.contains(agentPath))
+      .map(_._1)
+      .map(itemKey => NoKey <-: ItemDetached(itemKey, agentPath))
+    (agentReset ++
+      ordersDetached ++
+      itemsDetached ++
+      controllerState.repo.resetAgent(agentPath)
+    ).toVector
+  }
+
+  private def resetAgentForOrder(order: Order[Order.State], agentPath: AgentPath)
+  : Seq[KeyedEvent[OrderCoreEvent]] = {
+    val outcome = Outcome.Disrupted(AgentResetProblem(agentPath))
+    order.attachedState match {
+      case Some(Order.AttachedState.HasAgentPath(`agentPath`)) =>
+        val stateEvents = (order.state: State) match {
+          case Order.Processing =>
+            Vector(order.id <-: OrderProcessed(outcome))
+          //case _: Order.Offering =>
+          //case _: Order.Awaiting =>
+          case _ => Vector.empty
+        }
+        val detached = stateEvents :+ (order.id <-: OrderDetached)
+        val detachedState = _controllerState.applyEvents(detached).orThrow
+        val fail = toLiveOrderEventSource(() => detachedState)
+          .failOrDetach(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
+          .orThrow
+        detached :+ (order.id <-: fail)
+
+      case _ => Nil
+    }
+  }
 
   def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
   : Seq[KeyedEvent[Event]] = {

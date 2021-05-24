@@ -13,8 +13,9 @@ import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentPath
-import js7.data.event.NoKeyEvent
-import js7.data.item.BasicItemEvent.ItemAttachedStateChanged
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{KeyedEvent, NoKeyEvent}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDetached}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.Repo.Entry
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
@@ -132,6 +133,12 @@ final case class Repo private(
     for {
       versionToItem <- pathToVersionToSignedItems.values.view
       item <- versionToItem.head.maybeSignedItems
+    } yield item
+
+  private def items: View[VersionedItem] =
+    for {
+      versionToItem <- pathToVersionToSignedItems.values.view
+      item <- versionToItem.view.flatMap(_.maybeSignedItems.map(_.value))
     } yield item
 
   def applyEvents(events: Seq[VersionedEvent]): Checked[Repo] = {
@@ -320,6 +327,13 @@ final case class Repo private(
 
   def newVersionId(): VersionId =
     VersionId.generate(isKnown = versions.contains)
+
+  // TODO Replace idToAgentPathToAttachedState by ControllerState's itemToAgentToAttachedState
+  def resetAgent(agentPath: AgentPath): View[KeyedEvent[ItemDetached]] =
+    idToAgentPathToAttachedState.to(View)
+      .filter(_._2 contains agentPath)
+      .map(_._1)
+      .map(id => NoKey <-: ItemDetached(id, agentPath))
 
   def attachedState(itemId: VersionedItemId_, agentPath: AgentPath): ItemAttachedState =
     idToAgentPathToAttachedState.get(itemId)

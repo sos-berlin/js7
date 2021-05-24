@@ -44,7 +44,7 @@ final class AgentActorTest extends AnyFreeSpec
           file.writeExecutable(TestScript)
         }
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
-        val agentRunId = executeCommand(CreateAgent(controllerId, agentPath))
+        val agentRunId = executeCommand(CreateAgent(agentPath, controllerId))
           .await(99.s).orThrow.asInstanceOf[CreateAgent.Response].agentRunId
         val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch)(Timeout(88.s))
           .mapTo[Checked[EventWatch]].await(99.s).orThrow

@@ -93,7 +93,7 @@ object AgentCommand extends CommonCommand.Companion
     * The Agent starts a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class CreateAgent(controllerId: ControllerId, agentPath: AgentPath)
+  final case class CreateAgent(agentPath: AgentPath, controllerId: ControllerId)
   extends AgentCommand {
     type Response = CreateAgent.Response
   }

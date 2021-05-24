@@ -50,5 +50,14 @@ final class AgentRefStateEventTest extends AnyFreeSpec
           "untilEventId": 123
         }""")
     }
+
+    "AgentReset" in {
+      testJson[KeyedEvent[AgentRefStateEvent]](
+        AgentPath("AGENT") <-: AgentReset,json"""
+        {
+          "TYPE":  "AgentReset",
+          "Key": "AGENT"
+        }""")
+    }
   }
 }

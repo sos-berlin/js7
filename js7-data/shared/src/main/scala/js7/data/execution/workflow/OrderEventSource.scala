@@ -138,7 +138,10 @@ final class OrderEventSource(
       case Right(o) => o
     }
 
-  private def failOrDetach(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
+  private[data] def failOrDetach(
+    order: Order[Order.State],
+    outcome: Option[Outcome.NotSucceeded],
+    uncatchable: Boolean)
   : Checked[OrderActorEvent] =
     fail(order, outcome, uncatchable).map {
       case _: OrderFailed if order.isAttached =>

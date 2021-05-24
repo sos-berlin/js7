@@ -6,7 +6,7 @@ import com.softwaremill.diffx.generic.auto._
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
-import js7.agent.data.Problems.{AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
+import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent.AgentCreated
@@ -22,7 +22,8 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.thread.IOExecutor
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.RightUnit
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, SetOnce}
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
@@ -30,6 +31,7 @@ import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.event.EventId
+import js7.data.event.KeyedEvent.NoKey
 import js7.executor.configuration.JobExecutorConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
@@ -162,24 +164,30 @@ extends Actor with Stash with SimpleStateActor
           }
         }
 
-      case AgentCommand.CreateAgent(controllerId, agentPath) if !terminating =>
-        if (!persistence.currentState.isCreated) {
-          val agentRunId = AgentRunId(persistence.journalId)
-          persistence.persistKeyedEvent(AgentCreated(agentPath, agentRunId, controllerId))
-            .tapEval(checked => Task {
-              if (checked.isRight) {
-                addOrderKeeper()
-              }
-            })
-            .runToFuture
-            .onComplete { tried =>
-              response.complete(tried.map(_.map(_ => AgentCommand.CreateAgent.Response(agentRunId))))
+      case AgentCommand.CreateAgent(agentPath, controllerId) if !terminating =>
+        // Command is idempotent until AgentState has been touched
+        val agentRunId = AgentRunId(persistence.journalId)
+        persistence.persist(agentState =>
+          if (agentState.isCreated)
+            if (agentPath != agentState.agentPath)
+              Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
+            else if (controllerId != agentState.meta.controllerId)
+              Left(AgentWrongControllerProblem(controllerId))
+            else if (agentState.isFreshlyCreated)
+              Right(Nil)  // Idempotence
+            else
+              Left(AgentAlreadyCreatedProblem)
+          else
+            Right((NoKey <-: AgentCreated(agentPath, agentRunId, controllerId)) :: Nil)
+        ) .tapEval(checked => Task {
+            if (checked.isRight) {
+              addOrderKeeper()
             }
-        } else {
-          response.success(
-            checkAgentPath(agentPath, EventId.BeforeFirst)
-              .map(_ => AgentCommand.CreateAgent.Response(persistence.currentState.meta.agentRunId)))
-        }
+          })
+          .runToFuture
+          .onComplete { tried =>
+            response.complete(tried.map(_.map(_ => AgentCommand.CreateAgent.Response(agentRunId))))
+          }
 
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
@@ -212,14 +220,20 @@ extends Actor with Stash with SimpleStateActor
     }
   }
 
-  private def checkAgentPath(requestedAgentPath: AgentPath, eventId: EventId): Checked[Unit] = {
+  private def checkAgentPath(requestedAgentPath: AgentPath, eventId: EventId): Checked[Unit] =
+    for {
+      _ <- checkAgentPath(requestedAgentPath)
+      _ <- eventWatch.checkEventId(eventId)
+    } yield ()
+
+  private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
     val agentState = persistence.currentState
     if (!agentState.isCreated)
       Left(AgentNotCreatedProblem)
     else if (requestedAgentPath != agentState.agentPath)
       Left(AgentPathMismatchProblem(requestedAgentPath, agentState.agentPath))
     else
-      eventWatch.checkEventId(eventId)
+      RightUnit
   }
 
   private def continueTermination(): Unit =

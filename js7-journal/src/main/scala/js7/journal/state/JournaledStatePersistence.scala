@@ -117,10 +117,9 @@ extends AutoCloseable
           stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
       })
 
-  def persist[E <: Event]
-  : (S => Checked[Seq[KeyedEvent[E]]]) => Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
+  def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]]): Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
-    stateToEvents => persistUnlocked(stateToEvents, transaction = false)
+    persistUnlocked(stateToEvents, transaction = false)
   }
 
   /** Persist multiple events in a transaction. */

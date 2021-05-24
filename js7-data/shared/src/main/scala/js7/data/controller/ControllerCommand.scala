@@ -11,6 +11,7 @@ import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
+import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
 import js7.data.controller.ControllerState._
@@ -207,6 +208,11 @@ object ControllerCommand extends CommonCommand.Companion
     extends ControllerCommand.Response
   }
 
+  final case class ResetAgent(agentPath: AgentPath)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
   sealed trait Response
 
   object Response {
@@ -238,5 +244,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
     Subtype(deriveCodec[InternalClusterCommand]),
+    Subtype(deriveCodec[ResetAgent]),
     Subtype(TakeSnapshot))
 }

@@ -48,7 +48,7 @@ final class TerminateTest extends AnyFreeSpec with AgentTester
 
     val client = AgentClient(agentUri = agent.localUri, Some(userId -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(CreateAgent(controllerId, agentPath)) await 99.s
+    client.commandExecute(CreateAgent(agentPath, controllerId)) await 99.s
 
     val eventWatch = agent.api(CommandMeta(SimpleUser(userId)))
       .eventWatch

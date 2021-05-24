@@ -105,6 +105,12 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       }
     }
 
+  final def reset(): Unit = {
+    attachedOrderIds.clear()
+    isCoupled = false
+    freshlyCoupled = false
+  }
+
   final def terminate(): Unit = {
     if (executingInputs.nonEmpty) {
       logger.info(s"Waiting for responses to AgentCommands: ${executingInputs.map(_.toShortString).mkString(", ")}")

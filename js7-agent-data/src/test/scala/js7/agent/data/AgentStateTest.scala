@@ -19,6 +19,7 @@ import js7.base.utils.SimplePattern
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
+import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalState, JournaledState}
 import js7.data.item.BasicItemEvent.ItemAttachedToAgent
@@ -72,6 +73,30 @@ final class AgentStateTest extends AsyncFreeSpec
           DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))),
     Map(
       jobResourcePath -> JobResource(jobResourcePath)))
+
+  "isCreated, isFreshlyCreated" - {
+    "empty" in {
+      assert(!AgentState.empty.isCreated)
+    }
+
+    "AgentState example" in {
+      assert(agentState.isCreated)
+      assert(!agentState.isFreshlyCreated)
+    }
+
+    "After snapshot" in {
+      val afterSnapshot = AgentState.empty.applyEvent(SnapshotTaken).orThrow
+      assert(!afterSnapshot.isCreated)
+      assert(!afterSnapshot.isFreshlyCreated)
+    }
+
+    val agentCreated = AgentCreated(AgentPath("A"), AgentRunId(JournalId.random()), ControllerId("C"))
+    "AgentCreated" in {
+      val created = AgentState.empty.applyEvent(agentCreated).orThrow
+      assert(created.isCreated)
+      assert(created.isFreshlyCreated)
+    }
+  }
 
   "estimatedSnapshotSize" in {
     assert(agentState.estimatedSnapshotSize == 8)

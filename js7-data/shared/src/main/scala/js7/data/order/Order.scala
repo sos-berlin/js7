@@ -223,7 +223,7 @@ final case class Order[+S <: Order.State](
         }
 
       case OrderDetached =>
-        check(isDetaching && isInDetachableState,
+        check(!isDetached && isInDetachableState,
           copy(attachedState = None))
 
       case OrderCancelMarked(mode) =>
@@ -452,6 +452,9 @@ object Order
   object AttachedState {
     sealed trait HasAgentPath extends AttachedState {
       def agentPath: AgentPath
+    }
+    object HasAgentPath {
+      def unapply(o: HasAgentPath) = Some(o.agentPath)
     }
     implicit val jsonCodec = TypedJsonCodec[AttachedState](
       Subtype(deriveCodec[Attaching]),

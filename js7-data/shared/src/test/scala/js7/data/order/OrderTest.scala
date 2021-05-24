@@ -535,8 +535,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.applyEvent(OrderAttached(agentPath)) == Right(order.copy(attachedState = Some(Attached(agentPath)))))
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
-        assert(order.applyEvent(OrderDetached).isLeft)
-        assert(order.applyEvent(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
       }
 
       "attachedState=Attached" in {
@@ -545,8 +544,7 @@ final class OrderTest extends AnyFreeSpec
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable) == Right(order.copy(attachedState = Some(Detaching(agentPath)))))
-        assert(order.applyEvent(OrderDetached).isLeft)
-        assert(order.applyEvent(OrderDetached).isLeft)
+        assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
       }
 
       "attachedState=Detaching" in {
@@ -555,7 +553,6 @@ final class OrderTest extends AnyFreeSpec
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
-        assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
         assert(order.applyEvent(OrderDetached) == Right(order.copy(attachedState = None)))
       }
     }
@@ -588,7 +585,7 @@ final class OrderTest extends AnyFreeSpec
 
     def detachingAllowed[S <: Order.State: ClassTag]: ToPredicate = {
       case (OrderDetachable, _, IsAttached ) => implicitClass[S] isAssignableFrom _.getClass
-      case (OrderDetached  , _, IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
+      case (OrderDetached  , _, IsAttaching | IsAttached | IsDetaching) => implicitClass[S] isAssignableFrom _.getClass
     }
 
     /** Checks each event in `allEvents`. */

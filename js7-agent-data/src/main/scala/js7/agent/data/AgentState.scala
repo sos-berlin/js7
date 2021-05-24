@@ -37,6 +37,15 @@ extends JournaledState[AgentState]
 {
   def companion = AgentState
 
+  def isCreated = agentPath.nonEmpty
+
+  def isFreshlyCreated: Boolean =
+    isCreated &&
+      this == AgentState.empty.copy(
+        eventId = eventId,
+        standards = standards,
+        meta = meta)
+
   def estimatedSnapshotSize =
     standards.snapshotSize +
       1 +
@@ -148,8 +157,6 @@ extends JournaledState[AgentState]
         // OrderStdWritten is not applied (but forwarded to Controller)
         Right(this)
     }
-
-  def isCreated = agentPath.nonEmpty
 
   def agentPath = meta.agentPath
 }

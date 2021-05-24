@@ -106,11 +106,11 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "CreateAgent" in {
-    check(AgentCommand.CreateAgent(ControllerId("CONTROLLER"), AgentPath("AGENT")),
+    check(AgentCommand.CreateAgent(AgentPath("AGENT"), ControllerId("CONTROLLER")),
       json"""{
         "TYPE": "CreateAgent",
-        "controllerId": "CONTROLLER",
-        "agentPath": "AGENT"
+        "agentPath": "AGENT",
+        "controllerId": "CONTROLLER"
       }""")
   }
 

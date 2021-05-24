@@ -38,6 +38,9 @@ final case class AllFileWatchesState(
     Observable.fromIterable(pathToFileWatchState.values)
       .flatMap(_.toSnapshot)
 
+  def isEmpty =
+    pathToFileWatchState.isEmpty
+
   def contains(fileWatch: FileWatch) =
     pathToFileWatchState.get(fileWatch.path)
       .exists(_.fileWatch == fileWatch)

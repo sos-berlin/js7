@@ -55,7 +55,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            assert(agentApi.commandExecute(CreateAgent(controllerId, agentPath)).await(99.s).toOption.get
+            assert(agentApi.commandExecute(CreateAgent(agentPath, controllerId)).await(99.s).toOption.get
               .isInstanceOf[CreateAgent.Response])
 
             assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)

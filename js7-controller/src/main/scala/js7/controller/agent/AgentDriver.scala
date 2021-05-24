@@ -31,7 +31,7 @@ import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated}
-import js7.data.agent.{AgentPath, AgentRefStateEvent, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem}
@@ -89,6 +89,7 @@ extends ReceiveLoggingActor.WithStash
   private val sessionNumber = AtomicInt(0)
   private val eventFetcherTerminated = Promise[Completed]()
   private var noJournal = false
+  private var isReset = false
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, conf.recouplingStreamReader)
@@ -195,6 +196,16 @@ extends ReceiveLoggingActor.WithStash
         }
   }
 
+  override def preStart() = {
+    super.preStart()
+    logger.debug("preStart")
+  }
+
+  override def postStop() = {
+    super.postStop()
+    logger.debug("postStop")
+  }
+
   protected def key = agentPath  // Only one version is active at any time
 
   private def newAgentClient(uri: Uri): AgentClient =
@@ -209,9 +220,10 @@ extends ReceiveLoggingActor.WithStash
       }
 
     case Input.ChangeUri(uri) =>
-      if (uri != client.baseUri) {
+      if (uri != client.baseUri || isReset) {
         logger.debug(s"ChangeUri $uri")
         // TODO Changing URI in quick succession is not properly solved
+        isReset = false
         for (u <- changingUri) logger.warn(s"Already changing URI to $u ?")
         changingUri = Some(uri)
         (cancelObservationAndAwaitTermination >>
@@ -230,18 +242,32 @@ extends ReceiveLoggingActor.WithStash
         changingUri = None
       }
 
-    case Input.Terminate(emergency) =>
-      this.noJournal = emergency
+    case Input.Terminate(noJournal) =>
+      this.noJournal = noJournal
       // Wait until all pending Agent commands are responded, and do not accept further commands
       if (!isTerminating) {
-        logger.debug(s"Terminate " + (emergency ?? "emergency"))
+        logger.debug(s"Terminate " + (noJournal ?? "noJournal"))
         isTerminating = true
         commandQueue.terminate()
-        currentFetchedFuture foreach (_.cancel())
+        currentFetchedFuture.foreach(_.cancel())
         eventFetcherTerminated.completeWith(
           eventFetcher.terminate.runToFuture)  // Rejects current commands waiting for coupling
         stopIfTerminated()
       }
+
+    case Input.Reset =>
+      val sender = this.sender()
+      isReset = true
+      commandQueue.reset()
+      (eventFetcher.invalidateCoupledApi >>
+        Task { currentFetchedFuture.foreach(_.cancel()) } >>
+        cancelObservationAndAwaitTermination >>
+        eventFetcher.decouple
+      ) .runToFuture
+        .onComplete { (tried: Try[Completed]) =>
+          sender ! tried
+          context.stop(self)
+        }
 
     case Input.StartFetchingEvents | Internal.FetchEvents =>
       if (changingUri.isEmpty && !isTerminating) {
@@ -286,7 +312,7 @@ extends ReceiveLoggingActor.WithStash
       })
 
       promiseFuture[Option[EventId]] { p =>
-        context.parent ! Output.EventsFromAgent(reducedStampedEvents, p)
+        context.parent ! Output.EventsFromAgent(agentRunIdOnce.orThrow, reducedStampedEvents, p)
       } onComplete {
         case Success(Some(eventId)) =>
           self ! Internal.ReleaseEvents(eventId, promise)
@@ -383,7 +409,6 @@ extends ReceiveLoggingActor.WithStash
     Task.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.observe(client, after = lastFetchedEventId)
-        //.map { a => logEvent(a); a }
         .pipe(obs =>
           if (!delay.isPositive)
             obs.bufferIntrospective(conf.eventBufferSize)
@@ -407,7 +432,7 @@ extends ReceiveLoggingActor.WithStash
       else
         (for {
           agentRunId <- EitherT(
-            client.commandExecute(CreateAgent(controllerId, agentPath)).map(_.map(_.agentRunId)))
+            client.commandExecute(CreateAgent(agentPath, controllerId)).map(_.map(_.agentRunId)))
           completed <- EitherT(
             if (noJournal)
               Task.pure(Right(Completed))
@@ -499,10 +524,16 @@ private[controller] object AgentDriver
     final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends Input with Queueable
 
     final case class Terminate(noJournal: Boolean = false) extends DeadLetterSuppression
+
+    final case object Reset extends DeadLetterSuppression
   }
 
   object Output {
-    final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Option[EventId]])
+    final case class EventsFromAgent(
+      agentRunId: AgentRunId,
+      stamped: Seq[Stamped[AnyKeyedEvent]],
+      promise: Promise[Option[EventId]])
+
     final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
   }
 

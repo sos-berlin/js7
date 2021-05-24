@@ -27,7 +27,7 @@ final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForSc
     import directoryProvider.itemSigner
     directoryProvider.runAgents() { case Seq(runningAgent) =>
       val agentApi = runningAgent.api(CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
-      assert(agentApi.commandExecute(CreateAgent(controllerId, agentPath)).await(99.s).toOption.get
+      assert(agentApi.commandExecute(CreateAgent(agentPath, controllerId)).await(99.s).toOption.get
         .isInstanceOf[CreateAgent.Response])
 
       // Signed VersionedItem
