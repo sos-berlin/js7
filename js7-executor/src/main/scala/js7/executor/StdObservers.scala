@@ -23,6 +23,6 @@ final class StdObservers(
 
   val stop: Task[Unit] =
     Task.parZip2(outTaskObserver.complete, errTaskObserver.complete)
-      .as(())
+      .void
       .memoize
 }

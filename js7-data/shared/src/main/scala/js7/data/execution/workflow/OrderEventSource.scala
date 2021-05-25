@@ -1,8 +1,6 @@
 package js7.data.execution.workflow
 
 import cats.instances.either._
-import cats.instances.list._
-import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -51,7 +49,7 @@ final class OrderEventSource(
       }
   }
 
-  def nextEvents(orderId: OrderId): List[KeyedEvent[OrderActorEvent]] = {
+  def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId).orThrow
     if (order.isState[Order.Broken])
       Nil  // Avoid issuing a second OrderBroken (would be a loop)
@@ -59,8 +57,8 @@ final class OrderEventSource(
       checkedNextEvents(order) |> (invalidToEvent(order, _))
   }
 
-  private def checkedNextEvents(order: Order[Order.State]): Checked[List[KeyedEvent[OrderActorEvent]]] = {
-    def ifDefinedElse(o: Option[OrderActorEvent], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
+  private def checkedNextEvents(order: Order[Order.State]): Checked[Seq[KeyedEvent[OrderActorEvent]]] = {
+    def ifDefinedElse(o: Option[OrderActorEvent], orElse: Checked[Seq[KeyedEvent[OrderActorEvent]]]) =
       o.fold(orElse)(e => Right((order.id <-: e) :: Nil))
     ifDefinedElse(orderMarkEvent(order),
       if (!weHave(order) || order.isSuspended)
@@ -72,11 +70,12 @@ final class OrderEventSource(
             case Right(Some(event)) => Right(event :: Nil)
             case Right(None) =>
               InstructionExecutor.toEvents(instruction(order.workflowPosition), order, stateView)
-                // Multiple returned events are expected to be independant and are applied to same idToOrder
+                // Multiple returned events are expected to be independent and are applied to same idToOrder
                 .flatMap(_
                   .traverse {
                     case orderId <-: (moved: OrderMoved) =>
-                      applyMoveInstructions(orderId, moved)
+                      applyMoveInstructions(order, moved)
+                        .map(orderId <-: _)
 
                     case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
                       // OrderFailedIntermediate_ is used internally only
@@ -90,7 +89,7 @@ final class OrderEventSource(
       .flatMap(checkEvents)
   }
 
-  private def checkEvents(keyedEvents: List[KeyedEvent[OrderActorEvent]]) = {
+  private def checkEvents(keyedEvents: Seq[KeyedEvent[OrderActorEvent]]) = {
     var id2o = Map.empty[OrderId, Checked[Order[Order.State]]]
     var problem: Option[Problem] = None
     for (KeyedEvent(orderId, event) <- keyedEvents if problem.isEmpty) {
@@ -115,8 +114,8 @@ final class OrderEventSource(
   private def catchStartsWithRetry(firstCatchPos: WorkflowPosition) =
     instruction(firstCatchPos).withoutSourcePos == Retry()
 
-  private def invalidToEvent[A](order: Order[Order.State], checkedEvents: Checked[List[KeyedEvent[OrderActorEvent]]])
-  : List[KeyedEvent[OrderActorEvent]] =
+  private def invalidToEvent[A](order: Order[Order.State], checkedEvents: Checked[Seq[KeyedEvent[OrderActorEvent]]])
+  : Seq[KeyedEvent[OrderActorEvent]] =
     checkedEvents match {
       case Left(problem) =>
         val event =
@@ -160,9 +159,10 @@ final class OrderEventSource(
     workflow: Workflow,
     position: Position,
     outcome: Option[Outcome.NotSucceeded],
-    uncatchable: Boolean):
-  Checked[OrderFailedEvent] = {
-    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockPaths: Vector[LockPath] = Vector.empty): Checked[OrderFailedEvent] =
+    uncatchable: Boolean)
+  : Checked[OrderFailedEvent] = {
+    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockPaths: Vector[LockPath] = Vector.empty)
+    : Checked[OrderFailedEvent] =
       reverseBranchPath match {
         case Nil =>
           Right(OrderFailed(failPosition, outcome, lockPaths))
@@ -333,7 +333,7 @@ final class OrderEventSource(
               case None => Right(None)
               case Some(historicOutcomes) =>
                 checkedWorkflow.flatMap(workflow =>
-                  historicOutcomes.toVector.traverse(o => workflow.checkedPosition(o.position).map(_ => o)))
+                  historicOutcomes.traverse(o => workflow.checkedPosition(o.position).map(_ => o)))
                 .map(Some.apply)
             }
             for {
@@ -363,34 +363,34 @@ final class OrderEventSource(
     order.isDetached && !isAgent ||
     order.isAttached && isAgent
 
-  private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
-    for {
-      order <- idToOrder(orderId)
-      pos <- applyMoveInstructions(order.withPosition(orderMoved.to))
-    } yield orderId <-: OrderMoved(pos)
 
-  private[workflow] def applyMoveInstructions(order: Order[Order.State]): Checked[Position] =
-    applyMoveInstructions(order, Nil) map {
+  private def applyMoveInstructions(order: Order[Order.State], orderMoved: OrderMoved): Checked[OrderMoved] =
+    applyMoveInstructions(order.withPosition(orderMoved.to))
+      .map(OrderMoved(_))
+
+  private[workflow] def applyMoveInstructions(order: Order[Order.State]): Checked[Position] = {
+    @tailrec
+    def loop(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
+      applySingleMoveInstruction(order) match {
+        case o @ Left(_) => o
+
+        case Right(Some(position)) =>
+          if (visited contains position)
+            Left(Problem(s"${order.id} is in a workflow loop: " +
+              visited.reverse.map(pos => pos.toString + " " +
+                idToWorkflow(order.workflowId).flatMap(_.labeledInstruction(pos))
+                  .fold(_.toString, _.toString).truncateWithEllipsis(50)).mkString(" --> ")))
+          else
+            loop(order.withPosition(position), position :: visited)
+
+        case Right(None) => Right(Some(order.position))
+      }
+
+    loop(order, Nil) map {
       case Some(n) => n
       case None => order.position
     }
-
-  @tailrec
-  private def applyMoveInstructions(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
-    applySingleMoveInstruction(order) match {
-      case o @ Left(_) => o
-
-      case Right(Some(position)) =>
-        if (visited contains position)
-          Left(Problem(s"${order.id} is in a workflow loop: " +
-            visited.reverse.map(pos => pos.toString + " " +
-              idToWorkflow(order.workflowId).flatMap(_.labeledInstruction(pos))
-                .fold(_.toString, _.toString).truncateWithEllipsis(50)).mkString(" --> ")))
-        else
-          applyMoveInstructions(order.withPosition(position), position :: visited)
-
-      case Right(None) => Right(Some(order.position))
-    }
+  }
 
   private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
     idToWorkflow(order.workflowId) flatMap { workflow =>

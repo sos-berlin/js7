@@ -21,7 +21,7 @@ import scala.collection.{View, mutable}
 
 final class ControllerStateExecutor(private var _controllerState: ControllerState)
 {
-  private val orderEventSource = liveOrderEventSource(() => _controllerState)
+  private val orderEventSource = toLiveOrderEventSource(() => _controllerState)
 
   def controllerState = _controllerState
 
@@ -75,7 +75,9 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
     val touchedItemIds = keyedEvents
       .collect { case KeyedEvent(_, e: InventoryItemEvent) => e.key }
       .distinct
-    val touchedOrderIds = keyedEvents.view.map(_.key).collect { case o: OrderId => o }.toSeq.distinct
+    val touchedOrderIds = keyedEvents
+      .collect { case KeyedEvent(k: OrderId, _) => k }
+      .distinct
     (nextItemEvents(touchedItemIds).view ++
       nextOrderEventsByOrderId(touchedOrderIds) ++
       nextOrderEvents
@@ -166,14 +168,14 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
 
 object ControllerStateExecutor
 {
-  def liveOrderEventSource(controllerState: () => ControllerState) =
+  def toLiveOrderEventSource(controllerState: () => ControllerState) =
     new OrderEventSource(
       id => controllerState().idToOrder.checked(id),
       id => controllerState().repo.idTo[Workflow](id),
       id => controllerState().pathToLockState.checked(id),
       isAgent = false)
 
-  def liveOrderEventHandler(controllerState: () => ControllerState) =
+  def toLiveOrderEventHandler(controllerState: () => ControllerState) =
     new OrderEventHandler(
       id => controllerState().repo.idTo[Workflow](id),
       id => controllerState().idToOrder.checked(id))

@@ -18,7 +18,7 @@ extends InternalJob
 
   override def stop: Task[Unit] =
     helper.callStop(
-      job => Task.fromFuture(job.stop.asScala).as(()))
+      job => Task.fromFuture(job.stop.asScala).void)
 
   def toOrderProcess(step: Step) = {
     import jobContext.js7Scheduler

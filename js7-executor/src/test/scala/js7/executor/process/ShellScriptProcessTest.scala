@@ -179,7 +179,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
         CommandLine(executable.toString :: Nil),
         processConfiguration,
         stdObservers,
-        whenTerminated = Task.fromFuture(outErrFut).as(())
+        whenTerminated = Task.fromFuture(outErrFut).void
       ).map(_.orThrow)
     }
 

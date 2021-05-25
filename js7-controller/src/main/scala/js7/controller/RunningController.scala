@@ -457,7 +457,7 @@ object RunningController
           .guarantee(Task {
             closer onClose { deleteIfExists(sessionTokenFile) }
           })
-          .as(())
+          .void
       }
   }
 

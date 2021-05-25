@@ -20,7 +20,7 @@ final class TwoPrimaryClusterNodesTest extends AnyFreeSpec with ControllerCluste
         backup.runController(
           httpPort = Some(backupControllerPort),
           config = config"js7.journal.cluster.node.is-backup = false"
-        ) { backupController =>
+        ) { _ =>
           val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
           primaryController.executeCommandAsSystemUser(cmd).await(99.s).orThrow
           sleep(5.s)

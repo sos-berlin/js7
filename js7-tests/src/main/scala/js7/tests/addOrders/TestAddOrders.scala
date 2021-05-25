@@ -57,7 +57,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
         .flatMap(since =>
           addOrders(Observable.fromIterable(orderIds))
             .flatTap(result =>
-              Task.fromFuture(allOrdersAddedSubject.onNext(since.elapsed)).as(())
+              Task.fromFuture(allOrdersAddedSubject.onNext(since.elapsed)).void
                 .unless(result.isLeft)))
 
       Task.parMap2(

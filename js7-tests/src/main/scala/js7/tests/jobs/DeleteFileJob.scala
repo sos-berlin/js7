@@ -26,19 +26,18 @@ final class DeleteFileJob(jobContext: JobContext) extends InternalJob
         .orElse(step.order.arguments.checked(FileArgumentName))
         .flatMap(_.toStringValueString)
         .map(Paths.get(_))
-        .traverse(deleteFile(_, step.send(Stderr, _).as(())))
+        .traverse(deleteFile(_, step.send(Stderr, _).void))
         .rightAs(Outcome.succeeded)
         .map(Outcome.Completed.fromChecked))
 
   private def deleteFile(file: Path, out: String => Task[Unit]): Task[Unit] =
-    Task {
-      val deleted = deleteIfExists(file)
-      if (deleted) logger.info(s"Deleted $file")
-      deleted
-    } .executeOn(jobContext.ioExecutor.scheduler)
+    Task(deleteIfExists(file))
+      .executeOn(jobContext.ioExecutor.scheduler)
       .flatMap {
         case false => Task.unit
-        case true => out(s"Deleted $file\n")
+        case true =>
+          logger.info(s"Deleted $file")
+          out(s"Deleted $file\n")
       }
 }
 

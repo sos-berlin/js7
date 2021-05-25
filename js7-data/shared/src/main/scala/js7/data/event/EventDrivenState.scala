@@ -14,8 +14,10 @@ trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
     var problem: Problem = null
     for (stamped <- stampedEvents.iterator if problem == null) {
       state.applyEvent(stamped.value) match {
-        case Left(o) => problem = o withPrefix s"Event '$stamped' cannot be applied:"
-        case Right(s) => state = s
+        case Left(o) =>
+          problem = o withPrefix s"Event '$stamped' cannot be applied:"
+        case Right(s) =>
+          state = s
       }
     }
     if (problem != null) Left(problem) else Right(state)
@@ -26,8 +28,10 @@ trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
     var problem: Problem = null
     for (keyedEvent <- keyedEvents.iterator if problem == null) {
       state.applyEvent(keyedEvent) match {
-        case Left(o) => problem = o withPrefix s"Event '$keyedEvent' cannot be applied:"
-        case Right(s) => state = s
+        case Left(o) =>
+          problem = o withPrefix s"Event '$keyedEvent' cannot be applied:"
+        case Right(s) =>
+          state = s
       }
     }
     if (problem != null) Left(problem) else Right(state)

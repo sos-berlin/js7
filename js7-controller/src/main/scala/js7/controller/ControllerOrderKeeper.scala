@@ -46,7 +46,7 @@ import js7.data.Problems.{CannotRemoveChildOrderProblem, CannotRemoveWatchingOrd
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerStateExecutor.{liveOrderEventHandler, liveOrderEventSource}
+import js7.data.controller.ControllerStateExecutor.{toLiveOrderEventHandler, toLiveOrderEventSource}
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor}
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -101,8 +101,8 @@ with MainJournalingActor[ControllerState, Event]
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
-  private val orderEventSource = liveOrderEventSource(() => _controllerState)
-  private val orderEventHandler = liveOrderEventHandler(() => _controllerState)
+  private val orderEventSource = toLiveOrderEventSource(() => _controllerState)
+  private val orderEventHandler = toLiveOrderEventHandler(() => _controllerState)
 
   private val agentRegister = new AgentRegister
   private val orderRegister = mutable.HashMap.empty[OrderId, OrderEntry]

@@ -47,7 +47,7 @@ final class TaskObserver[A] private(observer: Observer[A])
     Task
       .deferFutureAction(implicit s =>
         ack.syncMap(identity))
-      .as(())
+      .void
 
   def complete: Task[Unit] =
     Task.defer {
@@ -64,7 +64,7 @@ final class TaskObserver[A] private(observer: Observer[A])
               }
               ack
             }
-            .as(())
+            .void
         }
       }
    }
