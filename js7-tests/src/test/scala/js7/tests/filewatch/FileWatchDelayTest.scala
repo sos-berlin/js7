@@ -83,8 +83,8 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
         sleep(systemWatchDelay + 100.ms)
         file ++= "A"
         assert(!whenArised.isCompleted)
-        for (_ <- 0 to 2 * i) {
-          sleep(fileWatch.delay / 2)
+        for (_ <- 0 to 4 * i) {
+          sleep(fileWatch.delay / 4)
           file ++= "+"
           assert(!whenArised.isCompleted)
         }
