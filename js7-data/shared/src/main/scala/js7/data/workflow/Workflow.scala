@@ -8,7 +8,6 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.Collections.emptyToNone
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
@@ -191,9 +190,6 @@ extends VersionedItem
   def lastNr: InstructionNr =
     instructions.length - 1
 
-  def anonymousJobKey(workflowPosition: WorkflowPosition): JobKey.Anonymous =
-    JobKey.Anonymous(workflowPosition.normalized)
-
   private def flattenedWorkflows: Seq[Workflow] =
     flattenedWorkflowsOf(Nil).map(_._2)
 
@@ -287,6 +283,15 @@ extends VersionedItem
           case Some(o) => o.findJob(name)
         }
     }
+
+  def positionToJobKey(position: Position): Checked[JobKey] =
+    checkedExecute(position).flatMap {
+      case _: Execute.Anonymous => Right(anonymousJobKey(id /: position))
+      case o: Execute.Named     => jobKey(position.branchPath, o.name)
+    }
+
+  def anonymousJobKey(workflowPosition: WorkflowPosition): JobKey.Anonymous =
+    JobKey.Anonymous(workflowPosition.normalized)
 
   /** Looks up a job top-down. */
   def jobKey(branchPath: BranchPath, name: WorkflowJob.Name): Checked[JobKey] =

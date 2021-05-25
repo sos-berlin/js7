@@ -12,12 +12,13 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
 import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.job.JobKey
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.NamedValues
-import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
+import js7.data.workflow.{Workflow, WorkflowId}
 import scala.reflect.ClassTag
 
 /**
@@ -431,6 +432,14 @@ final case class Order[+S <: Order.State](
 
   def isProcessable =
     isState[IsFreshOrReady] && !isSuspended && !isMarked
+
+  /** Number of executions for this job (starting with 1). */
+  def historicJobExecutionCount(jobKey: JobKey, workflow: Workflow): Int = {
+    val x = Right(jobKey)
+    historicOutcomes.view
+      .map(o => workflow.positionToJobKey(o.position))
+      .count(_ == x)
+  }
 }
 
 object Order

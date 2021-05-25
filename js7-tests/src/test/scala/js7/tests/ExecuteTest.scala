@@ -12,7 +12,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, RelativePathExecutable, ScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, ProcessExecutable, RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
@@ -240,14 +240,15 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Special $js7 variables" - {
     val nameToExpression = Map(
-      "ORDER_ID"          -> ExpressionParser.parse("$js7OrderId").orThrow,
-      "WORKFLOW_NAME"     -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
-      "WORKFLOW_POSITION" -> ExpressionParser.parse("$js7WorkflowPosition").orThrow,
-      "LABEL"             -> ExpressionParser.parse("$js7Label").orThrow,
-      "JOB_NAME"          -> ExpressionParser.parse("$js7JobName").orThrow,
-      "CONTROLLER_ID"     -> ExpressionParser.parse("$js7ControllerId").orThrow,
-      "SCHEDULED_DATE"    -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOBSTART_DATE"     -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow)
+      "ORDER_ID"            -> ExpressionParser.parse("$js7OrderId").orThrow,
+      "WORKFLOW_NAME"       -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
+      "WORKFLOW_POSITION"   -> ExpressionParser.parse("$js7WorkflowPosition").orThrow,
+      "LABEL"               -> ExpressionParser.parse("$js7Label").orThrow,
+      "JOB_NAME"            -> ExpressionParser.parse("$js7JobName").orThrow,
+      "JOB_EXECUTION_COUNT" -> ExpressionParser.parse("$js7JobExecutionCount").orThrow,
+      "CONTROLLER_ID"       -> ExpressionParser.parse("$js7ControllerId").orThrow,
+      "SCHEDULED_DATE"      -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
+      "JOBSTART_DATE"       -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow)
 
     "Special variables in InternalExecutable arguments" in {
       testWithSpecialVariables(
@@ -266,6 +267,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
               |echo WORKFLOW_POSITION=%WORKFLOW_POSITION%" >>%JS7_RETURN_VALUES%
               |echo LABEL=%LABEL%" >>%JS7_RETURN_VALUES%
               |echo JOB_NAME=%JOB_NAME%" >>%JS7_RETURN_VALUES%
+              |echo JOB_EXECUTION_COUNT=%JOB_EXECUTION_COUNT%" >>%JS7_RETURN_VALUES%
               |echo CONTROLLER_ID=%CONTROLLER_ID%" >>%JS7_RETURN_VALUES%
               |echo SCHEDULED_DATE=%SCHEDULED_DATE%" >>%JS7_RETURN_VALUES%
               |echo JOBSTART_DATE=%JOBSTART_DATE%" >>%JS7_RETURN_VALUES%
@@ -278,6 +280,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
               |  echo "WORKFLOW_POSITION=$WORKFLOW_POSITION"
               |  echo "LABEL=$LABEL"
               |  echo "JOB_NAME=$JOB_NAME"
+              |  echo "JOB_EXECUTION_COUNT=$JOB_EXECUTION_COUNT"
               |  echo "CONTROLLER_ID=$CONTROLLER_ID"
               |  echo "SCHEDULED_DATE=$SCHEDULED_DATE"
               |  echo "JOBSTART_DATE=$JOBSTART_DATE"
@@ -310,6 +313,11 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       assert(namedValues contains "SCHEDULED_DATE")
       assert(namedValues contains "JOBSTART_DATE")
+
+      def numberValue(number: Int) = executable match {
+        case _: ProcessExecutable => StringValue(number.toString)  // JS7_RETURN_VALUES contains strings
+        case _ => NumberValue(number)
+      }
       assert(namedValues - "SCHEDULED_DATE" - "JOBSTART_DATE" - "returnCode" ==
         NamedValues(
           "ORDER_ID" -> StringValue(order.id.string),
@@ -317,6 +325,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "WORKFLOW_POSITION" -> StringValue(s"${workflow.path.string}~${workflow.id.versionId.string}:0"),
           "LABEL" -> StringValue("TEST-LABEL"),
           "JOB_NAME" -> StringValue("TEST-JOB"),
+          "JOB_EXECUTION_COUNT" -> numberValue(1),
           "CONTROLLER_ID" -> StringValue("Controller")))
     }
 }

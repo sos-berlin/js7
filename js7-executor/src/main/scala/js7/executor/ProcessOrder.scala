@@ -7,7 +7,7 @@ import js7.data.job.JobKey
 import js7.data.order.Order
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{EnvScope, NamedValueScope, NowScope, OrderScope}
-import js7.data.value.{NamedValues, StringValue}
+import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Label, Workflow}
 
@@ -36,6 +36,7 @@ final case class ProcessOrder(
         "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString),
         "js7WorkflowPath" -> StringValue(order.workflowId.path.string),
         "js7JobName" -> StringValue(simpleJobName),
+        "js7JobExecutionCount" -> NumberValue(jobExecutionCount),
         "js7Label" -> StringValue(instructionLabel.fold("")(_.string)),
         "js7ControllerId" -> StringValue(controllerId.string))),
       NowScope(),
@@ -49,4 +50,8 @@ final case class ProcessOrder(
         workflow,
         default = defaultArguments orElse workflowJob.defaultArguments),
       jobResourceScope)
+
+  /** Number of execution for this job (starting with 1). */
+  lazy val jobExecutionCount: Int =
+    1 + order.historicJobExecutionCount(jobKey, workflow)
 }

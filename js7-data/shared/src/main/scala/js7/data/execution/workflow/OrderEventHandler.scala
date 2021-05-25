@@ -6,7 +6,6 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed, OrderRemoved}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
-import js7.data.workflow.instructions.Execute
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
@@ -35,10 +34,7 @@ final class OrderEventHandler(
       case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome =>
         for {
           workflow <- idToWorkflow(previousOrder.workflowId)
-          jobKey <- workflow.checkedExecute(previousOrder.position) flatMap {
-            case _: Execute.Anonymous => Right(workflow.anonymousJobKey(previousOrder.workflowPosition))
-            case o: Execute.Named     => workflow.jobKey(previousOrder.position.branchPath, o.name)
-          }
+          jobKey <- workflow.positionToJobKey(previousOrder.position)
         } yield
           FollowUp.Processed(jobKey) :: Nil
 

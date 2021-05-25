@@ -10,14 +10,16 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
 import js7.data.value.{NamedValues, StringValue}
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.instructions.Fork
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
@@ -673,6 +675,27 @@ final class OrderTest extends AnyFreeSpec
   "Error message when updated failed" in {
     assert(testOrder.applyEvent(OrderDetachable) ==
       Left(InapplicableOrderEventProblem(OrderDetachable, testOrder))) // "Order 'ID' at position 'WORKFLOW~VERSION:0' in state 'Ready', at Controller, received an inapplicable event: OrderDetachable")))
+  }
+
+  "historicJobExecutionCount" in {
+    val jobName = WorkflowJob.Name("JOB")
+    val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1",
+      Vector(
+        Execute(WorkflowJob(AgentPath("AGENT"), InternalExecutable(classOf[OrderTest].getName))),
+        Execute(jobName)),
+      nameToJob = Map(
+        jobName ->
+          WorkflowJob(AgentPath("AGENT"), InternalExecutable(classOf[OrderTest].getName))))
+    val order = testOrder.copy(historicOutcomes = Seq(
+      HistoricOutcome(Position(0), Outcome.succeeded),
+      HistoricOutcome(Position(1), Outcome.succeeded),
+      HistoricOutcome(Position(0), Outcome.succeeded),
+      HistoricOutcome(Position(1), Outcome.succeeded),
+      HistoricOutcome(Position(0), Outcome.succeeded)))
+
+    assert(order.historicJobExecutionCount(JobKey(workflow.id /: Position(0)), workflow) == 3)
+    assert(order.historicJobExecutionCount(JobKey(workflow.id /: Position(1)), workflow) == 0)
+    assert(order.historicJobExecutionCount(JobKey(workflow.id, jobName), workflow) == 2)
   }
 
   if (sys.props contains "test.speed") "Speed" in {
