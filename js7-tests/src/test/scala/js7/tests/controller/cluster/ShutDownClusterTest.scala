@@ -44,6 +44,8 @@ final class ShutDownClusterTest extends ControllerClusterTester
             val activeRestarted = primaryController.eventWatch.await[ClusterActiveNodeRestarted](
               after = activeNodeShutDown).head.eventId
             primaryController.eventWatch.await[ClusterCoupled](after = activeRestarted)
+            // TODO EventWatch delivers event after it has been written but befor ack!
+            waitForCondition(2.s, 10.ms)(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
             assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
           }
         }

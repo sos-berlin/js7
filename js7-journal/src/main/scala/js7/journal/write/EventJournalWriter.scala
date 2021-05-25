@@ -79,12 +79,20 @@ with AutoCloseable
   def endEventSection(sync: Boolean): Unit = {
     if (!eventsStarted) throw new IllegalStateException
     flush(sync = sync)
+    notifyObserver()
     logger.debug(s"Journal finished, $fileSizeString written ($statistics)")
   }
 
   override def flush(sync: Boolean): Unit = {
     super.flush(sync)
     // TODO Notify observer first after sync! OrderStdWritten braucht dann und wann ein sync (1s), um observer nicht lange warten zu lassen.
+    for (r <- observer) {
+      r.onFileWritten(jsonWriter.fileLength)
+    }
+  }
+
+  def notifyObserver(): Unit = {
+    assertThat(isFlushed)
     for (r <- observer) {
       r.onFileWritten(jsonWriter.fileLength)
     }
