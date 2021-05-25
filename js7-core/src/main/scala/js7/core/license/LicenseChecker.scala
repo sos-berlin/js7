@@ -18,9 +18,11 @@ final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
       classOf[LicenseCheck],
       classOf[LicenseChecker].getClassLoader/*required for testing with sbt, sometimes*/)
     val licenseChecks = serviceLoader.asScala.toSeq
-    if (licenseChecks.isEmpty) logger.debug("No LicenseCheck")
-    for (o <- licenseChecks) logger.debug("ServiceLoader => " + o.getClass.getName)
-    for (o <- licenseChecks) o.initialize(licenseCheckContext)
+    if (licenseChecks.isEmpty) logger.debug("No LicenseCheck implementation provided")
+    for (o <- licenseChecks) {
+      logger.debug("ServiceLoader[LicenseCheck] => " + o.getClass.getName)
+      o.initialize(licenseCheckContext)
+    }
     licenseChecks
   }
 

@@ -449,7 +449,7 @@ with Stash
           sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
         val jobActor = watch(actorOf(
           JobActor.props(jobConf, executorConf, id => persistence.currentState.pathToJobResource.checked(id)),
-          uniqueActorName(encodeAsActorName("Job-" + jobKey.name))))
+          uniqueActorName(encodeAsActorName("Job:" + jobKey.name))))
         jobRegister.insert(jobKey, job, jobActor)
       }
     }
@@ -472,7 +472,7 @@ with Stash
   private def newOrderActor(order: Order[Order.State], workflow: Workflow) =
     watch(actorOf(
       OrderActor.props(order.id, workflow, journalActor = journalActor, orderActorConf, controllerId),
-      name = uniqueActorName(encodeAsActorName("Order-" + order.id.string))))
+      name = uniqueActorName(encodeAsActorName("Order:" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
     val checkedFollowUps = orderEventHandler.handleEvent(order.id <-: event)

@@ -84,7 +84,7 @@ extends AutoCloseable
         .tapEval(_ => Task {
           actorOnce := actorRefFactory.actorOf(
             StateJournalingActor.props[S, Event](currentState, journalActor, journalConf, persistPromise),
-            encodeAsActorName("StateJournalingActor-" + S.tpe.toString))
+            encodeAsActorName("StateJournalingActor:" + S.tpe.toString))
         })
     }
 
