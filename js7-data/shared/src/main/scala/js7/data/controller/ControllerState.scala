@@ -191,15 +191,15 @@ extends JournaledState[ControllerState]
                   eventNotApplicable(keyedEvent)
               }
 
-            case ItemDeletionMarked(itemId) =>
-              itemId match {
+            case ItemDeletionMarked(itemKey) =>
+              itemKey match {
                 case id: OrderWatchPath =>
                   allOrderWatchesState.markAsDeleted(id)
                     .map(o => copy(
                       allOrderWatchesState = o))
 
                 case _ =>
-                  Left(Problem(s"A '${itemId.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
+                  Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable (in this version)"))  // TODO
               }
 
             case ItemDestroyed(id) =>

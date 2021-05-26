@@ -585,7 +585,7 @@ with MainJournalingActor[ControllerState, Event]
           .traverse(unsignedSimpleItemToEvent)
           .flatMap(unsignedEvents =>
             simple.delete
-              .flatTraverse(id => simpleItemIdToDeletedEvent(id).map(_.toSeq))
+              .flatTraverse(id => simpleItemKeyToDeletedEvent(id).map(_.toSeq))
               .map(_.view ++ signedEvents ++ unsignedEvents)))
 
   private def verifiedItemToEvents(verified: SignedItemVerifier.Verified[SignableSimpleItem])
@@ -956,7 +956,7 @@ with MainJournalingActor[ControllerState, Event]
       new ControllerStateExecutor(_controllerState).nextOrderEventsByOrderId(orderIds).toVector)
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
-    val itemIds = mutable.Buffer.empty[InventoryItemKey]
+    val itemKeys = mutable.Buffer.empty[InventoryItemKey]
     val orderIds = mutable.Buffer.empty[OrderId]
     for (stamped <- stampedEvents) {
       val keyedEvent = stamped.value
@@ -968,7 +968,7 @@ with MainJournalingActor[ControllerState, Event]
 
         case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
           _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
-          itemIds += event.key
+          itemKeys += event.key
           handleItemEvent(event)
 
         case _ =>
@@ -976,7 +976,7 @@ with MainJournalingActor[ControllerState, Event]
       }
     }
     _controllerState = updatedState  // Reduce memory usage (they are equal)
-    itemIds.distinct foreach proceedWithItem
+    itemKeys.distinct foreach proceedWithItem
     proceedWithOrders(orderIds.distinct)
   }
 

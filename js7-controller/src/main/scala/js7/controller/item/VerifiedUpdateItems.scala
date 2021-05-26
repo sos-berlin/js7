@@ -72,7 +72,7 @@ object VerifiedUpdateItems
         }
       .foreachL {
         case AddOrChangeSimple(item) => unsignedSimpleItems_ += item
-        case DeleteSimple(itemId) => simpleDeletes_ += itemId
+        case DeleteSimple(path) => simpleDeletes_ += path
         case verifiedItem: Verified[SignableItem] @unchecked => signedItems_ += verifiedItem
         case () => assert(problemOccurred.nonEmpty)
         case DeleteVersioned(path) => versionedDeletes_ += path

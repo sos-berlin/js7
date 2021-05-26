@@ -72,43 +72,43 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
       case Left(problem) => scribe.error(problem.toString)  // ???
       case Right(o) => _controllerState = o
     }
-    val touchedItemIds = keyedEvents
+    val touchedItemKeys = keyedEvents
       .collect { case KeyedEvent(_, e: InventoryItemEvent) => e.key }
       .distinct
     val touchedOrderIds = keyedEvents
       .collect { case KeyedEvent(k: OrderId, _) => k }
       .distinct
-    (nextItemEvents(touchedItemIds).view ++
+    (nextItemEvents(touchedItemKeys).view ++
       nextOrderEventsByOrderId(touchedOrderIds) ++
       nextOrderEvents
     ).toVector
   }
 
-  private def nextItemEvents(itemIds: Seq[InventoryItemKey]): Seq[KeyedEvent[BasicItemEvent]] =
-    itemIds.flatMap {
-      case itemId: OrderWatchPath =>
-        controllerState.allOrderWatchesState.pathToOrderWatchState.get(itemId)
+  private def nextItemEvents(itemKeys: Seq[InventoryItemKey]): Seq[KeyedEvent[BasicItemEvent]] =
+    itemKeys.flatMap {
+      case path: OrderWatchPath =>
+        controllerState.allOrderWatchesState.pathToOrderWatchState.get(path)
           .view.flatMap { orderWatchState =>
             import orderWatchState.orderWatch
             if (orderWatchState.agentPathToAttachedState.nonEmpty)
               orderWatchState.agentPathToAttachedState.flatMap {
                 case (agentPath, Attached(revision)) =>
                   if (orderWatchState.delete)
-                    Some(NoKey <-: ItemDetachable(itemId, agentPath))
+                    Some(NoKey <-: ItemDetachable(path, agentPath))
                   else
                     (orderWatch.itemRevision != revision) ? (
                       if (agentPath == orderWatch.agentPath)
                         // Attach again without detaching, and let Agent change OrderWatch while in flight
-                        NoKey <-: ItemAttachable(itemId, agentPath)
+                        NoKey <-: ItemAttachable(path, agentPath)
                       else
-                        NoKey <-: ItemDetachable(itemId, agentPath))
+                        NoKey <-: ItemDetachable(path, agentPath))
                 case _ =>
                   None
               }
             else if (orderWatchState.delete)
-              orderWatchState.isDestroyable ? (NoKey <-: ItemDestroyed(itemId))
+              orderWatchState.isDestroyable ? (NoKey <-: ItemDestroyed(path))
             else
-              Some(NoKey <-: ItemAttachable(itemId, orderWatch.agentPath))
+              Some(NoKey <-: ItemAttachable(path, orderWatch.agentPath))
           }
 
       case _ =>

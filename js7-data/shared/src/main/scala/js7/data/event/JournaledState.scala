@@ -164,10 +164,10 @@ object JournaledState
 
     implicit final lazy val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(this)
 
-    implicit final lazy val inventoryItemIdJsonCodec: Codec[InventoryItemKey] =
+    implicit final lazy val inventoryItemKeyJsonCodec: Codec[InventoryItemKey] =
       InventoryItemKey.jsonCodec(InventoryItems.map(_.Key))
 
-    implicit final lazy val signableItemIdJsonCodec: Codec[SignableItemKey] =
+    implicit final lazy val signableItemKeyJsonCodec: Codec[SignableItemKey] =
       SignableItemKey.jsonCodec(SignableItems.map(_.Key))
 
     implicit final lazy val unsignedSimpleItemJsonCodec: TypedJsonCodec[UnsignedSimpleItem] =

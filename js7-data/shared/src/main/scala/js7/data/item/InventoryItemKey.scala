@@ -40,10 +40,10 @@ object InventoryItemKey
           }
           prefix = prefixAndId._1
           idString = prefixAndId._2
-          itemId <- typeToCompanion.get(prefix)
+          itemKey <- typeToCompanion.get(prefix)
             .toRight(DecodingFailure(s"Unrecognized type prefix in InventoryItemKey: $prefix ", cursor.history))
             .flatMap(_.checked(idString).toDecoderResult(cursor.history))
-        } yield itemId
+        } yield itemKey
     }
   }
 }

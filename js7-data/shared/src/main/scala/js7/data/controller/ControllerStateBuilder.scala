@@ -182,8 +182,8 @@ extends JournaledStateBuilder[ControllerState]
                   throw Problem(s"Unexpected event: $keyedEvent").throwable
               }
 
-            case ItemDeletionMarked(itemId) =>
-              itemId match {
+            case ItemDeletionMarked(itemKey) =>
+              itemKey match {
                 case path: OrderWatchPath =>
                   allOrderWatchesState = allOrderWatchesState.markAsDeleted(path).orThrow
 
@@ -191,8 +191,8 @@ extends JournaledStateBuilder[ControllerState]
                   throw Problem(s"Unexpected event: $keyedEvent").throwable
               }
 
-            case ItemDestroyed(itemId) =>
-              itemId match {
+            case ItemDestroyed(itemKey) =>
+              itemKey match {
                 case path: LockPath =>
                   pathToLockState -= path
 

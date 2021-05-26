@@ -4,7 +4,7 @@ import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
-import js7.agent.data.AgentState.{inventoryItemIdJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec}
+import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
@@ -105,7 +105,8 @@ object AgentCommand extends CommonCommand.Companion
 
   /** Couples the registered Controller identified by current User.
     * @param agentRunId Must be the value returned by `CreateAgent`. */
-  final case class CoupleController(agentPath: AgentPath, agentRunId: AgentRunId, eventId: EventId) extends AgentCommand {
+  final case class CoupleController(agentPath: AgentPath, agentRunId: AgentRunId, eventId: EventId)
+  extends AgentCommand {
     type Response = CoupleController.Response
   }
   object CoupleController {
@@ -209,6 +210,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(NoOperation),
       Subtype(deriveCodec[CreateAgent]),
       Subtype(deriveCodec[CoupleController]),
+      Subtype(deriveCodec[Reset]),
       Subtype[ShutDown],
       Subtype(deriveCodec[AttachItem]),
       Subtype[AttachSignedItem],
@@ -230,5 +232,5 @@ object AgentCommand extends CommonCommand.Companion
 
   intelliJuseImport((FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
-    inventoryItemIdJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec))
+    inventoryItemKeyJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec))
 }

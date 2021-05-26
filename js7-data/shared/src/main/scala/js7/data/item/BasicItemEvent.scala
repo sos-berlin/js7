@@ -68,7 +68,7 @@ object BasicItemEvent
   def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
   : TypedJsonCodec[BasicItemEvent] = {
     implicit val x = S.inventoryItemJsonCodec
-    implicit val y = S.inventoryItemIdJsonCodec
+    implicit val y = S.inventoryItemKeyJsonCodec
 
     TypedJsonCodec(
       Subtype(deriveCodec[ItemDeletionMarked]),
