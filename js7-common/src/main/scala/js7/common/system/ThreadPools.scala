@@ -82,7 +82,7 @@ object ThreadPools
       ExecutionModel.Default)
 
     closer.onClose {
-      logger.debug(s"Shutdown $myName thread pool'")
+      logger.debug(s"Shutdown $myName thread pool")
       scheduler.shutdown()
       if (shutdownTimeout.isPositive) {
         logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) ...")
