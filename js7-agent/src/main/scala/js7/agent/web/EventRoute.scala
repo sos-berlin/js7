@@ -1,4 +1,4 @@
-package js7.agent.web.controller
+package js7.agent.web
 
 import akka.util.Timeout
 import js7.agent.DirectAgentApi
@@ -11,12 +11,12 @@ import js7.journal.web.GenericEventRoute
 /**
   * @author Joacim Zschimmer
   */
-trait ControllersEventRoute extends AgentRouteProvider with GenericEventRoute
+trait EventRoute extends AgentRouteProvider with GenericEventRoute
 {
   protected def agentApi(meta: CommandMeta): DirectAgentApi
   implicit protected def akkaAskTimeout: Timeout
 
-  protected final lazy val controllerEventRoute = new RouteProvider().route
+  protected final lazy val eventRoute = new RouteProvider().route
 
   private class RouteProvider extends GenericEventRouteProvider
   {

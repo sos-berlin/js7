@@ -35,7 +35,7 @@ final class AgentUris private(agentUri: Uri)
   }
 
   def controllersEvents[E <: Event](request: EventRequest[E]) =
-    toUri("api/controller/event", Query(request.toQueryParameters: _*))
+    toUri("api/event", Query(request.toQueryParameters: _*))
 
   def apply(relativeUri: String) = toUri(stripLeadingSlash(relativeUri))
 

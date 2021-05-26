@@ -1,4 +1,4 @@
-package js7.agent.web.controller
+package js7.agent.web
 
 import js7.agent.client.AgentClient
 import js7.agent.data.Problems.{AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
@@ -6,7 +6,7 @@ import js7.agent.data.commands.AgentCommand.{CoupleController, CreateAgent, Rele
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider._
-import js7.agent.web.controller.ControllersEventRouteTest._
+import js7.agent.web.EventRouteTest._
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
@@ -25,7 +25,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
+final class EventRouteTest extends AnyFreeSpec with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 
@@ -142,7 +142,7 @@ final class ControllersEventRouteTest extends AnyFreeSpec with AgentTester
   }
 }
 
-object ControllersEventRouteTest {
+object EventRouteTest {
   private val agentPath = AgentPath("AGENT")
   private val controllerId = ControllerId("CONTROLLER")
 }
