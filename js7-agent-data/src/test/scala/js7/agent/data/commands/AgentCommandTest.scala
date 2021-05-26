@@ -159,6 +159,7 @@ final class AgentCommandTest extends AnyFreeSpec
         json"""{
           "TYPE": "ShutDown",
           "processSignal": "SIGTERM",
+          "suppressSnapshot": false,
           "restart": false
         }""")
     }

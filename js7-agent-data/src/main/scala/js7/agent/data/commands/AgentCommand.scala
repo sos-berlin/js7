@@ -123,6 +123,7 @@ object AgentCommand extends CommonCommand.Companion
 
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
+    suppressSnapshot: Boolean = false,
     restart: Boolean = false)
   extends ShutdownOrAbort {
     type Response = Response.Accepted

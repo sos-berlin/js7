@@ -98,7 +98,7 @@ with Stash
 
   private object shutdown {
     private var shutDownCommand: Option[AgentCommand.ShutDown] = None
-    private var snapshotTaken = false
+    private var snapshotFinished = false
     private var stillTerminatingSchedule: Option[Cancelable] = None
     private var terminatingOrders = false
     private var terminatingJobs = false
@@ -112,10 +112,14 @@ with Stash
         shutDownCommand = Some(terminate)
         since := now
         fileWatchManager.stop.runAsyncAndForget
-        journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
-        stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
-          self ! Internal.StillTerminating
-        })
+        if (terminate.suppressSnapshot) {
+          snapshotFinished = true
+        } else {
+          journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
+          stillTerminatingSchedule = Some(scheduler.scheduleAtFixedRate(5.seconds, 10.seconds) {
+            self ! Internal.StillTerminating
+          })
+        }
         continue()
       }
 
@@ -125,18 +129,18 @@ with Stash
 
     def onStillTerminating() =
       logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs" +
-        (!snapshotTaken ?? ", and the snapshot"))
+        (!snapshotFinished ?? ", and the snapshot"))
 
     def onSnapshotTaken(): Unit =
       if (shuttingDown) {
-        snapshotTaken = true
+        snapshotFinished = true
         continue()
       }
 
     def continue() =
       for (terminate <- shutDownCommand) {
-        logger.trace(s"termination.continue: ${orderRegister.size} orders, ${jobRegister.size} jobs ${if (snapshotTaken) ", snapshot taken" else ""}")
-        if (snapshotTaken) {
+        logger.trace(s"termination.continue: ${orderRegister.size} orders, ${jobRegister.size} jobs ${if (snapshotFinished) ", snapshot taken" else ""}")
+        if (snapshotFinished) {
           if (!terminatingOrders) {
             terminatingOrders = true
             for (o <- orderRegister.values if !o.isDetaching) {
