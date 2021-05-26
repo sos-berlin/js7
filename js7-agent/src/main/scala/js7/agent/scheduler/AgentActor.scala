@@ -1,6 +1,6 @@
 package js7.agent.scheduler
 
-import akka.actor.{Actor, ActorRef, PoisonPill, Props, Stash, Terminated}
+import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import com.softwaremill.diffx.generic.auto._
 import java.util.Objects.requireNonNull
@@ -17,7 +17,7 @@ import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.auth.UserId
 import js7.base.generic.Completed
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
@@ -33,7 +33,7 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.executor.configuration.JobExecutorConf
-import js7.journal.data.JournalMeta
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.JournalEventWatch
@@ -55,7 +55,7 @@ private[agent] final class AgentActor private(
   (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
 extends Actor with Stash with SimpleStateActor
 {
-  import agentConf.{akkaAskTimeout, stateDirectory}
+  import agentConf.{akkaAskTimeout, journalMeta}
   import context.{actorOf, watch}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -66,12 +66,12 @@ extends Actor with Stash with SimpleStateActor
   private var eventWatch: JournalEventWatch = null
   private val agentOrderKeeperActor = SetOnce[ActorRef]
   private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
+  private var isResetting = false
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
   override def preStart() = {
     super.preStart()
-    val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
     recovered = JournaledStateRecoverer.recover[AgentState](journalMeta, agentConf.config)
     eventWatch = recovered.eventWatch
 
@@ -92,6 +92,10 @@ extends Actor with Stash with SimpleStateActor
     super.postStop()
     terminatePromise.trySuccess(
       AgentTermination.Terminate(restart = shutDownCommand.toOption.fold(false)(_.restart)))
+    if (isResetting) {
+      logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
+      journalMeta.deleteJournal(ignoreFailure = true)
+    }
     logger.debug("Stopped")
   }
 
@@ -139,7 +143,9 @@ extends Actor with Stash with SimpleStateActor
       continueTermination()
 
     case Terminated(actor) if actor == persistence.journalActor && terminating =>
-      for (_ <- terminateCompleted.future) context.self ! PoisonPill
+      for (_ <- terminateCompleted.future) {
+        context.stop(self)
+      }
 
     case Command.GetOverview =>
       sender() ! AgentOverview(
@@ -156,12 +162,17 @@ extends Actor with Stash with SimpleStateActor
     command match {
       case command: AgentCommand.ShutDown =>
         if (!terminating) {
-          shutDownCommand := command
-          terminateOrderKeeper(command) onComplete { ordersTerminated =>
-            response.complete(ordersTerminated map Right.apply)
-            terminateCompleted.success(Completed)  // Wait for child Actor termination
-            continueTermination()
-          }
+          response.completeWith(terminateOrderKeeper(command))
+        }
+
+      case AgentCommand.Reset(agentRunId) if !terminating =>
+        persistence.currentState.checkAgentRunId(agentRunId) match {
+          case Left(problem) => response.success(Left(problem))
+          case Right(()) =>
+            isResetting = true
+            response.completeWith(terminateOrderKeeper(
+              AgentCommand.ShutDown(processSignal = Some(SIGKILL),
+                suppressSnapshot = true, restart = true)))
         }
 
       case AgentCommand.CreateAgent(agentPath, controllerId) if !terminating =>
@@ -245,11 +256,19 @@ extends Actor with Stash with SimpleStateActor
       }
     }
 
-  private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown): Future[AgentCommand.Response.Accepted] =
-    agentOrderKeeperActor.toOption match {
+  private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
+  : Future[Checked[AgentCommand.Response.Accepted]] = {
+    shutDownCommand := shutDown
+    val future = agentOrderKeeperActor.toOption match {
       case None => Future.successful(AgentCommand.Response.Accepted)
       case Some(actor) => (actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
     }
+    future map { ordersTerminated =>
+      terminateCompleted.success(Completed)  // Wait for child Actor termination
+      continueTermination()
+      Right(ordersTerminated)
+    }
+  }
 
   private def addOrderKeeper(): ActorRef = {
     val recovered = this.recovered

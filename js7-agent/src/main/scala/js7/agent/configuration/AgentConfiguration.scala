@@ -6,6 +6,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration._
+import js7.agent.data.AgentState
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs._
 import js7.base.convert.AsJava.asAbsolutePath
@@ -24,6 +25,7 @@ import js7.core.configuration.CommonConfiguration
 import js7.executor.configuration.{JobExecutorConf, ProcessKillScript}
 import js7.executor.process.ProcessKillScriptProvider
 import js7.journal.configuration.JournalConf
+import js7.journal.data.JournalMeta
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
@@ -112,6 +114,8 @@ extends CommonConfiguration
       scriptInjectionAllowed = scriptInjectionAllowed,
       iox,
       blockingJobScheduler = blockingJobScheduler)
+
+  val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +

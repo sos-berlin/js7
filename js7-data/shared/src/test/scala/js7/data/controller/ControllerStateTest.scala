@@ -55,7 +55,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     Map(
       AgentPath("AGENT") -> AgentRefState(
         AgentRef(AgentPath("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0))),
-        None, None, AgentRefState.Decoupled, EventId(7))),
+        None, None, AgentRefState.Reset, EventId(7))),
     Map(
       LockPath("LOCK") -> LockState(Lock(LockPath("LOCK"), limit = 1, Some(ItemRevision(7))))),
     AllOrderWatchesState(Map(
@@ -179,7 +179,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           "itemRevision": 0
         },
         "couplingState": {
-          "TYPE": "Decoupled"
+          "TYPE": "Reset"
         },
         "eventId": 7
       }, {

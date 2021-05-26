@@ -3,7 +3,7 @@ package js7.data.controller
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.AgentReset
+import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.controller.ControllerStateExecutor._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, KeyedEvent}
@@ -29,14 +29,14 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
     _controllerState.repo.pathTo[Workflow](workflowPath).toOption.map(_.id.versionId)
 
   def resetAgent(agentPath: AgentPath): Seq[KeyedEvent[Event]] = {
-    val agentReset = View(agentPath <-: AgentReset)
+    val agentResetStarted = View(agentPath <-: AgentResetStarted)
     val ordersDetached = controllerState.idToOrder.values.view
       .flatMap(resetAgentForOrder(_, agentPath))
     val itemsDetached = controllerState.itemToAgentToAttachedState.to(View)
       .filter(_._2.contains(agentPath))
       .map(_._1)
       .map(itemKey => NoKey <-: ItemDetached(itemKey, agentPath))
-    (agentReset ++
+    (agentResetStarted ++
       ordersDetached ++
       itemsDetached ++
       controllerState.repo.resetAgent(agentPath)

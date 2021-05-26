@@ -22,7 +22,7 @@ import js7.base.thread.Futures.syntax.RichFuture
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.{RichThrowable, _}
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.common.akkautils.ReceiveLoggingActor
@@ -30,7 +30,8 @@ import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated}
+import js7.data.agent.AgentRefState.Resetting
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentReset}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -96,17 +97,25 @@ extends ReceiveLoggingActor.WithStash
   {
     private var attachedOrderIds: Set[OrderId] = null
 
-    override protected def couple(eventId: EventId) =
-      (for {
-        _ <- EitherT(createAgentIfNeeded)
-        completed <- EitherT(
-          client.commandExecute(CoupleController(agentPath, agentRunIdOnce.orThrow, eventId = eventId))
+    override protected def couple(eventId: EventId) = {
+      Task(persistence.currentState.pathToAgentRefState.checked(agentPath))
+        .flatMapT(agentRefState =>
+          ((agentRefState.couplingState, agentRunIdOnce.toOption) match {
+            case (Resetting, Some(agentRunId)) =>
+              client.commandExecute(AgentCommand.Reset(agentRunId))
+                .flatMapT(_ => persistence.persistKeyedEvent(agentPath <-: AgentReset))
+            case _ =>
+              Task.pure(Checked.unit)
+          })
+        .flatMapT(_ => createAgentIfNeeded)
+        .flatMapT(agentRunId =>
+          client.commandExecute(CoupleController(agentPath, agentRunId, eventId = eventId))
             .map(_.map { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds
               Completed
-            }))
-      } yield completed).value
+            })))
+    }
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>
@@ -259,15 +268,24 @@ extends ReceiveLoggingActor.WithStash
       val sender = this.sender()
       isReset = true
       commandQueue.reset()
-      (eventFetcher.invalidateCoupledApi >>
-        Task { currentFetchedFuture.foreach(_.cancel()) } >>
-        cancelObservationAndAwaitTermination >>
-        eventFetcher.decouple
-      ) .runToFuture
-        .onComplete { (tried: Try[Completed]) =>
-          sender ! tried
-          context.stop(self)
+      (eventFetcher.coupledApi
+        .flatMap {
+          case None => Task.pure(false)
+          case Some(api) =>
+            api.commandExecute(AgentCommand.Reset(agentRunIdOnce.orThrow))
+              .map(_.isRight)
         }
+        .flatMap(agentHasBeenReset =>
+          eventFetcher.invalidateCoupledApi >>
+            Task { currentFetchedFuture.foreach(_.cancel()) } >>
+            cancelObservationAndAwaitTermination >>
+            eventFetcher.decouple
+              .as(agentHasBeenReset)
+          ) .runToFuture
+            .onComplete { tried =>
+              sender ! (tried: Try[Boolean])
+              context.stop(self)
+            })
 
     case Input.StartFetchingEvents | Internal.FetchEvents =>
       if (changingUri.isEmpty && !isTerminating) {
@@ -425,25 +443,23 @@ extends ReceiveLoggingActor.WithStash
         .map(_ => Completed)
     }
 
-  private def createAgentIfNeeded: Task[Checked[Completed]] =
+  private def createAgentIfNeeded: Task[Checked[AgentRunId]] =
     Task.defer {
-      if (agentRunIdOnce.nonEmpty)
-        Task.pure(Right(Completed))
-      else
-        (for {
-          agentRunId <- EitherT(
-            client.commandExecute(CreateAgent(agentPath, controllerId)).map(_.map(_.agentRunId)))
-          completed <- EitherT(
-            if (noJournal)
-              Task.pure(Right(Completed))
-            else
-              persistence.persistKeyedEvent(agentPath <-: AgentCreated(agentRunId))
-                .map(_.map { case (_, _) =>
-                  // asynchronous
-                  agentRunIdOnce := agentRunId
-                  Completed
-                }))
-        } yield completed).value
+      agentRunIdOnce.toOption match {
+        case Some(agentRunId) => Task.pure(Right(agentRunId))
+        case None =>
+          client.commandExecute(CreateAgent(agentPath, controllerId)).map(_.map(_.agentRunId))
+            .flatMapT(agentRunId =>
+              if (noJournal)
+                Task.pure(Right(agentRunId))
+              else
+                persistence.persistKeyedEvent(agentPath <-: AgentCreated(agentRunId))
+                  .map(_.map { case (_, _) =>
+                    // asynchronous
+                    agentRunIdOnce := agentRunId
+                    agentRunId
+                  }))
+      }
     }
 
   private def stopIfTerminated() =

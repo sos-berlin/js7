@@ -40,6 +40,9 @@ object JournalFile
   def checkedEventId(fileBase: Path, file: Path): Checked[EventId] =
     new Matcher(fileBase).checkedEventId(file)
 
+  private[files] def anyJournalFilePattern(fileBase: Path): Pattern =
+    Pattern.compile(Pattern.quote(fileBase.toString) + """-(-[0-9]+\.journal(\.tmp|(~.*))?|journal)""")
+
   private[files] def garbagePattern(fileBase: Path): Pattern =
     Pattern.compile(Pattern.quote(fileBase.toString) +
     """--([0-9]+)\.journal.tmp""")

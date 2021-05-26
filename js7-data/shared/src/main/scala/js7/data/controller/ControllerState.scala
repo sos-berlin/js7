@@ -21,7 +21,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarke
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
@@ -356,6 +356,28 @@ extends JournaledState[ControllerState]
       def iterator: Iterator[(SimpleItemPath, SimpleItem)] =
         Iterator(pathToAgentRefState, pathToLockState, allOrderWatchesState.pathToOrderWatchState)
           .flatMap(_.view.mapValues(_.item).iterator)
+    }
+
+  // Not used, not tested:
+  private lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
+    new MapView[SignableItemKey, Signed[SignableItem]] {
+      def get(itemKey: SignableItemKey): Option[Signed[SignableItem]] =
+        itemKey match {
+          case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption
+          case path: JobResourcePath => idToSignedSimpleItem.get(path)
+          case _ =>
+            scribe.error(s"keyToSignedItem: Unexpected SignableItemKey: $itemKey")
+            None
+        }
+
+      def iterator: Iterator[(SignableItemKey, Signed[SignableItem])] =
+        Iterator(
+          repo.pathToVersionToSignedItems.values.view
+            .flatMap(_
+              .flatMap(_.maybeSignedItem)
+              .map(signed => signed.value.key -> signed)),
+          idToSignedSimpleItem
+        ).flatten
     }
 
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +

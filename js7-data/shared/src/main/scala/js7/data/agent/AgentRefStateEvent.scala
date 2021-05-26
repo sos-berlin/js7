@@ -26,6 +26,8 @@ object AgentRefStateEvent
     override def toString = s"AgentEventsObserved(${EventId.toString(untilEventId)})"
   }
 
+  case object AgentResetStarted extends AgentRefStateEvent
+
   case object AgentReset extends AgentRefStateEvent
 
   implicit val jsonCodec = TypedJsonCodec[AgentRefStateEvent](
@@ -33,5 +35,6 @@ object AgentRefStateEvent
     Subtype(deriveCodec[AgentCouplingFailed]),
     Subtype(deriveCodec[AgentReady]),
     Subtype(deriveCodec[AgentEventsObserved]),
+    Subtype(AgentResetStarted),
     Subtype(AgentReset))
 }

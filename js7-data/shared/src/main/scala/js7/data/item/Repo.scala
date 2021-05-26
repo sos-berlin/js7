@@ -132,13 +132,13 @@ final case class Repo private(
   def currentSignedItems: View[Signed[VersionedItem]] =
     for {
       versionToItem <- pathToVersionToSignedItems.values.view
-      item <- versionToItem.head.maybeSignedItems
+      item <- versionToItem.head.maybeSignedItem
     } yield item
 
   private def items: View[VersionedItem] =
     for {
       versionToItem <- pathToVersionToSignedItems.values.view
-      item <- versionToItem.view.flatMap(_.maybeSignedItems.map(_.value))
+      item <- versionToItem.view.flatMap(_.maybeSignedItem.map(_.value))
     } yield item
 
   def applyEvents(events: Seq[VersionedEvent]): Checked[Repo] = {
@@ -221,7 +221,7 @@ final case class Repo private(
   def exists(path: ItemPath): Boolean = pathToVersionToSignedItems
       .get(path) match {
       case None => false
-      case Some(entries) => entries.head.maybeSignedItems.isDefined  // Deleted?
+      case Some(entries) => entries.head.maybeSignedItem.isDefined  // Deleted?
     }
 
   /** Returns the current VersionedItem to a Path. */
@@ -229,7 +229,7 @@ final case class Repo private(
     pathToVersionToSignedItems
       .checked(path)
       .flatMap(_.head
-        .maybeSignedItems
+        .maybeSignedItem
         .toChecked(VersionedItemDeletedProblem(path))
         .map(_.value.asInstanceOf[A]))
 
@@ -241,15 +241,21 @@ final case class Repo private(
     pathToVersionToSignedItems
       .checked(path)
       .flatMap(_.head
-        .maybeSignedItems
+        .maybeSignedItem
         .toChecked(VersionedItemDeletedProblem(path)))
 
   /** Returns the VersionedItem to a VersionedItemId. */
-  def idTo[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A]): Checked[A] =
+  def idTo[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A])
+  : Checked[A] =
     idToSigned[A](id).map(_.value)
 
-  /** Returns the VersionedItem to a VersionedItemId. */
-  def idToSigned[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A]): Checked[Signed[A]] =
+  /** Returns the VersionedItem for a VersionedItemId. */
+  def idToSigned[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A])
+  : Checked[Signed[A]] =
+    anyIdToSigned(id).map(signed => signed.copy(signed.value.cast[A]))
+
+  /** Returns the VersionedItem for a VersionedItemId. */
+  def anyIdToSigned(id: VersionedItemId_): Checked[Signed[VersionedItem]] =
     for {
       versionToSignedItem <- pathToVersionToSignedItems.checked(id.path)
       itemOption <- versionToSignedItem
@@ -262,7 +268,7 @@ final case class Repo private(
           } yield fb
         ): Checked[Option[Signed[VersionedItem]]]
       signedItem <- itemOption.toChecked(VersionedItemDeletedProblem(id.path))
-    } yield signedItem.copy(signedItem.value.cast[A])
+    } yield signedItem
 
   lazy val estimatedEventCount: Int = {
     var sum = versions.size  // VersionAdded
@@ -282,7 +288,7 @@ final case class Repo private(
         .view
         .flatMap { case (path, entries) =>
           entries.map(entry =>
-            entry.versionId -> entry.maybeSignedItems.fold[DeletedOrUpdated](Left(path))(Right.apply))
+            entry.versionId -> entry.maybeSignedItem.fold[DeletedOrUpdated](Left(path))(Right.apply))
         }
         .groupBy(_._1)
         .view
@@ -371,7 +377,7 @@ final case class Repo private(
       .keys.toSeq.sorted
       .map(path =>
         pathToVersionToSignedItems(path)
-          .map(entry => entry.maybeSignedItems.fold(s"${entry.versionId} deleted")(_ => s"${entry.versionId} added"))
+          .map(entry => entry.maybeSignedItem.fold(s"${entry.versionId} deleted")(_ => s"${entry.versionId} added"))
       ) + ")"
 }
 
@@ -411,13 +417,13 @@ object Repo
     }
   }
 
-  final case class Entry private(versionId: VersionId, maybeSignedItems: Option[Signed[VersionedItem]])
+  final case class Entry private(versionId: VersionId, maybeSignedItem: Option[Signed[VersionedItem]])
 
   /** None: not known at or before this VersionId; Some(None): deleted at or before this VersionId. */
   private def findInHistory(entries: List[Entry], isKnownVersion: VersionId => Boolean): Option[Option[Signed[VersionedItem]]] =
     entries
       .view
       .dropWhile(e => !isKnownVersion(e.versionId))
-      .map(_.maybeSignedItems)
+      .map(_.maybeSignedItem)
       .headOption
 }

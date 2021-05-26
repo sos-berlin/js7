@@ -4,7 +4,7 @@ import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
-import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec}
+import js7.agent.data.AgentState.{inventoryItemJsonCodec, inventoryItemKeyJsonCodec, signableItemJsonCodec}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
@@ -112,6 +112,12 @@ object AgentCommand extends CommonCommand.Companion
   object CoupleController {
     final case class Response(orderIds: Set[OrderId])
     extends AgentCommand.Response with Big
+  }
+
+  final case class Reset(agentRunId: AgentRunId)
+  extends AgentCommand
+  object Reset {
+    type Response = AgentCommand.Response
   }
 
   type TakeSnapshot = TakeSnapshot.type

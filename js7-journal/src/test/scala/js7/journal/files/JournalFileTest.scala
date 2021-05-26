@@ -1,9 +1,9 @@
 package js7.journal.files
 
 import java.nio.file.Files.{createTempFile, delete, size}
-import java.nio.file.{Path, Paths}
+import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax._
-import js7.journal.files.JournalFile.garbagePattern
+import js7.journal.files.JournalFile.{anyJournalFilePattern, garbagePattern}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -43,15 +43,27 @@ final class JournalFileTest extends AnyFreeSpec
     assert(matcher.checkedEventId(Paths.get("--0.journal")).isLeft)
   }
 
-  "garbagePattern" in {
-    assert(!garbagePattern(Paths.get("A")).matcher("A--0.journal").matches)
-    assert(garbagePattern(Paths.get("A")).matcher("A--0.journal.tmp").matches)
-    //assert(garbagePattern(Paths.get("A")).matcher("A--0.journal~").matches)
-    //assert(garbagePattern(Paths.get("A")).matcher("A--0.journal~XX").matches)
+  "anyJournalFilePattern" in {
+    val pattern = anyJournalFilePattern(Paths.get("NAME"))
+    assert(pattern.matcher("NAME-journal").matches)
+    assert(pattern.matcher("NAME--0.journal").matches)
+    assert(pattern.matcher("NAME--1000.journal").matches)
+    assert(pattern.matcher("NAME--1000.journal~").matches)
+    assert(pattern.matcher("NAME--1000.journal~GARBAGE").matches)
+    assert(pattern.matcher("NAME--1000.journal.tmp").matches)
+    assert(!pattern.matcher("NAME--1000.journal.gz").matches)
+  }
 
-    assert(!garbagePattern(Paths.get("A")).matcher("A--123456789.journal").matches)
-    assert(garbagePattern(Paths.get("A")).matcher("A--123456789.journal.tmp").matches)
-    //assert(garbagePattern(Paths.get("A")).matcher("A--123456789.journal~").matches)
-    //assert(garbagePattern(Paths.get("A")).matcher("A--123456789.journal~XX").matches)
+  "garbagePattern" in {
+    val pattern = garbagePattern(Paths.get("NAME"))
+    assert(!pattern.matcher("NAME--0.journal").matches)
+    assert(pattern.matcher("NAME--0.journal.tmp").matches)
+    //assert(pattern.matcher("NAME--0.journal~").matches)
+    //assert(pattern.matcher("NAME--0.journal~XX").matches)
+
+    assert(!pattern.matcher("NAME--123456789.journal").matches)
+    assert(pattern.matcher("NAME--123456789.journal.tmp").matches)
+    //assert(pattern.matcher("NAME--123456789.journal~").matches)
+    //assert(pattern.matcher("NAME--123456789.journal~XX").matches)
   }
 }

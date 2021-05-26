@@ -45,7 +45,7 @@ final class JClusterStateTest extends AnyFreeSpec
     JClusterStateTester.testPreparedToBeCoupled(JClusterState(clusterState).asInstanceOf[JClusterState.PreparedToBeCoupled])
   }
 
-  "Decoupled" in {
+  "Reset" in {
     val clusterState = ClusterState.PassiveLost(setting)
     JClusterStateTester.testDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.Decoupled])
     JClusterStateTester.testCoupledOrDecoupled(JClusterState(clusterState).asInstanceOf[JClusterState.CoupledOrDecoupled])

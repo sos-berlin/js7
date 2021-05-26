@@ -1,13 +1,16 @@
 package js7.tests.agent
 
+import java.nio.file.Files.exists
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.touchFile
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
+import js7.data.agent.AgentRefStateEvent.AgentCreated
 import js7.data.controller.ControllerCommand.ResetAgent
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
@@ -48,6 +51,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    agent.terminated.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
@@ -64,17 +68,13 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Some(Outcome.Disrupted(AgentResetProblem(agentPath))),
         lockPaths = Seq(lock.path))))
 
-    semaphore.flatMap(_.release).runSyncUnsafe()
-    sleep(300.ms)
+      resetSemaphore()  // Semaphore may or may not be required
   }
 
   "Run another order" in {
     val orderId = OrderId("RESET-AGENT-2")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttachable](_.key == orderId)
-    sleep(2.s)
-    agent.terminate() await 99.s
-    deleteDirectoryContentRecursively(directoryProvider.agentToTree(agentPath).stateDir)
 
     semaphore.flatMap(_.release).runSyncUnsafe()
     directoryProvider.startAgent(agentPath) await 99.s
@@ -125,8 +125,28 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    semaphore.flatMap(_.release).runSyncUnsafe()
-    sleep(300.ms)
+    resetSemaphore()
+  }
+
+  "Simulate journal deletion at restart" in {
+    controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    agent.terminated.await(99.s)
+
+    // Create some file to let it look like the Agent could not delete the journal
+    val stateDir = directoryProvider.agentToTree(agentPath).stateDir
+    val markerFile = stateDir / "agent-DELETE!"
+    touchFile(markerFile)
+    val journalFile = stateDir / "agent--0.journal"
+    val garbageFile = stateDir / "agent--0.journal~GARBAGE"
+    journalFile := "Would crash but will be deleted"
+    touchFile(garbageFile)
+
+    val eventId = controller.eventWatch.lastAddedEventId
+    directoryProvider.startAgent(agentPath) await 99.s
+    controller.eventWatch.await[AgentCreated](after = eventId)
+
+    // The restarted Agent has deleted the files (due to markerFile)
+    assert(!exists(markerFile) && !exists(garbageFile))
   }
 }
 
@@ -159,6 +179,9 @@ object ResetAgentTest
         Workflow.empty)))
 
   private val semaphore = Semaphore[Task](0).memoize
+
+  private def resetSemaphore(): Unit =
+    semaphore.flatMap(_.count).flatMap(n => semaphore.flatMap(_.releaseN(n))).runSyncUnsafe()
 
   final class SemaphoreJob extends InternalJob
   {

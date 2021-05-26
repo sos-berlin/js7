@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState, _}
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset}
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted}
 import js7.data.event.EventId
 import js7.data.item.SimpleItemState
 
@@ -48,15 +48,17 @@ extends SimpleItemState
           Right(copy(
             eventId = eventId_))
 
-      case AgentReset =>
+      case AgentResetStarted =>
         Right(copy(
-          couplingState = Decoupled,
+          couplingState = Resetting,
           agentRunId = None,
           eventId = EventId.BeforeFirst,
           timezone = None))
-    }
 
-    //def isReset = couplingState.isInstanceOf[Reset]
+      case AgentReset =>
+        Right(copy(
+          couplingState = Reset))
+    }
 }
 
 object AgentRefState
@@ -64,19 +66,19 @@ object AgentRefState
   implicit val jsonCodec = deriveCodec[AgentRefState]
 
   def apply(agentRef: AgentRef) =
-    new AgentRefState(agentRef, None, None, Decoupled, EventId.BeforeFirst)
+    new AgentRefState(agentRef, None, None, Reset, EventId.BeforeFirst)
 
   sealed trait CouplingState
+  case object Reset extends CouplingState
   case object Coupled extends CouplingState
   case class CouplingFailed(problem: Problem) extends CouplingState
-  case object Decoupled extends CouplingState
-  //@deprecated final case class Reset(lastEventId: EventId) extends CouplingState
+  case object Resetting extends CouplingState
 
   object CouplingState {
     implicit val jsonCodec: TypedJsonCodec[CouplingState] = TypedJsonCodec(
+      Subtype(Reset),
       Subtype(Coupled),
       Subtype(deriveCodec[CouplingFailed]),
-      Subtype(Decoupled))
-      //Subtype(deriveCodec[Reset]))
+      Subtype(Resetting))
   }
 }

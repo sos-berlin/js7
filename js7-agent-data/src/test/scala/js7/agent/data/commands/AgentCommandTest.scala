@@ -137,6 +137,16 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
+  "Reset" in {
+    check(
+      AgentCommand.Reset(
+        AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555")))),
+      json"""{
+        "TYPE": "Reset",
+        "agentRunId": "ERERESIiMzNERFVVVVVVVQ"
+      }""")
+  }
+
   "CoupleController.Response" in {
     testJson[AgentCommand.Response](
       AgentCommand.CoupleController.Response(Set(OrderId("ORDER"))),
@@ -168,7 +178,8 @@ final class AgentCommandTest extends AnyFreeSpec
       check(AgentCommand.ShutDown(restart = true),
         json"""{
           "TYPE": "ShutDown",
-          "restart": true
+          "restart": true,
+          "suppressSnapshot": false
         }""")
     }
   }

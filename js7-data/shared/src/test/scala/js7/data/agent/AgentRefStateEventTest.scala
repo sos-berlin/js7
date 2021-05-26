@@ -3,7 +3,7 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset}
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentResetStarted}
 import js7.data.event.{JournalId, KeyedEvent}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -51,11 +51,11 @@ final class AgentRefStateEventTest extends AnyFreeSpec
         }""")
     }
 
-    "AgentReset" in {
+    "AgentResetStarted" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentPath("AGENT") <-: AgentReset,json"""
+        AgentPath("AGENT") <-: AgentResetStarted,json"""
         {
-          "TYPE":  "AgentReset",
+          "TYPE":  "AgentResetStarted",
           "Key": "AGENT"
         }""")
     }

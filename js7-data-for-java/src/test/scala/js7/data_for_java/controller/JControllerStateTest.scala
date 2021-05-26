@@ -91,7 +91,7 @@ private object JControllerStateTest
           ClusterTiming(10.s, 20.s)))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Map(AgentPath("AGENT") ->
-      AgentRefState(AgentRef(AgentPath("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Decoupled, EventId(7))),
+      AgentRefState(AgentRef(AgentPath("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Reset, EventId(7))),
     Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty

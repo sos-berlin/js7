@@ -49,7 +49,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
   }
 
   // Test does not work reliable.
-  // But ControllersEventRouteTest has an equivalent test.
+  // But EventRouteTest has an equivalent test.
   if (false) "CoupleController command fails with UnknownEventIdProblem when Agent misses old events" in {
     directoryProvider.runController() { controller =>
       val firstJournalFile = agentStateDir / "agent--0.journal"

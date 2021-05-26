@@ -43,7 +43,8 @@ import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotRemoveChildOrderProblem, CannotRemoveWatchingOrderProblem, UnknownOrderProblem}
-import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady}
+import js7.data.agent.AgentRefState.{Reset, Resetting}
+import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{toLiveOrderEventHandler, toLiveOrderEventSource}
@@ -58,7 +59,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detach
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, UnsignedSimpleItem, VersionedEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemId_}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -460,70 +461,74 @@ with MainJournalingActor[ControllerState, Event]
       }
 
     case AgentDriver.Output.EventsFromAgent(agentRunId, stampedAgentEvents, committedPromise) =>
-      val agentEntry = agentRegister(sender())
-      import agentEntry.agentPath
+      for (agentEntry <- agentRegister.get(sender())) {
+        import agentEntry.agentPath
+        for (agentRefState <- persistence.currentState.pathToAgentRefState.get(agentPath)) {
+          if (agentRefState.couplingState != Resetting) {
+            if (!agentRefState.agentRunId.forall(_ == agentRunId)) {
+              logger.debug(s"AgentDriver.Output.EventsFromAgent: Unknown agentRunId=$agentRunId")
+            } else {
+              var timestampedEvents: Seq[Timestamped[Event]] =
+                stampedAgentEvents.view.flatMap {
+                  case Stamped(_, timestampMillis, keyedEvent) =>
+                    keyedEvent match {
+                      case KeyedEvent(orderId: OrderId, _: OrderCancelMarked) =>
+                        Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestampMillis)) :: Nil
 
-      if (!_controllerState.pathToAgentRefState.get(agentPath).exists(_.agentRunId.forall(_ == agentRunId))) {
-        logger.debug(s"AgentDriver.Output.EventsFromAgent: Unknown agentRunId=$agentRunId")
-      } else {
-        var timestampedEvents: Seq[Timestamped[Event]] =
-          stampedAgentEvents.view.flatMap {
-            case Stamped(_, timestampMillis, keyedEvent) =>
-              keyedEvent match {
-                case KeyedEvent(orderId: OrderId, _: OrderCancelMarked) =>
-                  Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestampMillis)) :: Nil
+                      case KeyedEvent(orderId: OrderId, _: OrderSuspendMarked) =>
+                        Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestampMillis)) :: Nil
 
-                case KeyedEvent(orderId: OrderId, _: OrderSuspendMarked) =>
-                  Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestampMillis)) :: Nil
+                      case KeyedEvent(_, _: OrderResumeMarked) =>
+                        Nil /*Agent does not emit OrderResumeMarked*/
 
-                case KeyedEvent(_, _: OrderResumeMarked) =>
-                  Nil /*Agent does not emit OrderResumeMarked*/
+                      case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+                        val ownEvent = event match {
+                          case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                          case _ => event
+                        }
+                        Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
 
-                case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                  val ownEvent = event match {
-                    case _: OrderEvent.OrderAttachedToAgent => OrderAttached(agentPath) // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                    case _ => event
-                  }
-                  Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
+                      case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _)) =>
+                        Timestamped(agentEntry.agentPath <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
 
-                case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _)) =>
-                  Timestamped(agentEntry.agentPath <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
+                      case KeyedEvent(_: NoKey, ItemAttachedToAgent(item)) =>
+                        // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+                        Timestamped(NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
 
-                case KeyedEvent(_: NoKey, ItemAttachedToAgent(item)) =>
-                  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-                  Timestamped(NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
+                      case KeyedEvent(_: NoKey, _: ItemDetached) =>
+                        Timestamped(keyedEvent) :: Nil
 
-                case KeyedEvent(_: NoKey, _: ItemDetached) =>
-                  Timestamped(keyedEvent) :: Nil
+                      case KeyedEvent(_: OrderWatchPath, _: OrderWatchEvent) =>
+                        Timestamped(keyedEvent) :: Nil
 
-                case KeyedEvent(_: OrderWatchPath, _: OrderWatchEvent) =>
-                  Timestamped(keyedEvent) :: Nil
+                      case _ =>
+                        logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
+                        Nil
+                    }
+                }.toVector
 
-                case _ =>
-                  logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
-                  Nil
+              if (timestampedEvents.isEmpty) {
+                // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
+                // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
+                // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
+                committedPromise.success(None)
+              } else {
+                val agentEventId = stampedAgentEvents.last.eventId
+                timestampedEvents :+= Timestamped(agentPath <-: AgentEventsObserved(agentEventId))
+
+                val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
+                orderQueue.enqueue(subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
+                timestampedEvents ++= subseqEvents.map(Timestamped(_))
+
+                committedPromise.completeWith(
+                  persistTransactionTimestamped(timestampedEvents, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+                    (stampedEvents, updatedState) =>
+                      handleEvents(stampedEvents, updatedState)
+                      Some(agentEventId)
+                  })
               }
-          }.toVector
-
-        if (timestampedEvents.isEmpty) {
-          // timestampedEvents may be empty if it contains only discarded (Agent-only) events.
-          // Agent's last observed EventId is not persisted then, and we do not write an AgentEventsObserved.
-          // For tests, this makes the journal predictable after OrderFinished (because no AgentEventsObserved may follow).
-          committedPromise.success(None)
-        } else {
-          val agentEventId = stampedAgentEvents.last.eventId
-          timestampedEvents :+= Timestamped(agentPath <-: AgentEventsObserved(agentEventId))
-
-          val subseqEvents = subsequentEvents(timestampedEvents.map(_.keyedEvent))
-          orderQueue.enqueue(subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
-          timestampedEvents ++= subseqEvents.map(Timestamped(_))
-
-          committedPromise.completeWith(
-            persistTransactionTimestamped(timestampedEvents, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
-              (stampedEvents, updatedState) =>
-                handleEvents(stampedEvents, updatedState)
-                Some(agentEventId)
-            })
+            }
+          }
         }
       }
 
@@ -551,8 +556,9 @@ with MainJournalingActor[ControllerState, Event]
       shutdown.onStillShuttingDown()
 
     case Terminated(actor) if agentRegister contains actor =>
-      var entry = agentRegister(actor)
-      entry.actorTerminated = true
+      var agentEntry = agentRegister(actor)
+      val agentPath = agentEntry.agentPath
+      agentEntry.actorTerminated = true
       if (switchover.isDefined && journalTerminated && agentRegister.runningActorCount == 0) {
         val delay = shutdown.delayUntil.timeLeft
         if (delay.isPositive) {
@@ -562,19 +568,15 @@ with MainJournalingActor[ControllerState, Event]
         context.stop(self)
       } else if (shuttingDown) {
         shutdown.continue()
-      } else if (entry.isResetting) {
-        val agentPath = entry.agentPath
-        for (agentRefState <- _controllerState.pathToAgentRefState.get(agentPath)) {
-          agentRegister -= actor
-          entry.isResetting = false
-          entry = registerAgent(agentRefState.agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
-          entry.actor ! AgentDriver.Input.StartFetchingEvents
-          _controllerState.idToOrder.valuesIterator
-            .filter(_.attachedState.contains(Order.Attaching(agentPath)))
-            .flatMap(_.checkedState[Order.IsFreshOrReady].toOption)
-            .foreach(tryAttachOrderToAgent)
+      } else
+        for (agentRefState <- persistence.currentState.pathToAgentRefState.checked(agentPath)) {
+          if (agentRefState.couplingState == Resetting || agentRefState.couplingState == Reset) {
+            agentRegister -= actor
+            agentEntry = registerAgent(agentRefState.agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+            agentEntry.actor ! AgentDriver.Input.StartFetchingEvents
+            reattachToAgent(agentPath)
+          }
         }
-      }
   }
 
   private def simpleItemsToEvents(simple: VerifiedUpdateItems.Simple): Checked[View[InventoryItemEvent]] =
@@ -636,7 +638,7 @@ with MainJournalingActor[ControllerState, Event]
                 existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
         })
 
-  private def simpleItemIdToDeletedEvent(itemKey: InventoryItemKey): Checked[Option[InventoryItemEvent]] =
+  private def simpleItemKeyToDeletedEvent(itemKey: InventoryItemKey): Checked[Option[InventoryItemEvent]] =
     itemKey match {
       case id: OrderWatchPath =>
         Right(
@@ -802,23 +804,33 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister.checked(agentPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(agentEntry) =>
-            if (agentEntry.isResetting)
-              Future.successful(Left(Problem.pure("ResetAgent in progress")))
-            else {
-              val events = new ControllerStateExecutor(persistence.currentState).resetAgent(agentPath)
-              persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
-                // AgentReset command may return with error despite it has reset the orders
-                agentEntry.isResetting = true
-                val future = agentEntry
-                  .actor.?(AgentDriver.Input.Reset)(controllerConfiguration.akkaAskTimeout)
-                  .mapTo[Try[Completed]]
-                  .map { tried =>
-                    for (t <- tried.failed) logger.error("ResetAgent: " + t.toStringWithCauses, t)
-                    Checked.fromTry(tried)
-                  }
-                handleEvents(stampedEvents, updatedState)
-                future.map(_.map(_ => ControllerCommand.Response.Accepted))
-              }.flatten
+            persistence.currentState.pathToAgentRefState.checked(agentEntry.agentPath) match {
+              case Left(problem) => Future.successful(Left(problem))
+              case Right(agentRefState) =>
+                if (agentRefState.couplingState == Resetting)
+                  Future.successful(Left(Problem.pure("ResetAgent in progress")))
+                else {
+                  val events = new ControllerStateExecutor(persistence.currentState).resetAgent(agentPath)
+                  persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
+                    // ResetAgent command may return with error despite it has reset the orders
+                    agentEntry.isResetting = true
+                    val resettingAgent = agentEntry
+                      .actor.?(AgentDriver.Input.Reset)(controllerConfiguration.akkaAskTimeout)
+                      .mapTo[Try[Boolean]]
+                      .map { tried =>
+                        for (t <- tried.failed) logger.error("ResetAgent: " + t.toStringWithCauses, t)
+                        Checked.fromTry(tried)
+                      }
+                    handleEvents(stampedEvents, updatedState)
+                    Task.fromFuture(resettingAgent)
+                      .flatMapT {
+                        case true => persistence.persistKeyedEvent(agentPath <-: AgentReset)
+                        case false => Task.pure(Checked.unit)
+                      }
+                     .flatMapT(_ => Task.pure(Right(ControllerCommand.Response.Accepted)))
+                    .runToFuture
+                  }.flatten
+                }
             }
         }
 
@@ -886,6 +898,40 @@ with MainJournalingActor[ControllerState, Event]
     agentRegister.insert(agent.path -> entry)
     entry
   }
+
+  private def reattachToAgent(agentPath: AgentPath): Unit =
+    for (actor <- agentRegister.get(agentPath).map(_.actor)) {
+      for ((itemKey, agentToAttachedState) <- _controllerState.itemToAgentToAttachedState) {
+        agentToAttachedState.get(agentPath) foreach {
+          case Attachable =>
+            itemKey match {
+              case itemKey: SignableSimpleItemPath =>
+                for (signedItem <- _controllerState.idToSignedSimpleItem.get(itemKey)) {
+                  actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+                }
+
+              case itemId: VersionedItemId_ =>
+                for (signedItem <- _controllerState.repo.anyIdToSigned(itemId))
+                  actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+
+              case path: SimpleItemPath =>
+                for (item <- _controllerState.pathToSimpleItem.get(path)) {
+                  actor ! AgentDriver.Input.AttachUnsignedItem(item)
+                }
+            }
+
+          case Detachable =>
+            actor ! AgentDriver.Input.DetachItem(itemKey)
+
+          case _ =>
+        }
+      }
+
+      _controllerState.idToOrder.valuesIterator
+        .filter(_.attachedState.contains(Order.Attaching(agentPath)))
+        .flatMap(_.checkedState[Order.IsFreshOrReady].toOption)
+        .foreach(tryAttachOrderToAgent)
+    }
 
   private def addOrder(order: FreshOrder): Future[Checked[Boolean]] =
     suppressOrderIdCheckFor match {
@@ -987,6 +1033,9 @@ with MainJournalingActor[ControllerState, Event]
         val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
         entry.actor ! AgentDriver.Input.StartFetchingEvents
 
+        // TODO Not required in a future implementation, when Agents must be defined when referenced
+        reattachToAgent(agentRef.path)
+
       case SimpleItemChanged(agentRef: AgentRef) =>
         agentRegister.update(agentRef)
         agentRegister(agentRef.path).reconnect()
@@ -1019,21 +1068,25 @@ with MainJournalingActor[ControllerState, Event]
           }
         }
 
-      case itemId: SignableSimpleItemPath =>
-        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemId)) {
+      case path: SignableSimpleItemPath =>
+        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(path)) {
           for ((agentPath, attachedState) <- agentToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-            for (agentEntry <- agentRegister.get(agentPath)) {
-              attachedState match {
-                case Attachable =>
-                  for (signedItem <- _controllerState.idToSignedSimpleItem.get(itemId)) {
-                    agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+            for (entry <- agentRegister.get(agentPath)) {
+              if (!entry.isResetting) {
+                for (agentEntry <- agentRegister.get(agentPath)) {
+                  attachedState match {
+                    case Attachable =>
+                      for (signedItem <- _controllerState.idToSignedSimpleItem.get(path)) {
+                        agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+                      }
+
+                    case Detachable =>
+                      agentEntry.actor ! AgentDriver.Input.DetachItem(path)
+
+                    case _ =>
                   }
-
-                case Detachable =>
-                  agentEntry.actor ! AgentDriver.Input.DetachItem(itemId)
-
-                case _ =>
+                }
               }
             }
           }

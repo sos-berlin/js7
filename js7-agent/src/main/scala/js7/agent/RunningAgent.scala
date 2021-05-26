@@ -29,6 +29,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits._
 import js7.core.command.CommandMeta
+import js7.journal.files.JournalFiles.JournalMetaOps
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -146,6 +147,8 @@ object RunningAgent {
     // Run under scheduler from start (and let debugger show Controller's thread names)
     Future {
       val agentConfiguration = injector.instance[AgentConfiguration]
+      agentConfiguration.journalMeta.deleteJournalIfMarked()
+        .orThrow
       if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
       val actorSystem = injector.instance[ActorSystem]
