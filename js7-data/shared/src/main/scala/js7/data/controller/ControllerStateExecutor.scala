@@ -36,11 +36,7 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
       .filter(_._2.contains(agentPath))
       .map(_._1)
       .map(itemKey => NoKey <-: ItemDetached(itemKey, agentPath))
-    (agentResetStarted ++
-      ordersDetached ++
-      itemsDetached ++
-      controllerState.repo.resetAgent(agentPath)
-    ).toVector
+    (agentResetStarted ++ ordersDetached ++ itemsDetached).toVector
   }
 
   private def resetAgentForOrder(order: Order[Order.State], agentPath: AgentPath)

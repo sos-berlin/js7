@@ -10,9 +10,9 @@ import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
-import js7.data.controller.ControllerState.ItemAttachedStateSnapshot
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.item.BasicItemEvent.ItemAttachable
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.VersionedEvent.VersionAdded
@@ -126,7 +126,7 @@ final class ControllerStateTest extends AsyncFreeSpec
               HasOrder(OrderId("ORDER"), Some(VanishedAck))),
             SignedItemAdded(signedJobResource),
             VersionAdded(VersionId("1.0")),
-            ItemAttachedStateSnapshot(jobResource.path, Map(AgentPath("AGENT") -> Attachable))
+            ItemAttachable(jobResource.path, AgentPath("AGENT"))
           ) ++
           controllerState.idToOrder.values)
   }

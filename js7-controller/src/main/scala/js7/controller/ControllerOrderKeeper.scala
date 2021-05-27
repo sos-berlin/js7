@@ -59,7 +59,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detach
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemId_}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -434,7 +434,7 @@ with MainJournalingActor[ControllerState, Event]
     case Command.VerifiedUpdateItemsCmd(verifiedUpdateItems: VerifiedUpdateItems) =>
       import verifiedUpdateItems.{maybeVersioned, simple}
       val t = now
-      val checkedEvents: Checked[View[InventoryItemEvent]] = simpleItemsToEvents(simple)
+      val checkedSimpleItemEvents = simpleItemsToEvents(simple)
       val whenPersisted = maybeVersioned
         .map(versionedItemsToEvent)
         .getOrElse(Success(Right(Nil)))
@@ -442,10 +442,10 @@ with MainJournalingActor[ControllerState, Event]
           case Failure(t) => Future.failed(t)
           case Success(Left(problem)) => Future.successful(Left(problem))
           case Success(Right(versionedEvents)) =>
-            checkedEvents match {
+            checkedSimpleItemEvents match {
               case Left(problem) => Future.successful(Left(problem))
               case Right(simpleItemEvents) =>
-                val keyedEvents = simpleItemEvents.view.map(NoKey <-: _) ++ versionedEvents.map(NoKey <-: _)
+                val keyedEvents = simpleItemEvents.view.map(NoKey <-: _) ++ versionedEvents.view.map(NoKey <-: _)
                 persistItemAndVersionedEvents(keyedEvents.toVector)
                   .map(_.map { o =>
                     if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
@@ -587,7 +587,7 @@ with MainJournalingActor[ControllerState, Event]
           .traverse(unsignedSimpleItemToEvent)
           .flatMap(unsignedEvents =>
             simple.delete
-              .flatTraverse(id => simpleItemKeyToDeletedEvent(id).map(_.toSeq))
+              .flatTraverse(id => simpleItemKeyToDeletedEvent(id).map(_.toList))
               .map(_.view ++ signedEvents ++ unsignedEvents)))
 
   private def verifiedItemToEvents(verified: SignedItemVerifier.Verified[SignableSimpleItem])
@@ -638,7 +638,7 @@ with MainJournalingActor[ControllerState, Event]
                 existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
         })
 
-  private def simpleItemKeyToDeletedEvent(itemKey: InventoryItemKey): Checked[Option[InventoryItemEvent]] =
+  private def simpleItemKeyToDeletedEvent(itemKey: InventoryItemKey): Checked[Option[BasicItemEvent]] =
     itemKey match {
       case id: OrderWatchPath =>
         Right(

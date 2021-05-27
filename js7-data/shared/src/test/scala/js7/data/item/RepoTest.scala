@@ -11,7 +11,6 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
 import js7.data.agent.AgentPath
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDetachable, ItemDetached}
 import js7.data.item.Repo.testOnly.{Changed, Deleted, OpRepo}
 import js7.data.item.RepoTest._
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
@@ -25,7 +24,6 @@ final class RepoTest extends AnyFreeSpec
   import itemSigner.sign
 
   private lazy val Right(testRepo: Repo) = emptyRepo.applyEvents(versionedEvents)
-    .map(repo => basicItemEvents.foldLeft(repo)((repo, event) => repo.applyBasicItemEvent(event).orThrow))
 
   "empty" in {
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
@@ -293,27 +291,7 @@ object RepoTest
     VersionAdded(V2), VersionedItemChanged(sign(a2)), VersionedItemAdded(sign(bx2)), VersionedItemAdded(sign(by2)),
     VersionAdded(V3), VersionedItemChanged(sign(a3)), VersionedItemDeleted(bx2.path))
 
-  private val basicItemEvents = Seq(
-    ItemAttachable(a1.id, aAgentPath),
-
-    ItemAttachable(a2.id, aAgentPath),
-    ItemAttachable(a2.id, bAgentPath),
-    ItemAttached(a2.id, None, bAgentPath),
-
-    ItemAttached(b1.id, None, bAgentPath),
-    ItemDetachable(b1.id, bAgentPath),
-
-    ItemAttached(a3.id, None, bAgentPath),
-    ItemDetachable(a3.id, bAgentPath),
-    ItemDetached(a3.id, bAgentPath))
-
-  private def snapshotBasicEvents = Seq(
-    ItemAttachable(a1.id, aAgentPath),
-    ItemAttachable(a2.id, aAgentPath),
-    ItemAttached(a2.id, None, bAgentPath),
-    ItemDetachable(b1.id, bAgentPath))
-
-  private val snapshotEvents = versionedEvents ++ snapshotBasicEvents
+  private val snapshotEvents = versionedEvents
 
   private def v(version: String) = VersionId(version)
 }

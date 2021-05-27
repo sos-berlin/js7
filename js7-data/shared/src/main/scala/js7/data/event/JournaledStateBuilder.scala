@@ -71,15 +71,14 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
           _eventId = eventId
 
         case _ =>
-          _snapshotCount += 1
-          onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNoApplicable)
+          onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNotApplicable)
       }
     catch { case NonFatal(t) =>
       throw new RuntimeException(s"Decoding JournalHeader or snapshot failed in record #$recordCount for $S", t)
     }
   }
 
-  protected def onSnapshotObjectNoApplicable(obj: Any): Unit =
+  protected def onSnapshotObjectNotApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
 
   def onAllSnapshotsAdded(): Unit = {

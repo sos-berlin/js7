@@ -12,7 +12,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerState.ItemAttachedStateSnapshot
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -21,7 +20,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarke
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
@@ -29,7 +28,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.workflow.Workflow
 import monix.reactive.Observable
-import scala.collection.MapView
+import scala.collection.{MapView, View}
 
 /**
   * @author Joacim Zschimmer
@@ -70,7 +69,13 @@ extends JournaledState[ControllerState]
     allOrderWatchesState.toSnapshot/*TODO Separate Item from its state?*/ ++
     Observable.fromIterable(idToSignedSimpleItem.values).map(SignedItemAdded(_)) ++
     Observable.fromIterable(repo.toEvents) ++
-    Observable.fromIterable(itemToAgentToAttachedState).map(o => ItemAttachedStateSnapshot(o._1, o._2)) ++
+    Observable.fromIterable(itemToAgentToAttachedState
+      .to(View)
+      .flatMap { case (key, agentToAttached) =>
+        agentToAttached.map { case (agentPath, attachedState) =>
+          ItemAttachedStateChanged(key, agentPath, attachedState)
+        }
+      }) ++
     Observable.fromIterable(idToOrder.values)
 
   def withEventId(eventId: EventId) =
@@ -163,11 +168,8 @@ extends JournaledState[ControllerState]
                     .map(o => copy(
                       allOrderWatchesState = o))
 
-                case _: VersionedItemId_ =>
-                  for (repo <- repo.applyBasicItemEvent(event)) yield
-                    copy(repo = repo)
 
-                case id: SignableSimpleItemPath =>
+                case id: SignableItemKey =>
                   // TODO Code is similar to ControllerStateBuidler
                   attachedState match {
                     case attachedState: NotDetached =>
@@ -322,23 +324,14 @@ extends JournaledState[ControllerState]
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
-    itemKey match {
-      case _: UnsignedSimpleItemPath =>
-        Detached
-
-      case path: SignableSimpleItemPath =>
-        itemToAgentToAttachedState
-          .get(path)
-          .flatMap(_.get(agentPath))
-          .map {
-            case a @ (Attachable | Attached(`itemRevision`) | Detachable) => a
-            case Attached(_) => Detached
-          }
-          .getOrElse(Detached)
-
-      case id: VersionedItemId_ =>
-        repo.attachedState(id, agentPath)
-    }
+    itemToAgentToAttachedState
+      .get(itemKey)
+      .flatMap(_.get(agentPath))
+      .map {
+        case a @ (Attachable | Attached(`itemRevision`) | Detachable) => a
+        case Attached(_) => Detached
+      }
+      .getOrElse(Detached)
 
   lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
     new MapView[SimpleItemPath, SimpleItem] {
@@ -405,10 +398,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   protected val InventoryItems = Seq[InventoryItem.Companion_](
     AgentRef, Lock, FileWatch, JobResource, Workflow)
 
-  private[controller] final case class ItemAttachedStateSnapshot(
-    key: InventoryItemKey,
-    agentToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached])
-
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec("ControllerState.Snapshot",
       Subtype[JournalHeader],
@@ -420,7 +409,6 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[LockState],
       Subtype[VersionedEvent],  // These events describe complete objects
       Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
-      Subtype(deriveCodec[ItemAttachedStateSnapshot]),
       Subtype[Order[Order.State]],
       Subtype[OrderWatchState.Snapshot])
 

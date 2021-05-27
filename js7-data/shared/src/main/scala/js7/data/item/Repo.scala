@@ -1,7 +1,6 @@
 package js7.data.item
 
 import cats.instances.either._
-import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.problem.Checked._
@@ -12,11 +11,6 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
-import js7.data.agent.AgentPath
-import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{KeyedEvent, NoKeyEvent}
-import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDetached}
-import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.Repo.Entry
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
 import org.jetbrains.annotations.TestOnly
@@ -31,7 +25,6 @@ final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
   pathToVersionToSignedItems: Map[ItemPath, List[Entry]],
-  idToAgentPathToAttachedState: Map[VersionedItemId_, Map[AgentPath, ItemAttachedState.NotDetached]],
   signatureVerifier: Option[SignatureVerifier])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
@@ -40,8 +33,7 @@ final case class Repo private(
   override def equals(o: Any) = o match {
     case o: Repo =>
       versions == o.versions &&
-        pathToVersionToSignedItems == o.pathToVersionToSignedItems &&
-        idToAgentPathToAttachedState == o.idToAgentPathToAttachedState
+        pathToVersionToSignedItems == o.pathToVersionToSignedItems
     case _ => false
   }
 
@@ -64,7 +56,7 @@ final case class Repo private(
     }
 
   /** Returns the difference to the repo as events. */
-  def itemsToEvents(versionId: VersionId, changed: Iterable[Signed[VersionedItem]], deleted: Iterable[ItemPath] = Nil)
+  def itemsToEvents(versionId: VersionId, changed: Seq[Signed[VersionedItem]], deleted: Iterable[ItemPath] = Nil)
   : Checked[Seq[VersionedEvent]] =
     checkItemVersions(versionId, changed)
       .flatMap { changed =>
@@ -103,8 +95,9 @@ final case class Repo private(
       .sortBy(_.path)
   }
 
-  private def checkItemVersions(versionId: VersionId, signedItems: Iterable[Signed[VersionedItem]]): Checked[Vector[Signed[VersionedItem]]] =
-    signedItems.toVector.traverse(o =>
+  private def checkItemVersions(versionId: VersionId, signedItems: Seq[Signed[VersionedItem]])
+  : Checked[Seq[Signed[VersionedItem]]] =
+    signedItems.traverse(o =>
       o.value.key.versionId match {
         case `versionId` => Right(o)
         case _ => Left(ItemVersionDoesNotMatchProblem(versionId, o.value.key))
@@ -277,10 +270,7 @@ final case class Repo private(
   }
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
-  def toEvents: View[NoKeyEvent] =
-    toVersionedEvents ++ toBasicItemEvents
-
-  private def toVersionedEvents: View[VersionedEvent] = {
+  def toEvents: View[VersionedEvent] = {
     type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[VersionedItem/*added/changed*/]]
 
     val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
@@ -319,12 +309,6 @@ final case class Repo private(
       .flatten
   }
 
-  private def toBasicItemEvents: View[BasicItemEvent] =
-    for {
-      (id, agentToAttached) <- idToAgentPathToAttachedState.view
-      (agentPath, attachedState) <- agentToAttached
-    } yield ItemAttachedStateChanged(id, agentPath, attachedState)
-
   private[item] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
     versions.dropWhile(versionId.!=) match {
       case Nil => UnknownKeyProblem("VersionId", versionId)
@@ -333,43 +317,6 @@ final case class Repo private(
 
   def newVersionId(): VersionId =
     VersionId.generate(isKnown = versions.contains)
-
-  // TODO Replace idToAgentPathToAttachedState by ControllerState's itemToAgentToAttachedState
-  def resetAgent(agentPath: AgentPath): View[KeyedEvent[ItemDetached]] =
-    idToAgentPathToAttachedState.to(View)
-      .filter(_._2 contains agentPath)
-      .map(_._1)
-      .map(id => NoKey <-: ItemDetached(id, agentPath))
-
-  def attachedState(itemId: VersionedItemId_, agentPath: AgentPath): ItemAttachedState =
-    idToAgentPathToAttachedState.get(itemId)
-      .flatMap(_.get(agentPath))
-      .getOrElse(Detached)
-
-  def applyBasicItemEvent(event: BasicItemEvent): Checked[Repo] =
-    event match {
-      case ItemAttachedStateChanged(id: VersionedItemId_, agentPath, attachedState) =>
-        attachedState match {
-          case attachedState: NotDetached =>
-            Right(copy(
-              idToAgentPathToAttachedState = idToAgentPathToAttachedState +
-                (id -> (idToAgentPathToAttachedState.getOrElse(id, Map.empty) + (agentPath -> attachedState)))))
-
-          case Detached =>
-            Right(
-              idToAgentPathToAttachedState.get(id).fold(this) { agentToAttachedState =>
-                val updated = agentToAttachedState - agentPath
-                copy(
-                  idToAgentPathToAttachedState =
-                    if (updated.isEmpty)
-                      idToAgentPathToAttachedState - id
-                    else
-                      idToAgentPathToAttachedState + (id -> updated))
-              })
-        }
-
-      case _ => Left(Problem(s"Inapplicable event for Repo: $event"))
-    }
 
   // TODO Very big toString ?
   override def toString = s"Repo($versions," +
@@ -383,10 +330,10 @@ final case class Repo private(
 
 object Repo
 {
-  val empty = new Repo(Nil, Set.empty, Map.empty, Map.empty, None)
+  val empty = new Repo(Nil, Set.empty, Map.empty, None)
 
   def signatureVerifying(signatureVerifier: SignatureVerifier): Repo =
-    new Repo(Nil, Set.empty, Map.empty, Map.empty, Some(signatureVerifier))
+    new Repo(Nil, Set.empty, Map.empty, Some(signatureVerifier))
 
   @TestOnly
   private[item] object testOnly {
@@ -402,7 +349,6 @@ object Repo
             .view
             .mapValues(_.map(o => Entry(o._1, o._2)).toList)
             .toMap,
-          Map.empty,
           signatureVerifier)
     }
 

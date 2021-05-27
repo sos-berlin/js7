@@ -14,8 +14,8 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarke
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
-import js7.data.job.{JobResource, JobResourcePath}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent}
+import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -59,9 +59,6 @@ extends JournaledStateBuilder[ControllerState]
     case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
 
-    case event: BasicItemEvent =>
-      repo = repo.applyBasicItemEvent(event).orThrow
-
     case agentRefState: AgentRefState =>
       pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
 
@@ -74,8 +71,9 @@ extends JournaledStateBuilder[ControllerState]
     case snapshot: OrderWatchState.Snapshot =>
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
-    case ControllerState.ItemAttachedStateSnapshot(itemKey, agentToAttachedState) =>
-      itemToAgentToAttachedState.insert(itemKey -> agentToAttachedState)
+    case ItemAttachedStateChanged(key: InventoryItemKey, agentPath, attachedState: NotDetached) =>
+      itemToAgentToAttachedState +=
+        key -> (itemToAgentToAttachedState.getOrElse(key, Map.empty) + (agentPath -> attachedState))
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -159,23 +157,20 @@ extends JournaledStateBuilder[ControllerState]
                     .updateAttachedState(id, agentPath, attachedState)
                     .orThrow
 
-                case _: VersionedItemId_ =>
-                  repo = repo.applyBasicItemEvent(event).orThrow
-
-                case path: JobResourcePath =>
+                case itemKey: InventoryItemKey =>
                   // TODO Code is similar to ControllerState
                   attachedState match {
                     case attachedState: NotDetached =>
-                      itemToAgentToAttachedState += path ->
-                        (itemToAgentToAttachedState.getOrElse(path, Map.empty) +
+                      itemToAgentToAttachedState += itemKey ->
+                        (itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) +
                           (agentPath -> attachedState))
 
                     case Detached =>
-                      val updated = itemToAgentToAttachedState.getOrElse(path, Map.empty) - agentPath
+                      val updated = itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) - agentPath
                       if (updated.isEmpty)
-                        itemToAgentToAttachedState -= path
+                        itemToAgentToAttachedState -= itemKey
                       else
-                        itemToAgentToAttachedState += path -> updated
+                        itemToAgentToAttachedState += itemKey -> updated
                   }
 
                 case _ =>
