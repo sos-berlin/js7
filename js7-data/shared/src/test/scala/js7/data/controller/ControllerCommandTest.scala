@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
+import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.controller.ControllerCommand._
@@ -226,6 +227,14 @@ final class ControllerCommandTest extends AnyFreeSpec
           "suppressSnapshot": true
         }""")
     }
+  }
+
+  "ResetAgent" in {
+    testJson[ControllerCommand](ResetAgent(AgentPath("AGENT")),
+      json"""{
+        "TYPE": "ResetAgent",
+        "agentPath": "AGENT"
+      }""")
   }
 
   "ResumeOrder" in {
