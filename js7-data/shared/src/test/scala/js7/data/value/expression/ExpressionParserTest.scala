@@ -79,6 +79,16 @@ final class ExpressionParserTest extends AnyFreeSpec
     testBooleanExpression("(false)", BooleanConstant(false))
   }
 
+  "ConstantString.quote" - {
+    for (string <- Seq("", " ", "'", "''", "\"", "\n", "A\nB", "\t", "\r")) {
+      testExpression(StringConstant.quote(string), StringConstant(string))
+    }
+    for (i <- 0 to 0x200) {
+      val string = i.toChar.toString
+      testExpressionRaw(StringConstant.quote(string), StringConstant(string))
+    }
+  }
+
   "String" - {
     testExpression("'x'", StringConstant("x"))
     testExpression("'ö'", StringConstant("ö"))
