@@ -20,13 +20,13 @@ object UnsignedSimpleItemEvent
     def unapply(event: UnsignedSimpleItemAddedOrChanged) = Some(event.item)
   }
 
-  final case class SimpleItemAdded(item: UnsignedSimpleItem)
+  final case class UnsignedSimpleItemAdded(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged
   {
     def key = item.key
   }
 
-  final case class SimpleItemChanged(item: UnsignedSimpleItem)
+  final case class UnsignedSimpleItemChanged(item: UnsignedSimpleItem)
   extends UnsignedSimpleItemAddedOrChanged
   {
     def key = item.key
@@ -36,7 +36,7 @@ object UnsignedSimpleItemEvent
   : TypedJsonCodec[UnsignedSimpleItemEvent] = {
     implicit val x = S.unsignedSimpleItemJsonCodec
     TypedJsonCodec(
-      Subtype(deriveCodec[SimpleItemAdded]),
-      Subtype(deriveCodec[SimpleItemChanged]))
+      Subtype(deriveCodec[UnsignedSimpleItemAdded]),
+      Subtype(deriveCodec[UnsignedSimpleItemChanged]))
   }
 }

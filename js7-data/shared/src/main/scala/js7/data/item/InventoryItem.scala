@@ -3,6 +3,7 @@ package js7.data.item
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.agent.AgentPath
 import js7.data.item.InventoryItem.Companion
 import scala.reflect.ClassTag
 
@@ -13,7 +14,17 @@ trait InventoryItem
   val companion: Companion[Self]
 
   def key: InventoryItemKey
+
   def itemRevision: Option[ItemRevision]
+
+  /** Only if this Item is dedicated to an Agent.
+    * An Item may be
+    * <ul>
+    *   <li>dedicated to an Agent (like FileWatch) or else
+    *   <li>depend on Order's Agent (like Workflow, JobResource) or else
+    *   <li>be used at Controller only (like AgentRef, Lock).
+    * </ul>*/
+  def dedicatedAgentPath: Option[AgentPath] = None
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
   override def hashCode = 31 * key.hashCode + itemRevision.hashCode

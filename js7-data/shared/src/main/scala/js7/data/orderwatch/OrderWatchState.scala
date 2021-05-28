@@ -8,7 +8,8 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
-import js7.data.item.{ItemAttachedState, SimpleItemState, VersionId}
+import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
+import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderRemoveMarked, OrderRemoved}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
@@ -20,12 +21,10 @@ import scala.collection.View
 
 final case class OrderWatchState(
   orderWatch: OrderWatch,
-  agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
-  delete: Boolean,
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder],
   private[orderwatch] val arisedQueue: Set[ExternalOrderName],
   private[orderwatch] val vanishedQueue: Set[ExternalOrderName])
-extends SimpleItemState
+extends UnsignedSimpleItemState
 {
   def item = orderWatch
 
@@ -45,9 +44,6 @@ extends SimpleItemState
           case (externalOrderName, HasOrder(_, Some(Vanished))) => externalOrderName
         }
         .toSet)
-
-  def isDestroyable =
-    delete && agentPathToAttachedState.isEmpty
 
   def applyOrderWatchEvent(event: OrderWatchEvent): Checked[OrderWatchState] =
     event match {
@@ -178,8 +174,8 @@ extends SimpleItemState
   def estimatedSnapshotSize =
     1 + externalToState.size
 
-  def toSnapshot: Observable[Snapshot] =
-    HeaderSnapshot(orderWatch, agentPathToAttachedState, delete) +:
+  def toSnapshot: Observable[Any] =
+    UnsignedSimpleItemAdded(orderWatch) +:
       Observable.fromIterable(externalToState)
         .map { case (externalOrderName, state) =>
           ExternalOrderSnapshot(orderWatch.key, externalOrderName, state)
@@ -198,30 +194,25 @@ object OrderWatchState
   private val logger = scribe.Logger[this.type]
 
   def apply(orderWatch: OrderWatch): OrderWatchState =
-    OrderWatchState(orderWatch, Map.empty, false, Map.empty, Set.empty, Set.empty)
+    OrderWatchState(orderWatch, Map.empty, Set.empty, Set.empty)
 
   def apply(
     orderWatch: OrderWatch,
     agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
     sourceToOrderId: Map[ExternalOrderName, ArisedOrHasOrder])
   : OrderWatchState =
-    OrderWatchState(orderWatch, agentPathToAttachedState, delete = false,
-      sourceToOrderId, Set.empty, Set.empty
-    ).recoverQueues
+    OrderWatchState(orderWatch, sourceToOrderId, Set.empty, Set.empty)
+      .recoverQueues
 
-  def fromSnapshot(snapshot: HeaderSnapshot) =
-    OrderWatchState(snapshot.orderWatch, snapshot.agentPathToAttachedState, snapshot.delete,
-      Map.empty, Set.empty, Set.empty
-    ).recoverQueues
+  def fromSnapshot(snapshot: OrderWatchState) =
+    OrderWatchState(snapshot.orderWatch, Map.empty, Set.empty, Set.empty)
+      .recoverQueues
 
   sealed trait Snapshot {
     def orderWatchPath: OrderWatchPath
   }
 
-  final case class HeaderSnapshot(
-    orderWatch: OrderWatch,
-    agentPathToAttachedState: Map[AgentPath, ItemAttachedState.NotDetached],
-    delete: Boolean)
+  final case class HeaderSnapshot(orderWatch: OrderWatch)
   extends Snapshot {
     def orderWatchPath = orderWatch.key
   }
@@ -264,7 +255,6 @@ object OrderWatchState
 
   object Snapshot {
     implicit val jsonCodec = TypedJsonCodec[Snapshot](
-      Subtype.named(deriveCodec[HeaderSnapshot], "OrderWatchState.Header"),
       Subtype.named(deriveCodec[ExternalOrderSnapshot], "ExternalOrder"))
   }
 

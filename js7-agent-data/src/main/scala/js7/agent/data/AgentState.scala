@@ -99,9 +99,13 @@ extends JournaledState[AgentState]
             Right(copy(
               pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
-          case ItemDetached(id: OrderWatchPath, meta.agentPath) =>
+          case ItemDetached(path: OrderWatchPath, meta.agentPath) =>
             Right(copy(
-              allFileWatchesState = allFileWatchesState.detach(id)))
+              allFileWatchesState = allFileWatchesState.detach(path)))
+
+          case ItemDetached(path: JobResourcePath, meta.agentPath) =>
+            Right(copy(
+              pathToJobResource = pathToJobResource - path))
 
           case _ => applyStandardEvent(keyedEvent)
         }

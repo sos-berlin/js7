@@ -33,9 +33,9 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
-import js7.data.item.BasicItemEvent.ItemAttachedToAgent
+import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.SignableItem
-import js7.data.job.{JobConf, JobResource}
+import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
@@ -287,10 +287,15 @@ with Stash
     case AttachSignedItem(signed: Signed[SignableItem]) =>
       attachSignedItem(signed)
 
-    case DetachItem(id: OrderWatchPath) =>
-      fileWatchManager.remove(id)
+    case DetachItem(path: OrderWatchPath) =>
+      fileWatchManager.remove(path)
         .map(_.rightAs(AgentCommand.Response.Accepted))
         .runToFuture
+
+    case DetachItem(path: JobResourcePath) =>
+      persist(ItemDetached(path, ownAgentPath)) { (stampedEvent, journaledState) =>
+        Right(AgentCommand.Response.Accepted)
+      }
 
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)

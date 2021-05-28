@@ -14,7 +14,7 @@ import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent}
-import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderRemoved, OrderStarted, OrderStderrWritten}
@@ -215,7 +215,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
           case _ => false
         })
     assert(filteredLeyedEvents == Seq[AnyKeyedEvent](
-      NoKey <-: SimpleItemAdded(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
+      NoKey <-: UnsignedSimpleItemAdded(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
       NoKey <-: ControllerShutDown(None),
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(0)), aAgentPath),
@@ -252,7 +252,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("4")))),
       orderId4 <-: OrderStarted,
-      NoKey <-: SimpleItemChanged(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
+      NoKey <-: UnsignedSimpleItemChanged(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(1)), aAgentPath),
       orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory/4\n"),

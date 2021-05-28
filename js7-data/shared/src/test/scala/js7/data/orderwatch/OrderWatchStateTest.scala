@@ -2,11 +2,13 @@ package js7.data.orderwatch
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.ScalaTime._
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerState
 import js7.data.item.ItemAttachedState.Attached
-import js7.data.item.ItemRevision
+import js7.data.item.{ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchState.{Arised, ExternalOrderSnapshot, HasOrder, Vanished, VanishedAck}
 import js7.data.value.expression.Expression.NamedValue
@@ -133,11 +135,16 @@ final class OrderWatchStateTest extends AsyncFreeSpec
     }
 
     "toSnapshot" in {
+      implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+        TypedJsonCodec(
+          Subtype(UnsignedSimpleItemEvent.jsonCodec(ControllerState)),
+          Subtype[OrderWatchState.Snapshot])
+
       for (snapshot <- orderWatchState.toSnapshot.toListL.runToFuture) yield
         assert(snapshot.asJson ==json"""[
           {
-            "TYPE": "OrderWatchState.Header",
-            "orderWatch": {
+            "TYPE": "UnsignedSimpleItemAdded",
+            "item": {
               "TYPE": "FileWatch",
               "path": "FILE-WATCH",
               "workflowPath": "WORKFLOW",
@@ -147,14 +154,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
               "orderIdExpression": "$$1",
               "delay": 2,
               "itemRevision": 7
-            },
-            "agentPathToAttachedState": {
-              "AGENT": {
-                "TYPE": "Attached",
-                "itemRevision": 7
-              }
-            },
-            "delete": false
+            }
           }, {
             "TYPE": "ExternalOrder",
             "orderWatchPath": "FILE-WATCH",

@@ -19,7 +19,7 @@ import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.DeleteSimple
-import js7.data.item.UnsignedSimpleItemEvent.SimpleItemChanged
+import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderCancelMarkedOnAgent, OrderFinished, OrderProcessingStarted, OrderRemoved}
@@ -173,7 +173,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       controller.eventWatch.await[ItemAttached](after = eventId)
       assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
         Seq(
-          NoKey <-: SimpleItemChanged(fileWatch.copy(itemRevision = Some(itemRevision))),
+          NoKey <-: UnsignedSimpleItemChanged(fileWatch.copy(itemRevision = Some(itemRevision))),
           NoKey <-: ItemAttachable(fileWatch.path, aAgentPath),
           NoKey <-: ItemAttached(fileWatch.path, Some(itemRevision), aAgentPath)))
     }
@@ -187,7 +187,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[ItemAttached](after = eventId)
     assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(
-        NoKey <-: SimpleItemChanged(changedFileWatch.copy(itemRevision = Some(itemRevision))),
+        NoKey <-: UnsignedSimpleItemChanged(changedFileWatch.copy(itemRevision = Some(itemRevision))),
         NoKey <-: ItemDetachable(fileWatch.path, aAgentPath),
         NoKey <-: ItemDetached(fileWatch.path, aAgentPath),
         NoKey <-: ItemAttachable(fileWatch.path, bAgentPath),

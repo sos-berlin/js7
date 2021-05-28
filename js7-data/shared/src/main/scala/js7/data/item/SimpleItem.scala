@@ -3,6 +3,7 @@ package js7.data.item
 import io.circe.Codec
 import js7.data.item.SimpleItem._
 
+/** Unversioned item. */
 trait SimpleItem extends InventoryItem
 {
   protected type Self <: SimpleItem
@@ -14,8 +15,6 @@ trait SimpleItem extends InventoryItem
   final def key = path
 
   def path: companion.Key
-
-  def itemRevision: Option[ItemRevision]
 }
 
 object SimpleItem

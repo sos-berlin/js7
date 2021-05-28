@@ -181,7 +181,13 @@ object ResetAgentTest
   private val semaphore = Semaphore[Task](0).memoize
 
   private def resetSemaphore(): Unit =
-    semaphore.flatMap(_.count).flatMap(n => semaphore.flatMap(_.releaseN(n))).runSyncUnsafe()
+    semaphore
+      .flatMap(_.count)
+      .flatMap {
+        case 0 => Task.unit
+        case n => semaphore.flatMap(_.releaseN(n))
+      }
+      .runSyncUnsafe()
 
   final class SemaphoreJob extends InternalJob
   {

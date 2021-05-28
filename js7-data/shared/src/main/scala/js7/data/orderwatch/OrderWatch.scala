@@ -13,7 +13,11 @@ trait OrderWatch extends UnsignedSimpleItem
   val companion: Companion[Self] { type Key <: OrderWatchPath }
 
   val agentPath: AgentPath
+
   val workflowPath: WorkflowPath
+
+  override def dedicatedAgentPath =
+    Some(agentPath)
 }
 
 object OrderWatch

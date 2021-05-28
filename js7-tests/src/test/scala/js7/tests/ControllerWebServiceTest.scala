@@ -520,7 +520,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "totalRunningTime": ${totalRunningTime.toBigDecimalSeconds}
         }, {
           "eventId": 1004,
-          "TYPE": "SimpleItemAdded",
+          "TYPE": "UnsignedSimpleItemAdded",
           "item": {
             "TYPE": "AgentRef",
             "path": "AGENT",
@@ -529,7 +529,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }, {
           "eventId": 1005,
-          "TYPE": "SimpleItemAdded",
+          "TYPE": "UnsignedSimpleItemAdded",
           "item": {
             "TYPE": "AgentRef",
             "path": "AGENT-A",

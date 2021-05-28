@@ -6,7 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState, _}
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted}
 import js7.data.event.EventId
-import js7.data.item.SimpleItemState
+import js7.data.item.UnsignedSimpleItemState
 
 final case class AgentRefState(
   agentRef: AgentRef,
@@ -14,7 +14,7 @@ final case class AgentRefState(
   timezone: Option[String],
   couplingState: CouplingState,
   eventId: EventId)
-extends SimpleItemState
+extends UnsignedSimpleItemState
 {
   def item = agentRef
 

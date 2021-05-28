@@ -128,7 +128,7 @@ final case class Repo private(
       item <- versionToItem.head.maybeSignedItem
     } yield item
 
-  private def items: View[VersionedItem] =
+  def items: View[VersionedItem] =
     for {
       versionToItem <- pathToVersionToSignedItems.values.view
       item <- versionToItem.view.flatMap(_.maybeSignedItem.map(_.value))
@@ -236,6 +236,9 @@ final case class Repo private(
       .flatMap(_.head
         .maybeSignedItem
         .toChecked(VersionedItemDeletedProblem(path)))
+
+  def anyIdToItem(id: VersionedItemId_): Checked[VersionedItem] =
+    anyIdToSigned(id).map(_.value)
 
   /** Returns the VersionedItem to a VersionedItemId. */
   def idTo[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A])

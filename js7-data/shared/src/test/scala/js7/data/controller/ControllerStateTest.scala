@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import com.softwaremill.diffx.generic.auto._
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
@@ -12,9 +13,10 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.BasicItemEvent.ItemAttachable
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
+import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{ItemRevision, ItemSigner, Repo, VersionId}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -26,6 +28,7 @@ import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrde
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
+import js7.tester.DiffxAssertions.assertEqual
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
@@ -74,12 +77,13 @@ final class ControllerStateTest extends AsyncFreeSpec
       jobResource.path -> signedJobResource),
     Map(
       JobResourcePath("JOB-RESOURCE") -> Map(AgentPath("AGENT") -> Attachable)),
+    deleteItems = Set(JobResourcePath("JOB-RESOURCE")),
     (Order(OrderId("ORDER"), WorkflowPath("WORKFLOW") /: Position(1), Order.Fresh,
       externalOrderKey = Some(ExternalOrderKey(OrderWatchPath("WATCH"), ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))
 
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 12)
+    assert(controllerState.estimatedSnapshotSize == 13)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -111,22 +115,20 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.pathToAgentRefState.values ++
           controllerState.pathToLockState.values ++
           Seq(
-            OrderWatchState.HeaderSnapshot(
-              FileWatch(
-                OrderWatchPath("WATCH"),
-                WorkflowPath("WORKFLOW"),
-                AgentPath("AGENT"),
-                "/tmp/directory",
-                itemRevision = Some(ItemRevision(7))),
-              Map(AgentPath("AGENT") -> Attached(Some(ItemRevision(7)))),
-              delete = false),
+            UnsignedSimpleItemAdded(FileWatch(
+              OrderWatchPath("WATCH"),
+              WorkflowPath("WORKFLOW"),
+              AgentPath("AGENT"),
+              "/tmp/directory",
+              itemRevision = Some(ItemRevision(7)))),
             OrderWatchState.ExternalOrderSnapshot(
               OrderWatchPath("WATCH"),
               ExternalOrderName("ORDER-NAME"),
               HasOrder(OrderId("ORDER"), Some(VanishedAck))),
             SignedItemAdded(signedJobResource),
             VersionAdded(VersionId("1.0")),
-            ItemAttachable(jobResource.path, AgentPath("AGENT"))
+            ItemAttachable(jobResource.path, AgentPath("AGENT")),
+            ItemDeletionMarked(JobResourcePath("JOB-RESOURCE"))
           ) ++
           controllerState.idToOrder.values)
   }
@@ -135,8 +137,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     controllerState.toSnapshotObservable.toListL
       .flatMap(snapshotObjects =>
         ControllerState.fromObservable(Observable.fromIterable(snapshotObjects)))
-      .map(expectedState =>
-        assert(controllerState == expectedState))
+      .map(expectedState => assertEqual(controllerState, expectedState))
       .runToFuture
   }
 
@@ -194,8 +195,8 @@ final class ControllerStateTest extends AsyncFreeSpec
         },
         "queue": []
       }, {
-        "TYPE": "OrderWatchState.Header",
-        "orderWatch": {
+        "TYPE": "UnsignedSimpleItemAdded",
+        "item": {
           "TYPE": "FileWatch",
           "path": "WATCH",
           "workflowPath": "WORKFLOW",
@@ -203,14 +204,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           "directory": "/tmp/directory",
           "delay": 0,
           "itemRevision": 7
-        },
-        "agentPathToAttachedState": {
-          "AGENT": {
-            "TYPE": "Attached",
-            "itemRevision": 7
-           }
-        },
-        "delete": false
+        }
       }, {
         "TYPE": "ExternalOrder",
         "orderWatchPath": "WATCH",
@@ -235,12 +229,12 @@ final class ControllerStateTest extends AsyncFreeSpec
         "TYPE": "VersionAdded",
         "versionId": "1.0"
       }, {
-        "TYPE": "ItemAttachedStateSnapshot",
-        "agentToAttachedState": {
-          "AGENT": {
-            "TYPE": "Attachable"
-          }
-        },
+        "TYPE": "ItemAttachable",
+        "agentPath": "AGENT",
+        "key": "JobResource:JOB-RESOURCE"
+      },
+      {
+        "TYPE": "ItemDeletionMarked",
         "key": "JobResource:JOB-RESOURCE"
       },
       {

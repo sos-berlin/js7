@@ -57,9 +57,9 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
-import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged, UnsignedSimpleItemAddedOrChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableSimpleItem, SignableSimpleItemPath, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableItemKey, SignableSimpleItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -585,10 +585,10 @@ with MainJournalingActor[ControllerState, Event]
       .flatMap(signedEvents =>
         simple.unsignedSimpleItems
           .traverse(unsignedSimpleItemToEvent)
-          .flatMap(unsignedEvents =>
+          .map(unsignedEvents =>
             simple.delete
-              .flatTraverse(id => simpleItemKeyToDeletedEvent(id).map(_.toList))
-              .map(_.view ++ signedEvents ++ unsignedEvents)))
+              .flatMap(path => itemDeletedEvent(path))
+              .view ++ signedEvents ++ unsignedEvents))
 
   private def verifiedItemToEvents(verified: SignedItemVerifier.Verified[SignableSimpleItem])
   : Checked[Seq[InventoryItemEvent]] = {
@@ -616,7 +616,7 @@ with MainJournalingActor[ControllerState, Event]
                 //case (agentPath, Detached) => Nothing to do
               })
               .view.flatten
-            Vector(changed) ++ attaching
+            Vector(changed) //FIXME ++ attaching
         })
   }
 
@@ -631,29 +631,19 @@ with MainJournalingActor[ControllerState, Event]
       Right(
         _controllerState.pathToSimpleItem.get(item.key) match {
           case None =>
-            SimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
+            UnsignedSimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
           case Some(existing) =>
-            SimpleItemChanged(item
+            UnsignedSimpleItemChanged(item
               .withRevision(Some(
                 existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
         })
 
-  private def simpleItemKeyToDeletedEvent(itemKey: InventoryItemKey): Checked[Option[BasicItemEvent]] =
-    itemKey match {
-      case id: OrderWatchPath =>
-        Right(
-          _controllerState.allOrderWatchesState.pathToOrderWatchState
-            .get(id)
-            .flatMap(orderWatchState =>
-              !orderWatchState.delete ? (
-                if (orderWatchState.isDestroyable)
-                  ItemDestroyed(id)
-                else
-                  ItemDeletionMarked(id))))
-
-      case _ =>
-        Left(Problem.pure(s"${itemKey.companion.itemTypeName} cannot be deleted"))
-    }
+  private def itemDeletedEvent(itemKey: InventoryItemKey): Option[BasicItemEvent] =
+    !_controllerState.deleteItems(itemKey) ? (
+      if (_controllerState.isItemDestroyable(itemKey))
+        ItemDestroyed(itemKey)
+      else
+        ItemDeletionMarked(itemKey))
 
   private def versionedItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
   : Try[Checked[Seq[VersionedEvent]]] =
@@ -905,17 +895,13 @@ with MainJournalingActor[ControllerState, Event]
         agentToAttachedState.get(agentPath) foreach {
           case Attachable =>
             itemKey match {
-              case itemKey: SignableSimpleItemPath =>
-                for (signedItem <- _controllerState.idToSignedSimpleItem.get(itemKey)) {
+              case itemKey: SignableItemKey =>
+                for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
                   actor ! AgentDriver.Input.AttachSignedItem(signedItem)
                 }
 
-              case itemId: VersionedItemId_ =>
-                for (signedItem <- _controllerState.repo.anyIdToSigned(itemId))
-                  actor ! AgentDriver.Input.AttachSignedItem(signedItem)
-
-              case path: SimpleItemPath =>
-                for (item <- _controllerState.pathToSimpleItem.get(path)) {
+              case path: UnsignedSimpleItemPath =>
+                for (item <- _controllerState.pathToUnsignedSimpleItem.get(path)) {
                   actor ! AgentDriver.Input.AttachUnsignedItem(item)
                 }
             }
@@ -1029,14 +1015,14 @@ with MainJournalingActor[ControllerState, Event]
   private def handleItemEvent(event: InventoryItemEvent): Unit = {
     logEvent(event)
     event match {
-      case SimpleItemAdded(agentRef: AgentRef) =>
+      case UnsignedSimpleItemAdded(agentRef: AgentRef) =>
         val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
         entry.actor ! AgentDriver.Input.StartFetchingEvents
 
         // TODO Not required in a future implementation, when Agents must be defined when referenced
         reattachToAgent(agentRef.path)
 
-      case SimpleItemChanged(agentRef: AgentRef) =>
+      case UnsignedSimpleItemChanged(agentRef: AgentRef) =>
         agentRegister.update(agentRef)
         agentRegister(agentRef.path).reconnect()
 
@@ -1049,43 +1035,30 @@ with MainJournalingActor[ControllerState, Event]
       case agentPath: AgentPath =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
 
-      case path: OrderWatchPath =>
-        for (orderWatchState <- _controllerState.allOrderWatchesState.pathToOrderWatchState.get(path)) {
-          import orderWatchState.orderWatch
-          for ((agentPath, attachedState) <- orderWatchState.agentPathToAttachedState) {
-            // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-            for (agentEntry <- agentRegister.get(agentPath)) {
-              attachedState match {
-                case Attachable =>
-                  agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(orderWatch)
-
-                case Detachable =>
-                  agentEntry.actor ! AgentDriver.Input.DetachItem(orderWatch.key)
-
-                case _ =>
-              }
-            }
-          }
-        }
-
-      case path: SignableSimpleItemPath =>
-        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(path)) {
+      case itemKey: InventoryItemKey =>
+        for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey)) {
           for ((agentPath, attachedState) <- agentToAttachedState) {
             // TODO Does nothing if Agent is added later! (should be impossible, anyway)
-            for (entry <- agentRegister.get(agentPath)) {
-              if (!entry.isResetting) {
-                for (agentEntry <- agentRegister.get(agentPath)) {
-                  attachedState match {
-                    case Attachable =>
-                      for (signedItem <- _controllerState.idToSignedSimpleItem.get(path)) {
-                        agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
-                      }
+            for (agentEntry <- agentRegister.get(agentPath)) {
+              if (!agentEntry.isResetting) {
+                attachedState match {
+                  case Attachable =>
+                    itemKey match {
+                      case itemKey: SignableItemKey =>
+                        for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
+                          agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+                        }
 
-                    case Detachable =>
-                      agentEntry.actor ! AgentDriver.Input.DetachItem(path)
+                      case path: UnsignedSimpleItemPath =>
+                        for (item <- _controllerState.pathToUnsignedSimpleItem.get(path)) {
+                          agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
+                        }
+                    }
 
-                    case _ =>
-                  }
+                  case Detachable =>
+                    agentEntry.actor ! AgentDriver.Input.DetachItem(itemKey)
+
+                  case _ =>
                 }
               }
             }

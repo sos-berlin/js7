@@ -9,12 +9,11 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestroyed, ItemDetachable, ItemDetached}
-import js7.data.item.ItemAttachedState.Attached
+import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, VersionId}
 import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed, OrderRemoveMarked}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
-import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
@@ -81,35 +80,38 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
   }
 
   private def nextItemEvents(itemKeys: Seq[InventoryItemKey]): Seq[KeyedEvent[BasicItemEvent]] =
-    itemKeys.flatMap {
-      case path: OrderWatchPath =>
-        controllerState.allOrderWatchesState.pathToOrderWatchState.get(path)
-          .view.flatMap { orderWatchState =>
-            import orderWatchState.orderWatch
-            if (orderWatchState.agentPathToAttachedState.nonEmpty)
-              orderWatchState.agentPathToAttachedState.flatMap {
-                case (agentPath, Attached(revision)) =>
-                  if (orderWatchState.delete)
-                    Some(NoKey <-: ItemDetachable(path, agentPath))
-                  else
-                    (orderWatch.itemRevision != revision) ? (
-                      if (agentPath == orderWatch.agentPath)
-                        // Attach again without detaching, and let Agent change OrderWatch while in flight
-                        NoKey <-: ItemAttachable(path, agentPath)
-                      else
-                        NoKey <-: ItemDetachable(path, agentPath))
-                case _ =>
-                  None
-              }
-            else if (orderWatchState.delete)
-              orderWatchState.isDestroyable ? (NoKey <-: ItemDestroyed(path))
-            else
-              Some(NoKey <-: ItemAttachable(path, orderWatch.agentPath))
-          }
+    itemKeys
+      .flatMap(itemKey => controllerState.keyToItem.get(itemKey).view)
+      .flatMap(item =>
+        _controllerState.itemToAgentToAttachedState.get(item.key) match {
+          case Some(agentPathToAttached) =>
+            agentPathToAttached.view.flatMap {
+              case (agentPath, Attached(revision)) =>
+                if (controllerState.deleteItems(item.key))
+                  Some(ItemDetachable(item.key, agentPath))
+                else
+                  (item.itemRevision != revision) ?
+                    (item.dedicatedAgentPath match {
+                      case Some(`agentPath`) | None =>
+                        // Item is dedicated to this Agent or is required by an Order.
+                        // Attach again without detaching, and let Agent change the item while in flight
+                        ItemAttachable(item.key, agentPath)
+                      case Some(_) =>
+                        // Item's Agent dedication has changed, so we detach it
+                        ItemDetachable(item.key, agentPath)
+                    })
 
-      case _ =>
-        None
-    }
+              case (_, Attachable | Detachable) =>
+                None
+            }
+
+          case None =>
+            if (controllerState.deleteItems(item.key))
+              controllerState.isItemDestroyable(item.key).thenList(ItemDestroyed(item.key))
+            else
+              item.dedicatedAgentPath.map(ItemAttachable(item.key, _))
+        })
+        .map(NoKey <-: _)
 
   def nextOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     _controllerState.allOrderWatchesState

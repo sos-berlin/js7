@@ -2,7 +2,6 @@ package js7.data.controller
 
 import js7.base.crypt.Signed
 import js7.base.problem.Checked._
-import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits._
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
@@ -13,7 +12,7 @@ import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredW
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
-import js7.data.item.UnsignedSimpleItemEvent.{SimpleItemAdded, SimpleItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
@@ -35,8 +34,9 @@ extends JournaledStateBuilder[ControllerState]
   private val pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
   private val pathToLockState = mutable.Map.empty[LockPath, LockState]
   private var allOrderWatchesState = AllOrderWatchesState.empty
-  private val idToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
   private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
+  private val deleteItems = mutable.Set[InventoryItemKey]()
+  private val idToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
 
   protected def onInitializeState(state: ControllerState): Unit = {
     standards = state.standards
@@ -68,12 +68,18 @@ extends JournaledStateBuilder[ControllerState]
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
 
-    case snapshot: OrderWatchState.Snapshot =>
+    case UnsignedSimpleItemAdded(orderWatch: OrderWatch) =>
+      allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
+
+    case snapshot: OrderWatchState.ExternalOrderSnapshot =>
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
     case ItemAttachedStateChanged(key: InventoryItemKey, agentPath, attachedState: NotDetached) =>
       itemToAgentToAttachedState +=
         key -> (itemToAgentToAttachedState.getOrElse(key, Map.empty) + (agentPath -> attachedState))
+
+    case ItemDeletionMarked(itemKey) =>
+      deleteItems += itemKey
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -109,7 +115,7 @@ extends JournaledStateBuilder[ControllerState]
       event match {
         case event: UnsignedSimpleItemEvent =>
           event match {
-            case SimpleItemAdded(item) =>
+            case UnsignedSimpleItemAdded(item) =>
               item match {
                 case lock: Lock =>
                   pathToLockState.insert(lock.path -> LockState(lock))
@@ -121,7 +127,7 @@ extends JournaledStateBuilder[ControllerState]
                   allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
               }
 
-            case SimpleItemChanged(item) =>
+            case UnsignedSimpleItemChanged(item) =>
               item match {
                 case lock: Lock =>
                   pathToLockState(lock.path) = pathToLockState(lock.path).copy(
@@ -150,43 +156,26 @@ extends JournaledStateBuilder[ControllerState]
 
         case event: BasicItemEvent.ForController =>
           event match {
-            case event @ ItemAttachedStateChanged(id, agentPath, attachedState) =>
-              id match {
-                case id: OrderWatchPath =>
-                  allOrderWatchesState = allOrderWatchesState
-                    .updateAttachedState(id, agentPath, attachedState)
-                    .orThrow
+            case ItemAttachedStateChanged(itemKey, agentPath, attachedState) =>
+              attachedState match {
+                case attachedState: NotDetached =>
+                  itemToAgentToAttachedState += itemKey ->
+                    (itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) +
+                      (agentPath -> attachedState))
 
-                case itemKey: InventoryItemKey =>
-                  // TODO Code is similar to ControllerState
-                  attachedState match {
-                    case attachedState: NotDetached =>
-                      itemToAgentToAttachedState += itemKey ->
-                        (itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) +
-                          (agentPath -> attachedState))
-
-                    case Detached =>
-                      val updated = itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) - agentPath
-                      if (updated.isEmpty)
-                        itemToAgentToAttachedState -= itemKey
-                      else
-                        itemToAgentToAttachedState += itemKey -> updated
-                  }
-
-                case _ =>
-                  throw Problem(s"Unexpected event: $keyedEvent").throwable
+                case Detached =>
+                  val updated = itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) - agentPath
+                  if (updated.isEmpty)
+                    itemToAgentToAttachedState -= itemKey
+                  else
+                    itemToAgentToAttachedState += itemKey -> updated
               }
 
             case ItemDeletionMarked(itemKey) =>
-              itemKey match {
-                case path: OrderWatchPath =>
-                  allOrderWatchesState = allOrderWatchesState.markAsDeleted(path).orThrow
-
-                case _ =>
-                  throw Problem(s"Unexpected event: $keyedEvent").throwable
-              }
+              deleteItems += itemKey
 
             case ItemDestroyed(itemKey) =>
+              deleteItems -= itemKey
               itemKey match {
                 case path: LockPath =>
                   pathToLockState -= path
@@ -297,6 +286,7 @@ extends JournaledStateBuilder[ControllerState]
       repo,
       idToSignedSimpleItem.toMap,
       itemToAgentToAttachedState.toMap,
+      deleteItems.toSet,
       idToOrder.toMap)
 
   def journalState = standards.journalState

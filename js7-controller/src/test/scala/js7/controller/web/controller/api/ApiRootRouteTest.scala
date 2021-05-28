@@ -12,8 +12,6 @@ import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.Repo
-import js7.data.orderwatch.AllOrderWatchesState
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -29,19 +27,15 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.global
-  protected def controllerState = Task.pure(Right(ControllerState(
-    EventId(1001),
-    JournaledState.Standards(
+  protected def controllerState = Task.pure(Right(ControllerState.empty.copy(
+    eventId = EventId(1001),
+    standards = JournaledState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Empty),
-    ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
-    Map.empty,
-    Map.empty,
-    AllOrderWatchesState.empty,
-    Repo.empty,
-    Map.empty,
-    Map.empty,
-    Map.empty)))
+    controllerMetaState = ControllerMetaState(
+      ControllerId("CONTROLLER-ID"),
+      Timestamp("2019-05-24T12:00:00Z"),
+      timezone = "Europe/Berlin"))))
   protected def totalRunningSince = now - 1.hour
 
   private def route: Route =

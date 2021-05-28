@@ -353,7 +353,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       AddVersion(v),
       DeleteSimple(lockPath)
     )).await(99.s) == Left(Problem(
-      "Lock cannot be deleted")))
+      "Event 'ItemDeletionMarked(Lock:LOCK)' cannot be applied: A 'Lock' is not deletable")))
   }
 
   private def defineWorkflow(workflowNotation: String): Workflow =

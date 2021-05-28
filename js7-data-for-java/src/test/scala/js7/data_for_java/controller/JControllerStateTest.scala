@@ -102,6 +102,7 @@ private object JControllerStateTest
       ).orThrow,
     Map.empty,
     Map.empty,
+    Set.empty,
     Vector(
       Order(
         OrderId("A-ORDER"),

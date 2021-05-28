@@ -5,10 +5,8 @@ import cats.syntax.traverse._
 import js7.base.problem.Checked
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
-import js7.data.item.ItemAttachedState.{Detached, NotDetached}
-import js7.data.item.{ItemAttachedState, VersionId}
+import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -39,29 +37,6 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
       .flatMap(_.applyOrderWatchEvent(keyedEvent.event))
       .map(updated => copy(
         pathToOrderWatchState = pathToOrderWatchState + (updated.id -> updated)))
-
-  def updateAttachedState(orderWatchPath: OrderWatchPath, agentPath: AgentPath, attachedState: ItemAttachedState)
-  : Checked[AllOrderWatchesState] =
-    pathToOrderWatchState
-      .checked(orderWatchPath)
-      .map { watchState =>
-        val updated = watchState.copy(agentPathToAttachedState =
-          attachedState match {
-            case Detached =>
-              watchState.agentPathToAttachedState - agentPath
-            case a: NotDetached =>
-              watchState.agentPathToAttachedState + (agentPath -> a)
-          })
-        copy(
-          pathToOrderWatchState = pathToOrderWatchState + (orderWatchPath -> updated))
-      }
-
-  def markAsDeleted(id: OrderWatchPath): Checked[AllOrderWatchesState] =
-    pathToOrderWatchState
-      .checked(id)
-      .map(o => copy(
-        pathToOrderWatchState = pathToOrderWatchState + (o.id -> o.copy(
-          delete = true))))
 
   def onOrderAdded(keyedEvent: KeyedEvent[OrderAdded]): Checked[AllOrderWatchesState] =
     keyedEvent.event.externalOrderKey match {
@@ -95,24 +70,15 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
   def estimatedSnapshotSize =
     pathToOrderWatchState.view.values.map(_.estimatedSnapshotSize).sum
 
-  def toSnapshot: Observable[OrderWatchState.Snapshot] =
+  def toSnapshot: Observable[Any] =
     Observable.fromIterable(pathToOrderWatchState.values).flatMap(_.toSnapshot)
 
-  def applySnapshot(snapshot: OrderWatchState.Snapshot): Checked[AllOrderWatchesState] =
-    snapshot match {
-      case snapshot: OrderWatchState.HeaderSnapshot =>
-        val watchState = OrderWatchState.fromSnapshot(snapshot)
-        pathToOrderWatchState.insert(watchState.id -> watchState)
-          .map(o => copy(
-            pathToOrderWatchState = o))
-
-      case snapshot: OrderWatchState.ExternalOrderSnapshot =>
-        pathToOrderWatchState.checked(snapshot.orderWatchPath)
-          .flatMap(_
-            .applySnapshot(snapshot)
-            .map(watchState => copy(
-              pathToOrderWatchState = pathToOrderWatchState + (watchState.id -> watchState))))
-  }
+  def applySnapshot(snapshot: OrderWatchState.ExternalOrderSnapshot): Checked[AllOrderWatchesState] =
+    pathToOrderWatchState.checked(snapshot.orderWatchPath)
+      .flatMap(_
+        .applySnapshot(snapshot)
+        .map(watchState => copy(
+          pathToOrderWatchState = pathToOrderWatchState + (watchState.id -> watchState))))
 
   // TODO How about a Builder class ?
   def onEndOfRecovery: Checked[AllOrderWatchesState] =
