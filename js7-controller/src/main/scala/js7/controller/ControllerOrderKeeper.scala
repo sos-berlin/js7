@@ -59,7 +59,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detach
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableItemKey, SignableSimpleItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedEvent}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableItemKey, SignableSimpleItem, UnsignedSimpleItem, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -432,32 +432,30 @@ with MainJournalingActor[ControllerState, Event]
         }
 
     case Command.VerifiedUpdateItemsCmd(verifiedUpdateItems: VerifiedUpdateItems) =>
-      import verifiedUpdateItems.{maybeVersioned, simple}
       val t = now
-      val checkedSimpleItemEvents = simpleItemsToEvents(simple)
-      val whenPersisted = maybeVersioned
-        .map(versionedItemsToEvent)
-        .getOrElse(Success(Right(Nil)))
-        match {
-          case Failure(t) => Future.failed(t)
-          case Success(Left(problem)) => Future.successful(Left(problem))
-          case Success(Right(versionedEvents)) =>
-            checkedSimpleItemEvents match {
-              case Left(problem) => Future.successful(Left(problem))
-              case Right(simpleItemEvents) =>
-                val keyedEvents = simpleItemEvents.view.map(NoKey <-: _) ++ versionedEvents.view.map(NoKey <-: _)
-                persistItemAndVersionedEvents(keyedEvents.toVector)
-                  .map(_.map { o =>
-                    if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
-                      itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
-                    o
-                  })
+      (for {
+        simpleItemEvents <- simpleItemsToEvents(verifiedUpdateItems.simple)
+        versionedEvents <- verifiedUpdateItems.maybeVersioned.toVector
+          .traverse(versioned => _controllerState.repo.itemsToEvents(
+            versioned.versionId,
+            versioned.verifiedItems.map(_.signedItem),
+            versioned.delete))
+      } yield (simpleItemEvents, versionedEvents.flatten))
+      match {
+        case Left(problem) => sender() ! Left(problem)
+        case Right((simpleItemEvents, versionedEvents)) =>
+          val keyedEvents = (simpleItemEvents.view ++ versionedEvents).map(NoKey <-: _).toVector
+          val sender = this.sender()
+          persistItemAndVersionedEvents(keyedEvents)
+            .map(_.map { o =>
+              if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
+                itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
+              o
+            })
+            .onComplete {
+              case Failure(t) => sender ! Status.Failure(t)
+              case Success(response) => sender ! (response: Checked[Completed])
             }
-        }
-      val sender = this.sender()
-      whenPersisted.onComplete {
-        case Failure(t) => sender ! Status.Failure(t)
-        case Success(response) => sender ! (response: Checked[Completed])
       }
 
     case AgentDriver.Output.EventsFromAgent(agentRunId, stampedAgentEvents, committedPromise) =>
@@ -644,14 +642,6 @@ with MainJournalingActor[ControllerState, Event]
         ItemDestroyed(itemKey)
       else
         ItemDeletionMarked(itemKey))
-
-  private def versionedItemsToEvent(forRepo: VerifiedUpdateItems.Versioned)
-  : Try[Checked[Seq[VersionedEvent]]] =
-    Try(
-      _controllerState.repo.itemsToEvents(
-        forRepo.versionId,
-        forRepo.verifiedItems.map(_.signedItem),
-        forRepo.delete))
 
   // JournalActor's termination must be handled in any `become`-state and must lead to ControllerOrderKeeper's termination
   override def journaling = handleExceptionalMessage orElse super.journaling
