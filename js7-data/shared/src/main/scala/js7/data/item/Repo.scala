@@ -24,7 +24,7 @@ import scala.collection.View
 final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
-  pathToVersionToSignedItems: Map[ItemPath, List[Entry]],
+  pathToVersionToSignedItems: Map[VersionedItemPath, List[Entry]],
   signatureVerifier: Option[SignatureVerifier])
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
@@ -44,10 +44,10 @@ final case class Repo private(
   def currentVersionSize =
     currentSignedItems.size
 
-  lazy val currentVersion: Map[ItemPath, Signed[VersionedItem]] =
+  lazy val currentVersion: Map[VersionedItemPath, Signed[VersionedItem]] =
     currentSignedItems.view.map(o => o.value.path -> o).toMap
 
-  private lazy val typeToPathToCurrentItem: VersionedItem.Companion_ => Map[ItemPath, Signed[VersionedItem]] =
+  private lazy val typeToPathToCurrentItem: VersionedItem.Companion_ => Map[VersionedItemPath, Signed[VersionedItem]] =
     Memoizer.nonStrict1 { companion: VersionedItem.Companion_ =>
       currentVersion collect {
         case (path, signedItem) if signedItem.value.companion == companion =>
@@ -56,7 +56,7 @@ final case class Repo private(
     }
 
   /** Returns the difference to the repo as events. */
-  def itemsToEvents(versionId: VersionId, changed: Seq[Signed[VersionedItem]], deleted: Iterable[ItemPath] = Nil)
+  def itemsToEvents(versionId: VersionId, changed: Seq[Signed[VersionedItem]], deleted: Iterable[VersionedItemPath] = Nil)
   : Checked[EventBlock] =
     checkItemVersions(versionId, changed)
       .flatMap { changed =>
@@ -80,7 +80,7 @@ final case class Repo private(
     val added = currentItems.view
       .filter(o => !base.exists(o.path))
       .map(o => o.path -> o)
-      .toMap[ItemPath, VersionedItem]
+      .toMap[VersionedItemPath, VersionedItem]
     val updated = currentItems.view
       .filter(o => base.pathToItem(o.path).exists(_.key.versionId != o.key.versionId))
     val deleted = base.currentItems.view
@@ -158,7 +158,7 @@ final case class Repo private(
           event match {
             case event: VersionedItemAdded =>
               if (exists(event.path))
-                Left(DuplicateKey("ItemPath", event.path))
+                Left(DuplicateKey("VersionedItemPath", event.path))
               else
                 addOrChange(event)
 
@@ -201,7 +201,7 @@ final case class Repo private(
         Right(signed.value)
     }
 
-  private def addEntry(path: ItemPath, itemOption: Option[Signed[VersionedItem]]): Repo = {
+  private def addEntry(path: VersionedItemPath, itemOption: Option[Signed[VersionedItem]]): Repo = {
     val version = versions.head
     copy(pathToVersionToSignedItems =
       pathToVersionToSignedItems +
@@ -209,7 +209,7 @@ final case class Repo private(
           (Entry(version, itemOption) :: pathToVersionToSignedItems.getOrElse(path, Nil))))
   }
 
-  def exists(path: ItemPath): Boolean = pathToVersionToSignedItems
+  def exists(path: VersionedItemPath): Boolean = pathToVersionToSignedItems
       .get(path) match {
       case None => false
       case Some(entries) => entries.head.maybeSignedItem.isDefined  // Deleted?
@@ -224,11 +224,11 @@ final case class Repo private(
         .toChecked(VersionedItemDeletedProblem(path))
         .map(_.value.asInstanceOf[A]))
 
-  def pathToItem(path: ItemPath): Checked[VersionedItem] =
+  def pathToItem(path: VersionedItemPath): Checked[VersionedItem] =
     pathToSigned(path)
       .map(_.value)
 
-  private def pathToSigned(path: ItemPath): Checked[Signed[VersionedItem]] =
+  private def pathToSigned(path: VersionedItemPath): Checked[Signed[VersionedItem]] =
     pathToVersionToSignedItems
       .checked(path)
       .flatMap(_.head
@@ -272,7 +272,7 @@ final case class Repo private(
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
   def toEvents: View[VersionedEvent] = {
-    type DeletedOrUpdated = Either[ItemPath/*deleted*/, Signed[VersionedItem/*added/changed*/]]
+    type DeletedOrUpdated = Either[VersionedItemPath/*deleted*/, Signed[VersionedItem/*added/changed*/]]
 
     val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
       pathToVersionToSignedItems

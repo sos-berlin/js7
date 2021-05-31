@@ -12,7 +12,7 @@ import js7.base.problem.Checked.Ops
 import js7.controller.tests.VersionedItemsTest._
 import js7.core.item.VersionedItemReader
 import js7.data.item.VersionedItems.diffVersionedItems
-import js7.data.item.{ItemPath, RepoChange, SourceType, TestPath, TestVersionedItem, VersionId, VersionedItem, VersionedItems}
+import js7.data.item.{RepoChange, SourceType, TestPath, TestVersionedItem, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
@@ -104,7 +104,7 @@ final class VersionedItemsTest extends AnyFreeSpec
         RepoChange.Added(CWorkflow withVersion V1),
         RepoChange.Changed(D1Workflow withVersion V1)))
 
-    assert(diff == VersionedItems.Diff[ItemPath, VersionedItem](
+    assert(diff == VersionedItems.Diff[VersionedItemPath, VersionedItem](
       added = List(BTestItem withVersion V0, CWorkflow withVersion V1),
       changed = List(D1Workflow withVersion V1),
       deleted = List(BWorkflow.path)))

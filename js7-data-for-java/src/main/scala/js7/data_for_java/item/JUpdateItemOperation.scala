@@ -3,7 +3,7 @@ package  js7.data_for_java.item
 import javax.annotation.Nonnull
 import js7.base.crypt.SignedString
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple, DeleteVersioned}
-import js7.data.item.{ItemOperation, ItemPath, SimpleItemPath, VersionId}
+import js7.data.item.{ItemOperation, SimpleItemPath, VersionId, VersionedItemPath}
 import js7.data_for_java.common.JavaWrapper
 
 final case class JUpdateItemOperation(asScala: ItemOperation)
@@ -24,7 +24,7 @@ object JUpdateItemOperation
     new JUpdateItemOperation(
       DeleteSimple(path))
 
-  /** Required exactly once if any of addReplace(SignedString) or deleteItem(ItemPath) is used. */
+  /** Required exactly once if any of addReplace(SignedString) or deleteItem(VersionedItemPath) is used. */
   def addVersion(versionId: VersionId) =
     new JUpdateItemOperation(
       AddVersion(versionId))
@@ -46,13 +46,13 @@ object JUpdateItemOperation
   /** BITTE VERWENDE deleteVersioned! */
   @Deprecated
   @Nonnull
-  def deleteItem(@Nonnull path: ItemPath): JUpdateItemOperation =
+  def deleteItem(@Nonnull path: VersionedItemPath): JUpdateItemOperation =
     deleteVersioned(path)
 
   /** Delete the given path in the new version,
     * Requires `addVersion`. */
   @Nonnull
-  def deleteVersioned(@Nonnull path: ItemPath): JUpdateItemOperation =
+  def deleteVersioned(@Nonnull path: VersionedItemPath): JUpdateItemOperation =
     new JUpdateItemOperation(
       DeleteVersioned(path))
 }

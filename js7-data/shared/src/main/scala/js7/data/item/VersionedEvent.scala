@@ -22,14 +22,14 @@ object VersionedEvent {
   final case class VersionAdded(versionId: VersionId) extends VersionedEvent
 
   sealed trait VersionedItemEvent extends VersionedEvent {
-    def path: ItemPath
+    def path: VersionedItemPath
   }
 
   sealed trait VersionedItemAddedOrChanged extends VersionedItemEvent /*with SignedItemAddedOrChanged???*/ with HasInventoryItem with Product {
     def signedString = signed.signedString
     def signed: Signed[VersionedItem]
     def item: VersionedItem = signed.value
-    def path: ItemPath = item.path
+    def path: VersionedItemPath = item.path
     def toShortString = s"$productPrefix($path)"
   }
   object VersionedItemAddedOrChanged
@@ -75,7 +75,7 @@ object VersionedEvent {
       VersionedItemAddedOrChanged.jsonDecoder(VersionedItemChanged(_))
   }
 
-  final case class VersionedItemDeleted(path: ItemPath) extends VersionedItemEvent {
+  final case class VersionedItemDeleted(path: VersionedItemPath) extends VersionedItemEvent {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }
 

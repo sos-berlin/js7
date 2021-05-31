@@ -5,7 +5,7 @@ package js7.data.item
   */
 sealed trait RepoChange
 {
-  def path: ItemPath
+  def path: VersionedItemPath
 }
 
 object RepoChange
@@ -13,7 +13,7 @@ object RepoChange
   //final case class VersionAdded(versionId: VersionId) extends RepoChange
 
   sealed trait Change extends RepoChange {
-    def path: ItemPath
+    def path: VersionedItemPath
   }
 
   sealed trait AddedOrChanged extends Change with Product {
@@ -39,7 +39,7 @@ object RepoChange
     //require(!item.id.versionId.isAnonymous, s"VersionId is required in $toString")
   }
 
-  final case class Deleted(path: ItemPath) extends Change {
+  final case class Deleted(path: VersionedItemPath) extends Change {
     require(!path.isAnonymous, "FileChangedChanged event requires a path")
   }
 }

@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.item.ItemPath
+import js7.data.item.VersionedItemPath
 import js7.data.lock.LockPath
 import js7.data.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
 import scala.reflect.ClassTag
@@ -117,7 +117,7 @@ object BasicParsers
 
   def pathString[_: P] = P[String](quotedString)
 
-  def path[A <: ItemPath](implicit ctx: P[_], A: ItemPath.Companion[A]) = P[A](
+  def path[A <: VersionedItemPath](implicit ctx: P[_], A: VersionedItemPath.Companion[A]) = P[A](
     pathString.flatMap(p => checkedToP(A.checked(p))))
 
   def agentPath(implicit ctx: P[_]) = P[AgentPath](

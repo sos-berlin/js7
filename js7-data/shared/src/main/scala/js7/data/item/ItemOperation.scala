@@ -25,8 +25,8 @@ object ItemOperation
     implicit def jsonCodec(implicit
       idJsonEncoder: Encoder[SimpleItemPath],
       idJsonDecoder: Decoder[SimpleItemPath],
-      itemPathJsonEncoder: Encoder[ItemPath],
-      itemPathJsonDecoder: Decoder[ItemPath])
+      itemPathJsonEncoder: Encoder[VersionedItemPath],
+      itemPathJsonDecoder: Decoder[VersionedItemPath])
     : TypedJsonCodec[VersionedOperation] =
       TypedJsonCodec(
         Subtype(deriveCodec[AddVersion]),
@@ -42,14 +42,14 @@ object ItemOperation
   final case class AddOrChangeSigned(signedString: SignedString)
   extends VersionedItemOperation
 
-  final case class DeleteVersioned(path: ItemPath)
+  final case class DeleteVersioned(path: VersionedItemPath)
   extends VersionedItemOperation
 
   implicit def jsonCodec(implicit
     idJsonEncoder: Encoder[SimpleItemPath],
     idJsonDecoder: Decoder[SimpleItemPath],
-    itemPathJsonEncoder: Encoder[ItemPath],
-    itemPathJsonDecoder: Decoder[ItemPath],
+    itemPathJsonEncoder: Encoder[VersionedItemPath],
+    itemPathJsonDecoder: Decoder[VersionedItemPath],
     unsignedSimpleItemJsonEncoder: Encoder[UnsignedSimpleItem],
     unsignedSimpleItemJsonDecoder: Decoder[UnsignedSimpleItem])
   : TypedJsonCodec[ItemOperation] =

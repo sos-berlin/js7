@@ -141,10 +141,10 @@ extends AutoCloseable
     *
     * '''To deleteItem an item:'''
     * {{{
-    * JUpdateItemOperations.deleteItem(ItemPath)
+    * JUpdateItemOperations.deleteItem(VersionedItemPath)
     * }}}
     *
-    * `ItemPath` may be a [[js7.data.workflow.WorkflowPath]]
+    * `VersionedItemPath` may be a [[js7.data.workflow.WorkflowPath]]
     * (it has a Java-compatible static factory method `of`).
     *
     * @param operations Stream of JUpdateItemOperations

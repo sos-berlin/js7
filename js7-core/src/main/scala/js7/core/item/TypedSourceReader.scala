@@ -6,14 +6,14 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.common.files.DirectoryReader
-import js7.data.item.{ItemPath, VersionId, VersionedItem}
+import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 
 /**
   * @author Joacim Zschimmer
   */
 final class TypedSourceReader(directory: Path, readers: Iterable[VersionedItemReader])
 {
-  private val companionToReader: Map[ItemPath.AnyCompanion, VersionedItemReader] = readers.toKeyedMap(_.itemPathCompanion)
+  private val companionToReader: Map[VersionedItemPath.AnyCompanion, VersionedItemReader] = readers.toKeyedMap(_.itemPathCompanion)
   private val itemPathCompanions = readers.map(_.companion.Path)
 
   // For tests

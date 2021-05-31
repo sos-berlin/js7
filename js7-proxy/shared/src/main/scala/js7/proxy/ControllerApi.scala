@@ -17,8 +17,8 @@ import js7.data.controller.ControllerCommand.{AddOrders, ReleaseEvents}
 import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.ItemOperation.{AddVersion, AddOrChangeSigned, DeleteVersioned}
-import js7.data.item.{ItemOperation, ItemPath, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItems}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
+import js7.data.item.{ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.JournaledProxy.EndOfEventStreamException
@@ -78,7 +78,7 @@ with AutoCloseable
   def updateRepo(
     itemSigner: ItemSigner[VersionedItem],
     versionId: VersionId,
-    diff: VersionedItems.Diff[ItemPath, VersionedItem])
+    diff: VersionedItems.Diff[VersionedItemPath, VersionedItem])
   : Task[Checked[Completed]] = {
     val addOrChange = Observable.fromIterable(diff.added ++ diff.changed)
       .map(_ withVersion versionId)
@@ -91,7 +91,7 @@ with AutoCloseable
   def updateRepo(
     versionId: VersionId,
     signedItems: immutable.Iterable[Signed[SignableItem]],
-    delete: immutable.Iterable[ItemPath] = Nil)
+    delete: immutable.Iterable[VersionedItemPath] = Nil)
   : Task[Checked[Completed]] =
     updateItems(AddVersion(versionId) +: (
       Observable.fromIterable(signedItems).map(o => AddOrChangeSigned(o.signedString)) ++

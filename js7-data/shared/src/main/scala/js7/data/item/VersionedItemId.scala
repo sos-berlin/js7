@@ -10,7 +10,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class VersionedItemId[P <: ItemPath](path: P, versionId: VersionId)
+final case class VersionedItemId[P <: VersionedItemPath](path: P, versionId: VersionId)
 extends SignableItemKey
 {
   def companion: InventoryItemKey.Companion[VersionedItemId[P]] =
@@ -52,27 +52,27 @@ object VersionedItemId
   val VersionSeparator = "~"  // Can be used in an Akka actor name
 
   // TODO Use this implicit convertion only for tests
-  implicit def pathToItemId[P <: ItemPath: ItemPath.Companion](path: P): VersionedItemId[P] =
+  implicit def pathToItemId[P <: VersionedItemPath: VersionedItemPath.Companion](path: P): VersionedItemId[P] =
     VersionedItemId(path, VersionId.Anonymous)
 
-  implicit def ordering[P <: ItemPath]: Ordering[VersionedItemId[P]] =
+  implicit def ordering[P <: VersionedItemPath]: Ordering[VersionedItemId[P]] =
     Ordering.by(o => (o.path, o.versionId))
 
-  implicit def jsonEncoder[P <: ItemPath: Encoder]: Encoder.AsObject[VersionedItemId[P]] =
+  implicit def jsonEncoder[P <: VersionedItemPath: Encoder]: Encoder.AsObject[VersionedItemId[P]] =
     o => JsonObject(
       "path" -> (!o.path.isAnonymous ? o.path).asJson,
       "versionId" -> (!o.versionId.isAnonymous ? o.versionId).asJson)
 
-  implicit def jsonDecoder[P <: ItemPath: ItemPath.Companion: Decoder]: Decoder[VersionedItemId[P]] =
+  implicit def jsonDecoder[P <: VersionedItemPath: VersionedItemPath.Companion: Decoder]: Decoder[VersionedItemId[P]] =
     cursor =>
       for {
-        path <- cursor.getOrElse[P]("path")(implicitly[ItemPath.Companion[P]].Anonymous)
+        path <- cursor.getOrElse[P]("path")(implicitly[VersionedItemPath.Companion[P]].Anonymous)
         version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
       } yield VersionedItemId(path, version)
 
-  trait Companion[P <: ItemPath] extends SignableItemKey.Companion[VersionedItemId[P]]
+  trait Companion[P <: VersionedItemPath] extends SignableItemKey.Companion[VersionedItemId[P]]
   {
-    implicit val pathCompanion: ItemPath.Companion[P]
+    implicit val pathCompanion: VersionedItemPath.Companion[P]
     private lazy val P = pathCompanion
 
     def apply(path: P, versionId: VersionId): VersionedItemId[P]
@@ -99,7 +99,7 @@ object VersionedItemId
       implicit val x: Decoder[P] = P.jsonDecoder
       cursor =>
         for {
-          path <- cursor.getOrElse[P]("path")(implicitly[ItemPath.Companion[P]].Anonymous)
+          path <- cursor.getOrElse[P]("path")(implicitly[VersionedItemPath.Companion[P]].Anonymous)
           version <- cursor.getOrElse[VersionId]("versionId")(VersionId.Anonymous)
         } yield path ~ version
     }

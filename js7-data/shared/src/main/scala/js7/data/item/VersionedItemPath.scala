@@ -10,12 +10,13 @@ import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.item.ItemPath._
+import js7.data.item.VersionedItemPath._
 import scala.reflect.ClassTag
 
-trait ItemPath extends InventoryItemPath with GenericString
+// TODO Rename as VersionedItemPath
+trait VersionedItemPath extends InventoryItemPath with GenericString
 {
-  def companion: Companion[_ <: ItemPath]
+  def companion: Companion[_ <: VersionedItemPath]
 
   final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
@@ -28,13 +29,13 @@ trait ItemPath extends InventoryItemPath with GenericString
   def toFile(t: SourceType): Path =
     Paths.get(string + companion.sourceTypeToFilenameExtension(t))
 
-  final def asTyped[P <: ItemPath](implicit P: ItemPath.Companion[P]): P =
+  final def asTyped[P <: VersionedItemPath](implicit P: VersionedItemPath.Companion[P]): P =
     if (P == companion)
       this.asInstanceOf[P]
     else
       P.apply(string)
 
-  final def cast[P <: ItemPath](implicit P: ItemPath.Companion[P]): P = {
+  final def cast[P <: VersionedItemPath](implicit P: VersionedItemPath.Companion[P]): P = {
     if (P != companion) throw new ClassCastException(s"Expected ${companion.name}, but is: $toString")
     this.asInstanceOf[P]
   }
@@ -48,25 +49,25 @@ trait ItemPath extends InventoryItemPath with GenericString
   final def toTypedString: String = s"${companion.itemTypeName}:$string"
 }
 
-object ItemPath
+object VersionedItemPath
 {
-  implicit def ordering[P <: ItemPath]: Ordering[P] =
+  implicit def ordering[P <: VersionedItemPath]: Ordering[P] =
     (a, b) => a.string compare b.string match {
       case 0 => a.companion.name compare b.companion.name
       case o => o
     }
 
-  type AnyCompanion = Companion[_ <: ItemPath]
+  type AnyCompanion = Companion[_ <: VersionedItemPath]
 
-  implicit final class ImplicitItemPath[P <: ItemPath](private val underlying: P) extends AnyVal {
-    def ~(version: String)(implicit P: ItemPath.Companion[P]): VersionedItemId[P] =
+  implicit final class ImplicitItemPath[P <: VersionedItemPath](private val underlying: P) extends AnyVal {
+    def ~(version: String)(implicit P: VersionedItemPath.Companion[P]): VersionedItemId[P] =
       this ~ VersionId(version)
 
     def ~(v: VersionId): VersionedItemId[P] =
       VersionedItemId(underlying, v)
   }
 
-  abstract class Companion[P <: ItemPath: ClassTag]
+  abstract class Companion[P <: VersionedItemPath: ClassTag]
   extends Js7PathValidating[P]
   {
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
@@ -97,7 +98,7 @@ object ItemPath
     final val itemTypeName: String = name stripSuffix "Path"
     final val itemPathClass: Class[P] = implicitClass[P]
 
-    /** Converts a relative file path with normalized slahes (/) to a `ItemPath`. */
+    /** Converts a relative file path with normalized slahes (/) to a `VersionedItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext =>
         checked(normalized.dropRight(ext.length)).map(_ -> t)
@@ -117,23 +118,23 @@ object ItemPath
   def fileToString(file: Path): String =
     file.toString.replaceChar(file.getFileSystem.getSeparator.charAt(0), '/')
 
-  def jsonCodec(companions: Iterable[AnyCompanion]): Codec[ItemPath] =
-    new Codec[ItemPath] {
+  def jsonCodec(companions: Iterable[AnyCompanion]): Codec[VersionedItemPath] =
+    new Codec[VersionedItemPath] {
       private val typeToCompanion = companions.toKeyedMap(_.itemTypeName)
 
-      def apply(a: ItemPath) = Json.fromString(a.toTypedString)
+      def apply(a: VersionedItemPath) = Json.fromString(a.toTypedString)
 
       def apply(c: HCursor) =
         for {
           string <- c.as[String]
           prefixAndPath <- string indexOf ':' match {
             case i if i > 0 => Right((string take i, string.substring(i + 1)))
-            case _ => Left(DecodingFailure(s"Missing type prefix in ItemPath: $string", c.history))
+            case _ => Left(DecodingFailure(s"Missing type prefix in VersionedItemPath: $string", c.history))
           }
           prefix = prefixAndPath._1
           path = prefixAndPath._2
           itemPath <- typeToCompanion.get(prefix).map(_.apply(path))
-            .toRight(DecodingFailure(s"Unrecognized type prefix in ItemPath: $prefix", c.history))
+            .toRight(DecodingFailure(s"Unrecognized type prefix in VersionedItemPath: $prefix", c.history))
         } yield itemPath
     }
 }

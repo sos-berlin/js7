@@ -29,7 +29,7 @@ final class RepoTest extends AnyFreeSpec
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 
     assert(emptyRepo.idTo[AItem](APath("UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
-      Left(UnknownKeyProblem("ItemPath", APath("UNKNOWN-PATH"))))
+      Left(UnknownKeyProblem("VersionedItemPath", APath("UNKNOWN-PATH"))))
 
     assert(emptyRepo.applyEvent(VersionedItemAdded(Signed(a1, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED"))))) ==
       Left(Problem("Missing initial VersionAdded event for Repo")))
@@ -43,10 +43,10 @@ final class RepoTest extends AnyFreeSpec
     assert(repo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 
     assert(repo.idTo[AItem](APath("UNKNOWN") ~ "INITIAL") ==
-      Left(UnknownKeyProblem("ItemPath", APath("UNKNOWN"))))
+      Left(UnknownKeyProblem("VersionedItemPath", APath("UNKNOWN"))))
 
     assert(repo.idTo[AItem](APath("UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
-      Left(UnknownKeyProblem("ItemPath", APath("UNKNOWN-PATH"))))
+      Left(UnknownKeyProblem("VersionedItemPath", APath("UNKNOWN-PATH"))))
 
     assert(repo.applyEvent(VersionAdded(v("INITIAL"))) ==
       Left(DuplicateKey("VersionId", v("INITIAL"))))
@@ -60,8 +60,8 @@ final class RepoTest extends AnyFreeSpec
 
   "Event input" in {
     assert(testRepo.idTo[AItem](APath("A") ~ "UNKNOWN") == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
-    assert(testRepo.idTo[AItem](APath("X") ~ V1) == Left(UnknownKeyProblem("ItemPath", APath("X"))))
-    assert(testRepo.idTo[AItem](APath("X") ~ V1) == Left(UnknownKeyProblem("ItemPath", APath("X"))))
+    assert(testRepo.idTo[AItem](APath("X") ~ V1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
+    assert(testRepo.idTo[AItem](APath("X") ~ V1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
     assert(testRepo.idTo[BItem](BPath("Bx") ~ V1) == Left(UnknownKeyProblem("VersionedItemId", BPath("Bx") ~ V1)))
     assert(testRepo.idTo[BItem](BPath("Bx") ~ V3) == Left(VersionedItemDeletedProblem(BPath("Bx"))))
     assert(testRepo.idTo[AItem](APath("A") ~ V1) == Right(a1))
@@ -195,18 +195,18 @@ final class RepoTest extends AnyFreeSpec
 
     "VersionedItemChanged for unknown path" in {
       assert(repo.applyEvent(VersionedItemChanged(sign(AItem(APath("A") ~ V1, "A")))) ==
-        Left(UnknownKeyProblem("ItemPath", APath("A"))))
+        Left(UnknownKeyProblem("VersionedItemPath", APath("A"))))
     }
 
     "VersionedItemDeleted for unknown path" in {
       assert(repo.applyEvent(VersionedItemDeleted(APath("A"))) ==
-        Left(UnknownKeyProblem("ItemPath", APath("A"))))
+        Left(UnknownKeyProblem("VersionedItemPath", APath("A"))))
     }
 
     "VersionedItemAdded for existent path" in {
       repo = repo.applyEvent(VersionedItemAdded(sign(AItem(APath("A") ~ V1, "A")))).orThrow
       assert(repo.applyEvent(VersionedItemAdded(sign(AItem(APath("A") ~ V1, "A")))) ==
-        Left(DuplicateKey("ItemPath", APath("A"))))
+        Left(DuplicateKey("VersionedItemPath", APath("A"))))
     }
 
     "FileBaseAdded with different VersionId" in {

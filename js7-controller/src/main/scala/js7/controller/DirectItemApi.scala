@@ -4,7 +4,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 import js7.core.item.VersionedItemApi
 import js7.data.controller.ControllerState
-import js7.data.item.{ItemPath, Repo, VersionedItem, VersionedItemId, VersionedItemOverview}
+import js7.data.item.{Repo, VersionedItem, VersionedItemId, VersionedItemOverview, VersionedItemPath}
 import monix.eval.Task
 
 private[controller] final class DirectItemApi(controllerState: Task[Checked[ControllerState]])
@@ -19,7 +19,7 @@ extends VersionedItemApi
     for (checked <- checkedRepo) yield
       for (repo <- checked) yield
         repo.currentTyped[A].values.toSeq
-          .sortBy/*for determinstic tests*/(_.key.asInstanceOf[VersionedItemId[ItemPath]])
+          .sortBy/*for determinstic tests*/(_.key.asInstanceOf[VersionedItemId[VersionedItemPath]])
 
   def pathToCurrentItem[A <: VersionedItem: VersionedItem.Companion](path: A#Path): Task[Checked[A]] =
     for (checked <- checkedRepo) yield

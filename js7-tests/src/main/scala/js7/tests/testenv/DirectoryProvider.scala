@@ -35,7 +35,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
-import js7.data.item.{InventoryItem, ItemOperation, ItemPath, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem}
+import js7.data.item.{InventoryItem, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -217,7 +217,7 @@ extends HasCloser
     controller: RunningController,
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
-    delete: Seq[ItemPath] = Nil)
+    delete: Seq[VersionedItemPath] = Nil)
   : Unit =
     controller.updateItemsAsSystemUser(
       AddVersion(versionId) +:

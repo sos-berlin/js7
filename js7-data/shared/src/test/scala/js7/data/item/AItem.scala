@@ -25,12 +25,12 @@ object AItem extends VersionedItem.Companion[AItem] {
   implicit val jsonCodec = deriveCodec[AItem]
 }
 
-case class APath(string: String) extends ItemPath
+case class APath(string: String) extends VersionedItemPath
 {
   def companion = APath
 }
 
-object APath extends ItemPath.Companion[APath]
+object APath extends VersionedItemPath.Companion[APath]
 {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".a.json",

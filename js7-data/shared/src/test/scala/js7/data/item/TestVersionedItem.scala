@@ -3,11 +3,11 @@ package js7.data.item
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
-case class TestPath(string: String) extends ItemPath {
+case class TestPath(string: String) extends VersionedItemPath {
   def companion = TestPath
 }
 
-object TestPath extends ItemPath.Companion[TestPath] {
+object TestPath extends VersionedItemPath.Companion[TestPath] {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".test.json")
 

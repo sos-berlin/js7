@@ -28,25 +28,25 @@ final class StandardDirectivesTest extends AnyFreeSpec
   }
 
   "remainingItemPath" - {
-    "remainingItemPath with ItemPath" in {
+    "remainingItemPath with VersionedItemPath" in {
       assert(remainingItemPath[APath].apply(Path("PATH")) == Matched(Path.Empty, Tuple1(APath("PATH"))))
       assert(remainingItemPath[APath].apply(Path("invalid,character")) == Unmatched)
       assert(remainingItemPath[APath].apply(Path.Empty)                == Unmatched)
     }
 
-    "Properly encoded ItemPath (percent character encodes hexadecimal bytes)" in {
+    "Properly encoded VersionedItemPath (percent character encodes hexadecimal bytes)" in {
       // Example: /api/workflow/%2FFOLDER%2FMY-WORKFLOW.
       // If you want to interpret the percent characted as a hexadecimal encoding prefix,
-      // then do not omit the first slash but encode it as %2F, as each slash in the ItemPath.
-      // This allows to set the ItemPath in a programmable way in a single path segment.
+      // then do not omit the first slash but encode it as %2F, as each slash in the VersionedItemPath.
+      // This allows to set the VersionedItemPath in a programmable way in a single path segment.
       assert(remainingItemPath[APath].apply(Path("NAME"))  == Matched(Path.Empty, Tuple1(APath("NAME"))))
       assert(remainingItemPath[APath].apply(Path("FOLDER%2FNAME"))  == matched)
       //assert(remainingItemPath[APath].apply(Path("FOLDER%2Fwith%252Fpercent")) == Matched(Path.Empty, Tuple1(APath("FOLDER/with%2Fpercent"))))
     }
 
-    "Raw ItemPath, use it for comfortable typing" in {
+    "Raw VersionedItemPath, use it for comfortable typing" in {
       // Example: /api/workflow/FOLDER/MY-WORKFLOW.
-      // Type the first slash of the ItemPath as unencoded '/' if you do not want the percent character to be interpreted.
+      // Type the first slash of the VersionedItemPath as unencoded '/' if you do not want the percent character to be interpreted.
       // This allows to type the URI in a comfortable way, but this is not recommened for programming.
       // If the first name path does not start with a percent characted start starting slash may be ommitted.
 

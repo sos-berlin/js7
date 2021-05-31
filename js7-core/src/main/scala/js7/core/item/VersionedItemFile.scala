@@ -3,16 +3,16 @@ package js7.core.item
 import java.nio.file.Path
 import js7.base.problem.{Checked, Problem}
 import js7.core.item.ItemPaths.fileToItemPathAndSourceType
-import js7.data.item.{ItemPath, SourceType}
+import js7.data.item.{SourceType, VersionedItemPath}
 
 /**
   * @author Joacim Zschimmer
   */
-final case class VersionedItemFile(file: Path, path: ItemPath, sourceType: SourceType)
+final case class VersionedItemFile(file: Path, path: VersionedItemPath, sourceType: SourceType)
 
 object VersionedItemFile
 {
-  def checked(baseDirectory: Path, path: Path, companions: Iterable[ItemPath.AnyCompanion]): Checked[VersionedItemFile] =
+  def checked(baseDirectory: Path, path: Path, companions: Iterable[VersionedItemPath.AnyCompanion]): Checked[VersionedItemFile] =
     fileToItemPathAndSourceType(companions, baseDirectory, path)
       .map { case (itemPath, sourceType) => VersionedItemFile(path, itemPath, sourceType) }
 

@@ -2,9 +2,9 @@ package js7.data.folder
 
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.data.item.{ItemPath, SourceType}
+import js7.data.item.{SourceType, VersionedItemPath}
 
-final case class FolderPath private(string: String) extends ItemPath {
+final case class FolderPath private(string: String) extends VersionedItemPath {
   import FolderPath._
 
   def companion = FolderPath
@@ -21,19 +21,19 @@ final case class FolderPath private(string: String) extends ItemPath {
   /**
     * Appends the given path to this FolderPath and returns a `P`.
    */
-  def resolve[P <: ItemPath: ItemPath.Companion](path: String): P =
+  def resolve[P <: VersionedItemPath: VersionedItemPath.Companion](path: String): P =
     checkedResolve[P](path).orThrow
 
   /**
     * Appends the given path to this FolderPath and returns a `P`.
    */
-  def checkedResolve[P <: ItemPath: ItemPath.Companion](path: String): Checked[P] =
-    implicitly[ItemPath.Companion[P]].checked(absoluteString(this, path))
+  def checkedResolve[P <: VersionedItemPath: VersionedItemPath.Companion](path: String): Checked[P] =
+    implicitly[VersionedItemPath.Companion[P]].checked(absoluteString(this, path))
 
-  def isParentOf(path: ItemPath): Boolean =
+  def isParentOf(path: VersionedItemPath): Boolean =
     path != FolderPath.Root && this == parentOf(path)
 
-  def isAncestorOf(path: ItemPath): Boolean =
+  def isAncestorOf(path: VersionedItemPath): Boolean =
     isRoot ||
       (path.string startsWith withTrailingSlash) ||
       PartialFunction.cond(path) {
@@ -46,7 +46,7 @@ final case class FolderPath private(string: String) extends ItemPath {
     throw new NotImplementedError("FolderPath.toFile")  // In Scala.js, don't use java.nio.file.Paths
 }
 
-object FolderPath extends ItemPath.Companion[FolderPath]
+object FolderPath extends VersionedItemPath.Companion[FolderPath]
 {
   val Root = new FolderPath("")
   val sourceTypeToFilenameExtension = Map.empty
@@ -59,7 +59,7 @@ object FolderPath extends ItemPath.Companion[FolderPath]
     else
       super.checked(string)
 
-  def parentOf(path: ItemPath): FolderPath =
+  def parentOf(path: VersionedItemPath): FolderPath =
     path.string lastIndexOf '/' match {
       case -1 =>
         if (path == FolderPath.Root) throw new IllegalStateException("Root path has no parent folder")

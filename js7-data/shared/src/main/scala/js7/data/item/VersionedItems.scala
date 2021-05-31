@@ -6,7 +6,7 @@ package js7.data.item
 object VersionedItems
 {
   def diffVersionedItems(changed: Iterable[VersionedItem], base: Iterable[VersionedItem], ignoreVersion: Boolean = false): Seq[RepoChange] = {
-    val pathToMaybeItem = base.view.map(o => o.path -> o).toMap[ItemPath, VersionedItem].lift
+    val pathToMaybeItem = base.view.map(o => o.path -> o).toMap[VersionedItemPath, VersionedItem].lift
     val addedOrChanged = changed.view flatMap toAddedOrChanged(pathToMaybeItem, ignoreVersion)
     val changedPaths = changed.view.map(_.path).toSet
     val deletedEvents = base.view.map(_.path) filterNot changedPaths map RepoChange.Deleted.apply
@@ -15,7 +15,7 @@ object VersionedItems
       .sortBy(_.path)
   }
 
-  private def toAddedOrChanged(previousPathToItem: ItemPath => Option[VersionedItem], ignoreVersion: Boolean)(item: VersionedItem): Option[RepoChange] =
+  private def toAddedOrChanged(previousPathToItem: VersionedItemPath => Option[VersionedItem], ignoreVersion: Boolean)(item: VersionedItem): Option[RepoChange] =
     previousPathToItem(item.path) match {
       case Some(previous) if previous == (if (ignoreVersion) item.withVersion(previous.key.versionId) else item) =>
         None
@@ -27,7 +27,7 @@ object VersionedItems
         Some(RepoChange.Added(item))
     }
 
-  final case class Diff[P <: ItemPath, A <: VersionedItem](added: Seq[A] = Nil, changed: Seq[A] = Nil, deleted: Seq[P] = Nil)
+  final case class Diff[P <: VersionedItemPath, A <: VersionedItem](added: Seq[A] = Nil, changed: Seq[A] = Nil, deleted: Seq[P] = Nil)
   {
     /** For tests: ordering is irrelevant. */
     override def equals(other: Any) = other match {
@@ -37,7 +37,7 @@ object VersionedItems
 
     def isEmpty = added.isEmpty && changed.isEmpty && deleted.isEmpty
 
-    /** Returns a subset of a certain `ItemPath` and `VersionedItem`. */
+    /** Returns a subset of a certain `VersionedItemPath` and `VersionedItem`. */
     def select[P1 <: P, A1 <: A](implicit A1: VersionedItem.Companion[A1]): Diff[P1, A1] =
       Diff(
         added   collect { case o if o.companion eq A1 => o.asInstanceOf[A1] },
@@ -50,7 +50,7 @@ object VersionedItems
   }
   object Diff {
     def fromRepoChanges(events: Seq[RepoChange]) =
-      Diff[ItemPath, VersionedItem](
+      Diff[VersionedItemPath, VersionedItem](
         events collect { case o: RepoChange.Added => o.item },
         events collect { case o: RepoChange.Changed => o.item },
         events collect { case o: RepoChange.Deleted => o.path })

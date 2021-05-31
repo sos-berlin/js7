@@ -41,8 +41,8 @@ object VersionedItem
   {
     type Item <: A
 
-    type Path <: ItemPath
-    val Path: ItemPath.Companion[Path]
+    type Path <: VersionedItemPath
+    val Path: VersionedItemPath.Companion[Path]
 
     type Key = VersionedItemId[Path]
     final lazy val Key: SignableItemKey.Companion[Key] = Path.VersionedItemIdCompanion

@@ -2,7 +2,7 @@ package js7.core.item
 
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.item.{ItemPath, VersionedItem, VersionedItemOverview}
+import js7.data.item.{VersionedItem, VersionedItemOverview, VersionedItemPath}
 import monix.eval.Task
 
 /**
@@ -23,7 +23,7 @@ trait VersionedItemApi
 
 object VersionedItemApi
 {
-  def forTest(pathToItem: Map[_ <: ItemPath, VersionedItem]) =
+  def forTest(pathToItem: Map[_ <: VersionedItemPath, VersionedItem]) =
     new VersionedItemApi
     {
       def overview[A <: VersionedItem: VersionedItem.Companion](implicit O: VersionedItemOverview.Companion[A]): Task[Checked[O.Overview]] =

@@ -25,11 +25,11 @@ object BItem extends VersionedItem.Companion[BItem] {
   implicit val jsonCodec = deriveCodec[BItem]
 }
 
-case class BPath(string: String) extends ItemPath {
+case class BPath(string: String) extends VersionedItemPath {
   def companion = BPath
 }
 
-object BPath extends ItemPath.Companion[BPath] {
+object BPath extends VersionedItemPath.Companion[BPath] {
   val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
     SourceType.Json -> ".b.json")
 

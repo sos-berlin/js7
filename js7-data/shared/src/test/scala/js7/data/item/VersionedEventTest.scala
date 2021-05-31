@@ -87,7 +87,7 @@ final class VersionedEventTest extends AnyFreeSpec
 
 object VersionedEventTest
 {
-  implicit private val itemPathJsonCodec: CirceCodec[ItemPath] = ItemPath.jsonCodec(Set(WorkflowPath))
+  implicit private val itemPathJsonCodec: CirceCodec[VersionedItemPath] = VersionedItemPath.jsonCodec(Set(WorkflowPath))
 
   implicit private val itemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
     Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))

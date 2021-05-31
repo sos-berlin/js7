@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.common.http.CirceToYaml.yamlToJson
 import js7.core.item.VersionedItemReader._
-import js7.data.item.{ItemPath, SourceType, VersionedItem, VersionedItemId, VersionedItemId_}
+import js7.data.item.{SourceType, VersionedItem, VersionedItemId, VersionedItemId_, VersionedItemPath}
 
 /**
   * @author Joacim Zschimmer
@@ -42,11 +42,11 @@ trait VersionedItemReader
         yamlToJson(source.utf8String) flatMap convertFromJson
     }
 
-  private[item] def itemPathCompanion: ItemPath.Companion[ThisItemPath] = companion.Path
+  private[item] def itemPathCompanion: VersionedItemPath.Companion[ThisItemPath] = companion.Path
 }
 
 object VersionedItemReader
 {
-  final case class SourceProblem private(path: ItemPath, sourceType: SourceType, underlying: Problem)
+  final case class SourceProblem private(path: VersionedItemPath, sourceType: SourceType, underlying: Problem)
     extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
 }

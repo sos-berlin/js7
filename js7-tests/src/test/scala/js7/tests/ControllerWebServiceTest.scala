@@ -290,8 +290,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orderWithMissingWorkflow, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "No such ItemPath: Workflow:MISSING")  // Or similar
-        assert(exception.problem == Some(UnknownKeyProblem("ItemPath", WorkflowPath("MISSING"))))
+        assert(exception.dataAsString contains "No such VersionedItemPath: Workflow:MISSING")  // Or similar
+        assert(exception.problem == Some(UnknownKeyProblem("VersionedItemPath", WorkflowPath("MISSING"))))
       }
 
       "Order with missing workflow is rejected (order array)" in {
@@ -301,8 +301,8 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           httpClient.postWithHeaders[Json, Json](Uri(s"$uri/controller/api/order"), orders, headers) await 99.s
         }
         assert(exception.status.intValue == 400/*BadRequest*/)
-        assert(exception.dataAsString contains "No such ItemPath: Workflow:MISSING")  // Or similar
-        assert(exception.problem == Some(UnknownKeyProblem("ItemPath", WorkflowPath("MISSING"))))
+        assert(exception.dataAsString contains "No such VersionedItemPath: Workflow:MISSING")  // Or similar
+        assert(exception.problem == Some(UnknownKeyProblem("VersionedItemPath", WorkflowPath("MISSING"))))
       }
 
       "Invalid OrderId is rejected (single order)" in {

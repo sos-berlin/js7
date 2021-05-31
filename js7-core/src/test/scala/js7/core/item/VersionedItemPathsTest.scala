@@ -14,7 +14,7 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class ItemPathsTest extends AnyFreeSpec {
+final class VersionedItemPathsTest extends AnyFreeSpec {
 
   "fileToItemPathAndSourceType" in {
     val dir = Paths.get("DIR")

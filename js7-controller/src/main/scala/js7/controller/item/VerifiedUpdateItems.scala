@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
-import js7.data.item.{ItemOperation, ItemPath, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem}
+import js7.data.item.{ItemOperation, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.View
@@ -35,9 +35,9 @@ object VerifiedUpdateItems
   final case class Versioned(
     versionId: VersionId,
     verifiedItems: Seq[Verified[VersionedItem]],
-    delete: Seq[ItemPath])
+    delete: Seq[VersionedItemPath])
   {
-    def paths: View[ItemPath] =
+    def paths: View[VersionedItemPath] =
       verifiedItems.view.map(_.item.path) ++ delete
   }
 
@@ -57,7 +57,7 @@ object VerifiedUpdateItems
     val unsignedSimpleItems_ = Vector.newBuilder[UnsignedSimpleItem]
     val signedItems_ = Vector.newBuilder[Verified[SignableItem]]
     val simpleDeletes_ = Vector.newBuilder[SimpleItemPath]
-    val versionedDeletes_ = Vector.newBuilder[ItemPath]
+    val versionedDeletes_ = Vector.newBuilder[VersionedItemPath]
     @volatile var maybeVersionId: Option[VersionId] = None
     @volatile var problemOccurred: Option[Problem] = None
 
@@ -114,7 +114,7 @@ object VerifiedUpdateItems
   private def checkVersioned(
     maybeVersionId: Option[VersionId],
     verifiedVersionedItems: Seq[Verified[VersionedItem]],
-    versionedDeletes: Seq[ItemPath]
+    versionedDeletes: Seq[VersionedItemPath]
   ): Checked[Option[Versioned]] =
     (maybeVersionId, verifiedVersionedItems, versionedDeletes) match {
       case (Some(v), verifiedVersionedItems, delete) =>

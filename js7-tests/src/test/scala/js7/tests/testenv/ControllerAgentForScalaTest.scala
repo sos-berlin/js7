@@ -9,7 +9,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
-import js7.data.item.{ItemPath, VersionId, VersionedItem}
+import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.proxy.ControllerApi
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -69,7 +69,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   final def updateVersionedItems(
     change: Seq[VersionedItem],
-    delete: Seq[ItemPath])
+    delete: Seq[VersionedItemPath])
   : VersionId = {
     val versionId = VersionId.generate(usedVersionIds)
     updateVersionedItems(versionId, change, delete)
@@ -79,7 +79,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   final def updateVersionedItems(
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
-    delete: Seq[ItemPath] = Nil)
+    delete: Seq[VersionedItemPath] = Nil)
   : Unit = {
     usedVersionIds += versionId
     directoryProvider.updateVersionedItems(controller, versionId, change, delete)

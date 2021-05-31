@@ -5,15 +5,15 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.problem.{Problem, ProblemException}
-import js7.data.item.ItemPathTest.AId
 import js7.data.item.VersionedItemId.VersionSeparator
+import js7.data.item.VersionedItemPathTest._
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ItemPathTest extends AnyFreeSpec
+final class VersionedItemPathTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson(APath("PATH"), json""" "PATH" """)
@@ -27,10 +27,10 @@ final class ItemPathTest extends AnyFreeSpec
     assert(json""" "🔵" """.as[APath] == Right(APath("🔵")))
   }
 
-  "JSON with generic ItemPath.jsonCodec" in {
-    implicit val itemPathCodec = ItemPath.jsonCodec(List(APath, BPath))
-    testJson[ItemPath](APath("a"), json""" "A:a" """)
-    testJson[ItemPath](BPath("b"), json""" "B:b" """)
+  "JSON with generic VersionedItemPath.jsonCodec" in {
+    implicit val itemPathCodec = VersionedItemPath.jsonCodec(List(APath, BPath))
+    testJson[VersionedItemPath](APath("a"), json""" "A:a" """)
+    testJson[VersionedItemPath](BPath("b"), json""" "B:b" """)
   }
 
   "~ operator" in {
@@ -124,7 +124,7 @@ final class ItemPathTest extends AnyFreeSpec
   }
 }
 
-object ItemPathTest
+object VersionedItemPathTest
 {
   private val AId = APath.VersionedItemIdCompanion
 }

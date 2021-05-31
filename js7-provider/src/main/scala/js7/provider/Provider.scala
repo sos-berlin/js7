@@ -26,7 +26,7 @@ import js7.core.item.{ItemPaths, TypedSourceReader}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.VersionedItems.diffVersionedItems
-import js7.data.item.{ItemPath, ItemSigner, VersionId, VersionedItem, VersionedItems}
+import js7.data.item.{ItemSigner, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -110,12 +110,12 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   @TestOnly
-  def testControllerDiff: Task[Checked[VersionedItems.Diff[ItemPath, VersionedItem]]] =
+  def testControllerDiff: Task[Checked[VersionedItems.Diff[VersionedItemPath, VersionedItem]]] =
     loginUntilReachable >> controllerDiff(readDirectory())
 
   /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[VersionedItems.Diff[ItemPath, VersionedItem]]] =
+  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[VersionedItems.Diff[VersionedItemPath, VersionedItem]]] =
     for {
       pair <- Task.parZip2(readLocalItem(localEntries.map(_.file)), fetchControllerItemSeq)
       (checkedLocalItemSeq, controllerItemSeq) = pair
@@ -125,7 +125,7 @@ extends HasCloser with Observing with ProvideActorSystem
   private def readLocalItem(files: Seq[Path]) =
     Task { typedSourceReader.readVersionedItems(files) }
 
-  private def itemDiff(aSeq: Seq[VersionedItem], bSeq: Seq[VersionedItem]): VersionedItems.Diff[ItemPath, VersionedItem] =
+  private def itemDiff(aSeq: Seq[VersionedItem], bSeq: Seq[VersionedItem]): VersionedItems.Diff[VersionedItemPath, VersionedItem] =
     VersionedItems.Diff.fromRepoChanges(diffVersionedItems(aSeq, bSeq, ignoreVersion = true))
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
@@ -158,7 +158,7 @@ extends HasCloser with Observing with ProvideActorSystem
           }
     }
 
-  private def execute(versionId: Option[VersionId], diff: VersionedItems.Diff[ItemPath, VersionedItem]): Task[Checked[Completed]] =
+  private def execute(versionId: Option[VersionId], diff: VersionedItems.Diff[VersionedItemPath, VersionedItem]): Task[Checked[Completed]] =
     if (diff.isEmpty && versionId.isEmpty)
       Task(Checked.completed)
     else {
@@ -167,7 +167,7 @@ extends HasCloser with Observing with ProvideActorSystem
       controllerApi.updateRepo(itemSigner, v, diff)
     }
 
-  private def logUpdate(versionId: VersionId, diff: VersionedItems.Diff[ItemPath, VersionedItem]): Unit = {
+  private def logUpdate(versionId: VersionId, diff: VersionedItems.Diff[VersionedItemPath, VersionedItem]): Unit = {
     logger.info(s"Version ${versionId.string}")
     for (o <- diff.deleted            .sorted) logger.info(s"Delete ${o.pretty}")
     for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
@@ -180,10 +180,10 @@ extends HasCloser with Observing with ProvideActorSystem
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector
 
-  private def toItemDiff(diff: PathSeqDiff): Checked[VersionedItems.Diff[ItemPath, VersionedItem]] = {
+  private def toItemDiff(diff: PathSeqDiff): Checked[VersionedItems.Diff[VersionedItemPath, VersionedItem]] = {
     val checkedAdded = typedSourceReader.readVersionedItems(diff.added)
     val checkedChanged = typedSourceReader.readVersionedItems(diff.changed)
-    val checkedDeleted: Checked[Vector[ItemPath]] =
+    val checkedDeleted: Checked[Vector[VersionedItemPath]] =
       diff.deleted.toVector
         .traverse(path => ItemPaths.fileToItemPath(itemPathCompanions, conf.liveDirectory, path))
     (checkedAdded, checkedChanged, checkedDeleted) mapN ((add, chg, del) => VersionedItems.Diff(add, chg, del))

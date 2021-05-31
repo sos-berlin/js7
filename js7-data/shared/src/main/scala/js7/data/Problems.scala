@@ -4,7 +4,7 @@ import js7.base.problem.Problem
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
-import js7.data.item.{InventoryItemKey, InventoryItemPath, ItemPath, VersionId, VersionedItemId}
+import js7.data.item.{InventoryItemKey, InventoryItemPath, VersionId, VersionedItemId, VersionedItemPath}
 import js7.data.order.OrderId
 
 object Problems
@@ -44,11 +44,11 @@ object Problems
     def arguments = Map("agentPath" -> agentPath.string)
   }
 
-  final case class VersionedItemDeletedProblem(path: ItemPath) extends Problem.Coded {
+  final case class VersionedItemDeletedProblem(path: VersionedItemPath) extends Problem.Coded {
     def arguments = Map("path" -> path.pretty)
   }
 
-  final case class ItemVersionDoesNotMatchProblem(versionId: VersionId, itemId: VersionedItemId[_ <: ItemPath]) extends Problem.Coded {
+  final case class ItemVersionDoesNotMatchProblem(versionId: VersionId, itemId: VersionedItemId[_ <: VersionedItemPath]) extends Problem.Coded {
     def arguments = Map("versionId" -> versionId.string, "id" -> itemId.toString)
   }
 
