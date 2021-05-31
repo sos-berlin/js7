@@ -13,7 +13,7 @@ final class AgentRefStateTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson[AgentRefState](
-      js7.data.agent.AgentRefState(
+      AgentRefState(
         AgentRef(AgentPath("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
         None,
         None,
@@ -34,7 +34,7 @@ final class AgentRefStateTest extends AnyFreeSpec
     val agentRunId = AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))
 
     testJson[AgentRefState](
-      js7.data.agent.AgentRefState(
+      AgentRefState(
         AgentRef(AgentPath("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
         Some(agentRunId),
         None,
