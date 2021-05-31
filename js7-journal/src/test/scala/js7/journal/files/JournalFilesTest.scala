@@ -3,6 +3,7 @@ package js7.journal.files
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
+import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.journal.files.JournalFiles.{deleteJournal, deleteJournalIfMarked, deletionMarkerFile}
 import org.scalatest.freespec.AnyFreeSpec
@@ -12,6 +13,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class JournalFilesTest extends AnyFreeSpec
 {
+  coupleScribeWithSlf4j()
+
   "listJournalFiles, currentFile" in {
     withTemporaryDirectory("JournalHistoryTest-") { dir =>
       dir / "test--0.journal" := "TEST-CONTENT"

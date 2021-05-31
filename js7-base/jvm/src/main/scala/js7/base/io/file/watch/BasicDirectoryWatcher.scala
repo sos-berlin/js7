@@ -64,16 +64,14 @@ extends AutoCloseable
 
   private def poll(canceled: => Boolean): Task[Seq[DirectoryWatchEvent]] =
     Task.defer {
-      lazy val msg = s"Blocking '${Thread.currentThread.getName}' thread for '$directory' ..."
-      logger.trace(msg)
       val since = now
+      def prefix = s"pollEvents ... ${since.elapsed.pretty} => "
       try {
         val events = pollWatchKey()
-        logger.debug(s"$msg ${since.elapsed.pretty} => " +
-          (if (events.isEmpty) "timed out" else events.mkString(", ")))
+        logger.trace(prefix + (if (events.isEmpty) "timed out" else events.mkString(", ")))
         Task.pure(events)
       } catch { case NonFatal(t) if canceled =>
-        logger.trace(s"$msg ${since.elapsed.pretty} => canceled (${t.toStringWithCauses})")
+        logger.trace(s"$prefix canceled (${t.toStringWithCauses})")
         // Ignore the error, otherwise it would be logged by the thread pool.
         Task.never  // because the task is canceled
       }
