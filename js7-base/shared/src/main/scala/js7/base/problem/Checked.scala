@@ -1,6 +1,5 @@
 package js7.base.problem
 
-import cats.syntax.semigroup._
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
@@ -130,17 +129,32 @@ object Checked
       underlying.left.map(_.throwable).orThrow
   }
 
-  implicit final class RichCheckedIterable[A](private val underlying: Iterable[Checked[A]]) extends AnyVal {
+  implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal {
     def traverseAndCombineProblems[B](f: A => Checked[B]): Checked[Seq[B]] = {
-      val rightBuilder = Vector.newBuilder[B]
-      val leftBuilder = mutable.Buffer.empty[Problem]
-      underlying.map(
+      val rightBuilder = new VectorBuilder[B]
+      val leftBuilder = mutable.Buffer[Problem]()
+      underlying.iterator.foreach(
         _.flatMap(f) match {
           case Left(problem) => leftBuilder += problem
           case Right(b) => if (leftBuilder.isEmpty) rightBuilder += b
         })
-      if (leftBuilder.nonEmpty) Left(leftBuilder.toVector.reduce(_ |+| _))
-      else Right(rightBuilder.result())
+      Problem.combineAllOption(leftBuilder) match {
+        case Some(problem) => Left(problem)
+        case None => Right(rightBuilder.result())
+      }
+    }
+
+    def combineProblems: Checked[Seq[A]] = {
+      val rightBuilder = new VectorBuilder[A]
+      val leftBuilder = mutable.Buffer[Problem]()
+      underlying.iterator.foreach {
+        case Left(problem) => leftBuilder += problem
+        case Right(b) => if (leftBuilder.isEmpty) rightBuilder += b
+      }
+      Problem.combineAllOption(leftBuilder) match {
+        case Some(problem) => Left(problem)
+        case None => Right(rightBuilder.result())
+      }
     }
   }
 

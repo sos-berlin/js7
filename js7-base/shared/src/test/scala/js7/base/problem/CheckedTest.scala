@@ -233,6 +233,12 @@ final class CheckedTest extends AnyFreeSpec
       Left(Problem.combined(List("ONE", "TWO"))))
   }
 
+  "combineProblems" in {
+    assert(List(Right(1), Right(2)).combineProblems == Right(Seq(1, 2)))
+    assert(List(Left(Problem("ONE")), Right(2), Left(Problem("TWO"))).combineProblems ==
+      Left(Problem.combined(List("ONE", "TWO"))))
+  }
+
   "failFastMap" - {
     "Invalid" in {
       var lastI = 0
