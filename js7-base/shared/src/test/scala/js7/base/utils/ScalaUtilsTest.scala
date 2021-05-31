@@ -27,6 +27,7 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert((None: O).rightAs(true) == None)
       assert((Some(Left("A")): O).rightAs(true) == Some(Left("A")))
       assert((Some(Right(7)): O).rightAs(true) == Some(Right(true)))
+      assert((Some(Right(7)): O).rightAs(()).get eq RightUnit)  // Optimized
     }
 
     "mapt" in {
@@ -339,6 +340,7 @@ final class ScalaUtilsTest extends AnyFreeSpec
       type O = Either[String, Int]
       assert((Left("LEFT"): O).rightAs(true) == Left("LEFT"))
       assert((Right(7): O).rightAs(true) == Right(true))
+      assert((Right(7): O).rightAs(()) eq RightUnit)  // Optimized
     }
 
     "orElse" in {

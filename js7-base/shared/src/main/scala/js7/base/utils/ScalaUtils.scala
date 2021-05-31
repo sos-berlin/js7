@@ -42,6 +42,12 @@ object ScalaUtils
       def rightAs[R1](newRight: => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
         F.map(underlying)(_.map(_ => newRight))
 
+      def rightAs(unit: Unit)(implicit F: Functor[F]): F[Either[L, Unit]] =
+        F.map(underlying) {
+          case Right(_) => RightUnit
+          case _ => underlying.asInstanceOf[Either[L, Unit]]
+        }
+
       def mapt[R1](f: R => R1)(implicit F: Functor[F]): F[Either[L, R1]] =
         F.map(underlying)(_.map(f))
 
@@ -356,6 +362,12 @@ object ScalaUtils
     {
       def rightAs[R1](newRight: => R1): Either[L, R1] =
         either.map(_ => newRight)
+
+      def rightAs(right: Unit): Either[L, Unit] =
+        either match {
+          case Right(_) => RightUnit
+          case _ => either.asInstanceOf[Either[L, Unit]]
+        }
 
       /** Useful for `Checked` to combine both `Problem`s. */
       def combineLeft[R1](other: Either[L, R1])(implicit L: Semigroup[L]): Either[L, (R, R1)] =
