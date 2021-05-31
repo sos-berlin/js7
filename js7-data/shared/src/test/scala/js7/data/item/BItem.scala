@@ -11,6 +11,8 @@ final case class BItem(id: VersionedItemId[BPath], content: String) extends Vers
   val companion = BItem
 
   def withId(id: VersionedItemId[BPath]) = copy(id = id)
+
+  def referencedItemPaths = Set.empty
 }
 
 object BItem extends VersionedItem.Companion[BItem] {

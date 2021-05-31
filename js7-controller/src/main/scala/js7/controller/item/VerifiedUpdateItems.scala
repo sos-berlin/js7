@@ -11,6 +11,7 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVer
 import js7.data.item.{ItemOperation, ItemPath, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem}
 import monix.eval.Task
 import monix.reactive.Observable
+import scala.collection.View
 
 final case class VerifiedUpdateItems private[item](
   simple: VerifiedUpdateItems.Simple,
@@ -27,12 +28,18 @@ object VerifiedUpdateItems
     delete: Seq[SimpleItemPath])
   {
     def itemCount = unsignedSimpleItems.size + verifiedSimpleItems.size
+    def paths: View[SimpleItemPath] =
+      unsignedSimpleItems.view.map(_.key) ++ verifiedSimpleItems.view.map(_.item.key) ++ delete
   }
 
   final case class Versioned(
     versionId: VersionId,
     verifiedItems: Seq[Verified[VersionedItem]],
     delete: Seq[ItemPath])
+  {
+    def paths: View[ItemPath] =
+      verifiedItems.view.map(_.item.path) ++ delete
+  }
 
   def fromOperations(
     observable: Observable[ItemOperation],

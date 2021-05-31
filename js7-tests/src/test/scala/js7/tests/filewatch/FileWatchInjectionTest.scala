@@ -8,7 +8,8 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.workflow.WorkflowPath
+import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tests.filewatch.FileWatchInjectionTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -16,9 +17,8 @@ import scala.concurrent.TimeoutException
 
 final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  private val aAgentPath = AgentPath("AGENT-A")
-  protected val agentPaths = Seq(aAgentPath)
-  protected val items = Nil
+  protected val agentPaths = Seq(agentPath)
+  protected val items = Seq(workflow)
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
@@ -26,8 +26,8 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
 
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
-    WorkflowPath("WORKFLOW"),
-    aAgentPath,
+    workflow.path,
+    agentPath,
     sourceDirectory.toString)
 
   "Start with existing file" in {
@@ -37,4 +37,9 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
       controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path, timeout = 1.s)
     }
   }
+}
+
+object FileWatchInjectionTest {
+  private val agentPath = AgentPath("AGENT-A")
+  private val workflow = Workflow(WorkflowPath("WORKFLOW"), Nil)
 }

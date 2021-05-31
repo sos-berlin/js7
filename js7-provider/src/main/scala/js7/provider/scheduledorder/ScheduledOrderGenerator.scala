@@ -23,6 +23,8 @@ extends VersionedItem
 
   def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]) =
     reuseIfEqual(this, copy(id = id))
+
+  def referencedItemPaths = Set.empty
 }
 
 object ScheduledOrderGenerator extends VersionedItem.Companion[ScheduledOrderGenerator] {

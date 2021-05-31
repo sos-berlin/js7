@@ -121,6 +121,10 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(checkedRepo.map(_.pathToVersionToSignedItems.isEmpty) == Right(true))
     }
 
+    "Add configured AgentRefs" in {
+      provider.updateAgents.await(99.s)
+    }
+
     "Start with two workflows" in {
       //live / (agentRef.id.string + ".agent.json") := agentRef
       writeWorkflowFile(AWorkflowPath)

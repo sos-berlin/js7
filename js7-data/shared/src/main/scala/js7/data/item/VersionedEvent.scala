@@ -21,14 +21,15 @@ sealed trait VersionedEvent extends NoKeyEvent
 object VersionedEvent {
   final case class VersionAdded(versionId: VersionId) extends VersionedEvent
 
-  sealed trait VersionedItemEvent extends VersionedEvent /*with InventoryItemEvent*/ {
+  sealed trait VersionedItemEvent extends VersionedEvent {
     def path: ItemPath
   }
 
-  sealed trait VersionedItemAddedOrChanged extends VersionedItemEvent with Product {
+  sealed trait VersionedItemAddedOrChanged extends VersionedItemEvent /*with SignedItemAddedOrChanged???*/ with HasInventoryItem with Product {
     def signedString = signed.signedString
     def signed: Signed[VersionedItem]
-    def path: ItemPath = signed.value.path
+    def item: VersionedItem = signed.value
+    def path: ItemPath = item.path
     def toShortString = s"$productPrefix($path)"
   }
   object VersionedItemAddedOrChanged

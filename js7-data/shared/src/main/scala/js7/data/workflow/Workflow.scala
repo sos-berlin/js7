@@ -13,13 +13,13 @@ import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
-import js7.data.item.{VersionedItem, VersionedItemId}
+import js7.data.item.{InventoryItemPath, VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Instructions, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
@@ -33,7 +33,7 @@ final case class Workflow private(
   rawLabeledInstructions: IndexedSeq[Instruction.Labeled],
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   orderRequirements: OrderRequirements,
-  jobResourcePaths: Seq[JobResourcePath] = Nil,
+  jobResourcePaths: Seq[JobResourcePath],
   source: Option[String],
   outer: Option[Workflow])
 extends VersionedItem
@@ -126,6 +126,22 @@ extends VersionedItem
       .map { case (label, positions) =>
         Left(Problem(s"Label '${label.string}' is duplicated at positions " + positions.mkString(", ")))
       }
+
+  lazy val referencedItemPaths: Set[InventoryItemPath] = {
+    val lockPaths = flattenedInstructions.view
+      .map(_._2.instruction)
+      .collect {
+        case lock: LockInstruction => lock.lockPath
+      }
+    val agentPaths = workflowJobs.view.map(_.agentPath)
+    (lockPaths ++ agentPaths ++ referencedJobResourcePaths).toSet
+  }
+
+  lazy val referencedJobResourcePaths: Set[JobResourcePath] =
+    (jobResourcePaths.view ++ workflowJobs.view.flatMap(_.jobResourcePaths)).toSet
+
+  private def workflowJobs: View[WorkflowJob] =
+    keyToJob.values.view
 
   def positionMatchesSearch(position: Position, search: PositionSearch): Boolean =
     positionMatchesSearchNormalized(position.normalized, search)
@@ -268,9 +284,6 @@ extends VersionedItem
   private def isDefinedAt(nr: InstructionNr): Boolean =
     labeledInstructions.indices isDefinedAt nr.number
 
-  lazy val referencedJobResourcePaths: Set[JobResourcePath] =
-    (jobResourcePaths.view ++ workflowJobs.view.flatMap(_.jobResourcePaths)).toSet
-
   /** Searches a job bottom-up (from nested to root workflow).
     */
   @tailrec
@@ -308,9 +321,6 @@ extends VersionedItem
           case branchPath =>
             jobKey(workflowBranchPath.copy(branchPath = branchPath.dropChild), name)
         })
-
-  private def workflowJobs: View[WorkflowJob] =
-    keyToJob.values.view
 
   lazy val keyToJob: Map[JobKey, WorkflowJob] =
     flattenedBranchToWorkflow flatMap { case (branchPath, workflow) =>
@@ -400,7 +410,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
   implicit val itemsOverview = WorkflowsOverview
 
   def anonymous(
-    labeledInstructions: IndexedSeq[Instruction.Labeled],
+    labeledInstructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
@@ -411,14 +421,14 @@ object Workflow extends VersionedItem.Companion[Workflow]
   /** Test only. */
   def apply(
     id: WorkflowId,
-    labeledInstructions: IndexedSeq[Instruction.Labeled],
+    labeledInstructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderRequirements: OrderRequirements = OrderRequirements.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    checkedSub(id, labeledInstructions, nameToJob, orderRequirements, jobResourcePaths,
+    checkedSub(id, labeledInstructions.toIndexedSeq, nameToJob, orderRequirements, jobResourcePaths,
       source, outer).orThrow
 
   /** Checks a subworkflow.

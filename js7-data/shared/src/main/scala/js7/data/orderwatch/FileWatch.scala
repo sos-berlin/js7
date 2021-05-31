@@ -33,6 +33,8 @@ extends OrderWatch
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
+  lazy val referencedItemPaths = Set(workflowPath, agentPath)
 }
 
 object FileWatch extends OrderWatch.Companion[FileWatch]

@@ -4,7 +4,7 @@ import js7.base.problem.Problem
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
-import js7.data.item.{ItemPath, VersionId, VersionedItemId}
+import js7.data.item.{InventoryItemKey, InventoryItemPath, ItemPath, VersionId, VersionedItemId}
 import js7.data.order.OrderId
 
 object Problems
@@ -19,8 +19,25 @@ object Problems
     def arguments = Map("orderId" -> orderId.string)
   }
 
+  final case class UnknownItemKeyProblem(itemKey: InventoryItemKey) extends Problem.Coded {
+    def arguments = Map("key" -> itemKey.toString)
+  }
+
+  final case class UnknownItemPathProblem(itemPath: InventoryItemPath) extends Problem.Coded {
+    def arguments = Map("path" -> itemPath.toString)
+  }
+
   final case class UnknownOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" -> orderId.string)
+  }
+
+  final case class MissingReferencedItemProblem(
+    referencingItem: InventoryItemKey,
+    referencedItem: InventoryItemPath)
+  extends Problem.Coded {
+    def arguments = Map(
+      "referencingItem" -> referencingItem.toString,
+      "referencedItem" -> referencedItem.toString)
   }
 
   final case class AgentResetProblem(agentPath: AgentPath) extends Problem.Coded {

@@ -15,6 +15,8 @@ trait InventoryItem
 
   def key: InventoryItemKey
 
+  def path: InventoryItemPath
+
   def itemRevision: Option[ItemRevision]
 
   /** Only if this Item is dedicated to an Agent.
@@ -25,6 +27,8 @@ trait InventoryItem
     *   <li>be used at Controller only (like AgentRef, Lock).
     * </ul>*/
   def dedicatedAgentPath: Option[AgentPath] = None
+
+  def referencedItemPaths: Set[InventoryItemPath]
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
   override def hashCode = 31 * key.hashCode + itemRevision.hashCode

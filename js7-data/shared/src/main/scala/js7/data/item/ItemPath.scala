@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.ItemPath._
 import scala.reflect.ClassTag
 
-trait ItemPath extends GenericString
+trait ItemPath extends InventoryItemPath with GenericString
 {
   def companion: Companion[_ <: ItemPath]
 

@@ -32,7 +32,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(
     Lock(lockPath, limit = 1),
-    Lock(lock2Id, limit = 1),
+    Lock(lock2Path, limit = 1),
     Lock(limit2LockPath, limit = 2))
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -59,6 +59,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
             execute agent="${bAgentPath.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
           }
         }""")
+      assert(workflow.referencedItemPaths == Set(lockPath, agentPath, bAgentPath))
 
       delete(file)
       val a = OrderId("🔵")
@@ -205,6 +206,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           }
         }
       }""")
+    assert(workflow.referencedItemPaths == Set(lockPath, lock2Path))
 
     val orderId = OrderId("🟦")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -213,8 +215,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(workflow.id),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
-      OrderLockAcquired(lock2Id, None),
-      OrderFailed(Position(0), Some(Outcome.failed), lockPaths = Seq(lock2Id, lockPath))))
+      OrderLockAcquired(lock2Path, None),
+      OrderFailed(Position(0), Some(Outcome.failed), lockPaths = Seq(lock2Path, lockPath))))
     assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
       LockState(
         Lock(lockPath, limit = 1, itemRevision = Some(ItemRevision(0))),
@@ -232,6 +234,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           }
         }
       }""")
+    assert(workflow.referencedItemPaths == Set(lockPath, lock2Path, agentPath))
 
     val orderId = OrderId("🟨")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -241,8 +244,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderLockAcquired(lockPath, None),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
-      OrderLockAcquired(lock2Id, None),
-      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockPaths = Seq(lock2Id)),
+      OrderLockAcquired(lock2Path, None),
+      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockPaths = Seq(lock2Path)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted,
@@ -270,6 +273,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           }
         }
       }""")
+    assert(workflow.referencedItemPaths == Set(lockPath))
+
     val orderId = OrderId("🟩")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
@@ -371,6 +376,6 @@ object LockTest {
   private val agentPath = AgentPath("AGENT")
   private val bAgentPath = AgentPath("B-AGENT")
   private val lockPath = LockPath("LOCK")
-  private val lock2Id = LockPath("LOCK-2")
+  private val lock2Path = LockPath("LOCK-2")
   private val limit2LockPath = LockPath("LOCK-LIMIT-2")
 }

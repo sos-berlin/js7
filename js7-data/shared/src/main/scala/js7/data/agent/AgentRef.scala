@@ -16,6 +16,8 @@ extends UnsignedSimpleItem
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
+  def referencedItemPaths = Set.empty
 }
 
 object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]

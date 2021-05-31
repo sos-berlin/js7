@@ -18,6 +18,8 @@ extends UnsignedSimpleItem
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
+  def referencedItemPaths = Set.empty
 }
 
 object Lock extends UnsignedSimpleItem.Companion[Lock]

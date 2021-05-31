@@ -130,12 +130,12 @@ final class RepoTest extends AnyFreeSpec
 
     "VersionedItem with matching version" in {
       assert(emptyRepo.itemsToEvents(V1, sign(a1) :: Nil)
-        == Right(VersionAdded(V1) :: VersionedItemAdded(sign(a1)) :: Nil))
+        == Right(emptyRepo.NonEmptyEventBlock(V1, Nil, VersionedItemAdded(sign(a1)) :: Nil)))
     }
 
     "Deleting unknown" in {
       assert(emptyRepo.itemsToEvents(V1, Nil, deleted = bx2.path :: Nil)
-        == Right(VersionAdded(V1) :: Nil))
+        == Right(emptyRepo.NonEmptyEventBlock(V1, Nil, Nil)))
     }
 
     "Duplicate items" in {
@@ -147,44 +147,46 @@ final class RepoTest extends AnyFreeSpec
     "Duplicate itemsToEvents resulting to same Repo is ignored" - {
       "if some items should be changed" in {
         var repo = emptyRepo
-        val events = repo.itemsToEvents(V1, sign(a1) :: Nil).orThrow
-        assert(events.nonEmpty)
-        repo = repo.applyEvents(events).orThrow
+        val eventBlock = repo.itemsToEvents(V1, sign(a1) :: Nil).orThrow
+        assert(eventBlock.nonEmpty)
+        repo = repo.applyEvents(eventBlock.events).orThrow
 
-        assert(repo.itemsToEvents(V1, sign(a1) :: Nil) == Right(Nil))
+        assert(repo.itemsToEvents(V1, sign(a1) :: Nil) == Right(repo.emptyEventBlock))
       }
 
       "but not if no items should be changed" in {
         var repo = emptyRepo
-        var events = repo.itemsToEvents(V1, Nil).orThrow
-        assert(events.nonEmpty)
-        repo = repo.applyEvents(events).orThrow
+        var eventBlock = repo.itemsToEvents(V1, Nil).orThrow
+        assert(eventBlock.nonEmpty)
+        repo = repo.applyEvents(eventBlock.events).orThrow
 
-        events = repo.itemsToEvents(V1, Nil).orThrow
-        assert(events == VersionAdded(V1) :: Nil)
-        assert(repo.applyEvents(events) == Left(DuplicateKey("VersionId", V1)))
+        eventBlock = repo.itemsToEvents(V1, Nil).orThrow
+        assert(eventBlock == repo.NonEmptyEventBlock(V1, Nil, Nil))
+        assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", V1)))
       }
     }
 
     "Other" in {
       assert(emptyRepo.itemsToEvents(V1, sign(a1) :: sign(b1) :: Nil, deleted = bx2.path :: Nil)
-        == Right(VersionAdded(V1) :: VersionedItemAdded(sign(a1)) :: VersionedItemAdded(sign(b1)) :: Nil))
+        == Right(emptyRepo.NonEmptyEventBlock(V1, Nil, VersionedItemAdded(sign(a1)) :: VersionedItemAdded(sign(b1)) :: Nil)))
     }
 
     "More" in {
       var repo = emptyRepo
-      repo = repo.itemsToEvents(V1, sign(a1) :: sign(b1) :: Nil).flatMap(repo.applyEvents).orThrow
+      repo = repo.itemsToEvents(V1, sign(a1) :: sign(b1) :: Nil).map(_.events).flatMap(repo.applyEvents).orThrow
       assert(repo == Repo.fromOp(V1 :: Nil, Changed(sign(a1)) :: Changed(sign(b1)) :: Nil, Some(signatureVerifier)))
 
-      val events = repo.itemsToEvents(V2, sign(a2) :: sign(bx2) :: Nil, deleted = b1.path :: Nil).orThrow
-      assert(events == VersionAdded(V2) :: VersionedItemDeleted(b1.path) :: VersionedItemChanged(sign(a2)) :: VersionedItemAdded(sign(bx2)) :: Nil)
+      val eventBlock = repo.itemsToEvents(V2, sign(a2) :: sign(bx2) :: Nil, deleted = b1.path :: Nil).orThrow
+      assert(eventBlock == repo.NonEmptyEventBlock(V2,
+        Seq(VersionedItemDeleted(b1.path)),
+        Seq(VersionedItemChanged(sign(a2)), VersionedItemAdded(sign(bx2)))))
 
-      repo = repo.applyEvents(events).orThrow
+      repo = repo.applyEvents(eventBlock.events).orThrow
       assert(repo == Repo.fromOp(V2 :: V1 :: Nil,
         Changed(sign(a1)) :: Changed(sign(a2)) :: Changed(sign(b1)) :: Deleted(b1.path ~ V2) :: Changed(sign(bx2)) :: Nil,
         Some(signatureVerifier)))
 
-      assert(repo.applyEvents(events) == Left(DuplicateKey("VersionId", VersionId("2"))))
+      assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", VersionId("2"))))
     }
   }
 
@@ -239,8 +241,8 @@ final class RepoTest extends AnyFreeSpec
       var sw = new Stopwatch
       for (i <- 1 to n) {
         val v = VersionId(i.toString)
-        val events = repo.itemsToEvents(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
-        repo = repo.applyEvents(events).orThrow
+        val eventBlock = repo.itemsToEvents(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
+        repo = repo.applyEvents(eventBlock.events).orThrow
         if (i % 1000 == 0) {
           scribe.info(sw.itemsPerSecondString(1000, "versions"))
           sw = new Stopwatch

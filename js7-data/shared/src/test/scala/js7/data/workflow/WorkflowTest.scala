@@ -18,6 +18,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
+import js7.data.workflow.test.ForkTestSetting
 import js7.data.workflow.test.TestSetting._
 import js7.tester.CirceJsonTester.{normalizeJson, removeJNull, testJson}
 import org.scalatest.freespec.AnyFreeSpec
@@ -1029,6 +1030,16 @@ final class WorkflowTest extends AnyFreeSpec
     //    }
     //  }
     //}
+  }
+
+  "referencedItempPaths" in {
+    assert(TestWorkflow.referencedItemPaths == Set(
+      TestAgentPath,
+      JobResourcePath("JOB-RESOURCE")))
+
+    assert(ForkTestSetting.TestWorkflow.referencedItemPaths == Set(
+      ForkTestSetting.AAgentPath,
+      ForkTestSetting.BAgentPath))
   }
 }
 

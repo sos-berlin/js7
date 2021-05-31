@@ -75,7 +75,7 @@ extends HasCloser with Observing with ProvideActorSystem
         .memoize
     }
 
-  private def updateAgents: Task[Completed] = {
+  def updateAgents: Task[Completed] = {
     val agentRefs = config.getObject("js7.provider.agents").asScala
       .view
       .collect { case (name, obj: ConfigObject) =>

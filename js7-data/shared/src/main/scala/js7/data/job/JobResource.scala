@@ -21,6 +21,8 @@ extends SignableSimpleItem
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
+  def referencedItemPaths = Set.empty
 }
 
 object JobResource extends SignableSimpleItem.Companion[JobResource]

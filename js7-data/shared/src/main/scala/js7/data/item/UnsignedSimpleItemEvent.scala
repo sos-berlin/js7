@@ -12,7 +12,7 @@ sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent
 
 object UnsignedSimpleItemEvent
 {
-  sealed trait UnsignedSimpleItemAddedOrChanged extends UnsignedSimpleItemEvent {
+  sealed trait UnsignedSimpleItemAddedOrChanged extends UnsignedSimpleItemEvent with HasInventoryItem {
     def item: SimpleItem
     assertThat(item.itemRevision.isDefined)
   }

@@ -27,6 +27,8 @@ extends UnsignedSimpleItem {
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
+  def referencedItemPaths = Set.empty
 }
 
 object TestSimpleItem extends UnsignedSimpleItem.Companion[TestSimpleItem] {

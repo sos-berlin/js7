@@ -76,6 +76,10 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   def watchedFileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
 
+  "referencedItemPaths" in {
+    assert(fileWatch.referencedItemPaths == Set(aAgentPath, workflow.path))
+  }
+
   "Start with existing file" in {
     createDirectory(watchDirectory)
     createDirectory(waitingWatchDirectory)

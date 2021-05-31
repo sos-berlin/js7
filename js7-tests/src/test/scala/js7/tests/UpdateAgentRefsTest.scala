@@ -13,6 +13,8 @@ import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
+import js7.data.item.VersionId
 import js7.data.job.{PathExecutable, RelativePathExecutable}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
@@ -22,12 +24,13 @@ import js7.tests.UpdateAgentRefsTest._
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
 final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   protected val agentPaths = Nil
-  protected val items = Seq(workflow)
+  protected val items = Nil
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
   private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory, agentPath, "AGENT", agentPort1)
   private lazy val controller = directoryProvider.startController() await 99.s
@@ -45,7 +48,14 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
-    controller.updateUnsignedSimpleItemsAsSystemUser(Seq(agentRef)).await(99.s).orThrow
+    val versionId = VersionId("1")
+    controller
+      .updateItemsAsSystemUser(
+        Observable(
+          AddOrChangeSimple(agentRef),
+          AddVersion(versionId),
+          AddOrChangeSigned(sign(workflow withVersion versionId).signedString)))
+      .await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔵"), workflow.path))
   }
 

@@ -6,9 +6,11 @@ import cats.syntax.traverse._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
-import js7.base.problem.Problem
+import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -20,7 +22,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarke
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemPath, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
@@ -314,6 +316,18 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
+  def checkConsistencyForNewItems(itemKeys: Seq[InventoryItemKey]): Checked[Unit] =
+    itemKeys
+      .flatMap(key =>
+        keyToItem.checked(key)
+          .flatTraverse(_
+            .referencedItemPaths
+            .toSeq
+            .map(path => pathToItem.get(path)
+              .toChecked(MissingReferencedItemProblem(referencingItem = key, referencedItem = path)))))
+      .combineProblems
+      .rightAs(())
+
   def isItemDestroyable(itemKey: InventoryItemKey): Boolean =
     deleteItems(itemKey) && !itemToAgentToAttachedState.contains(itemKey)
 
@@ -339,6 +353,19 @@ extends JournaledState[ControllerState]
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
         pathToSimpleItem.iterator ++
           repo.items.map(item => item.id -> item)
+    }
+
+  lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =
+    new MapView[InventoryItemPath, InventoryItem] {
+      def get(path: InventoryItemPath): Option[InventoryItem] = {
+        path match {
+          case path: SimpleItemPath => pathToSimpleItem.get(path)
+          case path: ItemPath => repo.pathToItem(path).toOption
+        }
+      }
+
+      def iterator: Iterator[(InventoryItemPath, InventoryItem)] =
+        pathToSimpleItem.iterator ++ repo.currentItems.iterator.map(o => o.path -> o)
     }
 
   lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =

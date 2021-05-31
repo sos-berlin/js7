@@ -44,11 +44,14 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow)
+  protected val items = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow,
+    aJobResource, bJobResource, envJobResource, sosJobResource)
+
+  "referencedItemPaths" in {
+    assert(workflow.referencedItemPaths == Set(aJobResource.path, bJobResource.path, agentPath))
+  }
 
   "JobResourcePath" in {
-    controllerApi.updateSignedSimpleItems(Seq(aJobResource, bJobResource) map sign)
-      .await(99.s).orThrow
     controller.eventWatch.await[SignedItemAdded](_.event.key == aJobResource.path)
     controller.eventWatch.await[SignedItemAdded](_.event.key == bJobResource.path)
 
@@ -95,8 +98,6 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "JobResourcePath with environment variable access" in {
-    controllerApi.updateSignedSimpleItems(Seq(sign(envJobResource))).await(99.s).orThrow
-
     val orderId = OrderId("ORDER-ENV")
     controllerApi.addOrder(FreshOrder(orderId, envWorkflow.path)).await(99.s).orThrow
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
@@ -110,8 +111,6 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Example for an SOS JobResource" - {
     "without scheduledFor" in {
-      controllerApi.updateSignedSimpleItems(Seq(sign(sosJobResource))).await(99.s).orThrow
-
       val orderId = OrderId("ORDER-SOS")
       controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path)).await(99.s).orThrow
       val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head

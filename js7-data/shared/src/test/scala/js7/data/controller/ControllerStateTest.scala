@@ -9,6 +9,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
+import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -131,6 +132,14 @@ final class ControllerStateTest extends AsyncFreeSpec
             ItemDeletionMarked(JobResourcePath("JOB-RESOURCE"))
           ) ++
           controllerState.idToOrder.values)
+  }
+
+  "checkConsistencyForNewItems" in {
+    assert(controllerState.checkConsistencyForNewItems(Nil) == Right(()))
+    assert(controllerState.checkConsistencyForNewItems(Seq(OrderWatchPath("WATCH"))) ==
+      Left(MissingReferencedItemProblem(OrderWatchPath("WATCH"), WorkflowPath("WORKFLOW"))))
+    assert(controllerState.checkConsistencyForNewItems(Seq(AgentPath("AGENT"))) == Right(()))
+    assert(controllerState.checkConsistencyForNewItems(Seq(jobResource.path)) == Right(()))
   }
 
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {

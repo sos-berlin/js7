@@ -5,7 +5,7 @@ import js7.base.generic.GenericString
 import js7.base.standards.Js7PathValidating
 import js7.data.item.InventoryItemKey.Companion
 
-trait SimpleItemPath extends InventoryItemKey with GenericString
+trait SimpleItemPath extends InventoryItemKey with InventoryItemPath with GenericString
 {
   protected type Self <: SimpleItemPath
 

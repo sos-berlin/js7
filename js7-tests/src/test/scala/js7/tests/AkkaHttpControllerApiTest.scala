@@ -7,8 +7,9 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
+import js7.base.web.Uri
 import js7.controller.client.AkkaHttpControllerApi
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.AddOrder
 import js7.data.job.PathExecutable
 import js7.data.order.{FreshOrder, Order, OrderId}
@@ -27,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
-  protected val items = Seq(TestWorkflow)
+  protected val items = Seq(agentRef, workflow)
 
   private lazy val api = new AkkaHttpControllerApi(controller.localUri, Some(userAndPassword), actorSystem = controller.actorSystem)
     .closeWithCloser
@@ -48,14 +49,14 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
   }
 
   "POST order" in {
-    assert(api.addOrder(FreshOrder(TestOrder.id, TestWorkflow.path)).await(99.s) == true)
-    assert(api.addOrder(FreshOrder(TestOrder.id, TestWorkflow.path)).await(99.s) == false)  // Duplicate
+    assert(api.addOrder(FreshOrder(TestOrder.id, workflow.path)).await(99.s) == true)
+    assert(api.addOrder(FreshOrder(TestOrder.id, workflow.path)).await(99.s) == false)  // Duplicate
   }
 
   "ControllerCommand.AddOrder" in {
-    assert(api.executeCommand(AddOrder(FreshOrder(TestOrder.id, TestWorkflow.path))).await(99.s) ==
+    assert(api.executeCommand(AddOrder(FreshOrder(TestOrder.id, workflow.path))).await(99.s) ==
       AddOrder.Response(ignoredBecauseDuplicate = true))
-    assert(api.executeCommand(AddOrder(FreshOrder(SecondOrder.id, TestWorkflow.path))).await(99.s) ==
+    assert(api.executeCommand(AddOrder(FreshOrder(SecondOrder.id, workflow.path))).await(99.s) ==
       AddOrder.Response(ignoredBecauseDuplicate = false))
   }
 
@@ -72,7 +73,7 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
   }
 
   "workflow" in {
-    assert(api.workflows.await(99.s) == Right(List(TestWorkflow)))
+    assert(api.workflows.await(99.s) == Right(List(workflow)))
   }
 
   "logout" in {
@@ -96,11 +97,12 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
 private object AkkaHttpControllerApiTest
 {
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
-  private val TestWorkflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "INITIAL",
-    Execute(WorkflowJob(AgentPath("MISSING"), PathExecutable("MISSING"))))
-  private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflow.id, Order.Fresh)
-  private val SecondOrder = Order(OrderId("SECOND-ORDER"), TestWorkflow.id, Order.Fresh)
+  private val agentRef = AgentRef(AgentPath("AGENT"), Uri("http://0.0.0.0:0"))
+  private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "INITIAL",
+    Execute(WorkflowJob(agentRef.path, PathExecutable("MISSING"))))
+  private val TestOrder = Order(OrderId("ORDER-ID"), workflow.id, Order.Fresh)
+  private val SecondOrder = Order(OrderId("SECOND-ORDER"), workflow.id, Order.Fresh)
 
   private val attachedOrders = Set(TestOrder, SecondOrder)
-    .map(_.copy(attachedState = Some(Order.Attaching(AgentPath("MISSING")))))
+    .map(_.copy(attachedState = Some(Order.Attaching(agentRef.path))))
 }

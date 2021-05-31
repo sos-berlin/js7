@@ -5,7 +5,9 @@ import js7.base.configutils.Configs._
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient.HttpException
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.AddOrderTimeoutTest._
@@ -16,7 +18,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
-  protected val items = Seq(workflow)
+  protected val items = Seq(agentRef, workflow)
   override protected val controllerConfig = config"""
     js7.akka.ask-timeout = 2s
     js7.TEST-ONLY.add-order-delay = 10s
@@ -35,6 +37,7 @@ final class AddOrderTimeoutTest extends AnyFreeSpec with ControllerAgentForScala
 
 object AddOrderTimeoutTest
 {
+  private val agentRef = AgentRef(AgentPath("AGENT"), Uri("http://0.0.0.0:0"))
   private val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "1","""
       define workflow {

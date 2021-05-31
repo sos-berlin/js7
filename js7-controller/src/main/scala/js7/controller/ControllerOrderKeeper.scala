@@ -52,14 +52,14 @@ import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState,
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableItemKey, SignableSimpleItem, UnsignedSimpleItem, UnsignedSimpleItemPath}
+import js7.data.item.{BasicItemEvent, HasInventoryItem, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableItemKey, SignableSimpleItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedEvent}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -432,21 +432,24 @@ with MainJournalingActor[ControllerState, Event]
         }
 
     case Command.VerifiedUpdateItemsCmd(verifiedUpdateItems: VerifiedUpdateItems) =>
+      val repo = _controllerState.repo
       val t = now
       (for {
         simpleItemEvents <- simpleItemsToEvents(verifiedUpdateItems.simple)
-        versionedEvents <- verifiedUpdateItems.maybeVersioned.toVector
-          .traverse(versioned => _controllerState.repo.itemsToEvents(
-            versioned.versionId,
-            versioned.verifiedItems.map(_.signedItem),
-            versioned.delete))
-      } yield (simpleItemEvents, versionedEvents.flatten))
+        repoEventBlock <- verifiedUpdateItems.maybeVersioned match {
+          case None => Right(repo.emptyEventBlock)
+          case Some(versioned) =>
+            _controllerState.repo.itemsToEvents(
+              versioned.versionId,
+              versioned.verifiedItems.map(_.signedItem),
+              versioned.delete)
+        }
+      } yield (simpleItemEvents, repoEventBlock))
       match {
         case Left(problem) => sender() ! Left(problem)
-        case Right((simpleItemEvents, versionedEvents)) =>
-          val keyedEvents = (simpleItemEvents.view ++ versionedEvents).map(NoKey <-: _).toVector
+        case Right((simpleItemEvents, repoEventBlock)) =>
           val sender = this.sender()
-          persistItemAndVersionedEvents(keyedEvents)
+          persistItemAndVersionedEvents(simpleItemEvents, repoEventBlock.events)
             .map(_.map { o =>
               if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
                 itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
@@ -845,9 +848,17 @@ with MainJournalingActor[ControllerState, Event]
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
-  private def persistItemAndVersionedEvents(keyedEvents: Seq[AnyKeyedEvent]): Future[Checked[Completed]] = {
+  private def persistItemAndVersionedEvents(simpleItemEvents: View[InventoryItemEvent], versionedEvents: Seq[VersionedEvent])
+  : Future[Checked[Completed]] = {
     // Precheck events
-    _controllerState.applyEvents(keyedEvents) match {
+    val keyedEvents = (simpleItemEvents.view ++ versionedEvents).map(NoKey <-: _).toVector
+    _controllerState
+      .applyEvents(keyedEvents)
+      .flatMap(_
+        .checkConsistencyForNewItems(
+          keyedEvents.view.map(_.event).collect { case e: HasInventoryItem => e.item.key }.toVector
+        ))
+    match {
       case Left(prblm @ Problem.Combined(Seq(_, problem: DuplicateKey))) =>
         logger.debug(prblm.toString)
         Future.successful(Left(problem))
