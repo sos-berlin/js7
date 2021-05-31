@@ -6,7 +6,6 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import javax.annotation.Nullable
 import js7.base.annotation.javaApi
-import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
@@ -37,13 +36,13 @@ sealed trait Problem
   final def withPrefix(prefix: String): Problem =
     Problem.pure(prefix) |+| this
 
-  final def is(companion: Coded.Companion): Boolean =
+  final def is(companion: Problem.Coded.Companion): Boolean =
     maybeCode contains companion.code
 
-  final def wrapProblemWith(message: String) = new Lazy(message, Some(this))
+  final def wrapProblemWith(message: String) = new Problem.Lazy(message, Some(this))
 
   override def equals(o: Any) = o match {
-    case _: HasCode => false
+    case _: Problem.HasCode => false
     case o: Problem => toString == o.toString
     case _ => false
   }
@@ -61,7 +60,7 @@ sealed trait Problem
   def httpStatusCode: Int = 400  // Bad Request
 }
 
-object Problem
+object Problem extends Semigroup[Problem]
 {
   @javaApi
   def singleton = this
@@ -87,6 +86,30 @@ object Problem
 
   def fromLazyThrowable(throwable: => Throwable): Problem =
     new FromLazyThrowable(() => throwable)
+
+  implicit val problemEq: Eq[Problem] = Eq.fromUniversalEquals[Problem]
+
+  implicit val problemSemigroup: Semigroup[Problem] = this
+
+  def combine(a: Problem, b: Problem) = (a, b) match {
+    case (a: Combined, b: Combined) =>
+      Combined(a.problems.toVector ++ b.problems)
+
+    case (a: Combined, b: Problem) =>
+      Combined(a.problems.toVector :+ b)
+
+    case (a: Problem, b: Combined) =>
+      Combined(a +: b.problems.toVector)
+
+    case (a: Problem, b: Problem) =>
+      Combined(Vector(a, b))
+  }
+
+  private def combineMessages(a: String, b: String) =
+    if (b.trim.isEmpty)
+      a
+    else
+      normalizePrefix(a) + b
 
   private[Problem] trait Simple extends Problem {
     protected def rawMessage: String
@@ -242,28 +265,6 @@ object Problem
     def cause: None.type =
       None
   }
-
-  implicit val problemSemigroup: Semigroup[Problem] = {
-    case (a: Combined, b: Combined) =>
-      Combined(a.problems.toVector ++ b.problems)
-
-    case (a: Combined, b: Problem) =>
-      Combined(a.problems.toVector :+ b)
-
-    case (a: Problem, b: Combined) =>
-      Combined(a +: b.problems.toVector)
-
-    case (a: Problem, b: Problem) =>
-      Combined(Vector(a, b))
-  }
-
-  implicit val problemEq: Eq[Problem] = Eq.fromUniversalEquals[Problem]
-
-  private def combineMessages(a: String, b: String) =
-    if (b.trim.isEmpty)
-      a
-    else
-      normalizePrefix(a) + b
 
   private def normalizePrefix(prefix: String): String =
     if (prefix matches ".*[:-] *")
