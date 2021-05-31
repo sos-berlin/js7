@@ -25,7 +25,7 @@ trait VersionedItem extends SignableItem
   final def withoutId: Self = withId(id = companion.Path.NoId)
 
   final def withVersion(v: VersionId): Self =
-    withId(id = key.copy(versionId = v)(companion.Path))
+    withId(id = key.copy(versionId = v))
 
   def cast[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): A = {
     if (A != companion) throw new ClassCastException(s"Expected ${companion.Path.name}, but is: $path")

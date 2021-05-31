@@ -37,7 +37,7 @@ final class TypedSourceReader(directory: Path, readers: Iterable[VersionedItemRe
     ItemSource(itemFile.file.byteArray, itemFile.path, itemFile.sourceType)
 
   private def toCheckedItem(o: ItemSource): Checked[VersionedItem] = {
-    val id = (o.path ~ VersionId.Anonymous)(o.path.companion.asInstanceOf[ItemPath.Companion[ItemPath]]/*???*/)
+    val id = o.path ~ VersionId.Anonymous
     companionToReader(o.path.companion).readUntyped(id, o.byteArray, o.sourceType)
   }
 }

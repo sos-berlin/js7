@@ -62,7 +62,7 @@ object ItemPath
     def ~(version: String)(implicit P: ItemPath.Companion[P]): VersionedItemId[P] =
       this ~ VersionId(version)
 
-    def ~(v: VersionId)(implicit P: ItemPath.Companion[P]): VersionedItemId[P] =
+    def ~(v: VersionId): VersionedItemId[P] =
       VersionedItemId(underlying, v)
   }
 

@@ -11,7 +11,6 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class VersionedItemId[P <: ItemPath](path: P, versionId: VersionId)
-  (implicit P: ItemPath.Companion[P])
 extends SignableItemKey
 {
   def companion: InventoryItemKey.Companion[VersionedItemId[P]] =
