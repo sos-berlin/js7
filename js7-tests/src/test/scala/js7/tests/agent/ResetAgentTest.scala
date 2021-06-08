@@ -44,8 +44,6 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow, forkingWorkflow, lock, jobResource)
 
-  import controller.eventWatch
-
   "ResetAgent while an order is executed" in {
     val orderId = OrderId("RESET-AGENT-1")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow

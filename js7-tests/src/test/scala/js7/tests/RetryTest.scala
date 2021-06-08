@@ -31,8 +31,6 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentPaths = TestAgentPath :: Nil
   protected val items = Nil
 
-  import controller.eventWatch
-
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
       a.writeExecutable(RelativePathExecutable(s"OKAY$sh"), ":")

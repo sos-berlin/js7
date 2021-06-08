@@ -57,8 +57,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
 
-  import controller.eventWatch
-  import controller.eventWatch.await
+  import eventWatch.await
 
   "Start with some files" in {
     createDirectories(watchedDirectory)

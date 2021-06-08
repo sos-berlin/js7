@@ -48,7 +48,6 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
   private lazy val triggerFile = createTempFile("SuspendResumeOrdersTest-", ".tmp")
 
-  import controller.eventWatch
   import controllerApi.{addOrder, executeCommand}
 
   override def beforeAll() = {

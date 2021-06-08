@@ -35,6 +35,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
         Task(controller.httpApiDefaultLogin(Some(directoryProvider.controller.userAndPassword))))
       .await(99.s)
 
+  protected final lazy val eventWatch = controller.eventWatch
   protected lazy val controllerAdmission = Admission(
     controller.localUri,
     Some(directoryProvider.controller.userAndPassword))
