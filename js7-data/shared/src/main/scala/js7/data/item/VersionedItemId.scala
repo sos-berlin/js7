@@ -56,7 +56,10 @@ object VersionedItemId
     VersionedItemId(path, VersionId.Anonymous)
 
   implicit def ordering[P <: VersionedItemPath]: Ordering[VersionedItemId[P]] =
-    Ordering.by(o => (o.path, o.versionId))
+    (a, b) => a.path.string.compareTo(b.path.string) match {
+      case 0 => -VersionId.ordering.compare(a.versionId, b.versionId)
+      case o => o
+    }
 
   implicit def jsonEncoder[P <: VersionedItemPath: Encoder]: Encoder.AsObject[VersionedItemId[P]] =
     o => JsonObject(
