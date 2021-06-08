@@ -24,7 +24,7 @@ object Dependencies
   val disciplineScalaTestVersion = "2.0.0"
   val monixVersion = "3.4.0"
   val monocleVersion = "1.5.0"
-  val scribeVersion = "3.4.0"
+  val scribeVersion = "3.5.5"
   val scalaJsDomVersion = "1.1.0"
   val shapelessVersion = "2.3.3"
   val diffxVersion = "0.4.0"
