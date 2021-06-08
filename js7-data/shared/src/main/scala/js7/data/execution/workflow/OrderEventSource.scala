@@ -14,7 +14,7 @@ import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
@@ -359,10 +359,19 @@ final class OrderEventSource(
   : Option[OrderActorEvent] =
     (weHave(order) && order.isResumable) ? OrderResumed(position, historicOutcomes)
 
+  def answer(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
+    for {
+      order <- idToOrder(orderId)
+      _ <- order.checkedState[Order.Prompting]
+      moved <- applyMoveInstructions(order, OrderMoved(order.position.increment))
+    } yield
+      Seq(
+        orderId <-: OrderPromptAnswered(),
+        orderId <-: moved)
+
   private def weHave(order: Order[Order.State]) =
     order.isDetached && !isAgent ||
     order.isAttached && isAgent
-
 
   private def applyMoveInstructions(order: Order[Order.State], orderMoved: OrderMoved): Checked[OrderMoved] =
     applyMoveInstructions(order.withPosition(orderMoved.to))

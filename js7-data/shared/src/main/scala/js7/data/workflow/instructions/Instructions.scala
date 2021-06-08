@@ -19,6 +19,7 @@ object Instructions
     Subtype[Offer],
     Subtype[If],
     Subtype[IfFailedGoto],
+    Subtype[Prompt],
     Subtype[Retry],
     Subtype.named[TryInstruction]("Try"),
     Subtype.named[LockInstruction]("Lock"),

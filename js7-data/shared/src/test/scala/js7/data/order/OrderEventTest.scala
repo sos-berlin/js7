@@ -440,7 +440,7 @@ final class OrderEventTest extends AnyFreeSpec
         "historicOutcomes": [
           {
             "position": [ 0 ],
-            "outcome":{
+            "outcome": {
               "TYPE":  "Succeeded"
             }
           }
@@ -471,6 +471,21 @@ final class OrderEventTest extends AnyFreeSpec
       {
         "TYPE": "OrderLockReleased",
         "lockPath": "LOCK"
+      }""")
+  }
+
+  "OrderPrompted" in {
+    check(OrderPrompted(StringValue("QUESTION")), json"""
+      {
+        "TYPE": "OrderPrompted",
+        "question": "QUESTION"
+      }""")
+  }
+
+  "OrderPromptAnswered" in {
+    check(OrderPromptAnswered(), json"""
+      {
+        "TYPE": "OrderPromptAnswered"
       }""")
   }
 

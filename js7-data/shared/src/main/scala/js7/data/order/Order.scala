@@ -16,7 +16,7 @@ import js7.data.job.JobKey
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.orderwatch.ExternalOrderKey
-import js7.data.value.NamedValues
+import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.reflect.ClassTag
@@ -294,6 +294,16 @@ final case class Order[+S <: Order.State](
         check(isDetached && isState[Ready],
           copy(
             state = WaitingForLock))
+
+      case OrderPrompted(question) =>
+        check(isDetached && isState[Ready],
+          copy(state = Prompting(question)))
+
+      case OrderPromptAnswered() =>
+        check(isDetached && isState[Prompting],
+          copy(
+            state = Ready))
+            //historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
     }
   }
 
@@ -535,6 +545,9 @@ object Order
   case object WaitingForLock
   extends IsStarted
 
+  final case class Prompting(question: Value)
+  extends IsStarted
+
   final case class Offering(until: Timestamp)
   extends IsStarted
 
@@ -575,6 +588,7 @@ object Order
     Subtype(Finished),
     Subtype(Cancelled),
     Subtype(Removed),
+    Subtype(deriveCodec[Prompting]),
     Subtype(deriveCodec[Broken]))
 
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>

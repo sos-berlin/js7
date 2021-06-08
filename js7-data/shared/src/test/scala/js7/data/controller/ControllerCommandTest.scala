@@ -136,6 +136,14 @@ final class ControllerCommandTest extends AnyFreeSpec
       }""")
   }
 
+  "AnswerOrderPrompt" in {
+    testJson[ControllerCommand](AnswerOrderPrompt(OrderId("ORDER")),
+      json"""{
+        "TYPE": "AnswerOrderPrompt",
+        "orderId": "ORDER"
+      }""")
+  }
+
   "EmergencyStop" - {
     "restart=false" in {
       testJson[ControllerCommand](EmergencyStop(),

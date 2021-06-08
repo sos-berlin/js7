@@ -15,7 +15,7 @@ import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order._
 import js7.data.orderwatch.ExternalOrderKey
-import js7.data.value.NamedValues
+import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -269,6 +269,12 @@ object OrderEvent
     def lockPaths = lockPath :: Nil
   }
 
+  final case class OrderPrompted(question: Value)
+  extends OrderActorEvent
+
+  final case class OrderPromptAnswered(/*outcome: Outcome.Completed*/)
+  extends OrderCoreEvent
+
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
     Subtype(OrderRemoveMarked),
@@ -306,5 +312,7 @@ object OrderEvent
     Subtype(deriveCodec[OrderBroken]),
     Subtype(deriveCodec[OrderLockAcquired]),
     Subtype(deriveCodec[OrderLockQueued]),
-    Subtype(deriveCodec[OrderLockReleased]))
+    Subtype(deriveCodec[OrderLockReleased]),
+    Subtype(deriveCodec[OrderPrompted]),
+    Subtype(deriveCodec[OrderPromptAnswered]))
 }

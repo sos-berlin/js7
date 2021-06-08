@@ -96,6 +96,11 @@ object ControllerCommand extends CommonCommand.Companion
     override def toShortString = s"RemoveOrdersWhenTerminated(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
   }
 
+  final case class AnswerOrderPrompt(orderId: OrderId)
+  extends ControllerCommand {
+    type response = Response.Accepted
+  }
+
   final case class NoOperation(duration: Option[FiniteDuration] = None)
   extends ControllerCommand {
     type Response = Response.Accepted
@@ -233,6 +238,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],
     Subtype(deriveCodec[RemoveOrdersWhenTerminated]),
+    Subtype(deriveCodec[AnswerOrderPrompt]),
     Subtype(deriveCodec[NoOperation]),
     Subtype(EmitTestEvent),
     Subtype[EmergencyStop],

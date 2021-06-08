@@ -12,8 +12,8 @@ import js7.data.agent.AgentPath
 import js7.data.command.{CancelMode, SuspendMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -282,6 +282,9 @@ final class OrderTest extends AnyFreeSpec
       OrderLockQueued(LockPath("LOCK"), None),
       OrderLockReleased(LockPath("LOCK")),
 
+      OrderPrompted(StringValue("QUESTION")),
+      OrderPromptAnswered(),
+
       OrderBroken(Problem("Problem")),
 
       OrderDetachable,
@@ -357,6 +360,7 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderResumed          , IsSuspended(true) , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderLockAcquired     , _                 , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderLockQueued       , _                 , IsDetached             ) => _.isInstanceOf[WaitingForLock]
+          case (_: OrderPrompted         , _                 , IsDetached             ) => _.isInstanceOf[Prompting]
           case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }
@@ -410,6 +414,18 @@ final class OrderTest extends AnyFreeSpec
           case (OrderSuspended, IsSuspendingWithKill(true), IsDetached) => _.isInstanceOf[Ready]
           case (OrderSuspended, order, IsAttached) if order.isSuspendingWithKill && order.isSuspended => _.isInstanceOf[Ready]
           case (_: OrderBroken, _                         , _         ) => _.isInstanceOf[Broken]
+        })
+    }
+
+    "Prompting" in {
+      checkAllEvents(Order(orderId, workflowId, Prompting(StringValue("QUESTION")),
+          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
+        removeMarkable[Prompting] orElse
+        markable[Prompting] orElse
+        cancelMarkedAllowed[Prompting] orElse
+        suspendMarkedAllowed[Prompting] orElse {
+          case (_: OrderPromptAnswered  , _                 , IsDetached) => _.isInstanceOf[Ready]
+          case (_: OrderBroken          , _                 , _         ) => _.isInstanceOf[Broken]
         })
     }
 

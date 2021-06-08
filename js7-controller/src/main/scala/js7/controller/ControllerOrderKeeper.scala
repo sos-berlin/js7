@@ -817,6 +817,15 @@ with MainJournalingActor[ControllerState, Event]
             }
         }
 
+      case ControllerCommand.AnswerOrderPrompt(orderId) =>
+        orderEventSource.answer(orderId) match {
+          case Left(problem) =>
+            Future.successful(Left(problem))
+          case Right(events) =>
+            persistTransactionAndSubsequentEvents(events)(handleEvents)
+              .map(_ => Right(ControllerCommand.Response.Accepted))
+        }
+
       case _ =>
         // Handled by ControllerCommandExecutor
         Future.failed(new NotImplementedError)
