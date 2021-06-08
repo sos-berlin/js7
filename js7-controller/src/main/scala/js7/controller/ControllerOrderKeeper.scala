@@ -21,7 +21,6 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked._
-import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
@@ -37,7 +36,6 @@ import js7.common.akkautils.SupervisorStrategies
 import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.item.VerifiedUpdateItems
 import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
@@ -47,19 +45,17 @@ import js7.data.agent.AgentRefState.{Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerStateExecutor.{toLiveOrderEventHandler, toLiveOrderEventSource}
-import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor}
-import js7.data.crypt.SignedItemVerifier
+import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler, toLiveOrderEventSource}
+import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDeletionMarked, ItemDestroyed, ItemDetached}
-import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
-import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
-import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDestroyed, ItemDetached}
+import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{BasicItemEvent, HasInventoryItem, InventoryItemEvent, InventoryItemKey, ItemRevision, SignableItemKey, SignableSimpleItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedEvent}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -344,7 +340,7 @@ with MainJournalingActor[ControllerState, Event]
           totalRunningTime = journalHeader.totalRunningTime)
 
         val events = maybeControllerInitialized :+ controllerReady :++
-          new ControllerStateExecutor(_controllerState).nextOrderEvents
+          _controllerState.nextOrderWatchOrderEvents
 
         persistMultiple(events) { (_, updatedState) =>
           _controllerState = updatedState
@@ -432,34 +428,7 @@ with MainJournalingActor[ControllerState, Event]
         }
 
     case Command.VerifiedUpdateItemsCmd(verifiedUpdateItems: VerifiedUpdateItems) =>
-      val repo = _controllerState.repo
-      val t = now
-      (for {
-        simpleItemEvents <- simpleItemsToEvents(verifiedUpdateItems.simple)
-        repoEventBlock <- verifiedUpdateItems.maybeVersioned match {
-          case None => Right(repo.emptyEventBlock)
-          case Some(versioned) =>
-            _controllerState.repo.itemsToEvents(
-              versioned.versionId,
-              versioned.verifiedItems.map(_.signedItem),
-              versioned.delete)
-        }
-      } yield (simpleItemEvents, repoEventBlock))
-      match {
-        case Left(problem) => sender() ! Left(problem)
-        case Right((simpleItemEvents, repoEventBlock)) =>
-          val sender = this.sender()
-          persistItemAndVersionedEvents(simpleItemEvents, repoEventBlock.events)
-            .map(_.map { o =>
-              if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
-                itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
-              o
-            })
-            .onComplete {
-              case Failure(t) => sender ! Status.Failure(t)
-              case Success(response) => sender ! (response: Checked[Completed])
-            }
-      }
+      executeVerifiedUpdateItems(verifiedUpdateItems)
 
     case AgentDriver.Output.EventsFromAgent(agentRunId, stampedAgentEvents, committedPromise) =>
       for (agentEntry <- agentRegister.get(sender())) {
@@ -569,82 +538,54 @@ with MainJournalingActor[ControllerState, Event]
         context.stop(self)
       } else if (shuttingDown) {
         shutdown.continue()
-      } else
+      } else {
+        agentRegister -= actor
         for (agentRefState <- persistence.currentState.pathToAgentRefState.checked(agentPath)) {
           if (agentRefState.couplingState == Resetting || agentRefState.couplingState == Reset) {
-            agentRegister -= actor
             agentEntry = registerAgent(agentRefState.agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
             agentEntry.actor ! AgentDriver.Input.StartFetchingEvents
             reattachToAgent(agentPath)
           }
         }
+      }
   }
 
-  private def simpleItemsToEvents(simple: VerifiedUpdateItems.Simple): Checked[View[InventoryItemEvent]] =
-    simple.verifiedSimpleItems
-      .flatTraverse(verifiedItemToEvents)
-      .flatMap(signedEvents =>
-        simple.unsignedSimpleItems
-          .traverse(unsignedSimpleItemToEvent)
-          .map(unsignedEvents =>
-            simple.delete
-              .flatMap(path => itemDeletedEvent(path))
-              .view ++ signedEvents ++ unsignedEvents))
+  private def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems): Unit = {
+    val t = now
+    (for {
+      keyedEvents <- _controllerState.executeVerifiedUpdateItems(verifiedUpdateItems)
+      _ <- checkAgentDriversAreTerminated(
+        keyedEvents.view
+          .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })
+    } yield keyedEvents)
+    match {
+      case Left(problem) =>
+        sender() ! Left(problem)
 
-  private def verifiedItemToEvents(verified: SignedItemVerifier.Verified[SignableSimpleItem])
-  : Checked[Seq[InventoryItemEvent]] = {
-    val item = verified.item
-    if (item.itemRevision.isDefined)
-      Left(Problem.pure("ItemRevision is not accepted here"))
-    else
-      Right(
-        _controllerState.pathToSimpleItem.get(item.key) match {
-          case None =>
-            SignedItemAdded(verified.signedItem.copy(value =
-              item.withRevision(Some(ItemRevision.Initial)))) :: Nil
-          case Some(existing) =>
-            val changed = SignedItemChanged(verified.signedItem.copy(
-              value = verified.signedItem.value
-                .withRevision(Some(
-                  existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))))
-            val attaching = _controllerState.itemToAgentToAttachedState.get(item.key)
-              .map(_.view.collect {
-                case (agentPath, Attachable) => ItemAttachable(item.key, agentPath)
-                case (agentPath, Attached(rev))
-                  if rev != item.itemRevision && agentRequiresItem(agentPath, item.key) =>
-                  ItemAttachable(item.key, agentPath)
-                //case (agentPath, Detachable) => Should not happen
-                //case (agentPath, Detached) => Nothing to do
-              })
-              .view.flatten
-            Vector(changed) //FIXME ++ attaching
-        })
+      case Right(keyedEvents) =>
+        val sender = this.sender()
+        persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
+          .map(_ => Right(Completed))
+          .map(_.map { o =>
+            if (t.elapsed > 1.s) logger.debug("VerifiedUpdateItemsCmd - " +
+              itemsPerSecondString(t.elapsed, verifiedUpdateItems.itemCount, "items"))
+            o
+          })
+          .onComplete {
+            case Failure(t) => sender ! Status.Failure(t)
+            case Success(response) => sender ! (response: Checked[Completed])
+          }
+    }
   }
 
-  private def agentRequiresItem(agentPath: AgentPath, itemKey: InventoryItemKey): Boolean =
-    // Maybe optimize ??? Changed item needs only to be attached if it is needed by an attached order
-    true
-
-  private def unsignedSimpleItemToEvent(item: UnsignedSimpleItem): Checked[UnsignedSimpleItemAddedOrChanged] =
-    if (item.itemRevision.isDefined)
-      Left(Problem.pure("ItemRevision is not accepted here"))
+  private def checkAgentDriversAreTerminated(addedAgentPaths: Iterable[AgentPath]): Checked[Unit] = {
+    val runningAgentDrivers = addedAgentPaths.filter(agentRegister.contains)
+    if (runningAgentDrivers.nonEmpty)
+      Left(Problem(s"AgentDrivers for the following Agents are still running — " +
+        s"please retry after some seconds: ${runningAgentDrivers.map(_.string).mkString(", ")}"))
     else
-      Right(
-        _controllerState.pathToSimpleItem.get(item.key) match {
-          case None =>
-            UnsignedSimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
-          case Some(existing) =>
-            UnsignedSimpleItemChanged(item
-              .withRevision(Some(
-                existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
-        })
-
-  private def itemDeletedEvent(itemKey: InventoryItemKey): Option[BasicItemEvent] =
-    !_controllerState.deleteItems(itemKey) ? (
-      if (_controllerState.isItemDestroyable(itemKey))
-        ItemDestroyed(itemKey)
-      else
-        ItemDeletionMarked(itemKey))
+      Checked.unit
+  }
 
   // JournalActor's termination must be handled in any `become`-state and must lead to ControllerOrderKeeper's termination
   override def journaling = handleExceptionalMessage orElse super.journaling
@@ -793,7 +734,7 @@ with MainJournalingActor[ControllerState, Event]
                 if (agentRefState.couplingState == Resetting)
                   Future.successful(Left(Problem.pure("ResetAgent in progress")))
                 else {
-                  val events = new ControllerStateExecutor(persistence.currentState).resetAgent(agentPath)
+                  val events = persistence.currentState.resetAgent(agentPath)
                   persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
                     // ResetAgent command may return with error despite it has reset the orders
                     agentEntry.isResetting = true
@@ -856,30 +797,6 @@ with MainJournalingActor[ControllerState, Event]
               persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents))
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
-
-  private def persistItemAndVersionedEvents(simpleItemEvents: View[InventoryItemEvent], versionedEvents: Seq[VersionedEvent])
-  : Future[Checked[Completed]] = {
-    // Precheck events
-    val keyedEvents = (simpleItemEvents.view ++ versionedEvents).map(NoKey <-: _).toVector
-    _controllerState
-      .applyEvents(keyedEvents)
-      .flatMap(_
-        .checkConsistencyForNewItems(
-          keyedEvents.view.map(_.event).collect { case e: HasInventoryItem => e.item.key }.toVector
-        ))
-    match {
-      case Left(prblm @ Problem.Combined(Seq(_, problem: DuplicateKey))) =>
-        logger.debug(prblm.toString)
-        Future.successful(Left(problem))
-
-      case Left(problem) =>
-        Future.successful(Left(problem))
-
-      case Right(_) =>
-        persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
-          .map(_ => Right(Completed))
-    }
-  }
 
   private def logEvent(event: Event): Unit =
     event match {
@@ -990,12 +907,14 @@ with MainJournalingActor[ControllerState, Event]
 
   private def subsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[Event]] =
     delayOrderRemoved(
-      new ControllerStateExecutor(_controllerState)
-        .applyEventsAndReturnSubsequentEvents(keyedEvents))
+      _controllerState
+        .applyEventsAndReturnSubsequentEvents(keyedEvents)
+        .map(_.keyedEvents.toVector)
+        .orThrow)
 
-  private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[KeyedEvent[OrderCoreEvent]] =
+  private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =
     delayOrderRemoved(
-      new ControllerStateExecutor(_controllerState).nextOrderEventsByOrderId(orderIds).toVector)
+      _controllerState.nextOrderEventsByOrderId(orderIds).keyedEvents.toVector)
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
     val itemKeys = mutable.Buffer.empty[InventoryItemKey]
@@ -1036,6 +955,17 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister.update(agentRef)
         agentRegister(agentRef.path).reconnect()
 
+      case ItemDetached(itemKey, agentPath) =>
+        for (agentEntry <- agentRegister.get(agentPath)) {
+          agentEntry.detachingItems -= itemKey
+        }
+
+      case ItemDestroyed(agentPath: AgentPath) =>
+        for (entry <- agentRegister.get(agentPath)) {
+          entry.actor ! AgentDriver.Input.Terminate()
+          // Actor terminates asynchronously, so do not add an AgentRef immediately after destruction!
+        }
+
       case _ =>
     }
   }
@@ -1066,7 +996,10 @@ with MainJournalingActor[ControllerState, Event]
                     }
 
                   case Detachable =>
-                    agentEntry.actor ! AgentDriver.Input.DetachItem(itemKey)
+                    if (!agentEntry.detachingItems.contains(itemKey)) {
+                      agentEntry.detachingItems += itemKey
+                      agentEntry.actor ! AgentDriver.Input.DetachItem(itemKey)
+                    }
 
                   case _ =>
                 }
@@ -1335,6 +1268,7 @@ private[controller] object ControllerOrderKeeper
   {
     var actorTerminated = false
     var isResetting = false
+    val detachingItems = mutable.Set.empty[InventoryItemKey]
 
     def agentPath = agentRef.path
 

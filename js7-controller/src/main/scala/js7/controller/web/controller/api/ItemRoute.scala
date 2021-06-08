@@ -21,11 +21,12 @@ import js7.base.utils.{ByteArrayToLinesObservable, FutureCompletion}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.StreamingSupport._
-import js7.controller.item.{ItemUpdater, VerifiedUpdateItems}
+import js7.controller.item.ItemUpdater
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ItemRoute._
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.controller.ControllerState._
+import js7.data.controller.VerifiedUpdateItems
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.{ItemOperation, SignableItem}
 import monix.execution.Scheduler

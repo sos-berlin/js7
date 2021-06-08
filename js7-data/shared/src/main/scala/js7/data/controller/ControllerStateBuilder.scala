@@ -13,7 +13,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarke
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
@@ -177,14 +177,17 @@ extends JournaledStateBuilder[ControllerState]
             case ItemDestroyed(itemKey) =>
               deleteItems -= itemKey
               itemKey match {
-                case path: LockPath =>
-                  pathToLockState -= path
-
-                case path: AgentPath =>
-                  pathToAgentRefState -= path
+                case id: VersionedItemId_ =>
+                  repo = repo.destroyItem(id).orThrow
 
                 case path: OrderWatchPath =>
                   allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)
+
+                case path: LockPath =>
+                  pathToLockState -= path
+
+                case agentPath: AgentPath =>
+                  pathToAgentRefState -= agentPath
               }
           }
       }

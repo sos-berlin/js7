@@ -1,33 +1,37 @@
 package js7.data.controller
 
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.controller.ControllerStateExecutor._
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, KeyedEvent}
+import js7.data.event.{AnyKeyedEvent, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, VersionId}
+import js7.data.item.VersionedEvent.VersionedItemEvent
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionId, VersionedItemId_}
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed, OrderRemoveMarked}
+import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed, OrderRemoveMarked, OrderRemoved}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
+import scala.language.implicitConversions
 
-final class ControllerStateExecutor(private var _controllerState: ControllerState)
+final case class ControllerStateExecutor private(
+  keyedEvents: Iterable[AnyKeyedEvent],
+  controllerState: ControllerState)
+extends VerifiedUpdateItemsExecutor
 {
-  private val orderEventSource = toLiveOrderEventSource(() => _controllerState)
-
-  def controllerState = _controllerState
+  import ControllerStateExecutor.convertImplicitly
 
   private def workflowPathToVersionId(workflowPath: WorkflowPath): Option[VersionId] =
-    _controllerState.repo.pathTo[Workflow](workflowPath).toOption.map(_.id.versionId)
+    controllerState.repo.pathTo[Workflow](workflowPath).toOption.map(_.id.versionId)
 
-  def resetAgent(agentPath: AgentPath): Seq[KeyedEvent[Event]] = {
+  def resetAgent(agentPath: AgentPath): Seq[AnyKeyedEvent] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted)
     val ordersDetached = controllerState.idToOrder.values.view
       .flatMap(resetAgentForOrder(_, agentPath))
@@ -51,7 +55,7 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
           case _ => Vector.empty
         }
         val detached = stateEvents :+ (order.id <-: OrderDetached)
-        val detachedState = _controllerState.applyEvents(detached).orThrow
+        val detachedState = controllerState.applyEvents(detached).orThrow
         val fail = toLiveOrderEventSource(() => detachedState)
           .failOrDetach(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
           .orThrow
@@ -61,60 +65,164 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
     }
   }
 
-  def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
-  : Seq[KeyedEvent[Event]] = {
-    _controllerState.applyEvents(keyedEvents) match {
-      case Left(problem) => scribe.error(problem.toString)  // ???
-      case Right(o) => _controllerState = o
+  def applyEventsAndReturnSubsequentEvents(keyedEvents: Iterable[AnyKeyedEvent])
+  : Checked[ControllerStateExecutor] = {
+    var noProblem: Checked[Unit] = Checked.unit
+    val itemKeys = mutable.Set.empty[InventoryItemKey]
+    val detachWorkflowCandidates = mutable.Set.empty[WorkflowId]
+    val detachedItems = mutable.Set.empty[InventoryItemKey]
+    val detachedFromAgents = mutable.Set.empty[AgentPath]
+    val orderIds = mutable.Set.empty[OrderId]
+
+    var controllerState = this.controllerState
+    val iterator = keyedEvents.iterator
+    while (iterator.hasNext && noProblem.isRight) {
+      val keyedEvent = iterator.next()
+      val previous = controllerState
+
+      controllerState.applyEvent(keyedEvent) match {
+        case Left(prblm) =>
+          noProblem = Left(prblm)
+
+        case Right(updated) =>
+          controllerState = updated
+          keyedEvent match {
+            case KeyedEvent(_, event: VersionedItemEvent) =>
+              for (previousItem <- previous.repo.pathToItem(event.path)) {
+                itemKeys += previousItem.id
+                previousItem match {
+                  case previousItem: Workflow => detachWorkflowCandidates += previousItem.id
+                  case _ =>
+                }
+              }
+
+            case KeyedEvent(_: NoKey, event: InventoryItemEvent) =>
+              itemKeys += event.key
+
+              event match {
+                case ItemDetached(itemKey, agentPath) =>
+                  detachedItems += itemKey
+                  if (updated.deleteItems.contains(agentPath)) {
+                    detachedFromAgents += agentPath
+                  }
+
+                case _ =>
+              }
+
+            case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+              orderIds += orderId
+              event match {
+                case OrderRemoved =>
+                  detachWorkflowCandidates += previous.idToOrder(orderId).workflowId
+                case _ =>
+              }
+
+            case _ =>
+          }
+      }
     }
-    val touchedItemKeys = keyedEvents
-      .collect { case KeyedEvent(_, e: InventoryItemEvent) => e.key }
-      .distinct
-    val touchedOrderIds = keyedEvents
-      .collect { case KeyedEvent(k: OrderId, _) => k }
-      .distinct
-    (nextItemEvents(touchedItemKeys).view ++
-      nextOrderEventsByOrderId(touchedOrderIds) ++
-      nextOrderEvents
-    ).toVector
+
+    for (_ <- noProblem) yield {
+      // Slow ???
+
+      val itemEvents = ControllerStateExecutor(controllerState).nextItemEvents(itemKeys).toVector
+      controllerState = controllerState.applyEvents(itemEvents).orThrow
+
+      val detachableWorkflows = detachWorkflowCandidates.view
+        .filterNot(controllerState.isCurrentOrStillInUse)
+        .flatMap(workflowId =>
+          controllerState.itemToAgentToAttachedState.get(workflowId)
+            .view.flatMap(_.collect {
+              // Workflows are never Attachable, only Attached or Detachable
+               case (agentPath, Attached(_)) =>
+                 detachedItems += workflowId
+                 NoKey <-: ItemDetachable(workflowId, agentPath)
+            }))
+        .toVector
+      controllerState = controllerState.applyEvents(detachableWorkflows).orThrow
+
+      val destroyItems = (detachWorkflowCandidates.view ++ detachedItems)
+        .filter(controllerState.keyToItem.keySet.contains)
+        .filterNot(controllerState.itemToAgentToAttachedState.contains)
+        .filter {
+          case WorkflowId.as(workflowId) =>
+            !controllerState.isCurrentOrStillInUse(workflowId)
+          case path: SimpleItemPath =>
+            !controllerState.isReferenced(path)
+          case _ =>
+            false
+        }
+        .map(itemKey => NoKey <-: ItemDestroyed(itemKey))
+        .toVector
+      controllerState = controllerState.applyEvents(destroyItems).orThrow
+
+      val destroyAgentRefs = detachedFromAgents.view
+        .filterNot(controllerState.itemToAgentToAttachedState.values.view.flatMap(_.keys).toSet)
+        .map(agentPath => NoKey <-: ItemDestroyed(agentPath))
+        .toVector
+      controllerState = controllerState.applyEvents(destroyAgentRefs).orThrow
+
+      val eventsAndState = controllerState.nextOrderEventsByOrderId(orderIds)
+      controllerState = eventsAndState.controllerState
+      val orderEvents = eventsAndState.keyedEvents
+
+      val orderWatchEvents = controllerState.nextOrderWatchOrderEvents
+      controllerState = controllerState.applyEvents(orderWatchEvents).orThrow
+
+      val subsequentKeyedEvents =
+        (itemEvents.view ++
+        detachableWorkflows ++
+        destroyItems ++
+        destroyAgentRefs ++
+        orderEvents ++
+        orderWatchEvents).toVector
+
+      new ControllerStateExecutor(subsequentKeyedEvents, controllerState)
+    }
   }
 
-  private def nextItemEvents(itemKeys: Seq[InventoryItemKey]): Seq[KeyedEvent[BasicItemEvent]] =
-    itemKeys
-      .flatMap(itemKey => controllerState.keyToItem.get(itemKey).view)
+  private def nextItemEvents(itemKeys: Iterable[InventoryItemKey]): View[KeyedEvent[BasicItemEvent]] =
+    itemKeys.view
+      .flatMap(controllerState.keyToItem.get)
       .flatMap(item =>
-        _controllerState.itemToAgentToAttachedState.get(item.key) match {
+        controllerState.itemToAgentToAttachedState.get(item.key) match {
           case Some(agentPathToAttached) =>
             agentPathToAttached.view.flatMap {
               case (agentPath, Attached(revision)) =>
-                if (controllerState.deleteItems(item.key))
-                  Some(ItemDetachable(item.key, agentPath))
-                else
-                  (item.itemRevision != revision) ?
-                    (item.dedicatedAgentPath match {
-                      case Some(`agentPath`) | None =>
-                        // Item is dedicated to this Agent or is required by an Order.
-                        // Attach again without detaching, and let Agent change the item while in flight
-                        ItemAttachable(item.key, agentPath)
-                      case Some(_) =>
-                        // Item's Agent dedication has changed, so we detach it
-                        ItemDetachable(item.key, agentPath)
-                    })
+                item.key match {
+                  case itemId: VersionedItemId_ =>
+                    !controllerState.isCurrentOrStillInUse(itemId) ? ItemDetachable(itemId, agentPath)
+
+                  case path: SimpleItemPath =>
+                    if (controllerState.deleteItems.contains(path))
+                      Some(ItemDetachable(path, agentPath))
+                    else
+                      (item.itemRevision != revision) ?
+                        (item.dedicatedAgentPath match {
+                          case Some(`agentPath`) | None =>
+                            // Item is dedicated to this Agent or is required by an Order.
+                            // Attach again without detaching, and let Agent change the item while in flight
+                            ItemAttachable(path, agentPath)
+                          case Some(_) =>
+                            // Item's Agent dedication has changed, so we detach it
+                            ItemDetachable(path, agentPath)
+                        })
+                }
 
               case (_, Attachable | Detachable) =>
                 None
             }
 
           case None =>
-            if (controllerState.deleteItems(item.key))
-              controllerState.isItemDestroyable(item.key).thenList(ItemDestroyed(item.key))
+            if (controllerState.deleteItems.contains(item.key))
+              Nil
             else
               item.dedicatedAgentPath.map(ItemAttachable(item.key, _))
         })
         .map(NoKey <-: _)
 
-  def nextOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
-    _controllerState.allOrderWatchesState
+  def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
+    controllerState.allOrderWatchesState
       .nextEvents(workflowPathToVersionId)
       .filter {
         case KeyedEvent(orderId: OrderId, OrderRemoveMarked) =>
@@ -123,23 +231,27 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
         case _ => true
       }
 
-  def nextOrderEventsByOrderId(orderIds: Seq[OrderId]): View[KeyedEvent[OrderCoreEvent]] = {
+  def nextOrderEventsByOrderId(orderIds: Iterable[OrderId]): ControllerStateExecutor = {
+    var controllerState = this.controllerState
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
     val _keyedEvents = mutable.Buffer.empty[KeyedEvent[OrderCoreEvent]]
     @tailrec def loop(): Unit = {
       queue.removeHeadOption() match {
         case Some(orderId) =>
-          if (_controllerState.idToOrder contains orderId) {
+          if (controllerState.idToOrder contains orderId) {
+            val orderEventSource = toLiveOrderEventSource(() => controllerState)
             val keyedEvents = orderEventSource.nextEvents(orderId)
             for (KeyedEvent(orderId, OrderBroken(problem)) <- keyedEvents) {
               scribe.error(s"Order '${orderId.string}' is broken: $problem") // ???
             }
-            _controllerState.applyEvents(keyedEvents) match {
+            controllerState.applyEvents(keyedEvents) match {
               case Left(problem) => scribe.error(s"$orderId: $problem")  // ???
               case Right(o) =>
-                _controllerState = o
+                controllerState = o
                 _keyedEvents ++= keyedEvents
-                queue ++= keyedEvents.view.flatMap(keyedEventToOrderIds).toSeq.distinct
+                queue ++= keyedEvents.view
+                  .flatMap(ControllerStateExecutor(controllerState).keyedEventToOrderIds)
+                  .toSeq.distinct
             }
           }
           loop()
@@ -147,14 +259,14 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
       }
     }
     loop()
-    _keyedEvents.view
+    new ControllerStateExecutor(_keyedEvents, controllerState)
   }
 
   private def keyedEventToOrderIds(keyedEvent: KeyedEvent[OrderEvent]): View[OrderId] =
     View(keyedEvent.key) ++ (keyedEvent.event match {
       case OrderLockEvent(lockPaths) =>
         lockPaths.view
-          .flatMap(_controllerState.pathToLockState.get)
+          .flatMap(controllerState.pathToLockState.get)
           .flatMap(_.firstQueuedOrderId)
 
       case OrderForked(children) =>
@@ -166,6 +278,12 @@ final class ControllerStateExecutor(private var _controllerState: ControllerStat
 
 object ControllerStateExecutor
 {
+  def apply(controllerState: ControllerState): ControllerStateExecutor =
+    new ControllerStateExecutor(Nil, controllerState)
+
+  implicit def convertImplicitly(controllerState: ControllerState): ControllerStateExecutor =
+    apply(controllerState)
+
   def toLiveOrderEventSource(controllerState: () => ControllerState) =
     new OrderEventSource(
       id => controllerState().idToOrder.checked(id),

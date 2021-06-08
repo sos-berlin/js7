@@ -122,9 +122,27 @@ final class VersionedItemPathTest extends AnyFreeSpec
     assert(APath.toString == "APath")
     assert(APath.itemTypeName == "A")
   }
+
+  "pattern matching with `is`" in {
+    def u(id: VersionedItemId_) = id match {
+      case AId.as(id) =>
+        assert(id.path.isInstanceOf[APath])
+        "A"
+      case BId.as(id) =>
+        assert(id.path.isInstanceOf[BPath])
+        "B"
+      case _ => fail()
+    }
+    assert(u(APath("b") ~ "1") == "A")
+    assert(u(BPath("b") ~ "1") == "B")
+  }
 }
 
 object VersionedItemPathTest
 {
+  private type AId = VersionedItemId[APath]
   private val AId = APath.VersionedItemIdCompanion
+
+  private type BId = VersionedItemId[BPath]
+  private val BId = BPath.VersionedItemIdCompanion
 }

@@ -13,8 +13,9 @@ import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
-import js7.data.item.{InventoryItemPath, VersionedItem, VersionedItemId}
+import js7.data.item.{VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
+import js7.data.lock.LockPath
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
@@ -127,20 +128,21 @@ extends VersionedItem
         Left(Problem(s"Label '${label.string}' is duplicated at positions " + positions.mkString(", ")))
       }
 
-  lazy val referencedItemPaths: Set[InventoryItemPath] = {
-    val lockPaths = flattenedInstructions.view
+  override lazy val referencedAgentPaths: Set[AgentPath] =
+    workflowJobs.map(_.agentPath).toSet
+
+  override lazy val referencedLockPaths: Set[LockPath] =
+    flattenedInstructions.view
       .map(_._2.instruction)
       .collect {
         case lock: LockInstruction => lock.lockPath
       }
-    val agentPaths = workflowJobs.view.map(_.agentPath)
-    (lockPaths ++ agentPaths ++ referencedJobResourcePaths).toSet
-  }
+      .toSet
 
-  lazy val referencedJobResourcePaths: Set[JobResourcePath] =
-    (jobResourcePaths.view ++ workflowJobs.view.flatMap(_.jobResourcePaths)).toSet
+  override lazy val referencedJobResourcePaths: Set[JobResourcePath] =
+    (jobResourcePaths.view ++ workflowJobs.flatMap(_.jobResourcePaths)).toSet
 
-  private def workflowJobs: View[WorkflowJob] =
+  private[workflow] def workflowJobs: View[WorkflowJob] =
     keyToJob.values.view
 
   def positionMatchesSearch(position: Position, search: PositionSearch): Boolean =

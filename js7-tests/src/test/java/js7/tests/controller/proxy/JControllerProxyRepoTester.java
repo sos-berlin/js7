@@ -127,8 +127,9 @@ final class JControllerProxyRepoTester
         whenWorkflowDeleted.get(99, SECONDS);
 
         // The workflow should be deleted (latest version)
+        Thread.sleep(100); // Wait a little until currentState is updated
         assertThat(proxy.currentState().repo().pathToWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
-            equalTo(Either.left(ProblemCode.of("VersionedItemDeleted"))));
+            equalTo(Either.left(ProblemCode.of("UnknownItemPath"))));
     }
 
     private static SignedString sign(String json) {

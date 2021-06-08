@@ -1,4 +1,4 @@
-package js7.controller.item
+package js7.data.controller
 
 import js7.base.auth.{SimpleUser, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
@@ -6,18 +6,31 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
-import js7.data.item.{ItemOperation, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
+import js7.data.item.{InventoryItemKey, ItemOperation, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.View
 
-final case class VerifiedUpdateItems private[item](
+final case class VerifiedUpdateItems private(
   simple: VerifiedUpdateItems.Simple,
   maybeVersioned: Option[VerifiedUpdateItems.Versioned])
 {
-  def itemCount = simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
+  def itemCount =
+    simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
+
+  def versionedPaths: View[VersionedItemPath] =
+    maybeVersioned.view.flatMap(_.paths)
+
+  def addOrChangeKeys: View[InventoryItemKey] =
+    simple.unsignedSimpleItems.view.map(_.path) ++
+      simple.verifiedSimpleItems.view.map(_.item.path) ++
+      maybeVersioned.view.flatMap(_.verifiedItems.view.map(_.item.id))
+
+  def addedOrChangedAgentPaths: View[AgentPath] =
+    simple.unsignedSimpleItems.view.collect { case o: AgentRef => o.path }
 }
 
 object VerifiedUpdateItems
@@ -27,9 +40,8 @@ object VerifiedUpdateItems
     verifiedSimpleItems: Seq[Verified[SignableSimpleItem]],
     delete: Seq[SimpleItemPath])
   {
-    def itemCount = unsignedSimpleItems.size + verifiedSimpleItems.size
-    def paths: View[SimpleItemPath] =
-      unsignedSimpleItems.view.map(_.key) ++ verifiedSimpleItems.view.map(_.item.key) ++ delete
+    def itemCount =
+      unsignedSimpleItems.size + verifiedSimpleItems.size
   }
 
   final case class Versioned(
@@ -37,7 +49,7 @@ object VerifiedUpdateItems
     verifiedItems: Seq[Verified[VersionedItem]],
     delete: Seq[VersionedItemPath])
   {
-    def paths: View[VersionedItemPath] =
+    private[VerifiedUpdateItems] def paths: View[VersionedItemPath] =
       verifiedItems.view.map(_.item.path) ++ delete
   }
 

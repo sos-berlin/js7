@@ -40,8 +40,8 @@ import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.NamedValues
-import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.Execute
+import js7.data.workflow.{Workflow, WorkflowId}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.journal.recover.Recovered
@@ -292,10 +292,14 @@ with Stash
         .map(_.rightAs(AgentCommand.Response.Accepted))
         .runToFuture
 
-    case DetachItem(path: JobResourcePath) =>
-      persist(ItemDetached(path, ownAgentPath)) { (stampedEvent, journaledState) =>
-        Right(AgentCommand.Response.Accepted)
-      }
+    case DetachItem(itemKey @ (_: JobResourcePath | _: WorkflowId)) =>
+      if (!persistence.currentState.keyToItem.contains(itemKey)) {
+        logger.warn(s"DetachItem($itemKey) but item is unknown (okay after Controller restart)")
+        Future.successful(Right(AgentCommand.Response.Accepted))
+      } else
+        persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
+          Right(AgentCommand.Response.Accepted)
+        }
 
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)

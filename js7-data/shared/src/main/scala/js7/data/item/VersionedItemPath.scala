@@ -89,10 +89,15 @@ object VersionedItemPath
       def apply(idString: String): VersionedItemId[P] =
         checked(idString).orThrow
 
-      val pathCompanion = P
-
       def apply(path: P, versionId: VersionId) =
         path ~ versionId
+
+      val pathCompanion = P
+
+      object as {
+        def unapply(id: VersionedItemId_): Option[VersionedItemId[P]] =
+          (id.path.companion eq Companion.this) ? id.asInstanceOf[VersionedItemId[P]]
+      }
     }
 
     final val itemTypeName: String = name stripSuffix "Path"

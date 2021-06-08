@@ -8,6 +8,7 @@ import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
@@ -15,13 +16,14 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.workflow.{Workflow, WorkflowId}
 import monix.reactive.Observable
+import scala.collection.MapView
 
 /**
   * @author Joacim Zschimmer
@@ -84,28 +86,34 @@ extends JournaledState[AgentState]
       case KeyedEvent(_: NoKey, event: BasicItemEvent.ForAgent) =>
         event match {
           case ItemAttachedToAgent(workflow: Workflow) =>
-            Right(copy(
-              idToWorkflow = idToWorkflow + (workflow.id -> workflow)))
-
-          //case ItemDetached(workflowId: WorkflowId, _) =>
-          //  Right(copy(
-          //    idToWorkflow = idToWorkflow - workflowId))
+            for (o <- idToWorkflow.insert(workflow.id -> workflow)) yield
+              copy(
+                idToWorkflow = o)
 
           case ItemAttachedToAgent(fileWatch: FileWatch) =>
+            // May replace an existing JobResource
             Right(copy(
               allFileWatchesState = allFileWatchesState.attach(fileWatch)))
 
           case ItemAttachedToAgent(jobResource: JobResource) =>
+            // May replace an existing JobResource
             Right(copy(
               pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
+          case ItemDetached(WorkflowId.as(workflowId), _) =>
+            for (_ <- idToWorkflow.checked(workflowId)) yield
+              copy(
+                idToWorkflow = idToWorkflow - workflowId)
+
           case ItemDetached(path: OrderWatchPath, meta.agentPath) =>
-            Right(copy(
-              allFileWatchesState = allFileWatchesState.detach(path)))
+            for (_ <- allFileWatchesState.pathToFileWatchState.checked(path)) yield
+              copy(
+                allFileWatchesState = allFileWatchesState.detach(path))
 
           case ItemDetached(path: JobResourcePath, meta.agentPath) =>
-            Right(copy(
-              pathToJobResource = pathToJobResource - path))
+            for (_ <- pathToJobResource.checked(path)) yield
+              copy(
+                pathToJobResource = pathToJobResource - path)
 
           case _ => applyStandardEvent(keyedEvent)
         }
@@ -172,6 +180,21 @@ extends JournaledState[AgentState]
       Checked.unit
 
   def agentPath = meta.agentPath
+
+  lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
+    new MapView[InventoryItemKey, InventoryItem] {
+      def get(itemKey: InventoryItemKey): Option[InventoryItem] =
+        itemKey match {
+          case path: JobResourcePath => pathToJobResource.get(path)
+          case path: OrderWatchPath => allFileWatchesState.pathToFileWatchState.get(path).map(_.fileWatch)
+          case WorkflowId.as(id) => idToWorkflow.get(id)
+        }
+
+      def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
+        pathToJobResource.iterator ++
+          allFileWatchesState.pathToFileWatchState.view.mapValues(_.fileWatch).iterator ++
+          idToWorkflow.iterator
+    }
 }
 
 object AgentState extends JournaledState.Companion[AgentState]

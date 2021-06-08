@@ -20,8 +20,6 @@ final case class TestVersionedItem(id: TestVersionedItem.Key, content: String) e
   val companion = TestVersionedItem
 
   def withId(id: VersionedItemId[Path]) = copy(id)
-
-  def referencedItemPaths = Set.empty
 }
 
 object TestVersionedItem extends VersionedItem.Companion[TestVersionedItem] {

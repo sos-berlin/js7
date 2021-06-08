@@ -358,6 +358,14 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert((Right(1): T).combineLeft(Right(2): T) == Right((1, 2)))
     }
 
+    "combineLeftOrRight" in {
+      type T = Either[String, String]
+      assert((Left("A"): T).combineLeftOrRight(Left("B"): T) == Left("AB"))
+      assert((Left("A"): T).combineLeftOrRight(Right("R"): T) == Left("A"))
+      assert((Right("A"): T).combineLeftOrRight(Left("B"): T) == Left("B"))
+      assert((Right("X"): T).combineLeftOrRight(Right("Y"): T) == Right("XY"))
+    }
+
     "toThrowableChecked" in {
       assert(Right[Throwable, Int](7).toThrowableChecked == Right(7))
       val t = new IllegalArgumentException

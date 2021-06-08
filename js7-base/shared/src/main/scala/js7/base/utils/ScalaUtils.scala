@@ -12,7 +12,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.Factory
+import scala.collection.{Factory, View}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Left
@@ -351,8 +351,11 @@ object ScalaUtils
         if (underlying) string else ""
 
       def !!(problem: => Problem): Checked[Unit] =
+        isTrueOr(problem)
+
+      def isTrueOr(problem: => Problem): Checked[Unit] =
         if (!underlying) Left(problem)
-        else RightUnit
+        else Checked.unit
 
       def toInt: Int =
         if (underlying) 1 else 0
@@ -376,6 +379,15 @@ object ScalaUtils
           case (Left(a), Right(_)) => Left(a)
           case (Right(_), Left(b)) => Left(b)
           case (Right(r), Right(r1)) => Right((r, r1))
+        }
+
+      /** Useful for `Checked` to combine both `Problem`s. */
+      def combineLeftOrRight[R1](other: Either[L, R])(implicit L: Semigroup[L], R: Semigroup[R]): Either[L, R] =
+        (either, other) match {
+          case (Left(a), Left(b)) => Left(L.combine(a, b))
+          case (Left(a), Right(_)) => Left(a)
+          case (Right(_), Left(b)) => Left(b)
+          case (Right(r), Right(r1)) => Right(R.combine(r, r1))
         }
 
       def orThrow: R =

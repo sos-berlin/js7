@@ -12,7 +12,7 @@ trait SignedItemEvent extends InventoryItemEvent
 
 object SignedItemEvent
 {
-  sealed trait SignedItemAddedOrChanged extends SignedItemEvent with HasInventoryItem with Product {
+  sealed trait SignedItemAddedOrChanged extends SignedItemEvent with ItemAddedOrChanged with Product {
     def signedString = signed.signedString
     def signed: Signed[SignableItem]
     def item: SignableItem = signed.value

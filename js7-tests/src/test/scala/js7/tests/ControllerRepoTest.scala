@@ -13,6 +13,7 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
@@ -22,7 +23,8 @@ import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemDeletedProblem
 import js7.data.agent.AgentPath
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
+import js7.data.controller.ControllerCommand.TakeSnapshot
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
@@ -38,6 +40,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
 final class ControllerRepoTest extends AnyFreeSpec
@@ -56,6 +59,8 @@ final class ControllerRepoTest extends AnyFreeSpec
           |  permissions = [ UpdateItem ]
           |}
           |""".stripMargin
+
+      val versionCounter = AtomicInt(0)
 
       provider.runAgents() { _ =>
         provider.runController() { controller =>
@@ -164,37 +169,60 @@ final class ControllerRepoTest extends AnyFreeSpec
 
       def testSpeed(uri: Uri, credentials: Option[UserAndPassword], n: Int, itemCount: Int): Unit = {
         val genStopwatch = new Stopwatch
-        val operations = generateItemOperations(itemCount)
+        val operations = generateAddItemOperations(itemCount)
         logInfo(genStopwatch.itemsPerSecondString(itemCount, "items signed"))
         actorSystemResource(name = "ControllerRepoTest-SPEED")
           .use(actorSystem => Task {
+            val apiResource  = admissionToApiResource(Admission(uri, credentials))(actorSystem)
+            val controllerApi = new ControllerApi(Seq(apiResource))
             for (_ <- 1 to n) {
-              val exeStopwatch = new Stopwatch
-              val apiResource  = admissionToApiResource(Admission(uri, credentials))(actorSystem)
-              val controllerApi = new ControllerApi(Seq(apiResource))
+              val t = now
               controllerApi.updateItems(Observable.fromIterable(operations))
                 .runToFuture
                 .await(99.s)
                 .orThrow
-              logInfo(exeStopwatch.itemsPerSecondString(itemCount, "items"))
+              logInfo(itemsPerSecondString(t.elapsed, itemCount, "items"))
             }
+            locally {
+              val t = now
+              controllerApi.executeCommand(TakeSnapshot)
+                .runToFuture
+                .await(99.s)
+                .orThrow
+              logInfo(s"Snapshot taken in ${t.elapsed.pretty}")
+            }
+            locally {
+              val t = now
+              controllerApi.updateItems(deleteItemOperations(itemCount))
+                .runToFuture
+                .await(99.s)
+                .orThrow
+              logInfo(itemsPerSecondString(t.elapsed, itemCount, "deletions"))
+            }
+
           })
           .runToFuture
           .await(1.h)
       }
 
-      def generateItemOperations(n: Int): Seq[ItemOperation] = {
+      def generateAddItemOperations(n: Int): Seq[ItemOperation] = {
         val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentPath, ScriptExecutable("# " + "BIG "*256))))
-        val versionCounter = AtomicInt(0)
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
+        Observable.fromIterable(1 to n)
+          .mapParallelUnorderedBatch() { i =>
+            val workflow = workflow0.withId(WorkflowPath(s"WORKFLOW-$i") ~ v)
+            AddOrChangeSigned(provider.toSignedString(workflow))
+          }
+          .prepend(AddVersion(v))
+          .toL(Vector)
+          .await(99.s)
+      }
+
+      def deleteItemOperations(n: Int): Observable[ItemOperation] = {
+        val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
+        (Observable(AddVersion(v)) ++
           Observable.fromIterable(1 to n)
-            .mapParallelUnorderedBatch() { i =>
-              val workflow = workflow0.withId(WorkflowPath(s"WORKFLOW-$i") ~ v)
-              AddOrChangeSigned(provider.toSignedString(workflow))
-            }
-            .prepend(AddVersion(v))
-            .toL(Vector)
-            .await(99.s)
+            .map(i => DeleteVersioned(WorkflowPath(s"WORKFLOW-$i"))))
       }
     }
   }

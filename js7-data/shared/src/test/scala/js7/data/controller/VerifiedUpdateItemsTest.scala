@@ -1,4 +1,4 @@
-package js7.controller.item
+package js7.data.controller
 
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem

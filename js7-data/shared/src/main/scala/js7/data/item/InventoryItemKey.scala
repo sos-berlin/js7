@@ -10,6 +10,8 @@ trait InventoryItemKey
 {
   def companion: Companion[_ <: InventoryItemKey]
 
+  def path: InventoryItemPath
+
   def toTypedString: String
 }
 

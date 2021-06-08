@@ -77,7 +77,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
 
   "referencedItemPaths" in {
-    assert(fileWatch.referencedItemPaths == Set(aAgentPath, workflow.path))
+    assert(fileWatch.referencedItemPaths.toSet == Set(aAgentPath, workflow.path))
   }
 
   "Start with existing file" in {
@@ -140,7 +140,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     delete(file)
     val vanished = controller.eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
     val removed = controller.eventWatch.await[OrderRemoved](_.key == orderId).head
-    assert(vanished.timestamp < removed.timestamp)
+    assert(vanished.timestamp <= removed.timestamp)
   }
 
   "CancelOrder does not remove the order until the file has vanished" in {
@@ -212,6 +212,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       NoKey <-: ItemDetachable(fileWatch.path, bAgentPath),
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
       NoKey <-: ItemDestroyed(fileWatch.path)))
+    sleep(100.ms)   // Wait until controllerState has been updated
     assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }

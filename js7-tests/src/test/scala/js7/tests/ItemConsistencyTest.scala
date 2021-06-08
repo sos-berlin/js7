@@ -39,8 +39,8 @@ final class ItemConsistencyTest extends AnyFreeSpec with ControllerAgentForScala
       .updateItems(Observable(AddOrChangeSimple(fileWatch)))
       .await(99.s)
     assert(checked == Left(Problem.Combined(Seq(
-      MissingReferencedItemProblem(fileWatch.path, workflow.path),
-      MissingReferencedItemProblem(fileWatch.path, agentPath)))))
+      MissingReferencedItemProblem(fileWatch.path, agentPath),
+      MissingReferencedItemProblem(fileWatch.path, workflow.path)))))
   }
 
   "Workflow consistency" in {
@@ -49,7 +49,7 @@ final class ItemConsistencyTest extends AnyFreeSpec with ControllerAgentForScala
         AddVersion(versionId),
         AddOrChangeSigned(itemSigner.sign(workflow).signedString)))
       .await(99.s)
-    assert(checked == Left(Problem.Combined(Seq(
+    assert(checked == Left(Problem.Combined(Set(
       MissingReferencedItemProblem(workflow.id, lock.path),
       MissingReferencedItemProblem(workflow.id, agentPath),
       MissingReferencedItemProblem(workflow.id, jobResource.path)))))

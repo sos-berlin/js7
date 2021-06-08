@@ -5,6 +5,10 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.item.InventoryItem.Companion
+import js7.data.job.JobResourcePath
+import js7.data.lock.LockPath
+import js7.data.workflow.WorkflowPath
+import scala.collection.View
 import scala.reflect.ClassTag
 
 trait InventoryItem
@@ -28,7 +32,29 @@ trait InventoryItem
     * </ul>*/
   def dedicatedAgentPath: Option[AgentPath] = None
 
-  def referencedItemPaths: Set[InventoryItemPath]
+  def referencedItemPaths: View[InventoryItemPath] =
+    referencedLockPaths.view ++ referencedAgentPaths ++ referencedJobResourcePaths ++ referencedWorkflowPaths
+
+  def referencedLockPaths: Set[LockPath] =
+    Set.empty
+
+  def referencedAgentPaths: Set[AgentPath] =
+    Set.empty
+
+  def referencedJobResourcePaths: Set[JobResourcePath] =
+    Set.empty
+
+  def referencedWorkflowPaths: Set[WorkflowPath] =
+    Set.empty
+
+  def isReferencing(referenced: InventoryItemPath): Boolean =
+    referenced match {
+      case referenced: LockPath => referencedLockPaths.contains(referenced)
+      case referenced: AgentPath => referencedAgentPaths.contains(referenced)
+      case referenced: JobResourcePath => referencedJobResourcePaths.contains(referenced)
+      case referenced: WorkflowPath => referencedWorkflowPaths.contains(referenced)
+      case _ => false
+    }
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
   override def hashCode = 31 * key.hashCode + itemRevision.hashCode

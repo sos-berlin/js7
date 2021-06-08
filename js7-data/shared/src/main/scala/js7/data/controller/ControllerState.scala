@@ -10,7 +10,7 @@ import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.Problems.MissingReferencedItemProblem
+import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -18,7 +18,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
-import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -28,7 +28,7 @@ import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
-import js7.data.workflow.Workflow
+import js7.data.workflow.{Workflow, WorkflowId}
 import monix.reactive.Observable
 import scala.collection.{MapView, View}
 
@@ -177,27 +177,41 @@ extends JournaledState[ControllerState]
                           (agentPath -> attachedState)))))
 
                 case Detached =>
-                  Right(copy(itemToAgentToAttachedState = {
-                    val updated = itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) - agentPath
-                    if (updated.isEmpty)
-                      itemToAgentToAttachedState - itemKey
-                    else
-                      itemToAgentToAttachedState + (itemKey -> updated)
-                  }))
+                  for {
+                    agentToAttachedState <- itemToAgentToAttachedState.checked(itemKey)
+                    _ <- agentToAttachedState.checked(agentPath)
+                  } yield
+                    copy(itemToAgentToAttachedState = {
+                      val updated = agentToAttachedState - agentPath
+                      if (updated.isEmpty)
+                        itemToAgentToAttachedState - itemKey
+                      else
+                        itemToAgentToAttachedState + (itemKey -> updated)
+                    })
               }
 
             case ItemDeletionMarked(itemKey) =>
-              itemKey match {
-                case id: OrderWatchPath =>
-                  Right(copy(
-                    deleteItems = deleteItems + id))
-
-                case _ =>
-                  Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))  // TODO
-              }
+              Right(copy(
+                deleteItems = deleteItems + itemKey))
 
             case ItemDestroyed(itemKey) =>
               itemKey match {
+                case id: VersionedItemId_ =>
+                  for (repo <- repo.destroyItem(id)) yield
+                    copy(
+                      deleteItems = deleteItems - itemKey,
+                      repo = repo)
+
+                case lockPath: LockPath =>
+                  Right(copy(
+                    deleteItems = deleteItems - lockPath,
+                    pathToLockState = pathToLockState - lockPath))
+
+                case agentPath: AgentPath =>
+                  Right(copy(
+                    deleteItems = deleteItems - agentPath,
+                    pathToAgentRefState = pathToAgentRefState - agentPath))
+
                 case path: OrderWatchPath =>
                   Right(copy(
                     deleteItems = deleteItems - path,
@@ -205,7 +219,7 @@ extends JournaledState[ControllerState]
                     allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)))
 
                 case _ =>
-                  Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))  // TODO
+                  Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
               }
           }
       }
@@ -316,20 +330,83 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def checkConsistencyForNewItems(itemKeys: Seq[InventoryItemKey]): Checked[Unit] =
+  private[controller] def checkConsistencyForItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
     itemKeys
-      .flatMap(key =>
-        keyToItem.checked(key)
+      .flatMap(itemKey =>
+        keyToItem.checked(itemKey)
           .flatTraverse(_
             .referencedItemPaths
-            .toSeq
-            .map(path => pathToItem.get(path)
-              .toChecked(MissingReferencedItemProblem(referencingItem = key, referencedItem = path)))))
+            .map(path => pathToItem
+              .get(path)
+              .toChecked(MissingReferencedItemProblem(itemKey, referencedItemKey = path)))
+            .toVector))
       .combineProblems
       .rightAs(())
 
-  def isItemDestroyable(itemKey: InventoryItemKey): Boolean =
-    deleteItems(itemKey) && !itemToAgentToAttachedState.contains(itemKey)
+  private[controller] def checkConsistencyForDeletedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] = {
+    itemKeys.view
+      .map(checkItemIsDeletable)
+      .combineProblems
+      .rightAs(())
+  }
+
+  private def checkItemIsDeletable(itemKey: InventoryItemKey): Checked[Unit] =
+    referencingItemKeys(itemKey.path)
+      .map(ItemIsStillReferencedProblem(itemKey, _))
+      .reduceLeftOption(Problem.combine)
+      .toLeft(())
+
+  private[controller] def detach(itemKey: InventoryItemKey): View[ItemDetachable] =
+    itemToAgentToAttachedState
+      .getOrElse(itemKey, Map.empty)
+      .view
+      .flatMap {
+        case (agentPath, notDetached) => toDetachEvent(itemKey, agentPath, notDetached)
+      }
+
+  private def toDetachEvent(itemKey: InventoryItemKey, agentPath: AgentPath, notDetached: NotDetached)
+  : Option[ItemDetachable] =
+    notDetached match {
+      case Attached(_) => Some(ItemDetachable(itemKey, agentPath))
+      case _ => None
+    }
+
+  // Slow ???
+  private lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
+    idToOrder.values.view.map(_.workflowId).toSet
+
+  private[controller] def isReferenced(path: InventoryItemPath): Boolean =
+    pathToReferencingItemKeys contains path
+
+  private def referencingItemKeys(path: InventoryItemPath): View[InventoryItemKey] =
+    pathToReferencingItemKeys.get(path).view.flatten
+
+  // Slow ???
+  private lazy val pathToReferencingItemKeys: Map[InventoryItemPath, Iterable[InventoryItemKey]] =
+    currentOrStillInUseItems
+      .flatMap(item => item.referencedItemPaths.map(_ -> item.key))
+      .groupMap(_._1)(_._2)
+
+  private def currentOrStillInUseItems: View[InventoryItem] =
+    simpleItems ++
+      repo.pathToVersionToSignedItems
+        .values.view
+        .flatMap { entries =>
+          val current = entries.head.maybeSignedItem.map(_.value)
+          val usedHidden = entries.tail.view.collect {
+            case Repo.Entry(_, Some(Signed(item, _))) if isStillInUse(item.id) => item
+          }
+          current.view ++ usedHidden
+        }
+
+  def isCurrentOrStillInUse(itemId: VersionedItemId_) =
+    repo.isCurrentItem(itemId) || isStillInUse(itemId)
+
+  private def isStillInUse(itemId: VersionedItemId_) =
+    itemId match {
+      case WorkflowId.as(workflowId) => isWorkflowUsedByOrders(workflowId)
+      case _ => true
+    }
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
@@ -344,8 +421,8 @@ extends JournaledState[ControllerState]
 
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     new MapView[InventoryItemKey, InventoryItem] {
-      def get(path: InventoryItemKey): Option[InventoryItem] =
-        path match {
+      def get(itemKey: InventoryItemKey): Option[InventoryItem] =
+        itemKey match {
           case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
           case path: SimpleItemPath => pathToSimpleItem.get(path)
         }
@@ -374,9 +451,20 @@ extends JournaledState[ControllerState]
         keyToItemFunc(path) collect { case o: SimpleItem => o }
 
       def iterator: Iterator[(SimpleItemPath, SimpleItem)] =
-        Iterator(pathToAgentRefState, pathToLockState, allOrderWatchesState.pathToOrderWatchState)
-          .flatMap(_.view.mapValues(_.item))
+        simpleItems.view.map(item => item.key -> item).iterator
     }
+
+  def items: View[InventoryItem] =
+    simpleItems ++ repo.items
+
+  def simpleItems: View[SimpleItem] =
+    unsignedSimpleItems ++ idToSignedSimpleItem.values.view.map(_.value)
+
+  private def unsignedSimpleItems: View[UnsignedSimpleItem] =
+    (pathToAgentRefState.view ++
+      pathToLockState ++
+      allOrderWatchesState.pathToOrderWatchState
+    ).map(_._2.item)
 
   lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
     new MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] {
@@ -384,8 +472,7 @@ extends JournaledState[ControllerState]
         keyToItemFunc(path) collect { case o: UnsignedSimpleItem => o }
 
       def iterator: Iterator[(UnsignedSimpleItemPath, UnsignedSimpleItem)] =
-        Iterator(pathToAgentRefState, pathToLockState, allOrderWatchesState.pathToOrderWatchState)
-          .flatMap(_.view.mapValues(_.item))
+        unsignedSimpleItems.map(item => item.path -> item).iterator
     }
 
   lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =

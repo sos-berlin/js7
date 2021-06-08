@@ -25,7 +25,11 @@ object VersionedEvent {
     def path: VersionedItemPath
   }
 
-  sealed trait VersionedItemAddedOrChanged extends VersionedItemEvent /*with SignedItemAddedOrChanged???*/ with HasInventoryItem with Product {
+  sealed trait VersionedItemAddedOrChanged
+  extends VersionedItemEvent
+  /*with SignedItemAddedOrChanged???*/
+  with ItemAddedOrChanged
+  with Product {
     def signedString = signed.signedString
     def signed: Signed[VersionedItem]
     def item: VersionedItem = signed.value
@@ -34,6 +38,8 @@ object VersionedEvent {
   }
   object VersionedItemAddedOrChanged
   {
+    def unapply(event: VersionedItemAddedOrChanged) = Some(event.signed)
+
     // Use SignedItemAdded implementation (for ..Added and ..Changed events)
     private[VersionedEvent] def jsonDecoder[A <: VersionedItemAddedOrChanged: ClassTag]
       (toA: Signed[VersionedItem] => A)

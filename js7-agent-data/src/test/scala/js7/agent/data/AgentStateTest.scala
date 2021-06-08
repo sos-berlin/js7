@@ -42,8 +42,17 @@ import org.scalatest.freespec.AsyncFreeSpec
   */
 final class AgentStateTest extends AsyncFreeSpec
 {
-  private val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"
-  private val jobResourcePath = JobResourcePath("JOB-RESOURCE")
+  private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
+  private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
+  private val fileWatch = FileWatch(
+    OrderWatchPath("ORDER-SOURCE-ID"),
+    WorkflowPath("WORKFLOW"),
+    AgentPath("AGENT"),
+    s"${separator}DIRECTORY",
+    Some(SimplePattern("""\.csv""".r.pattern.pattern)),
+    Some(Expression.NamedValue("0")),
+    3.s,
+    Some(ItemRevision(7)))
   private val agentState = AgentState(
     EventId(1000),
     JournaledState.Standards(
@@ -54,25 +63,17 @@ final class AgentStateTest extends AsyncFreeSpec
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER")),
     Map(
-      OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflowId))),
+      OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflow.id))),
     Map(
-      workflowId -> Workflow.of(workflowId)),
+      workflow.id -> workflow),
     AllFileWatchesState.fromIterable(Seq(
       FileWatchState(
-        FileWatch(
-          OrderWatchPath("ORDER-SOURCE-ID"),
-          WorkflowPath("WORKFLOW"),
-          AgentPath("AGENT"),
-          s"${separator}DIRECTORY",
-          Some(SimplePattern("""\.csv""".r.pattern.pattern)),
-          Some(Expression.NamedValue("0")),
-          3.s,
-          Some(ItemRevision(7))),
+        fileWatch,
         DirectoryState.fromIterable(Seq(
           DirectoryState.Entry(Paths.get("/DIRECTORY/1.csv")),
           DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))),
     Map(
-      jobResourcePath -> JobResource(jobResourcePath)))
+      jobResource.path -> jobResource))
 
   "isCreated, isFreshlyCreated" - {
     "empty" in {
@@ -232,5 +233,12 @@ final class AgentStateTest extends AsyncFreeSpec
       Map(workflowId -> workflow),
       AllFileWatchesState.empty,
       Map.empty))
+  }
+
+  "keyToItem" in {
+    assert(!agentState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
+    assert(agentState.keyToItem.get(workflow.id) == Some(workflow))
+    assert(agentState.keyToItem.get(jobResource.path) == Some(jobResource))
+    assert(agentState.keyToItem.keySet == Set(workflow.id, jobResource.path, fileWatch.path))
   }
 }

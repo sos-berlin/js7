@@ -11,8 +11,6 @@ final case class AItem(id: VersionedItemId[APath], content: String) extends Vers
   val companion = AItem
 
   def withId(id: VersionedItemId[APath]) = copy(id = id)
-
-  def referencedItemPaths = Set.empty
 }
 
 object AItem extends VersionedItem.Companion[AItem] {

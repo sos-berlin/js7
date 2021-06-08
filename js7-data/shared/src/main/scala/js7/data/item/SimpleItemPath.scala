@@ -11,6 +11,8 @@ trait SimpleItemPath extends InventoryItemKey with InventoryItemPath with Generi
 
   def companion: Companion[_ <: SimpleItemPath]
 
+  final def path = this
+
   final def toTypedString: String =
     s"${companion.itemTypeName}:$string"
 

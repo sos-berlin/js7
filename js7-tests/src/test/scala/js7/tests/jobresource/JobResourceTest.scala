@@ -48,7 +48,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     aJobResource, bJobResource, envJobResource, sosJobResource)
 
   "referencedItemPaths" in {
-    assert(workflow.referencedItemPaths == Set(aJobResource.path, bJobResource.path, agentPath))
+    assert(workflow.referencedItemPaths.toSet == Set(aJobResource.path, bJobResource.path, agentPath))
   }
 
   "JobResourcePath" in {

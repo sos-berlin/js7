@@ -686,6 +686,54 @@ final class WorkflowTest extends AnyFreeSpec
     }
   }
 
+  "referencedLockPaths" in {
+    val job = WorkflowJob(AgentPath("AGENT"), ScriptExecutable(""))
+    val a = LockPath("A")
+    val b = LockPath("B")
+    val c = LockPath("C")
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW") ~ "1",
+      Vector(
+        LockInstruction(a, None, Workflow.of(
+          Execute(job),
+          If(BooleanConstant(true), Workflow.of(
+            LockInstruction(b, None, Workflow.of(
+            Execute(job),
+            Fork.of(
+              "BRANCH" -> Workflow.of(
+                LockInstruction(c, None, Workflow.of(
+                  Execute(job)))))))))))))
+    assert(workflow.referencedLockPaths == Set(a, b, c))
+    assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
+    assert(workflow.referencedJobResourcePaths.isEmpty)
+  }
+
+  "referencedAgentPaths" in {
+    val a = AgentPath("A")
+    val b = AgentPath("B")
+    val c = AgentPath("C")
+    val d = AgentPath("D")
+    val aJob = WorkflowJob(a, ScriptExecutable(""))
+    val bJob = WorkflowJob(b, ScriptExecutable(""))
+    val cJob = WorkflowJob(c, ScriptExecutable(""))
+    val dJob = WorkflowJob(d, ScriptExecutable(""))
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW") ~ "1",
+      Vector(
+        Execute(aJob),
+        If(BooleanConstant(true), Workflow.of(
+          Execute(bJob),
+          Fork.of(
+            "BRANCH" -> Workflow.of(
+              Execute(cJob)))))),
+      Map(
+        WorkflowJob.Name("D") -> dJob))
+    assert(workflow.referencedLockPaths.isEmpty)
+    assert(workflow.referencedAgentPaths == Set(a, b, c, d))
+    assert(workflow.referencedJobResourcePaths.isEmpty)
+    assert(workflow.workflowJobs.toSet == Set(aJob, bJob, cJob, dJob))
+  }
+
   "referencedJobResourcePaths" in {
     val job = WorkflowJob(AgentPath("AGENT"), ScriptExecutable(""))
     val a = JobResourcePath("A")
@@ -701,6 +749,8 @@ final class WorkflowTest extends AnyFreeSpec
           Fork.of(
             "BRANCH" -> Workflow.of(
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))))
+    assert(workflow.referencedLockPaths.isEmpty)
+    assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
     assert(workflow.referencedJobResourcePaths == Set(a, b, c, d))
   }
 
@@ -1033,11 +1083,11 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "referencedItempPaths" in {
-    assert(TestWorkflow.referencedItemPaths == Set(
+    assert(TestWorkflow.referencedItemPaths.toSet == Set(
       TestAgentPath,
       JobResourcePath("JOB-RESOURCE")))
 
-    assert(ForkTestSetting.TestWorkflow.referencedItemPaths == Set(
+    assert(ForkTestSetting.TestWorkflow.referencedItemPaths.toSet == Set(
       ForkTestSetting.AAgentPath,
       ForkTestSetting.BAgentPath))
   }

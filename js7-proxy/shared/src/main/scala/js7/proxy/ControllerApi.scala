@@ -7,13 +7,13 @@ import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF}
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand.Response.Accepted
-import js7.data.controller.ControllerCommand.{AddOrders, ReleaseEvents}
+import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, Batch, ReleaseEvents, RemoveOrdersWhenTerminated}
 import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -117,9 +117,12 @@ with AutoCloseable
       .map(_.flatMap(_.checkedAs[AddOrders.Response]))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
-  def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
-    executeCommand(ControllerCommand.AddOrder(order))
-      .mapt(o => !o.ignoredBecauseDuplicate)
+  def addOrder(order: FreshOrder, remove: Boolean = false): Task[Checked[Boolean]] =
+    executeCommand(Batch(
+      AddOrder(order) :: remove.thenList(RemoveOrdersWhenTerminated(Set(order.id)))))
+      .map(_.flatMap(o => o
+        .responses.head
+        .map(response => !response.asInstanceOf[AddOrder.Response].ignoredBecauseDuplicate)))
 
   def removeOrdersWhenTerminated(orderIds: Observable[OrderId])
   : Task[Checked[ControllerCommand.Response.Accepted]] =

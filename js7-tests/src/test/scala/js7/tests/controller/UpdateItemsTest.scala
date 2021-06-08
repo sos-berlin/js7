@@ -79,20 +79,23 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val promises = Vector.fill(2)(Promise[Deadline]())
     for (i <- orderIds.indices) {
-      controller.eventWatch.when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderIds(i)) foreach {
-        case EventSeq.NonEmpty(_) => promises(i).success(now)
-        case o => fail(s"Unexpected: $o")
-      }
+      controller.eventWatch
+        .when[OrderFinished](EventRequest.singleClass[OrderFinished](timeout = Some(99.s)), _.key == orderIds(i))
+        .foreach {
+          case EventSeq.NonEmpty(_) => promises(i).success(now)
+          case o => promises(i).failure(new AssertionError(s"Unexpected: $o"))
+        }
     }
     val finishedAt = promises.map(_.future) await 99.s
     // The two order running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
-    controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
     controllerApi.updateItems(Observable(AddVersion(V3), DeleteVersioned(workflowPath))).await(99.s).orThrow
     controllerApi.updateItems(Observable(AddVersion(V3), DeleteVersioned(workflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
-    assert(controllerApi.addOrder(FreshOrder(orderIds(1), workflowPath)).await(99.s) ==
+    assert(controllerApi.addOrder(FreshOrder(OrderId("⬛️"), workflowPath)).await(99.s) ==
       Left(VersionedItemDeletedProblem(workflowPath)))
+
+    controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
     withClue("Tampered with configuration: ") {
       assert(controllerApi.updateItems(Observable(

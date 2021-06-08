@@ -178,10 +178,10 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       delete(live / "ERROR-1.workflow.json")
       delete(live / "ERROR-2.workflow.json")
       provider.updateControllerConfiguration(V2.some).await(99.s).orThrow
+      // AWorkflow and BWorkflow from previous test are added
       assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2)))),
-          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
         BWorkflowPath -> List(
           Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))),
         CWorkflowPath -> List(
@@ -194,11 +194,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
       assert(checkedRepo.map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2)))),
-          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
-        BWorkflowPath -> List(
-          Entry(V3, None),
-          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))),
+          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
         CWorkflowPath -> List(
           Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
     }

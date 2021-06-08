@@ -32,12 +32,21 @@ object Problems
   }
 
   final case class MissingReferencedItemProblem(
-    referencingItem: InventoryItemKey,
-    referencedItem: InventoryItemPath)
+    itemKey: InventoryItemKey,
+    referencedItemKey: InventoryItemPath)
   extends Problem.Coded {
     def arguments = Map(
-      "referencingItem" -> referencingItem.toString,
-      "referencedItem" -> referencedItem.toString)
+      "item" -> itemKey.toString,
+      "referencedItem" -> referencedItemKey.toString)
+  }
+
+  final case class ItemIsStillReferencedProblem(
+    itemKey: InventoryItemKey,
+    referencingItemKey: InventoryItemKey)
+  extends Problem.Coded {
+    def arguments = Map(
+      "item" -> itemKey.toString,
+      "referencingItem" -> referencingItemKey.toString)
   }
 
   final case class AgentResetProblem(agentPath: AgentPath) extends Problem.Coded {
