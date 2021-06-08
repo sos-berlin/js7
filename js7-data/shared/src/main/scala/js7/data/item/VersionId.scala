@@ -18,7 +18,7 @@ final case class VersionId(string: String) extends GenericString
 
   def isAnonymous = this == VersionId.Anonymous
 
-  override def toString = s"version $string"
+  override def toString = s"Version:$string"
 }
 
 object VersionId extends GenericString.NonEmpty[VersionId]

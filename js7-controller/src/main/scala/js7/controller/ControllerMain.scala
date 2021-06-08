@@ -24,7 +24,9 @@ final class ControllerMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ControllerTermination.Terminate = {
-    logger.info("—" * 100)  // In case, the previous file is appended
+    logger.info("")
+    logger.info("━" * 100)  // In case, the previous file is appended
+    logger.info("")
     logger.info(s"JS7 JobScheduler Controller ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.info(startUpLine())
     logger.debug(arguments.toString)

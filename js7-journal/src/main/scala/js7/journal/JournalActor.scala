@@ -38,7 +38,7 @@ import monix.execution.{Cancelable, Scheduler}
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
-import scala.concurrent.{Await, Promise, blocking}
+import scala.concurrent.{Await, Promise}
 import scala.util.control.NonFatal
 
 /**
@@ -199,7 +199,8 @@ extends Actor with Stash
               // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
             } else {
               persistBuffer.add(
-                StandardPersist(totalEventCount + 1, stampedEvents, since, lastFileLengthAndEventId, replyTo, sender(), callersItem))
+                StandardPersist(totalEventCount + 1, stampedEvents, transaction, since,
+                  lastFileLengthAndEventId, replyTo, sender(), callersItem))
             }
             totalEventCount += stampedEvents.size
             fileEventCount += stampedEvents.size
@@ -476,16 +477,17 @@ extends Actor with Stash
   }
 
   private val syncOrFlushString: String =
-    if (conf.syncOnCommit) if (conf.simulateSync.isDefined) "~sync" else "sync "
-    else "flush"
+    if (conf.syncOnCommit) if (conf.simulateSync.isDefined) "~sync " else "sync  "
+    else "flush "
 
   private def logCommitted(persists: View[LoggablePersist]) =
     logger.whenTraceEnabled {
       val committedAt = now
-      val iterator = dropLastEmptyPersists(persists).iterator
-      while (iterator.hasNext) {
-        val persist = iterator.next()
-        logPersist(persist, isLastPersist = !iterator.hasNext, committedAt)
+      var index = 0
+      val loggablePersists = dropLastEmptyPersists(persists).toVector
+      for (persist <- loggablePersists) {
+        logPersist(persist, persistCount = loggablePersists.size, persistIndex = index, committedAt)
+        index += 1
       }
     }
 
@@ -498,32 +500,89 @@ extends Actor with Stash
     persists take nonEmptyLength
   }
 
-  private def logPersist(persist: LoggablePersist, isLastPersist: Boolean, committedAt: Deadline) = {
-    var nr = persist.eventNumber
-    var isFirst = true
-    val stampedIterator = persist.stampedSeq.iterator
-    while (stampedIterator.hasNext) {
-      val stamped = stampedIterator.next()
-      val isLast = !stampedIterator.hasNext
-      val flushOrSync =
-        if (isLast && persist.isLastOfFlushedOrSynced)
-          syncOrFlushString
-        else if (isFirst && persist.stampedSeq.lengthIs > 1)
-          f"${persist.stampedSeq.length}%4d×"  // Neither flushed nor synced, and not the only event of a commit
-        else
-          "     "
-      val a =
-        if (!requireClusterAcknowledgement)
-          ""        // No cluster. Caller may continue when flushed or synced
-        else if (isLast && isLastPersist)
-          " ACK"    // Last event of an acknowledged event bundle. Caller may continue
-        else
-          " ack"    // Event is part of an acknowledged event bundle
-      val committed = if (isLast) "COMMITTED" else "committed"
-      val t = if (isLast) ((committedAt - persist.since).msPretty + "     ") take 6 else "      "
-      logger.trace(s"$committed #$nr $flushOrSync$a $t ${stamped.eventId} ${stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200)}")
-      nr += 1
-      isFirst = false
+
+  private def logPersist(persist: LoggablePersist, persistCount: Int, persistIndex: Int,
+    committedAt: Deadline) =
+    logging.logPersist(persist, persistCount, persistIndex, committedAt)
+
+  private object logging {
+    private val sb = new StringBuilder
+    private val spaces = (" " * 20).toArray
+
+    private def fillRight(n: Int)(body: => Unit) = {
+      val right = sb.length() + n
+      body
+      sb.appendAll(spaces, 0, (right - sb.length()) max 0)
+    }
+
+    def logPersist(persist: LoggablePersist, persistCount: Int, persistIndex: Int,
+      committedAt: Deadline) = {
+      var nr = persist.eventNumber
+      val n = persist.stampedSeq.size
+      val penultimateNr = persist.eventNumber + n - 2
+      val duration = committedAt - persist.since
+      var isFirst = true
+      val stampedIterator = persist.stampedSeq.iterator
+      while (stampedIterator.hasNext) {
+        sb.clear()
+        val stamped = stampedIterator.next()
+        val isLast = !stampedIterator.hasNext
+        fillRight(5) { sb.append(nr) }
+        sb.append(
+          if (persistCount == 1) ' '
+          else if (isFirst & persistIndex == 0) '╮'
+          else if (isLast & persistIndex == persistCount - 1) '╯'
+          else if (isLast) '┤'
+          else '│')
+
+        if (isLast && persist.isLastOfFlushedOrSynced) {
+          sb.append(syncOrFlushString)
+        } else if (isFirst && persistIndex == 0 && persistCount >= 2) {
+          fillRight(6) { sb.append(persistCount) }  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
+        } else if (nr == penultimateNr && n >= 3000) {
+          val micros = duration.toMicros
+          if (micros == 0) {
+            sb.append("      ")
+          } else fillRight(6) {
+            val k = (1000.0 * n / micros).toInt
+            if (k < 1000) {
+              sb.append(k)
+              sb.append("K/s")
+            } else {
+              sb.append(k / 1000)
+              sb.append("M/s")
+            }
+          }
+        } else {
+          sb.append("      ")
+        }
+        if (requireClusterAcknowledgement) { // cluster
+          sb.append(
+            if (isLast && persistIndex == persistCount - 1)
+              "ACK "    // Last event of an acknowledged event bundle. Caller may continue
+            else
+              "ack ")   // Event is part of an acknowledged event bundle
+        }
+        if (isLast) {
+          fillRight(6) { sb.append(duration.msPretty) }
+        } else if (nr == penultimateNr) {
+          sb.append(f"$n%6d")
+        } else {
+          sb.append("      ")
+        }
+        sb.append(
+          if (!persist.isTransaction || n == 1) ' '
+          else if (isFirst) '⎧'
+          else if (isLast) '⎩'
+          else if (nr == penultimateNr) '⎨'
+          else '⎪')
+        sb.append(stamped.eventId)
+        sb.append(' ')
+        sb.append(stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200))
+        logger.trace(sb.toString())
+        nr += 1
+        isFirst = false
+      }
     }
   }
 
@@ -607,7 +666,7 @@ extends Actor with Stash
     snapshotWriter.writeEvent(snapshotTaken)
     snapshotWriter.flush(sync = conf.syncOnCommit)
     locally {
-      val standardPersist = StandardPersist(totalEventCount + 1, snapshotTaken :: Nil, since,
+      val standardPersist = StandardPersist(totalEventCount + 1, snapshotTaken :: Nil, false, since,
         Some(PositionAnd(snapshotWriter.fileLength, snapshotTaken.eventId)), Actor.noSender, null, null)
       standardPersist.isLastOfFlushedOrSynced = true
       persistBuffer.add(standardPersist)
@@ -834,6 +893,7 @@ object JournalActor
   private sealed trait LoggablePersist {
     def eventNumber: Long
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
+    def isTransaction: Boolean
     def since: Deadline
 
     /** For logging: last stamped has been flushed */
@@ -841,9 +901,10 @@ object JournalActor
   }
 
   /** A bundle of written but not yet committed (flushed and acknowledged) Persists. */
-  private case class StandardPersist(
+  private final case class StandardPersist(
     eventNumber: Long,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
+    isTransaction: Boolean,
     since: Deadline,
     lastFileLengthAndEventId: Option[PositionAnd[EventId]],
     replyTo: ActorRef,
@@ -860,7 +921,11 @@ object JournalActor
   }
 
   // Without event to keep heap usage low (especially for many big stdout event)
-  private case class AcceptEarlyPersist(eventCount: Int, since: Deadline, lastFileLengthAndEventId: Option[PositionAnd[EventId]], sender: ActorRef)
+  private final case class AcceptEarlyPersist(
+    eventCount: Int,
+    since: Deadline,
+    lastFileLengthAndEventId: Option[PositionAnd[EventId]],
+    sender: ActorRef)
   extends Persist
   {
     def isEmpty = true

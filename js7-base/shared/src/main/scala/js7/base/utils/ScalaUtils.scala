@@ -392,8 +392,10 @@ object ScalaUtils
 
       def orThrow: R =
         either match {
-          case Left(problem: Problem) => throw problem.throwable
-            .dropTopMethodsFromStackTrace("orThrow$extension")
+          case Left(problem: Problem) =>
+            var t = problem.throwable
+            if (t.getStackTrace.isEmpty) t = t.appendCurrentStackTrace
+            throw t.dropTopMethodsFromStackTrace("orThrow$extension")
 
           case Left(_) => throw new NoSuchElementException(s"Either.orThrow on $either")
             .dropTopMethodsFromStackTrace("orThrow$extension")

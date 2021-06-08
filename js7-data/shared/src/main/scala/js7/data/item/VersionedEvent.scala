@@ -82,7 +82,7 @@ object VersionedEvent {
   }
 
   final case class VersionedItemDeleted(path: VersionedItemPath) extends VersionedItemEvent {
-    require(!path.isAnonymous, "FileChangedChanged event requires a path")
+    require(!path.isAnonymous, "VersionedItemDeleted event requires a path")
   }
 
   implicit val jsonCodec = TypedJsonCodec[VersionedEvent](

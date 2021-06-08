@@ -419,7 +419,7 @@ final case class Repo private(
   override def toString = s"Repo($versions," +
     pathToVersionToSignedItems
       .keys.toSeq.sorted
-      .map(path =>
+      .map(path => s"$path: " +
         pathToVersionToSignedItems(path)
           .map(entry => entry.maybeSignedItem.fold(s"${entry.versionId} deleted")(_ => s"${entry.versionId} added"))
       ) + ")"

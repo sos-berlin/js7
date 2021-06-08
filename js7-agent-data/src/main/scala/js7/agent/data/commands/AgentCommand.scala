@@ -151,6 +151,7 @@ object AgentCommand extends CommonCommand.Companion
   extends AgentCommand
   {
     type Response = Response.Accepted
+    override def toString = s"AttachSignedItem(${signed.value.key})"
   }
   object AttachSignedItem {
     // Same serialization as SignedItemAdded event
