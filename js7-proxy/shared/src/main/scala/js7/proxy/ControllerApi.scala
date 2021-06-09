@@ -90,7 +90,7 @@ with AutoCloseable
 
   def updateRepo(
     versionId: VersionId,
-    signedItems: immutable.Iterable[Signed[SignableItem]],
+    signedItems: immutable.Iterable[Signed[SignableItem]] = Nil,
     delete: immutable.Iterable[VersionedItemPath] = Nil)
   : Task[Checked[Completed]] =
     updateItems(AddVersion(versionId) +: (

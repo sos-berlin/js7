@@ -23,14 +23,16 @@ import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemDeletedProblem
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.TakeSnapshot
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, TakeSnapshot}
+import js7.data.item.BasicItemEvent.ItemDestroyed
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
-import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderPrompted, OrderRemoved, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.instructions.Execute
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, Prompt}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.proxy.ControllerApi
 import js7.tests.testenv.ControllerTestUtils.syntax._
@@ -67,8 +69,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           controller.httpApi.login_(Some(userAndPassword)).await(99.s)
           val controllerApi = controller.newControllerApi(Some(userAndPassword))
 
-          locally {
-            // Add Workflow
+          withClue("Add Workflow: ") {
             val v = V1
             val workflow = testWorkflow(v) withId AWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
@@ -84,8 +85,7 @@ final class ControllerRepoTest extends AnyFreeSpec
               Left(DuplicateKey("VersionId", v)))
           }
 
-          locally {
-            // Add another Workflow
+          withClue("Add another Workflow: ") {
             val v = V2
             val workflow = testWorkflow(v) withId BWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
@@ -93,12 +93,31 @@ final class ControllerRepoTest extends AnyFreeSpec
             controller.runOrder(FreshOrder(OrderId("B"), workflow.path))
           }
 
-          // Change first Workflow
-          locally {
+          withClue("Change first Workflow: ") {
             val v = V3
             val workflow = testWorkflow(v) withId AWorkflowPath ~ v
             controllerApi.updateRepo(v, Seq(itemSigner.sign(workflow))).await(99.s).orThrow
             runOrder(controller, workflow.id, OrderId("A-3"))
+          }
+
+          withClue("Delete a workflow containing orders: ") {
+            val v = VersionId("WITH-ORDER")
+            val workflow = Workflow(WorkflowPath("WITH-ORDER") ~ v, Seq(Prompt(StringConstant(""))))
+            controllerApi.updateRepo(v, Seq(itemSigner.sign(workflow)))
+              .await(99.s).orThrow
+
+            val orderId = OrderId("DELETE-WITH-ORDER")
+            controllerApi.addOrder(FreshOrder(orderId, workflow.path), remove = true)
+              .await(99.s).orThrow
+            controller.eventWatch.await[OrderPrompted](_.key == orderId)
+
+            controllerApi.updateRepo(VersionId("WITH-ORDER-DELETED"), delete = Seq(workflow.path))
+              .await(99.s).orThrow
+
+            controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId))
+              .await(99.s).orThrow
+            controller.eventWatch.await[OrderRemoved](_.key == orderId)
+            controller.eventWatch.await[ItemDestroyed](_.event.key == workflow.id)
           }
         }
 

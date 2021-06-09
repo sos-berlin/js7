@@ -12,15 +12,15 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.data.Problems.CannotRemoveWatchingOrderProblem
+import js7.data.Problems.{CannotRemoveWatchingOrderProblem, ItemIsStillReferencedProblem}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDestroyed, ItemDestructionMarked, ItemDetachable, ItemDetached}
-import js7.data.item.ItemOperation.DeleteSimple
+import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, DeleteVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
-import js7.data.item.{InventoryItemEvent, ItemRevision}
+import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderFinished, OrderProcessingStarted, OrderRemoved}
 import js7.data.order.{OrderId, Outcome}
@@ -198,12 +198,20 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
         NoKey <-: ItemAttached(fileWatch.path, Some(itemRevision), bAgentPath)))
   }
 
+  "Deleting the Workflow referenced by the FileWatch is rejected" in {
+    assert(controllerApi.updateItems(Observable(
+      AddVersion(VersionId("TRY-DELETE")),
+      DeleteVersioned(workflow.path)
+    )).await(99.s) ==
+      Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path)))
+  }
+
   "Delete a FileWatch" in {
     val eventId = controller.eventWatch.lastAddedEventId
     assert(controllerApi.updateItems(Observable(
       DeleteSimple(fileWatch.path),
-      DeleteSimple(waitingFileWatch.path))
-    ).await(99.s) == Right(Completed))
+      DeleteSimple(waitingFileWatch.path)
+    )).await(99.s) == Right(Completed))
     controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.path, after = eventId)
     val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
       .filter(_.event.key == fileWatch.path)

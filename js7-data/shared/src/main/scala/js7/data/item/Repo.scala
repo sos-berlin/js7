@@ -61,7 +61,10 @@ final case class Repo private(
     itemsToEventBlock(versionId, changed, deleted).map(_.events)
 
   /** Returns the difference to the repo as events. */
-  def itemsToEventBlock(versionId: VersionId, changed: Seq[Signed[VersionedItem]], deleted: Iterable[VersionedItemPath] = Nil)
+  private[item] def itemsToEventBlock(
+    versionId: VersionId,
+    changed: Seq[Signed[VersionedItem]],
+    deleted: Iterable[VersionedItemPath] = Nil)
   : Checked[EventBlock] =
     checkItemVersions(versionId, changed)
       .flatMap { changed =>
@@ -424,7 +427,7 @@ final case class Repo private(
           .map(entry => entry.maybeSignedItem.fold(s"${entry.versionId} deleted")(_ => s"${entry.versionId} added"))
       ) + ")"
 
-  sealed trait EventBlock {
+  private[item] sealed trait EventBlock {
     def events: Seq[VersionedEvent]
     def deletedEvents: Seq[VersionedItemDeleted]
     def ids: Seq[VersionedItemId_]
@@ -433,7 +436,9 @@ final case class Repo private(
     final def nonEmpty = !isEmpty
   }
 
-  case object emptyEventBlock extends EventBlock {
+  private[item] val emptyEventBlock: EventBlock = EmptyEventBlock
+
+  private[item] case object EmptyEventBlock extends EventBlock {
     def isEmpty = true
     def events = Nil
     def deletedEvents = Nil

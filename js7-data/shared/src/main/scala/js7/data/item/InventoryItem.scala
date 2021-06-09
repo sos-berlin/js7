@@ -33,7 +33,10 @@ trait InventoryItem
   def dedicatedAgentPath: Option[AgentPath] = None
 
   def referencedItemPaths: View[InventoryItemPath] =
-    referencedLockPaths.view ++ referencedAgentPaths ++ referencedJobResourcePaths ++ referencedWorkflowPaths
+    referencedLockPaths.view ++
+      referencedAgentPaths ++
+      referencedJobResourcePaths ++
+      referencedWorkflowPaths
 
   def referencedLockPaths: Set[LockPath] =
     Set.empty

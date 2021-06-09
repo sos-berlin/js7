@@ -36,17 +36,17 @@ object Problems
     referencedItemKey: InventoryItemPath)
   extends Problem.Coded {
     def arguments = Map(
-      "item" -> itemKey.toString,
-      "referencedItem" -> referencedItemKey.toString)
+      "itemKey" -> itemKey.toString,
+      "referencedItemPath" -> referencedItemKey.toString)
   }
 
   final case class ItemIsStillReferencedProblem(
-    itemKey: InventoryItemKey,
+    itemPath: InventoryItemPath,
     referencingItemKey: InventoryItemKey)
   extends Problem.Coded {
     def arguments = Map(
-      "item" -> itemKey.toString,
-      "referencingItem" -> referencingItemKey.toString)
+      "itemPath" -> itemPath.toString,
+      "referencingItemKey" -> referencingItemKey.toString)
   }
 
   final case class AgentResetProblem(agentPath: AgentPath) extends Problem.Coded {

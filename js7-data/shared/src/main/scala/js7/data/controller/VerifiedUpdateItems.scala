@@ -16,7 +16,7 @@ import scala.collection.View
 
 final case class VerifiedUpdateItems private(
   simple: VerifiedUpdateItems.Simple,
-  maybeVersioned: Option[VerifiedUpdateItems.Versioned])
+  maybeVersioned: Option[VerifiedUpdateItems.Versioned] = None)
 {
   def itemCount =
     simple.itemCount + maybeVersioned.fold(0)(_.verifiedItems.size)
@@ -36,9 +36,9 @@ final case class VerifiedUpdateItems private(
 object VerifiedUpdateItems
 {
   final case class Simple(
-    unsignedSimpleItems: Seq[UnsignedSimpleItem],
-    verifiedSimpleItems: Seq[Verified[SignableSimpleItem]],
-    delete: Seq[SimpleItemPath])
+    unsignedSimpleItems: Seq[UnsignedSimpleItem] = Nil,
+    verifiedSimpleItems: Seq[Verified[SignableSimpleItem]] = Nil,
+    delete: Seq[SimpleItemPath] = Nil)
   {
     def itemCount =
       unsignedSimpleItems.size + verifiedSimpleItems.size
@@ -46,8 +46,8 @@ object VerifiedUpdateItems
 
   final case class Versioned(
     versionId: VersionId,
-    verifiedItems: Seq[Verified[VersionedItem]],
-    delete: Seq[VersionedItemPath])
+    verifiedItems: Seq[Verified[VersionedItem]] = Nil,
+    delete: Seq[VersionedItemPath] = Nil)
   {
     private[VerifiedUpdateItems] def paths: View[VersionedItemPath] =
       verifiedItems.view.map(_.item.path) ++ delete

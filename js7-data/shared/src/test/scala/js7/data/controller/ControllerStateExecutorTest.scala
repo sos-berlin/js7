@@ -18,7 +18,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, Versioned
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderRemoved, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderRemoved, OrderStarted}
 import js7.data.order.OrderId
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
@@ -67,7 +67,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           MissingReferencedItemProblem(bWorkflow.id, jobResource.path)))))
     }
 
-    "Delete AgentRef but it is in use" in {
+    "Delete AgentRef but it is in use by a workflow" in {
       val executor = new Executor(ControllerState.empty)
 
       executor.executeVerifiedUpdateItems(verifiedUpdateItems)
@@ -75,22 +75,102 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
-          VerifiedUpdateItems.Simple(Nil, Nil,
-            delete = Seq(aAgentRef.path)),
-          None
+          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
         )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id)))
 
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
-          VerifiedUpdateItems.Simple(Nil, Nil,
-            delete = Seq(aAgentRef.path)),
-          Some(VerifiedUpdateItems.Versioned(v2, Nil,
-            delete = Seq(aWorkflow.path)))
+          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path)),
+          Some(VerifiedUpdateItems.Versioned(v2, delete = Seq(aWorkflow.path)))
         )) == Right(Seq(
           NoKey <-: ItemDestroyed(aAgentRef.path),
           NoKey <-: VersionAdded(v2),
           NoKey <-: VersionedItemDeleted(aWorkflow.path),
           NoKey <-: ItemDestroyed(aWorkflow.id))))
+    }
+
+    "Delete AgentRef but it is in use by a deleted workflow still containing orders" in {
+      val executor = new Executor(ControllerState.empty)
+
+      executor.executeVerifiedUpdateItems(verifiedUpdateItems)
+        .orThrow
+
+      val orderId = OrderId("ORDER")
+      executor.controllerState = executor.controllerState
+        .applyEvent(orderId <-: OrderAdded(aWorkflow.id))
+        .orThrow
+
+      executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
+        VerifiedUpdateItems.Simple(),
+        Some(VerifiedUpdateItems.Versioned(VersionId("2"), delete = Seq(aWorkflow.path)))
+      )).orThrow
+
+      assert(
+        executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
+          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
+        )) == Left(ItemIsStillReferencedProblem(aAgentRef.path, aWorkflow.id)))
+
+      executor
+        .applyEventsAndReturnSubsequentEvents(Seq(
+          orderId <-: OrderCancelled,
+          orderId <-: OrderRemoved))
+        .orThrow
+
+      assert(
+        executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
+          VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
+        )) == Right(Seq(
+          NoKey <-: ItemDestroyed(aAgentRef.path))))
+    }
+
+    // TODO Don't use ControllerStateTest here
+    import ControllerStateTest.{controllerState, fileWatch, workflow}
+
+    "Empty" in {
+      val executor = new Executor(controllerState)
+      executor
+        .executeVerifiedUpdateItems(VerifiedUpdateItems(
+          VerifiedUpdateItems.Simple(),
+          None))
+        .orThrow
+    }
+
+    "Destroy and add fileWatch" in {
+      val executor = new Executor(controllerState)
+
+      // Delete the fileWatch
+      assert(executor.controllerState.keyToItem.contains(fileWatch.path))
+      executor
+        .executeVerifiedUpdateItems(VerifiedUpdateItems(
+          VerifiedUpdateItems.Simple(delete = Seq(fileWatch.path))))
+        .orThrow
+      assert(!executor.controllerState.keyToItem.contains(fileWatch.path))
+
+      locally {
+        // Delete the workflow
+        val deletedWorkflow = new Executor(executor.controllerState)
+        deletedWorkflow
+          .executeVerifiedUpdateItems(VerifiedUpdateItems(
+            VerifiedUpdateItems.Simple(),
+            Some(VerifiedUpdateItems.Versioned(VersionId("x"), delete = Seq(workflow.path)))))
+          .orThrow
+        // The deleted workflow still contains an order and has not been destroyed
+        assert(deletedWorkflow.controllerState.keyToItem.contains(workflow.id))
+
+        // FileWatch requires a non-deleted workflow
+        assert(deletedWorkflow
+          .executeVerifiedUpdateItems(VerifiedUpdateItems(
+            VerifiedUpdateItems.Simple(Seq(fileWatch.withRevision(None)))
+          )) == Left(MissingReferencedItemProblem(fileWatch.path, workflow.path)))
+      }
+
+      // Add the workflow
+      executor
+        .executeVerifiedUpdateItems(VerifiedUpdateItems(
+          VerifiedUpdateItems.Simple(Seq(fileWatch.withRevision(None)))))
+        .orThrow
+
+      assert(executor.controllerState.keyToItem.contains(fileWatch.path))
     }
   }
 

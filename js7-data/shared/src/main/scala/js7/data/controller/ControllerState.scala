@@ -328,7 +328,7 @@ extends JournaledState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  private[controller] def checkConsistencyForItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
+  private[controller] def checkAddedOrChangedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
     itemKeys
       .flatMap(itemKey =>
         keyToItem.checked(itemKey)
@@ -341,16 +341,29 @@ extends JournaledState[ControllerState]
       .combineProblems
       .rightAs(())
 
-  private[controller] def checkConsistencyForDeletedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] = {
-    itemKeys.view
-      .map(checkItemIsDeletable)
+  private[controller] def checkDeletedVersionedItems(deletedPaths: Iterable[VersionedItemPath])
+  : Checked[Unit] =
+    deletedPaths.view
+      .map(checkVersionedItemIsDeletable)
       .combineProblems
       .rightAs(())
-  }
 
-  private def checkItemIsDeletable(itemKey: InventoryItemKey): Checked[Unit] =
-    referencingItemKeys(itemKey.path)
-      .map(ItemIsStillReferencedProblem(itemKey, _))
+  private def checkVersionedItemIsDeletable(path: VersionedItemPath): Checked[Unit] =
+    referencingItemKeys(path)
+      .map(ItemIsStillReferencedProblem(path, _))
+      .reduceLeftOption(Problem.combine)
+      .toLeft(())
+
+  private[controller] def checkDestroyedSimpleItems(deletedPaths: Iterable[SimpleItemPath])
+  : Checked[Unit] =
+    deletedPaths.view
+      .map(checkSimpleItemIsDestroyable)
+      .combineProblems
+      .rightAs(())
+
+  private def checkSimpleItemIsDestroyable(path: SimpleItemPath): Checked[Unit] =
+    referencingItemKeys(path)
+      .map(ItemIsStillReferencedProblem(path, _))
       .reduceLeftOption(Problem.combine)
       .toLeft(())
 
@@ -370,7 +383,7 @@ extends JournaledState[ControllerState]
     }
 
   // Slow ???
-  private lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
+  private[controller] lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
     idToOrder.values.view.map(_.workflowId).toSet
 
   private[controller] def isReferenced(path: InventoryItemPath): Boolean =
@@ -380,27 +393,18 @@ extends JournaledState[ControllerState]
     pathToReferencingItemKeys.get(path).view.flatten
 
   // Slow ???
-  private lazy val pathToReferencingItemKeys: Map[InventoryItemPath, Iterable[InventoryItemKey]] =
-    currentOrStillInUseItems
-      .flatMap(item => item.referencedItemPaths.map(_ -> item.key))
-      .groupMap(_._1)(_._2)
-
-  private def currentOrStillInUseItems: View[InventoryItem] =
-    simpleItems ++
-      repo.pathToVersionToSignedItems
-        .values.view
-        .flatMap { entries =>
-          val current = entries.head.maybeSignedItem.map(_.value)
-          val usedHidden = entries.tail.view.collect {
-            case Repo.Entry(_, Some(Signed(item, _))) if isStillInUse(item.id) => item
-          }
-          current.view ++ usedHidden
-        }
+  private[controller] lazy val pathToReferencingItemKeys: Map[InventoryItemPath, Seq[InventoryItemKey]] =
+    items
+      .flatMap(item => item.referencedItemPaths.map(item.key -> _))
+      .groupMap(_._2)(_._1)
+      .view
+      .mapValues(_.toVector)
+      .toMap
 
   def isCurrentOrStillInUse(itemId: VersionedItemId_) =
     repo.isCurrentItem(itemId) || isStillInUse(itemId)
 
-  private def isStillInUse(itemId: VersionedItemId_) =
+  def isStillInUse(itemId: VersionedItemId_) =
     itemId match {
       case WorkflowId.as(workflowId) => isWorkflowUsedByOrders(workflowId)
       case _ => true

@@ -100,9 +100,7 @@ extends VerifiedUpdateItemsExecutor
               itemKeys += event.key
 
               event match {
-                case ItemDetached(itemKey, agentPath) =>
-                  detachedItems += itemKey
-
+                case ItemDetached(itemKey, _) => detachedItems += itemKey
                 case _ =>
               }
 
@@ -119,13 +117,15 @@ extends VerifiedUpdateItemsExecutor
       }
     }
 
-    for (_ <- noProblem) yield {
-      // Slow ???
 
+    noProblem.flatMap { _ =>
+      // Slow ???
+      val controllerStateBeforeSubsequentEvents = controllerState
       val itemEvents = ControllerStateExecutor(controllerState).nextItemEvents(itemKeys).toVector
       controllerState = controllerState.applyEvents(itemEvents).orThrow
 
       val detachableWorkflows = detachWorkflowCandidates.view
+        .filter(controllerState.keyToItem.keySet.contains)
         .filterNot(controllerState.isCurrentOrStillInUse)
         .flatMap(workflowId =>
           controllerState.itemToAgentToAttachedState.get(workflowId)
@@ -174,7 +174,13 @@ extends VerifiedUpdateItemsExecutor
         orderEvents ++
         orderWatchEvents).toVector
 
-      new ControllerStateExecutor(subsequentKeyedEvents, controllerState)
+      // Loop to derive events from the just derived events
+      if (subsequentKeyedEvents.nonEmpty)
+        controllerStateBeforeSubsequentEvents
+          .applyEventsAndReturnSubsequentEvents(subsequentKeyedEvents)
+          .map(o => ControllerStateExecutor(subsequentKeyedEvents ++ o.keyedEvents, o.controllerState))
+      else
+        Right(new ControllerStateExecutor(subsequentKeyedEvents, controllerState))
     }
   }
 
