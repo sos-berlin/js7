@@ -8,7 +8,7 @@ import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.data.command.CancelMode
+import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.event.EventSeq
 import js7.data.job.{PathExecutable, RelativePathExecutable}
@@ -65,7 +65,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
       "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing,Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false)"))
     assert(controller.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
 
-    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.s).orThrow
+    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(TestWorkflow.id, order.arguments),

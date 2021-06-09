@@ -6,7 +6,7 @@ import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
-import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand._
 import js7.data.item.VersionId
 import js7.data.node.NodeId
@@ -81,7 +81,7 @@ final class ControllerCommandTest extends AnyFreeSpec
 
   "CancelOrders" - {
     "CancelOrders FreshOnly" in {
-      testJson[ControllerCommand](CancelOrders(Seq(OrderId("A"), OrderId("B")), CancelMode.FreshOrStarted()),
+      testJson[ControllerCommand](CancelOrders(Seq(OrderId("A"), OrderId("B")), CancellationMode.FreshOrStarted()),
         json"""{
           "TYPE": "CancelOrders",
           "orderIds": [ "A", "B" ]
@@ -91,8 +91,8 @@ final class ControllerCommandTest extends AnyFreeSpec
     "CancelOrders FreshOrStarted" in {
       testJson[ControllerCommand](CancelOrders(
         Seq(OrderId("ORDER")),
-        CancelMode.FreshOrStarted(
-          Some(CancelMode.Kill(
+        CancellationMode.FreshOrStarted(
+          Some(CancellationMode.Kill(
             immediately = true,
             Some(WorkflowPath("WORKFLOW") ~ VersionId("VERSION") /: Position(1)))))),
         json"""{
@@ -115,8 +115,8 @@ final class ControllerCommandTest extends AnyFreeSpec
 
       testJsonDecoder[ControllerCommand](CancelOrders(
         Seq(OrderId("A"), OrderId("B")),
-        CancelMode.FreshOrStarted(
-          Some(CancelMode.Kill()))),
+        CancellationMode.FreshOrStarted(
+          Some(CancellationMode.Kill()))),
         json"""{
           "TYPE": "CancelOrders",
           "orderIds": [ "A", "B" ],
@@ -295,7 +295,7 @@ final class ControllerCommandTest extends AnyFreeSpec
         "mode": {}
       }""")
 
-    testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A")), SuspendMode(Some(CancelMode.Kill()))), json"""
+    testJson[ControllerCommand](SuspendOrders(Seq(OrderId("A")), SuspensionMode(Some(CancellationMode.Kill()))), json"""
       {
         "TYPE": "SuspendOrders",
         "orderIds": [ "A" ],

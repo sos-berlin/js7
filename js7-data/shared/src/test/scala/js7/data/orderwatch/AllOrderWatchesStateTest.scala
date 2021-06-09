@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
-import js7.data.order.OrderEvent.{OrderAdded, OrderRemoveMarked, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderAdded, OrderRemovalMarked, OrderRemoved}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, HasOrder, Vanished}
@@ -80,11 +80,11 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
 
     "ExternalOrderVanished A => OrderRemovedMarked" in {
       aoss = aoss.onOrderWatchEvent(externalOrderVanished("A")).orThrow
-      assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderId("A") <-: OrderRemoveMarked))
+      assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderId("A") <-: OrderRemovalMarked))
     }
 
-    "OrderRemoveMarked A" in {
-      aoss = aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemoveMarked).orThrow
+    "OrderRemovalMarked A" in {
+      aoss = aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemovalMarked).orThrow
       assert(aoss.nextEvents(toVersionId).isEmpty)
     }
 
@@ -95,11 +95,11 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
 
     "ExternalOrderVanished B => OrderRemovedMarked" in {
       aoss = aoss.onOrderWatchEvent(externalOrderVanished("B")).orThrow
-      assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderId("B") <-: OrderRemoveMarked))
+      assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderId("B") <-: OrderRemovalMarked))
     }
 
-    "OrderRemoveMarked B" in {
-      aoss = aoss.onOrderEvent(externalOrderKey("B"), orderId("B") <-: OrderRemoveMarked).orThrow
+    "OrderRemovalMarked B" in {
+      aoss = aoss.onOrderEvent(externalOrderKey("B"), orderId("B") <-: OrderRemovalMarked).orThrow
       assert(aoss.nextEvents(toVersionId).isEmpty)
     }
 
@@ -124,19 +124,19 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       aoss = aoss.onOrderWatchEvent(externalOrderVanished("B")).orThrow
       assert(state("B") == Some(HasOrder(orderId("B"), None)))
 
-      assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderId("B") <-: OrderRemoveMarked))
+      assert(aoss.nextEvents(toVersionId).toSeq == Seq(orderId("B") <-: OrderRemovalMarked))
 
       aoss = aoss.onOrderWatchEvent(externalOrderArised("B")).orThrow
     }
   }
 
-  "OrderRemoveMarked (by user) when not Vanished" in {
+  "OrderRemovalMarked (by user) when not Vanished" in {
     var a = AllOrderWatchesState.empty
     a = a.addOrderWatch(aOrderWatch).orThrow
     a = a.onOrderWatchEvent(externalOrderArised("C")).orThrow
     a = a.onOrderAdded(orderAdded("C")).orThrow
 
-    a = a.onOrderEvent(externalOrderKey("C"), orderId("C") <-: OrderRemoveMarked).orThrow
+    a = a.onOrderEvent(externalOrderKey("C"), orderId("C") <-: OrderRemovalMarked).orThrow
     assert(a.onOrderWatchEvent(externalOrderVanished("C")) == Left(Problem(
       """Duplicate ExternalOrderVanished(C), state=HasOrder(Order:file:A-SOURCE:C,Some(VanishedAck))""")))
 
@@ -171,25 +171,25 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       //  """Duplicate ExternalOrderArised(A, Map(file -> "/DIR/A")): HasOrder(Order:file:A-SOURCE:A,None)""")))
     }
 
-    "Vanished before OrderRemoveMarked" in {
+    "Vanished before OrderRemovalMarked" in {
       aoss = aoss.onOrderWatchEvent(externalOrderVanished("A")).orThrow
       assert(aoss.onOrderWatchEvent(externalOrderVanished("A")) == Left(Problem(
         """Duplicate ExternalOrderVanished(A), state=HasOrder(Order:file:A-SOURCE:A,Some(Vanished))""")))
-      val a = aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemoveMarked).orThrow
+      val a = aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemovalMarked).orThrow
 
       assert(aoss.onOrderWatchEvent(externalOrderVanished("A")) == Left(Problem(
         """Duplicate ExternalOrderVanished(A), state=HasOrder(Order:file:A-SOURCE:A,Some(Vanished))""")))
     }
 
-    "Arised without OrderRemoveMarked" in {
-      // May happen if OrderRemoveMarked was already emitted
+    "Arised without OrderRemovalMarked" in {
+      // May happen if OrderRemovalMarked was already emitted
       // - due to explicit command
       // - due to repeated ExternalOrderArised and ExternalOrderVanished
       aoss = aoss.onOrderWatchEvent(externalOrderArised("A")).orThrow
       assert(aoss.pathToOrderWatchState(aOrderWatch.path).externalToState(ExternalOrderName("A")) ==
         HasOrder(orderId("A"), Some(Arised(orderId("A"), order("A").arguments))))
 
-      assert(aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemoveMarked) == Right(aoss))
+      assert(aoss.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderRemovalMarked) == Right(aoss))
     }
   }
 

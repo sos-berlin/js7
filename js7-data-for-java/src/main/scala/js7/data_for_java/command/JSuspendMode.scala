@@ -2,16 +2,16 @@ package  js7.data_for_java.command
 
 import java.util.Optional
 import javax.annotation.Nonnull
-import js7.data.command.CancelMode.Kill
-import js7.data.command.SuspendMode
+import js7.data.command.CancellationMode.Kill
+import js7.data.command.SuspensionMode
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.workflow.position.JWorkflowPosition
 import scala.jdk.OptionConverters._
 
-final case class JSuspendMode(asScala: SuspendMode)
+final case class JSuspendMode(asScala: SuspensionMode)
 extends JavaWrapper
 {
-  protected type AsScala = SuspendMode
+  protected type AsScala = SuspensionMode
 }
 
 object JSuspendMode
@@ -35,6 +35,6 @@ object JSuspendMode
     immediately: Boolean,
     @Nonnull position: Optional[JWorkflowPosition]
   ): JSuspendMode =
-    JSuspendMode(SuspendMode(Some(
+    JSuspendMode(SuspensionMode(Some(
       Kill(immediately = immediately, position.toScala.map(_.asScala)))))
 }

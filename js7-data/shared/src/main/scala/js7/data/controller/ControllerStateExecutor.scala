@@ -14,7 +14,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionId, VersionedItemId_}
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed, OrderRemoveMarked, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderBroken, OrderCoreEvent, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed, OrderRemovalMarked, OrderRemoved}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.annotation.tailrec
@@ -222,7 +222,7 @@ extends VerifiedUpdateItemsExecutor
     controllerState.allOrderWatchesState
       .nextEvents(workflowPathToVersionId)
       .filter {
-        case KeyedEvent(orderId: OrderId, OrderRemoveMarked) =>
+        case KeyedEvent(orderId: OrderId, OrderRemovalMarked) =>
           // OrderWatchState emits OrderRemovedMarked without knowledge of the order
           controllerState.idToOrder.get(orderId).exists(o => !o.removeWhenTerminated)
         case _ => true

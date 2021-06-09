@@ -533,7 +533,7 @@ with Stash
             case KeyedEvent(orderId_, event) =>
               orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
               // TODO Not awaiting the response may lead to duplicate events
-              //  for example when OrderSuspendMarked is emitted after OrderProcessed and before OrderMoved.
+              //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
               //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
           }
           if (keyedEvents.isEmpty && order.isProcessable) {

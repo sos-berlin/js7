@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.core.command.{CommandExecutor, CommandMeta}
-import js7.data.command.CancelMode
+import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, CancelOrders, NoOperation, ReleaseEvents, Response}
 import js7.data.order.OrderId
@@ -19,7 +19,7 @@ import scala.language.reflectiveCalls
   */
 final class ControllerCommandExecutorTest extends AnyFreeSpec
 {
-  private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancelMode.FreshOnly)
+  private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancellationMode.FreshOnly)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))
 
   private val otherCommandExecutor = new CommandExecutor[ControllerCommand] {

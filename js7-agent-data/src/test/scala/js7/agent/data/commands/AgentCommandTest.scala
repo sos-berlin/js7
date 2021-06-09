@@ -10,7 +10,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.TestCodeProblem
 import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.command.CancelMode
+import js7.data.command.CancellationMode
 import js7.data.controller.ControllerId
 import js7.data.event.JournalId
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
@@ -62,7 +62,7 @@ final class AgentCommandTest extends AnyFreeSpec
   }
 
   "MarkOrder" in {
-    check(AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancelMode.FreshOnly)),
+    check(AgentCommand.MarkOrder(OrderId("ORDER"), OrderMark.Cancelling(CancellationMode.FreshOnly)),
       json"""{
         "TYPE": "MarkOrder",
         "orderId": "ORDER",

@@ -10,12 +10,12 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class SuspendModeTest extends AnyFreeSpec
+final class SuspensionModeTest extends AnyFreeSpec
 {
   "JSON" - {
-    "SuspendMode(Kill())" in {
-      testJson[SuspendMode](
-        SuspendMode(Some(CancelMode.Kill())),
+    "SuspensionMode(Kill())" in {
+      testJson[SuspensionMode](
+        SuspensionMode(Some(CancellationMode.Kill())),
         json"""{
           "kill": {
             "immediately": false
@@ -24,13 +24,13 @@ final class SuspendModeTest extends AnyFreeSpec
 
       assert(json"""{
         "kill": {}
-      }""".as[SuspendMode] == Right(SuspendMode(Some(CancelMode.Kill()))))
+      }""".as[SuspensionMode] == Right(SuspensionMode(Some(CancellationMode.Kill()))))
     }
 
-    "SuspendMode(Kill(...))" in {
-      testJson[SuspendMode](
-        SuspendMode(Some(
-          CancelMode.Kill(
+    "SuspensionMode(Kill(...))" in {
+      testJson[SuspensionMode](
+        SuspensionMode(Some(
+          CancellationMode.Kill(
             immediately = true,
             Some(WorkflowPath("WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
         json"""{

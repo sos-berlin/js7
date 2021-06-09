@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.command.CancelMode
+import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
 import js7.data.order.OrderEvent._
@@ -370,10 +370,10 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  "OrderCancelMarked" in {
-    check(OrderCancelMarked(CancelMode.FreshOnly), json"""
+  "OrderCancellationMarked" in {
+    check(OrderCancellationMarked(CancellationMode.FreshOnly), json"""
       {
-        "TYPE": "OrderCancelMarked",
+        "TYPE": "OrderCancellationMarked",
         "mode": {
           "TYPE": "FreshOnly"
         }
@@ -387,10 +387,10 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  "OrderRemoveMarked" in {
-    check(OrderRemoveMarked, json"""
+  "OrderRemovalMarked" in {
+    check(OrderRemovalMarked, json"""
       {
-        "TYPE": "OrderRemoveMarked"
+        "TYPE": "OrderRemovalMarked"
       }""")
   }
 
@@ -401,10 +401,10 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  "OrderSuspendMarked" in {
-    check(OrderSuspendMarked(), json"""
+  "OrderSuspensionMarked" in {
+    check(OrderSuspensionMarked(), json"""
       {
-        "TYPE": "OrderSuspendMarked",
+        "TYPE": "OrderSuspensionMarked",
         "mode": {}
       }""")
   }
@@ -416,10 +416,10 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  "OrderResumeMarked" in {
-    check(OrderResumeMarked(Some(Position(1)), Some(Seq(HistoricOutcome(Position(0), Outcome.succeeded)))), json"""
+  "OrderResumptionMarked" in {
+    check(OrderResumptionMarked(Some(Position(1)), Some(Seq(HistoricOutcome(Position(0), Outcome.succeeded)))), json"""
       {
-        "TYPE": "OrderResumeMarked",
+        "TYPE": "OrderResumptionMarked",
         "position": [ 1 ],
         "historicOutcomes": [
           {

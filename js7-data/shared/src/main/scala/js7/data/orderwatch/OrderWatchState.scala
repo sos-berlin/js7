@@ -10,7 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState, VersionId}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderRemoveMarked, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderRemovalMarked, OrderRemoved}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState._
@@ -106,13 +106,13 @@ extends UnsignedSimpleItemState
   def applyOrderEvent(externalOrderName: ExternalOrderName, keyedEvent: KeyedEvent[OrderCoreEvent]) = {
     import keyedEvent.{event, key => orderId}
     event match {
-      case OrderRemoveMarked => onOrderRemoveMarked(externalOrderName, orderId)
+      case OrderRemovalMarked => onOrderRemovalMarked(externalOrderName, orderId)
       case OrderRemoved => onOrderRemoved(externalOrderName, orderId)
       case _ => Right(this)
     }
   }
 
-  def onOrderRemoveMarked(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
+  def onOrderRemovalMarked(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
     externalToState.checked(externalOrderName) flatMap {
       case HasOrder(_, Some(Vanished) | None/*Not vanished but RemoveOrdersWhenTerminated command*/) =>
         Right(copy(
@@ -120,11 +120,11 @@ extends UnsignedSimpleItemState
           vanishedQueue = vanishedQueue - externalOrderName))
 
       case HasOrder(_, _) =>
-        logger.debug(s"$orderId <-: OrderRemoveMarked ($externalOrderName) but watched order has not vanished")
+        logger.debug(s"$orderId <-: OrderRemovalMarked ($externalOrderName) but watched order has not vanished")
         Right(this)
 
       case _ =>
-        Left(Problem(s"$orderId <-: OrderRemoveMarked ($externalOrderName) but not HasOrder"))
+        Left(Problem(s"$orderId <-: OrderRemovalMarked ($externalOrderName) but not HasOrder"))
     }
 
   private def onOrderRemoved(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
@@ -144,7 +144,7 @@ extends UnsignedSimpleItemState
 
   def nextEvents(workflowPathToVersionId: WorkflowPath => Option[VersionId])
   : Seq[KeyedEvent[OrderCoreEvent]] =
-    (nextOrderAddedEvents(workflowPathToVersionId) ++ nextOrderRemovedMarkedEvents)
+    (nextOrderAddedEvents(workflowPathToVersionId) ++ nextOrderRemovalMarkedEvents)
       .toVector
 
   private def nextOrderAddedEvents(workflowPathToVersionId: WorkflowPath => Option[VersionId])
@@ -163,12 +163,12 @@ extends UnsignedSimpleItemState
           case _ => None
         })
 
-  private def nextOrderRemovedMarkedEvents: View[KeyedEvent[OrderRemoveMarked]] =
+  private def nextOrderRemovalMarkedEvents: View[KeyedEvent[OrderRemovalMarked]] =
     vanishedQueue.view
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
         .collect {
-          case HasOrder(orderId, _) => orderId <-: OrderRemoveMarked  // may be filtered later
+          case HasOrder(orderId, _) => orderId <-: OrderRemovalMarked  // may be filtered later
         })
 
   def estimatedSnapshotSize =

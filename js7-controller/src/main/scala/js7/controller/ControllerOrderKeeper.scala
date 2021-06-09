@@ -56,7 +56,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarked, OrderCancelMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemoveMarked, OrderRemoved, OrderResumeMarked, OrderSuspendMarked, OrderSuspendMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemovalMarked, OrderRemoved, OrderResumptionMarked, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -442,14 +442,14 @@ with MainJournalingActor[ControllerState, Event]
                 stampedAgentEvents.view.flatMap {
                   case Stamped(_, timestampMillis, keyedEvent) =>
                     keyedEvent match {
-                      case KeyedEvent(orderId: OrderId, _: OrderCancelMarked) =>
-                        Timestamped(orderId <-: OrderCancelMarkedOnAgent, Some(timestampMillis)) :: Nil
+                      case KeyedEvent(orderId: OrderId, _: OrderCancellationMarked) =>
+                        Timestamped(orderId <-: OrderCancellationMarkedOnAgent, Some(timestampMillis)) :: Nil
 
-                      case KeyedEvent(orderId: OrderId, _: OrderSuspendMarked) =>
-                        Timestamped(orderId <-: OrderSuspendMarkedOnAgent, Some(timestampMillis)) :: Nil
+                      case KeyedEvent(orderId: OrderId, _: OrderSuspensionMarked) =>
+                        Timestamped(orderId <-: OrderSuspensionMarkedOnAgent, Some(timestampMillis)) :: Nil
 
-                      case KeyedEvent(_, _: OrderResumeMarked) =>
-                        Nil /*Agent does not emit OrderResumeMarked*/
+                      case KeyedEvent(_, _: OrderResumptionMarked) =>
+                        Nil /*Agent does not emit OrderResumptionMarked*/
 
                       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                         val ownEvent = event match {
@@ -777,7 +777,7 @@ with MainJournalingActor[ControllerState, Event]
       if (order.isState[Order.IsTerminated])
         OrderRemoved
       else
-        OrderRemoveMarked)
+        OrderRemovalMarked)
 
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])(toEvent: OrderId => Checked[Option[OrderActorEvent]])
   : Future[Checked[ControllerCommand.Response]] =

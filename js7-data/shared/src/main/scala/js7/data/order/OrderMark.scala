@@ -2,17 +2,17 @@ package js7.data.order
 
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.workflow.position.Position
 
 sealed trait OrderMark
 
 object OrderMark
 {
-  final case class Cancelling(mode: CancelMode)
+  final case class Cancelling(mode: CancellationMode)
   extends OrderMark
 
-  final case class Suspending(mode: SuspendMode = SuspendMode.standard)
+  final case class Suspending(mode: SuspensionMode = SuspensionMode.standard)
   extends OrderMark
 
   case class Resuming(

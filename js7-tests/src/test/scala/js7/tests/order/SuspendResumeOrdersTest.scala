@@ -13,11 +13,11 @@ import js7.base.time.Timestamp
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
-import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelMarkedOnAgent, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumeMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspendMarked, OrderSuspendMarkedOnAgent, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumptionMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderSuspended}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.{BooleanValue, NamedValues}
@@ -76,7 +76,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderSuspendMarked(),
+      OrderSuspensionMarked(),
       OrderDetachable,
       OrderDetached,
       OrderSuspended))
@@ -110,7 +110,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
     assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
@@ -119,8 +119,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked(),
-      OrderSuspendMarkedOnAgent,
+      OrderSuspensionMarked(),
+      OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -142,7 +142,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(SuspendOrders(Set(order.id), SuspendMode(Some(CancelMode.Kill()))))
+    executeCommand(SuspendOrders(Set(order.id), SuspensionMode(Some(CancellationMode.Kill()))))
       .await(99.s).orThrow
     eventWatch.await[OrderSuspended](_.key == order.id)
 
@@ -162,8 +162,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked(SuspendMode(Some(CancelMode.Kill()))),
-      OrderSuspendMarkedOnAgent,
+      OrderSuspensionMarked(SuspensionMode(Some(CancellationMode.Kill()))),
+      OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.Killed(if (isWindows) Outcome.succeededRC0 else Outcome.Failed(NamedValues.rc(SIGTERM)))),
       OrderProcessingKilled,
       OrderDetachable,
@@ -194,7 +194,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     executeCommand(SuspendOrders(Seq(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
     touchFile(triggerFile)
 
     eventWatch.await[OrderSuspended](_.key == order.id)
@@ -204,8 +204,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
-        OrderSuspendMarked(),
-        OrderSuspendMarkedOnAgent,
+        OrderSuspensionMarked(),
+        OrderSuspensionMarkedOnAgent,
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -235,9 +235,9 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
-    executeCommand(CancelOrders(Set(order.id), CancelMode.FreshOrStarted())).await(99.s).orThrow
+    executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
     assert(executeCommand(SuspendOrders(Set(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
-    eventWatch.await[OrderCancelMarkedOnAgent](_.key == order.id)
+    eventWatch.await[OrderCancellationMarkedOnAgent](_.key == order.id)
 
     touchFile(triggerFile)
     eventWatch.await[OrderCancelled](_.key == order.id)
@@ -271,7 +271,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
         OrderId("FORK|🥕") <-: OrderAttached(agentPath),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,
-        OrderId("FORK") <-: OrderSuspendMarked(),
+        OrderId("FORK") <-: OrderSuspensionMarked(),
         OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
         OrderId("FORK|🥕") <-: OrderDetachable,
@@ -304,10 +304,10 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
 
     executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderResumeMarked](_.key == order.id)
+    eventWatch.await[OrderResumptionMarked](_.key == order.id)
 
     touchFile(triggerFile)
     eventWatch.await[OrderProcessed](_.key == order.id)
@@ -321,9 +321,9 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked(),
-      OrderSuspendMarkedOnAgent,
-      OrderResumeMarked(),
+      OrderSuspensionMarked(),
+      OrderSuspensionMarkedOnAgent,
+      OrderResumptionMarked(),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
 
@@ -349,7 +349,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
 
     assert(executeCommand(ResumeOrder(order.id, Some(Position(0)))).await(99.s) ==
       Left(CannotResumeOrderProblem))
@@ -362,8 +362,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked(),
-      OrderSuspendMarkedOnAgent,
+      OrderSuspensionMarked(),
+      OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -381,7 +381,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
 
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
@@ -404,7 +404,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderSuspendMarkedOnAgent](_.key == order.id)
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
 
@@ -414,8 +414,8 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderSuspendMarked(),
-      OrderSuspendMarkedOnAgent,
+      OrderSuspensionMarked(),
+      OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,

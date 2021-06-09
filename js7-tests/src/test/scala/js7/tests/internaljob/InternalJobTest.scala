@@ -9,12 +9,12 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
 import js7.data.agent.AgentPath
-import js7.data.command.CancelMode
+import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventRequest, KeyedEvent}
 import js7.data.item.VersionId
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderCancelMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderCancellationMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
@@ -151,13 +151,13 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     // Let cancel handler throw its exception
-    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancelMode.kill()))
+    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill()))
       .await(99.s).orThrow
-    controller.eventWatch.await[OrderCancelMarked](_.key == order.id)
+    controller.eventWatch.await[OrderCancellationMarked](_.key == order.id)
     sleep(50.ms)
 
     // Now cancel immediately
-    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancelMode.kill(immediately = true)))
+    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow
     val outcome = controller.eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
     assert(outcome == Outcome.Killed(Outcome.Failed(Some("Canceled"))))

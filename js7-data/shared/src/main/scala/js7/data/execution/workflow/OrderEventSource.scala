@@ -8,13 +8,13 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
-import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancelMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderRemoved, OrderResumeMarked, OrderResumed, OrderSuspendMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderRemoved, OrderResumptionMarked, OrderResumed, OrderSuspensionMarked, OrderSuspended}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
@@ -231,12 +231,12 @@ final class OrderEventSource(
     }
   }
 
-  /** Returns `Right(Some(OrderCancelled | OrderCancelMarked))` iff order is not already marked as cancelling. */
-  def cancel(orderId: OrderId, mode: CancelMode): Checked[Option[OrderActorEvent]] =
+  /** Returns `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelling. */
+  def cancel(orderId: OrderId, mode: CancellationMode): Checked[Option[OrderActorEvent]] =
     withOrder(orderId)(order =>
       if (order.parent.isDefined)
         Left(CancelChildOrderProblem(orderId))
-      else if (mode == CancelMode.FreshOnly && order.isStarted)
+      else if (mode == CancellationMode.FreshOnly && order.isStarted)
         // On Agent, the Order may already have been started without notice of the Controller
         Left(CancelStartedOrderProblem(orderId))
       else Right(
@@ -244,23 +244,23 @@ final class OrderEventSource(
           ( !order.isState[IsTerminated] &&
             !order.isState[ProcessingKilled] &&
             !order.mark.contains(OrderMark.Cancelling(mode))
-          ) ? OrderCancelMarked(mode))))
+          ) ? OrderCancellationMarked(mode))))
 
-  private def tryCancel(order: Order[Order.State], mode: CancelMode): Option[OrderActorEvent] =
+  private def tryCancel(order: Order[Order.State], mode: CancellationMode): Option[OrderActorEvent] =
     if (isOrderCancelable(order, mode))
       if (order.isAttached && isAgent) Some(OrderDetachable)
       else if (order.isDetached && !isAgent) Some(OrderCancelled)
       else None
     else None
 
-  private def isOrderCancelable(order: Order[Order.State], mode: CancelMode): Boolean =
-    (mode != CancelMode.FreshOnly || order.isState[Order.Fresh]) &&
+  private def isOrderCancelable(order: Order[Order.State], mode: CancellationMode): Boolean =
+    (mode != CancellationMode.FreshOnly || order.isState[Order.Fresh]) &&
       order.isCancelable &&
       // If workflow End is reached, the order is finished normally
       !instruction(order.workflowPosition).isInstanceOf[End]
 
-  /** Returns a `Right(Some(OrderSuspended | OrderSuspendMarked))` iff order is not already marked as suspending. */
-  def suspend(orderId: OrderId, mode: SuspendMode): Checked[Option[OrderActorEvent]] =
+  /** Returns a `Right(Some(OrderSuspended | OrderSuspensionMarked))` iff order is not already marked as suspending. */
+  def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[OrderActorEvent]] =
     withOrder(orderId)(order =>
       if (order.isSuspended)
         Right(trySuspend(order))
@@ -275,7 +275,7 @@ final class OrderEventSource(
               Left(CannotSuspendOrderProblem)
             else
               Right((!order.isSuspended || order.isResuming) ?
-                trySuspend(order).getOrElse(OrderSuspendMarked(mode)))
+                trySuspend(order).getOrElse(OrderSuspensionMarked(mode)))
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
@@ -292,7 +292,7 @@ final class OrderEventSource(
   private def isOrderSuspendible(order: Order[Order.State]): Boolean =
     weHave(order) && order.isSuspendible
 
-  /** Returns a `Right(Some(OrderResumed | OrderResumeMarked))` iff order is not already marked as resuming. */
+  /** Returns a `Right(Some(OrderResumed | OrderResumptionMarked))` iff order is not already marked as resuming. */
   def resume(
     orderId: OrderId,
     position: Option[Position],
@@ -341,7 +341,7 @@ final class OrderEventSource(
               historicOutcomes <- checkedHistoricOutcomes
             } yield Some(
               tryResume(order, position, historicOutcomes)
-                .getOrElse(OrderResumeMarked(position, historicOutcomes)))
+                .getOrElse(OrderResumptionMarked(position, historicOutcomes)))
           }
       })
 

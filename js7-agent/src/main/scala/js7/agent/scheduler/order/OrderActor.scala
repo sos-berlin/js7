@@ -19,7 +19,7 @@ import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.command.CancelMode
+import js7.data.command.CancellationMode
 import js7.data.controller.ControllerId
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent._
@@ -221,7 +221,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
       case Right(updated) =>
         becomeAsStateOf(updated)
-        if (event.isInstanceOf[OrderCancelMarked] && updated == order)  // Duplicate, already cancelling with same CancelMode?
+        if (event.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancellationMode?
           Future.successful(Completed)
         else
           persist(event) { (event, updatedState) =>
@@ -230,7 +230,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               context.stop(self)
             } else
               event match {
-                case OrderKillMarked(Some(CancelMode.Kill(immediately, maybeWorkflowPos)))
+                case OrderKillingMarked(Some(CancellationMode.Kill(immediately, maybeWorkflowPos)))
                   if maybeWorkflowPos.forall(_ == order.workflowPosition) && jobActor != noSender =>
                   jobActor ! JobActor.Input.KillProcess(order.id, Some(if (immediately) SIGKILL else SIGTERM))
                 case _ =>

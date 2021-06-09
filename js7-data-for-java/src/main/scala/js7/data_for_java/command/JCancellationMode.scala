@@ -2,32 +2,32 @@ package  js7.data_for_java.command
 
 import java.util.Optional
 import javax.annotation.Nonnull
-import js7.data.command.CancelMode
-import js7.data.command.CancelMode.Kill
+import js7.data.command.CancellationMode
+import js7.data.command.CancellationMode.Kill
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.workflow.position.JWorkflowPosition
 import scala.jdk.OptionConverters._
 
-final case class JCancelMode(asScala: CancelMode)
+final case class JCancellationMode(asScala: CancellationMode)
 extends JavaWrapper
 {
-  protected type AsScala = CancelMode
+  protected type AsScala = CancellationMode
 }
 
-object JCancelMode
+object JCancellationMode
 {
-  val freshOnly = JCancelMode(CancelMode.FreshOnly)
-  val freshOrStarted = JCancelMode(CancelMode.Default)
+  val freshOnly = JCancellationMode(CancellationMode.FreshOnly)
+  val freshOrStarted = JCancellationMode(CancellationMode.Default)
 
   /** Kill a running job (with SIGTERM if possible). */
-  def kill: JCancelMode =
+  def kill: JCancellationMode =
     kill(immediately = false)
 
   /** Kill a running job.
     * @param immediately true: try SIGKILL else SIGTERM
     **/
   @Nonnull
-  def kill(immediately: Boolean): JCancelMode =
+  def kill(immediately: Boolean): JCancellationMode =
     kill(immediately, Optional.empty)
 
   /** Kill a running job.
@@ -37,7 +37,7 @@ object JCancelMode
   def kill(
     immediately: Boolean,
     @Nonnull position: Optional[JWorkflowPosition])
-  : JCancelMode =
-    JCancelMode(CancelMode.FreshOrStarted(Some(
+  : JCancellationMode =
+    JCancellationMode(CancellationMode.FreshOrStarted(Some(
       Kill(immediately = immediately, position.toScala.map(_.asScala)))))
 }

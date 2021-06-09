@@ -22,7 +22,7 @@ import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderCancelMarkedOnAgent, OrderFinished, OrderProcessingStarted, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderFinished, OrderProcessingStarted, OrderRemoved}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderVanished
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
@@ -150,7 +150,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
     controllerApi.executeCommand(CancelOrders(orderId :: Nil)).await(99.s).orThrow
-    controller.eventWatch.await[OrderCancelMarkedOnAgent](_.key == orderId)
+    controller.eventWatch.await[OrderCancellationMarkedOnAgent](_.key == orderId)
 
     semaphore.flatMap(_.release).runSyncUnsafe()
     controller.eventWatch.await[OrderFinished](_.key == orderId)

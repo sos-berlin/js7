@@ -10,26 +10,26 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class CancelModeTest extends AnyFreeSpec
+final class CancellationModeTest extends AnyFreeSpec
 {
   "JSON" - {
     "FreshOnly" in {
-      testJson[CancelMode](CancelMode.FreshOnly,
+      testJson[CancellationMode](CancellationMode.FreshOnly,
         json"""{
           "TYPE": "FreshOnly"
          }""")
     }
 
     "FreshOrStarted" in {
-      testJson[CancelMode](CancelMode.FreshOrStarted(),
+      testJson[CancellationMode](CancellationMode.FreshOrStarted(),
         json"""{
           "TYPE": "FreshOrStarted"
         } """)
     }
 
     "FreshOrStarted(Kill)" in {
-      testJson[CancelMode](
-        CancelMode.FreshOrStarted(Some(CancelMode.Kill())),
+      testJson[CancellationMode](
+        CancellationMode.FreshOrStarted(Some(CancellationMode.Kill())),
         json"""{
           "TYPE": "FreshOrStarted",
           "kill": {
@@ -40,13 +40,13 @@ final class CancelModeTest extends AnyFreeSpec
       assert(json"""{
         "TYPE": "FreshOrStarted",
         "kill": {}
-      }""".as[CancelMode] == Right(CancelMode.FreshOrStarted(Some(CancelMode.Kill()))))
+      }""".as[CancellationMode] == Right(CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
     }
 
     "FreshOrStarted(Kill(...))" in {
-      testJson[CancelMode](
-        CancelMode.FreshOrStarted(Some(
-          CancelMode.Kill(
+      testJson[CancellationMode](
+        CancellationMode.FreshOrStarted(Some(
+          CancellationMode.Kill(
             immediately = true,
             Some(WorkflowPath("WORKFLOW") ~ VersionId("VERSION") /: Position(7))))),
         json"""{

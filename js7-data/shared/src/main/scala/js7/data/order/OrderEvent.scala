@@ -10,7 +10,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
-import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order._
@@ -201,50 +201,50 @@ object OrderEvent
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
 
-  type OrderRemoveMarked = OrderRemoveMarked.type
-  case object OrderRemoveMarked extends OrderActorEvent
+  type OrderRemovalMarked = OrderRemovalMarked.type
+  case object OrderRemovalMarked extends OrderActorEvent
 
   type OrderRemoved = OrderRemoved.type
   case object OrderRemoved extends OrderActorEvent
 
-  sealed trait OrderKillMarked extends OrderActorEvent {
-    def kill: Option[CancelMode.Kill]
+  sealed trait OrderKillingMarked extends OrderActorEvent {
+    def kill: Option[CancellationMode.Kill]
   }
-  object OrderKillMarked {
-    def unapply(event: OrderKillMarked) = Some(event.kill)
+  object OrderKillingMarked {
+    def unapply(event: OrderKillingMarked) = Some(event.kill)
   }
 
-  /** A OrderCancelMarked on Agent is different from same Event at the Controller.
-    * Controller will ignore the Agent's OrderCancelMarked.
+  /** A OrderCancellationMarked on Agent is different from same Event at the Controller.
+    * Controller will ignore the Agent's OrderCancellationMarked.
     * Controller should have emitted the event independendly.
     **/
-  final case class OrderCancelMarked(mode: CancelMode) extends OrderKillMarked {
+  final case class OrderCancellationMarked(mode: CancellationMode) extends OrderKillingMarked {
     def kill = mode match {
-      case CancelMode.FreshOrStarted(kill) => kill
+      case CancellationMode.FreshOrStarted(kill) => kill
       case _ => None
     }
   }
 
-  type OrderCancelMarkedOnAgent = OrderCancelMarkedOnAgent.type
+  type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
   /** No other use than notifying an external user. */
-  case object OrderCancelMarkedOnAgent extends OrderActorEvent
+  case object OrderCancellationMarkedOnAgent extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent with OrderTerminated
 
-  final case class OrderSuspendMarked(mode: SuspendMode = SuspendMode.standard)
-  extends OrderKillMarked {
+  final case class OrderSuspensionMarked(mode: SuspensionMode = SuspensionMode.standard)
+  extends OrderKillingMarked {
     def kill = mode.kill
   }
 
-  type OrderSuspendMarkedOnAgent = OrderSuspendMarkedOnAgent.type
+  type OrderSuspensionMarkedOnAgent = OrderSuspensionMarkedOnAgent.type
   /** No other use than notifying an external user. */
-  case object OrderSuspendMarkedOnAgent extends OrderActorEvent
+  case object OrderSuspensionMarkedOnAgent extends OrderActorEvent
 
   type OrderSuspended = OrderSuspended.type
   case object OrderSuspended extends OrderActorEvent
 
-  final case class OrderResumeMarked(
+  final case class OrderResumptionMarked(
     position: Option[Position] = None,
     historicOutcomes: Option[Seq[HistoricOutcome]] = None)
   extends OrderActorEvent
@@ -277,7 +277,7 @@ object OrderEvent
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
-    Subtype(OrderRemoveMarked),
+    Subtype(OrderRemovalMarked),
     Subtype(OrderRemoved),
     Subtype(OrderStarted),
     Subtype(OrderProcessingStarted),
@@ -293,16 +293,16 @@ object OrderEvent
     Subtype(deriveCodec[OrderJoined]),
     Subtype(deriveCodec[OrderOffered]),
     Subtype(deriveCodec[OrderAwaiting]),
-    Subtype(deriveCodec[OrderSuspendMarked]),
-    Subtype(OrderSuspendMarkedOnAgent),
+    Subtype(deriveCodec[OrderSuspensionMarked]),
+    Subtype(OrderSuspensionMarkedOnAgent),
     Subtype(OrderSuspended),
-    Subtype(deriveCodec[OrderResumeMarked]),
+    Subtype(deriveCodec[OrderResumptionMarked]),
     Subtype(deriveCodec[OrderResumed]),
     Subtype(OrderFinished),
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
-    Subtype(deriveCodec[OrderCancelMarked]),
-    Subtype(OrderCancelMarkedOnAgent),
+    Subtype(deriveCodec[OrderCancellationMarked]),
+    Subtype(OrderCancellationMarkedOnAgent),
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderAttached]),
     Subtype(deriveCodec[OrderAttachable]),

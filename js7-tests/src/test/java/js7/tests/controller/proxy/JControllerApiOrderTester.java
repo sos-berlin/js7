@@ -7,7 +7,7 @@ import js7.data.event.Event;
 import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
-import js7.data_for_java.command.JCancelMode;
+import js7.data_for_java.command.JCancellationMode;
 import js7.data_for_java.controller.JControllerState;
 import js7.data_for_java.order.JFreshOrder;
 import js7.proxy.javaapi.JControllerApi;
@@ -42,7 +42,7 @@ class JControllerApiOrderTester
 
         CompletableFuture<JEventAndControllerState<Event>> cancelled =
             api.when(es -> es.stampedEvent().value().event() instanceof OrderEvent.OrderCancelled$);
-        await(api.cancelOrders(singleton(OrderId.of("TEST-CANCEL")), JCancelMode.freshOrStarted()));
+        await(api.cancelOrders(singleton(OrderId.of("TEST-CANCEL")), JCancellationMode.freshOrStarted()));
         cancelled.get(99, SECONDS);
     }
 }

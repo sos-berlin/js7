@@ -25,7 +25,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoveMarked, OrderRemoved, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemovalMarked, OrderRemoved, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -283,12 +283,12 @@ extends JournaledState[ControllerState]
                       idToOrder = updatedIdToOrder,
                       pathToLockState = pathToLockState ++ (lockStates.map(o => o.lock.path -> o))))
 
-              case OrderRemoveMarked =>
+              case OrderRemovalMarked =>
                 previousOrder.externalOrderKey match {
                   case None =>
                     Right(copy(idToOrder = updatedIdToOrder))
                   case Some(externalOrderKey) =>
-                    allOrderWatchesState.onOrderEvent(externalOrderKey, orderId <-: OrderRemoveMarked)
+                    allOrderWatchesState.onOrderEvent(externalOrderKey, orderId <-: OrderRemovalMarked)
                       .map(o => copy(
                         idToOrder = updatedIdToOrder,
                         allOrderWatchesState = o))

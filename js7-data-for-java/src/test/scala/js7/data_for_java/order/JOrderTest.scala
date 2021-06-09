@@ -1,7 +1,7 @@
 package  js7.data_for_java.order
 
 import js7.data.agent.AgentPath
-import js7.data.command.CancelMode
+import js7.data.command.CancellationMode
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
@@ -19,7 +19,7 @@ final class JOrderTest extends AnyFreeSpec
     arguments = Map("KEY" -> StringValue("VALUE")),
     attachedState = Some(Order.Attached(AgentPath("AGENT"))),
     parent = Some(OrderId("ORDER-ID")),
-    mark = Some(OrderMark.Cancelling(CancelMode.FreshOrStarted(Some(CancelMode.Kill())))))
+    mark = Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(CancellationMode.Kill())))))
 
   "Java" in {
     JOrderTester.testForkedOrder(JOrder(forkedOrder))

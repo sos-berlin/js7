@@ -11,7 +11,7 @@ import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
-import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.JobKey
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
@@ -186,7 +186,7 @@ final case class Order[+S <: Order.State](
                 mark = None)
           })
 
-      case OrderRemoveMarked =>
+      case OrderRemovalMarked =>
         check(parent.isEmpty,
           copy(removeWhenTerminated = true))
 
@@ -227,11 +227,11 @@ final case class Order[+S <: Order.State](
         check(!isDetached && isInDetachableState,
           copy(attachedState = None))
 
-      case OrderCancelMarked(mode) =>
+      case OrderCancellationMarked(mode) =>
         check(parent.isEmpty && isMarkable,
           copy(mark = Some(OrderMark.Cancelling(mode))))
 
-      case OrderCancelMarkedOnAgent =>
+      case OrderCancellationMarkedOnAgent =>
         Right(this)
 
       case OrderCancelled =>
@@ -240,11 +240,11 @@ final case class Order[+S <: Order.State](
             state = Cancelled,
             mark = None))
 
-      case OrderSuspendMarked(kill) =>
+      case OrderSuspensionMarked(kill) =>
         check(isMarkable,
           copy(mark = Some(OrderMark.Suspending(kill))))
 
-      case OrderSuspendMarkedOnAgent =>
+      case OrderSuspensionMarkedOnAgent =>
         Right(this)
 
       case OrderSuspended =>
@@ -254,7 +254,7 @@ final case class Order[+S <: Order.State](
             mark = None,
             state = if (isSuspendingWithKill && isState[ProcessingKilled]) Ready else state))
 
-      case OrderResumeMarked(position, historicOutcomes) =>
+      case OrderResumptionMarked(position, historicOutcomes) =>
         if (!force && !isMarkable)
           inapplicable
         else if (isSuspended)
@@ -263,7 +263,7 @@ final case class Order[+S <: Order.State](
             // Inhibited because we cannot be sure wether order will pass a fork barrier
           inapplicable
         else if (!isSuspended && isSuspending)
-          Right(copy(mark = None/*revert OrderSuspendMarked*/))
+          Right(copy(mark = None/*revert OrderSuspensionMarked*/))
         else
           Right(copy(mark = Some(OrderMark.Resuming(None))))
 
@@ -411,7 +411,7 @@ final case class Order[+S <: Order.State](
 
   private def cleanMark: Option[OrderMark] =
     mark match {
-      case Some(OrderMark.Cancelling(CancelMode.FreshOnly)) if isStarted => None
+      case Some(OrderMark.Cancelling(CancellationMode.FreshOnly)) if isStarted => None
       case o => o
     }
 
@@ -426,7 +426,7 @@ final case class Order[+S <: Order.State](
     mark.exists(_.isInstanceOf[OrderMark.Suspending])
 
   private[order] def isSuspendingWithKill = mark match {
-    case Some(OrderMark.Suspending(SuspendMode(Some(_: CancelMode.Kill)))) => true
+    case Some(OrderMark.Suspending(SuspensionMode(Some(_: CancellationMode.Kill)))) => true
     case _ => false
   }
 

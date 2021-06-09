@@ -247,7 +247,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
     assert(
       applyEvents(_controllerState,
-        aOrderId <-: OrderRemoveMarked)
+        aOrderId <-: OrderRemovalMarked)
       == Right(Seq(
         aOrderId <-: OrderRemoved)))
 

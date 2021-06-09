@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
-import js7.data.command.{CancelMode, CommonCommand, SuspendMode}
+import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState._
 import js7.data.event.EventId
 import js7.data.node.NodeId
@@ -72,7 +72,7 @@ object ControllerCommand extends CommonCommand.Companion
     implicit val jsonCodec = deriveCodec[AddOrdersResponse]
   }
 
-  final case class CancelOrders(orderIds: immutable.Iterable[OrderId], mode: CancelMode = CancelMode.FreshOrStarted())
+  final case class CancelOrders(orderIds: immutable.Iterable[OrderId], mode: CancellationMode = CancellationMode.FreshOrStarted())
   extends ControllerCommand {
     type Response = Response.Accepted
     override def toShortString = s"CancelOrders(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
@@ -81,12 +81,12 @@ object ControllerCommand extends CommonCommand.Companion
     implicit val jsonEncoder: Encoder.AsObject[CancelOrders] = o =>
       JsonObject.fromIterable(
         ("orderIds" -> o.orderIds.asJson) ::
-          (o.mode != CancelMode.Default).thenList("mode" -> o.mode.asJson))
+          (o.mode != CancellationMode.Default).thenList("mode" -> o.mode.asJson))
 
     implicit val jsonDecoder: Decoder[CancelOrders] = c =>
       for {
         orderIds <- c.get[Vector[OrderId]]("orderIds")
-        mode <- c.getOrElse[CancelMode]("mode")(CancelMode.Default)
+        mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
       } yield CancelOrders(orderIds, mode)
   }
 
@@ -181,7 +181,7 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class SuspendOrders(orderIds: immutable.Iterable[OrderId], mode: SuspendMode = SuspendMode.standard)
+  final case class SuspendOrders(orderIds: immutable.Iterable[OrderId], mode: SuspensionMode = SuspensionMode.standard)
   extends ControllerCommand {
     type Response = Response.Accepted
   }

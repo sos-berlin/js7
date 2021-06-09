@@ -8,7 +8,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoveMarked, OrderRemoved, OrderStarted, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemovalMarked, OrderRemoved, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -45,7 +45,7 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderRemoveMarked,
+      OrderRemovalMarked,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -66,7 +66,7 @@ final class RemoveOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
       OrderAttached(agentPath),
       OrderStarted,
       OrderProcessingStarted,
-      OrderRemoveMarked,
+      OrderRemovalMarked,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,

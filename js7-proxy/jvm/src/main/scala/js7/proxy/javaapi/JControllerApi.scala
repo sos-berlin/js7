@@ -15,7 +15,7 @@ import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data_for_java.agent.JAgentRef
-import js7.data_for_java.command.{JCancelMode, JSuspendMode}
+import js7.data_for_java.command.{JCancellationMode, JSuspendMode}
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.item.JUpdateItemOperation
 import js7.data_for_java.order.{JFreshOrder, JHistoricOutcome}
@@ -185,10 +185,10 @@ extends AutoCloseable
 
   @Nonnull
   def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
-    cancelOrders(orderIds, JCancelMode.freshOrStarted)
+    cancelOrders(orderIds, JCancellationMode.freshOrStarted)
 
   @Nonnull
-  def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], mode: JCancelMode): CompletableFuture[VEither[Problem, Void]] =
+  def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], mode: JCancellationMode): CompletableFuture[VEither[Problem, Void]] =
     execute(CancelOrders(orderIds.asScala.toVector, mode.asScala))
 
   @Nonnull

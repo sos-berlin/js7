@@ -1,7 +1,7 @@
 package js7.data.order
 
 import js7.base.circeutils.CirceUtils._
-import js7.data.command.{CancelMode, SuspendMode}
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -9,7 +9,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class OrderMarkTest extends AnyFreeSpec
 {
   "Cancelling" in {
-    testJson[OrderMark](OrderMark.Cancelling(CancelMode.FreshOnly), json"""
+    testJson[OrderMark](OrderMark.Cancelling(CancellationMode.FreshOnly), json"""
       {
         "TYPE": "Cancelling",
         "mode": {
@@ -25,7 +25,7 @@ final class OrderMarkTest extends AnyFreeSpec
         "mode": {}
       }""")
 
-    testJson[OrderMark](OrderMark.Suspending(SuspendMode(Some(CancelMode.Kill()))), json"""
+    testJson[OrderMark](OrderMark.Suspending(SuspensionMode(Some(CancellationMode.Kill()))), json"""
       {
         "TYPE": "Suspending",
         "mode": {
