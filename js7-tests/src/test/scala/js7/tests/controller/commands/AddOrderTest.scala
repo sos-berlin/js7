@@ -11,9 +11,9 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.{AddOrder, RemoveOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue, StringValue}
@@ -46,8 +46,8 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(emptyWorkflow.path ~ "INITIAL"),
       OrderStarted,
       OrderFinished))
-    controller.executeCommandForTest(RemoveOrdersWhenTerminated(Seq(orderId))).orThrow
-    controller.eventWatch.await[OrderRemoved](_.key == orderId)
+    controller.executeCommandForTest(DeleteOrdersWhenTerminated(Seq(orderId))).orThrow
+    controller.eventWatch.await[OrderDeleted](_.key == orderId)
   }
 
   "An unknown argument detected at Agent lets the order fail" in {

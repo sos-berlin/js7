@@ -63,7 +63,7 @@ extends JJsonable[JOrder]
         o.state match {
           case forked: Order.Forked => Right(Forked(forked).asInstanceOf[S])
           case Order.Finished => Right(Finished.asInstanceOf[S])
-          case Order.Removed => Right(Removed.asInstanceOf[S])
+          case Order.Deleted => Right(Removed.asInstanceOf[S])
           case o => Left(Problem(s"Scala Order.${o.getClass.simpleScalaName} is not available for Java"))
         })
       .toVavr
@@ -81,7 +81,7 @@ object JOrder extends JJsonable.Companion[JOrder]
 
   val forked = new StateType(classOf[Forked], classOf[Order.Forked])
   val finished = new StateType(Finished.getClass, Order.Finished.getClass)
-  val removed = new StateType(Removed.getClass, Order.Removed.getClass)
+  val removed = new StateType(Removed.getClass, Order.Deleted.getClass)
 
   sealed trait State extends JavaWrapper
 
@@ -103,7 +103,7 @@ object JOrder extends JJsonable.Companion[JOrder]
   }
 
   case object Removed extends State {
-    protected type AsScala = Order.Removed
-    val asScala = Order.Removed
+    protected type AsScala = Order.Deleted
+    val asScala = Order.Deleted
   }
 }

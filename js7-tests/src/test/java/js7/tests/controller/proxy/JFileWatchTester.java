@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Future;
 import js7.data.agent.AgentPath;
-import js7.data.order.OrderEvent.OrderRemoved$;
+import js7.data.order.OrderEvent.OrderDeleted$;
 import js7.data.order.OrderId;
 import js7.data.orderwatch.OrderWatchPath;
 import js7.data.workflow.WorkflowPath;
@@ -53,7 +53,7 @@ final class JFileWatchTester
 
             Path file = directory.resolve("file-TEST.txt");
 
-            Future<?> whenOrderRemoved = api.when(es -> {
+            Future<?> whenOrderDeleted = api.when(es -> {
                 // Fun with Java
                 if (!(es.stampedEvent().value().key() instanceof OrderId))
                     return false;
@@ -63,14 +63,14 @@ final class JFileWatchTester
                         s.startsWith("#20") &&
                         s.contains("#F") &&
                         s.endsWith("-FILE-WATCH:TEST") &&
-                        es.stampedEvent().value().event() instanceof OrderRemoved$;
+                        es.stampedEvent().value().event() instanceof OrderDeleted$;
                 }
             });
 
             // Place the file
             new FileOutputStream(file.toFile()).close();
 
-            whenOrderRemoved.get(99, SECONDS);
+            whenOrderDeleted.get(99, SECONDS);
 
             delete(directory);
         } catch (Throwable t) {

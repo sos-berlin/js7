@@ -36,7 +36,7 @@ final case class Order[+S <: Order.State](
   parent: Option[OrderId] = None,
   mark: Option[OrderMark] = None,
   isSuspended: Boolean = false,
-  removeWhenTerminated: Boolean = false)
+  deleteWhenTerminated: Boolean = false)
 {
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode = id.hashCode
@@ -186,13 +186,13 @@ final case class Order[+S <: Order.State](
                 mark = None)
           })
 
-      case OrderRemovalMarked =>
+      case OrderDeletionMarked =>
         check(parent.isEmpty,
-          copy(removeWhenTerminated = true))
+          copy(deleteWhenTerminated = true))
 
-      case OrderRemoved =>
+      case OrderDeleted =>
         check(isState[IsTerminated] && isDetached && parent.isEmpty,
-          copy(state = Removed))
+          copy(state = Deleted))
 
       case OrderBroken(message) =>
         check(!isState[IsTerminated],
@@ -393,7 +393,7 @@ final case class Order[+S <: Order.State](
     isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]
 
   def isMarkable =
-    !isState[IsTerminated] && !isState[Removed] ||
+    !isState[IsTerminated] && !isState[Deleted] ||
       isState[FailedInFork]/*when asynchronously marked on Agent*/
 
   def isCancelable =
@@ -465,7 +465,7 @@ object Order
       Some(Attached(event.agentPath)),
       event.parent, event.mark,
       isSuspended = event.isSuspended,
-      removeWhenTerminated = event.removeWhenTerminated)
+      deleteWhenTerminated = event.deleteWhenTerminated)
 
   sealed trait AttachedState
   object AttachedState {
@@ -565,8 +565,8 @@ object Order
   type Cancelled = Cancelled.type
   case object Cancelled extends IsTerminated
 
-  type Removed = Removed.type
-  case object Removed extends State
+  type Deleted = Deleted.type
+  case object Deleted extends State
 
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
     Subtype(Fresh),
@@ -587,7 +587,7 @@ object Order
     Subtype(FailedInFork),
     Subtype(Finished),
     Subtype(Cancelled),
-    Subtype(Removed),
+    Subtype(Deleted),
     Subtype(deriveCodec[Prompting]),
     Subtype(deriveCodec[Broken]))
 
@@ -603,7 +603,7 @@ object Order
       "parent" -> order.parent.asJson,
       "mark" -> order.mark.asJson,
       "isSuspended" -> order.isSuspended.?.asJson,
-      "removeWhenTerminated" -> order.removeWhenTerminated.?.asJson,
+      "deleteWhenTerminated" -> order.deleteWhenTerminated.?.asJson,
       "historicOutcomes" -> order.historicOutcomes.??.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
@@ -618,11 +618,11 @@ object Order
       parent <- cursor.get[Option[OrderId]]("parent")
       mark <- cursor.get[Option[OrderMark]]("mark")
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
-      removeWhenTerminated <- cursor.getOrElse[Boolean]("removeWhenTerminated")(false)
+      deleteWhenTerminated <- cursor.getOrElse[Boolean]("deleteWhenTerminated")(false)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     } yield
       Order(id, workflowPosition, state, arguments, scheduledFor, externalOrderKey, historicOutcomes,
-        attachedState, parent, mark, isSuspended, removeWhenTerminated)
+        attachedState, parent, mark, isSuspended, deleteWhenTerminated)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[IsFreshOrReady]] = cursor =>

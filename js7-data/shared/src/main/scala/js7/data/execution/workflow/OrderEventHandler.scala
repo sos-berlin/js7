@@ -4,7 +4,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.job.JobKey
-import js7.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderAwaiting, OrderDeleted, OrderForked, OrderJoined, OrderOffered, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
@@ -44,13 +44,13 @@ final class OrderEventHandler(
       case joined: OrderJoined =>
         previousOrder.state match {
           case o: Order.Forked =>
-            Right(o.childOrderIds map FollowUp.Remove.apply)
+            Right(o.childOrderIds map FollowUp.Delete.apply)
 
           case Order.Awaiting(_) =>
             val offeredOrderId = previousOrder.castState[Order.Awaiting].state.offeredOrderId
             _offeredToAwaitingOrder -= offeredOrderId
             // Offered order is being kept ???
-            //Right(FollowUp.Remove(offeredOrderId) :: Nil)
+            //Right(FollowUp.Delete(offeredOrderId) :: Nil)
             Right(Nil)
 
           case state =>
@@ -64,8 +64,8 @@ final class OrderEventHandler(
         _offeredToAwaitingOrder(offeredOrderId) = _offeredToAwaitingOrder.getOrElse(offeredOrderId, Set.empty) + orderId
         Right(Nil)
 
-      case _: OrderRemoved =>
-        Right(FollowUp.Remove(orderId) :: Nil)
+      case _: OrderDeleted =>
+        Right(FollowUp.Delete(orderId) :: Nil)
 
       case _ =>
         Right(Nil)
@@ -79,6 +79,6 @@ object OrderEventHandler
     final case class Processed(job: JobKey) extends FollowUp
     final case class AddChild(order: Order[Order.Ready]) extends FollowUp
     final case class AddOffered(order: Order[Order.Offering]) extends FollowUp
-    final case class Remove(orderId: OrderId) extends FollowUp
+    final case class Delete(orderId: OrderId) extends FollowUp
   }
 }

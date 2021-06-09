@@ -8,7 +8,7 @@ import javax.annotation.Nonnull
 import js7.base.generic.GenericString
 import js7.base.io.process.StdoutOrStderr
 import js7.base.problem.Problem
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
@@ -139,14 +139,14 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     def apply(underlying: OrderFinished) = singleton
   }
 
-  final case class JOrderRemoved private(asScala: OrderRemoved)
+  final case class JOrderDeleted private(asScala: OrderDeleted)
   extends JOrderEvent
   {
-    protected type AsScala = OrderRemoved
+    protected type AsScala = OrderDeleted
   }
-  object JOrderRemoved {
-    val singleton = new JOrderRemoved(OrderRemoved)
-    def apply(underlying: OrderRemoved) = singleton
+  object JOrderDeleted {
+    val singleton = new JOrderDeleted(OrderDeleted)
+    def apply(underlying: OrderDeleted) = singleton
   }
 
   final case class JOrderCancelled private(asScala: OrderCancelled)

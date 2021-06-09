@@ -13,7 +13,7 @@ import js7.controller.client.HttpControllerApi
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand.Response.Accepted
-import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, Batch, ReleaseEvents, RemoveOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, Batch, DeleteOrdersWhenTerminated, ReleaseEvents}
 import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -117,18 +117,18 @@ with AutoCloseable
       .map(_.flatMap(_.checkedAs[AddOrders.Response]))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
-  def addOrder(order: FreshOrder, remove: Boolean = false): Task[Checked[Boolean]] =
+  def addOrder(order: FreshOrder, delete: Boolean = false): Task[Checked[Boolean]] =
     executeCommand(Batch(
-      AddOrder(order) :: remove.thenList(RemoveOrdersWhenTerminated(Set(order.id)))))
+      AddOrder(order) :: delete.thenList(DeleteOrdersWhenTerminated(Set(order.id)))))
       .map(_.flatMap(o => o
         .responses.head
         .map(response => !response.asInstanceOf[AddOrder.Response].ignoredBecauseDuplicate)))
 
-  def removeOrdersWhenTerminated(orderIds: Observable[OrderId])
+  def deleteOrdersWhenTerminated(orderIds: Observable[OrderId])
   : Task[Checked[ControllerCommand.Response.Accepted]] =
     untilReachable(_
       .postObservable[OrderId, Json](
-        "controller/api/order/RemoveOrdersWhenTerminated",
+        "controller/api/order/DeleteOrdersWhenTerminated",
         orderIds))
       .map(_.flatMap(_
         .checkedAs[ControllerCommand.Response]

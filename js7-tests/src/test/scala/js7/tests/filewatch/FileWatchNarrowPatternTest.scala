@@ -12,7 +12,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderRemoved, OrderStarted}
+import js7.data.order.OrderEvent.{OrderDeleted, OrderStarted}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
@@ -88,8 +88,8 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
       Seq(fileWatch.path <-: ExternalOrderVanished(ExternalOrderName("A"))))
 
     semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
-    controller.eventWatch.await[OrderRemoved](_.key == aOrderId)
-    controller.eventWatch.await[OrderRemoved](_.key == bOrderId)
+    controller.eventWatch.await[OrderDeleted](_.key == aOrderId)
+    controller.eventWatch.await[OrderDeleted](_.key == bOrderId)
   }
 }
 

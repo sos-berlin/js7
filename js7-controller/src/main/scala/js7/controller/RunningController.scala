@@ -48,12 +48,12 @@ import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.license.LicenseChecker
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterState
-import js7.data.controller.ControllerCommand.{AddOrder, RemoveOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
 import js7.data.controller.{ControllerCommand, ControllerState, VerifiedUpdateItems}
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
-import js7.data.order.OrderEvent.{OrderFailed, OrderRemoved, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent}
 import js7.journal.JournalActor.Output
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
@@ -161,32 +161,32 @@ extends AutoCloseable
       .flatMapT(itemUpdater.updateItems)
 
   @TestOnly
-  def addOrderBlocking(order: FreshOrder, remove: Boolean = false): Unit =
-    addOrder(order, remove = remove)
+  def addOrderBlocking(order: FreshOrder, delete: Boolean = false): Unit =
+    addOrder(order, delete = delete)
       .runToFuture.await(99.s).orThrow
 
   @TestOnly
-  def addOrder(order: FreshOrder, remove: Boolean = false): Task[Checked[Unit]] =
+  def addOrder(order: FreshOrder, delete: Boolean = false): Task[Checked[Unit]] =
     executeCommandAsSystemUser(AddOrder(order))
       .mapT(response =>
         (!response.ignoredBecauseDuplicate) !! Problem(s"Duplicate OrderId '${order.id}'"))
-      .pipeIf(remove)(_
+      .pipeIf(delete)(_
         .flatMap(_ =>
-          executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(order.id)))
+          executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id)))
             .rightAs(())))
 
   @TestOnly
-  def runOrder(order: FreshOrder, remove: Boolean = false): Seq[Stamped[OrderEvent]] = {
+  def runOrder(order: FreshOrder, delete: Boolean = false): Seq[Stamped[OrderEvent]] = {
     val timeout = 99.s
     val eventId = eventWatch.lastAddedEventId
-    addOrderBlocking(order, remove = remove)
+    addOrderBlocking(order, delete = delete)
     eventWatch
       .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
       .filter(_.value.key == order.id)
       .map(o => o.copy(value = o.value.event))
       .takeWhileInclusive { case Stamped(_, _, event) =>
-        if (remove)
-          event != OrderRemoved && !event.isInstanceOf[OrderFailed]
+        if (delete)
+          event != OrderDeleted && !event.isInstanceOf[OrderFailed]
         else
           !event.isInstanceOf[OrderTerminated]
       }

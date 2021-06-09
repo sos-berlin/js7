@@ -23,7 +23,7 @@ import static js7.data_for_java.order.JOrderPredicates.by;
 import static js7.data_for_java.order.JOrderPredicates.byOrderIdPredicate;
 import static js7.data_for_java.order.JOrderPredicates.byOrderState;
 import static js7.data_for_java.order.JOrderPredicates.byWorkflowPath;
-import static js7.data_for_java.order.JOrderPredicates.markedAsRemoveWhenTerminated;
+import static js7.data_for_java.order.JOrderPredicates.markedAsDeleteWhenTerminated;
 import static js7.data_for_java.order.JOrderPredicates.not;
 import static js7.data_for_java.order.JOrderPredicates.or;
 import static js7.data_for_java.order.JOrderTester.aOrder;
@@ -114,8 +114,8 @@ final class JControllerStateTester
         testOrdersBy(byOrderIdPredicate(orderId -> orderId.string().startsWith("B-")),
             asList(bOrder));
 
-        testOrdersBy(markedAsRemoveWhenTerminated(false), asList(aOrder));
-        testOrdersBy(markedAsRemoveWhenTerminated(true), asList(bOrder));
+        testOrdersBy(markedAsDeleteWhenTerminated(false), asList(aOrder));
+        testOrdersBy(markedAsDeleteWhenTerminated(true), asList(bOrder));
 
         testOrdersBy(controllerState.orderIsInCurrentVersionWorkflow(), asList(aOrder));
         testOrdersBy(not(controllerState.orderIsInCurrentVersionWorkflow()), asList(bOrder));

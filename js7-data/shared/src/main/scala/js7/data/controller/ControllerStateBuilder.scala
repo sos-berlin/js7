@@ -16,7 +16,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderRemoved, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.workflow.Workflow
@@ -92,9 +92,9 @@ extends JournaledStateBuilder[ControllerState]
   }
 
   override protected def onOnAllSnapshotsAdded() = {
-    val (added, removed) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], idToOrder.toMap)
+    val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], idToOrder.toMap)
     idToOrder ++= added
-    idToOrder --= removed
+    idToOrder --= deleted
     allOrderWatchesState = allOrderWatchesState.onEndOfRecovery.orThrow
   }
 
@@ -201,11 +201,11 @@ extends JournaledStateBuilder[ControllerState]
           idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, orderAdded))
           allOrderWatchesState = allOrderWatchesState.onOrderAdded(orderId <-: orderAdded).orThrow
 
-        case orderRemoved: OrderRemoved =>
+        case orderDeleted: OrderDeleted =>
           for (order <- idToOrder.remove(orderId)) {
             for (externalOrderKey <- order.externalOrderKey)
               allOrderWatchesState = allOrderWatchesState
-                .onOrderEvent(externalOrderKey, orderId <-: orderRemoved)
+                .onOrderEvent(externalOrderKey, orderId <-: orderDeleted)
                 .orThrow
           }
 

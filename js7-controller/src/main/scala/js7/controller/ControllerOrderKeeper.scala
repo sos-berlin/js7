@@ -40,7 +40,7 @@ import js7.controller.problems.ControllerIsNotYetReadyProblem
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
-import js7.data.Problems.{CannotRemoveChildOrderProblem, CannotRemoveWatchingOrderProblem, UnknownOrderProblem}
+import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefState.{Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
@@ -56,7 +56,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDetachable, OrderDetached, OrderRemovalMarked, OrderRemoved, OrderResumptionMarked, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderResumptionMarked, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -104,7 +104,7 @@ with MainJournalingActor[ControllerState, Event]
   private val agentRegister = new AgentRegister
   private val orderRegister = mutable.HashMap.empty[OrderId, OrderEntry]
   private val suppressOrderIdCheckFor = config.optionAs[String]("js7.TEST-ONLY.suppress-order-id-check-for")
-  private val removeOrderDelay = config.getDuration("js7.order.remove-delay").toFiniteDuration
+  private val deleteOrderDelay = config.getDuration("js7.order.delete-delay").toFiniteDuration
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
   private var journalTerminated = false
 
@@ -645,21 +645,21 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ResumeOrders(orderIds) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, None))
 
-      case ControllerCommand.RemoveOrdersWhenTerminated(orderIds) =>
+      case ControllerCommand.DeleteOrdersWhenTerminated(orderIds) =>
         orderIds.toVector
           .traverse(_controllerState.idToOrder.checked)
           .traverse(orders =>
             orders.traverse(order =>
               if (order.parent.isDefined)
-                Left(CannotRemoveChildOrderProblem(order.id): Problem)
+                Left(CannotDeleteChildOrderProblem(order.id): Problem)
               else if (order.externalOrderKey.isDefined)
-                Left(CannotRemoveWatchingOrderProblem(order.id): Problem)
+                Left(CannotDeleteWatchingOrderProblem(order.id): Problem)
               else
                 Right(order)))
           .flatten
           .map(_
-            .filterNot(_.removeWhenTerminated)
-            .map(orderRemovedEvent))
+            .filterNot(_.deleteWhenTerminated)
+            .map(orderDeletedEvent))
           .traverse(keyedEvents =>
             persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents)
               .map(_ => ControllerCommand.Response.Accepted))
@@ -772,12 +772,12 @@ with MainJournalingActor[ControllerState, Event]
         Future.failed(new NotImplementedError)
     }
 
-  private def orderRemovedEvent(order: Order[Order.State]): KeyedEvent[OrderCoreEvent] =
+  private def orderDeletedEvent(order: Order[Order.State]): KeyedEvent[OrderCoreEvent] =
     order.id <-: (
       if (order.isState[Order.IsTerminated])
-        OrderRemoved
+        OrderDeleted
       else
-        OrderRemovalMarked)
+        OrderDeletionMarked)
 
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])(toEvent: OrderId => Checked[Option[OrderActorEvent]])
   : Future[Checked[ControllerCommand.Response]] =
@@ -906,14 +906,14 @@ with MainJournalingActor[ControllerState, Event]
     persistTransaction(keyedEvents ++ subsequentEvents(keyedEvents))(callback)
 
   private def subsequentEvents(keyedEvents: Seq[KeyedEvent[Event]]): Seq[KeyedEvent[Event]] =
-    delayOrderRemoved(
+    delayOrderDeletion(
       _controllerState
         .applyEventsAndReturnSubsequentEvents(keyedEvents)
         .map(_.keyedEvents.toVector)
         .orThrow)
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =
-    delayOrderRemoved(
+    delayOrderDeletion(
       _controllerState.nextOrderEventsByOrderId(orderIds).keyedEvents.toVector)
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
@@ -1039,8 +1039,8 @@ with MainJournalingActor[ControllerState, Event]
                 case FollowUp.AddOffered(offeredOrder) =>
                   dependentOrderIds += offeredOrder.id
 
-                case FollowUp.Remove(removeOrderId) =>
-                  orderRegister -= removeOrderId
+                case FollowUp.Delete(deleteOrderId) =>
+                  orderRegister -= deleteOrderId
 
                 case _: FollowUp.Processed =>
               }
@@ -1110,14 +1110,14 @@ with MainJournalingActor[ControllerState, Event]
       case _ =>
     }
 
-  private def delayOrderRemoved[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
-    if (!removeOrderDelay.isPositive)
+  private def delayOrderDeletion[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
+    if (!deleteOrderDelay.isPositive)
       keyedEvents
     else
       keyedEvents.filter {
-        case KeyedEvent(orderId: OrderId, OrderRemoved) =>
+        case KeyedEvent(orderId: OrderId, OrderDeleted) =>
           orderRegister.get(orderId).fold(false) { orderEntry =>
-            val delay = orderEntry.lastUpdatedAt + removeOrderDelay - now
+            val delay = orderEntry.lastUpdatedAt + deleteOrderDelay - now
             !delay.isPositive || {
               orderRegister(orderId).timer := scheduler.scheduleOnce(delay) {
                 self ! Internal.OrderIsDue(orderId)

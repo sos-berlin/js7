@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime._
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
+import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
 import js7.data.event.{EventRequest, EventSeq}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
@@ -95,7 +95,7 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controllerApi.addOrder(FreshOrder(OrderId("⬛️"), workflowPath)).await(99.s) ==
       Left(VersionedItemRemovedProblem(workflowPath)))
 
-    controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
+    controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 
     withClue("Tampered with configuration: ") {
       assert(controllerApi.updateItems(Observable(

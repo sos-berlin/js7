@@ -18,7 +18,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, Versioned
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderRemoved, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderStarted}
 import js7.data.order.OrderId
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
@@ -113,7 +113,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       executor
         .applyEventsAndReturnSubsequentEvents(Seq(
           orderId <-: OrderCancelled,
-          orderId <-: OrderRemoved))
+          orderId <-: OrderDeleted))
         .orThrow
 
       assert(
@@ -154,7 +154,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
             VerifiedUpdateItems.Simple(),
             Some(VerifiedUpdateItems.Versioned(VersionId("x"), remove = Seq(workflow.path)))))
           .orThrow
-        // The deleted workflow still contains an order and has not been destroyed
+        // The deleted workflow still contains an order and has not been deleted
         assert(deletedWorkflow.controllerState.keyToItem.contains(workflow.id))
 
         // FileWatch requires a non-deleted workflow
@@ -219,7 +219,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     //      NoKey <-: ItemDeleted(bWorkflow.id))))
     //}
 
-    "Workflow is destroyed after last OrderRemoved" in {
+    "Workflow is deleted after last OrderDeleted" in {
       val executor = new Executor(ControllerState.empty)
 
       executor.executeVerifiedUpdateItems(verifiedUpdateItems)
@@ -269,8 +269,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
       assert(
         executor.applyEventsAndReturnSubsequentEvents(Seq(
-          aOrderId <-: OrderRemoved,
-          bOrderId <-: OrderRemoved
+          aOrderId <-: OrderDeleted,
+          bOrderId <-: OrderDeleted
         )) == Right(Seq(
           NoKey <-: ItemDetachable(aWorkflow.id, aAgentRef.path))))
 
@@ -327,9 +327,9 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
     assert(
       applyEvents(_controllerState,
-        aOrderId <-: OrderRemovalMarked)
+        aOrderId <-: OrderDeletionMarked)
       == Right(Seq(
-        aOrderId <-: OrderRemoved)))
+        aOrderId <-: OrderDeleted)))
 
     assert(applyEvents(_controllerState,
       VersionAdded(v2),

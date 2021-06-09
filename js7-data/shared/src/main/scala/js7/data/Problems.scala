@@ -72,12 +72,12 @@ object Problems
   }
   object SnapshotForUnknownEventIdProblem extends Problem.Coded.Companion
 
-  final case class CannotRemoveChildOrderProblem(orderId: OrderId) extends Problem.Coded {
+  final case class CannotDeleteChildOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map(
       "orderId" -> orderId.string)
   }
 
-  final case class CannotRemoveWatchingOrderProblem(orderId: OrderId) extends Problem.Coded {
+  final case class CannotDeleteWatchingOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map(
       "orderId" -> orderId.string)
   }

@@ -70,7 +70,7 @@ object OrderEvent
     parent: Option[OrderId],
     mark: Option[OrderMark],
     isSuspended: Boolean,
-    removeWhenTerminated: Boolean)
+    deleteWhenTerminated: Boolean)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
   }
@@ -201,11 +201,11 @@ object OrderEvent
   type OrderFinished = OrderFinished.type
   case object OrderFinished extends OrderActorEvent with OrderTerminated
 
-  type OrderRemovalMarked = OrderRemovalMarked.type
-  case object OrderRemovalMarked extends OrderActorEvent
+  type OrderDeletionMarked = OrderDeletionMarked.type
+  case object OrderDeletionMarked extends OrderActorEvent
 
-  type OrderRemoved = OrderRemoved.type
-  case object OrderRemoved extends OrderActorEvent
+  type OrderDeleted = OrderDeleted.type
+  case object OrderDeleted extends OrderActorEvent
 
   sealed trait OrderKillingMarked extends OrderActorEvent {
     def kill: Option[CancellationMode.Kill]
@@ -277,8 +277,8 @@ object OrderEvent
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
-    Subtype(OrderRemovalMarked),
-    Subtype(OrderRemoved),
+    Subtype(OrderDeletionMarked),
+    Subtype(OrderDeleted),
     Subtype(OrderStarted),
     Subtype(OrderProcessingStarted),
     Subtype(deriveCodec[OrderStdoutWritten]),

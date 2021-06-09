@@ -36,7 +36,7 @@ trait OrderProvider extends HasCloser
       httpControllerApi.login(onlyIfNotLoggedIn = true) >>
         httpControllerApi.addOrders(orders)
           .flatMap((_: Completed) =>
-            httpControllerApi.removeOrdersWhenTerminated(orders.map(_.id)))
+            httpControllerApi.deleteOrdersWhenTerminated(orders.map(_.id)))
           .map(Right.apply)
     } unless orders.isEmpty
 

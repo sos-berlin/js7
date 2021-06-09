@@ -14,7 +14,7 @@ import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderRemoved, OrderResumptionMarked, OrderResumed, OrderSuspensionMarked, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
@@ -206,8 +206,8 @@ final class OrderEventSource(
       OrderAwoke  // AgentOrderKeeper has already checked time
 
   private def orderMarkEvent(order: Order[Order.State]): Option[OrderActorEvent] =
-    if (order.removeWhenTerminated && order.isState[IsTerminated] && order.parent.isEmpty)
-      Some(OrderRemoved)
+    if (order.deleteWhenTerminated && order.isState[IsTerminated] && order.parent.isEmpty)
+      Some(OrderDeleted)
     else
       order.mark.flatMap(mark =>
         mark match {

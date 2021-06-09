@@ -42,7 +42,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
         .doOnStart(_ => observationStarted.flatMap(_.put(now)))
         .scan(new StatisticsBuilder(isOurOrder, statisticsSubject))((s, es) =>
           s.count(es.stampedEvent))
-        .takeWhileInclusive(_.removedOrderCount < orderCount)
+        .takeWhileInclusive(_.deletedOrderCount < orderCount)
         .lastL
         .map(_.toStatistics)
         .map { statistics =>
@@ -74,7 +74,7 @@ final class TestAddOrders private(controllerApi: ControllerApi, settings: Settin
       .addOrders(
         orderIds.map(FreshOrder(_, workflowPath)))
       .flatMapT(_ =>
-        controllerApi.removeOrdersWhenTerminated(orderIds))
+        controllerApi.deleteOrdersWhenTerminated(orderIds))
       .rightAs(())
 }
 

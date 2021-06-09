@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.DeleteSimple
-import js7.data.order.OrderEvent.OrderRemoved
+import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.order.OrderId
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -56,7 +56,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
     val orderId = fileToOrderId("1")
     file := ""
     controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
-    controller.eventWatch.await[OrderRemoved](_.key == orderId)
+    controller.eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
   }
 

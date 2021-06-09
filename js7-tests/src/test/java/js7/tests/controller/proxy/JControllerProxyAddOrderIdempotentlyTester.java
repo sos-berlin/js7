@@ -33,7 +33,7 @@ import static java.util.stream.Collectors.toSet;
 import static js7.data_for_java.event.JKeyedEvent.keyedEventToJson;
 import static js7.data_for_java.order.JOrderPredicates.and;
 import static js7.data_for_java.order.JOrderPredicates.byOrderIdPredicate;
-import static js7.data_for_java.order.JOrderPredicates.markedAsRemoveWhenTerminated;
+import static js7.data_for_java.order.JOrderPredicates.markedAsDeleteWhenTerminated;
 import static js7.data_for_java.vavr.VavrUtils.await;
 import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -57,7 +57,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
         eventSubscriptions.add(
             this.proxy.controllerEventBus().subscribe(
                 asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderMoved.class, OrderEvent.OrderFinished$.class,
-                    OrderEvent.OrderRemoved$.class),
+                    OrderEvent.OrderDeleted$.class),
                 this::onOrderEvent));
     }
 
@@ -65,10 +65,10 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
         for (EventSubscription o: eventSubscriptions) o.close();
     }
 
-    private final Set<OrderId> removedOrders = new HashSet<>();
+    private final Set<OrderId> deletedOrders = new HashSet<>();
     private final List<EventSubscription> eventSubscriptions = new ArrayList<>();
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
-    private final CompletableFuture<Void> allOrdersRemoved = new CompletableFuture<>();
+    private final CompletableFuture<Void> allOrdersDeleted = new CompletableFuture<>();
 
     private void onOrderEvent(Stamped<KeyedEvent<OrderEvent>> stampedEvent, JControllerState controllerState) {
         OrderId orderId = (OrderId)stampedEvent.value().key();
@@ -76,10 +76,10 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
             if (orderId.equals(orderIds.get(0))) {
                 events.add(stampedEvent.value());
             }
-            if (stampedEvent.value().event() instanceof OrderEvent.OrderRemoved$) {
-                removedOrders.add(orderId);
-                if (removedOrders.size() == orderIds.size()) {
-                    allOrdersRemoved.complete(null);
+            if (stampedEvent.value().event() instanceof OrderEvent.OrderDeleted$) {
+                deletedOrders.add(orderId);
+                if (deletedOrders.size() == orderIds.size()) {
+                    allOrdersDeleted.complete(null);
                 }
             }
         }
@@ -93,7 +93,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
         addOrdersIdempotently();
         addOrdersIdempotently();
 
-        allOrdersRemoved.get(99, SECONDS);
+        allOrdersDeleted.get(99, SECONDS);
 
         // Check events of the first added order
         assertThat(events.get(0).key(), equalTo(orderIds.get(0)));
@@ -109,8 +109,8 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
         assertThat(keyedEventToJson(events.get(2)), equalTo("{\"Key\":\"MY-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
 
         assertThat(events.get(3).key(), equalTo(orderIds.get(0)));
-        assertThat(events.get(3).event(), instanceOf(OrderEvent.OrderRemoved$.class));
-        assertThat(keyedEventToJson(events.get(3)), equalTo("{\"Key\":\"MY-ORDER-0\",\"TYPE\":\"OrderRemoved\"}"));
+        assertThat(events.get(3).event(), instanceOf(OrderEvent.OrderDeleted$.class));
+        assertThat(keyedEventToJson(events.get(3)), equalTo("{\"Key\":\"MY-ORDER-0\",\"TYPE\":\"OrderDeleted\"}"));
     }
 
     private void addOrdersIdempotently() {
@@ -121,7 +121,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
 
         List<OrderId> activeOrderIds = proxy.currentState()
             .ordersBy(and(
-                markedAsRemoveWhenTerminated(false),
+                markedAsDeleteWhenTerminated(false),
                 byOrderIdPredicate(orderId -> orderId.string().startsWith("MY-"))))
             .map(JOrder::id)
             .collect(toList());
@@ -131,7 +131,7 @@ final class JControllerProxyAddOrderIdempotentlyTester implements AutoCloseable
 
         orderWatch.markOrdersAsAdded(activeOrderIds);
 
-        await(api.removeOrdersWhenTerminated(activeOrderIds));
+        await(api.deleteOrdersWhenTerminated(activeOrderIds));
     }
 
     private void checkTypesOnly() throws InterruptedException, ExecutionException, TimeoutException {

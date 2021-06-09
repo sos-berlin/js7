@@ -9,7 +9,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.durationAndPerSecondString
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.OrderRemoved
+import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.addOrders.TestAddOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -48,7 +48,7 @@ final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
       "--user=TestAddOrders:TEST-PASSWORD"))
     val statistics = TestAddOrders.run(settings, logOrderCountChanged, logAddOrdersDuration)
       .await(99.s).orThrow
-    controller.eventWatch.await[OrderRemoved](_.key.string startsWith "TestAddOrders-")
+    controller.eventWatch.await[OrderDeleted](_.key.string startsWith "TestAddOrders-")
     for (line <- statistics.logLines) info(line)
   }
 }

@@ -13,7 +13,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRemovalMarked, OrderRemoved, OrderResumptionMarked, OrderResumed, OrderRetrying, OrderStarted, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderSuspended}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -242,8 +242,8 @@ final class OrderTest extends AnyFreeSpec
     val agentPath = AgentPath("AGENT")
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
-      OrderRemovalMarked,
-      OrderRemoved,
+      OrderDeletionMarked,
+      OrderDeleted,
 
       OrderAttachable(agentPath),
       OrderAttachedToAgent(workflowId /: Position(0), Fresh, Map.empty, None, None, Nil,
@@ -317,7 +317,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Fresh" in {
       checkAllEvents(Order(orderId, workflowId, Fresh),
-        removeMarkable[Fresh] orElse
+        deletionMarkable[Fresh] orElse
         markable[Fresh] orElse
         attachingAllowed[Fresh] orElse
         detachingAllowed[Fresh] orElse
@@ -337,7 +337,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Ready" in {
       checkAllEvents(Order(orderId, workflowId, Ready),
-        removeMarkable[Ready] orElse
+        deletionMarkable[Ready] orElse
         markable[Ready] orElse
         attachingAllowed[Ready] orElse
         detachingAllowed[Ready] orElse
@@ -367,7 +367,7 @@ final class OrderTest extends AnyFreeSpec
 
     "WaitingForLock" in {
       checkAllEvents(Order(orderId, workflowId, WaitingForLock),
-        removeMarkable[WaitingForLock] orElse
+        deletionMarkable[WaitingForLock] orElse
         markable[WaitingForLock] orElse
         cancelMarkedAllowed[WaitingForLock] orElse
         suspendMarkedAllowed[WaitingForLock] orElse {
@@ -378,7 +378,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Processing" in {
       checkAllEvents(Order(orderId, workflowId, Processing),
-        removeMarkable[Processing] orElse
+        deletionMarkable[Processing] orElse
         markable[Processing] orElse
         cancelMarkedAllowed[Processing] orElse
         suspendMarkedAllowed[Processing] orElse {
@@ -390,7 +390,7 @@ final class OrderTest extends AnyFreeSpec
     "Processed" in {
       checkAllEvents(Order(orderId, workflowId, Processed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
-        removeMarkable[Processed] orElse
+        deletionMarkable[Processed] orElse
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
         suspendMarkedAllowed[Processed] orElse
@@ -407,7 +407,7 @@ final class OrderTest extends AnyFreeSpec
     "ProcessingKilled" in {
       checkAllEvents(Order(orderId, workflowId, ProcessingKilled,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
-        removeMarkable[ProcessingKilled] orElse
+        deletionMarkable[ProcessingKilled] orElse
         markable[ProcessingKilled] orElse
         detachingAllowed[ProcessingKilled] orElse {
           case (OrderCancelled, _                         , IsDetached) => _.isInstanceOf[Cancelled]
@@ -420,7 +420,7 @@ final class OrderTest extends AnyFreeSpec
     "Prompting" in {
       checkAllEvents(Order(orderId, workflowId, Prompting(StringValue("QUESTION")),
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
-        removeMarkable[Prompting] orElse
+        deletionMarkable[Prompting] orElse
         markable[Prompting] orElse
         cancelMarkedAllowed[Prompting] orElse
         suspendMarkedAllowed[Prompting] orElse {
@@ -432,7 +432,7 @@ final class OrderTest extends AnyFreeSpec
     "FailedWhileFresh" in {
       checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
-        removeMarkable[FailedWhileFresh] orElse
+        deletionMarkable[FailedWhileFresh] orElse
         markable[FailedWhileFresh] orElse
         detachingAllowed[FailedWhileFresh] orElse
         cancelMarkedAllowed[FailedWhileFresh] orElse
@@ -445,7 +445,7 @@ final class OrderTest extends AnyFreeSpec
     "Failed" in {
       checkAllEvents(Order(orderId, workflowId, Failed,
           historicOutcomes = HistoricOutcome(Position(0), Outcome.failed) :: Nil),
-        removeMarkable[Failed] orElse
+        deletionMarkable[Failed] orElse
         markable[Failed] orElse
         detachingAllowed[Failed] orElse
         cancelMarkedAllowed[Failed] orElse {
@@ -466,7 +466,7 @@ final class OrderTest extends AnyFreeSpec
 
     "DelayedAfterError" in {
       checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
-        removeMarkable[DelayedAfterError] orElse
+        deletionMarkable[DelayedAfterError] orElse
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
         suspendMarkedAllowed[DelayedAfterError] orElse {
@@ -478,7 +478,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Broken" in {
       checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
-        removeMarkable[Broken] orElse
+        deletionMarkable[Broken] orElse
         markable[Broken] orElse
         detachingAllowed[Broken] orElse
         cancelMarkedAllowed[Broken] orElse {
@@ -491,7 +491,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Forked" in {
       checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId | "CHILD") :: Nil)),
-        removeMarkable[Forked] orElse
+        deletionMarkable[Forked] orElse
         markable[Forked] orElse
         attachingAllowed[Forked] orElse
         detachingAllowed[Forked] orElse
@@ -504,7 +504,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Offering" in {
       checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))),
-        removeMarkable[Offering] orElse
+        deletionMarkable[Offering] orElse
         markable[Offering] orElse
         cancelMarkedAllowed[Offering] orElse
         suspendMarkedAllowed[Offering] orElse {
@@ -514,7 +514,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Awaiting" in {
       checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))),
-        removeMarkable[Awaiting] orElse
+        deletionMarkable[Awaiting] orElse
         markable[Awaiting] orElse
         cancelMarkedAllowed[Awaiting] orElse
         suspendMarkedAllowed[Awaiting] orElse {
@@ -525,15 +525,15 @@ final class OrderTest extends AnyFreeSpec
 
     "Cancelled" in {
       checkAllEvents(Order(orderId, workflowId, Cancelled),
-        removeMarkable[Cancelled] orElse {
-          case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+        deletionMarkable[Cancelled] orElse {
+          case (OrderDeleted, _, IsDetached) => _.isInstanceOf[Order.Deleted]
         })
     }
 
     "Finished" in {
       checkAllEvents(Order(orderId, workflowId, Finished),
-        removeMarkable[Finished] orElse {
-          case (OrderRemoved, _, IsDetached) => _.isInstanceOf[Order.Removed]
+        deletionMarkable[Finished] orElse {
+          case (OrderDeleted, _, IsDetached) => _.isInstanceOf[Order.Deleted]
         })
     }
 
@@ -577,8 +577,8 @@ final class OrderTest extends AnyFreeSpec
 
     type ToPredicate = PartialFunction[(OrderEvent, Order[Order.State], Option[AttachedState]), State => Boolean]
 
-    def removeMarkable[S <: Order.State: ClassTag]: ToPredicate = {
-      case (_: OrderRemovalMarked, _, _) =>
+    def deletionMarkable[S <: Order.State: ClassTag]: ToPredicate = {
+      case (_: OrderDeletionMarked, _, _) =>
         implicitClass[S] isAssignableFrom _.getClass
     }
 

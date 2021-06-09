@@ -31,7 +31,7 @@ import js7.controller.web.controller.api.order.OrderRoute._
 import js7.core.command.CommandMeta
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, RemoveOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, DeleteOrdersWhenTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -108,9 +108,9 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     }
                 }))
         } ~
-          pathPrefix("RemoveOrdersWhenTerminated")(
+          pathPrefix("DeleteOrdersWhenTerminated")(
             pathEnd(
-              removeOrdersWhenTerminated(user)))
+              deleteOrdersWhenTerminated(user)))
       } ~
       get {
         pathEnd {
@@ -137,7 +137,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
       }
     }
 
-  private def removeOrdersWhenTerminated(user: SimpleUser): Route =
+  private def deleteOrdersWhenTerminated(user: SimpleUser): Route =
     withSizeLimit(entitySizeLimit)(
       entity(as[HttpEntity])(httpEntity =>
         if (httpEntity.contentType != `application/x-ndjson`.toContentType)
@@ -152,7 +152,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
               .mapParallelOrderedBatch()(_
                 .parseJsonAs[OrderId].orThrow)
               .toL(Vector)
-              .map(RemoveOrdersWhenTerminated(_))
+              .map(DeleteOrdersWhenTerminated(_))
               .flatMap(executeCommand(_, CommandMeta(user)))
               .map(_.map(o => o: ControllerCommand.Response)))))
 

@@ -12,9 +12,9 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.data.Problems.{CannotRemoveWatchingOrderProblem, ItemIsStillReferencedProblem}
+import js7.data.Problems.{CannotDeleteWatchingOrderProblem, ItemIsStillReferencedProblem}
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
@@ -22,7 +22,7 @@ import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderFinished, OrderProcessingStarted, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderDeleted, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderVanished
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
@@ -89,7 +89,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch, waitingFileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
     controller.eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
-    controller.eventWatch.await[OrderRemoved](_.key == orderId)
+    controller.eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
   }
 
@@ -97,7 +97,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val file = watchDirectory / "2"
     val orderId = fileToOrderId("2")
     file := ""
-    controller.eventWatch.await[OrderRemoved](_.key == orderId)
+    controller.eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
   }
 
@@ -106,7 +106,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val filenames = (1 to 1).map(_.toString).toVector
     val orderIds = filenames.map(fileToOrderId).toSet
     val whenAllRemoved = controller.eventWatch
-      .observe(EventRequest.singleClass[OrderRemoved](
+      .observe(EventRequest.singleClass[OrderDeleted](
         after = controller.eventWatch.lastAddedEventId,
         timeout = Some(88.s)))
       .scan(orderIds)((set, stamped) => set - stamped.value.key)
@@ -122,28 +122,28 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     logger.info(itemsPerSecondString(since.elapsed, filenames.size, "files"))
   }
 
-  "RemoveOrdersWhenTerminated is rejected" in {
+  "DeleteOrdersWhenTerminated is rejected" in {
     val file = waitingWatchDirectory / "REMOVE"
     val orderId = watchedFileToOrderId("REMOVE")
     file := ""
     controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-    assert(controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
-      Left(CannotRemoveWatchingOrderProblem(orderId)))
+    assert(controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
+      Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     semaphore.flatMap(_.release).runSyncUnsafe()
     controller.eventWatch.await[OrderFinished](_.key == orderId)
     intercept[TimeoutException] {
-      controller.eventWatch.await[OrderRemoved](_.key == orderId, timeout = 100.ms)
+      controller.eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
     }
 
     delete(file)
     val vanished = controller.eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-    val removed = controller.eventWatch.await[OrderRemoved](_.key == orderId).head
+    val removed = controller.eventWatch.await[OrderDeleted](_.key == orderId).head
     assert(vanished.timestamp <= removed.timestamp)
   }
 
-  "CancelOrder does not remove the order until the file has vanished" in {
+  "CancelOrder does not delete the order until the file has vanished" in {
     val file = waitingWatchDirectory / "CANCEL"
     val orderId = watchedFileToOrderId("CANCEL")
     file := ""
@@ -155,15 +155,15 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     semaphore.flatMap(_.release).runSyncUnsafe()
     controller.eventWatch.await[OrderFinished](_.key == orderId)
     intercept[TimeoutException] {
-      controller.eventWatch.await[OrderRemoved](_.key == orderId, timeout = 100.ms)
+      controller.eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
     }
 
-    assert(controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
-      Left(CannotRemoveWatchingOrderProblem(orderId)))
+    assert(controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
+      Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     delete(file)
     val vanished = controller.eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-    val removed = controller.eventWatch.await[OrderRemoved](_.key == orderId).head
+    val removed = controller.eventWatch.await[OrderDeleted](_.key == orderId).head
     assert(vanished.timestamp < removed.timestamp)
   }
 

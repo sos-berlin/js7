@@ -28,7 +28,7 @@ import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
-import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderPrompted, OrderRemoved, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderPrompted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -107,7 +107,7 @@ final class ControllerRepoTest extends AnyFreeSpec
               .await(99.s).orThrow
 
             val orderId = OrderId("DELETE-WITH-ORDER")
-            controllerApi.addOrder(FreshOrder(orderId, workflow.path), remove = true)
+            controllerApi.addOrder(FreshOrder(orderId, workflow.path), delete = true)
               .await(99.s).orThrow
             controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
@@ -116,7 +116,7 @@ final class ControllerRepoTest extends AnyFreeSpec
 
             controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId))
               .await(99.s).orThrow
-            controller.eventWatch.await[OrderRemoved](_.key == orderId)
+            controller.eventWatch.await[OrderDeleted](_.key == orderId)
             controller.eventWatch.await[ItemDeleted](_.event.key == workflow.id)
           }
         }

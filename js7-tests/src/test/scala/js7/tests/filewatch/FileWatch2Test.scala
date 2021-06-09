@@ -17,7 +17,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedT
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderRemoved, OrderStarted, OrderStderrWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderStarted, OrderStderrWritten}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
@@ -93,7 +93,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
           await[ItemAttached](_.event.key == orderWatchPath)
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == initialOrderId)
-          await[OrderRemoved](_.key == initialOrderId)
+          await[OrderDeleted](_.key == initialOrderId)
           assert(!exists(initialFile))
 
           locally {
@@ -102,7 +102,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             file := ""
             semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
             await[OrderFinished](_.key == orderId)
-            await[OrderRemoved](_.key == orderId)
+            await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
           }
 
@@ -116,7 +116,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
           semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
           await[OrderFinished](_.key == orderId3)
           // Agent must detect the file deletion after restart to allow the order to be removed:
-          await[OrderRemoved](_.key == orderId3)
+          await[OrderDeleted](_.key == orderId3)
           assert(!exists(aDirectory / "3"))
 
           locally {
@@ -136,7 +136,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("4"))
             semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
             await[OrderFinished](_.key == orderId)
-            await[OrderRemoved](_.key == orderId)
+            await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
           }
 
@@ -146,7 +146,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             file := ""
             semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
             await[OrderFinished](_.key == orderId)
-            await[OrderRemoved](_.key == orderId)
+            await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
           }
 
@@ -166,11 +166,11 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("6"), after = vanished)
 
             semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
-            val firstRemoved = await[OrderRemoved](_.key == orderId).head.eventId
+            val firstRemoved = await[OrderDeleted](_.key == orderId).head.eventId
 
             await[OrderStarted](_.key == orderId, after = firstRemoved)
             await[OrderFinished](_.key == orderId, after = firstRemoved)
-            await[OrderRemoved](_.key == orderId, after = firstRemoved)
+            await[OrderDeleted](_.key == orderId, after = firstRemoved)
             assert(!exists(file))
           }
 
@@ -187,7 +187,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("7"))
             semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
             await[OrderFinished](_.key == orderId)
-            await[OrderRemoved](_.key == orderId)
+            await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
           }
           val client = AgentClient(agentUri = aAgent.localUri,
@@ -211,7 +211,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
           case _: OrderStarted => true
           case _: OrderStderrWritten => true
           case _: OrderFinished => true
-          case _: OrderRemoved => true
+          case _: OrderDeleted => true
           case _ => false
         })
     assert(filteredLeyedEvents == Seq[AnyKeyedEvent](
@@ -227,7 +227,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId1 <-: OrderStarted,
       orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory/1\n"),
       orderId1 <-: OrderFinished,
-      orderId1 <-: OrderRemoved,
+      orderId1 <-: OrderDeleted,
 
       orderId2 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/2")),
@@ -236,7 +236,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId2 <-: OrderStarted,
       orderId2 <-: OrderStderrWritten(s"Deleted $aDirectory/2\n"),
       orderId2 <-: OrderFinished,
-      orderId2 <-: OrderRemoved,
+      orderId2 <-: OrderDeleted,
 
       orderId3 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/3")),
@@ -245,7 +245,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId3 <-: OrderStarted,
       orderId3 <-: OrderStderrWritten(s"Deleted $aDirectory/3\n"),
       orderId3 <-: OrderFinished,
-      orderId3 <-: OrderRemoved,
+      orderId3 <-: OrderDeleted,
 
       orderId4 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$aDirectory/4")),
@@ -257,7 +257,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(1)), aAgentPath),
       orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory/4\n"),
       orderId4 <-: OrderFinished,
-      orderId4 <-: OrderRemoved,
+      orderId4 <-: OrderDeleted,
 
       orderId5 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$bDirectory/5")),
@@ -266,7 +266,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId5 <-: OrderStarted,
       orderId5 <-: OrderStderrWritten(s"Deleted $bDirectory/5\n"),
       orderId5 <-: OrderFinished,
-      orderId5 <-: OrderRemoved,
+      orderId5 <-: OrderDeleted,
 
       orderId6 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$bDirectory/6")),
@@ -275,7 +275,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory/6\n"),
       orderId6 <-: OrderFinished,
-      orderId6 <-: OrderRemoved,
+      orderId6 <-: OrderDeleted,
       // And again
       orderId6 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$bDirectory/6")),
@@ -284,7 +284,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory/6\n"),
       orderId6 <-: OrderFinished,
-      orderId6 <-: OrderRemoved,
+      orderId6 <-: OrderDeleted,
 
       orderId7 <-: OrderAdded(workflow.id,
         Map(FileArgumentName -> StringValue(s"$bDirectory/7")),
@@ -293,7 +293,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId7 <-: OrderStarted,
       orderId7 <-: OrderStderrWritten(s"Deleted $bDirectory/7\n"),
       orderId7 <-: OrderFinished,
-      orderId7 <-: OrderRemoved))
+      orderId7 <-: OrderDeleted))
   }
 
   private def checkAgentEvents(client: AgentClient): Unit = {

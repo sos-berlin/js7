@@ -14,7 +14,7 @@ import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
 import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
-import js7.data.controller.ControllerCommand.{InternalClusterCommand, RemoveOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{DeleteOrdersWhenTerminated, InternalClusterCommand}
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
@@ -86,8 +86,8 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
     httpClient.postDiscardResponse(uris.order.add, orders)
       .map((_: Int) => Completed)
 
-  final def removeOrdersWhenTerminated(orderIds: Seq[OrderId]): Task[Completed] =
-    executeCommand(RemoveOrdersWhenTerminated(orderIds))
+  final def deleteOrdersWhenTerminated(orderIds: Seq[OrderId]): Task[Completed] =
+    executeCommand(DeleteOrdersWhenTerminated(orderIds))
       .map((_: ControllerCommand.Response.Accepted) => Completed)
 
   final def ordersOverview: Task[OrdersOverview] =

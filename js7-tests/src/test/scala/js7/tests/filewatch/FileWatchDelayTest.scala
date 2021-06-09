@@ -14,7 +14,7 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.event.EventRequest
 import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.order.OrderEvent.{OrderFinished, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
@@ -90,7 +90,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
         whenArised.await(99.s)
         assert(since.elapsed >= systemWatchDelay + i * fileWatch.delay)
         await[OrderFinished](_.key == orderId)
-        await[OrderRemoved](_.key == orderId)
+        await[OrderDeleted](_.key == orderId)
         assert(!exists(file))
       }
     }

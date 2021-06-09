@@ -9,7 +9,7 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.command.CancellationMode
-import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
 import js7.data.event.EventSeq
 import js7.data.job.{PathExecutable, RelativePathExecutable}
 import js7.data.order.OrderEvent._
@@ -42,7 +42,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Events" in {
     controller.addOrderBlocking(TestOrder)
     controller.eventWatch.await[OrderFinished](_.key == TestOrder.id)
-    controller.executeCommandAsSystemUser(RemoveOrdersWhenTerminated(Seq(TestOrder.id))).await(99.s).orThrow
+    controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(TestOrder.id))).await(99.s).orThrow
     controller.eventWatch.all[OrderEvent] match {
       case EventSeq.NonEmpty(stampeds) =>
         val keyedEvents = stampeds.map(_.value).toVector
@@ -174,5 +174,5 @@ object ForkTest {
     TestOrder.id <-: OrderJoined(Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(5)),
     TestOrder.id <-: OrderFinished,
-    TestOrder.id <-: OrderRemoved)
+    TestOrder.id <-: OrderDeleted)
 }

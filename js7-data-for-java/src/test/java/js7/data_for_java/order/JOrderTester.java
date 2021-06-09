@@ -58,7 +58,7 @@ public class JOrderTester
        "    \"key2\": \"value2\"\n" +
        "  },\n" +
        "  \"historicOutcomes\": [],\n" +
-       "  \"removeWhenTerminated\": true\n" +
+       "  \"deleteWhenTerminated\": true\n" +
        "}";
     public static final JOrder bOrder = getOrThrow(JOrder.fromJson(bOrderJson));
 

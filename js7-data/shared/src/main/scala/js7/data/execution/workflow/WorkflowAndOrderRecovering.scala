@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.order.OrderEvent.{OrderForked, OrderRemoved}
+import js7.data.order.OrderEvent.{OrderDeleted, OrderForked}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
@@ -16,12 +16,12 @@ import scala.collection.mutable
   */
 object WorkflowAndOrderRecovering
 {
-  // TODO Some events (OrderForked, OrderFinished, OrderOffered) handled by OrderActor let AgentOrderKeeper add or remove orders. This should be done in a single transaction.
+  // TODO Some events (OrderForked, OrderFinished, OrderOffered) handled by OrderActor let AgentOrderKeeper add or delete orders. This should be done in a single transaction.
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
   final def followUpRecoveredWorkflowsAndOrders(idToWorkflow: WorkflowId => Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
   : (Map[OrderId, Order[Order.State]], Set[OrderId]) = {
     val added = Map.newBuilder[OrderId, Order[Order.State]]
-    val removed = mutable.Buffer.empty[OrderId]
+    val deleted = mutable.Buffer.empty[OrderId]
     val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder.checked)
     for (order <- idToOrder.values;
          event <- snapshotToEvent(order);
@@ -34,13 +34,13 @@ object WorkflowAndOrderRecovering
             added += childOrder.id -> childOrder
           }
 
-        case FollowUp.Remove(removeOrderId) =>  // OrderRemoved, OrderJoined
-          removed += removeOrderId
+        case FollowUp.Delete(deleteOrderId) =>  // OrderDeleted, OrderJoined
+          deleted += deleteOrderId
 
         case _ =>
       }
     }
-    (added.result(), removed.toSet)
+    (added.result(), deleted.toSet)
   }
 
   private def snapshotToEvent(order: Order[Order.State]): Option[KeyedEvent[OrderEvent]] =
@@ -53,6 +53,6 @@ object WorkflowAndOrderRecovering
     //  order.ifState[Order.Awaiting].map(order =>   TODO Missing?
     //  )
     .orElse(
-      order.ifState[Order.Removed].map(_ =>
-        order.id <-: OrderRemoved))
+      order.ifState[Order.Deleted].map(_ =>
+        order.id <-: OrderDeleted))
 }

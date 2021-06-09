@@ -215,12 +215,12 @@ extends AutoCloseable
     execute(ResumeOrders(orderIds.asScala.toVector))
 
   @Nonnull
-  def removeOrdersWhenTerminated(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
-    removeOrdersWhenTerminated(Flux.fromIterable(orderIds))
+  def deleteOrdersWhenTerminated(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+    deleteOrdersWhenTerminated(Flux.fromIterable(orderIds))
 
   @Nonnull
-  def removeOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId]): CompletableFuture[VEither[Problem, Void]] =
-    asScala.removeOrdersWhenTerminated(orderIds.asObservable)
+  def deleteOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+    asScala.deleteOrdersWhenTerminated(orderIds.asObservable)
       .map(_.toVoidVavr)
       .runToFuture
       .asJava

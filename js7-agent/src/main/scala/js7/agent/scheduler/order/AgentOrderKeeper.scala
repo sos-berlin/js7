@@ -505,8 +505,8 @@ with Stash
           actor ! OrderActor.Input.AddChild(childOrder)
           proceedWithOrder(childOrder.id)
 
-        case FollowUp.Remove(removeOrderId) =>
-          removeOrder(removeOrderId)
+        case FollowUp.Delete(deleteOrderId) =>
+          deleteOrder(deleteOrderId)
 
         case o: FollowUp.AddOffered =>
           sys.error(s"Unexpected FollowUp: $o")  // Only Controller handles this
@@ -596,7 +596,7 @@ with Stash
         defaultArguments)
   }
 
-  private def removeOrder(orderId: OrderId): Unit =
+  private def deleteOrder(orderId: OrderId): Unit =
     for (orderEntry <- orderRegister.get(orderId)) {
       orderEntry.actor ! OrderActor.Input.Terminate()
       orderRegister.remove(orderId)
@@ -619,7 +619,7 @@ with Stash
         val orderId = orderEntry.order.id
         logger.debug(s"Actor '$orderId' stopped")
         for (p <- orderEntry.detachResponses) p.trySuccess(())
-        orderRegister.onActorTerminated(actorRef)  // Remove the OrderEntry
+        orderRegister.onActorTerminated(actorRef)  // Delete the OrderEntry
         shutdown.continue()
 
       case Terminated(`journalActor`) if shuttingDown =>

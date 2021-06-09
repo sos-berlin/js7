@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent, Stamped}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderRemoved, OrderStarted, OrderStdWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.OrderId
 import monix.execution.Ack
 import monix.reactive.Observer
@@ -23,7 +23,7 @@ private final class StatisticsBuilder(
   private val orderToChildren = mutable.Map.empty[OrderId, Seq[OrderId]]
   private var eventCount = 0
   private var orderAddedCount = 0
-  private var _removedOrderCount = 0
+  private var _deletedOrderCount = 0
   private var failedOrderCount = 0
   private var completedForkedOrderCount = 0
   private var totalOrderDuration = 0.s
@@ -33,8 +33,8 @@ private final class StatisticsBuilder(
   private var maximumProcessDuration = 0.s
   private var stdWritten = 0L
 
-  def removedOrderCount = _removedOrderCount
-  def lastOrderCount = orderAddedCount - _removedOrderCount
+  def deletedOrderCount = _deletedOrderCount
+  def lastOrderCount = orderAddedCount - _deletedOrderCount
 
   object obs {
     private val pause = 100.ms
@@ -67,8 +67,8 @@ private final class StatisticsBuilder(
             orderAddedCount += 1
             obs.tryPublish()
 
-          case OrderRemoved =>
-            _removedOrderCount += 1
+          case OrderDeleted =>
+            _deletedOrderCount += 1
             obs.tryPublish()
 
           case _: OrderStarted =>
@@ -115,7 +115,7 @@ private final class StatisticsBuilder(
     since.elapsed,
     lastOrderCount = lastOrderCount,
     eventCount = eventCount,
-    completedOrderCount = _removedOrderCount,
+    completedOrderCount = _deletedOrderCount,
     failedOrderCount = failedOrderCount,
     totalOrderDuration = totalOrderDuration,
     maximumOrderDuration = maximumOrderDuration,

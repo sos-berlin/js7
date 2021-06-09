@@ -128,10 +128,10 @@ final class ControllerCommandTest extends AnyFreeSpec
     }
   }
 
-  "RemoveOrdersWhenTerminated" in {
-    testJson[ControllerCommand](RemoveOrdersWhenTerminated(Seq(OrderId("A"), OrderId("B"))),
+  "DeleteOrdersWhenTerminated" in {
+    testJson[ControllerCommand](DeleteOrdersWhenTerminated(Seq(OrderId("A"), OrderId("B"))),
       json"""{
-        "TYPE": "RemoveOrdersWhenTerminated",
+        "TYPE": "DeleteOrdersWhenTerminated",
         "orderIds": [ "A", "B" ]
       }""")
   }

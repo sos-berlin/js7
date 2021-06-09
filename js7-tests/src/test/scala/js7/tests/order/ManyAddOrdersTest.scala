@@ -12,7 +12,7 @@ import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.EventRequest
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.OrderRemoved
+import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -61,11 +61,11 @@ final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
             controllerApi.addOrders(Observable.pure(FreshOrder(orderId, workflowPath)))
           ).delayExecution(Random.nextInt(2).ms) >>
             orderIds.toVector.traverse(orderId =>
-              controllerApi.removeOrdersWhenTerminated(Observable(orderId)))
+              controllerApi.deleteOrdersWhenTerminated(Observable(orderId)))
         ))
       .completedL
     val awaitRemoved = controller.eventWatch
-      .observe(EventRequest.singleClass[OrderRemoved](timeout = Some(99.s)))
+      .observe(EventRequest.singleClass[OrderDeleted](timeout = Some(99.s)))
       .scan(orderIds.toSet)((orderIds, stamped) => orderIds - stamped.value.key)
       .dropWhile(_.nonEmpty)
       .headL

@@ -46,7 +46,7 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
         eventSubscriptions.add(
             proxy.controllerEventBus().subscribe(
                 asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderMoved.class, OrderEvent.OrderFinished$.class,
-                    OrderEvent.OrderRemoved$.class),
+                    OrderEvent.OrderDeleted$.class),
                 this::onOrderEvent));
     }
 
@@ -54,10 +54,10 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
         for (EventSubscription o: eventSubscriptions) o.close();
     }
 
-    private final Set<OrderId> removedOrders = new HashSet<>();
+    private final Set<OrderId> deletedOrders = new HashSet<>();
     private final List<EventSubscription> eventSubscriptions = new ArrayList<>();
     private final List<KeyedEvent<OrderEvent>> events = new ArrayList<>();
-    private final CompletableFuture<Void> allOrdersRemoved = new CompletableFuture<>();
+    private final CompletableFuture<Void> allOrdersDeleted = new CompletableFuture<>();
 
     private void onOrderEvent(Stamped<KeyedEvent<OrderEvent>> stampedEvent, JControllerState controllerState) {
         OrderId orderId = (OrderId)stampedEvent.value().key();
@@ -65,10 +65,10 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
             if (orderId.equals(orderIds.get(0))) {
                 events.add(stampedEvent.value());
             }
-            if (stampedEvent.value().event() instanceof OrderEvent.OrderRemoved$) {
-                removedOrders.add(orderId);
-                if (removedOrders.size() == orderIds.size()) {
-                    allOrdersRemoved.complete(null);
+            if (stampedEvent.value().event() instanceof OrderEvent.OrderDeleted$) {
+                deletedOrders.add(orderId);
+                if (deletedOrders.size() == orderIds.size()) {
+                    allOrdersDeleted.complete(null);
                 }
             }
         }
@@ -79,7 +79,7 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
         addOrdersAsStream();
         addSingleOrder();
 
-        allOrdersRemoved.get(99, SECONDS);
+        allOrdersDeleted.get(99, SECONDS);
 
         // Check events of the first added order
         assertThat(events.get(0).key(), equalTo(orderIds.get(0)));
@@ -95,15 +95,15 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
         assertThat(keyedEventToJson(events.get(2)), equalTo("{\"Key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
 
         assertThat(events.get(3).key(), equalTo(orderIds.get(0)));
-        assertThat(events.get(3).event(), instanceOf(OrderEvent.OrderRemoved$.class));
-        assertThat(keyedEventToJson(events.get(3)), equalTo("{\"Key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderRemoved\"}"));
+        assertThat(events.get(3).event(), instanceOf(OrderEvent.OrderDeleted$.class));
+        assertThat(keyedEventToJson(events.get(3)), equalTo("{\"Key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderDeleted\"}"));
     }
 
     private void addOrdersAsStream() {
         // Idempotent: already existent order (with same OrderId) are silently ignored
         List<JFreshOrder> freshOrders = asList(newOrder(0), newOrder(1));
         await(api.addOrders(Flux.fromIterable(freshOrders)));
-        await(api.removeOrdersWhenTerminated(freshOrders.stream().map(JFreshOrder::id).collect(Collectors.toList())));
+        await(api.deleteOrdersWhenTerminated(freshOrders.stream().map(JFreshOrder::id).collect(Collectors.toList())));
     }
 
     private void addSingleOrder() {
@@ -111,7 +111,7 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
         JFreshOrder freshOrder = newOrder(2);
         Boolean addOrderResponse = await(api.addOrder(freshOrder));
         assertThat(addOrderResponse, equalTo(true/*added, no duplicate*/));
-        await(api.removeOrdersWhenTerminated(singleton(freshOrder.id())));
+        await(api.deleteOrdersWhenTerminated(singleton(freshOrder.id())));
     }
 
     private static JFreshOrder newOrder(int index) {

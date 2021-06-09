@@ -115,6 +115,6 @@ private object JControllerStateTest
         Map(
           "key1" -> StringValue("value1"),
           "key2" -> StringValue("value2")),
-        removeWhenTerminated = true)
+        deleteWhenTerminated = true)
     ).toKeyedMap(_.id))
 }
