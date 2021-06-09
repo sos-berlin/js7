@@ -17,7 +17,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDestroyed, ItemDestructionMarked, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
@@ -212,14 +212,14 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       DeleteSimple(fileWatch.path),
       DeleteSimple(waitingFileWatch.path)
     )).await(99.s) == Right(Completed))
-    controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.path, after = eventId)
+    controller.eventWatch.await[ItemDeleted](_.event.key == fileWatch.path, after = eventId)
     val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
       .filter(_.event.key == fileWatch.path)
     assert(events == Seq(
-      NoKey <-: ItemDestructionMarked(fileWatch.path),
+      NoKey <-: ItemDeletionMarked(fileWatch.path),
       NoKey <-: ItemDetachable(fileWatch.path, bAgentPath),
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
-      NoKey <-: ItemDestroyed(fileWatch.path)))
+      NoKey <-: ItemDeleted(fileWatch.path)))
     sleep(100.ms)   // Wait until controllerState has been updated
     assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }

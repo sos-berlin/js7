@@ -182,7 +182,7 @@ final case class Repo private(
       v <- unusedVersionIds(entries, inUse)
     } yield path ~ v
 
-  def destroyItem(id: VersionedItemId_): Checked[Repo] = {
+  def deleteItem(id: VersionedItemId_): Checked[Repo] = {
     for (entries <- pathToVersionToSignedItems
       .checked(id.path)
       .map(_.filter(_.versionId != id.versionId))) yield

@@ -11,7 +11,7 @@ import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.event.EventSeq
-import js7.data.item.BasicItemEvent.{ItemDestroyed, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetached}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{ItemRevision, Repo, VersionId}
@@ -432,7 +432,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       RemoveVersioned(workflow2Path)
     )).await(99.s).orThrow
     for (workflowId <- previousControllerState.repo.itemIdsFor(WorkflowPath)) {
-      controller.eventWatch.await[ItemDestroyed](_.event.key == workflowId, after = eventId)
+      controller.eventWatch.await[ItemDeleted](_.event.key == workflowId, after = eventId)
     }
     previousControllerState.itemToAgentToAttachedState
       .foreach {
@@ -440,9 +440,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           controller.eventWatch.await[ItemDetached](_.event.key == id, after = eventId)
         case _ =>
       }
-    controller.eventWatch.await[ItemDestroyed](_.event.key == lockPath, after = eventId)
-    controller.eventWatch.await[ItemDestroyed](_.event.key == lock2Path, after = eventId)
-    controller.eventWatch.await[ItemDestroyed](_.event.key == limit2LockPath, after = eventId)
+    controller.eventWatch.await[ItemDeleted](_.event.key == lockPath, after = eventId)
+    controller.eventWatch.await[ItemDeleted](_.event.key == lock2Path, after = eventId)
+    controller.eventWatch.await[ItemDeleted](_.event.key == limit2LockPath, after = eventId)
 
     val controllerState = controller.controllerState.await(99.s)
     assert(controllerState.idToOrder.isEmpty)

@@ -14,7 +14,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentPath, AgentRef}
-import js7.data.item.BasicItemEvent.ItemDestroyed
+import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
 import js7.data.order.{FreshOrder, OrderId}
@@ -82,7 +82,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
       RemoveVersioned(workflow.path))
     ).await(99.s).orThrow
 
-    controller.eventWatch.await[ItemDestroyed](_.event.key == agentPath, after = eventId)
+    controller.eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
     agent.terminate() await 99.s
   }
 

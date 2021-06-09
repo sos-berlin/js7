@@ -51,7 +51,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDestroyed, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
@@ -960,10 +960,10 @@ with MainJournalingActor[ControllerState, Event]
           agentEntry.detachingItems -= itemKey
         }
 
-      case ItemDestroyed(agentPath: AgentPath) =>
+      case ItemDeleted(agentPath: AgentPath) =>
         for (entry <- agentRegister.get(agentPath)) {
           entry.actor ! AgentDriver.Input.Terminate()
-          // Actor terminates asynchronously, so do not add an AgentRef immediately after destruction!
+          // Actor terminates asynchronously, so do not add an AgentRef immediately after deletion!
         }
 
       case _ =>

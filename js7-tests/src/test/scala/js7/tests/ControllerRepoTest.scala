@@ -24,7 +24,7 @@ import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemRemovedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, TakeSnapshot}
-import js7.data.item.BasicItemEvent.ItemDestroyed
+import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
@@ -117,7 +117,7 @@ final class ControllerRepoTest extends AnyFreeSpec
             controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId))
               .await(99.s).orThrow
             controller.eventWatch.await[OrderRemoved](_.key == orderId)
-            controller.eventWatch.await[ItemDestroyed](_.event.key == workflow.id)
+            controller.eventWatch.await[ItemDeleted](_.event.key == workflow.id)
           }
         }
 

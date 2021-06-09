@@ -15,7 +15,7 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, Clu
 import js7.data.controller.ControllerStateTest._
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestructionMarked}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -90,7 +90,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             VersionAdded(versionId),
             VersionedItemAdded(signedWorkflow),
             ItemAttachable(jobResource.path, agentRef.path),
-            ItemDestructionMarked(fileWatch.path)
+            ItemDeletionMarked(fileWatch.path)
           ) ++
           controllerState.idToOrder.values)
   }
@@ -127,7 +127,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         VersionedItemChanged(itemSigner.sign(workflow.copy(id = changedWorkflowId)))))
       .orThrow
       .copy(idToOrder = Map.empty)
-    // The original workflow is still in use by an order and not destroyed
+    // The original workflow is still in use by an order and not deleted
     assert(controllerState.pathToReferencingItemKeys.view.mapValues(_.toSet).toMap
       == Map(
         lock.path -> Set(workflow.id, changedWorkflowId),
@@ -247,7 +247,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         "key": "JobResource:JOB-RESOURCE"
       },
       {
-        "TYPE": "ItemDestructionMarked",
+        "TYPE": "ItemDeletionMarked",
         "key": "OrderWatch:WATCH"
       },
       {
@@ -354,7 +354,7 @@ object ControllerStateTest
       jobResource.path -> signedJobResource),
     Map(
       jobResource.path -> Map(agentRef.path -> Attachable)),
-    destructionMarkedItems = Set(fileWatch.path),
+    deletionMarkedItems = Set(fileWatch.path),
     (Order(orderId, workflow.id /: Position(1), Order.Fresh,
       externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))

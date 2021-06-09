@@ -3,7 +3,7 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDestroyed, ItemDestructionMarked, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.WorkflowPath
@@ -15,18 +15,18 @@ final class BasicItemEventTest extends AnyFreeSpec
   implicit private val jsonCodec = BasicItemEvent.jsonCodec(ControllerState)
 
   "JSON" - {
-    "ItemDestructionMarked" in {
-      testJson[BasicItemEvent](ItemDestructionMarked(OrderWatchPath("PATH")), json"""
+    "ItemDeletionMarked" in {
+      testJson[BasicItemEvent](ItemDeletionMarked(OrderWatchPath("PATH")), json"""
         {
-          "TYPE": "ItemDestructionMarked",
+          "TYPE": "ItemDeletionMarked",
           "key": "OrderWatch:PATH"
         }""")
     }
 
-    "ItemDestroyed" in {
-      testJson[BasicItemEvent](ItemDestroyed(OrderWatchPath("PATH")), json"""
+    "ItemDeleted" in {
+      testJson[BasicItemEvent](ItemDeleted(OrderWatchPath("PATH")), json"""
         {
-          "TYPE": "ItemDestroyed",
+          "TYPE": "ItemDeleted",
           "key": "OrderWatch:PATH"
         }""")
     }

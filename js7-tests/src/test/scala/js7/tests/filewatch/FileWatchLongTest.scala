@@ -9,7 +9,7 @@ import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
-import js7.data.item.BasicItemEvent.{ItemAttached, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.OrderRemoved
 import js7.data.order.OrderId
@@ -68,7 +68,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
   "Delete FileWatch" in {
     assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
-    controller.eventWatch.await[ItemDestroyed](_.event.key == fileWatch.path)
+    controller.eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
     assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }

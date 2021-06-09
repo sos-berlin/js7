@@ -9,7 +9,7 @@ import js7.data.controller.ControllerStateExecutor._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestroyed, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionId, VersionedItemId_}
@@ -138,7 +138,7 @@ extends VerifiedUpdateItemsExecutor
         .toVector
       controllerState = controllerState.applyEvents(detachableWorkflows).orThrow
 
-      val destroyItems = (detachWorkflowCandidates.view ++ detachedItems)
+      val deleteItems = (detachWorkflowCandidates.view ++ detachedItems)
         .filter(controllerState.keyToItem.keySet.contains)
         .filterNot(controllerState.itemToAgentToAttachedState.contains)
         .filter {
@@ -149,15 +149,15 @@ extends VerifiedUpdateItemsExecutor
           case _ =>
             false
         }
-        .map(itemKey => NoKey <-: ItemDestroyed(itemKey))
+        .map(itemKey => NoKey <-: ItemDeleted(itemKey))
         .toVector
-      controllerState = controllerState.applyEvents(destroyItems).orThrow
+      controllerState = controllerState.applyEvents(deleteItems).orThrow
 
-      val destroyAgentRefs = detachedFromAgents.view
+      val deleteAgentRefs = detachedFromAgents.view
         .filterNot(controllerState.itemToAgentToAttachedState.values.view.flatMap(_.keys).toSet)
-        .map(agentPath => NoKey <-: ItemDestroyed(agentPath))
+        .map(agentPath => NoKey <-: ItemDeleted(agentPath))
         .toVector
-      controllerState = controllerState.applyEvents(destroyAgentRefs).orThrow
+      controllerState = controllerState.applyEvents(deleteAgentRefs).orThrow
 
       val eventsAndState = controllerState.nextOrderEventsByOrderId(orderIds)
       controllerState = eventsAndState.controllerState
@@ -169,8 +169,8 @@ extends VerifiedUpdateItemsExecutor
       val subsequentKeyedEvents =
         (itemEvents.view ++
         detachableWorkflows ++
-        destroyItems ++
-        destroyAgentRefs ++
+        deleteItems ++
+        deleteAgentRefs ++
         orderEvents ++
         orderWatchEvents).toVector
 
@@ -197,7 +197,7 @@ extends VerifiedUpdateItemsExecutor
                     !controllerState.isCurrentOrStillInUse(itemId) ? ItemDetachable(itemId, agentPath)
 
                   case path: SimpleItemPath =>
-                    if (controllerState.destructionMarkedItems.contains(path))
+                    if (controllerState.deletionMarkedItems.contains(path))
                       Some(ItemDetachable(path, agentPath))
                     else
                       (item.itemRevision != revision) ?
@@ -217,7 +217,7 @@ extends VerifiedUpdateItemsExecutor
             }
 
           case None =>
-            if (controllerState.destructionMarkedItems.contains(item.key))
+            if (controllerState.deletionMarkedItems.contains(item.key))
               Nil
             else
               item.dedicatedAgentPath.map(ItemAttachable(item.key, _))

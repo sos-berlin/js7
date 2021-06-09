@@ -11,7 +11,7 @@ import js7.data.controller.ControllerStateExecutorTest._
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
-import js7.data.item.BasicItemEvent.{ItemAttached, ItemDestroyed, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemRemoved}
@@ -83,10 +83,10 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path)),
           Some(VerifiedUpdateItems.Versioned(v2, remove = Seq(aWorkflow.path)))
         )) == Right(Seq(
-          NoKey <-: ItemDestroyed(aAgentRef.path),
+          NoKey <-: ItemDeleted(aAgentRef.path),
           NoKey <-: VersionAdded(v2),
           NoKey <-: VersionedItemRemoved(aWorkflow.path),
-          NoKey <-: ItemDestroyed(aWorkflow.id))))
+          NoKey <-: ItemDeleted(aWorkflow.id))))
     }
 
     "Delete AgentRef but it is in use by a deleted workflow still containing orders" in {
@@ -120,7 +120,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path))
         )) == Right(Seq(
-          NoKey <-: ItemDestroyed(aAgentRef.path))))
+          NoKey <-: ItemDeleted(aAgentRef.path))))
     }
 
     // TODO Don't use ControllerStateTest here
@@ -135,7 +135,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
         .orThrow
     }
 
-    "Destroy and add fileWatch" in {
+    "Delete and add fileWatch" in {
       val executor = new Executor(controllerState)
 
       // Delete the fileWatch
@@ -203,7 +203,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       _controllerState = updated // FIXME
     }
 
-    //"After VersionedItemRemoved, the unused workflows are destroyed" in {
+    //"After VersionedItemRemoved, the unused workflows are deleted" in {
     //  val executor = new Executor(ControllerState.empty)
     //
     //  executor.executeVerifiedUpdateItems(verifiedUpdateItems)
@@ -215,8 +215,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     //      VersionedItemRemoved(aWorkflow.path),
     //      VersionedItemRemoved(bWorkflow.path))
     //    ).map(_.toSet) == Right(Set[AnyKeyedEvent](
-    //      NoKey <-: ItemDestroyed(aWorkflow.id),
-    //      NoKey <-: ItemDestroyed(bWorkflow.id))))
+    //      NoKey <-: ItemDeleted(aWorkflow.id),
+    //      NoKey <-: ItemDeleted(bWorkflow.id))))
     //}
 
     "Workflow is destroyed after last OrderRemoved" in {
@@ -278,7 +278,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
         executor.applyEventsAndReturnSubsequentEvents(Seq(
           NoKey <-: ItemDetached(aWorkflow.id, aAgentRef.path)
         )) == Right(Seq(
-          NoKey <-: ItemDestroyed(aWorkflow.id))))
+          NoKey <-: ItemDeleted(aWorkflow.id))))
 
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
@@ -296,7 +296,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
         executor.applyEventsAndReturnSubsequentEvents(Seq(
           NoKey <-: ItemDetached(bWorkflow.id, bAgentRef.path)
         )) == Right(Seq(
-          NoKey <-: ItemDestroyed(bWorkflow.id))))
+          NoKey <-: ItemDeleted(bWorkflow.id))))
     }
 
 /*
@@ -337,22 +337,22 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       VersionedItemRemoved(bWorkflow.path),
       VersionedItemRemoved(cWorkflow.path)
     ) == Right(Seq(
-      NoKey <-: ItemDestroyed(cWorkflow.id),
+      NoKey <-: ItemDeleted(cWorkflow.id),
       NoKey <-: ItemDetachable(aWorkflow.id, aAgentRef.path))))
 
     assert(applyEvents(_controllerState,
-      ItemDestructionMarked(aAgentRef.path)
+      ItemDeletionMarked(aAgentRef.path)
     ) == Right(Nil))
 
     assert(applyEvents(_controllerState,
-      ItemDestructionMarked(bAgentRef.path))
+      ItemDeletionMarked(bAgentRef.path))
       == Right(Seq(
         NoKey <-: ItemDetachable(bWorkflow.id, bAgentRef.path))))
 
     assert(applyEvents(_controllerState,
       ItemDetached(aWorkflow.id, aAgentRef.path)
     ) == Right(Seq(
-      NoKey <-: ItemDestroyed(aAgentRef.path))))
+      NoKey <-: ItemDeleted(aAgentRef.path))))
  */
   }
 
