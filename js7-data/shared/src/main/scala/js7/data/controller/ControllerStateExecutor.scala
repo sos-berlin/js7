@@ -102,9 +102,6 @@ extends VerifiedUpdateItemsExecutor
               event match {
                 case ItemDetached(itemKey, agentPath) =>
                   detachedItems += itemKey
-                  if (updated.deleteItems.contains(agentPath)) {
-                    detachedFromAgents += agentPath
-                  }
 
                 case _ =>
               }
@@ -194,7 +191,7 @@ extends VerifiedUpdateItemsExecutor
                     !controllerState.isCurrentOrStillInUse(itemId) ? ItemDetachable(itemId, agentPath)
 
                   case path: SimpleItemPath =>
-                    if (controllerState.deleteItems.contains(path))
+                    if (controllerState.destructionMarkedItems.contains(path))
                       Some(ItemDetachable(path, agentPath))
                     else
                       (item.itemRevision != revision) ?
@@ -214,7 +211,7 @@ extends VerifiedUpdateItemsExecutor
             }
 
           case None =>
-            if (controllerState.deleteItems.contains(item.key))
+            if (controllerState.destructionMarkedItems.contains(item.key))
               Nil
             else
               item.dedicatedAgentPath.map(ItemAttachable(item.key, _))

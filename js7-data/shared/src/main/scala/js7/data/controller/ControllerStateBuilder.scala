@@ -9,7 +9,7 @@ import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEv
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDestroyed, ItemDestructionMarked}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -35,7 +35,7 @@ extends JournaledStateBuilder[ControllerState]
   private val pathToLockState = mutable.Map.empty[LockPath, LockState]
   private var allOrderWatchesState = AllOrderWatchesState.empty
   private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
-  private val deleteItems = mutable.Set[InventoryItemKey]()
+  private val destructionMarkedItems = mutable.Set[InventoryItemKey]()
   private val idToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
 
   protected def onInitializeState(state: ControllerState): Unit = {
@@ -78,8 +78,8 @@ extends JournaledStateBuilder[ControllerState]
       itemToAgentToAttachedState +=
         key -> (itemToAgentToAttachedState.getOrElse(key, Map.empty) + (agentPath -> attachedState))
 
-    case ItemDeletionMarked(itemKey) =>
-      deleteItems += itemKey
+    case ItemDestructionMarked(itemKey) =>
+      destructionMarkedItems += itemKey
 
     case o: ControllerMetaState =>
       controllerMetaState = o
@@ -171,16 +171,16 @@ extends JournaledStateBuilder[ControllerState]
                     itemToAgentToAttachedState += itemKey -> updated
               }
 
-            case ItemDeletionMarked(itemKey) =>
-              deleteItems += itemKey
+            case ItemDestructionMarked(itemKey) =>
+              destructionMarkedItems += itemKey
 
             case ItemDestroyed(itemKey) =>
-              deleteItems -= itemKey
               itemKey match {
                 case id: VersionedItemId_ =>
                   repo = repo.destroyItem(id).orThrow
 
                 case path: OrderWatchPath =>
+                  destructionMarkedItems -= path
                   allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)
 
                 case path: LockPath =>
@@ -289,7 +289,7 @@ extends JournaledStateBuilder[ControllerState]
       repo,
       idToSignedSimpleItem.toMap,
       itemToAgentToAttachedState.toMap,
-      deleteItems.toSet,
+      destructionMarkedItems.toSet,
       idToOrder.toMap)
 
   def journalState = standards.journalState

@@ -16,7 +16,7 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, Clu
 import js7.data.controller.ControllerStateTest._
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, JournaledState}
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDestroyed, ItemDestructionMarked}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -73,7 +73,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       jobResource.path -> signedJobResource),
     Map(
       jobResource.path -> Map(agentRef.path -> Attachable)),
-    deleteItems = Set(jobResource.path),
+    destructionMarkedItems = Set(fileWatch.path),
     (Order(orderId, workflow.id /: Position(1), Order.Fresh,
       externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))
@@ -126,7 +126,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             VersionAdded(versionId),
             VersionedItemAdded(signedWorkflow),
             ItemAttachable(jobResource.path, agentRef.path),
-            ItemDeletionMarked(jobResource.path)
+            ItemDestructionMarked(fileWatch.path)
           ) ++
           controllerState.idToOrder.values)
   }
@@ -323,8 +323,8 @@ final class ControllerStateTest extends AsyncFreeSpec
         "key": "JobResource:JOB-RESOURCE"
       },
       {
-        "TYPE": "ItemDeletionMarked",
-        "key": "JobResource:JOB-RESOURCE"
+        "TYPE": "ItemDestructionMarked",
+        "key": "OrderWatch:WATCH"
       },
       {
         "TYPE": "Order",

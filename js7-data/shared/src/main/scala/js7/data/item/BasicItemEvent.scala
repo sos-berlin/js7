@@ -13,7 +13,8 @@ object BasicItemEvent
   sealed trait ForController extends BasicItemEvent
   sealed trait ForAgent extends BasicItemEvent
 
-  final case class ItemDeletionMarked(key: InventoryItemKey)
+  /** Used for OrderWatch to allow to attach it from Agent. */
+  final case class ItemDestructionMarked(key: InventoryItemKey)
   extends ForController {
     def attachedState = None
   }
@@ -71,7 +72,7 @@ object BasicItemEvent
     implicit val y = S.inventoryItemKeyJsonCodec
 
     TypedJsonCodec(
-      Subtype(deriveCodec[ItemDeletionMarked]),
+      Subtype(deriveCodec[ItemDestructionMarked]),
       Subtype(deriveCodec[ItemDestroyed]),
       Subtype(deriveCodec[ItemAttachable]),
       Subtype(deriveCodec[ItemAttached]),

@@ -18,7 +18,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
-import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeletionMarked, ItemDestroyed, ItemDetachable}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDestroyed, ItemDestructionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -45,7 +45,8 @@ final case class ControllerState(
   repo: Repo,
   idToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
   itemToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]],
-  deleteItems: Set[InventoryItemKey],
+  /** Used for OrderWatch to allow to attach it from Agent. */
+  destructionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends JournaledState[ControllerState]
 {
@@ -61,7 +62,7 @@ extends JournaledState[ControllerState]
     allOrderWatchesState.estimatedSnapshotSize +
     idToSignedSimpleItem.size +
     itemToAgentToAttachedState.values.view.map(_.size).sum +
-    deleteItems.size +
+    destructionMarkedItems.size +
     idToOrder.size
 
   def toSnapshotObservable: Observable[Any] =
@@ -81,7 +82,7 @@ extends JournaledState[ControllerState]
             ItemAttachedStateChanged(key, agentPath, attachedState)
           }
         }),
-      Observable.fromIterable(deleteItems.map(ItemDeletionMarked(_))),
+      Observable.fromIterable(destructionMarkedItems.map(ItemDestructionMarked(_))),
       Observable.fromIterable(idToOrder.values)
     ).flatten
 
@@ -190,31 +191,28 @@ extends JournaledState[ControllerState]
                     })
               }
 
-            case ItemDeletionMarked(itemKey) =>
+            case ItemDestructionMarked(itemKey) =>
               Right(copy(
-                deleteItems = deleteItems + itemKey))
+                destructionMarkedItems = destructionMarkedItems + itemKey))
 
             case ItemDestroyed(itemKey) =>
               itemKey match {
                 case id: VersionedItemId_ =>
                   for (repo <- repo.destroyItem(id)) yield
                     copy(
-                      deleteItems = deleteItems - itemKey,
                       repo = repo)
 
                 case lockPath: LockPath =>
                   Right(copy(
-                    deleteItems = deleteItems - lockPath,
                     pathToLockState = pathToLockState - lockPath))
 
                 case agentPath: AgentPath =>
                   Right(copy(
-                    deleteItems = deleteItems - agentPath,
                     pathToAgentRefState = pathToAgentRefState - agentPath))
 
                 case path: OrderWatchPath =>
                   Right(copy(
-                    deleteItems = deleteItems - path,
+                    destructionMarkedItems = destructionMarkedItems - path,
                     itemToAgentToAttachedState = itemToAgentToAttachedState - path,
                     allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)))
 

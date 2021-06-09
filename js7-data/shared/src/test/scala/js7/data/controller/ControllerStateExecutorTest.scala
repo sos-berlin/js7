@@ -261,11 +261,11 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       NoKey <-: ItemDetachable(aWorkflow.id, aAgentRef.path))))
 
     assert(applyEvents(_controllerState,
-      ItemDeletionMarked(aAgentRef.path)
+      ItemDestructionMarked(aAgentRef.path)
     ) == Right(Nil))
 
     assert(applyEvents(_controllerState,
-      ItemDeletionMarked(bAgentRef.path))
+      ItemDestructionMarked(bAgentRef.path))
       == Right(Seq(
         NoKey <-: ItemDetachable(bWorkflow.id, bAgentRef.path))))
 

@@ -8,7 +8,7 @@ import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{KeyedEvent, NoKeyEvent}
-import js7.data.item.BasicItemEvent.{ItemDeletionMarked, ItemDestroyed}
+import js7.data.item.BasicItemEvent.{ItemDestroyed, ItemDestructionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedItemPath}
@@ -108,7 +108,7 @@ trait VerifiedUpdateItemsExecutor
     path match {
       case path: OrderWatchPath =>
         if (controllerState.itemToAgentToAttachedState.contains(path))
-          (!controllerState.deleteItems.contains(path) ? ItemDeletionMarked(path)).view ++
+          (!controllerState.destructionMarkedItems.contains(path) ? ItemDestructionMarked(path)).view ++
             controllerState.detach(path)
         else
           View(ItemDestroyed(path))

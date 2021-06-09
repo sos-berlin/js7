@@ -17,7 +17,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeletionMarked, ItemDestroyed, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDestroyed, ItemDestructionMarked, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision}
@@ -208,7 +208,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
       .filter(_.event.key == fileWatch.path)
     assert(events == Seq(
-      NoKey <-: ItemDeletionMarked(fileWatch.path),
+      NoKey <-: ItemDestructionMarked(fileWatch.path),
       NoKey <-: ItemDetachable(fileWatch.path, bAgentPath),
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
       NoKey <-: ItemDestroyed(fileWatch.path)))
