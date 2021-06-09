@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
 import js7.data.controller.ControllerState
 import js7.data.controller.ControllerState._
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -62,11 +62,11 @@ final class ItemOperationTest extends AnyFreeSpec
         }""")
     }
 
-    "DeleteVersioned" in {
+    "RemoveVersioned" in {
       testJson[ItemOperation](
-        DeleteVersioned(WorkflowPath("WORKFLOW")),
+        RemoveVersioned(WorkflowPath("WORKFLOW")),
         json"""{
-          "TYPE": "DeleteVersioned",
+          "TYPE": "RemoveVersioned",
           "path": "Workflow:WORKFLOW"
         } """)
     }

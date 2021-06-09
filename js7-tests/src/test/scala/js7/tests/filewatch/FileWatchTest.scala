@@ -18,7 +18,7 @@ import js7.data.controller.ControllerCommand.{CancelOrders, RemoveOrdersWhenTerm
 import js7.data.event.EventRequest
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDestroyed, ItemDestructionMarked, ItemDetachable, ItemDetached}
-import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
 import js7.data.job.InternalExecutable
@@ -201,7 +201,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Deleting the Workflow referenced by the FileWatch is rejected" in {
     assert(controllerApi.updateItems(Observable(
       AddVersion(VersionId("TRY-DELETE")),
-      DeleteVersioned(workflow.path)
+      RemoveVersioned(workflow.path)
     )).await(99.s) ==
       Left(ItemIsStillReferencedProblem(workflow.path, fileWatch.path)))
   }

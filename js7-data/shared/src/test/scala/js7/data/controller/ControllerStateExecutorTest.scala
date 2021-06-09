@@ -14,7 +14,7 @@ import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDestroyed, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
-import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemDeleted}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemRemoved}
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
@@ -46,7 +46,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       Seq(
         Verified(itemSigner.sign(aWorkflow), Nil),
         Verified(itemSigner.sign(bWorkflow), Nil)),
-      delete = Nil)))
+      remove = Nil)))
 
   "executeVerifiedUpdateItems" - {
     "Add workflow but referenced items are missing" in {
@@ -59,7 +59,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
             Seq(
               Verified(itemSigner.sign(aWorkflow), Nil),
               Verified(itemSigner.sign(bWorkflow), Nil)),
-            delete = Nil))
+            remove = Nil))
         )) == Left(Problem.Combined(Set(
           MissingReferencedItemProblem(aWorkflow.id, aAgentRef.path),
           MissingReferencedItemProblem(bWorkflow.id, bAgentRef.path),
@@ -81,11 +81,11 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       assert(
         executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
           VerifiedUpdateItems.Simple(delete = Seq(aAgentRef.path)),
-          Some(VerifiedUpdateItems.Versioned(v2, delete = Seq(aWorkflow.path)))
+          Some(VerifiedUpdateItems.Versioned(v2, remove = Seq(aWorkflow.path)))
         )) == Right(Seq(
           NoKey <-: ItemDestroyed(aAgentRef.path),
           NoKey <-: VersionAdded(v2),
-          NoKey <-: VersionedItemDeleted(aWorkflow.path),
+          NoKey <-: VersionedItemRemoved(aWorkflow.path),
           NoKey <-: ItemDestroyed(aWorkflow.id))))
     }
 
@@ -102,7 +102,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
       executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(),
-        Some(VerifiedUpdateItems.Versioned(VersionId("2"), delete = Seq(aWorkflow.path)))
+        Some(VerifiedUpdateItems.Versioned(VersionId("2"), remove = Seq(aWorkflow.path)))
       )).orThrow
 
       assert(
@@ -152,7 +152,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
         deletedWorkflow
           .executeVerifiedUpdateItems(VerifiedUpdateItems(
             VerifiedUpdateItems.Simple(),
-            Some(VerifiedUpdateItems.Versioned(VersionId("x"), delete = Seq(workflow.path)))))
+            Some(VerifiedUpdateItems.Versioned(VersionId("x"), remove = Seq(workflow.path)))))
           .orThrow
         // The deleted workflow still contains an order and has not been destroyed
         assert(deletedWorkflow.controllerState.keyToItem.contains(workflow.id))
@@ -203,7 +203,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       _controllerState = updated // FIXME
     }
 
-    //"After VersionedItemDeleted, the unused workflows are destroyed" in {
+    //"After VersionedItemRemoved, the unused workflows are destroyed" in {
     //  val executor = new Executor(ControllerState.empty)
     //
     //  executor.executeVerifiedUpdateItems(verifiedUpdateItems)
@@ -212,8 +212,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     //  assert(
     //    executor.applyEventsAndReturnSubsequentEvents(Seq(
     //      VersionAdded(v2),
-    //      VersionedItemDeleted(aWorkflow.path),
-    //      VersionedItemDeleted(bWorkflow.path))
+    //      VersionedItemRemoved(aWorkflow.path),
+    //      VersionedItemRemoved(bWorkflow.path))
     //    ).map(_.toSet) == Right(Set[AnyKeyedEvent](
     //      NoKey <-: ItemDestroyed(aWorkflow.id),
     //      NoKey <-: ItemDestroyed(bWorkflow.id))))
@@ -238,7 +238,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       assert(
         executor.applyEventsAndReturnSubsequentEvents(Seq(
           VersionAdded(v2),
-          VersionedItemDeleted(aWorkflow.path)
+          VersionedItemRemoved(aWorkflow.path)
         )) == Right(Nil))
 
       assert(
@@ -286,10 +286,10 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           Some(VerifiedUpdateItems.Versioned(
             v3,
             Nil,
-            delete = Seq(bWorkflow.path)))
+            remove = Seq(bWorkflow.path)))
         )) == Right(Seq(
           NoKey <-: VersionAdded(v3),
-          NoKey <-: VersionedItemDeleted(bWorkflow.path),
+          NoKey <-: VersionedItemRemoved(bWorkflow.path),
           NoKey <-: ItemDetachable(bWorkflow.id, bAgentRef.path))))
 
       assert(
@@ -333,9 +333,9 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
     assert(applyEvents(_controllerState,
       VersionAdded(v2),
-      VersionedItemDeleted(aWorkflow.path),
-      VersionedItemDeleted(bWorkflow.path),
-      VersionedItemDeleted(cWorkflow.path)
+      VersionedItemRemoved(aWorkflow.path),
+      VersionedItemRemoved(bWorkflow.path),
+      VersionedItemRemoved(cWorkflow.path)
     ) == Right(Seq(
       NoKey <-: ItemDestroyed(cWorkflow.id),
       NoKey <-: ItemDetachable(aWorkflow.id, aAgentRef.path))))

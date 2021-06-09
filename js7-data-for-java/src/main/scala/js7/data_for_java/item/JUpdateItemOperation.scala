@@ -2,7 +2,7 @@ package  js7.data_for_java.item
 
 import javax.annotation.Nonnull
 import js7.base.crypt.SignedString
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemOperation, SimpleItemPath, VersionId, VersionedItemPath}
 import js7.data_for_java.common.JavaWrapper
 
@@ -29,12 +29,6 @@ object JUpdateItemOperation
     new JUpdateItemOperation(
       AddVersion(versionId))
 
-  /** Please use addOrChangedSigned instead! */
-  @Deprecated
-  @Nonnull
-  def addOrChangeVersioned(@Nonnull signedString: SignedString): JUpdateItemOperation =
-    addOrChangeSigned(signedString)
-
   /** `signedString` contains the JSON-serialized `VersionedItem` including path and `VersionId`,
     * signed with a signature.
     * Adds the versioned item to the versioned specified with `addVersion`. */
@@ -43,16 +37,15 @@ object JUpdateItemOperation
     new JUpdateItemOperation(
       AddOrChangeSigned(signedString))
 
-  /** BITTE VERWENDE deleteVersioned! */
-  @Deprecated
+  /** BITTE VERWENDE removeVersioned! */
   @Nonnull
-  def deleteItem(@Nonnull path: VersionedItemPath): JUpdateItemOperation =
-    deleteVersioned(path)
+  def deleteVersioned(@Nonnull path: VersionedItemPath): JUpdateItemOperation =
+    removeVersioned(path)
 
   /** Delete the given path in the new version,
     * Requires `addVersion`. */
   @Nonnull
-  def deleteVersioned(@Nonnull path: VersionedItemPath): JUpdateItemOperation =
+  def removeVersioned(@Nonnull path: VersionedItemPath): JUpdateItemOperation =
     new JUpdateItemOperation(
-      DeleteVersioned(path))
+      RemoveVersioned(path))
 }

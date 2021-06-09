@@ -12,7 +12,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, RemoveOrdersWhenTerminated}
 import js7.data.event.EventSeq
 import js7.data.item.BasicItemEvent.{ItemDestroyed, ItemDetached}
-import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{ItemRevision, Repo, VersionId}
 import js7.data.lock.Acquired.Available
@@ -404,21 +404,21 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, workflow.path), remove = true).await(99.s).orThrow
     controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
-    def deleteWorkflowAndLock() = controllerApi
+    def removeWorkflowAndLock() = controllerApi
       .updateItems(Observable(
         DeleteSimple(lockPath),
         AddVersion(v),
-        DeleteVersioned(workflow.path)))
+        RemoveVersioned(workflow.path)))
       .await(99.s)
     // Lock cannot be deleted due to orders in the deleted (but still versioned) Workflow
-    assert(deleteWorkflowAndLock() == Left(ItemIsStillReferencedProblem(lockPath, workflow.id)))
+    assert(removeWorkflowAndLock() == Left(ItemIsStillReferencedProblem(lockPath, workflow.id)))
 
     controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
     controller.eventWatch.await[OrderRemoved](_.key == orderId)
-    deleteWorkflowAndLock().orThrow
+    removeWorkflowAndLock().orThrow
   }
 
-  "Delete Workflow and Lock" in {
+  "Remove Workflow and Lock" in {
     val eventId = controller.eventWatch.lastAddedEventId
     val previousControllerState = controller.controllerState.await(99.s)
     val v = VersionId("DELETE")
@@ -427,9 +427,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       DeleteSimple(lock2Path),
       DeleteSimple(limit2LockPath),
       AddVersion(v),
-      DeleteVersioned(workflowPath),
-      DeleteVersioned(workflow1Path),
-      DeleteVersioned(workflow2Path)
+      RemoveVersioned(workflowPath),
+      RemoveVersioned(workflow1Path),
+      RemoveVersioned(workflow2Path)
     )).await(99.s).orThrow
     for (workflowId <- previousControllerState.repo.itemIdsFor(WorkflowPath)) {
       controller.eventWatch.await[ItemDestroyed](_.event.key == workflowId, after = eventId)

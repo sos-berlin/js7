@@ -17,7 +17,7 @@ import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, Batch, Releas
 import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
@@ -84,8 +84,8 @@ with AutoCloseable
       .map(_ withVersion versionId)
       .map(itemSigner.toSignedString)
       .map(AddOrChangeSigned.apply)
-    val delete = Observable.fromIterable(diff.deleted).map(DeleteVersioned.apply)
-    updateItems(AddVersion(versionId) +: (addOrChange ++ delete))
+    val remove = Observable.fromIterable(diff.removed).map(RemoveVersioned.apply)
+    updateItems(AddVersion(versionId) +: (addOrChange ++ remove))
   }
 
   def updateRepo(
@@ -95,7 +95,7 @@ with AutoCloseable
   : Task[Checked[Completed]] =
     updateItems(AddVersion(versionId) +: (
       Observable.fromIterable(signedItems).map(o => AddOrChangeSigned(o.signedString)) ++
-        Observable.fromIterable(delete).map(DeleteVersioned.apply)))
+        Observable.fromIterable(delete).map(RemoveVersioned.apply)))
 
   def updateUnsignedSimpleItems(items: Iterable[UnsignedSimpleItem]): Task[Checked[Completed]] =
     updateItems(

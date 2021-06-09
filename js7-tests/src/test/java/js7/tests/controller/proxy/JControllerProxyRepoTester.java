@@ -33,7 +33,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static js7.data_for_java.item.JUpdateItemOperation.addOrChangeSigned;
 import static js7.data_for_java.item.JUpdateItemOperation.addVersion;
-import static js7.data_for_java.item.JUpdateItemOperation.deleteVersioned;
+import static js7.data_for_java.item.JUpdateItemOperation.removeVersioned;
 import static js7.data_for_java.vavr.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -111,22 +111,22 @@ final class JControllerProxyRepoTester
                 .map(JUpdateItemOperation::addOrChangeSigned))));
     }
 
-    void deleteWorkflow() throws InterruptedException, ExecutionException, TimeoutException {
+    void removeWorkflow() throws InterruptedException, ExecutionException, TimeoutException {
         VersionId versionId = VersionId.of("MY-VERSION-2");  // Must match the versionId in added or replaced objects
 
         // The workflow shoud be known (latest version)
         assertThat(proxy.currentState().repo().pathToWorkflow(bWorkflowPath).isRight(), equalTo(true));
 
-        CompletableFuture<JEventAndControllerState<Event>> whenWorkflowDeleted =
-            awaitEvent(keyedEvent -> isItemDeleted(keyedEvent, bWorkflowPath));
+        CompletableFuture<JEventAndControllerState<Event>> whenWorkflowRemoved =
+            awaitEvent(keyedEvent -> isItemRemoved(keyedEvent, bWorkflowPath));
 
         await(api.updateItems(Flux.just(
             addVersion(versionId),
-            deleteVersioned(bWorkflowPath))));
+            removeVersioned(bWorkflowPath))));
 
-        whenWorkflowDeleted.get(99, SECONDS);
+        whenWorkflowRemoved.get(99, SECONDS);
 
-        // The workflow should be deleted (latest version)
+        // The workflow should be removed (latest version)
         Thread.sleep(100); // Wait a little until currentState is updated
         assertThat(proxy.currentState().repo().pathToWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
             equalTo(Either.left(ProblemCode.of("UnknownItemPath"))));
@@ -152,8 +152,8 @@ final class JControllerProxyRepoTester
         return event instanceof VersionedEvent.VersionedItemAdded && ((VersionedEvent.VersionedItemAdded)event).path().equals(path);
     }
 
-    private static boolean isItemDeleted(KeyedEvent<Event> keyedEvent, VersionedItemPath path) {
+    private static boolean isItemRemoved(KeyedEvent<Event> keyedEvent, VersionedItemPath path) {
         Event event = keyedEvent.event();
-        return event instanceof VersionedEvent.VersionedItemDeleted && ((VersionedEvent.VersionedItemDeleted)event).path().equals(path);
+        return event instanceof VersionedEvent.VersionedItemRemoved && ((VersionedEvent.VersionedItemRemoved)event).path().equals(path);
     }
 }

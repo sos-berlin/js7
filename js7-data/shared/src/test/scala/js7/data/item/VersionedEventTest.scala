@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString}
-import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -60,11 +60,11 @@ final class VersionedEventTest extends AnyFreeSpec
         }""")
     }
 
-    "VersionedItemDeleted" in {
+    "VersionedItemRemoved" in {
       testJson[VersionedEvent](
-        VersionedItemDeleted(WorkflowPath("TEST")),
+        VersionedItemRemoved(WorkflowPath("TEST")),
         json"""{
-          "TYPE": "VersionedItemDeleted",
+          "TYPE": "VersionedItemRemoved",
           "path": "Workflow:TEST"
         }""")
     }
@@ -80,8 +80,8 @@ final class VersionedEventTest extends AnyFreeSpec
   //  intercept[RuntimeException] { VersionedItemChanged(Workflow(WorkflowPath("A") % "VERSION", Vector(Fail(None)))) }
   //}
 
-  "VersionedItemDeleted must have a non-anonymous path" in {
-    intercept[RuntimeException] { VersionedItemDeleted(WorkflowPath.Anonymous) }
+  "VersionedItemRemoved must have a non-anonymous path" in {
+    intercept[RuntimeException] { VersionedItemRemoved(WorkflowPath.Anonymous) }
   }
 }
 

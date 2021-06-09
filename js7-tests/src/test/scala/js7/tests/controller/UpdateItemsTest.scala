@@ -11,11 +11,11 @@ import js7.base.thread.Futures.implicits.RichFutures
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
-import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemDeletedProblem}
+import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.RemoveOrdersWhenTerminated
 import js7.data.event.{EventRequest, EventSeq}
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, RelativePathExecutable}
 import js7.data.lock.{Lock, LockPath}
@@ -90,10 +90,10 @@ final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
     // The two order running on separate workflow versions run in parallel
     assert(finishedAt(0) > finishedAt(1) + Tick)  // The second added order running on workflow version 2 finished before the first added order
 
-    controllerApi.updateItems(Observable(AddVersion(V3), DeleteVersioned(workflowPath))).await(99.s).orThrow
-    controllerApi.updateItems(Observable(AddVersion(V3), DeleteVersioned(workflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
+    controllerApi.updateItems(Observable(AddVersion(V3), RemoveVersioned(workflowPath))).await(99.s).orThrow
+    controllerApi.updateItems(Observable(AddVersion(V3), RemoveVersioned(workflowPath))).await(99.s).orThrow  /*Duplicate effect is ignored*/
     assert(controllerApi.addOrder(FreshOrder(OrderId("⬛️"), workflowPath)).await(99.s) ==
-      Left(VersionedItemDeletedProblem(workflowPath)))
+      Left(VersionedItemRemovedProblem(workflowPath)))
 
     controllerApi.executeCommand(RemoveOrdersWhenTerminated(orderIds)).await(99.s).orThrow
 

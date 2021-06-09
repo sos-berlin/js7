@@ -11,7 +11,7 @@ import js7.data.event.{KeyedEvent, NoKeyEvent}
 import js7.data.item.BasicItemEvent.{ItemDestroyed, ItemDestructionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
-import js7.data.item.VersionedEvent.VersionedItemDeleted
+import js7.data.item.VersionedEvent.VersionedItemRemoved
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedItemPath}
 import js7.data.orderwatch.OrderWatchPath
 import scala.collection.View
@@ -27,7 +27,7 @@ trait VerifiedUpdateItemsExecutor
         controllerState.repo.itemsToEvents(
           versioned.versionId,
           versioned.verifiedItems.map(_.signedItem),
-          versioned.delete))
+          versioned.remove))
       .flatMap(versionedEvents =>
         for {
           controllerState <- controllerState.applyEvents(versionedEvents.map(NoKey <-: _))
@@ -35,8 +35,8 @@ trait VerifiedUpdateItemsExecutor
           controllerState <- controllerState.applyEvents(simpleItemEvents.map(NoKey <-: _))
           controllerState <- controllerState.applyEvents(
             versionedEvents.view
-              .collect { case e: VersionedItemDeleted => e.path }
-              .flatMap(controllerState.destroyDeletedVersionedItem))
+              .collect { case e: VersionedItemRemoved => e.path }
+              .flatMap(controllerState.destroyRemovedVersionedItem))
           _ <- controllerState.checkVerifiedUpdateConsistency(verifiedUpdateItems)
         } yield (simpleItemEvents ++ versionedEvents).map(NoKey <-: _).toVector)
       .left.map {
@@ -46,7 +46,7 @@ trait VerifiedUpdateItemsExecutor
         case o => o
       }
 
-  protected def destroyDeletedVersionedItem(path: VersionedItemPath): Option[KeyedEvent[ItemDestroyed]] =
+  protected def destroyRemovedVersionedItem(path: VersionedItemPath): Option[KeyedEvent[ItemDestroyed]] =
     controllerState.repo
       .pathToVersionToSignedItems(path)
       .tail.headOption
@@ -127,8 +127,8 @@ trait VerifiedUpdateItemsExecutor
     val newChecked = controllerState.checkAddedOrChangedItems(verifiedUpdateItems.addOrChangeKeys)
     val delSimpleChecked = controllerState
       .checkDestroyedSimpleItems(verifiedUpdateItems.simple.delete.view)
-    val delVersionedChecked = controllerState.checkDeletedVersionedItems(
-        verifiedUpdateItems.maybeVersioned.view.flatMap(_.delete))
+    val delVersionedChecked = controllerState.checkRemovedVersionedItems(
+        verifiedUpdateItems.maybeVersioned.view.flatMap(_.remove))
     newChecked
       .combineLeftOrRight(delSimpleChecked)
       .combineLeftOrRight(delVersionedChecked)

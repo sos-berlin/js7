@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.crypt.SignedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{InventoryItemKey, ItemOperation, SignableItem, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import monix.eval.Task
 import monix.reactive.Observable
@@ -47,10 +47,10 @@ object VerifiedUpdateItems
   final case class Versioned(
     versionId: VersionId,
     verifiedItems: Seq[Verified[VersionedItem]] = Nil,
-    delete: Seq[VersionedItemPath] = Nil)
+    remove: Seq[VersionedItemPath] = Nil)
   {
     private[VerifiedUpdateItems] def paths: View[VersionedItemPath] =
-      verifiedItems.view.map(_.item.path) ++ delete
+      verifiedItems.view.map(_.item.path) ++ remove
   }
 
   def fromOperations(
@@ -69,7 +69,7 @@ object VerifiedUpdateItems
     val unsignedSimpleItems_ = Vector.newBuilder[UnsignedSimpleItem]
     val signedItems_ = Vector.newBuilder[Verified[SignableItem]]
     val simpleDeletes_ = Vector.newBuilder[SimpleItemPath]
-    val versionedDeletes_ = Vector.newBuilder[VersionedItemPath]
+    val versionedRemoves_ = Vector.newBuilder[VersionedItemPath]
     @volatile var maybeVersionId: Option[VersionId] = None
     @volatile var problemOccurred: Option[Problem] = None
 
@@ -94,7 +94,7 @@ object VerifiedUpdateItems
         case DeleteSimple(path) => simpleDeletes_ += path
         case verifiedItem: Verified[SignableItem] @unchecked => signedItems_ += verifiedItem
         case () => assert(problemOccurred.nonEmpty)
-        case DeleteVersioned(path) => versionedDeletes_ += path
+        case RemoveVersioned(path) => versionedRemoves_ += path
         case AddVersion(v) =>
           if (maybeVersionId.isEmpty) maybeVersionId = Some(v)
           else problemOccurred = Some(Problem("Duplicate AddVersion"))
@@ -113,7 +113,7 @@ object VerifiedUpdateItems
             .concat(simpleDeletes)
             .checkUniqueness(identity)
             .flatMap(_ =>
-              checkVersioned(maybeVersionId, versionedItems, versionedDeletes_.result()))
+              checkVersioned(maybeVersionId, versionedItems, versionedRemoves_.result()))
             .map(maybeVersioned =>
               VerifiedUpdateItems(
                 VerifiedUpdateItems.Simple(unsignedSimpleItems, signedSimpleItems, simpleDeletes),
@@ -126,12 +126,12 @@ object VerifiedUpdateItems
   private def checkVersioned(
     maybeVersionId: Option[VersionId],
     verifiedVersionedItems: Seq[Verified[VersionedItem]],
-    versionedDeletes: Seq[VersionedItemPath]
+    versionedRemoves: Seq[VersionedItemPath]
   ): Checked[Option[Versioned]] =
-    (maybeVersionId, verifiedVersionedItems, versionedDeletes) match {
-      case (Some(v), verifiedVersionedItems, delete) =>
-        for (_ <- (verifiedVersionedItems.view.map(_.item.path) ++ delete).checkUniqueness(identity)) yield
-          Some(VerifiedUpdateItems.Versioned(v, verifiedVersionedItems, delete))
+    (maybeVersionId, verifiedVersionedItems, versionedRemoves) match {
+      case (Some(v), verifiedVersionedItems, remove) =>
+        for (_ <- (verifiedVersionedItems.view.map(_.item.path) ++ remove).checkUniqueness(identity)) yield
+          Some(VerifiedUpdateItems.Versioned(v, verifiedVersionedItems, remove))
       case (None, Seq(), Seq()) =>
         Right(None)
       case (None, _, _) =>

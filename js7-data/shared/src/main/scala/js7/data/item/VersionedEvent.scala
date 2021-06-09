@@ -81,15 +81,15 @@ object VersionedEvent {
       VersionedItemAddedOrChanged.jsonDecoder(VersionedItemChanged(_))
   }
 
-  final case class VersionedItemDeleted(path: VersionedItemPath) extends VersionedItemEvent {
-    require(!path.isAnonymous, "VersionedItemDeleted event requires a path")
+  final case class VersionedItemRemoved(path: VersionedItemPath) extends VersionedItemEvent {
+    require(!path.isAnonymous, "VersionedItemRemoved event requires a path")
   }
 
   implicit val jsonCodec = TypedJsonCodec[VersionedEvent](
     Subtype(deriveCodec[VersionAdded]),
     Subtype[VersionedItemAdded],
     Subtype[VersionedItemChanged],
-    Subtype(deriveCodec[VersionedItemDeleted]))
+    Subtype(deriveCodec[VersionedItemRemoved]))
 
   intelliJuseImport(versionedItemJsonCodec, itemPathJsonCodec)
 }

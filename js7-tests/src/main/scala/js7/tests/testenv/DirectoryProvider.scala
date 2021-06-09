@@ -34,7 +34,7 @@ import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.signableItemJsonCodec
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
@@ -226,7 +226,7 @@ extends HasCloser
           .map(itemSigner.toSignedString)
           .map(AddOrChangeSigned(_)) ++
           Observable.fromIterable(delete)
-            .map(DeleteVersioned.apply))
+            .map(RemoveVersioned.apply))
     ).await(99.s).orThrow
 
   private def controllerName = testName.fold(ControllerConfiguration.DefaultName)(_ + "-Controller")

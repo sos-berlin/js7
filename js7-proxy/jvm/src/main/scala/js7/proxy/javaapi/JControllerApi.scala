@@ -96,12 +96,12 @@ extends AutoCloseable
       .runToFuture
       .asJava
 
-  /** Update the Items, i.e. add, change or deleteItem simple or versioned items.
+  /** Update the Items, i.e. add, change or remove/delete simple or versioned items.
     *
     * The `JUpdateItemOperation.addVersion` adds a version.
     * This operation must be given exactly only if any versioned times are concerned.
     *
-    * All other `JUpdateItemOperation`s add/replace or deleteItem items.
+    * All other `JUpdateItemOperation`s add/replace or remove/delete items.
     *
     * '''Example'''
     *
@@ -110,7 +110,7 @@ extends AutoCloseable
     *
     * import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addOrChange;
     * import static js7.proxy.javaapi.data.item.JUpdateItemOperation.addVersion;
-    * import static js7.proxy.javaapi.data.item.JUpdateItemOperation.deleteItem;
+    * import static js7.proxy.javaapi.data.item.JUpdateItemOperation.removeVersioned;
     *
     * controllerApi.updateItems(
     *   Flux.concat(
@@ -139,9 +139,9 @@ extends AutoCloseable
     * signatureString = sign(jsonString.getBytes(UTF_8))
     *     }}}
     *
-    * '''To deleteItem an item:'''
+    * '''To remove an item:'''
     * {{{
-    * JUpdateItemOperations.deleteItem(VersionedItemPath)
+    * JUpdateItemOperations.removeVersioned(VersionedItemPath)
     * }}}
     *
     * `VersionedItemPath` may be a [[js7.data.workflow.WorkflowPath]]

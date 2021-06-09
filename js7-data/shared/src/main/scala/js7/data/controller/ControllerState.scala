@@ -341,7 +341,7 @@ extends JournaledState[ControllerState]
       .combineProblems
       .rightAs(())
 
-  private[controller] def checkDeletedVersionedItems(deletedPaths: Iterable[VersionedItemPath])
+  private[controller] def checkRemovedVersionedItems(deletedPaths: Iterable[VersionedItemPath])
   : Checked[Unit] =
     deletedPaths.view
       .map(checkVersionedItemIsDeletable)

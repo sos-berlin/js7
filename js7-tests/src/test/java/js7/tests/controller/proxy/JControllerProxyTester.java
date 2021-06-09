@@ -34,7 +34,7 @@ class JControllerProxyTester
         JControllerProxyRepoTester repoTester = new JControllerProxyRepoTester(proxy);
         repoTester.addTamperedItems(manyItemJsons);
         repoTester.addItems(itemJsons);
-        repoTester.deleteWorkflow();
+        repoTester.removeWorkflow();
 
         new JJobResourceTester(proxy).run();
 

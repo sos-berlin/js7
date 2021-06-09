@@ -25,7 +25,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
-import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
 import js7.data.item.{Repo, SourceType, VersionId, VersionedItems}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderAdded
@@ -245,7 +245,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       lastEventId = controller.eventWatch.lastAddedEventId
       delete(live resolve CWorkflowPath.toFile(SourceType.Json))
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
-        Vector(NoKey <-: VersionedItemDeleted(CWorkflowPath)))
+        Vector(NoKey <-: VersionedItemRemoved(CWorkflowPath)))
     }
 
     "Add a workflow" in {

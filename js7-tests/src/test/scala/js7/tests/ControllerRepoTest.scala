@@ -21,11 +21,11 @@ import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
-import js7.data.Problems.VersionedItemDeletedProblem
+import js7.data.Problems.VersionedItemRemovedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, TakeSnapshot}
 import js7.data.item.BasicItemEvent.ItemDestroyed
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{RelativePathExecutable, ScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderPrompted, OrderRemoved, OrderStdoutWritten}
@@ -145,7 +145,7 @@ final class ControllerRepoTest extends AnyFreeSpec
           // Delete workflow
           provider.updateVersionedItems(controller, V6, delete = CWorkflowPath :: Nil)
           assert(Try { runOrder(controller, CWorkflowPath ~ V6, OrderId("B-6")) }
-            .failed.get.asInstanceOf[HttpException].problem contains VersionedItemDeletedProblem(CWorkflowPath))
+            .failed.get.asInstanceOf[HttpException].problem contains VersionedItemRemovedProblem(CWorkflowPath))
 
           // Command is rejected due to duplicate VersionId
           assert(controllerApi.updateRepo(V2, Nil).await(99.s) ==
@@ -241,7 +241,7 @@ final class ControllerRepoTest extends AnyFreeSpec
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
         (Observable(AddVersion(v)) ++
           Observable.fromIterable(1 to n)
-            .map(i => DeleteVersioned(WorkflowPath(s"WORKFLOW-$i"))))
+            .map(i => RemoveVersioned(WorkflowPath(s"WORKFLOW-$i"))))
       }
     }
   }

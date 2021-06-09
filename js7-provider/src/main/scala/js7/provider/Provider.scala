@@ -169,7 +169,7 @@ extends HasCloser with Observing with ProvideActorSystem
 
   private def logUpdate(versionId: VersionId, diff: VersionedItems.Diff[VersionedItemPath, VersionedItem]): Unit = {
     logger.info(s"Version ${versionId.string}")
-    for (o <- diff.deleted            .sorted) logger.info(s"Delete ${o.pretty}")
+    for (o <- diff.removed            .sorted) logger.info(s"Delete ${o.pretty}")
     for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add ${o.pretty}")
     for (o <- diff.changed.map(_.path).sorted) logger.info(s"Change ${o.pretty}")
   }

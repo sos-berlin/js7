@@ -53,7 +53,7 @@ object Problems
     def arguments = Map("agentPath" -> agentPath.string)
   }
 
-  final case class VersionedItemDeletedProblem(path: VersionedItemPath) extends Problem.Coded {
+  final case class VersionedItemRemovedProblem(path: VersionedItemPath) extends Problem.Coded {
     def arguments = Map("path" -> path.pretty)
   }
 

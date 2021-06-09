@@ -52,7 +52,7 @@ final class VersionedItemsTest extends AnyFreeSpec
         diffVersionedItems(
           a :: Nil,
           a :: b :: Nil)
-        == RepoChange.Deleted(b.path) :: Nil)
+        == RepoChange.Removed(b.path) :: Nil)
     }
 
     "one changed" in {
@@ -74,7 +74,7 @@ final class VersionedItemsTest extends AnyFreeSpec
           a :: b :: Nil
         ).toSet == Set(
           RepoChange.Changed(aUpdated),
-          RepoChange.Deleted(b.path),
+          RepoChange.Removed(b.path),
           RepoChange.Added(c)))
     }
 
@@ -99,7 +99,7 @@ final class VersionedItemsTest extends AnyFreeSpec
   "Diff" in {
     val diff = VersionedItems.Diff.fromRepoChanges(
       List(
-        RepoChange.Deleted(BWorkflow.path),
+        RepoChange.Removed(BWorkflow.path),
         RepoChange.Added(BTestItem withVersion V0),
         RepoChange.Added(CWorkflow withVersion V1),
         RepoChange.Changed(D1Workflow withVersion V1)))
@@ -107,19 +107,19 @@ final class VersionedItemsTest extends AnyFreeSpec
     assert(diff == VersionedItems.Diff[VersionedItemPath, VersionedItem](
       added = List(BTestItem withVersion V0, CWorkflow withVersion V1),
       changed = List(D1Workflow withVersion V1),
-      deleted = List(BWorkflow.path)))
+      removed = List(BWorkflow.path)))
 
     assert(diff.select[WorkflowPath, Workflow] ==
       VersionedItems.Diff[WorkflowPath, Workflow](
         added = List(CWorkflow withVersion V1),
         changed = List(D1Workflow withVersion V1),
-        deleted = List(BWorkflow.path)))
+        removed = List(BWorkflow.path)))
 
     assert(diff.select[TestPath, TestVersionedItem] ==
       VersionedItems.Diff[TestPath, TestVersionedItem](
         added = List(BTestItem withVersion V0),
         changed = Nil,
-        deleted = Nil))
+        removed = Nil))
   }
 }
 

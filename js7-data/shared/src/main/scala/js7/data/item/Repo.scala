@@ -10,9 +10,9 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, UnknownItemPathProblem, VersionedItemDeletedProblem}
+import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, UnknownItemPathProblem, VersionedItemRemovedProblem}
 import js7.data.item.Repo.Entry
-import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemDeleted, VersionedItemEvent}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.{View, mutable}
 
@@ -56,15 +56,15 @@ final case class Repo private(
     }
 
   /** Returns the difference to the repo as events. */
-  def itemsToEvents(versionId: VersionId, changed: Seq[Signed[VersionedItem]], deleted: Iterable[VersionedItemPath])
+  def itemsToEvents(versionId: VersionId, changed: Seq[Signed[VersionedItem]], removed: Iterable[VersionedItemPath])
   : Checked[Seq[VersionedEvent]] =
-    itemsToEventBlock(versionId, changed, deleted).map(_.events)
+    itemsToEventBlock(versionId, changed, removed).map(_.events)
 
   /** Returns the difference to the repo as events. */
   private[item] def itemsToEventBlock(
     versionId: VersionId,
     changed: Seq[Signed[VersionedItem]],
-    deleted: Iterable[VersionedItemPath] = Nil)
+    removed: Iterable[VersionedItemPath] = Nil)
   : Checked[EventBlock] =
     checkItemVersions(versionId, changed)
       .flatMap { changed =>
@@ -73,17 +73,17 @@ final case class Repo private(
           lazy val addedSet = addedOrChanged.view
             .collect { case a: VersionedItemAdded => a.path }
             .toSet
-          val deletedEvents = deleted.view
-            .filterNot(path => addedSet contains path)  // only change and delete
+          val removedEvents = removed.view
+            .filterNot(path => addedSet contains path)  // only change and remove
             .filter(exists)  // only known
-            .map(VersionedItemDeleted(_))
+            .map(VersionedItemRemoved(_))
             .toVector
-          if (versionId == this.versionId && addedSet.isEmpty && deletedEvents.isEmpty
-            && (changed.nonEmpty || deleted.nonEmpty))
+          if (versionId == this.versionId && addedSet.isEmpty && removedEvents.isEmpty
+            && (changed.nonEmpty || removed.nonEmpty))
             // Ignore same version with empty difference if it is not a versionId-only UpdateRepo
             emptyEventBlock
           else
-            NonEmptyEventBlock(versionId, deletedEvents, addedOrChanged)
+            NonEmptyEventBlock(versionId, removedEvents, addedOrChanged)
         }
       }
 
@@ -95,10 +95,10 @@ final case class Repo private(
       .toMap[VersionedItemPath, VersionedItem]
     val updated = currentItems.view
       .filter(o => base.isCurrentItem(o.key))
-    val deleted = base.currentItems.view
+    val removed = base.currentItems.view
       .map(_.path)
       .filter(path => !exists(path) && !added.contains(path))
-    (deleted.map(RepoChange.Deleted.apply) ++
+    (removed.map(RepoChange.Removed.apply) ++
       updated.map(RepoChange.Changed.apply) ++
       added.values.view.map(RepoChange.Added.apply)
     ).toVector
@@ -228,7 +228,7 @@ final case class Repo private(
               pathToItem(event.path)
                 .flatMap(_ => addOrChange(event))
 
-            case VersionedItemDeleted(path) =>
+            case VersionedItemRemoved(path) =>
               for (_ <- pathToItem(event.path)) yield
                 addEntry(path, None)
           }
@@ -274,11 +274,11 @@ final case class Repo private(
   def exists(path: VersionedItemPath): Boolean =
     pathToVersionToSignedItems.get(path) match {
       case None => false
-      case Some(entries) => !entries.head.isDeleted
+      case Some(entries) => !entries.head.isRemoved
     }
 
-  def markedAsDeleted(path: VersionedItemPath): Boolean =
-    pathToVersionToSignedItems.get(path).exists(_.head.isDeleted)
+  def markedAsRemoved(path: VersionedItemPath): Boolean =
+    pathToVersionToSignedItems.get(path).exists(_.head.isRemoved)
 
   def isCurrentItem(id: VersionedItemId_): Boolean =
     pathToId(id.path)
@@ -296,7 +296,7 @@ final case class Repo private(
       .rightOr(path, UnknownItemPathProblem(path))
       .flatMap(_.head
         .maybeSignedItem
-        .toChecked(VersionedItemDeletedProblem(path))
+        .toChecked(VersionedItemRemovedProblem(path))
         .map(_.value.asInstanceOf[A]))
 
   def pathToId(path: VersionedItemPath): Option[VersionedItemId_] =
@@ -332,7 +332,7 @@ final case class Repo private(
       .checked(path)
       .flatMap(_.head
         .maybeSignedItem
-        .toChecked(VersionedItemDeletedProblem(path)))
+        .toChecked(VersionedItemRemovedProblem(path)))
 
   def anyIdToItem(id: VersionedItemId_): Checked[VersionedItem] =
     anyIdToSigned(id).map(_.value)
@@ -360,7 +360,7 @@ final case class Repo private(
             fb <- findInHistory(versionToSignedItem, history.contains) toChecked UnknownKeyProblem("VersionedItemId", id)
           } yield fb
         ): Checked[Option[Signed[VersionedItem]]]
-      signedItem <- itemOption.toChecked(VersionedItemDeletedProblem(id.path))
+      signedItem <- itemOption.toChecked(VersionedItemRemovedProblem(id.path))
     } yield signedItem
 
   lazy val estimatedEventCount: Int = {
@@ -371,14 +371,14 @@ final case class Repo private(
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
   def toEvents: View[VersionedEvent] = {
-    type DeletedOrUpdated = Either[VersionedItemPath/*deleted*/, Signed[VersionedItem/*added/changed*/]]
+    type RemovedOrUpdated = Either[VersionedItemPath/*removed*/, Signed[VersionedItem/*added/changed*/]]
 
-    val versionToChanges: Map[VersionId, Seq[DeletedOrUpdated]] =
+    val versionToChanges: Map[VersionId, Seq[RemovedOrUpdated]] =
       pathToVersionToSignedItems
         .view
         .flatMap { case (path, entries) =>
           entries.map(entry =>
-            entry.versionId -> entry.maybeSignedItem.fold[DeletedOrUpdated](Left(path))(Right.apply))
+            entry.versionId -> entry.maybeSignedItem.fold[RemovedOrUpdated](Left(path))(Right.apply))
         }
         .groupBy(_._1)
         .view
@@ -394,7 +394,7 @@ final case class Repo private(
             .view
             .map {
               case Left(path) =>
-                VersionedItemDeleted(path)
+                VersionedItemRemoved(path)
               case Right(signedItem) =>
                 val entries = pathToVersionToSignedItems(signedItem.value.path)
                 if (findInHistory(entries, tailVersionSet).flatten.isDefined)
@@ -424,12 +424,12 @@ final case class Repo private(
       .keys.toSeq.sorted
       .map(path => s"$path: " +
         pathToVersionToSignedItems(path)
-          .map(entry => entry.maybeSignedItem.fold(s"${entry.versionId} deleted")(_ => s"${entry.versionId} added"))
+          .map(entry => entry.maybeSignedItem.fold(s"${entry.versionId} removed")(_ => s"${entry.versionId} added"))
       ) + ")"
 
   private[item] sealed trait EventBlock {
     def events: Seq[VersionedEvent]
-    def deletedEvents: Seq[VersionedItemDeleted]
+    def removedEvents: Seq[VersionedItemRemoved]
     def ids: Seq[VersionedItemId_]
     def items: Seq[VersionedItem]
     def isEmpty: Boolean
@@ -441,20 +441,20 @@ final case class Repo private(
   private[item] case object EmptyEventBlock extends EventBlock {
     def isEmpty = true
     def events = Nil
-    def deletedEvents = Nil
+    def removedEvents = Nil
     def ids = Nil
     def items = Nil
   }
 
-  final case class NonEmptyEventBlock(
+  sealed case class NonEmptyEventBlock(
     versionId: VersionId,
-    deletedEvents: Seq[VersionedItemDeleted],
+    removedEvents: Seq[VersionedItemRemoved],
     addedOrChanged: Seq[VersionedItemAddedOrChanged])
   extends EventBlock {
     def isEmpty = false
-    lazy val events = (View(VersionAdded(versionId)) ++ deletedEvents ++ addedOrChanged).toVector
+    lazy val events = (View(VersionAdded(versionId)) ++ removedEvents ++ addedOrChanged).toVector
     lazy val ids = {
-      (deletedEvents.view.map(event => (pathToId(event.path).get: VersionedItemId_)) ++
+      (removedEvents.view.map(event => (pathToId(event.path).get: VersionedItemId_)) ++
         addedOrChanged.view.map(_.path ~ versionId)
       ).toVector
     }
@@ -481,15 +481,15 @@ object Repo
       }
       .map(_.versionId)
       .toSet
-    val deleteVersions = entries.view
+    val removeVersions = entries.view
       .filterNot(e => remainingVersionIds(e.versionId))
       .map(_.versionId)
       .toSeq
-    val intermediateResult = deleteVersions.view ++
-      redundantDeletedIds(entries.view.filterNot(e => deleteVersions.contains(e.versionId)))
+    val intermediateResult = removeVersions.view ++
+      redundantRemovedIds(entries.view.filterNot(e => removeVersions.contains(e.versionId)))
 
     entries.head.maybeSignedItem match {
-      case Some(Signed(item, _)) if deleteVersions.headOption.contains(item.id.versionId) =>
+      case Some(Signed(item, _)) if removeVersions.headOption.contains(item.id.versionId) =>
         // Keep the current item despite it is not currently used
         intermediateResult.tail
       case _ =>
@@ -497,11 +497,11 @@ object Repo
     }
   }
 
-  private def redundantDeletedIds(entries: Iterable[Entry]): View[VersionId] = {
+  private def redundantRemovedIds(entries: Iterable[Entry]): View[VersionId] = {
     val a = entries.toArray
     val result = new mutable.ArrayBuffer[VersionId](a.size)
     for (i <- a.indices) {
-      if (a(i).isDeleted && (i == a.length - 1 || a(i + 1).isDeleted)) {
+      if (a(i).isRemoved && (i == a.length - 1 || a(i + 1).isRemoved)) {
         result += a(i).versionId
       }
     }
@@ -526,21 +526,21 @@ object Repo
     }
 
     sealed trait Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: VersionedItemId_ => A): A
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenRemoved: VersionedItemId_ => A): A
     }
     final case class Changed(item: Signed[VersionedItem]) extends Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: VersionedItemId_ => A) = whenChanged(item)
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenRemoved: VersionedItemId_ => A) = whenChanged(item)
     }
-    final case class Deleted(id: VersionedItemId_) extends Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenDeleted: VersionedItemId_ => A) = whenDeleted(id)
+    final case class Removed(id: VersionedItemId_) extends Operation {
+      def fold[A](whenChanged: Signed[VersionedItem] => A, whenRemoved: VersionedItemId_ => A) = whenRemoved(id)
     }
   }
 
   final case class Entry private(versionId: VersionId, maybeSignedItem: Option[Signed[VersionedItem]]) {
-    def isDeleted = maybeSignedItem.isEmpty
+    def isRemoved = maybeSignedItem.isEmpty
   }
 
-  /** None: not known at or before this VersionId; Some(None): deleted at or before this VersionId. */
+  /** None: not known at or before this VersionId; Some(None): removed at or before this VersionId. */
   private def findInHistory(entries: List[Entry], isKnownVersion: VersionId => Boolean): Option[Option[Signed[VersionedItem]]] =
     entries
       .view

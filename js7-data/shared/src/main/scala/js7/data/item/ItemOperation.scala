@@ -31,7 +31,7 @@ object ItemOperation
       TypedJsonCodec(
         Subtype(deriveCodec[AddVersion]),
         Subtype(deriveCodec[AddOrChangeSigned]),
-        Subtype(deriveCodec[DeleteVersioned]))
+        Subtype(deriveCodec[RemoveVersioned]))
   }
 
   final case class AddVersion(versionId: VersionId)
@@ -42,7 +42,7 @@ object ItemOperation
   final case class AddOrChangeSigned(signedString: SignedString)
   extends VersionedItemOperation
 
-  final case class DeleteVersioned(path: VersionedItemPath)
+  final case class RemoveVersioned(path: VersionedItemPath)
   extends VersionedItemOperation
 
   implicit def jsonCodec(implicit

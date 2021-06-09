@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.crypt.SignedItemVerifier
 import js7.data.crypt.SignedItemVerifier.Verified
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, DeleteVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemSigner, SignableItem, VersionId, VersionedItem}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.instructions.Fail
@@ -54,7 +54,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
       DeleteSimple(LockPath("DELETE")),
       AddVersion(v1),
       AddOrChangeSigned(itemSigner.toSignedString(workflow1)),
-      DeleteVersioned(WorkflowPath("DELETE")))
+      RemoveVersioned(WorkflowPath("DELETE")))
     assert(VerifiedUpdateItems.fromOperations(operations, itemVerifier.verify, user).await(99.s) ==
       Right(VerifiedUpdateItems(
         VerifiedUpdateItems.Simple(Seq(lock), Nil, delete = Seq(LockPath("DELETE"))),
@@ -102,7 +102,7 @@ final class VerifiedUpdateItemsTest extends AnyFreeSpec
         Observable(
           AddVersion(v1),
           AddOrChangeSigned(itemSigner.toSignedString(workflow1)),
-          DeleteVersioned(workflow1.path)),
+          RemoveVersioned(workflow1.path)),
         itemVerifier.verify,
         user
       ).await(99.s) ==
