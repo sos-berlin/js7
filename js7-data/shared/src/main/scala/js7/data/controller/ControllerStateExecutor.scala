@@ -22,9 +22,8 @@ import scala.collection.{View, mutable}
 import scala.language.implicitConversions
 
 final case class ControllerStateExecutor private(
-  keyedEvents: Iterable[AnyKeyedEvent],
+  keyedEvents: Seq[AnyKeyedEvent],
   controllerState: ControllerState)
-extends VerifiedUpdateItemsExecutor
 {
   import ControllerStateExecutor.convertImplicitly
 
@@ -71,7 +70,6 @@ extends VerifiedUpdateItemsExecutor
     val itemKeys = mutable.Set.empty[InventoryItemKey]
     val detachWorkflowCandidates = mutable.Set.empty[WorkflowId]
     val detachedItems = mutable.Set.empty[InventoryItemKey]
-    val detachedFromAgents = mutable.Set.empty[AgentPath]
     val orderIds = mutable.Set.empty[OrderId]
 
     var controllerState = this.controllerState
@@ -117,16 +115,15 @@ extends VerifiedUpdateItemsExecutor
       }
     }
 
-
     noProblem.flatMap { _ =>
       // Slow ???
       val controllerStateBeforeSubsequentEvents = controllerState
       val itemEvents = ControllerStateExecutor(controllerState).nextItemEvents(itemKeys).toVector
       controllerState = controllerState.applyEvents(itemEvents).orThrow
 
-      val detachableWorkflows = detachWorkflowCandidates.view
+      val makeWorkflowsDetachable = detachWorkflowCandidates.view
         .filter(controllerState.keyToItem.keySet.contains)
-        .filterNot(controllerState.isCurrentOrStillInUse)
+        .filter(controllerState.isObsoleteItem)
         .flatMap(workflowId =>
           controllerState.itemToAgentToAttachedState.get(workflowId)
             .view.flatMap(_.collect {
@@ -136,14 +133,13 @@ extends VerifiedUpdateItemsExecutor
                  NoKey <-: ItemDetachable(workflowId, agentPath)
             }))
         .toVector
-      controllerState = controllerState.applyEvents(detachableWorkflows).orThrow
 
       val deleteItems = (detachWorkflowCandidates.view ++ detachedItems)
         .filter(controllerState.keyToItem.keySet.contains)
         .filterNot(controllerState.itemToAgentToAttachedState.contains)
         .filter {
           case WorkflowId.as(workflowId) =>
-            !controllerState.isCurrentOrStillInUse(workflowId)
+            controllerState.isObsoleteItem(workflowId)
           case path: SimpleItemPath =>
             !controllerState.isReferenced(path)
           case _ =>
@@ -151,13 +147,7 @@ extends VerifiedUpdateItemsExecutor
         }
         .map(itemKey => NoKey <-: ItemDeleted(itemKey))
         .toVector
-      controllerState = controllerState.applyEvents(deleteItems).orThrow
-
-      val deleteAgentRefs = detachedFromAgents.view
-        .filterNot(controllerState.itemToAgentToAttachedState.values.view.flatMap(_.keys).toSet)
-        .map(agentPath => NoKey <-: ItemDeleted(agentPath))
-        .toVector
-      controllerState = controllerState.applyEvents(deleteAgentRefs).orThrow
+      controllerState = controllerState.applyEvents(makeWorkflowsDetachable.view ++ deleteItems).orThrow
 
       val eventsAndState = controllerState.nextOrderEventsByOrderId(orderIds)
       controllerState = eventsAndState.controllerState
@@ -166,15 +156,14 @@ extends VerifiedUpdateItemsExecutor
       val orderWatchEvents = controllerState.nextOrderWatchOrderEvents
       controllerState = controllerState.applyEvents(orderWatchEvents).orThrow
 
-      val subsequentKeyedEvents =
-        (itemEvents.view ++
-        detachableWorkflows ++
-        deleteItems ++
-        deleteAgentRefs ++
-        orderEvents ++
-        orderWatchEvents).toVector
+      val subsequentKeyedEvents = Vector.concat(
+        itemEvents.view,
+        makeWorkflowsDetachable,
+        deleteItems,
+        orderEvents,
+        orderWatchEvents)
 
-      // Loop to derive events from the just derived events
+      // Loop to derive further events from the just derived events
       if (subsequentKeyedEvents.nonEmpty)
         controllerStateBeforeSubsequentEvents
           .applyEventsAndReturnSubsequentEvents(subsequentKeyedEvents)
@@ -194,7 +183,7 @@ extends VerifiedUpdateItemsExecutor
               case (agentPath, Attached(revision)) =>
                 item.key match {
                   case itemId: VersionedItemId_ =>
-                    !controllerState.isCurrentOrStillInUse(itemId) ? ItemDetachable(itemId, agentPath)
+                    controllerState.isObsoleteItem(itemId) ? ItemDetachable(itemId, agentPath)
 
                   case path: SimpleItemPath =>
                     if (controllerState.deletionMarkedItems.contains(path))
@@ -237,7 +226,7 @@ extends VerifiedUpdateItemsExecutor
   def nextOrderEventsByOrderId(orderIds: Iterable[OrderId]): ControllerStateExecutor = {
     var controllerState = this.controllerState
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
-    val _keyedEvents = mutable.Buffer.empty[KeyedEvent[OrderCoreEvent]]
+    val _keyedEvents = Vector.newBuilder[KeyedEvent[OrderCoreEvent]]
     @tailrec def loop(): Unit = {
       queue.removeHeadOption() match {
         case Some(orderId) =>
@@ -262,7 +251,7 @@ extends VerifiedUpdateItemsExecutor
       }
     }
     loop()
-    new ControllerStateExecutor(_keyedEvents, controllerState)
+    new ControllerStateExecutor(_keyedEvents.result(), controllerState)
   }
 
   private def keyedEventToOrderIds(keyedEvent: KeyedEvent[OrderEvent]): View[OrderId] =

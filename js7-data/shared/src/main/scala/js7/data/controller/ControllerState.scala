@@ -31,6 +31,7 @@ import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWa
 import js7.data.workflow.{Workflow, WorkflowId}
 import monix.reactive.Observable
 import scala.collection.{MapView, View}
+import scala.util.chaining.scalaUtilChainingOps
 
 /**
   * @author Joacim Zschimmer
@@ -382,10 +383,6 @@ extends JournaledState[ControllerState]
       case _ => None
     }
 
-  // Slow ???
-  private[controller] lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
-    idToOrder.values.view.map(_.workflowId).toSet
-
   private[controller] def isReferenced(path: InventoryItemPath): Boolean =
     pathToReferencingItemKeys contains path
 
@@ -400,15 +397,21 @@ extends JournaledState[ControllerState]
       .view
       .mapValues(_.toVector)
       .toMap
+      .tap(o => scribe.trace(s"${items.size} items => pathToReferencingItemKeys size=${o.size}"))
 
-  def isCurrentOrStillInUse(itemId: VersionedItemId_) =
-    repo.isCurrentItem(itemId) || isStillInUse(itemId)
+  private[controller] def isObsoleteItem(itemId: VersionedItemId_) =
+    !repo.isCurrentItem(itemId) && !isInUse(itemId)
 
-  def isStillInUse(itemId: VersionedItemId_) =
+  private[controller] def isInUse(itemId: VersionedItemId_) =
     itemId match {
       case WorkflowId.as(workflowId) => isWorkflowUsedByOrders(workflowId)
       case _ => true
     }
+
+  // Slow ???
+  private[controller] lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
+    idToOrder.values.view.map(_.workflowId).toSet
+      .tap(o => scribe.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
@@ -434,7 +437,7 @@ extends JournaledState[ControllerState]
           repo.items.map(item => item.id -> item)
     }
 
-  lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =
+  private lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =
     new MapView[InventoryItemPath, InventoryItem] {
       def get(path: InventoryItemPath): Option[InventoryItem] = {
         path match {

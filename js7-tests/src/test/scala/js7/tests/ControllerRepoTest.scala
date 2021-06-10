@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
@@ -50,7 +51,11 @@ final class ControllerRepoTest extends AnyFreeSpec
   import ControllerRepoTest._
 
   "test" in {
-    autoClosing(new DirectoryProvider(List(TestAgentPath), testName = Some("ControllerRepoTest"))) { provider =>
+    val provider = new DirectoryProvider(
+      List(TestAgentPath),
+      agentConfig = config"js7.job.execution.signed-script-injection-allowed = on",
+      testName = Some("ControllerRepoTest"))
+    autoClosing(provider) { _ =>
       import provider.itemSigner
 
       for (v <- 1 to 4)  // For each version, we use a dedicated job which echos the VersionId
@@ -204,6 +209,19 @@ final class ControllerRepoTest extends AnyFreeSpec
             }
             locally {
               val t = now
+              val workflowPath = WorkflowPath(s"WORKFLOW-1")
+              controllerApi.addOrders(
+                Observable.fromIterable(1 to itemCount / 2)
+                  .flatMap(i => Observable(
+                    FreshOrder(OrderId(s"SPEED-DISTRIBUTED-$i"), WorkflowPath(s"WORKFLOW-$i")),
+                    FreshOrder(OrderId(s"SPEED-SAME-$i"), workflowPath))))
+                .runToFuture
+                .await(99.s)
+                .orThrow
+              logInfo(itemsPerSecondString(t.elapsed, itemCount, "orders"))
+            }
+            locally {
+              val t = now
               controllerApi.executeCommand(TakeSnapshot)
                 .runToFuture
                 .await(99.s)
@@ -225,7 +243,9 @@ final class ControllerRepoTest extends AnyFreeSpec
       }
 
       def generateAddItemOperations(n: Int): Seq[ItemOperation] = {
-        val workflow0 = Workflow.of(Execute(WorkflowJob(TestAgentPath, ScriptExecutable("# " + "BIG "*256))))
+        val workflow0 = Workflow.of(
+          Prompt(StringConstant("")),
+          Execute(WorkflowJob(TestAgentPath, ScriptExecutable(": # " + "BIG "*256))))
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
         Observable.fromIterable(1 to n)
           .mapParallelUnorderedBatch() { i =>

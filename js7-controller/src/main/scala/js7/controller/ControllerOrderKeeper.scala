@@ -46,7 +46,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, Agent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler, toLiveOrderEventSource}
-import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems}
+import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
@@ -553,7 +553,7 @@ with MainJournalingActor[ControllerState, Event]
   private def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems): Unit = {
     val t = now
     (for {
-      keyedEvents <- _controllerState.executeVerifiedUpdateItems(verifiedUpdateItems)
+      keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, _controllerState)
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
           .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })

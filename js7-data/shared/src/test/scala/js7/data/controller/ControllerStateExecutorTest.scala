@@ -191,14 +191,15 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
     "Add agents, workflows and orders" in {
       assert(
-        ControllerState.empty.executeVerifiedUpdateItems(verifiedUpdateItems) == Right(Seq[AnyKeyedEvent](
-          NoKey <-: SignedItemAdded(itemSigner.sign(jobResource)),
-          NoKey <-: UnsignedSimpleItemAdded(aAgentRef),
-          NoKey <-: UnsignedSimpleItemAdded(bAgentRef),
-          NoKey <-: UnsignedSimpleItemAdded(lock),
-          NoKey <-: VersionAdded(v1),
-          NoKey <-: VersionedItemAdded(itemSigner.sign(aWorkflow)),
-          NoKey <-: VersionedItemAdded(itemSigner.sign(bWorkflow)))))
+        VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, ControllerState.empty) ==
+          Right(Seq[AnyKeyedEvent](
+            NoKey <-: SignedItemAdded(itemSigner.sign(jobResource)),
+            NoKey <-: UnsignedSimpleItemAdded(aAgentRef),
+            NoKey <-: UnsignedSimpleItemAdded(bAgentRef),
+            NoKey <-: UnsignedSimpleItemAdded(lock),
+            NoKey <-: VersionAdded(v1),
+            NoKey <-: VersionedItemAdded(itemSigner.sign(aWorkflow)),
+            NoKey <-: VersionedItemAdded(itemSigner.sign(bWorkflow)))))
 
       _controllerState = updated // FIXME
     }
@@ -412,7 +413,7 @@ object ControllerStateExecutorTest
   {
     def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems)
     : Checked[Seq[AnyKeyedEvent]] =
-      controllerState.executeVerifiedUpdateItems(verifiedUpdateItems)
+      VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, controllerState)
         .flatMap(keyedEvents =>
           applyEventsAndReturnSubsequentEvents(keyedEvents)
             .map(keyedEvents ++ _))

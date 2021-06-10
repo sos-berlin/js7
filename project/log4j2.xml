@@ -26,5 +26,7 @@
     <logger level="trace" name="js7.journal.JournalActor"/>
     <logger level="trace" name="js7.executor.forwindows"/>
     <logger level="debug" name="js7.journal.watch.RealEventWatch"/>
+    <logger level="trace" name="js7.data.controller.ControllerState"/>
+    <logger level="trace" name="js7.data.controller.ControllerStateExecutor"/>
   </loggers>
 </configuration>
