@@ -79,7 +79,7 @@ object JobActorStarvationTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), taskLimit = 2))))
+      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), parallelism = 2))))
 
   private val semaphore = Semaphore[Task](0).memoize
 

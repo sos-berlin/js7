@@ -71,7 +71,7 @@ private[proxy] object ClusterProxyTest
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     s"""
       define workflow {
-        execute executable="TEST.cmd", agent="AGENT", taskLimit=10;
+        execute executable="TEST.cmd", agent="AGENT", parallelism=10;
       }"""
   ).orThrow
 }

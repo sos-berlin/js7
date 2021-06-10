@@ -1,3 +1,3 @@
 define workflow {
-  execute agent="agent-1", taskLimit=100, script=":";
+  execute agent="agent-1", parallelism=100, script=":";
 }

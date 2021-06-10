@@ -74,8 +74,7 @@ final class JJobResourceTester
             "        \"jobResourcePaths\": [\n" +
             "          \"JOB-RESOURCE-A\",\n" +
             "          \"JOB-RESOURCE-B\"\n" +
-            "        ],\n" +
-            "        \"taskLimit\": 1\n" +
+            "        ]\n" +
             "      }\n" +
             "    }\n" +
             "  ]\n" +

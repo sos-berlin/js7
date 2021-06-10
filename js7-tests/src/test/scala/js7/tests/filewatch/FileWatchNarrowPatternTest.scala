@@ -100,8 +100,8 @@ object FileWatchNarrowPatternTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), taskLimit = 10)),
-      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[DeleteFileJob].getName), taskLimit = 10))))
+      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), parallelism = 10)),
+      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[DeleteFileJob].getName), parallelism = 10))))
 
   private val semaphore = Semaphore[Task](0).memoize
 

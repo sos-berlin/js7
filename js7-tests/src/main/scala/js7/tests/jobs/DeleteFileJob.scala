@@ -49,5 +49,5 @@ object DeleteFileJob
     Execute(WorkflowJob(
       agentPath,
       InternalExecutable(classOf[DeleteFileJob].getName),
-      taskLimit = sys.runtime.availableProcessors))
+      parallelism = sys.runtime.availableProcessors))
 }

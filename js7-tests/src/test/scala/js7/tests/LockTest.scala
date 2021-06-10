@@ -57,10 +57,10 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
             job `JOB-2`;
           };
           define job `JOB-1` {
-            execute agent="${agentPath.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
+            execute agent="${agentPath.string}", script=${quoteString(waitingForFileScript(file))}, parallelism = 100;
           }
           define job `JOB-2` {
-            execute agent="${bAgentPath.string}", script=${quoteString(waitingForFileScript(file))}, taskLimit = 100;
+            execute agent="${bAgentPath.string}", script=${quoteString(waitingForFileScript(file))}, parallelism = 100;
           }
         }""")
       assert(workflow.referencedItemPaths.toSet == Set(lockPath, agentPath, bAgentPath))
@@ -147,13 +147,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val workflow1 = defineWorkflow(workflow1Path, s"""
       define workflow {
         lock (lock="${limit2LockPath.string}", count=1) {
-          execute agent="AGENT", script="${script(50.ms)}", taskLimit=99
+          execute agent="AGENT", script="${script(50.ms)}", parallelism=99
         }
       }""")
     val workflow2 = defineWorkflow(WorkflowPath("WORKFLOW-2"), s"""
       define workflow {
         lock (lock="${limit2LockPath.string}", count=2) {
-          execute agent="AGENT", script="${script(100.ms)}", taskLimit=99
+          execute agent="AGENT", script="${script(100.ms)}", parallelism=99
         }
       }""")
     val order2Id = OrderId("🟥-TWO")
@@ -183,13 +183,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val workflow1 = defineWorkflow(workflow1Path, s"""
       define workflow {
         lock (lock="${limit2LockPath.string}", count=1) {
-          execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
+          execute agent="AGENT", script="${script(10.ms)}", parallelism=99
         }
       }""")
     val workflow2 = defineWorkflow(workflow2Path, s"""
       define workflow {
         lock (lock="${limit2LockPath.string}", count=2) {
-          execute agent="AGENT", script="${script(10.ms)}", taskLimit=99
+          execute agent="AGENT", script="${script(10.ms)}", parallelism=99
         }
       }""")
     val orders = Random.shuffle(

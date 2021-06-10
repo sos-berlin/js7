@@ -340,8 +340,7 @@ object ProviderTest
             "executable": {
               "TYPE": "PathExecutable",
               "path": "EXECUTABLE"
-            },
-            "taskLimit": 1
+            }
           }
         }
       ]
@@ -357,8 +356,7 @@ object ProviderTest
             "executable": {
               "TYPE": "PathExecutable",
               "path": "OTHER-EXECUTABLE"
-            },
-            "taskLimit": 1
+            }
           }
         }
       ]

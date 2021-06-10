@@ -29,7 +29,7 @@ final class WorkflowJobTest extends AnyFreeSpec
             "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
           },
-          "taskLimit": 1
+          "parallelism": 1
         }""")
     }
 
@@ -43,7 +43,7 @@ final class WorkflowJobTest extends AnyFreeSpec
             "NUMBER" -> NumberValue(7)),
           Seq(JobResourcePath("JOB-RESOURCE")),
           ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1))),
-          taskLimit = 3,
+          parallelism = 3,
           Some(10.s),
           Some(KeyLogin("CREDENTIALS KEY", withUserProfile = true)),
           failOnErrWritten = true),
@@ -63,7 +63,7 @@ final class WorkflowJobTest extends AnyFreeSpec
           "returnCodeMeaning": {
             "success": [ 0, 1 ]
           },
-          "taskLimit": 3,
+          "parallelism": 3,
           "sigkillDelay": 10,
           "failOnErrWritten": true
         }""")

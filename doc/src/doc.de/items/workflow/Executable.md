@@ -189,7 +189,7 @@ unbegrenzten Threadpool ausführen.
 ⚠️ Viele parallel ausgeführte Auftragsschritte könnten
 den Betrieb des Agenten beeinträchtigen,
 wenn dessen Threads nicht mehr genug CPU zugeteilt bekommen.
-Das `taskLimit` der Jobs sollte mit Bedacht eingestellt sein.
+Die `parallelism` der Jobs sollte mit Bedacht eingestellt sein.
 
 Minimales Beispiel für einen internen Job, der nichts tut:
 

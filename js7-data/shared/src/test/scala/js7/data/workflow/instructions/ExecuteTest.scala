@@ -54,7 +54,7 @@ final class ExecuteTest extends AnyFreeSpec
               "TYPE": "PathExecutable",
               "path": "EXECUTABLE"
             },
-            "taskLimit": 1
+            "parallelism": 1
           }
         }""")
     }
@@ -86,7 +86,7 @@ final class ExecuteTest extends AnyFreeSpec
                 "NUMBER": "7"
               }
             },
-            "taskLimit": 1,
+            "parallelism": 1,
             "defaultArguments": {
               "ARG": "VALUE"
             }

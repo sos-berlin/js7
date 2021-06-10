@@ -39,7 +39,7 @@ final class IfTest extends AnyFreeSpec
                   "TYPE": "PathExecutable",
                   "path": "THEN"
                 },
-                "taskLimit": 1
+                "parallelism": 1
               }
             }
           ]
@@ -54,7 +54,7 @@ final class IfTest extends AnyFreeSpec
                   "TYPE": "PathExecutable",
                   "path": "ELSE"
                 },
-                "taskLimit": 1
+                "parallelism": 1
               }
             }
           ]

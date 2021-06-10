@@ -28,8 +28,8 @@ final case class WorkflowJob private(
   defaultArguments: NamedValues,
   jobResourcePaths: Seq[JobResourcePath],
   returnCodeMeaning: ReturnCodeMeaning/*TODO Move to ProcessExecutable*/,
-  taskLimit: Int,/*TODO Rename as parallelism*/
-  sigkillDelay: Option[FiniteDuration]/*TODO Move to ProcessExecutable*/,
+  parallelism: Int,
+  sigkillDelay: Option[FiniteDuration],
   failOnErrWritten: Boolean)
 {
   def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
@@ -39,8 +39,6 @@ final case class WorkflowJob private(
 
   def isExecutableOnAgent(agentPath: AgentPath): Boolean =
     this.agentPath == agentPath
-
-  //override def toString = s"Job($argumentsString)"
 
   def argumentsString = s"agent=${agentPath.string}, " +
     (executable match {
@@ -61,7 +59,7 @@ final case class WorkflowJob private(
 
 object WorkflowJob
 {
-  val DefaultTaskLimit = 1
+  val DefaultParallelism = 1
 
   def apply(
     agentPath: AgentPath,
@@ -69,12 +67,12 @@ object WorkflowJob
     defaultArguments: NamedValues = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    taskLimit: Int = DefaultTaskLimit,
+    parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
     login: Option[KeyLogin] = None,
     failOnErrWritten: Boolean = false)
   : WorkflowJob =
-    checked(agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, taskLimit, sigkillDelay,
+    checked(agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, parallelism, sigkillDelay,
       failOnErrWritten = failOnErrWritten
     ).orThrow
 
@@ -84,14 +82,14 @@ object WorkflowJob
     defaultArguments: NamedValues = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
-    taskLimit: Int = DefaultTaskLimit,
+    parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false)
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning,
-        taskLimit, sigkillDelay, failOnErrWritten)
+        parallelism, sigkillDelay, failOnErrWritten)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -109,7 +107,7 @@ object WorkflowJob
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
       "returnCodeMeaning" -> ((workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default) ? workflowJob.returnCodeMeaning).asJson,
-      "taskLimit" -> workflowJob.taskLimit.asJson,
+      "parallelism" -> workflowJob.parallelism.asJson,
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson)
 
@@ -120,10 +118,10 @@ object WorkflowJob
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
       rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
-      taskLimit <- cursor.getOrElse[Int]("taskLimit")(DefaultTaskLimit)
+      parallelism <- cursor.getOrElse[Int]("parallelism")(DefaultParallelism)
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
       failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
-      job <- checked(agentPath, executable, arguments, jobResourcePaths, rc, taskLimit,
+      job <- checked(agentPath, executable, arguments, jobResourcePaths, rc, parallelism,
         sigkillDelay, failOnErrWritten
       ).toDecoderResult(cursor.history)
     } yield job

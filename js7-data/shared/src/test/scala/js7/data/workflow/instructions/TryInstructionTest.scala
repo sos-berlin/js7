@@ -39,7 +39,7 @@ final class TryInstructionTest extends AnyFreeSpec
                     "TYPE": "PathExecutable",
                     "path": "TRY"
                   },
-                  "taskLimit": 1
+                  "parallelism": 1
                 }
               }
             ]
@@ -54,7 +54,7 @@ final class TryInstructionTest extends AnyFreeSpec
                     "TYPE": "PathExecutable",
                     "path": "CATCH"
                   },
-                  "taskLimit": 1
+                  "parallelism": 1
                 }
               }
             ]

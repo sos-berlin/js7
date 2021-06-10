@@ -89,7 +89,7 @@ object ManyOrdersTest
   private val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "1", s"""
       define workflow {
-        execute agent="AGENT", internalJobClass="js7.tests.jobs.EmptyJob", taskLimit=32;
+        execute agent="AGENT", internalJobClass="js7.tests.jobs.EmptyJob", parallelism=32;
       }"""
   ).orThrow
 }

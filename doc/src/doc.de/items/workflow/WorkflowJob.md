@@ -15,7 +15,7 @@ Beispiel in JSON:
   "returnCodeMeaning": {
     "success": [ 0 ]
   },
-  "taskLimit": 1,
+  "parallelism": 1,
   "sigkillDelay": 15
 }
 ```
@@ -43,11 +43,11 @@ Beispiel in JSON:
     Liste ganzzahliger Returncodes, die als Versagen gewertet werden.
     Alle anderen werden als Erfolg gewertet.
 
-* `taskLimit`
+* `parallelism`
 
-  Wie oft dieser Job gleichzeitig ausgeführt werden kann.
+  Wie viele Prozesse dieses Jobs gleichzeitig ausgeführt werden können.
 
-  Default: `taskLimit=1`
+  Default: `parallelism=1`
 
 * `sigKillDelay`
 

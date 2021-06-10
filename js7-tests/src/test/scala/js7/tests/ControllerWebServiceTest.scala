@@ -190,7 +190,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
                "TYPE": "PathExecutable",
                "path": "B$sh"
              },
-              "taskLimit": 1
+              "parallelism": 1
             }
           }, {
             "TYPE": "Execute.Anonymous",
@@ -200,7 +200,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
                "TYPE": "PathExecutable",
                "path": "MISSING$sh"
              },
-              "taskLimit": 1
+              "parallelism": 1
             }
           }
         ]
@@ -448,7 +448,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       }, {
         "TYPE": "VersionedItemAdded",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"parallelism\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"parallelism\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -457,7 +457,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
       }, {
         "TYPE": "VersionedItemAdded",
         "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"parallelism\":1}}]}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "MY-SILLY-SIGNATURE"
@@ -555,7 +555,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "eventId": 1009,
           "TYPE": "VersionedItemAdded",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"parallelism\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"
@@ -565,7 +565,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           "eventId": 1010,
           "TYPE": "VersionedItemAdded",
           "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"taskLimit\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"taskLimit\":1}}]}",
+            "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"parallelism\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"parallelism\":1}}]}",
             "signature": {
               "TYPE": "Silly",
               "signatureString": "MY-SILLY-SIGNATURE"

@@ -40,7 +40,7 @@ final class ForkTest extends AnyFreeSpec {
                       "TYPE": "PathExecutable",
                       "path": "A"
                     },
-                    "taskLimit": 1
+                    "parallelism": 1
                   }
                 }
               ]
@@ -57,7 +57,7 @@ final class ForkTest extends AnyFreeSpec {
                       "TYPE": "PathExecutable",
                       "path": "B"
                     },
-                    "taskLimit": 1
+                    "parallelism": 1
                   }
                 }
               ]

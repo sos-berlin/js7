@@ -168,7 +168,7 @@ object TestControllerAgent
   private def testJob(conf: Conf, agentPath: AgentPath) =
     WorkflowJob(agentPath, TestPathExecutable,
       Map("JOB-VARIABLE" -> StringValue(s"VALUE-$agentPath")),
-      taskLimit = conf.tasksPerJob)
+      parallelism = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow.of(TestWorkflowPath,

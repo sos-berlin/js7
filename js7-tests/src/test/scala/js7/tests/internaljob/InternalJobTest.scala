@@ -121,7 +121,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
             jobClass.getName,
             jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
             arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG"))),
-          taskLimit = n)),
+          parallelism = n)),
         indexedOrderIds
           .map { case (i, orderId) => orderId -> Map("ORDER_ARG" -> NumberValue(i)) }
           .toMap,

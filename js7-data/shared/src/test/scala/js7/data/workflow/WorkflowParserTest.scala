@@ -64,7 +64,7 @@ final class WorkflowParserTest extends AnyFreeSpec
          |  execute executable = "my/executable",
          |          agent = "AGENT",
          |          defaultArguments = { "A": "aaa", "B": "bbb", "I": -123 },
-         |          taskLimit = 3,
+         |          parallelism = 3,
          |          sigkillDelay = 30;
          |}""".stripMargin,
       Workflow.of(
@@ -75,10 +75,10 @@ final class WorkflowParserTest extends AnyFreeSpec
               "A" -> StringValue("aaa"),
               "B" -> StringValue("bbb"),
               "I" -> NumberValue(-123)),
-            taskLimit = 3,
+            parallelism = 3,
             sigkillDelay = Some(30.s)),
-          sourcePos = sourcePos(20, 205)),
-        ImplicitEnd(sourcePos(207, 208))))
+          sourcePos = sourcePos(20, 207)),
+        ImplicitEnd(sourcePos(209, 210))))
   }
 
   "Execute script with \\n" in {

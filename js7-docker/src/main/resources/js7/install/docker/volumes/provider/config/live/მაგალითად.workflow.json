@@ -16,7 +16,7 @@
         "path": "test",
         "env": { "HELLO": "'მაგალითად'"}
       },
-      "taskLimit": 3
+      "parallelism": 3
     },
     "JOB-2": {
       "agentPath": "agent-2",
@@ -24,7 +24,7 @@
         "TYPE": "ScriptExecutable",
         "script": "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"はじめまして。\"\nsleep 2\nexit\n"
       },
-      "taskLimit": 3
+      "parallelism": 3
     }
   }
 }

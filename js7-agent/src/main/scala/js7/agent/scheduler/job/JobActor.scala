@@ -129,7 +129,7 @@ extends Actor with Stash
       for (signal <- maybeSignal) {
         killAll(signal)
       }
-      if (!maybeSignal.contains(SIGKILL) && taskCount > 0) {
+      if (!maybeSignal.contains(SIGKILL) && orderProcessCount > 0) {
         scheduler.scheduleOnce(sigKillDelay) {
           self ! Internal.KillAll
         }
@@ -140,7 +140,7 @@ extends Actor with Stash
       for (signal <- maybeSignal) {
         killOrder(orderId, signal)
       }
-      if (!maybeSignal.contains(SIGKILL) && taskCount > 0) {
+      if (!maybeSignal.contains(SIGKILL) && orderProcessCount > 0) {
         scheduler.scheduleOnce(sigKillDelay) {
           self ! Internal.KillOrder(orderId)
         }
@@ -160,14 +160,14 @@ extends Actor with Stash
   }
 
   private def handleIfReadyForOrder(): Unit =
-    if (!waitingForNextOrder && !terminating && taskCount < workflowJob.taskLimit) {
+    if (!waitingForNextOrder && !terminating && orderProcessCount < workflowJob.parallelism) {
       context.parent ! Output.ReadyForOrder
       waitingForNextOrder = true
     }
 
   private def killAll(signal: ProcessSignal): Unit =
     if (orderToProcess.nonEmpty) {
-      logger.warn(s"Terminating, sending $signal to all $taskCount tasks")
+      logger.warn(s"Terminating, sending $signal to all $orderProcessCount tasks")
       for (orderId <- orderToProcess.keys.toVector/*copy*/) {
         killOrder(orderId, signal)
       }
@@ -204,7 +204,7 @@ extends Actor with Stash
 
   override def toString = s"JobActor(${jobKey.toString})"
 
-  private def taskCount = orderToProcess.size
+  private def orderProcessCount = orderToProcess.size
 }
 
 private[agent] object JobActor

@@ -282,7 +282,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_2b": {
       "agentPath": "agent-2",
@@ -295,7 +295,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_2a": {
       "agentPath": "agent-2",
@@ -308,7 +308,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_1b_1b": {
       "agentPath": "agent-1",
@@ -321,7 +321,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_1b_2": {
       "agentPath": "agent-1",
@@ -334,7 +334,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1": {
       "agentPath": "agent-1",
@@ -347,7 +347,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_1d": {
       "agentPath": "agent-1",
@@ -360,7 +360,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_1b_1": {
       "agentPath": "agent-1",
@@ -373,7 +373,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_2b_2": {
       "agentPath": "agent-1",
@@ -386,7 +386,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_1b_1a": {
       "agentPath": "agent-1",
@@ -399,7 +399,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_1c": {
       "agentPath": "agent-1",
@@ -412,7 +412,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_2d": {
       "agentPath": "agent-2",
@@ -425,7 +425,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_2b_1": {
       "agentPath": "agent-1",
@@ -438,7 +438,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job3": {
       "agentPath": "agent-2",
@@ -451,7 +451,7 @@
           0
         ]
       },
-      "taskLimit": 100,
+      "parallelism": 100,
       "title": "some title"
     },
     "job1_1b": {
@@ -465,7 +465,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     },
     "job1_2c": {
       "agentPath": "agent-2",
@@ -478,7 +478,7 @@
           0
         ]
       },
-      "taskLimit": 100
+      "parallelism": 100
     }
   }
 }

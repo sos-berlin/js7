@@ -1,12 +1,12 @@
 define workflow {
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
-  execute agent="agent-1", taskLimit=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
+  execute agent="agent-1", parallelism=10, script=":";
 }

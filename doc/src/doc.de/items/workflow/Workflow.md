@@ -123,7 +123,7 @@ Beispiel in JSON den beiden Parametern
             "NUMBER": "$myNumber"
           }
         },
-        "taskLimit": 1
+        "parallelism": 1
       }
     }
   ]
