@@ -6,7 +6,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineExecutable, PathExecutable, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
@@ -86,7 +86,7 @@ final class WorkflowParserTest extends AnyFreeSpec
       """define workflow { execute script="LINE 1\nLINE 2\nLINE 3", agent="AGENT"; }""",
       Workflow.of(
         Execute.Anonymous(
-          WorkflowJob(AgentPath("AGENT"), ScriptExecutable("LINE 1\nLINE 2\nLINE 3")),
+          WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("LINE 1\nLINE 2\nLINE 3")),
           sourcePos = sourcePos(18, 72)),
         ImplicitEnd(sourcePos(74, 75))))
   }
@@ -102,7 +102,7 @@ final class WorkflowParserTest extends AnyFreeSpec
 }""",
       Workflow.of(
         Execute.Anonymous(
-          WorkflowJob(AgentPath("AGENT"), ScriptExecutable("LINE 1\nLINE 2\nLINE 3\n")),
+          WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("LINE 1\nLINE 2\nLINE 3\n")),
           sourcePos = sourcePos(20, 101)),
         ImplicitEnd(sourcePos(103, 104))))
   }
@@ -143,7 +143,7 @@ final class WorkflowParserTest extends AnyFreeSpec
           WorkflowJob.Name("C") ->
             WorkflowJob(
               AgentPath("AGENT"),
-              ScriptExecutable("SCRIPT")))))
+              ShellScriptExecutable("SCRIPT")))))
   }
 
   "define job" in {

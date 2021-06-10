@@ -7,7 +7,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
@@ -128,7 +128,7 @@ object WorkflowParser
             else checkedToP(CommandLineParser.parse(command).map(CommandLineExecutable(_, env.nameToExpr)))
           case ("script", script: Expression) =>
             checkedToP(Evaluator.eval(script).flatMap(_.toStringValue)
-              .map(v => ScriptExecutable(v.string, env.nameToExpr, v1Compatible = v1Compatible)))
+              .map(v => ShellScriptExecutable(v.string, env.nameToExpr, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
             checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
               .map(v => InternalExecutable(v.string, jobArguments, arguments.nameToExpr)))

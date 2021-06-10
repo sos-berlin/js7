@@ -79,7 +79,7 @@ JobResourcen können so in einem Job referenziert werden:
           "MY-JOB-RESOURCE"
         ],
         "executable": {
-          "TYPE": "ScriptExecutable",
+          "TYPE": "ShellScriptExecutable",
           "script": "#!/usr/bin/env bash\nset -euo pipefail\necho MYENV=/$MYENV/\n"
         }
       }

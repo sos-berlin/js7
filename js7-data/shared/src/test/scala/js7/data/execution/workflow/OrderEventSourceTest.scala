@@ -12,7 +12,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
-import js7.data.job.{PathExecutable, ScriptExecutable}
+import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
@@ -697,7 +697,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
     "Resume and UnreachableOrderPositionProblem" - {
       val lockPath = LockPath("LOCK")
-      lazy val execute = Execute.Anonymous(WorkflowJob(TestAgentPath, ScriptExecutable(":")))
+      lazy val execute = Execute.Anonymous(WorkflowJob(TestAgentPath, ShellScriptExecutable(":")))
       lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(
         /*0*/ execute,
         /*1*/ If(BooleanConstant(true),

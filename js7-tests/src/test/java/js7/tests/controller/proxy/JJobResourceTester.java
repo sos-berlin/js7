@@ -64,7 +64,7 @@ final class JJobResourceTester
             "      \"job\": {\n" +
             "        \"agentPath\": \"AGENT\",\n" +
             "        \"executable\": {\n" +
-            "          \"TYPE\": \"ScriptExecutable\",\n" +
+            "          \"TYPE\": \"ShellScriptExecutable\",\n" +
             "          \"script\": \"#!/usr/bin/env bash\\nset -euo pipefail\\necho A=/$A/\\necho B=/$B/\\necho C=/$C/\\necho D=/$D/\\necho E=/$E/\\n\",\n" +
             "          \"env\": {\n" +
             "            \"D\": \"'D OF JOB'\",\n" +

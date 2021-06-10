@@ -101,19 +101,19 @@ final class ExecutableTest extends AnyFreeSpec
         }""")
     }
 
-    "ScriptExecutable, minumum" in {
+    "ShellScriptExecutable, minumum" in {
       testJson[Executable](
-        ScriptExecutable("SCRIPT"),json"""
+        ShellScriptExecutable("SCRIPT"),json"""
         {
-          "TYPE": "ScriptExecutable",
+          "TYPE": "ShellScriptExecutable",
           "script": "SCRIPT"
         }
       """)
     }
 
-    "ScriptExecutable" in {
+    "ShellScriptExecutable" in {
       testJson[Executable](
-        ScriptExecutable(
+        ShellScriptExecutable(
           "SCRIPT",
           env = Map(
             "ENV-VAR" -> NamedValue.last("VAR"),
@@ -122,7 +122,7 @@ final class ExecutableTest extends AnyFreeSpec
           v1Compatible = true),
       json"""
         {
-          "TYPE": "ScriptExecutable",
+          "TYPE": "ShellScriptExecutable",
           "script": "SCRIPT",
           "env": {
             "ENV-VAR": "$$VAR",
@@ -167,7 +167,7 @@ final class ExecutableTest extends AnyFreeSpec
   "Names before 2020-01-20" - {
     "ExecutableScript" in {
       testJsonDecoder[Executable](
-        ScriptExecutable("SCRIPT"),
+        ShellScriptExecutable("SCRIPT"),
         json"""
           {
             "TYPE": "ExecutableScript",
@@ -183,6 +183,19 @@ final class ExecutableTest extends AnyFreeSpec
           {
             "TYPE": "ExecutablePath",
             "path": "PATH"
+          }
+        """)
+    }
+  }
+
+  "Names before 2020-06-10" - {
+    "ExecutableScript" in {
+      testJsonDecoder[Executable](
+        ShellScriptExecutable("SCRIPT"),
+        json"""
+          {
+            "TYPE": "ScriptExecutable",
+            "script": "SCRIPT"
           }
         """)
     }

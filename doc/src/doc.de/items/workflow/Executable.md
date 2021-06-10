@@ -14,8 +14,8 @@ Ein Executable wird im WorkflowJob und in der Execute-Anweisung verwendet.
 
 Executable hat folgende Subtypen:
 
-- ScriptExecutable
-- ExecuteblePath
+- ShellScriptExecutable
+- PathExecutable
 - CommandLineExecutable
 
 Jeder dieser Subtypen kennt folgende Parameter.
@@ -62,7 +62,7 @@ Jeder dieser Subtypen kennt folgende Parameter.
 
 
 
-## ScriptExecutable
+## ShellScriptExecutable
 
 Erfordert in der Konfigurationsdatei `agent.conf` des Agenten die Einstellung
 
@@ -74,7 +74,7 @@ Der Workflow, der den Code enthält, muss signiert sein.
 
 ```json
 {
-  "TYPE": "ScriptExecutable",
+  "TYPE": "ShellScriptExecutable",
   "script": "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"HELLO!\"",
   "env": {
     "ENV-VAR": "$$VAR",

@@ -28,7 +28,7 @@ import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, TakeSnapshot}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, VersionId}
-import js7.data.job.{RelativePathExecutable, ScriptExecutable}
+import js7.data.job.{RelativePathExecutable, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderPrompted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.StringConstant
@@ -245,7 +245,7 @@ final class ControllerRepoTest extends AnyFreeSpec
       def generateAddItemOperations(n: Int): Seq[ItemOperation] = {
         val workflow0 = Workflow.of(
           Prompt(StringConstant("")),
-          Execute(WorkflowJob(TestAgentPath, ScriptExecutable(": # " + "BIG "*256))))
+          Execute(WorkflowJob(TestAgentPath, ShellScriptExecutable(": # " + "BIG "*256))))
         val v = VersionId(s"SPEED-${versionCounter.incrementAndGet()}")
         Observable.fromIterable(1 to n)
           .mapParallelUnorderedBatch() { i =>

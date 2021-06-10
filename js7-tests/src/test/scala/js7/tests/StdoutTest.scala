@@ -7,7 +7,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{Executable, InternalExecutable, ScriptExecutable}
+import js7.data.job.{Executable, InternalExecutable, ShellScriptExecutable}
 import js7.data.order.OrderEvent.OrderStdoutWritten
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.Value
@@ -42,10 +42,10 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
 
-  "ScriptExecutable OrderStdoutWritten event compacting" in {
+  "ShellScriptExecutable OrderStdoutWritten event compacting" in {
     def runTest() =
       testExecutable(
-        ScriptExecutable(
+        ShellScriptExecutable(
           s"""echo A
             |${sleepCommand(longDelay)}
             |echo B-1

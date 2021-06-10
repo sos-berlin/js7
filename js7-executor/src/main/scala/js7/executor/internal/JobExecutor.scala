@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourcePath, RelativePathExecutable, ScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourcePath, RelativePathExecutable, ShellScriptExecutable}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.process.{AbsolutePathJobExecutor, CommandLineJobExecutor, RelativePathJobExecutor, ScriptJobExecutor}
@@ -60,7 +60,7 @@ object JobExecutor
       case executable: RelativePathExecutable =>
         Right(new RelativePathJobExecutor(executable, jobConf, executorConf, pathToJobResource))
 
-      case executable: ScriptExecutable =>
+      case executable: ShellScriptExecutable =>
         ScriptJobExecutor.checked(executable, jobConf, executorConf, pathToJobResource)
 
       case executable: CommandLineExecutable =>

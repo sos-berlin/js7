@@ -21,7 +21,7 @@
     "JOB-2": {
       "agentPath": "agent-2",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "#!/usr/bin/env bash\nset -euo pipefail\n\necho \"はじめまして。\"\nsleep 2\nexit\n"
       },
       "parallelism": 3

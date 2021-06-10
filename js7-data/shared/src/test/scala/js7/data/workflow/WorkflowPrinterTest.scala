@@ -3,7 +3,7 @@ package js7.data.workflow
 import cats.syntax.show._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
-import js7.data.job.{PathExecutable, ScriptExecutable}
+import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.order.OrderId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
@@ -65,11 +65,11 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         Vector(
           Execute.Anonymous(
             WorkflowJob(AgentPath("AGENT"),
-              ScriptExecutable("LINE 1\nLINE 2\n'''LINE 3'''\n"),
+              ShellScriptExecutable("LINE 1\nLINE 2\n'''LINE 3'''\n"),
               Map("KEY" -> StringValue("VALUE")),
               returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1))),
           Execute.Anonymous(
-            WorkflowJob(AgentPath("AGENT"), ScriptExecutable("SCRIPT", v1Compatible = true))))),
+            WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("SCRIPT", v1Compatible = true))))),
       """define workflow {
         |  execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=
         |''''LINE 1

@@ -154,7 +154,7 @@ object ManyAddOrdersTest
         "job1_e": {
           "agentPath": "AGENT-1",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -165,7 +165,7 @@ object ManyAddOrdersTest
         "job1_d": {
           "agentPath": "AGENT-1",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -176,7 +176,7 @@ object ManyAddOrdersTest
         "job2_c": {
           "agentPath": "AGENT-1",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
           "returnCodeMeaning": {
@@ -187,7 +187,7 @@ object ManyAddOrdersTest
         "job2_b": {
           "agentPath": "AGENT-2",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
           "returnCodeMeaning": {
@@ -198,7 +198,7 @@ object ManyAddOrdersTest
         "job2": {
           "agentPath": "AGENT-2",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -209,7 +209,7 @@ object ManyAddOrdersTest
         "job1": {
           "agentPath": "AGENT-1",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -220,7 +220,7 @@ object ManyAddOrdersTest
         "job3": {
           "agentPath": "AGENT-2",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\nsleep 1"
           },
           "returnCodeMeaning": {
@@ -231,7 +231,7 @@ object ManyAddOrdersTest
         "job1_b": {
           "agentPath": "AGENT-1",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {
@@ -242,7 +242,7 @@ object ManyAddOrdersTest
         "job2_a": {
           "agentPath": "AGENT-1",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
           "returnCodeMeaning": {
@@ -253,7 +253,7 @@ object ManyAddOrdersTest
         "job1_a": {
           "agentPath": "AGENT-2",
           "executable": {
-            "TYPE": "ScriptExecutable",
+            "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
           "returnCodeMeaning": {

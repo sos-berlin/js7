@@ -181,28 +181,28 @@ object CommandLineExecutable
     } yield CommandLineExecutable(commandExpr, env, login)
 }
 
-final case class ScriptExecutable(
+final case class ShellScriptExecutable(
   script: String,
   env: Map[String, Expression] = Map.empty,
   login: Option[KeyLogin] = None,
   v1Compatible: Boolean = false)
 extends ProcessExecutable
-object ScriptExecutable
+object ShellScriptExecutable
 {
-  implicit val jsonEncoder: Encoder.AsObject[ScriptExecutable] =
+  implicit val jsonEncoder: Encoder.AsObject[ShellScriptExecutable] =
     o => JsonObject(
       "script" -> o.script.asJson,
       "env" -> o.env.??.asJson,
       "login" -> o.login.asJson,
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
-  implicit val jsonDecoder: Decoder[ScriptExecutable] =
+  implicit val jsonDecoder: Decoder[ShellScriptExecutable] =
     cursor => for {
       script <- cursor.get[String]("script")
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       login <- cursor.get[Option[KeyLogin]]("login")
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
-    } yield ScriptExecutable(script, env, login, v1Compatible)
+    } yield ShellScriptExecutable(script, env, login, v1Compatible)
 }
 
 final case class InternalExecutable(
@@ -223,7 +223,7 @@ object Executable
         classOf[AbsolutePathExecutable],
         classOf[RelativePathExecutable]),
       aliases = Seq("ExecutablePath")),
-    Subtype.named[ScriptExecutable](aliases = Seq("ExecutableScript")),
+    Subtype.named[ShellScriptExecutable](aliases = Seq("ExecutableScript", "ScriptExecutable")),
     Subtype[CommandLineExecutable],
     Subtype(deriveConfiguredCodec[InternalExecutable]))
 }

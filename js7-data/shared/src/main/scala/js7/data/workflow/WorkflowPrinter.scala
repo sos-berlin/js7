@@ -3,7 +3,7 @@ package js7.data.workflow
 import cats.Show
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.parser.BasicPrinter
 import js7.data.value.ValuePrinter.{appendNameToExpression, appendQuoted, appendValue}
@@ -71,7 +71,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
         sb ++= ", executable="
         appendQuoted(path)
 
-      case ScriptExecutable(script, envExpr, login, v1Compatible) =>
+      case ShellScriptExecutable(script, envExpr, login, v1Compatible) =>
         if (v1Compatible) sb ++= ", v1Compatible=true"
         appendEnv(envExpr)
         sb ++= ", script="

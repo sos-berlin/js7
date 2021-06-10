@@ -274,7 +274,7 @@
     "job1_1a": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -287,7 +287,7 @@
     "job1_2b": {
       "agentPath": "agent-2",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -300,7 +300,7 @@
     "job1_2a": {
       "agentPath": "agent-2",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -313,7 +313,7 @@
     "job1_1b_1b": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -326,7 +326,7 @@
     "job1_1b_2": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -339,7 +339,7 @@
     "job1": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -352,7 +352,7 @@
     "job1_1d": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -365,7 +365,7 @@
     "job1_1b_1": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -378,7 +378,7 @@
     "job1_2b_2": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -391,7 +391,7 @@
     "job1_1b_1a": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -404,7 +404,7 @@
     "job1_1c": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -417,7 +417,7 @@
     "job1_2d": {
       "agentPath": "agent-2",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -430,7 +430,7 @@
     "job1_2b_1": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -443,7 +443,7 @@
     "job3": {
       "agentPath": "agent-2",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -457,7 +457,7 @@
     "job1_1b": {
       "agentPath": "agent-1",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {
@@ -470,7 +470,7 @@
     "job1_2c": {
       "agentPath": "agent-2",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "echo \"hello world\""
       },
       "returnCodeMeaning": {

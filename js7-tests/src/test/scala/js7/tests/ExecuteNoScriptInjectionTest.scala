@@ -23,8 +23,8 @@ final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgen
     """
 
   "signed-script-injection-allowed = off (default)" - {
-    "Executing an ScriptExecutable is not allowed" in {
-      testInjectionNotAllowed(OrderId("❌-ScriptExecutable"), scriptWorkflow.path)
+    "Executing an ShellScriptExecutable is not allowed" in {
+      testInjectionNotAllowed(OrderId("❌-ShellScriptExecutable"), scriptWorkflow.path)
     }
 
     "Executing an AbsolutePathExecutable is not allowed" in {

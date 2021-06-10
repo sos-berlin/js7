@@ -5,7 +5,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.job.ScriptExecutable
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderProcessed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -54,14 +54,14 @@ object FailOnErrWrittenTest
     Vector(
       Execute.Anonymous(WorkflowJob(
         agentPath,
-        ScriptExecutable(
+        ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
             |echo ERROR >&2
             |""".stripMargin))),
       Execute.Anonymous(WorkflowJob(
         agentPath,
-        ScriptExecutable(
+        ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
             |echo SUCCESS
@@ -69,7 +69,7 @@ object FailOnErrWrittenTest
         failOnErrWritten = true)),
       Execute.Anonymous(WorkflowJob(
         agentPath,
-        ScriptExecutable(
+        ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
             |echo IGNORED >&2

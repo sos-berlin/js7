@@ -12,7 +12,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ScriptExecutable}
+import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.order.Outcome
 import js7.data.value.{NamedValues, NumberValue, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter
@@ -43,7 +43,7 @@ final case class WorkflowJob private(
   def argumentsString = s"agent=${agentPath.string}, " +
     (executable match {
       case PathExecutable(o, env, login, v1Compatible) => s"executable=$o"
-      case ScriptExecutable(o, env, login, v1Compatible) => s"script=$o"
+      case ShellScriptExecutable(o, env, login, v1Compatible) => s"script=$o"
       case CommandLineExecutable(expr, login, env) => "command=" + ValuePrinter.quoteString(expr.toString)
       case InternalExecutable(className, jobArguments, arguments) =>
         "internalJobClass=" + ValuePrinter.quoteString(className) ++

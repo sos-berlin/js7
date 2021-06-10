@@ -21,7 +21,7 @@ import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged}
 import js7.data.item.{ItemRevision, ItemSigner, Repo, VersionId}
-import js7.data.job.{JobResource, JobResourcePath, ScriptExecutable}
+import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
@@ -239,7 +239,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"ScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}}]}"
         }
       }, {
         "TYPE": "ItemAttachable",
@@ -312,7 +312,7 @@ object ControllerStateTest
   private val versionId = VersionId("1.0")
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction(lock.path, None, Workflow.of(
-      Execute(WorkflowJob(agentRef.path, ScriptExecutable(""), jobResourcePaths = Seq(jobResource.path)))))))
+      Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""), jobResourcePaths = Seq(jobResource.path)))))))
   private val signedWorkflow = itemSigner.sign(workflow)
   private val orderId = OrderId("ORDER")
   private[controller] val fileWatch = FileWatch(

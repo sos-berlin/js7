@@ -41,7 +41,7 @@ der direkt in dieser Anweisung definiert ist.
   "job": {
     "agentPath": "AGENT",
     "executable": {
-      "TYPE": "ScriptExecutable",
+      "TYPE": "ShellScriptExecutable",
       "script": "#!/bin/sh\n..."
     }
   }

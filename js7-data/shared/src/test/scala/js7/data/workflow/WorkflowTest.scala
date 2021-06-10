@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ScriptExecutable}
+import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.value.expression.PositionSearch
@@ -402,7 +402,7 @@ final class WorkflowTest extends AnyFreeSpec
             WorkflowJob.Name("OWN-SCRIPT") ->
               WorkflowJob(
                 AgentPath("AGENT"),
-                ScriptExecutable("#!/usr/bin/env bash\n...")))),
+                ShellScriptExecutable("#!/usr/bin/env bash\n...")))),
         json"""{
           "path": "TEST",
           "versionId": "VERSION",
@@ -427,7 +427,7 @@ final class WorkflowTest extends AnyFreeSpec
             "OWN-SCRIPT": {
               "agentPath": "AGENT",
               "executable": {
-                "TYPE": "ScriptExecutable",
+                "TYPE": "ShellScriptExecutable",
                 "script": "#!/usr/bin/env bash\n..."
               },
               "parallelism": 1
@@ -463,7 +463,7 @@ final class WorkflowTest extends AnyFreeSpec
       val workflow = Workflow(
         WorkflowPath("WORKFLOW") ~ VersionId("1"),
         Vector(
-          Execute(WorkflowJob(AgentPath("AGENT"), ScriptExecutable("echo HELLO\n")))))
+          Execute(WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("echo HELLO\n")))))
       testJson(workflow,json"""
         {
           "instructions": [
@@ -472,7 +472,7 @@ final class WorkflowTest extends AnyFreeSpec
               "job": {
                 "agentPath": "AGENT",
                 "executable": {
-                  "TYPE": "ScriptExecutable",
+                  "TYPE": "ShellScriptExecutable",
                   "script": "echo HELLO\n"
                 },
                 "parallelism": 1
@@ -687,7 +687,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "referencedLockPaths" in {
-    val job = WorkflowJob(AgentPath("AGENT"), ScriptExecutable(""))
+    val job = WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable(""))
     val a = LockPath("A")
     val b = LockPath("B")
     val c = LockPath("C")
@@ -713,10 +713,10 @@ final class WorkflowTest extends AnyFreeSpec
     val b = AgentPath("B")
     val c = AgentPath("C")
     val d = AgentPath("D")
-    val aJob = WorkflowJob(a, ScriptExecutable(""))
-    val bJob = WorkflowJob(b, ScriptExecutable(""))
-    val cJob = WorkflowJob(c, ScriptExecutable(""))
-    val dJob = WorkflowJob(d, ScriptExecutable(""))
+    val aJob = WorkflowJob(a, ShellScriptExecutable(""))
+    val bJob = WorkflowJob(b, ShellScriptExecutable(""))
+    val cJob = WorkflowJob(c, ShellScriptExecutable(""))
+    val dJob = WorkflowJob(d, ShellScriptExecutable(""))
     val workflow = Workflow(
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
@@ -735,7 +735,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "referencedJobResourcePaths" in {
-    val job = WorkflowJob(AgentPath("AGENT"), ScriptExecutable(""))
+    val job = WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable(""))
     val a = JobResourcePath("A")
     val b = JobResourcePath("B")
     val c = JobResourcePath("C")

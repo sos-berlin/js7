@@ -47,7 +47,7 @@ Beispiele in JSON:
     "MY-JOB": {
       "agentPath": "AGENT",
       "executable": {
-        "TYPE": "ScriptExecutable",
+        "TYPE": "ShellScriptExecutable",
         "script": "#!/usr/bin/env bash\n set -euo pipefail\necho HELLO\n"
       }
     }
@@ -116,7 +116,7 @@ Beispiel in JSON den beiden Parametern
       "job": {
         "agentPath": "AGENT",
         "executable": {
-          "TYPE": "ScriptExecutable",
+          "TYPE": "ShellScriptExecutable",
           "script": "#!/usr/bin/env bash\nset -euo pipefail\necho \"STRING=$STRING\"\necho \"NUMBER=$NUMBER\"\n",
           "env": {
             "STRING": "$myString",

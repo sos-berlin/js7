@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.job.{InternalExecutable, JobResource, JobResourcePath, ScriptExecutable}
+import js7.data.job.{InternalExecutable, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -205,7 +205,7 @@ object JobResourceTest
     nameToJob = Map(
       jobName -> WorkflowJob(
         agentPath,
-        ScriptExecutable(
+        ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
             |echo A=/$A/
@@ -230,7 +230,7 @@ object JobResourceTest
     Vector(Execute.Anonymous(
       WorkflowJob(
         agentPath,
-        ScriptExecutable(
+        ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
             |echo ORIGINAL_PATH=/$ORIGINAL_PATH/
@@ -269,7 +269,7 @@ object JobResourceTest
       Vector("TEST-LABEL" @: Execute.Named(jobName)),
       nameToJob = Map(jobName -> WorkflowJob(
         agentPath,
-        ScriptExecutable(
+        ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
             |echo JS7_ORDER_ID=/$JS7_ORDER_ID/

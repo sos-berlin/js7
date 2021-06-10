@@ -8,7 +8,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
-import js7.data.job.ScriptExecutable
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStderrWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, StringConstant}
@@ -34,7 +34,7 @@ final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTes
   private lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
       Execute(WorkflowJob(agentPath,
-        ScriptExecutable(
+        ShellScriptExecutable(
           """echo WindowsLogonTest
             |set
             |""".stripMargin,

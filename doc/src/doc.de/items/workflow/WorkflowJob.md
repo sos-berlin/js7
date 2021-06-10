@@ -5,7 +5,7 @@ Beispiel in JSON:
 {
   "agentPath": "AGENT",
   "executable": {
-    "TYPE": "ScriptExecutable",
+    "TYPE": "ShellScriptExecutable",
     "script": "echo \"hello world1\"\n"
   },
   "defaultArguments": {

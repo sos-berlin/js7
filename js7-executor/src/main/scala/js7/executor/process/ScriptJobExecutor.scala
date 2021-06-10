@@ -10,7 +10,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF}
 import js7.base.utils.TaskLock
-import js7.data.job.{JobConf, JobResource, JobResourcePath, ScriptExecutable}
+import js7.data.job.{JobConf, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
@@ -20,7 +20,7 @@ import monix.eval.Task
 import scala.collection.mutable
 
 final class ScriptJobExecutor(
-  protected val executable: ScriptExecutable,
+  protected val executable: ShellScriptExecutable,
   protected val jobConf: JobConf,
   protected val jobExecutorConf: JobExecutorConf,
   protected val pathToJobResource: JobResourcePath => Checked[JobResource])
@@ -55,7 +55,7 @@ extends PathProcessJobExecutor
 object ScriptJobExecutor
 {
   def checked(
-    executable: ScriptExecutable,
+    executable: ShellScriptExecutable,
     jobConf: JobConf,
     executorConf: JobExecutorConf,
     pathToJobResource: JobResourcePath => Checked[JobResource])
