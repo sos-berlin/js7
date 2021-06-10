@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.generic.GenericString
-import js7.base.io.process.{KeyLogin, ReturnCode}
+import js7.base.io.process.KeyLogin
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Collections.implicits.RichIterable
@@ -13,10 +13,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
-import js7.data.order.Outcome
-import js7.data.value.{NamedValues, NumberValue, ValuePrinter}
+import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter
-import js7.data.workflow.instructions.ReturnCodeMeaning
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -27,33 +25,22 @@ final case class WorkflowJob private(
   executable: Executable,
   defaultArguments: NamedValues,
   jobResourcePaths: Seq[JobResourcePath],
-  returnCodeMeaning: ReturnCodeMeaning/*TODO Move to ProcessExecutable*/,
   parallelism: Int,
   sigkillDelay: Option[FiniteDuration],
   failOnErrWritten: Boolean)
 {
-  def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
-    Outcome.Completed(
-      success = returnCodeMeaning.isSuccess(returnCode),
-      namedValues + ("returnCode" -> NumberValue(returnCode.number)))
-
   def isExecutableOnAgent(agentPath: AgentPath): Boolean =
     this.agentPath == agentPath
 
   def argumentsString = s"agent=${agentPath.string}, " +
     (executable match {
-      case PathExecutable(o, env, login, v1Compatible) => s"executable=$o"
-      case ShellScriptExecutable(o, env, login, v1Compatible) => s"script=$o"
-      case CommandLineExecutable(expr, login, env) => "command=" + ValuePrinter.quoteString(expr.toString)
+      case PathExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"executable=$o"
+      case ShellScriptExecutable(o, env, login, returnCodeMeansing, v1Compatible) => s"script=$o"
+      case CommandLineExecutable(expr, login, returnCodeMeansing, env) => "command=" + ValuePrinter.quoteString(expr.toString)
       case InternalExecutable(className, jobArguments, arguments) =>
         "internalJobClass=" + ValuePrinter.quoteString(className) ++
           (jobArguments.nonEmpty ?? ("jobArguments=" + WorkflowPrinter.namedValuesToString(jobArguments))) ++
           (arguments.nonEmpty ?? ("arguments=" + ValuePrinter.nameToExpressionToString(arguments)))
-    }) +
-    (returnCodeMeaning match {
-      case ReturnCodeMeaning.Default => ""
-      case ReturnCodeMeaning.Success(returnCodes) => s", successReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
-      case ReturnCodeMeaning.Failure(returnCodes) => s", failureReturnCodes=(${returnCodes.map(_.number) mkString ", "})"
     })
 }
 
@@ -66,13 +53,12 @@ object WorkflowJob
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
-    returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
     login: Option[KeyLogin] = None,
     failOnErrWritten: Boolean = false)
   : WorkflowJob =
-    checked(agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, parallelism, sigkillDelay,
+    checked(agentPath, executable, defaultArguments, jobResourcePaths, parallelism, sigkillDelay,
       failOnErrWritten = failOnErrWritten
     ).orThrow
 
@@ -81,14 +67,13 @@ object WorkflowJob
     executable: Executable,
     defaultArguments: NamedValues = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
-    returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false)
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
-        agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning,
+        agentPath, executable, defaultArguments, jobResourcePaths,
         parallelism, sigkillDelay, failOnErrWritten)
 
   final case class Name private(string: String) extends GenericString
@@ -106,7 +91,6 @@ object WorkflowJob
       "executable" -> workflowJob.executable.asJson,
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
-      "returnCodeMeaning" -> ((workflowJob.returnCodeMeaning != ReturnCodeMeaning.Default) ? workflowJob.returnCodeMeaning).asJson,
       "parallelism" -> workflowJob.parallelism.asJson,
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson)
@@ -117,11 +101,10 @@ object WorkflowJob
       agentPath <- cursor.get[AgentPath]("agentPath")
       arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
       jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
-      rc <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       parallelism <- cursor.getOrElse[Int]("parallelism")(DefaultParallelism)
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
       failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
-      job <- checked(agentPath, executable, arguments, jobResourcePaths, rc, parallelism,
+      job <- checked(agentPath, executable, arguments, jobResourcePaths, parallelism,
         sigkillDelay, failOnErrWritten
       ).toDecoderResult(cursor.history)
     } yield job

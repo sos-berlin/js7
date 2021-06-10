@@ -7,7 +7,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
+import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
@@ -19,7 +19,7 @@ import js7.data.value.expression.{Evaluator, Expression}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Prompt, Retry, ReturnCodeMeaning, TryInstruction, End => EndInstr, Fail => FailInstr}
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Prompt, Retry, TryInstruction, End => EndInstr, Fail => FailInstr}
 import scala.concurrent.duration._
 
 /**
@@ -120,25 +120,26 @@ object WorkflowParser
         jobResourcePaths <- kv[Seq[JobResourcePath]]("jobResourcePaths", Nil)
         env <- kv[ObjectExpression]("env", ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
+        returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         executable <- kv.oneOf[Any]("executable", "command", "script", "internalJobClass").flatMap {
           case ("executable", path: String) =>
-            Pass(PathExecutable(path, env.nameToExpr, v1Compatible = v1Compatible))
+            Pass(PathExecutable(path, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible))
           case ("command", command: String) =>
             if (v1Compatible) Fail.opaque(s"v1Compatible=true is inappropriate for a command")
-            else checkedToP(CommandLineParser.parse(command).map(CommandLineExecutable(_, env.nameToExpr)))
+            else checkedToP(CommandLineParser.parse(command)
+              .map(CommandLineExecutable(_, env.nameToExpr, returnCodeMeaning = returnCodeMeaning)))
           case ("script", script: Expression) =>
             checkedToP(Evaluator.eval(script).flatMap(_.toStringValue)
-              .map(v => ShellScriptExecutable(v.string, env.nameToExpr, v1Compatible = v1Compatible)))
+              .map(v => ShellScriptExecutable(v.string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
             checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
               .map(v => InternalExecutable(v.string, jobArguments, arguments.nameToExpr)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
-        returnCodeMeaning <- kv.oneOfOr(Set("successReturnCodes", "failureReturnCodes"), ReturnCodeMeaning.Default)
         parallelism <- kv[Int]("parallelism", WorkflowJob.DefaultParallelism)
         sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
       } yield
-        WorkflowJob(agentPath, executable, defaultArguments, jobResourcePaths, returnCodeMeaning, parallelism = parallelism,
+        WorkflowJob(agentPath, executable, defaultArguments, jobResourcePaths, parallelism = parallelism,
           sigkillDelay = sigkillDelay))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](

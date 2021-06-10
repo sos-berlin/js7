@@ -1,8 +1,9 @@
-package js7.data.workflow.instructions
+package js7.data.job
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.io.process.ReturnCode
+import js7.base.utils.typeclasses.IsEmpty
 
 /**
   * @author Joacim Zschimmer
@@ -14,6 +15,7 @@ sealed trait ReturnCodeMeaning {
 object ReturnCodeMeaning {
   val Default: ReturnCodeMeaning = Success(Set(ReturnCode(0)))
   val NoFailure: ReturnCodeMeaning = Failure(Set())
+  implicit val ReturnCodeMeaningIsEmpty = IsEmpty[ReturnCodeMeaning](_ == Default)
 
   final case class Success(returnCodes: Set[ReturnCode]) extends ReturnCodeMeaning {
     def isSuccess(returnCode: ReturnCode) = returnCodes contains returnCode

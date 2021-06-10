@@ -6,7 +6,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineExecutable, PathExecutable, ShellScriptExecutable}
+import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
@@ -14,7 +14,7 @@ import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpr
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.tester.DiffxAssertions.assertEqual
 import org.scalatest.freespec.AnyFreeSpec
@@ -134,8 +134,9 @@ final class WorkflowParserTest extends AnyFreeSpec
           WorkflowJob.Name("A") ->
             WorkflowJob(
               AgentPath("AGENT"),
-              PathExecutable("my/executable"),
-              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
+              PathExecutable(
+                "my/executable",
+                returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))),
           WorkflowJob.Name("B") ->
             WorkflowJob(
               AgentPath("AGENT"),
@@ -173,8 +174,8 @@ final class WorkflowParserTest extends AnyFreeSpec
                 "my/executable",
                 env = Map(
                   "A" -> NumericConstant(1),
-                  "B" -> NamedValue.last("b"))),
-              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)))))
+                  "B" -> NamedValue.last("b")),
+                returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))))))
   }
 
   "Execute named with duplicate jobs" in {
@@ -212,7 +213,9 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(
-            WorkflowJob(AgentPath("AGENT"), PathExecutable("A"), returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3)),
+            WorkflowJob(
+              AgentPath("AGENT"),
+              PathExecutable("A", returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))),
             sourcePos = sourcePos(18, 85)),
           ImplicitEnd(sourcePos(87, 88)))))
   }
@@ -222,7 +225,9 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow.anonymous(
         Vector(
           Execute.Anonymous(
-            WorkflowJob(AgentPath("AGENT"), PathExecutable("A"), returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3)),
+            WorkflowJob(
+              AgentPath("AGENT"),
+              PathExecutable("A", returnCodeMeaning = ReturnCodeMeaning.Failure.of(1, 3))),
             sourcePos = sourcePos(18, 82)),
           ImplicitEnd(sourcePos(84, 85)))))
   }

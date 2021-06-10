@@ -275,12 +275,12 @@
       "agentPath": "agent-1",
       "executable": {
         "TYPE": "ShellScriptExecutable",
-        "script": "echo \"hello world\""
-      },
-      "returnCodeMeaning": {
-        "success": [
-          0
-        ]
+        "script": "echo \"hello world\"",
+        "returnCodeMeaning": {
+          "success": [
+            0
+          ]
+        }
       },
       "parallelism": 100
     },
@@ -288,12 +288,12 @@
       "agentPath": "agent-2",
       "executable": {
         "TYPE": "ShellScriptExecutable",
-        "script": "echo \"hello world\""
-      },
-      "returnCodeMeaning": {
-        "success": [
-          0
-        ]
+        "script": "echo \"hello world\"",
+        "returnCodeMeaning": {
+          "success": [
+            0
+          ]
+        }
       },
       "parallelism": 100
     }

@@ -3,13 +3,13 @@ package js7.data.workflow
 import cats.syntax.show._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
-import js7.data.job.{PathExecutable, ShellScriptExecutable}
+import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer, ReturnCodeMeaning}
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -65,9 +65,10 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         Vector(
           Execute.Anonymous(
             WorkflowJob(AgentPath("AGENT"),
-              ShellScriptExecutable("LINE 1\nLINE 2\n'''LINE 3'''\n"),
-              Map("KEY" -> StringValue("VALUE")),
-              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1))),
+              ShellScriptExecutable(
+                "LINE 1\nLINE 2\n'''LINE 3'''\n",
+                returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
+              Map("KEY" -> StringValue("VALUE")))),
           Execute.Anonymous(
             WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("SCRIPT", v1Compatible = true))))),
       """define workflow {
@@ -86,10 +87,15 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY" -> StringValue("VALUE")),
-            returnCodeMeaning = ReturnCodeMeaning.NoFailure, parallelism = 3, sigkillDelay = Some(10.s))))),
+          Execute.Anonymous(WorkflowJob(
+            AgentPath("AGENT"),
+            PathExecutable(
+              "my-script",
+              returnCodeMeaning = ReturnCodeMeaning.NoFailure),
+            Map("KEY" -> StringValue("VALUE")),
+            parallelism = 3, sigkillDelay = Some(10.s))))),
       """define workflow {
-        |  execute agent="AGENT", parallelism=3, defaultArguments={"KEY": "VALUE"}, failureReturnCodes=[], sigkillDelay=10, executable="my-script";
+        |  execute agent="AGENT", parallelism=3, defaultArguments={"KEY": "VALUE"}, sigkillDelay=10, failureReturnCodes=[], executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -102,8 +108,12 @@ final class WorkflowPrinterTest extends AnyFreeSpec
           Execute.Named(WorkflowJob.Name("A")),
           Execute.Named(WorkflowJob.Name("B-JOB"))),
         Map(
-          WorkflowJob.Name("A") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("a-script"), Map("KEY" -> StringValue("VALUE")),
-            returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
+          WorkflowJob.Name("A") -> WorkflowJob(
+            AgentPath("AGENT"),
+            PathExecutable(
+              "a-script",
+              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
+            Map("KEY" -> StringValue("VALUE"))),
           WorkflowJob.Name("B-JOB") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("b-script")))),
       """define workflow {
         |  job A;

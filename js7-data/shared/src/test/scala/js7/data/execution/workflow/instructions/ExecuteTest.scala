@@ -6,12 +6,12 @@ import js7.base.problem.Problem
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
-import js7.data.job.RelativePathExecutable
+import js7.data.job.{RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
+import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowId, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
@@ -21,8 +21,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ExecuteTest extends AnyFreeSpec {
 
-  private val executeAnonymous = Execute(WorkflowJob(AgentPath("AGENT"), RelativePathExecutable("EXECUTABLE"),
-    returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9)))
+  private val executable = RelativePathExecutable("EXECUTABLE", returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9))
+  private val executeAnonymous = Execute(WorkflowJob(AgentPath("AGENT"), executable))
   private val orderId = OrderId("ORDER")
 
   private val stateView = new StateView {
@@ -34,9 +34,9 @@ final class ExecuteTest extends AnyFreeSpec {
 
   "toOutcome" in {
     val namedValues = Map("a" -> StringValue("A"))
-    assert(executeAnonymous.job.toOutcome(namedValues, ReturnCode(0)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(0))))
-    assert(executeAnonymous.job.toOutcome(namedValues, ReturnCode(1)) == Outcome.Failed   (namedValues + ("returnCode" -> NumberValue(1))))
-    assert(executeAnonymous.job.toOutcome(namedValues, ReturnCode(3)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(3))))
+    assert(executable.toOutcome(namedValues, ReturnCode(0)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(0))))
+    assert(executable.toOutcome(namedValues, ReturnCode(1)) == Outcome.Failed   (namedValues + ("returnCode" -> NumberValue(1))))
+    assert(executable.toOutcome(namedValues, ReturnCode(3)) == Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(3))))
   }
 
   "toEvents" in {

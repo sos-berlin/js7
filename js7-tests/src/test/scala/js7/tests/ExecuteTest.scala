@@ -12,14 +12,14 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, ProcessExecutable, RelativePathExecutable, ShellScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
+import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ReturnCodeMeaning}
 import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
@@ -76,8 +76,11 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   addExecuteTest(
     Execute(
-      WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(2)),
-      returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(2))))),
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript(2),
+          returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(2)))))),
     expectedOutcome = Outcome.Succeeded(NamedValues.rc(2)))
 
   addExecuteTest(Execute(WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(44)))),
@@ -174,8 +177,8 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         agentPath,
         ShellScriptExecutable(
           returnCodeScript("myExitCode"),
-          env = Map("myExitCode" -> NamedValue.last("myExitCode"))),
-        returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1))))),
+          env = Map("myExitCode" -> NamedValue.last("myExitCode")),
+          returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1)))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
     expectedOutcome = Outcome.Succeeded.rc(1))
 
@@ -188,11 +191,17 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Vector(
           Execute.Named(WorkflowJob.Name("JOB")), // ReturnCode 1 of JOB
           Execute.Named(WorkflowJob.Name("JOB"), Map("myExitCode" -> NumberValue(22))),
-          Execute.Anonymous(WorkflowJob(agentPath, executable, Map("myExitCode" -> NumberValue(33)),
-            returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(33)))))),
+          Execute.Anonymous(WorkflowJob(
+            agentPath,
+            executable.copy(
+              returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(33)))),
+            Map("myExitCode" -> NumberValue(33))))),
         Map(WorkflowJob.Name("JOB") ->
-          WorkflowJob(agentPath, executable, Map("myExitCode" -> NumberValue(11)),
-            returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(11), ReturnCode(22)))))),
+          WorkflowJob(
+            agentPath,
+            executable.copy(
+              returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(11), ReturnCode(22)))),
+            Map("myExitCode" -> NumberValue(11))))),
       expectedOutcomes = Seq(
         Outcome.Succeeded.rc(11),
         Outcome.Succeeded.rc(22),

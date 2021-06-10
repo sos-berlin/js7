@@ -157,9 +157,6 @@ object ManyAddOrdersTest
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
-          },
           "parallelism": 500
         },
         "job1_d": {
@@ -167,9 +164,6 @@ object ManyAddOrdersTest
           "executable": {
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
-          },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
           },
           "parallelism": 500
         },
@@ -179,9 +173,6 @@ object ManyAddOrdersTest
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
-          },
           "parallelism": 500
         },
         "job2_b": {
@@ -189,9 +180,6 @@ object ManyAddOrdersTest
           "executable": {
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
-          },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
           },
           "parallelism": 500
         },
@@ -201,9 +189,6 @@ object ManyAddOrdersTest
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
           },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
-          },
           "parallelism": 500
         },
         "job1": {
@@ -211,9 +196,6 @@ object ManyAddOrdersTest
           "executable": {
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
-          },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
           },
           "parallelism": 500
         },
@@ -223,9 +205,6 @@ object ManyAddOrdersTest
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\nsleep 1"
           },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
-          },
           "parallelism": 500
         },
         "job1_b": {
@@ -233,9 +212,6 @@ object ManyAddOrdersTest
           "executable": {
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
-          },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
           },
           "parallelism": 500
         },
@@ -245,9 +221,6 @@ object ManyAddOrdersTest
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world\"\n"
           },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
-          },
           "parallelism": 500
         },
         "job1_a": {
@@ -255,9 +228,6 @@ object ManyAddOrdersTest
           "executable": {
             "TYPE": "ShellScriptExecutable",
             "script": "echo \"hello world1\"\n"
-          },
-          "returnCodeMeaning": {
-            "success": [ 0 ]
           },
           "parallelism": 500
         }

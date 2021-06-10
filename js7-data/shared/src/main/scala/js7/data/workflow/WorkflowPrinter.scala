@@ -3,7 +3,7 @@ package js7.data.workflow
 import cats.Show
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ShellScriptExecutable}
+import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ProcessExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.parser.BasicPrinter
 import js7.data.value.ValuePrinter.{appendNameToExpression, appendQuoted, appendValue}
@@ -11,7 +11,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, ReturnCodeMeaning, TryInstruction}
+import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, TryInstruction}
 import scala.annotation.tailrec
 
 /**
@@ -49,38 +49,41 @@ final class WorkflowPrinter(sb: StringBuilder) {
       sb ++= ", defaultArguments="
       appendNamedValues(job.defaultArguments)
     }
-    job.returnCodeMeaning match {
-      case ReturnCodeMeaning.Default =>
-      case ReturnCodeMeaning.Success(returnCodes) =>
-        sb ++= ", successReturnCodes=["
-        sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
-        sb += ']'
-      case ReturnCodeMeaning.Failure(returnCodes) =>
-        sb ++= ", failureReturnCodes=["
-        sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
-        sb += ']'
-    }
     for (o <- job.sigkillDelay) {
       sb.append(", sigkillDelay=")
       sb.append(o.toBigDecimalSeconds)  // TODO Use floating point
     }
     job.executable match {
-      case PathExecutable(path, envExpr, login, v1Compatible) =>
-        if (v1Compatible) sb ++= ", v1Compatible=true"
-        appendEnv(envExpr)
-        sb ++= ", executable="
-        appendQuoted(path)
+      case executable: ProcessExecutable =>
+        executable.returnCodeMeaning match {
+          case ReturnCodeMeaning.Default =>
+          case ReturnCodeMeaning.Success(returnCodes) =>
+            sb ++= ", successReturnCodes=["
+            sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
+            sb += ']'
+          case ReturnCodeMeaning.Failure(returnCodes) =>
+            sb ++= ", failureReturnCodes=["
+            sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
+            sb += ']'
+        }
+        executable match {
+          case PathExecutable(path, envExpr, _, login, v1Compatible) =>
+            if (v1Compatible) sb ++= ", v1Compatible=true"
+            appendEnv(envExpr)
+            sb ++= ", executable="
+            appendQuoted(path)
 
-      case ShellScriptExecutable(script, envExpr, login, v1Compatible) =>
-        if (v1Compatible) sb ++= ", v1Compatible=true"
-        appendEnv(envExpr)
-        sb ++= ", script="
-        appendQuotedExpression(script)  // Last argument, because the script may have multiple lines
+          case ShellScriptExecutable(script, envExpr, _, login, v1Compatible) =>
+            if (v1Compatible) sb ++= ", v1Compatible=true"
+            appendEnv(envExpr)
+            sb ++= ", script="
+            appendQuotedExpression(script)  // Last argument, because the script may have multiple lines
 
-      case CommandLineExecutable(command, envExpr, login) =>
-        appendEnv(envExpr)
-        sb ++= ", command="
-        appendQuoted(command.toString)
+          case CommandLineExecutable(command, envExpr, _, login) =>
+            appendEnv(envExpr)
+            sb ++= ", command="
+            appendQuoted(command.toString)
+        }
 
       case InternalExecutable(className, jobArguments, arguments) =>
         sb ++= ", internalJobClass="

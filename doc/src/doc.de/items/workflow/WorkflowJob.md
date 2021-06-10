@@ -12,9 +12,6 @@ Beispiel in JSON:
     "NAME": "VALUE",
     "NUMBER": 7
   },
-  "returnCodeMeaning": {
-    "success": [ 0 ]
-  },
   "parallelism": 1,
   "sigkillDelay": 15
 }
@@ -26,22 +23,6 @@ Beispiel in JSON:
   Ein [Executable](Executable.md)
 
 * `defaultArguments`
-
-* `returnCodeMeaning`
-
-  Die Returncodes (Exitcode eines System-Prozesses),
-  die als Erfolg oder Versagen gewertet werden sollen.
-  Default ist (wie sonst üblich), dass 0 Erfolg bedeutet und alles andere Versagen:
-  `success=[0]`
-
-  * `success=[...]`
-
-    Liste ganzzahliger Returncodes, die als Erfolg gewertet werden.
-    Alle anderen werden als Versagen gewertet.
-
-  * `failure=[...]`
-    Liste ganzzahliger Returncodes, die als Versagen gewertet werden.
-    Alle anderen werden als Erfolg gewertet.
 
 * `parallelism`
 

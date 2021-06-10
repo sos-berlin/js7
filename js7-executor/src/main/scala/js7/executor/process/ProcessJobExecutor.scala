@@ -45,7 +45,7 @@ trait ProcessJobExecutor extends JobExecutor
         .map(_.fold(Map.empty)(_ ++ _))
 
     val processDriver = new ProcessDriver(
-      TaskConfiguration(jobKey, workflowJob.toOutcome, startProcess.commandLine, executable.login,
+      TaskConfiguration(jobKey, executable.toOutcome, startProcess.commandLine, executable.login,
         v1Compatible = v1Compatible),
       jobExecutorConf)
 
