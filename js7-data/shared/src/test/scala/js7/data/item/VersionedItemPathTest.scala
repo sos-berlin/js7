@@ -123,7 +123,7 @@ final class VersionedItemPathTest extends AnyFreeSpec
     assert(APath.itemTypeName == "A")
   }
 
-  "pattern matching with `is`" in {
+  "pattern matching with `VersionedItem.as`" in {
     def u(id: VersionedItemId_) = id match {
       case AId.as(id) =>
         assert(id.path.isInstanceOf[APath])
@@ -133,7 +133,7 @@ final class VersionedItemPathTest extends AnyFreeSpec
         "B"
       case _ => fail()
     }
-    assert(u(APath("b") ~ "1") == "A")
+    assert(u(APath("a") ~ "1") == "A")
     assert(u(BPath("b") ~ "1") == "B")
   }
 }

@@ -13,7 +13,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.VersionedItemPath._
 import scala.reflect.ClassTag
 
-// TODO Rename as VersionedItemPath
 trait VersionedItemPath extends InventoryItemPath with GenericString
 {
   def companion: Companion[_ <: VersionedItemPath]
@@ -93,11 +92,6 @@ object VersionedItemPath
         path ~ versionId
 
       val pathCompanion = P
-
-      object as {
-        def unapply(id: VersionedItemId_): Option[VersionedItemId[P]] =
-          (id.path.companion eq Companion.this) ? id.asInstanceOf[VersionedItemId[P]]
-      }
     }
 
     final val itemTypeName: String = name stripSuffix "Path"

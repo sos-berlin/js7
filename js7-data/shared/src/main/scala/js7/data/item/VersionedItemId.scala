@@ -80,6 +80,11 @@ object VersionedItemId
 
     def apply(path: P, versionId: VersionId): VersionedItemId[P]
 
+    object as {
+      def unapply(id: VersionedItemId_): Option[VersionedItemId[P]] =
+        (id.path.companion eq pathCompanion) ? id.asInstanceOf[VersionedItemId[P]]
+    }
+
     final lazy val itemTypeName = P.itemTypeName
 
     implicit final val implicitCompanion: Companion[P] =
