@@ -192,6 +192,14 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
+      "Prompting" in {
+        testJson[State](Prompting(StringValue("QUESTION")),
+          json"""{
+            "TYPE": "Prompting",
+            "question": "QUESTION"
+          }""")
+      }
+
       "Cancelled" in {
         testJson[State](Cancelled,
           json"""{
