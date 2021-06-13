@@ -3,17 +3,15 @@ package js7.data.item
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
-import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.VersionedItemPath._
 import scala.reflect.ClassTag
 
-trait VersionedItemPath extends InventoryItemPath with GenericString
+trait VersionedItemPath extends InventoryItemPath
 {
   def companion: Companion[_ <: VersionedItemPath]
 
@@ -67,7 +65,7 @@ object VersionedItemPath
   }
 
   abstract class Companion[P <: VersionedItemPath: ClassTag]
-  extends Js7PathValidating[P]
+  extends InventoryItemPath.Companion[P]
   {
     final val NameOrdering: Ordering[P] = Ordering.by(_.name)
     final lazy val Anonymous: P = unchecked("⊥")

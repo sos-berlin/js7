@@ -1,11 +1,9 @@
 package js7.data.item
 
 import io.circe.Codec
-import js7.base.generic.GenericString
-import js7.base.standards.Js7PathValidating
 import js7.data.item.InventoryItemKey.Companion
 
-trait SimpleItemPath extends InventoryItemKey with InventoryItemPath with GenericString
+trait SimpleItemPath extends InventoryItemKey with InventoryItemPath
 {
   protected type Self <: SimpleItemPath
 
@@ -21,7 +19,9 @@ trait SimpleItemPath extends InventoryItemKey with InventoryItemPath with Generi
 
 object SimpleItemPath
 {
-  trait Companion[A <: SimpleItemPath] extends InventoryItemKey.Companion[A] with Js7PathValidating[A]
+  trait Companion[A <: SimpleItemPath]
+  extends InventoryItemPath.Companion[A]
+  with InventoryItemKey.Companion[A]
 
   type AnyCompanion = Companion[_ <: SimpleItemPath]
 
