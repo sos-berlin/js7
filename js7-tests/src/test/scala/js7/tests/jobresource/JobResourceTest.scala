@@ -11,6 +11,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -51,7 +52,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(workflow.referencedItemPaths.toSet == Set(aJobResource.path, bJobResource.path, agentPath))
   }
 
-  "JobResourcePath" in {
+  "JobResource" in {
     controller.eventWatch.await[SignedItemAdded](_.event.key == aJobResource.path)
     controller.eventWatch.await[SignedItemAdded](_.event.key == bJobResource.path)
 
@@ -71,20 +72,21 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
         |C=/C of JOB-RESOURCE-B/
         |D=/D of JOB ENV/
         |E=/E of JOB-RESOURCE-B/
+        |aSetting=/A of JOB-RESOURCE-A/
         |""".stripMargin)
   }
 
-  "Change JobResourcePath" in {
+  "Change JobResource" in {
     val eventId = controller.eventWatch.lastAddedEventId
-    controllerApi.updateSignedSimpleItems(Seq(sign(b1JobResource))).await(99.s).orThrow
+    controllerApi.updateSignedItems(Seq(sign(b1JobResource))).await(99.s).orThrow
     val orderId = OrderId("ORDER-1")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.path, after = eventId)
   }
 
-  "JobResourcePath with order variable references (no order access)" in {
+  "JobResource with order variable references (no order access)" in {
     val eventId = controller.eventWatch.lastAddedEventId
-    controllerApi.updateSignedSimpleItems(Seq(sign(b2JobResource))).await(99.s).orThrow
+    controllerApi.updateSignedItems(Seq(sign(b2JobResource))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b2JobResource.path, after = eventId)
 
     val orderId = OrderId("ORDER-2")
@@ -97,7 +99,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(orderProcessed.outcome == Outcome.Failed(Some("No such named value: E")))
   }
 
-  "JobResourcePath with environment variable access" in {
+  "JobResource with environment variable access" in {
     val orderId = OrderId("ORDER-ENV")
     controllerApi.addOrder(FreshOrder(orderId, envWorkflow.path)).await(99.s).orThrow
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
@@ -135,7 +137,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "with scheduledFor" in {
-      controllerApi.updateSignedSimpleItems(Seq(sign(sosJobResource))).await(99.s).orThrow
+      controllerApi.updateSignedItems(Seq(sign(sosJobResource))).await(99.s).orThrow
 
       val orderId = OrderId("ORDER-SOS-SCHEDULED")
       val scheduledFor = Timestamp.parse("2021-04-26T00:11:22.789Z")
@@ -158,10 +160,40 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
-  "JobResource.settings" in {
+  "JobResource.settings in JVM job" in {
     val orderId = OrderId("ORDER-INTERNAL")
     val events = controller.runOrder(FreshOrder(orderId, internalWorkflow.path))
     assert(events.last.value.isInstanceOf[OrderFinished])
+  }
+
+  "Order fails on referencing an unknown JobResource setting in an expression" in {
+    val workflow = Workflow(
+      WorkflowPath("UNKNOWN-SETTING") ~ "UNKNOWN-SETTING",
+      Vector(
+        Execute.Anonymous(WorkflowJob(
+          agentPath,
+          ShellScriptExecutable(":",
+            env = Map(
+              "aSetting" -> ExpressionParser.parse("JobResource:`JOB-RESOURCE-A`:UNKNOWN").orThrow))))))
+    controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
+      .await(99.s).orThrow
+    val orderId = OrderId("UNKNOWN-SETTING")
+    val events = controller.runOrder(FreshOrder(orderId, workflow.path))
+    assert(events.map(_.value).contains(OrderProcessed(Outcome.Disrupted(
+      UnknownKeyProblem("setting", "JobResource:JOB-RESOURCE-A:UNKNOWN")))))
+  }
+
+  "Referencing an unknown JobResource in an expression is rejected" in {
+    val workflow = Workflow(
+      WorkflowPath("INVALID-WORKFLOW") ~ "INVALID",
+      Vector(
+        Execute.Anonymous(WorkflowJob(
+          agentPath,
+          ShellScriptExecutable(":",
+            env = Map(
+              "aSetting" -> ExpressionParser.parse("JobResource:UNKNOWN:a").orThrow))))))
+    assert(controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
+      .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
   }
 }
 
@@ -213,10 +245,12 @@ object JobResourceTest
             |echo C=/$C/
             |echo D=/$D/
             |echo E=/$E/
+            |echo aSetting=/$aSetting/
             |""".stripMargin,
           env = Map(
-            "D" -> StringConstant("D of JOB ENV"),
-            "E" -> StringConstant("E of JOB ENV"))),
+            "D" -> ExpressionParser.parse("'D of JOB ENV'").orThrow,
+            "E" -> ExpressionParser.parse("'E of JOB ENV'").orThrow,
+            "aSetting" -> ExpressionParser.parse("JobResource:`JOB-RESOURCE-A`:a").orThrow)),
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 

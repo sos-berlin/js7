@@ -101,9 +101,11 @@ with AutoCloseable
     updateItems(
       Observable.fromIterable(items) map ItemOperation.AddOrChangeSimple.apply)
 
-  def updateSignedSimpleItems(items: Iterable[Signed[SignableItem]]): Task[Checked[Completed]] =
+  def updateSignedItems(items: Iterable[Signed[SignableItem]], versionId: Option[VersionId] = None)
+  : Task[Checked[Completed]] =
     updateItems(
-      Observable.fromIterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString)))
+      Observable.fromIterable(versionId).map(AddVersion(_)) ++
+        Observable.fromIterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString)))
 
   def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     untilReachable(_

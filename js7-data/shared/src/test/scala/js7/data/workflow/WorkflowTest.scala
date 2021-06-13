@@ -9,7 +9,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
+import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceSetting, LastReturnCode, NumericConstant}
 import js7.data.value.expression.PositionSearch
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.Instruction.Labeled
@@ -735,11 +735,14 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "referencedJobResourcePaths" in {
-    val job = WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable(""))
     val a = JobResourcePath("A")
     val b = JobResourcePath("B")
     val c = JobResourcePath("C")
     val d = JobResourcePath("D")
+    val e = JobResourcePath("E")
+    val job = WorkflowJob(
+      AgentPath("AGENT"),
+      ShellScriptExecutable("", env = Map("X" -> JobResourceSetting(e, "SETTING"))))
     val workflow = Workflow(
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
@@ -751,7 +754,7 @@ final class WorkflowTest extends AnyFreeSpec
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))))
     assert(workflow.referencedLockPaths.isEmpty)
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
-    assert(workflow.referencedJobResourcePaths == Set(a, b, c, d))
+    assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e))
   }
 
   "namedJobs" in {

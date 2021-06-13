@@ -2,6 +2,7 @@ package js7.data.value.expression
 
 import fastparse.NoWhitespace._
 import js7.base.problem.{Checked, Problem}
+import js7.data.job.JobResourcePath
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.expressionOnly
@@ -12,10 +13,7 @@ import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 
-/**
-  * @author Joacim Zschimmer
-  */
-final class EvaluatorTest extends AnyFreeSpec
+final class ExpressionTest extends AnyFreeSpec
 {
   "NamedValue expressions" - {
     implicit val evaluator = Evaluator(
@@ -64,6 +62,17 @@ final class EvaluatorTest extends AnyFreeSpec
           functionCall match {
             case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
              Some(evaluator.eval(expr).flatMap(_.toNumber).map(o => NumberValue(o.number * 3)))
+
+            case _ => None
+          }
+
+        override def evalJobResourceSetting(setting: JobResourceSetting): Option[Checked[Value]] =
+          setting match {
+            case JobResourceSetting(JobResourcePath("myJobResource"), "SETTING") =>
+             Some(Right(StringValue("myJobResource,setting,value")))
+
+            case JobResourceSetting(JobResourcePath("JOB-RESOURCE"), "SETTING-NAME") =>
+             Some(Right(StringValue("JOB-RESOURCE,setting,value")))
 
             case _ => None
           }
@@ -119,6 +128,14 @@ final class EvaluatorTest extends AnyFreeSpec
     testEval("${ASTRING}",
       result = "AA",
       Right(NamedValue.last("ASTRING")))
+
+    testEval("JobResource:myJobResource:SETTING",
+      result = "myJobResource,setting,value",
+      Right(JobResourceSetting(JobResourcePath("myJobResource"), "SETTING")))
+
+    testEval("JobResource:`JOB-RESOURCE`:`SETTING-NAME`",
+      result = "JOB-RESOURCE,setting,value",
+      Right(JobResourceSetting(JobResourcePath("JOB-RESOURCE"), "SETTING-NAME")))
 
     //testEval("${label::LABEL.KEY}",
     //  result = "LABEL-VALUE",
@@ -446,7 +463,7 @@ final class EvaluatorTest extends AnyFreeSpec
     registerTest(exprString) {
       assert(checkedParse(exprString.trim, expressionOnly(_)) == expression)
       for (e <- expression) {
-        assert(checkedParse(e.toString, expressionOnly(_)) == expression, " *** toString ***")
+        assert(checkedParse(e.toString, expressionOnly(_)) == expression, " in toString❗")
         assert(evaluator.eval(e) == result)
       }
     }

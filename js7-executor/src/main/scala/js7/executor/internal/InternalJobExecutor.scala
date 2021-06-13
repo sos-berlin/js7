@@ -46,19 +46,18 @@ extends JobExecutor
       internalJobLazy.fold(_ => Task.unit, _.stop)
     }.memoize
 
-  def toOrderProcess(processOrder: ProcessOrder) =
+  def prepareOrderProcess(processOrder: ProcessOrder) =
     Task {
       for {
         internalJob <- internalJobLazy()
-        jobResources <- checkedCurrentJobResources()
-        step <- toStep(processOrder, jobResources)
+        step <- toStep(processOrder)
       } yield internalJob.toOrderProcess(step)
     }
 
-  private def toStep(processOrder: ProcessOrder, jobResources: Seq[JobResource]): Checked[InternalJob.Step] =
+  private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
     for {
       args <- processOrder.scope.evaluator.evalExpressionMap(executable.arguments)
-      resourceToArgs <- jobResources.traverse(o =>
+      resourceToArgs <- processOrder.jobResources.traverse(o =>
         processOrder.jobResourceScope.evaluator.evalExpressionMap(o.settings).map(o.path -> _))
     } yield Step(
       processOrder,

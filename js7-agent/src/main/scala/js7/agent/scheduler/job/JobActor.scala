@@ -1,6 +1,7 @@
 package js7.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
+import cats.syntax.traverse._
 import js7.agent.scheduler.job.JobActor._
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -12,10 +13,11 @@ import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
-import js7.data.order.{OrderId, Outcome}
+import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.value.NamedValues
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.internal.JobExecutor
-import js7.executor.{OrderProcess, ProcessOrder}
+import js7.executor.{OrderProcess, ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.mutable
@@ -28,7 +30,7 @@ private[agent] final class JobActor private(
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends Actor with Stash
 {
-  import jobConf.{jobKey, sigKillDelay, workflowJob}
+  import jobConf.{jobKey, sigKillDelay, workflow, workflowJob}
 
   private val logger = Logger.withPrefix[this.type](jobKey.name)
   private val orderToProcess = mutable.Map.empty[OrderId, OrderProcess]
@@ -54,16 +56,25 @@ extends Actor with Stash
     case Input.OrderAvailable =>
       handleIfReadyForOrder()
 
-    case processOrder: ProcessOrder if waitingForNextOrder =>
-      import processOrder.order
+    case Input.ProcessOrder(order, defaultArguments, stdObservers) if waitingForNextOrder =>
       val sender = this.sender()
       waitingForNextOrder = false
-      checkedJobExecutor match {
+
+      // Read JobResources each time because they may change at any time
+      (for {
+        jobExecutor <- checkedJobExecutor
+        resourcesPaths <- jobConf.jobResourcePaths.traverse(pathToJobResource)
+      } yield jobExecutor -> resourcesPaths)
+      match {
         case Left(problem) =>
           replyWithOrderProcessed(
             Response.OrderProcessed(order.id, Outcome.Disrupted(problem), isOrderKilled(order.id)))
 
-        case Right(jobExecutor: JobExecutor) =>
+        case Right((jobExecutor, jobResources)) =>
+          val processOrder = ProcessOrder(
+            order, workflow, jobKey, jobResources,
+            defaultArguments = workflowJob.defaultArguments ++ defaultArguments,
+            jobConf.controllerId, stdObservers)
           jobExecutor.start
             .materializeIntoChecked
             .map { checked =>
@@ -81,17 +92,17 @@ extends Actor with Stash
 
         case Right(()) =>
           val sender = this.sender()
-          jobExecutor.toOrderProcess(processOrder)
+          jobExecutor
+            .prepareOrderProcess(processOrder)
             .materializeIntoChecked
             .foreach(o => self.!(Internal.Process(processOrder, o))(sender))
-
       }
       handleIfReadyForOrder()
 
     case Internal.Process(processOrder: ProcessOrder, Left(problem)) =>
       import processOrder.order
       val sender = this.sender()
-      logger.error(s"Order '${order.id.string}' step could not be started: $problem")
+      logger.debug(s"Order '${order.id.string}' step could not be started: $problem")
       self.!(Internal.TaskFinished(order.id, Outcome.Disrupted(problem)))(sender)
 
     case Internal.Process(processOrder, Right(orderProcess)) =>
@@ -224,6 +235,10 @@ private[agent] object JobActor
     case object OrderAvailable
     final case class Terminate(signal: Option[ProcessSignal] = None)
     final case class KillProcess(orderId: OrderId, signal: Option[ProcessSignal])
+    final case class ProcessOrder(
+      order: Order[Order.Processing],
+      defaultArguments: NamedValues,
+      stdObservers: StdObservers)
   }
 
   object Output {

@@ -1,11 +1,16 @@
 package js7.data.execution.workflow.context
 
 import js7.base.problem.Checked._
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax._
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.expression.{Scope, ValueSearch}
+import js7.data.value.expression.Expression.JobResourceSetting
+import js7.data.value.expression.{Expression, Scope, ValueSearch}
 import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -46,9 +51,10 @@ trait StateView
 
   protected def idToWorkflow(id: WorkflowId): Checked[Workflow]
 
-  final def makeScope(order: Order[Order.State]): Checked[Scope] =
+  final def makeScope(order: Order[Order.State])
+  : Checked[Scope] =
     idToWorkflow(order.workflowId)
-      .map(StateView.makeScope(order, _))
+      .map(StateView.makeScope(order, _, jobResources = Nil))
 }
 
 object StateView
@@ -56,12 +62,14 @@ object StateView
   final def makeScope(
     order: Order[Order.State],
     workflow: Workflow,
+    jobResources: Seq[JobResource],
     default: PartialFunction[String, Value] = PartialFunction.empty)
   : Scope =
     new Scope {
       private val nameToMaybeDefault: String => Option[Value] = default.lift
       private lazy val catchCount = Right(NumberValue(
         order.workflowPosition.position.catchCount))
+      private val pathToJobResource = jobResources.toKeyedMap(_.path)
 
       override def symbolToValue(symbol: String) = symbol match {
         case "catchCount" => Some(catchCount)
@@ -98,6 +106,19 @@ object StateView
       private def argument(name: String): Option[Value] =
         order.arguments.get(name) orElse
           workflow.orderRequirements.defaultArgument(name)
+
+      override def evalJobResourceSetting(setting: Expression.JobResourceSetting) =
+        setting match {
+          case JobResourceSetting(path: JobResourcePath, settingName) =>
+            Some(
+              pathToJobResource
+                .rightOr(path, UnknownKeyProblem("JobResource", path.string))
+                .flatMap(_.settings
+                  .rightOr(settingName, UnknownKeyProblem("setting", s"$path:$settingName")))
+                .flatMap(evaluator.eval))
+          case _ =>
+            None
+        }
     }
 
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =

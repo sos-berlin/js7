@@ -57,7 +57,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
   private val testCounter = AtomicInt(0)
 
-  "One InternalJob.start for multiple InternalJob.toOrderProcess" in {
+  "One InternalJob.start for multiple InternalJob.prepareOrderProcess" in {
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(execute_[AddOneJob])
       .withId(workflowPathIterator.next() ~ versionId)
@@ -70,7 +70,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
       assert(outcomes == Vector(Outcome.Succeeded(
         NamedValues(
-          "START" -> NumberValue(1),  // One start only for multiple toOrderProcess calls
+          "START" -> NumberValue(1),  // One start only for multiple prepareOrderProcess calls
           "PROCESS" -> NumberValue(processNumber),
           "RESULT" -> NumberValue(301)))))
     }

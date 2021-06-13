@@ -21,7 +21,7 @@ trait ProcessJobExecutor extends JobExecutor
   protected def jobExecutorConf: JobExecutorConf
 
   import executable.v1Compatible
-  import jobConf.{jobKey, workflowJob}
+  import jobConf.jobKey
 
   final def start = Task.pure(Right(()))
 
@@ -29,19 +29,17 @@ trait ProcessJobExecutor extends JobExecutor
     import processOrder.order
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =
-      checkedCurrentJobResources()
-        .flatMap(_
-          .reverse/*left overrides right*/
-          .traverse { jobResource =>
-            val lazyEvaluatedSettings: Map[String, Lazy[Checked[Value]]] =
-              jobResource.settings.view
-                .mapValues(expr => Lazy(processOrder.jobResourceScope.evaluator.eval(expr)))
-                .toMap
-            val scope = Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| processOrder.jobResourceScope
-            jobResource.env.toSeq
-              .traverse { case (k, v) => scope.evalString(v).map(k -> _) }
-              .map(_.toMap)
-          })
+      processOrder.jobResources.reverse/*left overrides right*/
+        .traverse { jobResource =>
+          val lazyEvaluatedSettings: Map[String, Lazy[Checked[Value]]] =
+            jobResource.settings.view
+              .mapValues(expr => Lazy(processOrder.jobResourceScope.evaluator.eval(expr)))
+              .toMap
+          val scope = Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| processOrder.jobResourceScope
+          jobResource.env.toSeq
+            .traverse { case (k, v) => scope.evalString(v).map(k -> _) }
+            .map(_.toMap)
+        }
         .map(_.fold(Map.empty)(_ ++ _))
 
     val processDriver = new ProcessDriver(
@@ -75,8 +73,7 @@ trait ProcessJobExecutor extends JobExecutor
     if (!v1Compatible)
       Map.empty
     else
-      (workflowJob.defaultArguments.view ++
-        processOrder.defaultArguments ++
+      (processOrder.defaultArguments.view ++
         processOrder.order.namedValues ++
         processOrder.workflow.defaultArguments
       ) .toMap

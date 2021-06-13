@@ -3,6 +3,7 @@ package js7.data.value.expression
 import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.Checked
+import js7.data.job.JobResourcePath
 import js7.data.parser.BasicParsers
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
@@ -78,9 +79,7 @@ object ExpressionParser
       }
   }
 
-  def dollarNamedValue[_: P] = P[NamedValue] {
-    def nameOnly(p: P[String]) = P[NamedValue](
-      p.map(o => NamedValue.last(o)))
+  def dollarNamedValue[_: P] = P[Expression] {
     //def arg = P[NamedValue](("arg::" ~~/ identifier)
     //  .map(key => NamedValue(NamedValue.Argument, NamedValue.KeyValue(StringConstant(key)))))
     //def byLabel = P[NamedValue](("label::" ~~/ identifier ~~ "." ~~/ identifier)
@@ -89,10 +88,21 @@ object ExpressionParser
     //  .map { case (jobName, key) => NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)), NamedValue.KeyValue(StringConstant(key))) })
     //def byPrefix = P[NamedValue]((identifier ~~ "." ~~/ identifier)
     //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), NamedValue.KeyValue(StringConstant(key))) })
-    def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
+    //def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
+    def curlyName = P[Expression](
+      ("{" ~~/ identifier ~~ "}"./)
+        .map(NamedValue.last(_)))
 
-    "$" ~~ (nameOnly(identifier | digits/*regex group*/) | curlyName)
+    "$" ~~ ((identifier | digits/*regex group*/).map(NamedValue.last(_)) | curlyName)
   }
+
+  private def jobResourceSetting[_: P] = P[JobResourceSetting](
+    (jobResourcePath ~ ":" ~ identifier)
+      .map((JobResourceSetting.apply(_, _)).tupled))
+
+  private def jobResourcePath[_: P] = P[JobResourcePath](
+    identifier
+      .flatMap(o => checkedToP(JobResourcePath.checked(o))))
 
   private def argumentFunctionCall[_: P] = P[NamedValue](
     keyword("argument") ~ w ~
@@ -129,7 +139,7 @@ object ExpressionParser
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | dollarNamedValue |
       catchCount | argumentFunctionCall | variableFunctionCall |
-      functionCall)
+      "JobResource" ~ ":" ~ jobResourceSetting | functionCall)
 
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {

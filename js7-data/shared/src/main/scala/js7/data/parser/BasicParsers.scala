@@ -41,6 +41,15 @@ object BasicParsers
   def simpleIdentifier[_: P] = P[String](
     (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).!)
 
+  //def js7Path[_: P] = P[String](
+  //  (js7Name ~ ("/" ~ js7Name).rep).!)
+  //
+  //def js7Name[_: P] = P(String) {
+  //  import Js7PathValidator.Standard.js7NameValidator
+  //  (CharPred(js7NameValidator.isNameStart).opaque("name start") ~
+  //    CharsWhile(isIdentifierPart, 0)).!
+  //}
+
   private def backtickIdentifier[_: P] = P[String](
     rawIdentifierPart.rep(1).map(_.mkString("`"))
       .flatMap {

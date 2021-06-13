@@ -87,6 +87,8 @@ final class Evaluator(scope: Scope)
 
       case call: FunctionCall => evalFunctionCall(call)
 
+      case call: JobResourceSetting => evalJobResourceSetting(call)
+
       case _ => Left(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
 
@@ -94,8 +96,12 @@ final class Evaluator(scope: Scope)
     scope.evalFunctionCall(functionCall)
       .getOrElse(Left(Problem(s"Unknown function or non-matching arguments: ${functionCall.name}")))
 
+  private def evalJobResourceSetting(itemAccess: Expression.JobResourceSetting): Checked[Value] =
+    scope.evalJobResourceSetting(itemAccess)
+      .getOrElse(Left(Problem(s"Unknown item access or non-matching arguments: $itemAccess")))
+
   private def evalListExpression(expr: ListExpression): Checked[ListValue] =
-    expr.expressions.traverse(eval).map(ListValue.apply)
+    expr.subexpressions.traverse(eval).map(ListValue.apply)
 
   def evalObjectExpression(expr: ObjectExpression): Checked[ObjectValue] =
     evalExpressionMap(expr.nameToExpr).map(ObjectValue(_))

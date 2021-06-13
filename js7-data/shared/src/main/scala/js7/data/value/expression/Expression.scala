@@ -6,16 +6,25 @@ import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
+import js7.data.job.JobResourcePath
 import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, isIdentifierPart}
 import js7.data.value.ValuePrinter.{appendQuotedContent, quoteString}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 
 /**
   * @author Joacim Zschimmer
   */
 sealed trait Expression extends Expression.Precedence
+{
+  def subexpressions: Iterable[Expression]
+
+  def referencedJobResourcePaths: Iterable[JobResourcePath] =
+    subexpressions.view
+      .flatMap(_.referencedJobResourcePaths)
+      .toSet
+}
 
 object Expression
 {
@@ -34,82 +43,97 @@ object Expression
 
   final case class Not(a: BooleanExpression) extends BooleanExpression {
     def precedence = Precedence.Factor
+    def subexpressions = a.subexpressions
     override def toString = "!" + Precedence.inParentheses(a, precedence)
   }
 
   final case class And(a: BooleanExpression, b: BooleanExpression) extends BooleanExpression {
     def precedence = Precedence.And
+    def subexpressions = View(a, b)
     override def toString = toString(a, "&&", b)
   }
 
   final case class Or(a: BooleanExpression, b: BooleanExpression) extends BooleanExpression {
     def precedence = Precedence.Or
+    def subexpressions = View(a, b)
     override def toString = toString(a, "||", b)
   }
 
   final case class Equal(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
+    def subexpressions = View(a, b)
     override def toString = toString(a, "==", b)
   }
 
   final case class NotEqual(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
+    def subexpressions = View(a, b)
     override def toString = toString(a, "!=", b)
   }
 
   final case class LessOrEqual(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
+    def subexpressions = View(a, b)
     override def toString = toString(a, "<=", b)
   }
 
   final case class GreaterOrEqual(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
+    def subexpressions = View(a, b)
     override def toString = toString(a, ">=", b)
   }
 
   final case class LessThan(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
+    def subexpressions = View(a, b)
     override def toString = toString(a, "<", b)
   }
 
   final case class GreaterThan(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Comparison
+    def subexpressions = View(a, b)
     override def toString = toString(a, ">", b)
   }
 
   final case class Concat(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Addition
+    def subexpressions = View(a, b)
     override def toString = toString(a, "++", b)
   }
 
   final case class Add(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Addition
+    def subexpressions = View(a, b)
     override def toString = toString(a, "+", b)
   }
 
   final case class Substract(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.Addition
+    def subexpressions = View(a, b)
     override def toString = toString(a, "-", b)
   }
 
   final case class In(a: Expression, b: ListExpression) extends BooleanExpression {
     def precedence = Precedence.WordOperator
+    def subexpressions = View(a, b)
     override def toString = toString(a, "in", b)
   }
 
   final case class Matches(a: Expression, b: Expression) extends BooleanExpression {
     def precedence = Precedence.WordOperator
+    def subexpressions = View(a, b)
     override def toString = toString(a, "matches", b)
   }
 
-  final case class ListExpression(expressions: List[Expression]) extends Expression {
+  final case class ListExpression(subexpressions: List[Expression]) extends Expression {
     def precedence = Precedence.Factor
-    override def toString = expressions.mkString("[", ", ", "]")
+    override def toString = subexpressions.mkString("[", ", ", "]")
   }
 
   // TODO Rename this. Das ist normaler Ausdruck, sondern eine Sammlung von Ausdrücken
   // Brauchen wir dafür eine Klasse?
   final case class ObjectExpression(nameToExpr: Map[String, Expression]) extends Expression {
+    def subexpressions = nameToExpr.values
     def isEmpty = nameToExpr.isEmpty
     def nonEmpty = nameToExpr.nonEmpty
     def precedence = Precedence.Factor
@@ -129,26 +153,31 @@ object Expression
 
   final case class ToNumber(expression: Expression) extends NumericExpression {
     def precedence = Precedence.Factor
+    def subexpressions = expression :: Nil
     override def toString = Precedence.inParentheses(expression, precedence) + ".toNumber"
   }
 
   final case class ToBoolean(expression: Expression) extends BooleanExpression {
     def precedence = Precedence.Factor
+    def subexpressions = expression :: Nil
     override def toString = Precedence.inParentheses(expression, precedence) + ".toBoolean"
   }
 
   final case class BooleanConstant(booleanValue: Boolean) extends BooleanExpression {
     def precedence = Precedence.Factor
+    def subexpressions = Nil
     override def toString = booleanValue.toString
   }
 
   final case class NumericConstant(number: BigDecimal) extends NumericExpression {
     def precedence = Precedence.Factor
+    def subexpressions = Nil
     override def toString = number.toString
   }
 
   final case class StringConstant(string: String) extends StringExpression {
     def precedence = Precedence.Factor
+    def subexpressions = Nil
     override def toString = StringConstant.quote(string)
   }
   object StringConstant {
@@ -185,6 +214,8 @@ object Expression
   extends Expression {
     import NamedValue._
     def precedence = Precedence.Factor
+    def subexpressions = Nil
+
     override def toString = (where, what, default) match {
       case (LastOccurred, KeyValue(StringConstant(key)), None) if !key.contains('`') =>
         if (isSimpleName(key) || key.forall(c => c >= '0' && c <= '9'))
@@ -262,6 +293,7 @@ object Expression
   final case class FunctionCall(name: String, arguments: Seq[Argument] = Nil)
   extends Expression {
     protected def precedence = Precedence.Factor
+    def subexpressions = Nil
     override def toString = s"$name(${arguments.mkString(", ")})"
   }
 
@@ -269,31 +301,51 @@ object Expression
     override def toString = maybeName.fold("")(_ + "=") + expression
   }
 
+  final case class JobResourceSetting(jobResourcePath: JobResourcePath, subname: String)
+  extends Expression {
+    protected def precedence = Precedence.Factor
+
+    def subexpressions = Nil
+
+    override def referencedJobResourcePaths = jobResourcePath :: Nil
+
+    override def toString = withStringBuilder(64) { sb =>
+      sb.append("JobResource")
+      sb.append(':')
+      appendIdentifier(sb, jobResourcePath.string)
+      sb.append(':')
+      appendIdentifier(sb, subname)
+    }
+  }
+
   val LastReturnCode: NamedValue = NamedValue.last("returnCode")
 
   final case object OrderCatchCount extends NumericExpression {
     def precedence = Precedence.Factor
+    def subexpressions = Nil
     override def toString = "catchCount"
   }
 
   final case class StripMargin(expression: Expression) extends StringExpression {
     def precedence = Precedence.Factor
+    def subexpressions = expression :: Nil
     override def toString = Precedence.inParentheses(expression, precedence) + ".stripMargin"
   }
 
   final case class MkString(expression: Expression) extends StringExpression {
     def precedence = Precedence.Factor
+    def subexpressions = expression :: Nil
     override def toString = Precedence.inParentheses(expression, precedence) + ".mkString"
   }
 
   /** Like MkString, but with a different toString representation. */
-  final case class InterpolatedString(expressions: List[Expression]) extends StringExpression {
+  final case class InterpolatedString(subexpressions: List[Expression]) extends StringExpression {
     def precedence = Precedence.Factor
 
     override def toString =
       withStringBuilder { sb =>
         sb.append('"')
-        expressions.tails foreach {
+        subexpressions.tails foreach {
           case StringConstant(string) :: _ =>
             appendQuotedContent(sb, string)
 

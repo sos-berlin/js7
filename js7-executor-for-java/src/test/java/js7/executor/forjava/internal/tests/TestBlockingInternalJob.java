@@ -58,7 +58,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
         return () -> {
             assertThat(startCalled, equalTo(true));
 
-            logger.debug("toOrderProcess " + step.order().id());
+            logger.debug("prepareOrderProcess " + step.order().id());
             // Blocking is allowed here, because it is a BlockingInternalJob
             assertSpecialThread();
             Thread.sleep(500);

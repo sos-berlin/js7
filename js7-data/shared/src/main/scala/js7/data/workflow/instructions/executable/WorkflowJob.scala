@@ -29,6 +29,9 @@ final case class WorkflowJob private(
   sigkillDelay: Option[FiniteDuration],
   failOnErrWritten: Boolean)
 {
+  def referencedJobResourcePaths =
+    jobResourcePaths.view ++ executable.referencedJobResourcePaths
+
   def isExecutableOnAgent(agentPath: AgentPath): Boolean =
     this.agentPath == agentPath
 

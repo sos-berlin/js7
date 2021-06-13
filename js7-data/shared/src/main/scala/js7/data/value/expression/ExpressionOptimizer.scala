@@ -27,7 +27,7 @@ object ExpressionOptimizer
     }
 
   private def optimizeInterpolated(interpolated: InterpolatedString): StringExpression =
-    optimizeConcatList(interpolated.expressions).pipe(mergeStringConstants) match {
+    optimizeConcatList(interpolated.subexpressions).pipe(mergeStringConstants) match {
       case Nil => StringConstant.empty
       case (string: StringExpression) :: Nil => string
       case list => InterpolatedString(list)

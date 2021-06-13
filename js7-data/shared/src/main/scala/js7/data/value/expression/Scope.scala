@@ -4,7 +4,7 @@ import cats.kernel.Monoid
 import js7.base.problem.Checked
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.data.value.expression.Expression.FunctionCall
+import js7.data.value.expression.Expression.{FunctionCall, JobResourceSetting}
 import js7.data.value.expression.scopes.{DoubleScope, LazyNamedValueScope, NamedValueScope}
 import js7.data.value.{NamedValues, NumberValue, Value}
 
@@ -28,6 +28,9 @@ trait Scope
     evaluator.evalString(expression).map(_.string)
 
   def evalFunctionCall(functionCall: FunctionCall): Option[Checked[Value]] =
+    None
+
+  def evalJobResourceSetting(setting: JobResourceSetting): Option[Checked[Value]] =
     None
 
   def namedValue(name: String): Checked[Option[Value]] =

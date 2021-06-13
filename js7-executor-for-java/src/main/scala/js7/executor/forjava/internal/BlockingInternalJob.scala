@@ -28,7 +28,7 @@ trait BlockingInternalJob
   final def start(): VEither[Problem, Void] =
     VEither.right(Void)
 
-  /** Called only once after last `start` or `toOrderProcess`.
+  /** Called only once after last `start` or `prepareOrderProcess`.
     * <ul>
     *   <li>
     *     When the constructor has thrown an exception.

@@ -15,7 +15,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ExpressionParserTest extends AnyFreeSpec
 {
-  // See also EvaluatorTest
+  // See also ExpressionTest
 
   "NamedValue" - {
     "$ with impossible names" in {

@@ -1,6 +1,5 @@
 package js7.executor.internal
 
-import cats.implicits._
 import java.nio.file.Files.{exists, getPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
@@ -29,12 +28,7 @@ trait JobExecutor
 
   def stop: Task[Unit]
 
-  def toOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]]
-
-  // JobResources may change at any time
-  protected final def checkedCurrentJobResources(): Checked[Seq[JobResource]] =
-    (jobConf.workflowJob.jobResourcePaths ++ jobConf.workflow.jobResourcePaths)
-      .traverse(pathToJobResource)
+  def prepareOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]]
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"
 }

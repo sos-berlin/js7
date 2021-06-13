@@ -21,11 +21,20 @@ import js7.data.value.{NamedValues, NumberValue}
 sealed trait Executable
 {
   def arguments: Map[String, Expression]
+
+  def referencedJobResourcePaths: Iterable[JobResourcePath] =
+    arguments.values.view.flatMap(_.referencedJobResourcePaths)
+
+  protected def subexpressinos = arguments.values.view
 }
 
 sealed trait ProcessExecutable extends Executable
 {
   final def arguments = Map.empty
+
+  override def referencedJobResourcePaths =
+    super.referencedJobResourcePaths ++
+      env.values.view.flatMap(_.referencedJobResourcePaths)
 
   def env: Map[String, Expression]
 

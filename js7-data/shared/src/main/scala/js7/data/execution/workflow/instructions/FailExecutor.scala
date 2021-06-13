@@ -19,7 +19,9 @@ object FailExecutor extends EventInstructionExecutor
 
       case _: Order.Ready =>
         val maybeErrorMessage = fail.message
-          .map(o => state.makeScope(order).flatMap(_.evalString(o)).fold(_.toString, identity))
+          .map(o => state.makeScope(order)
+            .flatMap(_.evalString(o))
+            .fold(_.toString, identity))
         val outcome = Outcome.Failed(maybeErrorMessage, fail.namedValues)
         val event = OrderFailedIntermediate_(Some(outcome), uncatchable = fail.uncatchable)
         Right((order.id <-: event) :: Nil)

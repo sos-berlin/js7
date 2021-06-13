@@ -47,12 +47,12 @@ final class InternalJobExecutorTest extends AnyFreeSpec
     val whenOutString = out.fold.lastL.runToFuture
     val whenErrString = err.fold.lastL.runToFuture
     val stdObservers = new StdObservers(out, err, charBufferSize = 4096, keepLastErrLine = false)
-    val orderRun = executor.toOrderProcess(
+    val orderRun = executor.prepareOrderProcess(
       ProcessOrder(
         Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
         workflow,
-        workflowJob,
         JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB")),
+        jobResources = Nil,
         NamedValues("ARG" -> NumberValue(1)),
         ControllerId("CONTROLLER"),
         stdObservers)

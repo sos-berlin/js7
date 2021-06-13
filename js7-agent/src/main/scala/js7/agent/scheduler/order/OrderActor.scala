@@ -27,7 +27,7 @@ import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.executor.{ProcessOrder, StdObservers}
+import js7.executor.StdObservers
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.eval.Task
@@ -142,13 +142,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           val orderStarted = order.isState[Order.Fresh] thenList OrderStarted
           persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
             update(events, updatedState)
-            jobActor ! ProcessOrder(
+            jobActor ! JobActor.Input.ProcessOrder(
               order.castState[Order.Processing],
-              workflow,
-              workflowJob,
-              jobKey,
               defaultArguments,
-              controllerId,
               stdObservers)
           }
         }

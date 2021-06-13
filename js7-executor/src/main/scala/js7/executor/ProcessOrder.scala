@@ -3,19 +3,18 @@ package js7.executor
 import js7.base.utils.CatsUtils.combine
 import js7.data.controller.ControllerId
 import js7.data.execution.workflow.context.StateView
-import js7.data.job.JobKey
+import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{EnvScope, NamedValueScope, NowScope, OrderScope}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Label, Workflow}
 
 final case class ProcessOrder(
   order: Order[Order.Processing],
   workflow: Workflow,
-  workflowJob: WorkflowJob,
   jobKey: JobKey,
+  jobResources: Seq[JobResource],
   defaultArguments: NamedValues,
   controllerId: ControllerId,
   stdObservers: StdObservers)
@@ -48,7 +47,8 @@ final case class ProcessOrder(
       StateView.makeScope(
         order,
         workflow,
-        default = defaultArguments orElse workflowJob.defaultArguments),
+        jobResources,
+        default = defaultArguments),
       jobResourceScope)
 
   /** Number of execution for this job (starting with 1). */

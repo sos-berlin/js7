@@ -140,7 +140,8 @@ extends VersionedItem
       .toSet
 
   override lazy val referencedJobResourcePaths: Set[JobResourcePath] =
-    (jobResourcePaths.view ++ workflowJobs.flatMap(_.jobResourcePaths)).toSet
+    (jobResourcePaths.view ++ workflowJobs.flatMap(_.referencedJobResourcePaths))
+      .toSet
 
   private[workflow] def workflowJobs: View[WorkflowJob] =
     keyToJob.values.view
