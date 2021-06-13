@@ -12,7 +12,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.{Factory, View}
+import scala.collection.Factory
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Left
@@ -22,6 +22,7 @@ object ScalaUtils
 {
   private val Ellipsis = "..."
   val RightUnit: Either[Nothing, Unit] = Right(())
+  private val spaceArray = (" " * 64).toCharArray
 
   object syntax
   {
@@ -475,6 +476,37 @@ object ScalaUtils
         var i = underlying.length
         while (i > 0 && predicate(underlying(i - 1))) i = i -1
         underlying.substring(0, i)
+      }
+    }
+
+    implicit final class RichStringuilder(private val sb: StringBuilder) extends AnyVal
+    {
+      /** Right-adjust (moves) the text written by body and fill the left-side up with spaces. */
+      def fillLeft(width: Int)(body: => Unit): Unit = {
+        val insert = sb.length()
+        body
+        val shift = insert + width - sb.length()
+        if (shift > 0) {
+          if (shift <= spaceArray.length) {
+            sb.insertAll(insert, spaceArray, 0, shift)
+          } else {
+            sb.insertAll(insert, Iterator.fill(shift)(' '))
+          }
+        }
+      }
+
+      /** Fill the right-side up with spaces after something has been written by body. */
+      def fillRight(width: Int)(body: => Unit): Unit = {
+        val right = sb.length() + width
+        body
+        val fill = right - sb.length()
+        if (fill > 0) {
+          if (fill <= spaceArray.length) {
+            sb.appendAll(spaceArray, 0, fill)
+          } else {
+            sb.appendAll(Iterator.fill(fill)(' '))
+          }
+        }
       }
     }
 

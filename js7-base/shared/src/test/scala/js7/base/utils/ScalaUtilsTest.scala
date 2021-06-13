@@ -542,6 +542,35 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert("/abc//".dropLastWhile(_ == '/') == "/abc")
   }
 
+  "StringBuilder" - {
+    "fillLeft, fillRight" in {
+      val sb = new StringBuilder
+      sb.fillLeft(5) {}
+      sb.append('|')
+      sb.fillLeft(5) { sb.append(123) }
+      sb.append('|')
+      sb.fillLeft(5) { sb.append(123456) }
+      sb.append('|')
+      sb.fillRight(5) {}
+      sb.append('|')
+      sb.fillRight(5) { sb.append(456) }
+      sb.append('|')
+      sb.fillRight(5) { sb.append(456789) }
+      sb.append('|')
+      assert(sb.toString == "     |  123|123456|     |456  |456789|")
+    }
+
+    "fillLeft, fillRight with big width" in {
+      val n = 1000
+      val sb = new StringBuilder
+      sb.fillLeft(n) { sb.append('<') }
+      sb.append('|')
+      sb.fillRight(n) { sb.append('>') }
+      sb.append('|')
+      assert(sb.toString == " " * (n-1) + "<|>" + " " * (n-1) + "|")
+    }
+  }
+
   "Boolean ?? String" in {
     assert((false ?? "STRING") == "")
     assert((true ?? "STRING") == "STRING")

@@ -35,7 +35,7 @@ import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
-import scala.collection.{View, mutable}
+import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
 import scala.concurrent.{Await, Promise}
@@ -46,17 +46,21 @@ import scala.util.control.NonFatal
   */
 final class JournalActor[S <: JournaledState[S]: diffx.Diff] private(
   journalMeta: JournalMeta,
-  conf: JournalConf,
+  protected val conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
   eventIdGenerator: EventIdGenerator,
   stopped: Promise[Stopped])
   (implicit S: JournaledState.Companion[S])
-extends Actor with Stash
+extends Actor with Stash with JournalLogging
 {
   import context.{become, stop}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
+
+  protected def logger = JournalActor.logger
+  protected def isRequiringClusterAcknowledgement = requireClusterAcknowledgement
+
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
   private var snapshotSchedule: Cancelable = null
 
@@ -75,7 +79,7 @@ extends Actor with Stash
   private var lastWrittenEventId = EventId.BeforeFirst
   private var lastAcknowledgedEventId = EventId.BeforeFirst
   private var commitDeadline: Deadline = null
-  private var delayedCommit = SerialCancelable()
+  private val delayedCommit = SerialCancelable()
   private var totalEventCount = 0L
   private var fileEventCount = 0L
   private var requireClusterAcknowledgement = false
@@ -476,116 +480,6 @@ extends Actor with Stash
       sender() ! (() => committedState)
   }
 
-  private val syncOrFlushString: String =
-    if (conf.syncOnCommit) if (conf.simulateSync.isDefined) "~sync " else "sync  "
-    else "flush "
-
-  private def logCommitted(persists: View[LoggablePersist]) =
-    logger.whenTraceEnabled {
-      val committedAt = now
-      var index = 0
-      val loggablePersists = dropLastEmptyPersists(persists).toVector
-      for (persist <- loggablePersists) {
-        logPersist(persist, persistCount = loggablePersists.size, persistIndex = index, committedAt)
-        index += 1
-      }
-    }
-
-  private def dropLastEmptyPersists(persists: View[LoggablePersist]): View[LoggablePersist] = {
-    var i, nonEmptyLength = 0
-    for (o <- persists) {
-      i += 1
-      if (o.stampedSeq.nonEmpty) nonEmptyLength = i
-    }
-    persists take nonEmptyLength
-  }
-
-
-  private def logPersist(persist: LoggablePersist, persistCount: Int, persistIndex: Int,
-    committedAt: Deadline) =
-    logging.logPersist(persist, persistCount, persistIndex, committedAt)
-
-  private object logging {
-    private val sb = new StringBuilder
-    private val spaces = (" " * 20).toArray
-
-    private def fillRight(n: Int)(body: => Unit) = {
-      val right = sb.length() + n
-      body
-      sb.appendAll(spaces, 0, (right - sb.length()) max 0)
-    }
-
-    def logPersist(persist: LoggablePersist, persistCount: Int, persistIndex: Int,
-      committedAt: Deadline) = {
-      var nr = persist.eventNumber
-      val n = persist.stampedSeq.size
-      val penultimateNr = persist.eventNumber + n - 2
-      val duration = committedAt - persist.since
-      var isFirst = true
-      val stampedIterator = persist.stampedSeq.iterator
-      while (stampedIterator.hasNext) {
-        sb.clear()
-        val stamped = stampedIterator.next()
-        val isLast = !stampedIterator.hasNext
-        fillRight(5) { sb.append(nr) }
-        sb.append(
-          if (persistCount == 1) ' '
-          else if (isFirst & persistIndex == 0) '╮'
-          else if (isLast & persistIndex == persistCount - 1) '╯'
-          else if (isLast) '┤'
-          else '│')
-
-        if (isLast && persist.isLastOfFlushedOrSynced) {
-          sb.append(syncOrFlushString)
-        } else if (isFirst && persistIndex == 0 && persistCount >= 2) {
-          fillRight(6) { sb.append(persistCount) }  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
-        } else if (nr == penultimateNr && n >= 3000) {
-          val micros = duration.toMicros
-          if (micros == 0) {
-            sb.append("      ")
-          } else fillRight(6) {
-            val k = (1000.0 * n / micros).toInt
-            if (k < 1000) {
-              sb.append(k)
-              sb.append("K/s")
-            } else {
-              sb.append(k / 1000)
-              sb.append("M/s")
-            }
-          }
-        } else {
-          sb.append("      ")
-        }
-        if (requireClusterAcknowledgement) { // cluster
-          sb.append(
-            if (isLast && persistIndex == persistCount - 1)
-              "ACK "    // Last event of an acknowledged event bundle. Caller may continue
-            else
-              "ack ")   // Event is part of an acknowledged event bundle
-        }
-        if (isLast) {
-          fillRight(6) { sb.append(duration.msPretty) }
-        } else if (nr == penultimateNr) {
-          sb.append(f"$n%6d")
-        } else {
-          sb.append("      ")
-        }
-        sb.append(
-          if (!persist.isTransaction || n == 1) ' '
-          else if (isFirst) '⎧'
-          else if (isLast) '⎩'
-          else if (nr == penultimateNr) '⎨'
-          else '⎪')
-        sb.append(stamped.eventId)
-        sb.append(' ')
-        sb.append(stamped.value.toString.takeWhile(_ != '\n').truncateWithEllipsis(200))
-        logger.trace(sb.toString())
-        nr += 1
-        isFirst = false
-      }
-    }
-  }
-
   def tryTakeSnapshotIfRequested(): Unit =
     if (snapshotRequesters.nonEmpty) {
       if (lastWrittenEventId == lastSnapshotTakenEventId) {
@@ -890,7 +784,7 @@ object JournalActor
     def since: Deadline
   }
 
-  private sealed trait LoggablePersist {
+  private[journal] sealed trait LoggablePersist {
     def eventNumber: Long
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def isTransaction: Boolean
