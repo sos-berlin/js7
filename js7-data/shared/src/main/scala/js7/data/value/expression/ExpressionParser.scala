@@ -97,7 +97,7 @@ object ExpressionParser
   }
 
   private def jobResourceSetting[_: P] = P[JobResourceSetting](
-    (jobResourcePath ~ ":" ~ identifier)
+    ("JobResource" ~ ":" ~ jobResourcePath ~ ":" ~ identifier)
       .map((JobResourceSetting.apply(_, _)).tupled))
 
   private def jobResourcePath[_: P] = P[JobResourcePath](
@@ -135,11 +135,19 @@ object ExpressionParser
     keyValueConvert("job", identifier)(o => Right(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
     keyValue("default", expression))
 
+  private def missing[_: P] = P[MissingConstant](
+    P("missing").map(_ => MissingConstant()))
+
+  private def nullConstant[_: P] = P[NullConstant](
+    P("null").map(_ => NullConstant))
+
   private def factorOnly[_: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | dollarNamedValue |
       catchCount | argumentFunctionCall | variableFunctionCall |
-      "JobResource" ~ ":" ~ jobResourceSetting | functionCall)
+      missing | nullConstant |
+      jobResourceSetting |
+      functionCall)
 
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {
@@ -160,41 +168,59 @@ object ExpressionParser
   private def bFactor[_: P] = P(not | factor)
 
   private def addition[_: P] = P[Expression](
-    leftRecurse(bFactor, P(StringIn("++", "+", "-")).!) {
-      case (a, "++", b) => valid(Concat(a, b))
-      case (a, "+", b) => valid(Add(a, b))
-      case (a, "-", b) => valid(Substract(a, b))
-      case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
-    })
+    bFactor.flatMap(initial =>
+      leftRecurse(initial, P(StringIn("++", "+", "-")).!, bFactor) {
+        case (a, "++", b) => valid(Concat(a, b))
+        case (a, "+", b) => valid(Add(a, b))
+        case (a, "-", b) => valid(Substract(a, b))
+        case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
+      }))
 
   private def comparison[_: P] = P[Expression](
-    leftRecurse(addition, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
-      case (a, "==", b) => valid(Equal(a, b))
-      case (a, "!=", b) => valid(NotEqual(a, b))
-      case (a, "<=", b) => valid(LessOrEqual(a, b))
-      case (a, ">=", b) => valid(GreaterOrEqual(a, b))
-      case (a, "<" , b) => valid(LessThan(a, b))
-      case (a, ">" , b) => valid(GreaterThan(a, b))
-      case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
-    })
+    addition.flatMap(initial =>
+      leftRecurse(initial, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!, addition) {
+        case (a, "==", b) => valid(Equal(a, b))
+        case (a, "!=", b) => valid(NotEqual(a, b))
+        case (a, "<=", b) => valid(LessOrEqual(a, b))
+        case (a, ">=", b) => valid(GreaterOrEqual(a, b))
+        case (a, "<" , b) => valid(LessThan(a, b))
+        case (a, ">" , b) => valid(GreaterThan(a, b))
+        case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
+      }))
 
   private def and[_: P] = P[Expression](
-    leftRecurse(comparison, "&&") {
-      case (a: BooleanExpression, (), b: BooleanExpression) => valid(And(a, b))
-      case (a, (), b) => invalid(s"Operator && requires Boolean operands: " + Precedence.toString(a, "&&", Precedence.And, b))
-    })
+    comparison.flatMap(initial =>
+      leftRecurse(initial, "&&", comparison) {
+        case (a: BooleanExpression, (), b: BooleanExpression) =>
+          valid(And(a, b))
+        case (a, (), b) =>
+          invalid(s"Operator && requires Boolean operands: " +
+            Precedence.toString(a, "&&", Precedence.And, b))
+      }))
 
   private def or[_: P] = P[Expression](
-    leftRecurse(and, "||") {
-      case (a: BooleanExpression, (), b: BooleanExpression) => valid(Or(a, b))
-      case (a, (), b) => invalid(s"boolean operarands for operator ||: " + Precedence.toString(a, "||", Precedence.Or, b))
-    })
+    and.flatMap(initial =>
+      leftRecurse(initial, "||", and) {
+        case (a: BooleanExpression, (), b: BooleanExpression) => valid(Or(a, b))
+        case (a, (), b) => invalid(s"boolean operarands for operator ||: " +
+          Precedence.toString(a, "||", Precedence.Or, b))
+      }))
+
+  private def word1Operation[_: P] = P[Expression](
+    (or ~~/ w).flatMap(expr =>
+      (P("?").!.?.map {
+        case None => expr
+        case Some(_) => OrNull(expr)
+      })))
 
   private def wordOperation[_: P] = P[Expression](
-    leftRecurse(or, keyword) {
-      case (a, "in", list: ListExpression) => valid(In(a, list))
-      case (_, "in", _) => invalid("List expected after operator 'in'")
-      case (a, "matches", b) => valid(Matches(a, b))
-      case (a, op, b) => invalid(s"Operator '$op' with unexpected operand type: " + Precedence.toString(a, op, Precedence.Or, b))
-    })
+    (word1Operation ~~ w).flatMap(initial =>
+      leftRecurse(initial, keyword, word1Operation) {
+        case (a, "in", list: ListExpression) => valid(In(a, list))
+        case (_, "in", _) => invalid("List expected after operator 'in'")
+        case (a, "matches", b) => valid(Matches(a, b))
+        case (a, "orElse", b) => valid(OrElse(a, b))
+        case (a, op, b) => invalid(s"Operator '$op' with unexpected operand type: " +
+          Precedence.toString(a, op, Precedence.Or, b))
+      }))
 }

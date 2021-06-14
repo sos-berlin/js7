@@ -4,9 +4,10 @@ import fastparse.NoWhitespace._
 import js7.base.problem.{Checked, Problem}
 import js7.data.job.JobResourcePath
 import js7.data.parser.Parsers.checkedParse
+import js7.data.value.expression.Evaluator.MissingValueProblem
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.expressionOnly
-import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, StringValue, UnexpectedValueTypeProblem, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -422,6 +423,121 @@ final class ExpressionTest extends AnyFreeSpec
     }
   }
 
+  "Missing value" - {
+    implicit val evaluator = new Evaluator(Scope.empty)
+
+    testEval("missing",
+      result = Left(MissingValueProblem),
+      Right(MissingConstant()))
+
+    testEval("missing?",
+      result = Right(NullValue),
+      Right(OrNull(MissingConstant())))
+
+    testEval("missing ?",
+      result = Right(NullValue),
+      Right(OrNull(MissingConstant())))
+
+    testEval("missing orElse 7 + 3",
+      result = Right(NumberValue(7 + 3)),
+      Right(OrElse(
+        MissingConstant(),
+        Add(NumericConstant(7), NumericConstant(3)))))
+
+    testEval("1 + 2 orElse 7 + 3",
+      result = Right(NumberValue(1 + 2)),
+      Right(OrElse(
+        Add(NumericConstant(1), NumericConstant(2)),
+        Add(NumericConstant(7), NumericConstant(3)))))
+
+    testEval("1 + (2 orElse 7) + 3",
+      result = Right(NumberValue(1 + 2 + 3)),
+      Right(
+        Add(
+          Add(
+            NumericConstant(1),
+            OrElse(NumericConstant(2), NumericConstant(7))),
+          NumericConstant(3))))
+
+    testEval("missing == missing",
+      result = Left(MissingValueProblem),
+      Right(Equal(MissingConstant(), MissingConstant())))
+
+    testEval("missing != missing",
+      result = Left(MissingValueProblem),
+      Right(NotEqual(MissingConstant(), MissingConstant())))
+
+    testEval("missing + 1",
+      result = Left(MissingValueProblem),
+      Right(Add(MissingConstant(), NumericConstant(1))))
+
+    "MissingValue with Problem" in {
+      assert(evaluator.eval(MissingConstant(Problem("PROBLEM"))) == Left(Problem("PROBLEM")))
+    }
+
+    "MissingValue with Problem, OrNull" in {
+      assert(evaluator.eval(OrNull(MissingConstant(Problem("PROBLEM")))) == Right(NullValue))
+      assert(evaluator.eval(OrNull(MissingConstant())) == Right(NullValue))
+    }
+
+    "MissingValue is not comparable" in {
+      assert(evaluator.eval(Equal(MissingConstant(Problem("A")), MissingConstant(Problem("B")))) ==
+        Left(Problem("A")))
+    }
+
+    testEval("\"-->$(missing)<--\"",
+      result = Left(MissingValueProblem),
+      Right(InterpolatedString(List(StringConstant("-->"), MissingConstant(), StringConstant("<--")))))
+
+    "orElse" in {
+      assert(evaluator.eval(OrElse(NumericConstant(1), NumericConstant(7))) == Right(NumberValue(1)))
+      assert(evaluator.eval(OrElse(MissingConstant(), NumericConstant(7))) == Right(NumberValue(7)))
+    }
+  }
+
+  "Null value" - {
+    implicit val evaluator = new Evaluator(Scope.empty)
+
+    testEval("null",
+      result = Right(NullValue),
+      Right(NullConstant))
+
+    testEval("null?",
+      result = Right(NullValue),
+      Right(OrNull(NullConstant)))
+
+    testEval("null ?",
+      result = Right(NullValue),
+      Right(OrNull(NullConstant)))
+
+    testEval("null orElse 7 + 3",
+      result = Right(NumberValue(7 + 3)),
+      Right(OrElse(
+        NullConstant,
+        Add(NumericConstant(7), NumericConstant(3)))))
+
+    testEval("null == null",
+      result = Right(BooleanValue.True),
+      Right(Equal(NullConstant, NullConstant)))
+
+    testEval("null != null",
+      result = Right(BooleanValue.False),
+      Right(NotEqual(NullConstant, NullConstant)))
+
+    testEval("null + 1",
+      result = Left(UnexpectedValueTypeProblem(NumberValue, NullValue)),
+      Right(Add(NullConstant, NumericConstant(1))))
+
+    testEval("\"-->$(null)<--\"",
+      result = Right(StringValue("-->null<--")),
+      Right(InterpolatedString(List(StringConstant("-->"), NullConstant, StringConstant("<--")))))
+
+    "orElse" in {
+      assert(evaluator.eval(OrElse(NumericConstant(1), NumericConstant(7))) == Right(NumberValue(1)))
+      assert(evaluator.eval(OrElse(NullConstant, NumericConstant(7))) == Right(NumberValue(7)))
+    }
+  }
+
   "Constant expressions" - {
     implicit val evaluator = Evaluator(Scope.empty)
     val eval = evaluator.eval _
@@ -461,7 +577,11 @@ final class ExpressionTest extends AnyFreeSpec
 
   private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
     registerTest(exprString) {
-      assert(checkedParse(exprString.trim, expressionOnly(_)) == expression)
+      val checked = checkedParse(exprString.trim, expressionOnly(_))
+      assert(checked == expression)
+      //if (checked != expression) {
+      //  fail(diffx.Diff.compare(checked, expression).toString)
+      //}
       for (e <- expression) {
         assert(checkedParse(e.toString, expressionOnly(_)) == expression, " in toString❗")
         assert(evaluator.eval(e) == result)

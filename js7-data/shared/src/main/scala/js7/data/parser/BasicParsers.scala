@@ -233,21 +233,19 @@ object BasicParsers
       case (head, tail) => head +: tail
     })
 
-  def leftRecurse[A, O](operand: => P[A], operator: => P[O])(operation: (A, O, A) => P[A])(implicit ctx: P[_]): P[A] = {
+  def leftRecurse[A, O](initial: A, operator: => P[O], operand: => P[A])(operation: (A, O, A) => P[A])(implicit ctx: P[_]): P[A] = {
     // Separate function variable to work around a crash (fastparse 2.1.0)
     def more(implicit ctx: P[_]) = (w ~ operator ~ w ~/ operand).rep
-    (operand ~ more)
-      .flatMap {
-        case (head, tail) =>
-          def loop(left: A, tail: List[(O, A)]): P[A] =
-            tail match {
-              case Nil =>
-                valid(left)
-              case (op, right) :: tl =>
-                operation(left, op, right).flatMap(a => loop(a, tl))
-            }
-          loop(head, tail.toList)
-      }
+    more.flatMap { tail =>
+      def loop(left: A, tail: List[(O, A)]): P[A] =
+        tail match {
+          case Nil =>
+            valid(left)
+          case (op, right) :: tl =>
+            operation(left, op, right).flatMap(a => loop(a, tl))
+        }
+      loop(initial, tail.toList)
+  }
   }
 
   def valid[A](a: A)(implicit ctx: P[_]): P[A] = checkedToP(Right(a))

@@ -8,7 +8,7 @@ import js7.base.utils.Lazy
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{StringValue, Value}
+import js7.data.value.{NullValue, StringValue, Value}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
@@ -25,7 +25,8 @@ trait ProcessJobExecutor extends JobExecutor
 
   final def start = Task.pure(Right(()))
 
-  protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess): OrderProcess = {
+  protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
+  : OrderProcess = {
     import processOrder.order
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =
@@ -35,10 +36,9 @@ trait ProcessJobExecutor extends JobExecutor
             jobResource.settings.view
               .mapValues(expr => Lazy(processOrder.jobResourceScope.evaluator.eval(expr)))
               .toMap
-          val scope = Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| processOrder.jobResourceScope
-          jobResource.env.toSeq
-            .traverse { case (k, v) => scope.evalString(v).map(k -> _) }
-            .map(_.toMap)
+          val scope = Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+|
+            processOrder.jobResourceScope
+          evalEnv(scope, jobResource.env)
         }
         .map(_.fold(Map.empty)(_ ++ _))
 
@@ -87,7 +87,10 @@ trait ProcessJobExecutor extends JobExecutor
 
   protected final def evalEnv(scope: Scope, nameToExpr: Map[String, Expression]): Checked[Map[String, String]] =
     scope.evaluator.evalExpressionMap(nameToExpr)
-      .flatMap(_.toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
+      .flatMap(_
+        .view
+        .filter(_._2 != NullValue)
+        .toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
       .map(_.toMap)
 }
 

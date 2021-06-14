@@ -11,7 +11,7 @@ import js7.data.lock.{LockPath, LockState}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.JobResourceSetting
 import js7.data.value.expression.{Expression, Scope, ValueSearch}
-import js7.data.value.{NumberValue, Value}
+import js7.data.value.{MissingValue, NumberValue, Value}
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
@@ -113,9 +113,11 @@ object StateView
             Some(
               pathToJobResource
                 .rightOr(path, UnknownKeyProblem("JobResource", path.string))
-                .flatMap(_.settings
-                  .rightOr(settingName, UnknownKeyProblem("setting", s"$path:$settingName")))
-                .flatMap(evaluator.eval))
+                .flatMap(_
+                  .settings.get(settingName) match {
+                    case None => Right(MissingValue(UnknownKeyProblem("setting", s"$path:$settingName")))
+                    case Some(expr) => evaluator.eval(expr)
+                  }))
           case _ =>
             None
         }

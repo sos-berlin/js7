@@ -9,7 +9,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.expression.Expression._
-import js7.data.value.{BooleanValue, ListValue, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 
@@ -19,6 +19,13 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 final class Evaluator(scope: Scope)
 {
   def eval(expr: Expression): Checked[Value] =
+    evalAllowMissingValue(expr)
+      .flatMap {
+        case MissingValue(problem) => Left(problem)
+        case o => Right(o)
+      }
+
+  private def evalAllowMissingValue(expr: Expression): Checked[Value] =
     expr match {
       case BooleanConstant(o)    => Right(BooleanValue(o))
       case ListExpression(list) => list.traverse(eval) map ListValue.apply
@@ -38,6 +45,8 @@ final class Evaluator(scope: Scope)
       case And            (a, b) => evalBoolean(a).flatMap(o => if (!o.booleanValue) Right(o) else evalBoolean(b))
       case Or             (a, b) => evalBoolean(a).flatMap(o => if (o.booleanValue) Right(o) else evalBoolean(b))
       case ToBoolean(a) => evalString(a) flatMap toBoolean
+      case OrElse(a, b) => orElse(a, b)
+      case OrNull(a) => orNull(a)
       case NumericConstant(o) => Right(NumberValue(o))
       case OrderCatchCount => scope.symbolToValue("catchCount")
         .getOrElse(Left(Problem(s"Unknown symbol: $OrderCatchCount")))
@@ -88,6 +97,10 @@ final class Evaluator(scope: Scope)
       case call: FunctionCall => evalFunctionCall(call)
 
       case call: JobResourceSetting => evalJobResourceSetting(call)
+
+      case MissingConstant(problem) => Right(MissingValue(problem))
+
+      case NullConstant => Right(NullValue)
 
       case _ => Left(Problem(s"Expression is not evaluable: $expr"))  // Should not happen
     }
@@ -157,6 +170,18 @@ final class Evaluator(scope: Scope)
       case o => Problem(s"Operator .toBoolean may not applied to a value of type ${o.getClass.simpleScalaName}")
     }
 
+  private def orElse(a: Expression, default: Expression): Checked[Value] =
+    evalAllowMissingValue(a).flatMap {
+      case _: MissingValue | NullValue => eval(default)
+      case o => Right(o)
+    }
+
+  private def orNull(a: Expression): Checked[Value] =
+    evalAllowMissingValue(a).map {
+      case _: MissingValue => NullValue
+      case o => o
+    }
+
   private def mkString(value: Value): Checked[StringValue] = {
     value match {
       case ListValue(list) => list.toVector.traverse(_.toStringValue).map(o => StringValue(o.map(_.string).mkString))
@@ -178,4 +203,6 @@ object Evaluator
 
   def eval(expression: Expression, scope: Scope = Scope.empty): Checked[Value] =
     new Evaluator(scope).eval(expression)
+
+  final case object MissingValueProblem extends Problem.ArgumentlessCoded
 }

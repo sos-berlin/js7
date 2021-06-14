@@ -83,9 +83,12 @@ final class ExpressionParserTest extends AnyFreeSpec
     for (string <- Seq("", " ", "'", "''", "\"", "\n", "A\nB", "\t", "\r")) {
       testExpression(StringConstant.quote(string), StringConstant(string))
     }
-    for (i <- 0 to 0x200) {
-      val string = i.toChar.toString
-      testExpressionRaw(StringConstant.quote(string), StringConstant(string))
+
+    "More characters" in {
+      for (i <- 0 to 0x200) {
+        val string = i.toChar.toString
+        testExpressionRaw(StringConstant.quote(string), StringConstant(string))
+      }
     }
   }
 

@@ -5,13 +5,14 @@ import cats.syntax.traverse._
 import io.circe.syntax._
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import java.util.Objects.requireNonNull
-import javax.annotation.Nonnull
+import javax.annotation.{Nonnull, Nullable}
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
+import js7.data.value.expression.Evaluator.MissingValueProblem
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
@@ -24,21 +25,21 @@ sealed trait Value
     toStringValue.map(_.string)
 
   def toStringValue: Checked[StringValue] =
-    Left(InvalidExpressionTypeProblem(NumberValue, this))
+    Left(UnexpectedValueTypeProblem(StringValue, this))
 
   def toNumber: Checked[NumberValue] =
-    Left(InvalidExpressionTypeProblem(NumberValue, this))
+    Left(UnexpectedValueTypeProblem(NumberValue, this))
 
   def toBoolean: Checked[BooleanValue] =
-    Left(InvalidExpressionTypeProblem(BooleanValue, this))
+    Left(UnexpectedValueTypeProblem(BooleanValue, this))
 
   def toList: Checked[ListValue] =
-    Left(InvalidExpressionTypeProblem(ListValue, this))
+    Left(UnexpectedValueTypeProblem(ListValue, this))
 
   def toObject: Checked[ObjectValue] =
-    Left(InvalidExpressionTypeProblem(ObjectValue, this))
+    Left(UnexpectedValueTypeProblem(ObjectValue, this))
 
-  @javaApi
+  @javaApi @Nullable/*for NullValue ???*/
   def toJava: java.lang.Object
 
   def convertToString: String
@@ -66,6 +67,8 @@ object Value
     case BooleanValue(o) => Json.fromBoolean(o)
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
+    case NullValue => Json.Null
+    case v: MissingValue => sys.error(s"MissingValue cannot be JSON encoded: $v")
   }
 
   implicit val jsonDecoder: Decoder[Value] = {
@@ -94,6 +97,8 @@ object Value
         j.asObject.get.toVector
           .traverse { case (k, v) => jsonDecoder.decodeJson(v).map(k -> _) }
           .map(o => ObjectValue(o.toMap))
+      else if (j.isNull)
+        Right(NullValue)
       else
         Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
     }
@@ -254,6 +259,41 @@ object ObjectValue extends ValueType
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
 }
 
+/** Just a reminder that MissingValue could be an instance of a future ErrorValue. */
+sealed trait ErrorValue extends Value {
+  def problem: Problem
+}
+
+/** A missing value due to a problem. */
+final case class MissingValue(problem: Problem = MissingValueProblem) extends ErrorValue {
+  def valueType = MissingValue
+
+  def toJava = problem // ???
+
+  override def convertToString = {
+    if (problem == MissingValueProblem) "[MissingValue]"
+    else s"[MissingValue: $problem]"
+  }
+
+  override def toString = convertToString
+}
+object MissingValue extends ValueType {
+  val name = "Missing"
+}
+
+/** The inapplicable value. */
+case object NullValue extends Value with ValueType {
+  def valueType = NullValue
+
+  val name = "Null"
+
+  def toJava = null // ???
+
+  override def convertToString = "null"
+
+  override def toString = convertToString
+}
+
 sealed trait ValueType
 {
   def name: String
@@ -276,7 +316,7 @@ object ValueType
     }).toDecoderResult(cursor.history)
 }
 
-private case class InvalidExpressionTypeProblem(valueType: ValueType, value: Value) extends Problem.Coded {
+final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value) extends Problem.Coded {
   def arguments = Map(
     "type" -> valueType.name,
     "value" -> value.toString.truncateWithEllipsis(30))

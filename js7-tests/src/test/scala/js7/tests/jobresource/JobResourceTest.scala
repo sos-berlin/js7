@@ -7,6 +7,7 @@ import java.time.{OffsetDateTime, ZoneId}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -16,7 +17,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath, ShellScriptExecutable}
-import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
@@ -166,24 +167,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(events.last.value.isInstanceOf[OrderFinished])
   }
 
-  "Order fails on referencing an unknown JobResource setting in an expression" in {
-    val workflow = Workflow(
-      WorkflowPath("UNKNOWN-SETTING") ~ "UNKNOWN-SETTING",
-      Vector(
-        Execute.Anonymous(WorkflowJob(
-          agentPath,
-          ShellScriptExecutable(":",
-            env = Map(
-              "aSetting" -> ExpressionParser.parse("JobResource:`JOB-RESOURCE-A`:UNKNOWN").orThrow))))))
-    controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
-      .await(99.s).orThrow
-    val orderId = OrderId("UNKNOWN-SETTING")
-    val events = controller.runOrder(FreshOrder(orderId, workflow.path))
-    assert(events.map(_.value).contains(OrderProcessed(Outcome.Disrupted(
-      UnknownKeyProblem("setting", "JobResource:JOB-RESOURCE-A:UNKNOWN")))))
-  }
-
-  "Referencing an unknown JobResource in an expression is rejected" in {
+  "Order fails when referencing an unknown JobResource in an expression" in {
     val workflow = Workflow(
       WorkflowPath("INVALID-WORKFLOW") ~ "INVALID",
       Vector(
@@ -194,6 +178,44 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
               "aSetting" -> ExpressionParser.parse("JobResource:UNKNOWN:a").orThrow))))))
     assert(controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
       .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
+  }
+
+  "Accessing an missing JobResource setting" - {
+    val existingName = if (isWindows) "TEMP" else "HOSTNAME"
+    val existingValue = sys.env(existingName)
+
+    "Order fails" in {
+      val workflow = addUnknownSettingWorkflow("MISSING", "JobResource:`JOB-RESOURCE-A`:UNKNOWN")
+      val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-SETTING"), workflow.path))
+      assert(events.map(_.value).contains(
+        OrderProcessed(Outcome.Disrupted(
+          UnknownKeyProblem("setting", "JobResource:JOB-RESOURCE-A:UNKNOWN")))))
+    }
+
+    "Environment variable is left unchanged when the ? operator is used" in {
+      assert(existingValue != "", s"Expecting the $existingName environment variable")
+      val workflow = addUnknownSettingWorkflow("NONE", "JobResource:`JOB-RESOURCE-A`:UNKNOWN ?")
+      val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-SETTING-2"), workflow.path))
+      assert(events.map(_.value) contains OrderProcessed(Outcome.succeededRC0))
+      val stdout = events.map(_.value).collect { case OrderStdoutWritten(chunk) => chunk }.mkString
+      assert(stdout contains s"$existingName=/$existingValue/")
+    }
+
+    def addUnknownSettingWorkflow(name: String, expr: String) = {
+      val workflow = Workflow(
+        WorkflowPath(name) ~ name,
+        Vector(
+          Execute.Anonymous(WorkflowJob(
+            agentPath,
+            ShellScriptExecutable(
+              if (isWindows) s"@echo off\r\necho $existingName=/%$existingName%/\r\n"
+              else s"echo $existingName=/$$$existingName/",
+              env = Map(
+                existingName -> ExpressionParser.parse(expr).orThrow))))))
+      controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
+        .await(99.s).orThrow
+      workflow
+    }
   }
 }
 

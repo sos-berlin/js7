@@ -4,11 +4,13 @@ import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, isIdentifierPart}
 import js7.data.value.ValuePrinter.{appendQuotedContent, quoteString}
+import js7.data.value.expression.Evaluator.MissingValueProblem
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.collection.{View, mutable}
@@ -123,6 +125,18 @@ object Expression
     def precedence = Precedence.WordOperator
     def subexpressions = View(a, b)
     override def toString = toString(a, "matches", b)
+  }
+
+  final case class OrElse(expression: Expression, default: Expression) extends BooleanExpression {
+    def precedence = Precedence.WordOperator
+    def subexpressions = expression :: Nil
+    override def toString = toString(expression, "orElse", default)
+  }
+
+  final case class OrNull(expression: Expression) extends BooleanExpression {
+    def precedence = Precedence.Factor
+    def subexpressions = expression :: Nil
+    override def toString = Precedence.inParentheses(expression, precedence) + "?"
   }
 
   final case class ListExpression(subexpressions: List[Expression]) extends Expression {
@@ -369,6 +383,20 @@ object Expression
       }
   }
 
+  /** `problem` must be defined only if internally generated. */
+  final case class MissingConstant(problem: Problem = MissingValueProblem) extends Expression {
+    def precedence = Precedence.Factor
+    def subexpressions = Nil
+    override def toString = "missing"  // No syntax for problem.isDefined !!!
+  }
+
+  type NullConstant = NullConstant.type
+  case object NullConstant extends Expression {
+    def precedence = Precedence.Factor
+    def subexpressions = Nil
+    override def toString = "null"
+  }
+
   sealed trait Precedence {
     protected def precedence: Int
 
@@ -378,12 +406,16 @@ object Expression
       Precedence.toString(a, op, precedence, b)
   }
   object Precedence {
-    val WordOperator = 1
-    val Or = 2
-    val And = 3
-    val Comparison = 4
-    val Addition = 6
-    val Factor = 99
+    // Higher number means higher precedence
+    private val next = Iterator.from(1).next _
+    val WordOperator = next()
+    val Word1Operator = next()
+    val Or = next()
+    val And = next()
+    val Comparison = next()
+    val Addition = next()
+    //val Multiplication = next()
+    val Factor = next()
 
     def toString(a: Expression, op: String, opPrecedence: Int, b: Expression): String =
       inParentheses(a, opPrecedence) + " " + op + " " + inParentheses(b, opPrecedence + 1)
