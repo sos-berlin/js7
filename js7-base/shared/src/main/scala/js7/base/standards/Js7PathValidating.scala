@@ -8,13 +8,19 @@ import js7.base.problem.Problems.InvalidNameProblem
 trait Js7PathValidating[A <: GenericString]
 extends GenericString.Checked_[A]
 {
-  private lazy val nameValidator = new Js7PathValidator(name)
+  private lazy val pathValidator = new Js7PathValidator(name)
+
+  final def isNameStart(c: Char) =
+    pathValidator.isNameStart(c)
+
+  final def isNamePartMaybe(c: Char) =
+    pathValidator.isNamePartMaybe(c)
 
   override def checked(string: String): Checked[A] =
     if (string.isEmpty)
       EmptyStringProblem(name)
     else
-      nameValidator.checked(string)
+      pathValidator.checked(string)
         .left.map {
           case InvalidNameProblem(`name`, _) => InvalidNameProblem(name, string)
           case EmptyStringProblem(`name`) => InvalidNameProblem(name, string)

@@ -24,4 +24,11 @@ final class Js7PathValidator(val typeName: String) extends NameValidator
           case o => o
         }
         .rightAs(path)
+
+  def isNameStart(c: Char) =
+    js7NameValidator.isNameStart(c)
+
+  // Not true for each position (for example, not at last position)
+  def isNamePartMaybe(c: Char) =
+    js7NameValidator.isNamePart(c) || c == '/'
 }

@@ -326,7 +326,7 @@ object Expression
     override def toString = withStringBuilder(64) { sb =>
       sb.append("JobResource")
       sb.append(':')
-      appendIdentifier(sb, jobResourcePath.string)
+      sb.append(jobResourcePath.string)
       sb.append(':')
       appendIdentifier(sb, subname)
     }

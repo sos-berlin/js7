@@ -17,6 +17,12 @@ extends NameValidator
       Left(InvalidNameProblem(typeName, name))
     else
       javaNameValidator.checked(name)
+
+  def isNameStart(c: Char) =
+    javaNameValidator.isNameStart(c)
+
+  def isNamePart(c: Char) =
+    javaNameValidator.isNamePart(c) || isExtraNamePart0(c)
 }
 
 object Js7NameValidator

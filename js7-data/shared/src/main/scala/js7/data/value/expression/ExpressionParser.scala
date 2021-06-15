@@ -97,15 +97,15 @@ object ExpressionParser
   }
 
   private def jobResourceSetting[_: P] = P[JobResourceSetting](
-    ("JobResource" ~ ":" ~ jobResourcePath ~ ":" ~ identifier)
+    ("JobResource" ~ ":" ~/ jobResourcePath ~ ":" ~/ identifier)
       .map((JobResourceSetting.apply(_, _)).tupled))
 
   private def jobResourcePath[_: P] = P[JobResourcePath](
-    identifier
+    (CharPred(JobResourcePath.isNameStart) ~ CharsWhile(JobResourcePath.isNamePartMaybe)).!
       .flatMap(o => checkedToP(JobResourcePath.checked(o))))
 
   private def argumentFunctionCall[_: P] = P[NamedValue](
-    keyword("argument") ~ w ~
+    keyword("argument") ~ w ~/
       inParentheses(
         for {
           kv <- keyValues(keyValue("default", expression) | keyValue("key", expression) | keyValue("", expression))

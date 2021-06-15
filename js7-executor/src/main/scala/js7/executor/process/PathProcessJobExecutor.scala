@@ -25,7 +25,7 @@ trait PathProcessJobExecutor extends ProcessJobExecutor
   final def prepareOrderProcess(processOrder: ProcessOrder) =
     checkFile
       .flatMapT(file => Task(
-        evalEnv(processOrder.scope, executable.env)
+        evalEnv(executable.env, processOrder.scope)
           .map(env =>
             makeOrderProcess(
               processOrder,

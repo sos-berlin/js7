@@ -29,18 +29,21 @@ trait ProcessJobExecutor extends JobExecutor
   : OrderProcess = {
     import processOrder.order
 
-    val checkedJobResourcesEnv: Checked[Map[String, String]] =
-      processOrder.jobResources.reverse/*left overrides right*/
+    val checkedJobResourcesEnv: Checked[Map[String, String]] = {
+      import processOrder.{jobResourceScope, jobResources}
+      jobResources
+        .reverse/*left overrides right*/
         .traverse { jobResource =>
           val lazyEvaluatedSettings: Map[String, Lazy[Checked[Value]]] =
             jobResource.settings.view
-              .mapValues(expr => Lazy(processOrder.jobResourceScope.evaluator.eval(expr)))
+              .mapValues(expr => Lazy(jobResourceScope.evaluator.eval(expr)))
               .toMap
-          val scope = Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+|
-            processOrder.jobResourceScope
-          evalEnv(scope, jobResource.env)
+          evalEnv(
+            jobResource.env,
+            Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| jobResourceScope)
         }
         .map(_.fold(Map.empty)(_ ++ _))
+    }
 
     val processDriver = new ProcessDriver(
       TaskConfiguration(jobKey, executable.toOutcome, startProcess.commandLine, executable.login,
@@ -85,7 +88,7 @@ trait ProcessJobExecutor extends JobExecutor
         .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
         .toMap
 
-  protected final def evalEnv(scope: Scope, nameToExpr: Map[String, Expression]): Checked[Map[String, String]] =
+  protected final def evalEnv(nameToExpr: Map[String, Expression], scope: Scope): Checked[Map[String, String]] =
     scope.evaluator.evalExpressionMap(nameToExpr)
       .flatMap(_
         .view

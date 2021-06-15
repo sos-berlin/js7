@@ -185,7 +185,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val existingValue = sys.env(existingName)
 
     "Order fails" in {
-      val workflow = addUnknownSettingWorkflow("MISSING", "JobResource:`JOB-RESOURCE-A`:UNKNOWN")
+      val workflow = addUnknownSettingWorkflow("MISSING", "JobResource:JOB-RESOURCE-A:UNKNOWN")
       val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-SETTING"), workflow.path))
       assert(events.map(_.value).contains(
         OrderProcessed(Outcome.Disrupted(
@@ -194,7 +194,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     "Environment variable is left unchanged when the ? operator is used" in {
       assert(existingValue != "", s"Expecting the $existingName environment variable")
-      val workflow = addUnknownSettingWorkflow("NONE", "JobResource:`JOB-RESOURCE-A`:UNKNOWN ?")
+      val workflow = addUnknownSettingWorkflow("NONE", "JobResource:JOB-RESOURCE-A:UNKNOWN ?")
       val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-SETTING-2"), workflow.path))
       assert(events.map(_.value) contains OrderProcessed(Outcome.succeededRC0))
       val stdout = events.map(_.value).collect { case OrderStdoutWritten(chunk) => chunk }.mkString
@@ -272,7 +272,7 @@ object JobResourceTest
           env = Map(
             "D" -> ExpressionParser.parse("'D of JOB ENV'").orThrow,
             "E" -> ExpressionParser.parse("'E of JOB ENV'").orThrow,
-            "aSetting" -> ExpressionParser.parse("JobResource:`JOB-RESOURCE-A`:a").orThrow)),
+            "aSetting" -> ExpressionParser.parse("JobResource:JOB-RESOURCE-A:a").orThrow)),
         defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 

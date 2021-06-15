@@ -23,14 +23,14 @@ extends ProcessJobExecutor
         .eval(executable.commandLineExpression)
         .flatMap { commandLine =>
           warnIfNotExecutable(commandLine.file)
-          evalEnv(processOrder.scope, executable.env)
-            .flatMap(env =>
-              Right(makeOrderProcess(
+          evalEnv(executable.env, processOrder.scope)
+            .map(env =>
+              makeOrderProcess(
                 processOrder,
                 StartProcess(
                   commandLine,
                   name = commandLine.file.getFileName.toString,
-                  env))))
+                  env)))
         }
     }
 }

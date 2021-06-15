@@ -12,10 +12,10 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
@@ -23,7 +23,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.tests.ExecuteTest.{logger, _}
+import js7.tests.ExecuteTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import org.scalactic.source
@@ -32,7 +32,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
-  protected val items = Nil
+  protected val items = Seq(jobResource)
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -232,9 +232,9 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "C" ->  StringValue("FROM JOB"))),
         Outcome.Succeeded(NamedValues(
           "returnCode" -> NumberValue(0),
-          "A" ->  StringValue("4711"),
-          "B" ->  StringValue("WORKFLOW PARAMETER DEFAULT VALUE"),
-          "C" ->  StringValue("FROM JOB")/*Results from jobs are unknown*/))))
+          "A" -> StringValue("4711"),
+          "B" -> StringValue("WORKFLOW PARAMETER DEFAULT VALUE"),
+          "C" -> StringValue("FROM JOB")/*Results from jobs are unknown*/))))
   }
 
   addExecuteTest(
@@ -257,7 +257,8 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       "JOB_EXECUTION_COUNT" -> ExpressionParser.parse("$js7JobExecutionCount").orThrow,
       "CONTROLLER_ID"       -> ExpressionParser.parse("$js7ControllerId").orThrow,
       "SCHEDULED_DATE"      -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOBSTART_DATE"       -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow)
+      "JOBSTART_DATE"       -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
+      "SETTING"             -> ExpressionParser.parse("JobResource:JOB-RESOURCE:SETTING").orThrow)
 
     "Special variables in InternalExecutable arguments" in {
       testWithSpecialVariables(
@@ -267,35 +268,37 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Special variables in env expressions" in {
-      testWithSpecialVariables(
-        ShellScriptExecutable(
-          if (isWindows)
-            """@echo off
-              |echo ORDER_ID=%ORDER_ID%" >>%JS7_RETURN_VALUES%
-              |echo WORKFLOW_NAME=%WORKFLOW_NAME%" >>%JS7_RETURN_VALUES%
-              |echo WORKFLOW_POSITION=%WORKFLOW_POSITION%" >>%JS7_RETURN_VALUES%
-              |echo LABEL=%LABEL%" >>%JS7_RETURN_VALUES%
-              |echo JOB_NAME=%JOB_NAME%" >>%JS7_RETURN_VALUES%
-              |echo JOB_EXECUTION_COUNT=%JOB_EXECUTION_COUNT%" >>%JS7_RETURN_VALUES%
-              |echo CONTROLLER_ID=%CONTROLLER_ID%" >>%JS7_RETURN_VALUES%
-              |echo SCHEDULED_DATE=%SCHEDULED_DATE%" >>%JS7_RETURN_VALUES%
-              |echo JOBSTART_DATE=%JOBSTART_DATE%" >>%JS7_RETURN_VALUES%
-              |""".stripMargin
-          else
-            """#!/usr/bin/env bash
-              |set -euo pipefail
-              |( echo "ORDER_ID=$ORDER_ID"
-              |  echo "WORKFLOW_NAME=$WORKFLOW_NAME"
-              |  echo "WORKFLOW_POSITION=$WORKFLOW_POSITION"
-              |  echo "LABEL=$LABEL"
-              |  echo "JOB_NAME=$JOB_NAME"
-              |  echo "JOB_EXECUTION_COUNT=$JOB_EXECUTION_COUNT"
-              |  echo "CONTROLLER_ID=$CONTROLLER_ID"
-              |  echo "SCHEDULED_DATE=$SCHEDULED_DATE"
-              |  echo "JOBSTART_DATE=$JOBSTART_DATE"
-              |)>>"$JS7_RETURN_VALUES"
-              |""".stripMargin,
-          env = nameToExpression))
+      val script =
+        if (isWindows)
+          """@echo off
+            |echo ORDER_ID=%ORDER_ID% >>%JS7_RETURN_VALUES%
+            |echo WORKFLOW_NAME=%WORKFLOW_NAME% >>%JS7_RETURN_VALUES%
+            |echo WORKFLOW_POSITION=%WORKFLOW_POSITION% >>%JS7_RETURN_VALUES%
+            |echo LABEL=%LABEL% >>%JS7_RETURN_VALUES%
+            |echo JOB_NAME=%JOB_NAME% >>%JS7_RETURN_VALUES%
+            |echo JOB_EXECUTION_COUNT=%JOB_EXECUTION_COUNT% >>%JS7_RETURN_VALUES%
+            |echo CONTROLLER_ID=%CONTROLLER_ID% >>%JS7_RETURN_VALUES%
+            |echo SCHEDULED_DATE=%SCHEDULED_DATE% >>%JS7_RETURN_VALUES%
+            |echo JOBSTART_DATE=%JOBSTART_DATE% >>%JS7_RETURN_VALUES%
+            |echo SETTING=%SETTING% >>%JS7_RETURN_VALUES%
+            |""".stripMargin
+        else
+          """#!/usr/bin/env bash
+            |set -euo pipefail
+            |( echo "ORDER_ID=$ORDER_ID"
+            |  echo "WORKFLOW_NAME=$WORKFLOW_NAME"
+            |  echo "WORKFLOW_POSITION=$WORKFLOW_POSITION"
+            |  echo "LABEL=$LABEL"
+            |  echo "JOB_NAME=$JOB_NAME"
+            |  echo "JOB_EXECUTION_COUNT=$JOB_EXECUTION_COUNT"
+            |  echo "CONTROLLER_ID=$CONTROLLER_ID"
+            |  echo "SCHEDULED_DATE=$SCHEDULED_DATE"
+            |  echo "JOBSTART_DATE=$JOBSTART_DATE"
+            |  echo "SETTING=$SETTING"
+            |)>>"$JS7_RETURN_VALUES"
+            |""".stripMargin
+
+      testWithSpecialVariables(ShellScriptExecutable(script, env = nameToExpression))
     }
 
     def testWithSpecialVariables(executable: Executable): Unit = {
@@ -306,7 +309,8 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflow = Workflow(workflowId,
         Vector(
           "TEST-LABEL" @: Execute.Named(jobName)),
-        nameToJob = Map(jobName -> WorkflowJob(agentPath, executable)))
+        nameToJob = Map(
+          jobName -> WorkflowJob(agentPath, executable, jobResourcePaths = Seq(jobResource.path))))
 
       directoryProvider.updateVersionedItems(controller, workflow.id.versionId, Seq(workflow))
 
@@ -335,7 +339,8 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "LABEL" -> StringValue("TEST-LABEL"),
           "JOB_NAME" -> StringValue("TEST-JOB"),
           "JOB_EXECUTION_COUNT" -> numberValue(1),
-          "CONTROLLER_ID" -> StringValue("Controller")))
+          "CONTROLLER_ID" -> StringValue("Controller"),
+          "SETTING" -> StringValue("SETTING-VALUE")))
     }
 }
 
@@ -441,6 +446,10 @@ object ExecuteTest
   private def returnCodeScript(envName: String) =
     if (isWindows) s"@exit %$envName%"
     else s"""exit "$$$envName""""
+
+  private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"),
+    settings = Map(
+      "SETTING" -> StringConstant("SETTING-VALUE")))
 
   private final class TestInternalJob extends InternalJob
   {

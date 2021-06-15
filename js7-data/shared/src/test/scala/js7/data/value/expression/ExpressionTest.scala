@@ -134,7 +134,7 @@ final class ExpressionTest extends AnyFreeSpec
       result = "myJobResource,setting,value",
       Right(JobResourceSetting(JobResourcePath("myJobResource"), "SETTING")))
 
-    testEval("JobResource:`JOB-RESOURCE`:`SETTING-NAME`",
+    testEval("JobResource:JOB-RESOURCE:`SETTING-NAME`",
       result = "JOB-RESOURCE,setting,value",
       Right(JobResourceSetting(JobResourcePath("JOB-RESOURCE"), "SETTING-NAME")))
 
