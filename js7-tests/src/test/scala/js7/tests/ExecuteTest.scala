@@ -342,7 +342,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "CONTROLLER_ID" -> StringValue("Controller"),
           "SETTING" -> StringValue("SETTING-VALUE")))
     }
-}
+  }
 
   "Jobs in nested workflow" in {
     // TODO Forbid this?

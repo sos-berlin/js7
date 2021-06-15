@@ -1,16 +1,16 @@
 package js7.data.value.expression.scopes
 
-import java.time.format.DateTimeFormatter
-import java.time.{OffsetDateTime, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
+import js7.data.value.expression.scopes.TimestampScope._
 import js7.data.value.expression.{Expression, Scope}
 
 final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp]) extends Scope
 {
-  private lazy val maybeInstant = lazyTimestamp.map(_.toInstant)
+  private lazy val maybeTimestamp = lazyTimestamp
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall) =
     functionCall match {
@@ -21,7 +21,7 @@ final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp]) ex
         Some(func(formatExpr, timezoneExpr))
 
       case FunctionCall(`name`, Seq(Argument(formatExpr, None | Some("format")))) =>
-        Some(func2(formatExpr, ZoneId.systemDefault()))
+        Some(func2(formatExpr, None))
 
       case _ => None
     }
@@ -29,20 +29,25 @@ final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp]) ex
   private def func(formatExpr: Expression, timezoneExpr: Expression) =
     for {
       timezoneName <- evaluator.eval(timezoneExpr).flatMap(_.toStringValueString)
-      zoneId = if (timezoneName.nonEmpty) ZoneId.of(timezoneName) else ZoneId.systemDefault()
-      result <- func2(formatExpr, zoneId)
+      timezone = timezoneName.nonEmpty ? timezoneName
+      result <- func2(formatExpr, timezone)
     } yield result
 
-  private def func2(formatExpr: Expression, zoneId: ZoneId) =
+  private def func2(formatExpr: Expression, timezone: Option[String]) = {
     for {
       format <- evaluator.eval(formatExpr).flatMap(_.toStringValueString)
-      result <- Checked.catchNonFatal(maybeInstant.fold("")(instant =>
-        OffsetDateTime.ofInstant(instant, zoneId).format(DateTimeFormatter.ofPattern(format))))
+      result <- maybeTimestamp.fold(Checked(""))(formatTimestamp(_, format, timezone))
     } yield StringValue(result)
+  }
 }
 
 object TimestampScope
 {
   def apply(name: String, lazyTimestamp: => Option[Timestamp]): Scope =
     new TimestampScope(name, lazyTimestamp)
+
+  /** JVM only */
+  private def formatTimestamp(timestamp: Timestamp, format: String, maybeTimezone: Option[String])
+  : Checked[String] =
+    MyDateTimeFormatter.formatTimestamp(timestamp, format, maybeTimezone)
 }

@@ -5,7 +5,7 @@ import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
 import js7.base.utils.Lazy
-import js7.data.job.{CommandLine, ProcessExecutable}
+import js7.data.job.{CommandLine, JobResource, ProcessExecutable}
 import js7.data.order.Outcome
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NullValue, StringValue, Value}
@@ -29,21 +29,21 @@ trait ProcessJobExecutor extends JobExecutor
   : OrderProcess = {
     import processOrder.order
 
-    val checkedJobResourcesEnv: Checked[Map[String, String]] = {
-      import processOrder.{jobResourceScope, jobResources}
-      jobResources
-        .reverse/*left overrides right*/
-        .traverse { jobResource =>
-          val lazyEvaluatedSettings: Map[String, Lazy[Checked[Value]]] =
-            jobResource.settings.view
-              .mapValues(expr => Lazy(jobResourceScope.evaluator.eval(expr)))
-              .toMap
-          evalEnv(
-            jobResource.env,
-            Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| jobResourceScope)
-        }
-        .map(_.fold(Map.empty)(_ ++ _))
+    def evalJobResourceEnv(jobResource: JobResource, scope: Scope): Checked[Map[String, String]] = {
+      val lazyEvaluatedSettings: Map[String, Lazy[Checked[Value]]] =
+        jobResource.settings.view
+          .mapValues(expr => Lazy(scope.evaluator.eval(expr)))
+          .toMap
+      evalEnv(
+        jobResource.env,
+        Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| scope)
     }
+
+    val checkedJobResourcesEnv: Checked[Map[String, String]] =
+      processOrder.jobResources
+        .reverse/*left overrides right*/
+        .traverse(evalJobResourceEnv(_, processOrder.scopeForJobResource))
+        .map(_.fold(Map.empty)(_ ++ _))
 
     val processDriver = new ProcessDriver(
       TaskConfiguration(jobKey, executable.toOutcome, startProcess.commandLine, executable.login,

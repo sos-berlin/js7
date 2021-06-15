@@ -7,7 +7,7 @@ import java.time.{OffsetDateTime, ZoneId}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.system.OperatingSystem.isWindows
+import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -181,7 +181,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Accessing an missing JobResource setting" - {
-    val existingName = if (isWindows) "TEMP" else "HOSTNAME"
+    val existingName = if (isWindows) "TEMP" else if (isMac) "TMPDIR" else "HOSTNAME"
     val existingValue = sys.env(existingName)
 
     "Order fails" in {

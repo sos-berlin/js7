@@ -96,7 +96,7 @@ object Outcome
         make(namedValues)
   }
 
-  final case class Failed(errorMessage: Option[String], namedValues: NamedValues/*TODO DELETE THIS?*/)
+  final case class Failed(errorMessage: Option[String], namedValues: NamedValues)
   extends Completed with NotSucceeded
   {
     def isSucceeded = false

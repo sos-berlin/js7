@@ -3,7 +3,6 @@ package js7.data.value.expression.scopes
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
 import js7.data.value.expression.Expression.NamedValue
-import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -11,7 +10,7 @@ final class LazyNamedValueScopeTest extends AnyFreeSpec
 {
   private var a = 0
   private var failed = 0
-  private lazy val scope = Scope.fromLazyNamedValues(Map(
+  private lazy val scope = new LazyNamedValueScope(Map(
     "A" -> Lazy {
       a += 1
       Right(NumberValue(a))

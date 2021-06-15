@@ -40,7 +40,7 @@ object FileWatchScope
 {
   def apply(orderWatchPath: OrderWatchPath, matchedMatcher: Matcher): Scope = {
     val a: Scope = new FileWatchScope(orderWatchPath, matchedMatcher)
-    a |+| NowScope()
+    a |+| new NowScope()
   }
 
   private val NumberRegex = "([0-9]+)".r

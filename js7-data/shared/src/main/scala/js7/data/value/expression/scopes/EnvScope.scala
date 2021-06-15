@@ -7,6 +7,7 @@ import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{StringValue, Value}
 
+/** Accesses environment variables. */
 object EnvScope extends Scope
 {
   override def evalFunctionCall(functionCall: Expression.FunctionCall) =
