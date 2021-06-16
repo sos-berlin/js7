@@ -179,17 +179,16 @@ extends Actor with Stash with SimpleStateActor
         // Command is idempotent until AgentState has been touched
         val agentRunId = AgentRunId(persistence.journalId)
         persistence.persist(agentState =>
-          if (agentState.isCreated)
-            if (agentPath != agentState.agentPath)
-              Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
-            else if (controllerId != agentState.meta.controllerId)
-              Left(AgentWrongControllerProblem(controllerId))
-            else if (agentState.isFreshlyCreated)
-              Right(Nil)  // Idempotence
-            else
-              Left(AgentAlreadyCreatedProblem)
-          else
+          if (!agentState.isCreated)
             Right((NoKey <-: AgentCreated(agentPath, agentRunId, controllerId)) :: Nil)
+          else if (agentPath != agentState.agentPath)
+            Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
+          else if (controllerId != agentState.meta.controllerId)
+            Left(AgentWrongControllerProblem(controllerId))
+          else if (!agentState.isFreshlyCreated)
+            Left(AgentAlreadyCreatedProblem)
+          else
+            Right(Nil)
         ) .tapEval(checked => Task {
             if (checked.isRight) {
               addOrderKeeper()

@@ -40,7 +40,9 @@ extends JournaledState[AgentState]
 {
   def companion = AgentState
 
-  def isCreated = agentPath.nonEmpty
+  def isCreated =
+    !agentPath.isEmpty/*shortcut*/ ||
+      copy(eventId = EventId.BeforeFirst) != AgentState.empty
 
   def isFreshlyCreated: Boolean =
     isCreated &&
