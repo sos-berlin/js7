@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, isIdentifierPart}
+import js7.data.value.ValuePrinter
 import js7.data.value.ValuePrinter.{appendQuotedContent, quoteString}
 import js7.data.value.expression.Evaluator.MissingValueProblem
 import js7.data.workflow.Label
@@ -197,31 +198,8 @@ object Expression
   object StringConstant {
     val empty = new StringConstant("")
 
-    private val inhibitsSingleQuoteString: Set[Char] = (0 until 0x20).filter(_ != '\n')
-      .appendedAll((0x7f until 0xa0)
-      .appended('\''.toInt))
-      .map(_.toChar).toSet
-
     def quote(string: String): String =
-      if (string.isEmpty)
-        "\"\""
-      else if (!string.exists(StringConstant.inhibitsSingleQuoteString))
-        s"'$string'"
-      else {
-        val sb = new StringBuilder(64)
-        sb.append('"')
-        string foreach {
-          case '\\' => sb.append("\\\\")
-          case '\"' => sb.append("\\\"")
-          case '\t' => sb.append("\\t")
-          case '\r' => sb.append("\\r")
-          case '\n' => sb.append("\\n")
-          case '$' => sb.append("\\$")
-          case c => sb.append(c)
-        }
-        sb.append('"')
-        sb.toString
-      }
+      ValuePrinter.quoteString(string)
   }
 
   final case class NamedValue(where: NamedValue.Where, what: NamedValue.What, default: Option[Expression] = None)

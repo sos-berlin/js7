@@ -16,7 +16,7 @@ final class ApiTest extends AnyFreeSpec
   "quoteString" - {
     "explicit cases" in {
       assert(quoteString("") == """""""")
-      assert(quoteString("A") == """"A"""")
+      assert(quoteString("A") == "'A'")
       assert(quoteString("\"string\"") == "'\"string\"'")
       assert(quoteString("line one\nline two\n$\n\\") == "'line one\nline two\n$\n\\'")
     }

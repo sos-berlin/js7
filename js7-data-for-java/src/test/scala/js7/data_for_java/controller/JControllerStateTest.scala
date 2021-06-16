@@ -66,12 +66,12 @@ private object JControllerStateTest
   private val v2 = VersionId("2.0")
   private val aWorkflow = WorkflowParser.parse(WorkflowPath("A-WORKFLOW") ~ v1,
     """|define workflow {
-       |  execute agent="AGENT", executable="A-EXECUTABLE";
+       |  execute agent='AGENT', executable='A-EXECUTABLE';
        |}
        |""".stripMargin).orThrow
   private val bWorkflow = WorkflowParser.parse(WorkflowPath("B-WORKFLOW") ~ v1,
     """|define workflow {
-       |  execute agent="AGENT", executable="B-EXECUTABLE";
+       |  execute agent='AGENT', executable='B-EXECUTABLE';
        |}
        |""".stripMargin).orThrow
 

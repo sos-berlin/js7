@@ -151,7 +151,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
     "Double ExternalOrderArised" in {
       aows = aows.onOrderWatchEvent(externalOrderArised("A")).orThrow
       assert(aows.onOrderWatchEvent(externalOrderArised("A")) == Left(Problem(
-        """Duplicate ExternalOrderArised(A, Map(file -> "/DIR/A")): Arised(Order:file:A-SOURCE:A,Map(file -> "/DIR/A"))""")))
+        """Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): Arised(Order:file:A-SOURCE:A,Map(file -> '/DIR/A'))""")))
     }
 
     "Double early ExternalOrderVanished" in {

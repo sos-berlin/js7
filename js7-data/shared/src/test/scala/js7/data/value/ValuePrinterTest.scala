@@ -12,7 +12,7 @@ final class ValuePrinterTest extends AnyFreeSpec
 {
   "quoteString" in {
     assert(q("") == """»""«""")
-    assert(q("A") == """»"A"«""")
+    assert(q("A") == "»'A'«")
     assert(q("\"") == """»'"'«""")
     assert(q("\r") == """»"\r"«""")
     assert(q("\n") == """»'

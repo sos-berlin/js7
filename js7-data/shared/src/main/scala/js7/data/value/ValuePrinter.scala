@@ -45,12 +45,16 @@ object ValuePrinter
     sb.toString
   }
 
-  private val quotedChars = Set[Char]('\\', '\"', '$', '\n')
+  private val preferSingleOverDoubleQuotes = true
+  private val quotedChars = Set[Char]('\"', '$', '\n')
 
   def appendQuoted(sb: StringBuilder, string: String): Unit = {
     if (string.isEmpty) {
       sb.append("\"\"")
-    } else if (!string.contains('\'') && string.exists(quotedChars)) {
+    } else if (!string.contains('\'')
+      && (preferSingleOverDoubleQuotes || string.exists(quotedChars))
+      && !string.contains('\r')/*because '-parsing removes \r*/)
+    {
       sb.append('\'')
       sb.append(string)
       sb.append('\'')

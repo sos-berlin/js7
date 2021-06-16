@@ -19,7 +19,7 @@ public class JWorkflowTester
     private static final JWorkflowId expectedJWorkflowId = JWorkflowId.of("A-WORKFLOW", "1.0");
     private static final String expectedWorkflowNotation =
         "define workflow {\n" +
-        "  execute agent=\"AGENT\", executable=\"A-EXECUTABLE\";\n" +
+        "  execute agent='AGENT', executable='A-EXECUTABLE';\n" +
         "}\n";
 
     private final JWorkflow workflow;

@@ -14,12 +14,13 @@ final class JExpressionTest extends AnyFreeSpec
     check("", "\"\"")  // ""
     check("|'$\"\n|", "\"|'\\$\\\"\\n|\"")  // "|'\$\"
     check("|'|", "\"|'|\"")  // "|'|"
+    check("\\\"$\t\n", "'\\\"$\t\n'")
     check("\\\"$\t\r\n", """"\\\"\$\t\r\n"""") // "\\\"\$\t\r\n"
     check("'$NOVAR", """"'\$NOVAR"""")  // "'\$NOVAR"
     check("$NOVAR", "'$NOVAR'")  // '$NOVAR'
     check("|A|", "'|A|'")
     check("|\n|", "'|\n|'")
-    check("|\t|", """"|\t|"""")
-    check("|\r\n|", """"|\r\n|"""")
+    check("|\t|", "'|\t|'")
+    check("|\r\n|", """"|\r\n|"""")  // ", because ' normalizes \r\n to \n
   }
 }
