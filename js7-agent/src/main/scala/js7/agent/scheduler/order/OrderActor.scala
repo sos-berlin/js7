@@ -21,10 +21,9 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerId
-import js7.data.job.JobKey
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
-import js7.data.value.NamedValues
+import js7.data.value.expression.Expression
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.StdObservers
@@ -114,7 +113,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def startable: Receive =
     receiveEvent() orElse {
-      case Input.StartProcessing(jobActor, workflowJob, jobKey, defaultArguments) =>
+      case Input.StartProcessing(jobActor, workflowJob, defaultArguments) =>
         if (order.isProcessable) {
           val out, err = PublishSubject[String]()
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
@@ -392,8 +391,7 @@ private[order] object OrderActor
     final case class StartProcessing(
       jobActor: ActorRef,
       workflowJob: WorkflowJob,
-      jobKey: JobKey,
-      defaultArguments: NamedValues)
+      defaultArguments: Map[String, Expression])
     extends Input
 
     final case class Terminate(processSignal: Option[ProcessSignal] = None)

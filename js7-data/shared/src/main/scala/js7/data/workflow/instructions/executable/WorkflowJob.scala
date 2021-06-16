@@ -13,8 +13,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
-import js7.data.value.{NamedValues, ValuePrinter}
-import js7.data.workflow.WorkflowPrinter
+import js7.data.value.ValuePrinter
+import js7.data.value.expression.Expression
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -23,7 +23,7 @@ import scala.concurrent.duration.FiniteDuration
 final case class WorkflowJob private(
   agentPath: AgentPath,
   executable: Executable,
-  defaultArguments: NamedValues,
+  defaultArguments: Map[String, Expression],
   jobResourcePaths: Seq[JobResourcePath],
   parallelism: Int,
   sigkillDelay: Option[FiniteDuration],
@@ -42,7 +42,7 @@ final case class WorkflowJob private(
       case CommandLineExecutable(expr, login, returnCodeMeansing, env) => "command=" + ValuePrinter.quoteString(expr.toString)
       case InternalExecutable(className, jobArguments, arguments) =>
         "internalJobClass=" + ValuePrinter.quoteString(className) ++
-          (jobArguments.nonEmpty ?? ("jobArguments=" + WorkflowPrinter.namedValuesToString(jobArguments))) ++
+          (jobArguments.nonEmpty ?? ("jobArguments=" + ValuePrinter.nameToExpressionToString(jobArguments))) ++
           (arguments.nonEmpty ?? ("arguments=" + ValuePrinter.nameToExpressionToString(arguments)))
     })
 }
@@ -54,7 +54,7 @@ object WorkflowJob
   def apply(
     agentPath: AgentPath,
     executable: Executable,
-    defaultArguments: NamedValues = Map.empty,
+    defaultArguments: Map[String, Expression] = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -68,7 +68,7 @@ object WorkflowJob
   def checked(
     agentPath: AgentPath,
     executable: Executable,
-    defaultArguments: NamedValues = Map.empty,
+    defaultArguments: Map[String, Expression] = Map.empty,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -102,7 +102,7 @@ object WorkflowJob
     for {
       executable <- cursor.get[Executable]("executable")
       agentPath <- cursor.get[AgentPath]("agentPath")
-      arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
+      arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
       parallelism <- cursor.getOrElse[Int]("parallelism")(DefaultParallelism)
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")

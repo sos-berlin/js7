@@ -9,6 +9,7 @@ import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.controller.ControllerId
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
@@ -38,6 +39,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       Map(disruptedOrder.id -> disruptedOrder).checked,
       Map(TestWorkflowId -> ForkWorkflow).checked,
       _ => Left(Problem("OrderEventSourceTest does not now locks")),
+      ControllerId("CONTROLLER"),
       isAgent = false)
     assert(eventSource.nextEvents(disruptedOrder.id) ==
       List(disruptedOrder.id <-: OrderMoved(disruptedOrder.position)))  // Move to same InstructionNr
@@ -691,6 +693,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Map(order.id -> order).checked,
         Map(TestWorkflowId -> ForkWorkflow).checked,
         Map.empty[LockPath, LockState].checked,
+        ControllerId("CONTROLLER"),
         isAgent = isAgent)
       body(order, eventSource(isAgent = false), eventSource(isAgent = true))
     }
@@ -765,6 +768,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
           Map(order.id -> order).checked,
           Map(workflow.id -> workflow).checked,
           Map(lockPath -> LockState(Lock(lockPath))).checked,
+          ControllerId("CONTROLLER"),
           isAgent = false)
         eventSource.resume(order.id, Some(to), None)
       }
@@ -778,6 +782,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       Map(order.id -> order).checked,
       Map(workflow.id -> workflow).checked,
       _ => Left(Problem("OrderEventSourceTest does not know locks")),
+      ControllerId("CONTROLLER"),
       isAgent = false)
     assert(eventSource.nextEvents(order.id) == Nil)
     assert(eventSource.suspend(order.id, SuspensionMode()) == Left(CannotSuspendOrderProblem))
@@ -810,6 +815,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Map(order.id -> order).checked,
         Map(workflow.id -> workflow).checked,
         _ => Left(Problem("OrderEventSourceTest does not know locks")),
+        ControllerId("CONTROLLER"),
         isAgent = false)
 
     val failed7 = Outcome.Failed(NamedValues.rc(7))
@@ -930,6 +936,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         ).checked,
         Map(workflow.id -> workflow).checked,
         Map.empty[LockPath, LockState].checked,
+        ControllerId("CONTROLLER"),
         isAgent = false)
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
@@ -991,6 +998,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
           LockPath("LOCK-1") -> LockState(Lock(LockPath("LOCK-1"), limit = 1)),
           LockPath("LOCK-2") -> LockState(Lock(LockPath("LOCK-2"), limit = 1))
         ).checked,
+        ControllerId("CONTROLLER"),
         isAgent = false)
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
@@ -1062,7 +1070,7 @@ object OrderEventSourceTest
 
     private def eventSource(isAgent: Boolean) =
       new OrderEventSource(o => idToOrder.checked(o), idToWorkflow,
-        Map.empty[LockPath, LockState].checked, isAgent = isAgent)
+        Map.empty[LockPath, LockState].checked, ControllerId("CONTROLLER"), isAgent = isAgent)
 
     def jobStep(orderId: OrderId, outcome: Outcome = Outcome.succeeded): Unit = {
       update(orderId <-: OrderProcessingStarted)
@@ -1147,5 +1155,6 @@ object OrderEventSourceTest
       orders.toKeyedMap(_.id).checked,
       Map(TestWorkflowId -> workflow).checked,
       _ => Left(Problem("OrderEventSourceTest does not know locks")),
+      ControllerId("CONTROLLER"),
       isAgent = isAgent)
 }

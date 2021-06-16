@@ -10,8 +10,8 @@ import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, S
 import js7.data.lock.LockPath
 import js7.data.order.OrderId
 import js7.data.source.SourcePos
+import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
-import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, TryInstruction}
@@ -72,9 +72,9 @@ final class WorkflowParserTest extends AnyFreeSpec
           WorkflowJob(AgentPath("AGENT"),
             PathExecutable("my/executable"),
             Map(
-              "A" -> StringValue("aaa"),
-              "B" -> StringValue("bbb"),
-              "I" -> NumberValue(-123)),
+              "A" -> StringConstant("aaa"),
+              "B" -> StringConstant("bbb"),
+              "I" -> NumericConstant(-123)),
             parallelism = 3,
             sigkillDelay = Some(30.s)),
           sourcePos = sourcePos(20, 207)),
@@ -127,7 +127,7 @@ final class WorkflowParserTest extends AnyFreeSpec
         WorkflowPath.NoId,
         Vector(
           Execute.Named(WorkflowJob.Name("A"), sourcePos = sourcePos(33, 38)),
-          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> StringValue("VALUE")), sourcePos(48, 92)),
+          Execute.Named(WorkflowJob.Name("B"), defaultArguments = Map("KEY" -> StringConstant("VALUE")), sourcePos(48, 92)),
           Execute.Named(WorkflowJob.Name("C"), sourcePos = sourcePos(102, 107)),
           ImplicitEnd(sourcePos(414, 415))),
         Map(

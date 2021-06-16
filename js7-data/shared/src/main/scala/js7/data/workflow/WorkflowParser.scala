@@ -88,12 +88,12 @@ object WorkflowParser
         map { case (start, end) => ExplicitEnd(sourcePos(start, end)) })
 
     private def objectExpression[_: P]: P[ObjectExpression] = P(
-      curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ expression))
-       .map(o => ObjectExpression(o.toMap)))
+      expressionMap
+        .map(ObjectExpression(_)))
 
-    private def namedValues[_: P]: P[NamedValues] = P(
-      objectExpression
-        .flatMap(o => checkedToP(Evaluator.eval(o).flatMap(_.toObject).map(_.nameToValue))))
+    private def expressionMap[_: P]: P[Map[String, Expression]] = P(
+      curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ expression))
+       .map(_.toMap))
 
     private def anonymousWorkflowJob[_: P] = P[WorkflowJob](
       for {
@@ -105,18 +105,18 @@ object WorkflowParser
           keyValue("script", constantExpression) |
           keyValue("internalJobClass", constantExpression) |
           keyValue("agent", agentPath) |
-          keyValue("defaultArguments", namedValues) |
+          keyValue("defaultArguments", objectExpression) |
           keyValue("arguments", objectExpression) |
-          keyValue("jobArguments", namedValues) |
+          keyValue("jobArguments", objectExpression) |
           keyValue("jobResourcePaths", inParentheses(commaSequence(quotedString.map(JobResourcePath(_))))) |
           keyValue("successReturnCodes", successReturnCodes) |
           keyValue("failureReturnCodes", failureReturnCodes) |
           keyValue("parallelism", int) |
           keyValue("sigkillDelay", int))
         agentPath <- kv[AgentPath]("agent")
-        defaultArguments <- kv[NamedValues]("defaultArguments", NamedValues.empty)
+        defaultArguments <- kv[ObjectExpression]("defaultArguments", ObjectExpression.empty)
         arguments <- kv[ObjectExpression]("arguments", ObjectExpression.empty)
-        jobArguments <- kv[NamedValues]("jobArguments", NamedValues.empty)
+        jobArguments <- kv[ObjectExpression]("jobArguments", ObjectExpression.empty)
         jobResourcePaths <- kv[Seq[JobResourcePath]]("jobResourcePaths", Nil)
         env <- kv[ObjectExpression]("env", ObjectExpression.empty)
         v1Compatible <- kv.noneOrOneOf[BooleanConstant]("v1Compatible").map(_.fold(false)(_._2.booleanValue))
@@ -133,13 +133,14 @@ object WorkflowParser
               .map(v => ShellScriptExecutable(v.string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
             checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
-              .map(v => InternalExecutable(v.string, jobArguments, arguments.nameToExpr)))
+              .map(v => InternalExecutable(v.string, jobArguments.nameToExpr, arguments.nameToExpr)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
         parallelism <- kv[Int]("parallelism", WorkflowJob.DefaultParallelism)
         sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
       } yield
-        WorkflowJob(agentPath, executable, defaultArguments, jobResourcePaths, parallelism = parallelism,
+        WorkflowJob(agentPath, executable, defaultArguments.nameToExpr, jobResourcePaths,
+          parallelism = parallelism,
           sigkillDelay = sigkillDelay))
 
     private def executeInstruction[_: P] = P[Execute.Anonymous](
@@ -147,13 +148,15 @@ object WorkflowParser
         .map { case (start, job, end) => Execute.Anonymous(job, sourcePos = sourcePos(start, end)) })
 
     private def jobInstruction[_: P] = P[Execute](
-      (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValues(keyValue("defaultArguments", namedValues))).? ~ hardEnd)
+      (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValue("defaultArguments", objectExpression)).? ~ hardEnd)
         .flatMap {
           case (start, name, None, end) =>
             valid(Execute.Named(WorkflowJob.Name(name), sourcePos = sourcePos(start, end)))
-          case (start, name, Some(keyToValue), end) =>
-            for (arguments <- keyToValue[NamedValues]("defaultArguments", NamedValues.empty)) yield
-              Execute.Named(WorkflowJob.Name(name), defaultArguments = arguments, sourcePos(start, end))
+          case (start, name, Some(("defaultArguments", objectExpression)), end) =>
+            valid(Execute.Named(WorkflowJob.Name(name), defaultArguments = objectExpression.nameToExpr,
+              sourcePos(start, end)))
+          case (_, _, Some((keyword, _)), _) =>
+            invalid(s"Unexpected keyword: $keyword")
         })
 
     private def failInstruction[_: P] = P[FailInstr](

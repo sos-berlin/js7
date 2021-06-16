@@ -241,7 +241,7 @@ object ShellScriptExecutable
 final case class InternalExecutable(
   className: String,
   /** Arguments for the job itself. */
-  jobArguments: NamedValues = NamedValues.empty,
+  jobArguments: Map[String, Expression] = Map.empty,
   /** Argument expressions evalutated for each `processOrder`. */
   arguments: Map[String, Expression] = Map.empty)
 extends Executable

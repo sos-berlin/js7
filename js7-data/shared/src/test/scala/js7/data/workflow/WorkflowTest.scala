@@ -82,7 +82,7 @@ final class WorkflowTest extends AnyFreeSpec
                   "path": "A.cmd"
                 },
                 "parallelism": 3,
-                "defaultArguments": { "JOB_A": "A-VALUE" }
+                "defaultArguments": { "JOB_A": "'A-VALUE'" }
               }
             }, {
               "label": "TEST-LABEL",
@@ -102,7 +102,7 @@ final class WorkflowTest extends AnyFreeSpec
                       "path": "B.cmd"
                     },
                     "parallelism": 3 ,
-                    "defaultArguments": { "JOB_B1": "B1-VALUE" }
+                    "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
                   }
                 }
               },
@@ -118,7 +118,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "path": "B.cmd"
                       },
                       "parallelism": 3,
-                      "defaultArguments": { "JOB_B": "B-VALUE" }
+                      "defaultArguments": { "JOB_B": "'B-VALUE'" }
                     }
                   }
                 ]
@@ -140,7 +140,7 @@ final class WorkflowTest extends AnyFreeSpec
                                   "path": "A.cmd"
                           },
                           "parallelism": 3,
-                          "defaultArguments": { "JOB_A": "A-VALUE" }
+                          "defaultArguments": { "JOB_A": "'A-VALUE'" }
                         }
                       }, {
                         "TYPE": "Execute.Named", "jobName": "A"
@@ -161,7 +161,7 @@ final class WorkflowTest extends AnyFreeSpec
                                   "path": "B.cmd"
                           },
                           "parallelism": 3,
-                          "defaultArguments": { "JOB_B": "B-VALUE" }
+                          "defaultArguments": { "JOB_B": "'B-VALUE'" }
                         }
                       },
                       { "TYPE": "Execute.Named", "jobName": "B" }
@@ -180,7 +180,7 @@ final class WorkflowTest extends AnyFreeSpec
                   "path": "B.cmd"
                 },
                 "parallelism": 3,
-                "defaultArguments": { "JOB_B": "B-VALUE" }
+                "defaultArguments": { "JOB_B": "'B-VALUE'" }
               }
             }
           ],
@@ -193,7 +193,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "path": "A.cmd"
               },
               "parallelism": 3,
-              "defaultArguments": { "JOB_A": "A-VALUE" }
+              "defaultArguments": { "JOB_A": "'A-VALUE'" }
             },
             "B": {
               "agentPath": "AGENT",
@@ -203,7 +203,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "path": "B.cmd"
               },
               "parallelism": 3,
-              "defaultArguments": { "JOB_B": "B-VALUE" }}
+              "defaultArguments": { "JOB_B": "'B-VALUE'" }}
           },
           "jobResourcePaths": [ "JOB-RESOURCE" ]
         }""")
@@ -237,7 +237,7 @@ final class WorkflowTest extends AnyFreeSpec
                   "path": "A.cmd"
                 },
                 "parallelism": 3,
-                "defaultArguments": { "JOB_A": "A-VALUE" }
+                "defaultArguments": { "JOB_A": "'A-VALUE'" }
               }
             }, {
               "position": [ 1 ],
@@ -259,7 +259,7 @@ final class WorkflowTest extends AnyFreeSpec
                       "path": "B.cmd"
                     },
                     "parallelism": 3 ,
-                    "defaultArguments": { "JOB_B1": "B1-VALUE" }
+                    "defaultArguments": { "JOB_B1": "'B1-VALUE'" }
                   }
                 }
               },
@@ -276,7 +276,7 @@ final class WorkflowTest extends AnyFreeSpec
                         "path": "B.cmd"
                       },
                       "parallelism": 3,
-                      "defaultArguments": { "JOB_B": "B-VALUE" }
+                      "defaultArguments": { "JOB_B": "'B-VALUE'" }
                     }
                   }, {
                   "position": [ 1, "else", 1 ],
@@ -303,7 +303,7 @@ final class WorkflowTest extends AnyFreeSpec
                             "path": "A.cmd"
                           },
                           "parallelism": 3,
-                          "defaultArguments": { "JOB_A": "A-VALUE" }
+                          "defaultArguments": { "JOB_A": "'A-VALUE'" }
                         }
                       }, {
                         "position": [ 2, "fork+🥕", 1 ],
@@ -330,7 +330,7 @@ final class WorkflowTest extends AnyFreeSpec
                             "path": "B.cmd"
                           },
                           "parallelism": 3,
-                          "defaultArguments": { "JOB_B": "B-VALUE" }
+                          "defaultArguments": { "JOB_B": "'B-VALUE'" }
                         }
                       }, {
                         "position": [ 2, "fork+🍋", 1 ],
@@ -355,7 +355,7 @@ final class WorkflowTest extends AnyFreeSpec
                   "path": "B.cmd"
                 },
                 "parallelism": 3,
-                "defaultArguments": { "JOB_B": "B-VALUE" }
+                "defaultArguments": { "JOB_B": "'B-VALUE'" }
               }
             }, {
               "position": [ 4 ],
@@ -371,7 +371,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "path": "A.cmd"
               },
               "parallelism": 3,
-              "defaultArguments": { "JOB_A": "A-VALUE" }
+              "defaultArguments": { "JOB_A": "'A-VALUE'" }
             },
             "B": {
               "agentPath": "AGENT",
@@ -381,7 +381,7 @@ final class WorkflowTest extends AnyFreeSpec
                 "path": "B.cmd"
               },
               "parallelism": 3,
-              "defaultArguments": { "JOB_B": "B-VALUE" }}
+              "defaultArguments": { "JOB_B": "'B-VALUE'" }}
           },
           "jobResourcePaths": [ "JOB-RESOURCE" ]
         }"""))
@@ -451,7 +451,7 @@ final class WorkflowTest extends AnyFreeSpec
                 },
                 "parallelism": 3,
                 "defaultArguments": {
-                  "JOB_A": "A-VALUE"
+                  "JOB_A": "'A-VALUE'"
                 }
               }
             }

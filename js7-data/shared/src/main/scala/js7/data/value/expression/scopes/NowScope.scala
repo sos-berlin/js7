@@ -12,7 +12,7 @@ final class NowScope extends Scope
 
   override def findValue(search: ValueSearch) =
     Right(search match {
-    // $epochMilli
+      // $epochMilli
       case ValueSearch(LastOccurred, Name("epochMilli")) =>
         Some(NumberValue(now.toEpochMilli))
 
@@ -25,4 +25,9 @@ final class NowScope extends Scope
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall) =
     timestampScope.evalFunctionCall(functionCall)
+}
+
+object NowScope
+{
+  def apply(): Scope = new NowScope
 }

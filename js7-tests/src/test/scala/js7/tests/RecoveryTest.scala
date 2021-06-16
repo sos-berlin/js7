@@ -20,6 +20,7 @@ import js7.data.item.{VersionId, VersionedEvent}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -154,8 +155,8 @@ private object RecoveryTest {
       Execute(WorkflowJob.Name("TEST-1")),
       Execute(WorkflowJob.Name("TEST-1"))),
     Map(
-      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentPaths(0), TestPathExecutable, Map("var1" -> StringValue(s"VALUE-${AgentPaths(0).string}"))),
-      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentPaths(1), TestPathExecutable, Map("var1" -> StringValue(s"VALUE-${AgentPaths(1).string}")))))
+      WorkflowJob.Name("TEST-0") -> WorkflowJob(AgentPaths(0), TestPathExecutable, Map("var1" -> StringConstant(s"VALUE-${AgentPaths(0).string}"))),
+      WorkflowJob.Name("TEST-1") -> WorkflowJob(AgentPaths(1), TestPathExecutable, Map("var1" -> StringConstant(s"VALUE-${AgentPaths(1).string}")))))
 
   private val QuickWorkflow = Workflow.of(WorkflowPath("quick") ~ "INITIAL", Execute(WorkflowJob(AgentPaths(0), TestPathExecutable)))
   private val QuickOrder = FreshOrder(OrderId("QUICK-ORDER"), QuickWorkflow.id.path)

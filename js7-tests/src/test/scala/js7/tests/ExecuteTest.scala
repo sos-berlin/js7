@@ -109,7 +109,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
         env = Map("myExitCode" -> NamedValue.last("defaultArg"))),
-      defaultArguments = Map("defaultArg" -> NumberValue(44)))),
+      defaultArguments = Map("defaultArg" -> NumericConstant(44)))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
@@ -118,7 +118,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
         env = Map("myExitCode" -> NamedValue.last("NAME"))),
-      defaultArguments = Map("NAME" -> NumberValue(99)))),  // ignored
+      defaultArguments = Map("NAME" -> NumericConstant(99)))),  // ignored
     orderArguments = Map("NAME" -> NumberValue(44)),  // has priority
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
@@ -190,18 +190,18 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       Workflow(WorkflowPath.Anonymous,
         Vector(
           Execute.Named(WorkflowJob.Name("JOB")), // ReturnCode 1 of JOB
-          Execute.Named(WorkflowJob.Name("JOB"), Map("myExitCode" -> NumberValue(22))),
+          Execute.Named(WorkflowJob.Name("JOB"), Map("myExitCode" -> NumericConstant(22))),
           Execute.Anonymous(WorkflowJob(
             agentPath,
             executable.copy(
               returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(33)))),
-            Map("myExitCode" -> NumberValue(33))))),
+            Map("myExitCode" -> NumericConstant(33))))),
         Map(WorkflowJob.Name("JOB") ->
           WorkflowJob(
             agentPath,
             executable.copy(
               returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(11), ReturnCode(22)))),
-            Map("myExitCode" -> NumberValue(11))))),
+            Map("myExitCode" -> NumericConstant(11))))),
       expectedOutcomes = Seq(
         Outcome.Succeeded.rc(11),
         Outcome.Succeeded.rc(22),

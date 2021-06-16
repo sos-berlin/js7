@@ -4,6 +4,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.controller.ControllerId
 import js7.data.event.<-:
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.AwaitOrderExecutorTest._
@@ -24,6 +25,7 @@ final class AwaitOrderExecutorTest extends AnyFreeSpec {
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
       def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
       val pathToLockState = _ => Left(Problem("pathToLockState is not implemented"))
+      val controllerId = ControllerId("CONTROLLER")
     }
     assert(InstructionExecutor.toEvents(AwaitOrder(offeredOrder.id), awaitingOrder, stateView) ==
       Right(Seq(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id))))

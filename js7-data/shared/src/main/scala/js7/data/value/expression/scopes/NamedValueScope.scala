@@ -1,8 +1,8 @@
 package js7.data.value.expression.scopes
 
-import js7.data.value.Value
 import js7.data.value.expression.ValueSearch.{LastOccurred, Name}
 import js7.data.value.expression.{Scope, ValueSearch}
+import js7.data.value.{NamedValues, Value}
 
 final class NamedValueScope(nameToValue: Map[String, Value]) extends Scope
 {
@@ -13,4 +13,10 @@ final class NamedValueScope(nameToValue: Map[String, Value]) extends Scope
 
       case _ => None
     })
+}
+
+object NamedValueScope
+{
+  def apply(namedValues: NamedValues): Scope =
+    new NamedValueScope(namedValues)
 }

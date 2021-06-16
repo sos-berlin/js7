@@ -34,6 +34,7 @@ import js7.data.item.VersionId
 import js7.data.job.{JobConf, JobKey, RelativePathExecutable}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -73,7 +74,8 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   "Shell script" in {
     val pathExecutable = RelativePathExecutable(s"TEST-1$sh", v1Compatible = true)
     pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
-    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, pathExecutable, Map("VAR1" -> StringValue("FROM-JOB"))))
+    val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, pathExecutable,
+      Map("VAR1" -> StringConstant("FROM-JOB"))))
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout) == s"Hej!${Nl}var1=FROM-JOB$Nl")
     assert(result.stdoutStderr(Stderr) == s"THIS IS STDERR$Nl")
@@ -223,9 +225,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed =>
-        orderActor ! OrderActor.Input.StartProcessing(jobActor, workflowJob,
-          JobKey.Named(WorkflowPath("WORKFLOW") ~ "1", WorkflowJob.Name("JOB")),
-          Map.empty)
+        orderActor ! OrderActor.Input.StartProcessing(jobActor, workflowJob, Map.empty)
         become(processing)
     }
 

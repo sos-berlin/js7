@@ -1,6 +1,7 @@
 package js7.executor.forjava.internal
 
 import java.lang.System.{lineSeparator => nl}
+import java.nio.file.Paths
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
@@ -13,14 +14,16 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.value.expression.Expression.NamedValue
-import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
+import js7.data.value.expression.Expression
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
+import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.configuration.JobExecutorConf
 import js7.executor.forjava.internal.InternalJobExecutorForJavaTest._
 import js7.executor.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
-import js7.executor.internal.InternalJobExecutor
+import js7.executor.internal.{InternalJobExecutor, JobExecutor}
 import js7.executor.{ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -32,29 +35,33 @@ import scala.concurrent.Future
 final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   private val blockingThreadPoolName = "InternalJobExecutorForJavaTest"
-  private val jobScheduler = newUnlimitedScheduler(name = blockingThreadPoolName)
+  private val blockingJobScheduler = newUnlimitedScheduler(name = blockingThreadPoolName)
 
-  override def afterAll() = jobScheduler.shutdown()
+  override def afterAll() = blockingJobScheduler.shutdown()
 
   for (testClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]))
     testClass.getSimpleName - {
-      val executable = InternalExecutable(
+      lazy val executable = InternalExecutable(
         testClass.getName,
-        jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
+        jobArguments = Map("blockingThreadPoolName" -> StringConstant(blockingThreadPoolName)),
         arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG")))
-      implicit val executor = new InternalJobExecutor(
-        executable,
-        JobConf(
-          JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
-          WorkflowJob(AgentPath("AGENT"), executable),
-          workflow,
-          ControllerId("CONTROLLER"),
-          sigKillDelay = 0.s),
-        _ => Left(Problem("No JobResource here")),
-        jobScheduler)
+
+      implicit lazy val executor: InternalJobExecutor = {
+        val u = Paths.get("UNUSED")
+        JobExecutor.checked(
+          JobConf(
+            JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
+            WorkflowJob(AgentPath("AGENT"), executable),
+            workflow,
+            ControllerId("CONTROLLER"),
+            sigKillDelay = 0.s),
+          JobExecutorConf(u, u, u, None, scriptInjectionAllowed = true, globalIOX, blockingJobScheduler),
+          _ => Left(Problem("No JobResource here"))
+        ).orThrow.asInstanceOf[InternalJobExecutor]
+      }
 
       "orderProcess" in {
-        val (outcomeTask, out, err) = processOrder(NumberValue(1000)).await(99.s).orThrow
+        val (outcomeTask, out, err) = processOrder(NumericConstant(1000)).await(99.s).orThrow
         assert(outcomeTask == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(1001))))
         assertOutErr(out, err)
       }
@@ -62,7 +69,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
       "parallel" in {
         val indices = 1 to 1000
         val processes = for (i <- indices) yield {
-          processOrder(NumberValue(i))
+          processOrder(NumericConstant(i))
             .map(_.orThrow)
             .flatMap {
               case (outcome: Outcome.Succeeded, _, _) => Task.pure(outcome.namedValues.checked("RESULT"))
@@ -75,7 +82,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
       }
 
       "Exception is catched and returned as Left" in {
-        val (outcome, out, err) = processOrder(StringValue("INVALID TYPE")).await(99.s).orThrow
+        val (outcome, out, err) = processOrder(StringConstant("INVALID TYPE")).await(99.s).orThrow
         assert(outcome.asInstanceOf[Outcome.Failed]
           .errorMessage.get startsWith "java.lang.ClassCastException")
         assertOutErr(out, err)
@@ -96,7 +103,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
       }
     }
 
-  private def processOrder(arg: Value)(implicit executor: InternalJobExecutor)
+  private def processOrder(arg: Expression)(implicit executor: InternalJobExecutor)
   : Task[Checked[(Outcome, Future[String], Future[String])]] = {
     val out, err = PublishSubject[String]()
     val outFuture = out.fold.lastOrElseL("").runToFuture
@@ -112,7 +119,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
               workflow,
               executor.jobConf.jobKey,
               jobResources = Nil,
-              NamedValues("ORDER_ARG" -> arg),
+              Map("ORDER_ARG" -> arg),
               ControllerId("CONTROLLER"),
               stdObservers))
           .await(99.s).orThrow

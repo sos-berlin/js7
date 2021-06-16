@@ -11,7 +11,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
@@ -41,6 +41,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
         ControllerId("CONTROLLER"),
         sigKillDelay = 0.s),
       _ => Left(Problem("No JobResource here")),
+      Map.empty,
       globalIOX.scheduler)(Scheduler.global, globalIOX)
     val out = PublishSubject[String]()
     val err = PublishSubject[String]()
@@ -53,7 +54,7 @@ final class InternalJobExecutorTest extends AnyFreeSpec
         workflow,
         JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB")),
         jobResources = Nil,
-        NamedValues("ARG" -> NumberValue(1)),
+        Map("ARG" -> NumericConstant(1)),
         ControllerId("CONTROLLER"),
         stdObservers)
     ).await(99.s).orThrow

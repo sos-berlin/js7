@@ -30,8 +30,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
-import js7.data.value.StringValue
-import js7.data.value.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or}
+import js7.data.value.expression.Expression.{Equal, LastReturnCode, NumericConstant, Or, StringConstant}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -167,7 +166,7 @@ object TestControllerAgent
   private val PathNames = LazyList("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
   private def testJob(conf: Conf, agentPath: AgentPath) =
     WorkflowJob(agentPath, TestPathExecutable,
-      Map("JOB-VARIABLE" -> StringValue(s"VALUE-$agentPath")),
+      Map("JOB-VARIABLE" -> StringConstant(s"VALUE-$agentPath")),
       parallelism = conf.tasksPerJob)
 
   private def makeWorkflow(conf: Conf): Workflow =

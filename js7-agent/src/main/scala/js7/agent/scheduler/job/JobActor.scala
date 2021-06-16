@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.value.NamedValues
+import js7.data.value.expression.Expression
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.internal.JobExecutor
 import js7.executor.{OrderProcess, ProcessOrder, StdObservers}
@@ -73,7 +73,7 @@ extends Actor with Stash
         case Right((jobExecutor, jobResources)) =>
           val processOrder = ProcessOrder(
             order, workflow, jobKey, jobResources,
-            defaultArguments = workflowJob.defaultArguments ++ defaultArguments,
+            defaultArgumentExpressions = workflowJob.defaultArguments ++ defaultArguments,
             jobConf.controllerId, stdObservers)
           jobExecutor.start
             .materializeIntoChecked
@@ -237,7 +237,7 @@ private[agent] object JobActor
     final case class KillProcess(orderId: OrderId, signal: Option[ProcessSignal])
     final case class ProcessOrder(
       order: Order[Order.Processing],
-      defaultArguments: NamedValues,
+      defaultArguments: Map[String, Expression],
       stdObservers: StdObservers)
   }
 

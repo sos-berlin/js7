@@ -1,22 +1,14 @@
 package js7.data.value.expression.scopes
 
 import js7.data.order.{HistoricOutcome, Order, Outcome}
-import js7.data.value.expression.scopes.OrderScope._
+import js7.data.value.Value
+import js7.data.value.expression.scopes.NamedValuesOrderScope._
 import js7.data.value.expression.{Scope, ValueSearch}
-import js7.data.value.{NumberValue, Value}
 import js7.data.workflow.Workflow
 
-final class OrderScope(order: Order[Order.State], workflow: Workflow)
+final class NamedValuesOrderScope(order: Order[Order.State], workflow: Workflow)
 extends Scope
 {
-  private lazy val catchCount = Right(NumberValue(
-    order.workflowPosition.position.catchCount))
-
-  override def symbolToValue(symbol: String) = symbol match {
-    case "catchCount" => Some(catchCount)
-    case _ => None
-  }
-
   override def findValue(search: ValueSearch) =
     Right(search match {
       case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
@@ -48,8 +40,11 @@ extends Scope
       workflow.orderRequirements.defaultArgument(name)
 }
 
-object OrderScope
+object NamedValuesOrderScope
 {
+  def apply(order: Order[Order.State], workflow: Workflow): Scope =
+    new NamedValuesOrderScope(order,workflow)
+
   private def whatToValue(outcome: Outcome.Completed, what: ValueSearch.What): Option[Value] =
     what match {
       case ValueSearch.Name(key) => outcome.namedValues.get(key)

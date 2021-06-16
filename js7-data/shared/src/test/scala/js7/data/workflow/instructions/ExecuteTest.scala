@@ -4,8 +4,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.source.SourcePos
-import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
-import js7.data.value.{NumberValue, StringValue}
+import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -29,12 +28,12 @@ final class ExecuteTest extends AnyFreeSpec
 
     "Named complete" in {
       testJson[Instruction.Labeled](
-        Execute.Named(WorkflowJob.Name("JOB"), Map("ARG" -> StringValue("VALUE")), Some(SourcePos(1, 2))),
+        Execute.Named(WorkflowJob.Name("JOB"), Map("ARG" -> StringConstant("VALUE")), Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Named",
           "jobName": "JOB",
           "defaultArguments": {
-            "ARG": "VALUE"
+            "ARG": "'VALUE'"
           },
           "sourcePos": [ 1, 2 ]
         }""")
@@ -68,13 +67,13 @@ final class ExecuteTest extends AnyFreeSpec
               Map(
                 "ENV-VAR" -> NamedValue.last("VAR"),
                 "NUMBER" -> NumericConstant(7))),
-            Map("ARG" -> StringValue("VALUE"))),
-          Map("ARG" -> NumberValue(1)),
+            Map("ARG" -> StringConstant("VALUE"))),
+          Map("ARG" -> NumericConstant(1)),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Anonymous",
           "defaultArguments": {
-            "ARG": 1
+            "ARG": "1"
           },
           "job": {
             "agentPath": "AGENT",
@@ -88,7 +87,7 @@ final class ExecuteTest extends AnyFreeSpec
             },
             "parallelism": 1,
             "defaultArguments": {
-              "ARG": "VALUE"
+              "ARG": "'VALUE'"
             }
           },
           "sourcePos": [ 1, 2 ]

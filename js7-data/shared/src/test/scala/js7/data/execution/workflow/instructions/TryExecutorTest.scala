@@ -5,6 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerId
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.TryExecutorTest._
 import js7.data.job.PathExecutable
@@ -29,6 +30,7 @@ final class TryExecutorTest extends AnyFreeSpec
     def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
     val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
+    val controllerId = ControllerId("CONTROLLER")
   }
 
   "JSON" - {

@@ -32,6 +32,7 @@ object InternalJob
   final case class JobContext(
     implementationClass: Class[_],
     executable: InternalExecutable,
+    jobArguments: NamedValues,
     jobConf: JobConf,
     implicit val js7Scheduler: Scheduler,
     ioExecutor: IOExecutor,

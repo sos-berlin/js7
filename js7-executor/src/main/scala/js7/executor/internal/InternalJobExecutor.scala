@@ -11,6 +11,7 @@ import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{InternalExecutable, JobConf, JobResource, JobResourcePath}
+import js7.data.value.NamedValues
 import js7.executor.ProcessOrder
 import js7.executor.internal.InternalJob.{JobContext, Step}
 import js7.executor.internal.InternalJobExecutor._
@@ -23,6 +24,7 @@ final class InternalJobExecutor(
   executable: InternalExecutable,
   val jobConf: JobConf,
   protected val pathToJobResource: JobResourcePath => Checked[JobResource],
+  val jobArguments: NamedValues,
   blockingJobScheduler: Scheduler)
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends JobExecutor
@@ -59,7 +61,8 @@ extends JobExecutor
       args <- processOrder.scope.evaluator.evalExpressionMap(executable.arguments)
       resourceToArgs <- processOrder.jobResources
         .traverse(jobResource =>
-          processOrder.scopeForJobResource.evaluator.evalExpressionMap(jobResource.settings)
+          processOrder.scopeForJobResources.evaluator
+            .evalExpressionMap(jobResource.settings)
             .map(jobResource.path -> _))
     } yield Step(
       processOrder,
@@ -94,7 +97,7 @@ extends JobExecutor
   }
 
   private def toJobContext(cls: Class[_]) =
-    JobContext(cls, executable, jobConf, scheduler, iox, blockingJobScheduler)
+    JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler)
 
   override def toString = s"InternalJobExecutor(${jobConf.jobKey} ${executable.className})"
 }

@@ -39,7 +39,7 @@ import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.value.NamedValues
+import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.executor.configuration.JobExecutorConf
@@ -91,6 +91,7 @@ with Stash
     orderRegister.idToOrder.checked,
     workflowRegister.idToWorkflow.checked,
     _ => Left(Problem.pure("Locks are available only at the Controller")),
+    controllerId,
     isAgent = true)
   private val orderEventHandler = new OrderEventHandler(
     workflowRegister.idToWorkflow.checked,
@@ -589,11 +590,10 @@ with Stash
   private def startProcessing(orderEntry: OrderEntry, jobEntry: JobEntry): Unit = {
     val defaultArguments = orderEntry.instruction match {
       case o: Execute.Named => o.defaultArguments
-      case _ => NamedValues.empty
+      case _ => Map.empty[String, Expression]
     }
     orderEntry.actor !
-      OrderActor.Input.StartProcessing(jobEntry.actor, jobEntry.workflowJob, jobEntry.jobKey,
-        defaultArguments)
+      OrderActor.Input.StartProcessing(jobEntry.actor, jobEntry.workflowJob, defaultArguments)
   }
 
   private def deleteOrder(orderId: OrderId): Unit =

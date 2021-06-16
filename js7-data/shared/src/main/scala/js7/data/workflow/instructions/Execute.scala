@@ -7,7 +7,7 @@ import js7.base.utils.typeclasses.IsEmpty._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
-import js7.data.value.NamedValues
+import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Instruction, Workflow}
 
@@ -16,7 +16,7 @@ import js7.data.workflow.{Instruction, Workflow}
   */
 sealed trait Execute extends Instruction
 {
-  def defaultArguments: NamedValues
+  def defaultArguments: Map[String, Expression]
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
     if (isVisibleForAgent(agentPath, workflow))
@@ -30,18 +30,18 @@ object Execute
   def apply(name: WorkflowJob.Name) =
     Named(name)
 
-  def apply(name: WorkflowJob.Name, defaultArguments: NamedValues) =
+  def apply(name: WorkflowJob.Name, defaultArguments: Map[String, Expression]) =
     Named(name, defaultArguments)
 
   def apply(workflowJob: WorkflowJob) =
     Anonymous(workflowJob)
 
-  def apply(workflowJob: WorkflowJob, defaultArguments: NamedValues) =
+  def apply(workflowJob: WorkflowJob, defaultArguments: Map[String, Expression]) =
     Anonymous(workflowJob, defaultArguments)
 
   final case class Named(
     name: WorkflowJob.Name,
-    defaultArguments: NamedValues = Map.empty,
+    defaultArguments: Map[String, Expression] = Map.empty,
     sourcePos: Option[SourcePos] = None)
   extends Execute
   {
@@ -62,14 +62,14 @@ object Execute
     implicit val jsonDecoder: Decoder[Named] = cursor =>
       for {
         name <- cursor.get[WorkflowJob.Name]("jobName")
-        arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
+        arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       } yield Named(name, arguments, sourcePos)
   }
 
   final case class Anonymous(
     job: WorkflowJob,
-    defaultArguments: NamedValues = Map.empty,
+    defaultArguments: Map[String, Expression] = Map.empty,
     sourcePos: Option[SourcePos] = None)
   extends Execute
   {
@@ -90,7 +90,7 @@ object Execute
     implicit val jsonDecoder: Decoder[Anonymous] = cursor =>
       for {
         job <- cursor.get[WorkflowJob]("job")
-        arguments <- cursor.getOrElse[NamedValues]("defaultArguments")(Map.empty)
+        arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
       } yield Anonymous(job, arguments, sourcePos)
   }

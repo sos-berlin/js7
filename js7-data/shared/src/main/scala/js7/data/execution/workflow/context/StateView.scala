@@ -3,10 +3,11 @@ package js7.data.execution.workflow.context
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.data.controller.ControllerId
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
-import js7.data.value.expression.scopes.OrderScope
+import js7.data.value.expression.scopes.OrderScopes
 import js7.data.workflow.instructions.Instructions
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
@@ -21,6 +22,8 @@ trait StateView
   def idToOrder: OrderId => Checked[Order[Order.State]]
 
   def pathToLockState: LockPath => Checked[LockState]
+
+  def controllerId: ControllerId
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow(workflowPosition.workflowId)
@@ -46,7 +49,13 @@ trait StateView
 
   protected def idToWorkflow(id: WorkflowId): Checked[Workflow]
 
-  final def makeScope(order: Order[Order.State]): Checked[Scope] =
-    idToWorkflow(order.workflowId)
-      .map(new OrderScope(order, _))
+  final def makeScope(order: Order[Order.State]): Checked[Scope] = {
+    val order_ = order
+    for (workflow_ <- idToWorkflow(order.workflowId)) yield
+      new OrderScopes {
+        protected val order = order_
+        protected val workflow = workflow_
+        protected val controllerId = StateView.this.controllerId
+      }.orderScope
+  }
 }

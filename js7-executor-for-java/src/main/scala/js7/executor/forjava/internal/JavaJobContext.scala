@@ -16,7 +16,7 @@ trait JavaJobContext extends JavaWrapper
     asScala.jobConf.jobKey
 
   lazy val jobArguments: java.util.Map[String, Value] =
-    asScala.executable.jobArguments.asJava
+    asScala.jobArguments.asJava
 
   /** The `Executor` internally used by JS7.
     * <ul><li>

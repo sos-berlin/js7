@@ -7,7 +7,7 @@ import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}
-import js7.data.value.{NumberValue, StringValue}
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -40,8 +40,8 @@ final class WorkflowJobTest extends AnyFreeSpec
             "EXECUTABLE",
             returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1)))),
           Map(
-            "NAME" -> StringValue("VALUE"),
-            "NUMBER" -> NumberValue(7)),
+            "NAME" -> StringConstant("VALUE"),
+            "NUMBER" -> NumericConstant(7)),
           Seq(JobResourcePath("JOB-RESOURCE")),
           parallelism = 3,
           Some(10.s),
@@ -57,8 +57,8 @@ final class WorkflowJobTest extends AnyFreeSpec
             "path": "EXECUTABLE"
           },
           "defaultArguments": {
-            "NAME": "VALUE",
-            "NUMBER": 7
+            "NAME": "'VALUE'",
+            "NUMBER": "7"
           },
           "jobResourcePaths": [
             "JOB-RESOURCE"

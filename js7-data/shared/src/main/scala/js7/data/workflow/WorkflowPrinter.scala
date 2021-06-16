@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ProcessExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.parser.BasicPrinter
-import js7.data.value.ValuePrinter.{appendNameToExpression, appendQuoted, appendValue}
+import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter._
@@ -34,7 +34,11 @@ final class WorkflowPrinter(sb: StringBuilder) {
       else q("''")
     } else appendQuoted(string)
 
-  def appendNamedValues(namedValues: NamedValues): Unit = WorkflowPrinter.appendNamedValues(sb, namedValues)
+  def appendNamedValues(namedValues: NamedValues): Unit =
+    WorkflowPrinter.appendNamedValues(sb, namedValues)
+
+  def appendNameToExpression(nameToExpression: Map[String, Expression]): Unit =
+    ValuePrinter.appendNameToExpression(sb, nameToExpression)
 
   def indent(nesting: Int) = for (_ <- 0 until nesting) sb ++= "  "
 
@@ -47,7 +51,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
     }
     if (job.defaultArguments.nonEmpty) {
       sb ++= ", defaultArguments="
-      appendNamedValues(job.defaultArguments)
+      appendNameToExpression(job.defaultArguments)
     }
     for (o <- job.sigkillDelay) {
       sb.append(", sigkillDelay=")
@@ -90,11 +94,11 @@ final class WorkflowPrinter(sb: StringBuilder) {
         appendQuoted(className)
         if (jobArguments.nonEmpty) {
           sb ++= ", jobArguments="
-          appendNamedValues(jobArguments)
+          appendNameToExpression(jobArguments)
         }
         if (arguments.nonEmpty) {
           sb ++= ", arguments="
-          appendNameToExpression(sb, arguments)
+          appendNameToExpression(arguments)
         }
     }
   }
@@ -102,7 +106,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
   def appendEnv(env: Map[String, Expression]): Unit =
     if (env.nonEmpty) {
       sb.append(", env=")
-      appendNameToExpression(sb, env)
+      appendNameToExpression(env)
     }
 
   def appendWorkflowContent(nesting: Int, workflow: Workflow): Unit = {
@@ -140,12 +144,12 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case ExplicitEnd(_) =>
         sb ++= "end;\n"
 
-      case Execute.Anonymous(workflowExecutable, arguments, _) =>
+      case Execute.Anonymous(workflowExecutable, defaultArguments, _) =>
         sb ++= "execute "
         appendWorkflowExecutable(workflowExecutable)
-        if (arguments.nonEmpty) {
+        if (defaultArguments.nonEmpty) {
           sb ++= ", defaultArguments="
-          appendNamedValues(arguments)
+          appendNameToExpression(defaultArguments)
         }
         sb ++= ";\n"
 
@@ -154,7 +158,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
         appendIdentifier(name.string)
         if (defaultArguments.nonEmpty) {
           sb ++= ", defaultArguments="
-          appendNamedValues(defaultArguments)
+          appendNameToExpression(defaultArguments)
         }
         sb ++= ";\n"
 

@@ -9,8 +9,8 @@ Beispiel in JSON:
     "script": "echo \"hello world1\"\n"
   },
   "defaultArguments": {
-    "NAME": "VALUE",
-    "NUMBER": 7
+    "NAME": "'VALUE'",
+    "NUMBER": "7"
   },
   "parallelism": 1,
   "sigkillDelay": 15

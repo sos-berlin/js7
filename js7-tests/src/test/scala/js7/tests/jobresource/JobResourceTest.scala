@@ -155,7 +155,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val dateTime = OffsetDateTime.ofInstant(scheduledFor.toInstant, ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssZ"))
       assert(stdouterr contains s"JS7_SCHEDULED_DATE=/$dateTime/\n")
-      assert(stdouterr contains "JS7_SCHEDULED_YEAR=/2021/\n")  // May fail when year change
+      assert(stdouterr contains "JS7_SCHEDULED_YEAR=/2021/\n")
       assert(stdouterr contains "JS7_SCHEDULED_MINUTE=/11/\n")
       assert(stdouterr contains "JS7_SCHEDULED_SECOND=/22/\n")
     }
@@ -255,7 +255,7 @@ object JobResourceTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute.Named(jobName, defaultArguments = Map("A" -> StringValue("A of Execute")))),
+      Execute.Named(jobName, defaultArguments = Map("A" -> StringConstant("A of Execute")))),
     nameToJob = Map(
       jobName -> WorkflowJob(
         agentPath,
@@ -273,7 +273,7 @@ object JobResourceTest
             "D" -> ExpressionParser.parse("'D of JOB ENV'").orThrow,
             "E" -> ExpressionParser.parse("'E of JOB ENV'").orThrow,
             "aSetting" -> ExpressionParser.parse("JobResource:JOB-RESOURCE-A:a").orThrow)),
-        defaultArguments = Map("A" -> StringValue("A of WorkflowJob")),
+        defaultArguments = Map("A" -> StringConstant("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 
   private val envJobResource = JobResource(

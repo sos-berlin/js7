@@ -5,7 +5,6 @@ import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.KeyLogin
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.data.value.expression.Expression.{Add, NamedValue, NumericConstant, StringConstant}
-import js7.data.value.{NumberValue, StringValue}
 import js7.tester.CirceJsonTester._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -142,8 +141,8 @@ final class ExecutableTest extends AnyFreeSpec
         InternalExecutable(
           "js7.tests.jobs.EmptyJob",
           jobArguments = Map(
-            "ARG" -> StringValue("An Argument for the intantiated class"),
-            "NUMBER" -> NumberValue(3)),
+            "ARG" -> StringConstant("An Argument for the instantiated class"),
+            "NUMBER" -> NumericConstant(3)),
           arguments = Map(
             "MY-ARG" -> NamedValue.last("ARG"),
             "NUMBER" -> NumericConstant(7))),
@@ -152,8 +151,8 @@ final class ExecutableTest extends AnyFreeSpec
           "TYPE": "InternalExecutable",
           "className": "js7.tests.jobs.EmptyJob",
           "jobArguments": {
-            "ARG": "An Argument for the intantiated class",
-            "NUMBER": 3
+            "ARG": "'An Argument for the instantiated class'",
+            "NUMBER": "3"
           },
           "arguments": {
             "MY-ARG": "$$ARG",

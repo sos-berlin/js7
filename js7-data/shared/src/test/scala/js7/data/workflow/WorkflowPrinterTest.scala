@@ -5,7 +5,6 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderId
-import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -38,9 +37,9 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY" -> StringValue("VALUE")))))),
+          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY" -> StringConstant("VALUE")))))),
       """define workflow {
-        |  execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, executable="my-script";
+        |  execute agent="AGENT", defaultArguments={"KEY": 'VALUE'}, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -50,10 +49,10 @@ final class WorkflowPrinterTest extends AnyFreeSpec
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY\n\"$" -> StringValue("VALUE")))))),
+          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("my-script"), Map("KEY\n\"$" -> StringConstant("VALUE")))))),
       """define workflow {
         |  execute agent="AGENT", defaultArguments={'KEY
-        |"$': "VALUE"}, executable="my-script";
+        |"$': 'VALUE'}, executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -68,11 +67,11 @@ final class WorkflowPrinterTest extends AnyFreeSpec
               ShellScriptExecutable(
                 "LINE 1\nLINE 2\n'''LINE 3'''\n",
                 returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
-              Map("KEY" -> StringValue("VALUE")))),
+              Map("KEY" -> StringConstant("VALUE")))),
           Execute.Anonymous(
             WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("SCRIPT", v1Compatible = true))))),
       """define workflow {
-        |  execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], script=
+        |  execute agent="AGENT", defaultArguments={"KEY": 'VALUE'}, successReturnCodes=[0, 1], script=
         |''''LINE 1
         |   |LINE 2
         |   |'''LINE 3'''
@@ -92,10 +91,10 @@ final class WorkflowPrinterTest extends AnyFreeSpec
             PathExecutable(
               "my-script",
               returnCodeMeaning = ReturnCodeMeaning.NoFailure),
-            Map("KEY" -> StringValue("VALUE")),
+            Map("KEY" -> StringConstant("VALUE")),
             parallelism = 3, sigkillDelay = Some(10.s))))),
       """define workflow {
-        |  execute agent="AGENT", parallelism=3, defaultArguments={"KEY": "VALUE"}, sigkillDelay=10, failureReturnCodes=[], executable="my-script";
+        |  execute agent="AGENT", parallelism=3, defaultArguments={"KEY": 'VALUE'}, sigkillDelay=10, failureReturnCodes=[], executable="my-script";
         |}
         |""".stripMargin)
   }
@@ -113,14 +112,14 @@ final class WorkflowPrinterTest extends AnyFreeSpec
             PathExecutable(
               "a-script",
               returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
-            Map("KEY" -> StringValue("VALUE"))),
+            Map("KEY" -> StringConstant("VALUE"))),
           WorkflowJob.Name("B-JOB") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("b-script")))),
       """define workflow {
         |  job A;
         |  job `B-JOB`;
         |
         |  define job A {
-        |    execute agent="AGENT", defaultArguments={"KEY": "VALUE"}, successReturnCodes=[0, 1], executable="a-script"
+        |    execute agent="AGENT", defaultArguments={"KEY": 'VALUE'}, successReturnCodes=[0, 1], executable="a-script"
         |  }
         |  define job `B-JOB` {
         |    execute agent="AGENT", executable="b-script"

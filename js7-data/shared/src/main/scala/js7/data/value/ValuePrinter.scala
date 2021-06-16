@@ -1,7 +1,6 @@
 package js7.data.value
 
 import js7.data.value.expression.Expression
-import js7.data.value.expression.Expression.ObjectExpression
 
 object ValuePrinter
 {

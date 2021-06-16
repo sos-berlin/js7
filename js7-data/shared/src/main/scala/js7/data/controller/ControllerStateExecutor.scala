@@ -281,6 +281,7 @@ object ControllerStateExecutor
       id => controllerState().idToOrder.checked(id),
       id => controllerState().repo.idTo[Workflow](id),
       id => controllerState().pathToLockState.checked(id),
+      controllerState().controllerMetaState.controllerId,
       isAgent = false)
 
   def toLiveOrderEventHandler(controllerState: () => ControllerState) =

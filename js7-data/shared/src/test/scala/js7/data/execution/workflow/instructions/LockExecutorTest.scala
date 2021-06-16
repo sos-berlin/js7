@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerId
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.LockExecutorTest._
 import js7.data.job.PathExecutable
@@ -24,6 +25,7 @@ final class LockExecutorTest extends AnyFreeSpec {
       freeLockPath -> LockState(Lock(freeLockPath, limit = 1)),
       occupiedLockPath -> LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))),
     ).checked
+    val controllerId = ControllerId("CONTROLLER")
   }
 
   "Lock acquired" in {

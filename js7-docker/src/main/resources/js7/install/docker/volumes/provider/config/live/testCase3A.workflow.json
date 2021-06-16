@@ -5,9 +5,9 @@
       "jobName": "job-1",
       "label": "step1",
       "defaultArguments": {
-        "name3": "value3",
-        "name2": "value2",
-        "name1": "value1"
+        "name3": "'value3'",
+        "name2": "'value2'",
+        "name1": "'value1'"
       }
     },
     {
@@ -34,9 +34,9 @@
                           "jobName": "job-1",
                           "label": "step1_1b",
                           "defaultArguments": {
-                            "name3": "value3",
-                            "name2": "value2",
-                            "name1": "value1"
+                            "name3": "'value3'",
+                            "name2": "'value2'",
+                            "name1": "'value1'"
                           }
                         },
                         {
@@ -51,9 +51,9 @@
                                     "jobName": "job-1",
                                     "label": "step1_1b_1",
                                     "defaultArguments": {
-                                      "name3": "value3",
-                                      "name2": "value2",
-                                      "name1": "value1"
+                                      "name3": "'value3'",
+                                      "name2": "'value2'",
+                                      "name1": "'value1'"
                                     }
                                   },
                                   {
@@ -68,9 +68,9 @@
                                               "jobName": "job-1",
                                               "label": "step1_1b_1a",
                                               "defaultArguments": {
-                                                "name3": "value3",
-                                                "name2": "value2",
-                                                "name1": "value1"
+                                                "name3": "'value3'",
+                                                "name2": "'value2'",
+                                                "name1": "'value1'"
                                               }
                                             }
                                           ]
@@ -85,9 +85,9 @@
                                               "jobName": "job-1",
                                               "label": "step1_1b_1b",
                                               "defaultArguments": {
-                                                "name3": "value3",
-                                                "name2": "value2",
-                                                "name1": "value1"
+                                                "name3": "'value3'",
+                                                "name2": "'value2'",
+                                                "name1": "'value1'"
                                               }
                                             }
                                           ]
@@ -107,9 +107,9 @@
                                     "jobName": "job-1",
                                     "label": "step1_1b_2",
                                     "defaultArguments": {
-                                      "name3": "value3",
-                                      "name2": "value2",
-                                      "name1": "value1"
+                                      "name3": "'value3'",
+                                      "name2": "'value2'",
+                                      "name1": "'value1'"
                                     }
                                   }
                                 ]
@@ -129,9 +129,9 @@
                           "jobName": "job-1",
                           "label": "step1_1c",
                           "defaultArguments": {
-                            "name3": "value3",
-                            "name2": "value2",
-                            "name1": "value1"
+                            "name3": "'value3'",
+                            "name2": "'value2'",
+                            "name1": "'value1'"
                           }
                         }
                       ]
@@ -144,9 +144,9 @@
                 "jobName": "job-1",
                 "label": "step1_1d",
                 "defaultArguments": {
-                  "name3": "value3",
-                  "name2": "value2",
-                  "name1": "value1"
+                  "name3": "'value3'",
+                  "name2": "'value2'",
+                  "name1": "'value1'"
                 }
               }
             ]
@@ -161,9 +161,9 @@
                 "jobName": "job-2",
                 "label": "step1_2a",
                 "defaultArguments": {
-                  "name3": "value3",
-                  "name2": "value2",
-                  "name1": "value1"
+                  "name3": "'value3'",
+                  "name2": "'value2'",
+                  "name1": "'value1'"
                 }
               },
               {
@@ -178,9 +178,9 @@
                           "jobName": "job-2",
                           "label": "step1_2b",
                           "defaultArguments": {
-                            "name3": "value3",
-                            "name2": "value2",
-                            "name1": "value1"
+                            "name3": "'value3'",
+                            "name2": "'value2'",
+                            "name1": "'value1'"
                           }
                         },
                         {
@@ -195,9 +195,9 @@
                                     "jobName": "job-1",
                                     "label": "step1_2b_1",
                                     "defaultArguments": {
-                                      "name3": "value3",
-                                      "name2": "value2",
-                                      "name1": "value1"
+                                      "name3": "'value3'",
+                                      "name2": "'value2'",
+                                      "name1": "'value1'"
                                     }
                                   }
                                 ]
@@ -212,9 +212,9 @@
                                     "jobName": "job-1",
                                     "label": "step1_2b_2",
                                     "defaultArguments": {
-                                      "name3": "value3",
-                                      "name2": "value2",
-                                      "name1": "value1"
+                                      "name3": "'value3'",
+                                      "name2": "'value2'",
+                                      "name1": "'value1'"
                                     }
                                   }
                                 ]
@@ -234,9 +234,9 @@
                           "jobName": "job-2",
                           "label": "step1_2c",
                           "defaultArguments": {
-                            "name3": "value3",
-                            "name2": "value2",
-                            "name1": "value1"
+                            "name3": "'value3'",
+                            "name2": "'value2'",
+                            "name1": "'value1'"
                           }
                         }
                       ]
@@ -249,9 +249,9 @@
                 "jobName": "job-2",
                 "label": "step1_2d",
                 "defaultArguments": {
-                  "name3": "value3",
-                  "name2": "value2",
-                  "name1": "value1"
+                  "name3": "'value3'",
+                  "name2": "'value2'",
+                  "name1": "'value1'"
                 }
               }
             ]
@@ -264,9 +264,9 @@
       "jobName": "job-2",
       "label": "step3",
       "defaultArguments": {
-        "name3": "value3",
-        "name2": "value2",
-        "name1": "value1"
+        "name3": "'value3'",
+        "name2": "'value2'",
+        "name1": "'value1'"
       }
     }
   ],

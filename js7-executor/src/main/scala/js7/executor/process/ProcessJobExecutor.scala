@@ -4,11 +4,11 @@ import cats.syntax.all._
 import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
-import js7.base.utils.Lazy
 import js7.data.job.{CommandLine, JobResource, ProcessExecutable}
 import js7.data.order.Outcome
+import js7.data.value.expression.scopes.LazyNamedValueScope
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{NullValue, StringValue, Value}
+import js7.data.value.{NullValue, StringValue}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
@@ -27,22 +27,19 @@ trait ProcessJobExecutor extends JobExecutor
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
   : OrderProcess = {
-    import processOrder.order
+    import processOrder.{order, scopeForJobResources}
 
-    def evalJobResourceEnv(jobResource: JobResource, scope: Scope): Checked[Map[String, String]] = {
-      val lazyEvaluatedSettings: Map[String, Lazy[Checked[Value]]] =
-        jobResource.settings.view
-          .mapValues(expr => Lazy(scope.evaluator.eval(expr)))
-          .toMap
+    def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] =
       evalEnv(
         jobResource.env,
-        Scope.fromLazyNamedValues(lazyEvaluatedSettings) |+| scope)
-    }
+        LazyNamedValueScope(
+          scopeForJobResources.evalLazilyNameToExpression(jobResource.settings)
+        ) |+| scopeForJobResources)
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =
       processOrder.jobResources
         .reverse/*left overrides right*/
-        .traverse(evalJobResourceEnv(_, processOrder.scopeForJobResource))
+        .traverse(evalJobResourceEnv)
         .map(_.fold(Map.empty)(_ ++ _))
 
     val processDriver = new ProcessDriver(
@@ -51,19 +48,20 @@ trait ProcessJobExecutor extends JobExecutor
       jobExecutorConf)
 
     new OrderProcess {
-      def run =
-        checkedJobResourcesEnv match {
-          case Left(problem) =>
-            Task.pure(Outcome.Failed.fromProblem(problem))
-
-          case Right(jobResourcesEnv) =>
+      def run = {
+        ( for {
+            jobResourcesEnv <- checkedJobResourcesEnv
+            v1 <- v1Env(processOrder)
+          } yield
             processDriver
               .processOrder(
                 order.id,
-                (v1Env(processOrder).view ++ startProcess.env ++ jobResourcesEnv).toMap,
+                (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap,
                 processOrder.stdObservers)
               .guarantee(processDriver.terminate)
-        }
+        ).valueOr(problem =>
+          Task.pure(Outcome.Failed.fromProblem(problem)))
+      }
 
       override def cancel(immediately: Boolean) =
         Task {
@@ -72,18 +70,17 @@ trait ProcessJobExecutor extends JobExecutor
     }
   }
 
-  private def v1Env(processOrder: ProcessOrder): Map[String, String] =
+  private def v1Env(processOrder: ProcessOrder): Checked[Map[String, String]] =
     if (!v1Compatible)
-      Map.empty
+      Right(Map.empty)
     else
-      (processOrder.defaultArguments.view ++
-        processOrder.order.namedValues ++
-        processOrder.workflow.defaultArguments
-      ) .toMap
-        .view
-        .mapValues(_.toStringValue)
+      for (defaultArguments <- processOrder.checkedDefaultArguments) yield
+        (defaultArguments.view ++
+          processOrder.order.namedValues ++
+          processOrder.workflow.defaultArguments)
+        .map { case (k, v) => k -> v.toStringValue }
         .collect {
-          case (name, Right(v)) => name -> v  // ignore toStringValue errors (like ListValue)
+          case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)
         }
         .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
         .toMap

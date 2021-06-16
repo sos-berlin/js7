@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
 import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.controller.ControllerId
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
@@ -30,12 +31,14 @@ final class OrderEventSource(
   idToOrder: OrderId => Checked[Order[Order.State]],
   idToWorkflow: WorkflowId => Checked[Workflow],
   pathToLockState: LockPath => Checked[LockState],
+  controllerId: ControllerId,
   isAgent: Boolean)
 {
   private val stateView = new StateView {
     def idToOrder                    = OrderEventSource.this.idToOrder
     def idToWorkflow(id: WorkflowId) = OrderEventSource.this.idToWorkflow(id)
-    def pathToLockState                = OrderEventSource.this.pathToLockState
+    def pathToLockState              = OrderEventSource.this.pathToLockState
+    val controllerId                 = OrderEventSource.this.controllerId
 
     def childOrderEnded(order: Order[Order.State]): Boolean =
       order.parent.flatMap(o => idToOrder(o).toOption) match {

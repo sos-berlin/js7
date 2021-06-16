@@ -4,6 +4,7 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
 import js7.data.job.{RelativePathExecutable, ReturnCodeMeaning}
@@ -30,6 +31,7 @@ final class ExecuteTest extends AnyFreeSpec {
     def idToOrder = throw new NotImplementedError
     def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
     val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
+    val controllerId = ControllerId("CONTROLLER")
   }
 
   "toOutcome" in {

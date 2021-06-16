@@ -16,8 +16,8 @@ import js7.data.item.VersionId
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderCancellationMarked, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.Expression.NamedValue
-import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
+import js7.data.value.expression.Expression.{NamedValue, StringConstant}
+import js7.data.value.{NamedValues, NumberValue, Value}
 import js7.data.workflow.WorkflowPrinter.instructionToString
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -119,7 +119,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
           agentPath,
           InternalExecutable(
             jobClass.getName,
-            jobArguments = Map("blockingThreadPoolName" -> StringValue(blockingThreadPoolName)),
+            jobArguments = Map("blockingThreadPoolName" -> StringConstant(blockingThreadPoolName)),
             arguments = Map("STEP_ARG" -> NamedValue("ORDER_ARG"))),
           parallelism = n)),
         indexedOrderIds
