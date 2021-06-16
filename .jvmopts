@@ -1,3 +1,0 @@
--XX:MaxMetaspaceSize=1500M
--Xmx2500M
--enableassertions
