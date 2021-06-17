@@ -1,6 +1,7 @@
 package  js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
+import java.time.Instant
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
@@ -9,6 +10,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
+import js7.data.event.EventId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderId}
@@ -36,6 +38,10 @@ extends JJournaledState[JControllerState, ControllerState]
   @Nonnull
   def eventId: Long =
     asScala.eventId
+
+  @Nonnull
+  def instant: Instant =
+    Instant.ofEpochMilli(EventId.toEpochMilli(asScala.eventId))
 
   @Nonnull
   def clusterState: JClusterState =
