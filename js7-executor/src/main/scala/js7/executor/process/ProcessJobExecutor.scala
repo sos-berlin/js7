@@ -32,9 +32,8 @@ trait ProcessJobExecutor extends JobExecutor
     def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] =
       evalEnv(
         jobResource.env,
-        LazyNamedValueScope(
-          scopeForJobResources.evalLazilyNameToExpression(jobResource.settings)
-        ) |+| scopeForJobResources)
+        scopeForEnv |+| jobResourceVariablesScope)
+    }
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =
       processOrder.jobResources

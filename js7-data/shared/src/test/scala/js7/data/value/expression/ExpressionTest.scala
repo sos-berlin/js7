@@ -529,7 +529,7 @@ final class ExpressionTest extends AnyFreeSpec
       Right(Add(NullConstant, NumericConstant(1))))
 
     testEval("\"-->$(null)<--\"",
-      result = Right(StringValue("-->null<--")),
+      result = Right(StringValue("--><--")),
       Right(InterpolatedString(List(StringConstant("-->"), NullConstant, StringConstant("<--")))))
 
     "orElse" in {

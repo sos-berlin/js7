@@ -259,7 +259,8 @@ object ObjectValue extends ValueType
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
 }
 
-/** Just a reminder that MissingValue could be an instance of a future ErrorValue. */
+/** Just a reminder that MissingValue could be an instance of a future ErrorValue.
+  * For example, division by zero. */
 sealed trait ErrorValue extends Value {
   def problem: Problem
 }
@@ -289,7 +290,7 @@ case object NullValue extends Value with ValueType {
 
   def toJava = null // ???
 
-  override def convertToString = "null"
+  override def convertToString = ""
 
   override def toString = convertToString
 }

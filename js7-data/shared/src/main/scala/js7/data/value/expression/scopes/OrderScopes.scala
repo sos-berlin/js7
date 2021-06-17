@@ -2,6 +2,7 @@ package js7.data.value.expression.scopes
 
 import cats.syntax.semigroup._
 import js7.base.utils.CatsUtils.combine
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order
@@ -27,13 +28,15 @@ trait OrderScopes
       "js7Label" -> StringValue(instructionLabel.fold("")(_.string)),
       "js7ControllerId" -> StringValue(controllerId.string)))
 
+  // MUST BE A PURE FUNCTION!
   protected final lazy val scopeWithoutOrderArgumentsOrJob: Scope =
     combine(
       js7NamesScope,
       new TimestampScope("scheduledOrEmpty", order.scheduledFor),
       new OrderSymbolsScope(order),
-      Scope.standard())
+      EnvScope)
 
+  // MUST BE A PURE FUNCTION!
   final lazy val orderScope: Scope =
     NamedValuesOrderScope(order, workflow) |+| scopeWithoutOrderArgumentsOrJob
 }
@@ -61,15 +64,20 @@ trait ProcessingOrderScopes extends OrderScopes
       "js7JobExecutionCount" -> NumberValue(jobExecutionCount)))
 
   private lazy val jobResourceScope: Scope =
-    new JobResourceScope(jobResources)
+    new JobResourceScope(jobResources.toKeyedMap(_.path).view)
+
+  lazy val nowScope = NowScope()
 
   /** JobResources are not allowed to access order variables. */
   final lazy val scopeForJobResources: Scope =
-    scopeWithoutOrderArgumentsOrJob |+| js7JobNameScope
+    js7JobNameScope |+| scopeWithoutOrderArgumentsOrJob
+
+  final lazy val scopeForEnv: Scope =
+    js7JobNameScope |+| scopeWithoutOrderArgumentsOrJob |+| nowScope
 
   final lazy val scopeForJobDefaultArguments: Scope =
-    scopeWithoutOrderArgumentsOrJob |+| js7JobNameScope |+| jobResourceScope
+    js7JobNameScope |+| scopeWithoutOrderArgumentsOrJob |+| jobResourceScope
 
   final lazy val processingOrderScope: Scope =
-    orderScope |+| js7JobNameScope |+| jobResourceScope
+    js7JobNameScope |+| orderScope |+| jobResourceScope |+| nowScope
 }
