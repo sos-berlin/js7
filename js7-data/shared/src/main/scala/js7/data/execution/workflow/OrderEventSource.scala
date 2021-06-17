@@ -307,7 +307,7 @@ final class OrderEventSource(
           Left(CannotResumeOrderProblem)
 
         case Some(OrderMark.Resuming(`position`, `historicOutcomes`)) =>
-          Right(order.isDetached ? OrderResumed(position, historicOutcomes)/*should already has happened*/)
+          Right(order.isDetached ? OrderResumed(position, historicOutcomes)/*should already have happened*/)
 
         case Some(OrderMark.Resuming(_, _)) =>
            Left(CannotResumeOrderProblem)

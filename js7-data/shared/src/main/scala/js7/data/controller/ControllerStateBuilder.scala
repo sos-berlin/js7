@@ -36,7 +36,7 @@ extends JournaledStateBuilder[ControllerState]
   private var allOrderWatchesState = AllOrderWatchesState.empty
   private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
-  private val idToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
+  private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
 
   protected def onInitializeState(state: ControllerState): Unit = {
     standards = state.standards
@@ -48,7 +48,7 @@ extends JournaledStateBuilder[ControllerState]
     pathToAgentRefState ++= state.pathToAgentRefState
     pathToLockState ++= state.pathToLockState
     allOrderWatchesState = state.allOrderWatchesState
-    idToSignedSimpleItem ++= state.idToSignedSimpleItem
+    pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     itemToAgentToAttachedState ++= state.itemToAgentToAttachedState
   }
 
@@ -150,7 +150,7 @@ extends JournaledStateBuilder[ControllerState]
             case SignedItemChanged(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
-                  idToSignedSimpleItem += jobResource.path -> Signed(jobResource, signedString)
+                  pathToSignedSimpleItem += jobResource.path -> Signed(jobResource, signedString)
               }
           }
 
@@ -247,7 +247,7 @@ extends JournaledStateBuilder[ControllerState]
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match {
       case jobResource: JobResource =>
-        idToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, added.signedString))
+        pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, added.signedString))
     }
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
@@ -287,7 +287,7 @@ extends JournaledStateBuilder[ControllerState]
       pathToLockState.toMap,
       allOrderWatchesState,
       repo,
-      idToSignedSimpleItem.toMap,
+      pathToSignedSimpleItem.toMap,
       itemToAgentToAttachedState.toMap,
       deletionMarkedItems.toSet,
       idToOrder.toMap)

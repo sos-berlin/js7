@@ -52,7 +52,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     val sum = (controllerState.pathToAgentRefState ++
       controllerState.pathToLockState ++
       controllerState.allOrderWatchesState.pathToOrderWatchState).map(_._2.item) ++
-      controllerState.idToSignedSimpleItem.values.map(_.value)
+      controllerState.pathToSignedSimpleItem.values.map(_.value)
     assert(controllerState.pathToSimpleItem.toMap == sum.toKeyedMap(_.key))
   }
 

@@ -1139,7 +1139,7 @@ with MainJournalingActor[ControllerState, Event]
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
           val jobResources = signedWorkflow.value.referencedJobResourcePaths
-            .flatMap(_controllerState.idToSignedSimpleItem.get)
+            .flatMap(_controllerState.pathToSignedSimpleItem.get)
           for (signedItem <- jobResources ++ View(signedWorkflow)) {
             val item = signedItem.value
             val attachedState = _controllerState

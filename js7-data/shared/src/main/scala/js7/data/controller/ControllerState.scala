@@ -44,7 +44,7 @@ final case class ControllerState(
   pathToLockState: Map[LockPath, LockState],
   allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
-  idToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
+  pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
   itemToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]],
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
@@ -61,7 +61,7 @@ extends JournaledState[ControllerState]
     pathToAgentRefState.size +
     pathToLockState.size +
     allOrderWatchesState.estimatedSnapshotSize +
-    idToSignedSimpleItem.size +
+    pathToSignedSimpleItem.size +
     itemToAgentToAttachedState.values.view.map(_.size).sum +
     deletionMarkedItems.size +
     idToOrder.size
@@ -74,7 +74,7 @@ extends JournaledState[ControllerState]
       Observable.fromIterable(pathToAgentRefState.values),
       Observable.fromIterable(pathToLockState.values),
       allOrderWatchesState.toSnapshot/*TODO Separate Item from its state?*/,
-      Observable.fromIterable(idToSignedSimpleItem.values).map(SignedItemAdded(_)),
+      Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
       Observable.fromIterable(itemToAgentToAttachedState
         .to(View)
@@ -155,15 +155,15 @@ extends JournaledState[ControllerState]
             case SignedItemAdded(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
-                  for (o <- idToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, signedString))) yield
-                    copy(idToSignedSimpleItem = o)
+                  for (o <- pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, signedString))) yield
+                    copy(pathToSignedSimpleItem = o)
               }
 
             case SignedItemChanged(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
                   Right(copy(
-                    idToSignedSimpleItem = idToSignedSimpleItem + (jobResource.path -> Signed(jobResource, signedString))))
+                    pathToSignedSimpleItem = pathToSignedSimpleItem + (jobResource.path -> Signed(jobResource, signedString))))
               }
           }
 
@@ -463,7 +463,7 @@ extends JournaledState[ControllerState]
     simpleItems ++ repo.items
 
   def simpleItems: View[SimpleItem] =
-    unsignedSimpleItems ++ idToSignedSimpleItem.values.view.map(_.value)
+    unsignedSimpleItems ++ pathToSignedSimpleItem.values.view.map(_.value)
 
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
     (pathToAgentRefState.view ++
@@ -486,7 +486,7 @@ extends JournaledState[ControllerState]
         itemKey match {
           case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption
           case path: SignableSimpleItemPath =>
-            idToSignedSimpleItem.get(path)
+            pathToSignedSimpleItem.get(path)
         }
 
       def iterator: Iterator[(SignableItemKey, Signed[SignableItem])] =
@@ -495,7 +495,7 @@ extends JournaledState[ControllerState]
             .flatMap(_
               .flatMap(_.maybeSignedItem)
               .map(signed => signed.value.key -> signed)),
-          idToSignedSimpleItem
+          pathToSignedSimpleItem
         ).flatten
     }
 
@@ -505,7 +505,7 @@ extends JournaledState[ControllerState]
       case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
-      case path: SignableSimpleItemPath => idToSignedSimpleItem.get(path).map(_.value)
+      case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
     }
 
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
