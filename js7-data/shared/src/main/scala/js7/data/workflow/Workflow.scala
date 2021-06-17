@@ -348,17 +348,28 @@ extends VersionedItem
       case o => Left(Problem(s"Expected 'Execute' statement at workflow position $position (not: ${o.getClass.simpleScalaName})"))
     }
 
+  def reachablePositions(from: Position): Iterable[Position] =
+    if (!isDefinedAt(from))
+      Nil
+    else
+      flattenedInstructions.view.map(_._1)
+        .filter(isMoveablePrechecked(from, _))
+
   def isMoveable(from: Position, to: Position): Boolean =
-    isDefinedAt(from) && isDefinedAt(to) && isMoveable(from.branchPath, to.branchPath)
+    isDefinedAt(from) && isDefinedAt(to) && isMoveablePrechecked(from, to)
 
-  private def isMoveable(from: BranchPath, to: BranchPath): Boolean = {
-    def isMoveBoundary(segment: Segment) =
-      segment.branchId.isFork || segment.branchId == BranchId.Lock
+  private def isMoveablePrechecked(from: Position, to: Position): Boolean =
+    isMoveable(from.branchPath, to.branchPath)
 
-    val prefix = BranchPath.commonBranchPath(from, to)
-    !from.drop(prefix.length).exists(isMoveBoundary) &&
-      !to.drop(prefix.length).exists(isMoveBoundary)
-  }
+  private def isMoveable(from: BranchPath, to: BranchPath): Boolean =
+    from == to || {
+      def isMoveBoundary(segment: Segment) =
+        segment.branchId.isFork || segment.branchId == BranchId.Lock
+
+      val prefix = BranchPath.commonBranchPath(from, to).length
+      !from.drop(prefix).exists(isMoveBoundary) &&
+        !to.drop(prefix).exists(isMoveBoundary)
+    }
 
   def instruction(position: Position): Instruction =
     position match {

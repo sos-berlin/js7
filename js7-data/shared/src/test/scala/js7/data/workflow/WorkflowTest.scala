@@ -819,7 +819,7 @@ final class WorkflowTest extends AnyFreeSpec
     assert(!TestWorkflow.isDefinedAt(Position(999)))
   }
 
-  "isMoveable" - {
+  "isMoveable, reachablePositions" - {
     "Same BranchPath is okay" in {
       for (i <- TestWorkflow.instructions.indices; j <- TestWorkflow.instructions.indices) {
         assert(TestWorkflow.isMoveable(Position(i), Position(j)))
@@ -858,7 +858,7 @@ final class WorkflowTest extends AnyFreeSpec
     }
 
     "Lock" - {
-      lazy val workflow = Workflow(WorkflowPath("TEST") ~ "1",
+      lazy val lockWorkflow = Workflow(WorkflowPath("TEST") ~ "1",
         Vector(
           AExecute,
           LockInstruction(LockPath("LOCK"), None, Workflow.of(
@@ -868,22 +868,34 @@ final class WorkflowTest extends AnyFreeSpec
           AJobName -> AJob))
 
       "Into same locked block" in {
-        assert(workflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1) / BranchId.Lock % 0))
-        assert(workflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1) / BranchId.Lock % 0 / Then % 0))
-        assert(workflow.isMoveable(Position(1) / BranchId.Lock % 0 / Then % 0, Position(1) / BranchId.Lock % 0))
+        assert(lockWorkflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1) / BranchId.Lock % 0))
+        assert(lockWorkflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1) / BranchId.Lock % 0 / Then % 0))
+        assert(lockWorkflow.isMoveable(Position(1) / BranchId.Lock % 0 / Then % 0, Position(1) / BranchId.Lock % 0))
       }
 
       "Into a locked block is not okay" in {
-        assert(!workflow.isMoveable(Position(1), Position(1) / BranchId.Lock % 0))
+        assert(!lockWorkflow.isMoveable(Position(1), Position(1) / BranchId.Lock % 0))
       }
 
       "Out of a locked block is not okay" in {
-        assert(!workflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1)))
+        assert(!lockWorkflow.isMoveable(Position(1) / BranchId.Lock % 0, Position(1)))
+      }
+
+      "reachablePositions" in {
+        val reachable = Seq(
+          Position(1) / BranchId.Lock % 0,
+          Position(1) / BranchId.Lock % 0 / Then % 0,
+          Position(1) / BranchId.Lock % 0 / Then % 1,
+          Position(1) / BranchId.Lock % 1)
+
+        for (from <- reachable) {
+          assert(lockWorkflow.reachablePositions(from).toSeq == reachable)
+        }
       }
     }
 
-    "try catch is okay" in {
-      val workflow = {
+    "try catch" - {
+      lazy val tryWorkflow = {
         val execute = Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("SCRIPT")))
         Workflow.of(
           execute,
@@ -892,10 +904,60 @@ final class WorkflowTest extends AnyFreeSpec
             catchWorkflow = Workflow.of(execute)),
           execute)
       }
-      assert(workflow.isMoveable(Position(1), Position(1) / Try_ % 0))
-      assert(workflow.isMoveable(Position(1), Position(1) / Catch_ % 0))
-      assert(workflow.isMoveable(Position(1) / Catch_ % 0, Position(1)))
+
+      "try catch is okay" in {
+        assert(tryWorkflow.isMoveable(Position(1), Position(1) / Try_ % 0))
+        assert(tryWorkflow.isMoveable(Position(1), Position(1) / Catch_ % 0))
+        assert(tryWorkflow.isMoveable(Position(1) / Catch_ % 0, Position(1)))
+      }
+
+      "reachablePositions" in {
+        val reachable = Seq(
+          Position(0),
+          Position(1),
+          Position(1) / Try_ % 0,
+          Position(1) / Try_ % 1,
+          Position(1) / Catch_ % 0,
+          Position(1) / Catch_ % 1,
+          Position(2),
+          Position(3))
+
+        for (from <- reachable) {
+          assert(tryWorkflow.reachablePositions(from).toSeq == reachable)
+        }
+      }
     }
+
+    "reachablePositions from first level" in {
+      val reachable = Seq(
+        Position(0),
+        Position(1),
+        Position(1) / Then % 0,
+        Position(1) / Then % 1,
+        Position(1) / Then % 2,
+        Position(1) / Else % 0,
+        Position(1) / Else % 1,
+        Position(2),
+        Position(3),
+        Position(4))
+
+      for (from <- reachable) {
+        assert(TestWorkflow.reachablePositions(from).toSeq == reachable)
+      }
+    }
+
+    "reachablePositions from fork" in {
+      val reachable = Seq(
+        Position(2) / fork("🥕") % 0,
+        Position(2) / fork("🥕") % 1,
+        Position(2) / fork("🥕") % 2)
+
+      for (from <- reachable) {
+        assert(TestWorkflow.reachablePositions(from).toSeq == reachable)
+      }
+    }
+
+    // For reachablePositions for Lock and Try, see above.
   }
 
   "Workflow with a Lock and a Job" in {

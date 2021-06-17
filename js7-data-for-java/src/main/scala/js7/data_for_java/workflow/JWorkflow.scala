@@ -11,6 +11,7 @@ import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JVersionedItem
 import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.position.JPosition
+import scala.jdk.CollectionConverters._
 
 @javaApi
 final case class JWorkflow(asScala: Workflow)
@@ -34,6 +35,13 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
 
   @Nonnull
   def withPositions = JWorkflow(asScala.withPositions(Nil))
+
+  /** Positions to which a given order can be moved. */
+  @Nonnull
+  def reachablePositions(from: JPosition): java.util.List[JPosition] =
+    asScala.reachablePositions(from.asScala)
+      .view.map(JPosition(_))
+      .toVector.asJava
 }
 
 @javaApi
