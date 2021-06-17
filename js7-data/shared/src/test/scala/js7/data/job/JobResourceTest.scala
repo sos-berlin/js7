@@ -20,8 +20,8 @@ final class JobResourceTest extends AnyFreeSpec
     testJson[SignableSimpleItem](
       JobResource(
         JobResourcePath("JOB-RESOURCE"),
-        settings = Map(
-          "SETTING" -> StringConstant("DEFAULT")),
+        variables = Map(
+          "VARIABLE" -> StringConstant("DEFAULT")),
         env = Map(
           "NAME" -> StringConstant("VALUE"),
           "MYPATH" -> Concat(
@@ -31,8 +31,8 @@ final class JobResourceTest extends AnyFreeSpec
       json"""{
         "path": "JOB-RESOURCE",
         "TYPE": "JobResource",
-        "settings": {
-         "SETTING": "'DEFAULT'"
+        "variables": {
+          "VARIABLE": "'DEFAULT'"
         },
         "env": {
           "NAME": "'VALUE'",

@@ -76,11 +76,15 @@ object BlockingInternalJob
         .toVavr
 
     def jobResourceToNameToValue: java.util.Map[JobResourcePath, java.util.Map[String, Value]] =
-      asScala.jobResourceToSettings
+      asScala.jobResourceToVariables
         .view.mapValues(_.asJava).to(ListMap).asJava
 
+    @Deprecated
     def byJobResourceAndName(jobResourcePath: JobResourcePath, name: String): VEither[Problem, Value] =
-      asScala.byJobResourceAndName(jobResourcePath, name)
+      jobResourceVariable(jobResourcePath, name)
+
+    def jobResourceVariable(jobResourcePath: JobResourcePath, name: String): VEither[Problem, Value] =
+      asScala.jobResourceVariable(jobResourcePath, name)
         .toVavr
   }
   object Step {

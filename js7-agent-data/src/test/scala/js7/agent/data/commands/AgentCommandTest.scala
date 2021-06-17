@@ -230,7 +230,7 @@ final class AgentCommandTest extends AnyFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"settings\":{},\"env\":{}}"
+          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"variables\":{},\"env\":{}}"
         },
         "itemRevision": 7
        }""")

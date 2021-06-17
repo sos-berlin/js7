@@ -8,7 +8,7 @@ import js7.data.value.expression.Expression
 /** Job resources, for example environment variables. */
 final case class JobResource(
   path: JobResourcePath,
-  settings: Map[String, Expression] = Map.empty,
+  variables: Map[String, Expression] = Map.empty,
   env: Map[String, Expression] = Map.empty,
   itemRevision: Option[ItemRevision] = None)
 extends SignableSimpleItem

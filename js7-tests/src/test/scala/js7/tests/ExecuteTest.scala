@@ -258,7 +258,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       "CONTROLLER_ID"       -> ExpressionParser.parse("$js7ControllerId").orThrow,
       "SCHEDULED_DATE"      -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
       "JOBSTART_DATE"       -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "SETTING"             -> ExpressionParser.parse("JobResource:JOB-RESOURCE:SETTING").orThrow)
+      "JOB_RESOURCE_VARIABLE" -> ExpressionParser.parse("JobResource:JOB-RESOURCE:VARIABLE").orThrow)
 
     "Special variables in InternalExecutable arguments" in {
       testWithSpecialVariables(
@@ -280,7 +280,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
             |echo CONTROLLER_ID=%CONTROLLER_ID% >>%JS7_RETURN_VALUES%
             |echo SCHEDULED_DATE=%SCHEDULED_DATE% >>%JS7_RETURN_VALUES%
             |echo JOBSTART_DATE=%JOBSTART_DATE% >>%JS7_RETURN_VALUES%
-            |echo SETTING=%SETTING% >>%JS7_RETURN_VALUES%
+            |echo JOB_RESOURCE_VARIABLE=%JOB_RESOURCE_VARIABLE% >>%JS7_RETURN_VALUES%
             |""".stripMargin
         else
           """#!/usr/bin/env bash
@@ -294,7 +294,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
             |  echo "CONTROLLER_ID=$CONTROLLER_ID"
             |  echo "SCHEDULED_DATE=$SCHEDULED_DATE"
             |  echo "JOBSTART_DATE=$JOBSTART_DATE"
-            |  echo "SETTING=$SETTING"
+            |  echo "JOB_RESOURCE_VARIABLE=$JOB_RESOURCE_VARIABLE"
             |)>>"$JS7_RETURN_VALUES"
             |""".stripMargin
 
@@ -340,7 +340,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "JOB_NAME" -> StringValue("TEST-JOB"),
           "JOB_EXECUTION_COUNT" -> numberValue(1),
           "CONTROLLER_ID" -> StringValue("Controller"),
-          "SETTING" -> StringValue("SETTING-VALUE")))
+          "JOB_RESOURCE_VARIABLE" -> StringValue("JOB-RESOURCE-VARIABLE-VALUE")))
     }
   }
 
@@ -448,8 +448,8 @@ object ExecuteTest
     else s"""exit "$$$envName""""
 
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"),
-    settings = Map(
-      "SETTING" -> StringConstant("SETTING-VALUE")))
+    variables = Map(
+      "VARIABLE" -> StringConstant("JOB-RESOURCE-VARIABLE-VALUE")))
 
   private final class TestInternalJob extends InternalJob
   {

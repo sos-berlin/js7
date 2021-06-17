@@ -37,5 +37,5 @@ Beispiel in JSON:
   der Prozess nach der angegebenen Zeitspanne noch läuft,
   dann sendet JS7 dem Prozess ein `SIGKILL`-Signal.
 
-  Default: Die [Einstellung](../../settings.md) `js7.job.execution.sigkill-delay`
+  Default: Die [Einstellung](../../conf.md) `js7.job.execution.sigkill-delay`
   in der Datei `agent.conf`.

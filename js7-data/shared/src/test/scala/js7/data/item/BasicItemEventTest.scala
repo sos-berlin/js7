@@ -60,7 +60,7 @@ final class BasicItemEventTest extends AnyFreeSpec
           "item": {
             "TYPE": "JobResource",
             "path": "JOB-RESOURCE",
-            "settings": {},
+            "variables": {},
             "env": {},
             "itemRevision": 7
            }

@@ -62,7 +62,7 @@ extends JobExecutor
       resourceToArgs <- processOrder.jobResources
         .traverse(jobResource =>
           processOrder.scopeForJobResources.evaluator
-            .evalExpressionMap(jobResource.settings)
+            .evalExpressionMap(jobResource.variables)
             .map(jobResource.path -> _))
     } yield Step(
       processOrder,

@@ -73,7 +73,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
         |C=/C of JOB-RESOURCE-B/
         |D=/D of JOB ENV/
         |E=/E of JOB-RESOURCE-B/
-        |aSetting=/A of JOB-RESOURCE-A/
+        |aJobResourceVariable=/A of JOB-RESOURCE-A/
         |""".stripMargin)
   }
 
@@ -161,7 +161,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
-  "JobResource.settings in JVM job" in {
+  "JobResource.variables in JVM job" in {
     val orderId = OrderId("ORDER-INTERNAL")
     val events = controller.runOrder(FreshOrder(orderId, internalWorkflow.path))
     assert(events.last.value.isInstanceOf[OrderFinished])
@@ -175,33 +175,33 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
           agentPath,
           ShellScriptExecutable(":",
             env = Map(
-              "aSetting" -> ExpressionParser.parse("JobResource:UNKNOWN:a").orThrow))))))
+              "aJobResourceVariable" -> ExpressionParser.parse("JobResource:UNKNOWN:a").orThrow))))))
     assert(controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
       .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
   }
 
-  "Accessing an missing JobResource setting" - {
+  "Accessing an missing JobResource variable" - {
     val existingName = if (isWindows) "TEMP" else if (isMac) "TMPDIR" else "HOSTNAME"
     val existingValue = sys.env(existingName)
 
     "Order fails" in {
-      val workflow = addUnknownSettingWorkflow("MISSING", "JobResource:JOB-RESOURCE-A:UNKNOWN")
-      val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-SETTING"), workflow.path))
+      val workflow = addUnknownJobResourceVariableWorkflow("MISSING", "JobResource:JOB-RESOURCE-A:UNKNOWN")
+      val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN"), workflow.path))
       assert(events.map(_.value).contains(
         OrderProcessed(Outcome.Disrupted(
-          UnknownKeyProblem("setting", "JobResource:JOB-RESOURCE-A:UNKNOWN")))))
+          UnknownKeyProblem("JobResource variable", "JobResource:JOB-RESOURCE-A:UNKNOWN")))))
     }
 
     "Environment variable is left unchanged when the ? operator is used" in {
       assert(existingValue != "", s"Expecting the $existingName environment variable")
-      val workflow = addUnknownSettingWorkflow("NONE", "JobResource:JOB-RESOURCE-A:UNKNOWN ?")
-      val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-SETTING-2"), workflow.path))
+      val workflow = addUnknownJobResourceVariableWorkflow("NONE", "JobResource:JOB-RESOURCE-A:UNKNOWN ?")
+      val events = controller.runOrder(FreshOrder(OrderId("UNKNOWN-2"), workflow.path))
       assert(events.map(_.value) contains OrderProcessed(Outcome.succeededRC0))
       val stdout = events.map(_.value).collect { case OrderStdoutWritten(chunk) => chunk }.mkString
       assert(stdout contains s"$existingName=/$existingValue/")
     }
 
-    def addUnknownSettingWorkflow(name: String, expr: String) = {
+    def addUnknownJobResourceVariableWorkflow(name: String, expr: String) = {
       val workflow = Workflow(
         WorkflowPath(name) ~ name,
         Vector(
@@ -225,16 +225,16 @@ object JobResourceTest
 
   private val aJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-A"),
-    settings = Map(
+    variables = Map(
       "a" -> StringConstant("A of JOB-RESOURCE-A"),
       "b" -> StringConstant("B of JOB-RESOURCE-A")),
     env = Map(
-      "A" -> NamedValue("a"),  // reference settings!
+      "A" -> NamedValue("a"),
       "B" -> NamedValue("b")))
 
   private val bJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-B"),
-    settings = Map(
+    variables = Map(
       "b" -> StringConstant("ignored"),
       "c" -> StringConstant("C of JOB-RESOURCE-B"),
       "e" -> StringConstant("E of JOB-RESOURCE-B")),
@@ -267,12 +267,12 @@ object JobResourceTest
             |echo C=/$C/
             |echo D=/$D/
             |echo E=/$E/
-            |echo aSetting=/$aSetting/
+            |echo aJobResourceVariable=/$aJobResourceVariable/
             |""".stripMargin,
           env = Map(
             "D" -> ExpressionParser.parse("'D of JOB ENV'").orThrow,
             "E" -> ExpressionParser.parse("'E of JOB ENV'").orThrow,
-            "aSetting" -> ExpressionParser.parse("JobResource:JOB-RESOURCE-A:a").orThrow)),
+            "aJobResourceVariable" -> ExpressionParser.parse("JobResource:JOB-RESOURCE-A:a").orThrow)),
         defaultArguments = Map("A" -> StringConstant("A of WorkflowJob")),
         jobResourcePaths = Seq(aJobResource.path, bJobResource.path))))
 
@@ -366,9 +366,9 @@ object JobResourceTest
   final class TestInternalJob extends InternalJob {
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
-        assert(step.byJobResourceAndName(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
-        assert(step.byJobResourceAndName(aJobResource.path, "UNKNOWN") == Left(UnknownKeyProblem("Named value", "UNKNOWN")))
-        assert(step.byJobResourceAndName(JobResourcePath("UNKNOWN"), "X") == Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
+        assert(step.jobResourceVariable(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
+        assert(step.jobResourceVariable(aJobResource.path, "UNKNOWN") == Left(UnknownKeyProblem("JobResource variable", "UNKNOWN")))
+        assert(step.jobResourceVariable(JobResourcePath("UNKNOWN"), "X") == Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
         Outcome.succeeded
       })
   }

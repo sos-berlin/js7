@@ -6,7 +6,7 @@ import cats.syntax.traverse._
 import js7.base.problem.Checked
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.data.value.expression.Expression.{FunctionCall, JobResourceSetting}
+import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
 import js7.data.value.expression.scopes.{DoubleScope, EnvScope, NowScope}
 import js7.data.value.{NumberValue, Value}
 import scala.collection.MapView
@@ -33,7 +33,7 @@ trait Scope
   def evalFunctionCall(functionCall: FunctionCall): Option[Checked[Value]] =
     None
 
-  def evalJobResourceSetting(setting: JobResourceSetting): Option[Checked[Value]] =
+  def evalJobResourceVariable(jobResourceVariable: JobResourceVariable): Option[Checked[Value]] =
     None
 
   def namedValue(name: String): Checked[Option[Value]] =
@@ -75,7 +75,7 @@ object Scope
 
   val empty: Scope = Empty
 
-  def standard(): Scope =
+  def jobArgumentsScope(): Scope =
     NowScope() |+| EnvScope
 
   private object Empty extends Scope

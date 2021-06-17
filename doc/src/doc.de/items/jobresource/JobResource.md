@@ -3,13 +3,13 @@
 Einem Job lassen sich JobResourcen zugeordnen.
 Eine JobResoure enthält
 
-* `settings`, errechnete benannte Einstellungen, und
+* `variables`, errechnete benannte Variablen und
 * `env`, errechnete Umgebungsvariablen für Shell-Jobs.
 
-`settings` und `env` sind Name-Ausdruck-Paare.
+`variables` und `env` sind Name-Ausdruck-Paare.
 
-In `env` können die Namen aus `setting` verwendet werden.
-Damit kann eine Einstellung in `setting` vorgenommen
+In `env` können die Namen aus `variables` verwendet werden.
+Damit kann eine Einstellung in `variables` vorgenommen
 und in JVM- wie Shell-Jobs verwendet werden.
 
 Beispiel in JSON:
@@ -18,7 +18,7 @@ Beispiel in JSON:
 {
   "path": "MY-JOB-RESOURCE",
   "TYPE": "JobResource",
-  "settings": {
+  "variables": {
    "stringSetting": "\"STRING\"",
    "numberSetting": "100"
   },

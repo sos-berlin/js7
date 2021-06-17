@@ -33,13 +33,13 @@ object JJobResource extends JJsonable.Companion[JJobResource]
   @Nonnull
   def of(
     @Nonnull path: JobResourcePath,
-    @Nonnull settings: java.util.Map[String, JExpression],
+    @Nonnull variables: java.util.Map[String, JExpression],
     @Nonnull env: java.util.Map[String, JExpression])
   : JJobResource =
     JJobResource(
       JobResource(
         path,
-        settings = settings.asScala.view.mapValues(_.asScala).toMap,
+        variables = variables.asScala.view.mapValues(_.asScala).toMap,
         env = env.asScala.view.mapValues(_.asScala).toMap))
 
   @Nonnull

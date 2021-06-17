@@ -96,7 +96,7 @@ final class Evaluator(scope: Scope)
 
       case call: FunctionCall => evalFunctionCall(call)
 
-      case call: JobResourceSetting => evalJobResourceSetting(call)
+      case call: JobResourceVariable => evalJobResourceVariable(call)
 
       case MissingConstant(problem) => Right(MissingValue(problem))
 
@@ -109,8 +109,8 @@ final class Evaluator(scope: Scope)
     scope.evalFunctionCall(functionCall)
       .getOrElse(Left(Problem(s"Unknown function or non-matching arguments: ${functionCall.name}")))
 
-  private def evalJobResourceSetting(itemAccess: Expression.JobResourceSetting): Checked[Value] =
-    scope.evalJobResourceSetting(itemAccess)
+  private def evalJobResourceVariable(itemAccess: Expression.JobResourceVariable): Checked[Value] =
+    scope.evalJobResourceVariable(itemAccess)
       .getOrElse(Left(Problem(s"Unknown item access or non-matching arguments: $itemAccess")))
 
   private def evalListExpression(expr: ListExpression): Checked[ListValue] =

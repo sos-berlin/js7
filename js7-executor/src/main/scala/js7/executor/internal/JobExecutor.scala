@@ -68,8 +68,8 @@ object JobExecutor
         if (!executorConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else
-          for (jobArguments <- Scope.standard().evalNameToExpression(executable.jobArguments)) yield
-            new InternalJobExecutor(executable, jobConf, pathToJobResource, jobArguments,
+          for (jobArguments <- Scope.jobArgumentsScope().evalNameToExpression(executable.jobArguments))
+            yield new InternalJobExecutor(executable, jobConf, pathToJobResource, jobArguments,
               executorConf.blockingJobScheduler)
     }
   }

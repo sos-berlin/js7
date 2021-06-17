@@ -41,7 +41,7 @@ object InternalJob
   final case class Step private(
     processOrder: ProcessOrder,
     arguments: NamedValues,
-    jobResourceToSettings: ListMap[JobResourcePath, NamedValues])
+    jobResourceToVariables: ListMap[JobResourcePath, NamedValues])
   { self =>
     def order = processOrder.order
     def workflow = processOrder.workflow
@@ -65,9 +65,9 @@ object InternalJob
         case Stderr => errTaskObserver
       }
 
-    def byJobResourceAndName(jobResourcePath: JobResourcePath, name: String): Checked[Value] =
-      jobResourceToSettings
+    def jobResourceVariable(jobResourcePath: JobResourcePath, variableName: String): Checked[Value] =
+      jobResourceToVariables
         .rightOr(jobResourcePath, UnknownKeyProblem("JobResource", jobResourcePath.string))
-        .flatMap(_.rightOr(name, UnknownKeyProblem("Named value", name)))
+        .flatMap(_.rightOr(variableName, UnknownKeyProblem("JobResource variable", variableName)))
   }
 }

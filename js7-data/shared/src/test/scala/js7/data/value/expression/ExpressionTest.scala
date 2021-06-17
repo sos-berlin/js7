@@ -67,13 +67,13 @@ final class ExpressionTest extends AnyFreeSpec
             case _ => None
           }
 
-        override def evalJobResourceSetting(setting: JobResourceSetting): Option[Checked[Value]] =
-          setting match {
-            case JobResourceSetting(JobResourcePath("myJobResource"), "SETTING") =>
-             Some(Right(StringValue("myJobResource,setting,value")))
+        override def evalJobResourceVariable(v: JobResourceVariable): Option[Checked[Value]] =
+          v match {
+            case JobResourceVariable(JobResourcePath("myJobResource"), "VARIABLE") =>
+             Some(Right(StringValue("myJobResource,VARIABLE,value")))
 
-            case JobResourceSetting(JobResourcePath("JOB-RESOURCE"), "SETTING-NAME") =>
-             Some(Right(StringValue("JOB-RESOURCE,setting,value")))
+            case JobResourceVariable(JobResourcePath("JOB-RESOURCE"), "VARIABLE-NAME") =>
+             Some(Right(StringValue("JOB-RESOURCE,VARIABLE-NAME,value")))
 
             case _ => None
           }
@@ -130,13 +130,13 @@ final class ExpressionTest extends AnyFreeSpec
       result = "AA",
       Right(NamedValue.last("ASTRING")))
 
-    testEval("JobResource:myJobResource:SETTING",
-      result = "myJobResource,setting,value",
-      Right(JobResourceSetting(JobResourcePath("myJobResource"), "SETTING")))
+    testEval("JobResource:myJobResource:VARIABLE",
+      result = "myJobResource,VARIABLE,value",
+      Right(JobResourceVariable(JobResourcePath("myJobResource"), "VARIABLE")))
 
-    testEval("JobResource:JOB-RESOURCE:`SETTING-NAME`",
-      result = "JOB-RESOURCE,setting,value",
-      Right(JobResourceSetting(JobResourcePath("JOB-RESOURCE"), "SETTING-NAME")))
+    testEval("JobResource:JOB-RESOURCE:`VARIABLE-NAME`",
+      result = "JOB-RESOURCE,VARIABLE-NAME,value",
+      Right(JobResourceVariable(JobResourcePath("JOB-RESOURCE"), "VARIABLE-NAME")))
 
     //testEval("${label::LABEL.KEY}",
     //  result = "LABEL-VALUE",

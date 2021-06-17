@@ -223,7 +223,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       }, {
         "TYPE": "SignedItemAdded",
         "signed": {
-          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"settings\":{},\"env\":{}}",
+          "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOB-RESOURCE\",\"variables\":{},\"env\":{}}",
           "signature": {
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"

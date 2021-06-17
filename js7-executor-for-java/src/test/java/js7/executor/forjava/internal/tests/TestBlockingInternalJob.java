@@ -65,7 +65,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             doSomethingInParallel();
 
             Map<JobResourcePath,Map<String,Value>> jobResourceToNameToValue = step.jobResourceToNameToValue();
-            Either<Problem,Value> checkedValue = step.byJobResourceAndName(JobResourcePath.of("A"), "stringSetting");
+            Either<Problem,Value> checkedValue = step.jobResourceVariable(JobResourcePath.of("A"), "stringSetting");
             assertThat(step.instructionLabel().isPresent(), equalTo(false));
             assertThat(step.jobName(), anyOf(
                 equalTo("JOB"),

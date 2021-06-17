@@ -96,9 +96,9 @@ object ExpressionParser
     "$" ~~ ((identifier | digits/*regex group*/).map(NamedValue.last(_)) | curlyName)
   }
 
-  private def jobResourceSetting[_: P] = P[JobResourceSetting](
+  private def jobResourceVariable[_: P] = P[JobResourceVariable](
     ("JobResource" ~ ":" ~/ jobResourcePath ~ ":" ~/ identifier)
-      .map((JobResourceSetting.apply(_, _)).tupled))
+      .map((JobResourceVariable.apply(_, _)).tupled))
 
   private def jobResourcePath[_: P] = P[JobResourcePath](
     (CharPred(JobResourcePath.isNameStart) ~ CharsWhile(JobResourcePath.isNamePartMaybe)).!
@@ -146,7 +146,7 @@ object ExpressionParser
       singleQuotedStringConstant | interpolatedString | dollarNamedValue |
       catchCount | argumentFunctionCall | variableFunctionCall |
       missing | nullConstant |
-      jobResourceSetting |
+      jobResourceVariable |
       functionCall)
 
   private def factor[_: P] = P(
