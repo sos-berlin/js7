@@ -5,7 +5,7 @@ import js7.data.value.NumberValue
 import js7.data.value.expression.Scope
 import org.scalatest.freespec.AnyFreeSpec
 
-final class DoubleScopeTest extends AnyFreeSpec
+final class CombinedScopeTest extends AnyFreeSpec
 {
   "Monoid combine" in {
     val aScope: Scope = new NamedValueScope(Map("A" -> NumberValue(111)))

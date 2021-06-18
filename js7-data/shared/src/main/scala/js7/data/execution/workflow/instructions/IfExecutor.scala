@@ -25,14 +25,14 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
 
   def nextPosition(instruction: If, order: Order[Order.State], state: StateView) = {
     assertThat(Right(order) == state.idToOrder(order.id).map(_ withPosition order.position))
-    state.makeScope(order)
-      .flatMap(_.evalBoolean(instruction.predicate))
-      .map { condition =>
-        Some(
-          condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match {
-            case Some(thenOrElse) => order.position / thenOrElse % 0
-            case None => order.position.increment  // No else-part, skip instruction
-          })
-      }
-  }
+    for {
+      scope <- state.toScope(order)
+      condition <- instruction.predicate.evalAsBooolean(scope)
+    } yield
+      Some(
+        condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match {
+          case Some(thenOrElse) => order.position / thenOrElse % 0
+          case None => order.position.increment  // No else-part, skip instruction
+        })
+    }
 }

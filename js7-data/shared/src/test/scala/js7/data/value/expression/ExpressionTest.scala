@@ -4,10 +4,10 @@ import fastparse.NoWhitespace._
 import js7.base.problem.{Checked, Problem}
 import js7.data.job.JobResourcePath
 import js7.data.parser.Parsers.checkedParse
-import js7.data.value.expression.Evaluator.MissingValueProblem
+import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.expressionOnly
-import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, StringValue, UnexpectedValueTypeProblem, Value}
+import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -17,17 +17,18 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
 final class ExpressionTest extends AnyFreeSpec
 {
   "NamedValue expressions" - {
-    implicit val evaluator = Evaluator(
+    implicit val scope =
       new Scope {
         import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
         import ValueSearch.{LastExecuted, Name}
 
-        override def symbolToValue(symbol: String) = symbol match {
-          case "catchCount" => Some(Right(NumberValue(3)))
-          case _ => None
-        }
+        override def symbolToValue(symbol: String)(implicit scope: Scope) =
+          symbol match {
+            case "catchCount" => Some(Right(NumberValue(3)))
+            case _ => None
+          }
 
-        override def findValue(search: ValueSearch) =
+        override def findValue(search: ValueSearch)(implicit scope: Scope) =
           Right(search match {
             case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
               Map(
@@ -59,15 +60,15 @@ final class ExpressionTest extends AnyFreeSpec
               None
           })
 
-        override def evalFunctionCall(functionCall: FunctionCall): Option[Checked[Value]] =
+        override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
           functionCall match {
             case FunctionCall("myFunction", Seq(Argument(expr, None))) =>
-             Some(evaluator.eval(expr).flatMap(_.toNumber).map(o => NumberValue(o.number * 3)))
+             Some(expr.eval.flatMap(_.asNumber).map(n => NumberValue(n * 3)))
 
             case _ => None
           }
 
-        override def evalJobResourceVariable(v: JobResourceVariable): Option[Checked[Value]] =
+        override def evalJobResourceVariable(v: JobResourceVariable)(implicit scope: Scope) =
           v match {
             case JobResourceVariable(JobResourcePath("myJobResource"), "VARIABLE") =>
              Some(Right(StringValue("myJobResource,VARIABLE,value")))
@@ -77,8 +78,7 @@ final class ExpressionTest extends AnyFreeSpec
 
             case _ => None
           }
-      })
-    val eval = evaluator.eval _
+      }
     val booleanError: BooleanExpression = LessThan(ToNumber(StringConstant("X")), NumericConstant(7))
 
     testEval("7",
@@ -332,7 +332,7 @@ final class ExpressionTest extends AnyFreeSpec
         "A" -> NumericConstant(1),
         "B" -> StringConstant("BBB"),
         "LIST" -> ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))
-      assert(evaluator.evalExpressionMap(expr) ==
+      assert(scope.evalExpressionMap(expr) ==
         Right(Map(
           "A" -> NumberValue(1),
           "B" -> StringValue("BBB"),
@@ -351,80 +351,80 @@ final class ExpressionTest extends AnyFreeSpec
 
     "Equal" in {
       forAll((a: Int, b: Int) => assert(
-        eval(Equal(NumericConstant(a), NumericConstant(b))) == Right(BooleanValue(a == b))))
-      assert(eval(Equal(NumericConstant(1), StringConstant("1"))) == Right(BooleanValue(false)))
+        Equal(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a == b))))
+      assert((Equal(NumericConstant(1), StringConstant("1"))).eval == Right(BooleanValue(false)))
     }
 
     "NotEqual" in {
       forAll((a: Int, b: Int) => assert(
-        eval(NotEqual(NumericConstant(a), NumericConstant(b))) == Right(BooleanValue(a != b))))
-      assert(eval(NotEqual(NumericConstant(1), StringConstant("1"))) == Right(BooleanValue(true)))
+        NotEqual(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a != b))))
+      assert((NotEqual(NumericConstant(1), StringConstant("1"))).eval == Right(BooleanValue(true)))
     }
 
     "LessOrEqual" in {
       forAll((a: Int, b: Int) => assert(
-        eval(LessOrEqual(NumericConstant(a), NumericConstant(b))) == Right(BooleanValue(a <= b))))
+        LessOrEqual(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a <= b))))
     }
 
     "GreaterOrEqual" in {
       forAll((a: Int, b: Int) => assert(
-        eval(GreaterOrEqual(NumericConstant(a), NumericConstant(b))) == Right(BooleanValue(a >= b))))
+        GreaterOrEqual(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a >= b))))
     }
 
     "LessThan" in {
       forAll((a: Int, b: Int) => assert(
-        eval(LessThan(NumericConstant(a), NumericConstant(b))) == Right(BooleanValue(a < b))))
+        LessThan(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a < b))))
     }
 
     "GreaterThan" in {
       forAll((a: Int, b: Int) => assert(
-        eval(GreaterThan(NumericConstant(a), NumericConstant(b))) == Right(BooleanValue(a > b))))
+        GreaterThan(NumericConstant(a), NumericConstant(b)).eval == Right(BooleanValue(a > b))))
     }
 
     "In" in {
       forAll((a: Int, b: Int, c: Int, d: Int) => assert(
-        eval(In(NumericConstant(a), ListExpression(NumericConstant(b) :: NumericConstant(c) :: NumericConstant(d) :: Nil)))
+        In(NumericConstant(a), ListExpression(NumericConstant(b) :: NumericConstant(c) :: NumericConstant(d) :: Nil)).eval
           == Right(BooleanValue(Set(b, c, d)(a)))))
     }
 
     "Not" in {
       forAll((bool: Boolean) => assert(
-        eval(Not(BooleanConstant(bool))) == Right(BooleanValue(!bool))))
+        Not(BooleanConstant(bool)).eval == Right(BooleanValue(!bool))))
     }
 
     "And" in {
       forAll((a: Boolean, b: Boolean) => assert(
-        eval(And(BooleanConstant(a), BooleanConstant(b))) == Right(BooleanValue(a && b))))
+        And(BooleanConstant(a), BooleanConstant(b)).eval == Right(BooleanValue(a && b))))
     }
 
     "And is lazy" in {
-      assert(eval(And(BooleanConstant(true), booleanError)) == Left(Problem("Not a valid number: X")))
-      assert(eval(And(BooleanConstant(false), booleanError)) == Right(BooleanValue(false)))
+      assert(And(BooleanConstant(true), booleanError).eval == Left(Problem("Not a valid number: X")))
+      assert(And(BooleanConstant(false), booleanError).eval == Right(BooleanValue(false)))
     }
 
     "Or" in {
       forAll((a: Boolean, b: Boolean) => assert(
-        eval(Or(BooleanConstant(a), BooleanConstant(b))) == Right(BooleanValue(a || b))))
+        Or(BooleanConstant(a), BooleanConstant(b)).eval == Right(BooleanValue(a || b))))
     }
 
     "Or is lazy" in {
-      assert(eval(Or(BooleanConstant(true), booleanError)) == Right(BooleanValue(true)))
-      assert(eval(Or(BooleanConstant(false), booleanError)) == Left(Problem("Not a valid number: X")))
+      assert(Or(BooleanConstant(true), booleanError).eval == Right(BooleanValue(true)))
+      assert(Or(BooleanConstant(false), booleanError).eval == Left(Problem("Not a valid number: X")))
     }
 
     "And and LessThan" in {
-      assert(eval(And(LessThan(NumericConstant(1), NumericConstant(2)), LessThan(NumericConstant(1), ToNumber(StringConstant("7"))))) ==
+      assert(And(LessThan(NumericConstant(1), NumericConstant(2)), LessThan(NumericConstant(1), ToNumber(StringConstant("7")))).eval ==
         Right(BooleanValue(true)))
     }
 
     "mkString" in {
-      assert(eval(MkString(ListExpression(StringConstant("»") :: NamedValue.last("ASTRING") :: NumericConstant(7) :: Nil)))
+      assert(MkString(ListExpression(StringConstant("»") :: NamedValue.last("ASTRING") :: NumericConstant(7) :: Nil)).eval
         == Right(StringValue("»AA7")))
     }
   }
 
   "Missing value" - {
-    implicit val evaluator = new Evaluator(Scope.empty)
+    implicit val scope = Scope.empty
 
     testEval("missing",
       result = Left(MissingValueProblem),
@@ -472,16 +472,16 @@ final class ExpressionTest extends AnyFreeSpec
       Right(Add(MissingConstant(), NumericConstant(1))))
 
     "MissingValue with Problem" in {
-      assert(evaluator.eval(MissingConstant(Problem("PROBLEM"))) == Left(Problem("PROBLEM")))
+      assert(MissingConstant(Problem("PROBLEM")).eval == Left(Problem("PROBLEM")))
     }
 
     "MissingValue with Problem, OrNull" in {
-      assert(evaluator.eval(OrNull(MissingConstant(Problem("PROBLEM")))) == Right(NullValue))
-      assert(evaluator.eval(OrNull(MissingConstant())) == Right(NullValue))
+      assert(OrNull(MissingConstant(Problem("PROBLEM"))).eval == Right(NullValue))
+      assert((OrNull(MissingConstant())).eval == Right(NullValue))
     }
 
     "MissingValue is not comparable" in {
-      assert(evaluator.eval(Equal(MissingConstant(Problem("A")), MissingConstant(Problem("B")))) ==
+      assert(Equal(MissingConstant(Problem("A")), MissingConstant(Problem("B"))).eval ==
         Left(Problem("A")))
     }
 
@@ -490,13 +490,13 @@ final class ExpressionTest extends AnyFreeSpec
       Right(InterpolatedString(List(StringConstant("-->"), MissingConstant(), StringConstant("<--")))))
 
     "orElse" in {
-      assert(evaluator.eval(OrElse(NumericConstant(1), NumericConstant(7))) == Right(NumberValue(1)))
-      assert(evaluator.eval(OrElse(MissingConstant(), NumericConstant(7))) == Right(NumberValue(7)))
+      assert(OrElse(NumericConstant(1), NumericConstant(7)).eval == Right(NumberValue(1)))
+      assert((OrElse(MissingConstant(), NumericConstant(7))).eval == Right(NumberValue(7)))
     }
   }
 
   "Null value" - {
-    implicit val evaluator = new Evaluator(Scope.empty)
+    implicit val scope = Scope.empty
 
     testEval("null",
       result = Right(NullValue),
@@ -533,20 +533,19 @@ final class ExpressionTest extends AnyFreeSpec
       Right(InterpolatedString(List(StringConstant("-->"), NullConstant, StringConstant("<--")))))
 
     "orElse" in {
-      assert(evaluator.eval(OrElse(NumericConstant(1), NumericConstant(7))) == Right(NumberValue(1)))
-      assert(evaluator.eval(OrElse(NullConstant, NumericConstant(7))) == Right(NumberValue(7)))
+      assert((OrElse(NumericConstant(1), NumericConstant(7))).eval == Right(NumberValue(1)))
+      assert((OrElse(NullConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
     }
   }
 
   "Constant expressions" - {
-    implicit val evaluator = Evaluator(Scope.empty)
-    val eval = evaluator.eval _
-
+    implicit val scope = Scope.empty
     val longString =
        """LINE 1
          |LINE 2
           LINE 3
          |"""
+
     testEval(
       s"'$longString'.stripMargin",
       result = longString.stripMargin,
@@ -557,7 +556,7 @@ final class ExpressionTest extends AnyFreeSpec
       Right(Equal(NumericConstant(1), NumericConstant(2))))
 
     "Variables cannot be used" in {
-      assert(eval(NamedValue.last("VARIABLE")) == Left(Problem("No such named value: VARIABLE")))
+      assert((NamedValue.last("VARIABLE")).eval == Left(Problem("No such named value: VARIABLE")))
     }
   }
 
@@ -566,16 +565,16 @@ final class ExpressionTest extends AnyFreeSpec
       assert(ExpressionParser.parse(exprString) == Left(Problem(problem)))
     }
 
-  private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
     testEval(exprString, Right(BooleanValue(result)), expression)
 
-  private def testEval(exprString: String, result: Int, expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: Int, expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
     testEval(exprString, Right(NumberValue(result)), expression)
 
-  private def testEval(exprString: String, result: String, expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: String, expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
     testEval(exprString, Right(StringValue(result)), expression)
 
-  private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit evaluator: Evaluator, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
     registerTest(exprString) {
       val checked = checkedParse(exprString.trim, expressionOnly(_))
       assert(checked == expression)
@@ -584,7 +583,7 @@ final class ExpressionTest extends AnyFreeSpec
       //}
       for (e <- expression) {
         assert(checkedParse(e.toString, expressionOnly(_)) == expression, " in toString❗")
-        assert(evaluator.eval(e) == result)
+        assert(e.eval == result)
       }
     }
 }

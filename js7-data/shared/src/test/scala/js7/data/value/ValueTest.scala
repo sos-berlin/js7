@@ -33,17 +33,17 @@ final class ValueTest extends AnyFreeSpec
     }
 
     "StringValue.toNumber" in {
-      assert(StringValue("X").toNumber.isLeft)
-      assert(StringValue("0").toNumber == Right(NumberValue(0)))
-      assert(StringValue("009").toNumber == Right(NumberValue(9)))
-      assert(StringValue(bigNumber).toNumber == Right(NumberValue(BigDecimal(bigNumber))))
+      assert(StringValue("X").toNumberValue.isLeft)
+      assert(StringValue("0").toNumberValue == Right(NumberValue(0)))
+      assert(StringValue("009").toNumberValue == Right(NumberValue(9)))
+      assert(StringValue(bigNumber).toNumberValue == Right(NumberValue(BigDecimal(bigNumber))))
     }
 
     "StringValue.toBoolean" in {
-      assert(StringValue("X").toBoolean.isLeft)
+      assert(StringValue("X").toBooleanValue.isLeft)
 
-      assert(StringValue("true").toBoolean == Right(BooleanValue(true)))
-      assert(StringValue("false").toBoolean == Right(BooleanValue(false)))
+      assert(StringValue("true").toBooleanValue == Right(BooleanValue(true)))
+      assert(StringValue("false").toBooleanValue == Right(BooleanValue(false)))
     }
   }
 
@@ -56,13 +56,13 @@ final class ValueTest extends AnyFreeSpec
     }
 
     "NumberValue.toNumber" in {
-      assert(NumberValue(7).toNumber == Right(NumberValue(7)))
+      assert(NumberValue(7).toNumberValue == Right(NumberValue(7)))
     }
 
     "NumberValue.toBoolean" in {
-      assert(NumberValue(1).toBoolean == Right(BooleanValue(true)))
-      assert(NumberValue(0).toBoolean == Right(BooleanValue(false)))
-      assert(NumberValue(-1).toBoolean.isLeft)
+      assert(NumberValue(1).toBooleanValue == Right(BooleanValue(true)))
+      assert(NumberValue(0).toBooleanValue == Right(BooleanValue(false)))
+      assert(NumberValue(-1).toBooleanValue.isLeft)
     }
   }
 
@@ -73,13 +73,13 @@ final class ValueTest extends AnyFreeSpec
     }
 
     "BooleanValue.toNumber" in {
-      assert(BooleanValue(true).toNumber == Right(NumberValue(1)))
-      assert(BooleanValue(false).toNumber == Right(NumberValue(0)))
+      assert(BooleanValue(true).toNumberValue == Right(NumberValue(1)))
+      assert(BooleanValue(false).toNumberValue == Right(NumberValue(0)))
     }
 
     "BooleanValue.toBoolean" in {
-      assert(BooleanValue(true).toBoolean == Right(BooleanValue(true)))
-      assert(BooleanValue(false).toBoolean == Right(BooleanValue(false)))
+      assert(BooleanValue(true).toBooleanValue == Right(BooleanValue(true)))
+      assert(BooleanValue(false).toBooleanValue == Right(BooleanValue(false)))
     }
   }
 }

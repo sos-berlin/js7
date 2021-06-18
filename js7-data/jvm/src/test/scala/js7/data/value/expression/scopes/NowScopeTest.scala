@@ -30,10 +30,11 @@ final class NowScopeTest extends AnyFreeSpec
   }
 
   "$epochMilli" in {
+    val scope = nowScope
     val epochMilli = nowScope.now.toEpochMilli
-    val checkedValue = nowScope.parseAndEval("$epochMilli")
+    val checkedValue = scope.parseAndEval("$epochMilli")
     assert(checkedValue == Right(NumberValue(epochMilli)))
-    val n = checkedValue.flatMap(_.toNumber).orThrow.toBigDecimal.longValue
+    val n = checkedValue.flatMap(_.asNumber).orThrow.toLongExact
     assert(n == epochMilli)
   }
 }

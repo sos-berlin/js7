@@ -7,7 +7,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order
 import js7.data.value.Value
-import js7.data.value.expression.scopes.{LazyNamedValueScope, OrderScopes, ProcessingOrderScopes}
+import js7.data.value.expression.scopes.{LazyNamedValueScope, ProcessingOrderScopes}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.workflow.Workflow
 import scala.collection.MapView
@@ -20,19 +20,19 @@ final case class ProcessOrder(
   defaultArgumentExpressions: Map[String, Expression],
   controllerId: ControllerId,
   stdObservers: StdObservers)
-extends OrderScopes with ProcessingOrderScopes
+extends ProcessingOrderScopes
 {
   /** Lazily evaluated defaultArguments. */
-  lazy val nameToCheckedDefaultArgument: MapView[String, Checked[Value]] =
-    scopeForJobDefaultArguments.evalLazilyNameToExpression(defaultArgumentExpressions)
+  private lazy val nameToLazyDefaultArgument: MapView[String, Checked[Value]] =
+    evalLazilyJobDefaultArguments(defaultArgumentExpressions)
 
   /** Eagerly evaluated defaultArguments. */
   lazy val checkedDefaultArguments: Checked[Map[String, Value]] =
-    nameToCheckedDefaultArgument
+    nameToLazyDefaultArgument
       .toVector
       .traverse { case (k, checked) => checked.map(k -> _) }
       .map(_.toMap)
 
   lazy val scope: Scope =
-    processingOrderScope |+| LazyNamedValueScope(nameToCheckedDefaultArgument)
+    processingOrderScope |+| LazyNamedValueScope(nameToLazyDefaultArgument)
 }

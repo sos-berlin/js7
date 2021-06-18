@@ -2,6 +2,7 @@ package js7.agent.scheduler.order
 
 import cats.instances.vector._
 import cats.syntax.foldable._
+import cats.syntax.monoid._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import com.typesafe.config.Config
@@ -28,7 +29,8 @@ import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
-import js7.data.value.expression.{Evaluator, Expression}
+import js7.data.value.expression.Expression
+import js7.data.value.expression.scopes.NowScope
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.{JournaledStatePersistence, LockKeeper}
 import monix.eval.Task
@@ -239,6 +241,8 @@ object FileWatchManager
     }
   }
 
-  private def eval(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
-    Evaluator.eval(expression, FileWatchScope(orderWatchPath, matchedMatcher))
+  private def eval(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) = {
+    val nowScope = new NowScope
+    expression.eval(FileWatchScope(orderWatchPath, matchedMatcher) |+| nowScope)
+  }
 }

@@ -7,15 +7,19 @@ import js7.data.value.expression.ValueSearch.{LastOccurred, Name}
 import js7.data.value.expression.{Scope, ValueSearch}
 import scala.collection.MapView
 
-final class LazyNamedValueScope(nameToValue: MapView[String, Checked[Value]]) extends Scope
+final class LazyNamedValueScope(nameToValue: MapView[String, Checked[Value]])
+extends Scope
 {
-  override def findValue(search: ValueSearch) =
+  override def findValue(search: ValueSearch)(implicit scope: Scope) =
     search match {
       case ValueSearch(LastOccurred, Name(name)) =>
         nameToValue.get(name).sequence
 
-      case _ => Right(None)
+      case _ =>
+        super.findValue(search)
     }
+
+  override def toString = s"LazyNamedValueScope(${nameToValue.keys.mkString(", ")})"
 }
 
 object LazyNamedValueScope

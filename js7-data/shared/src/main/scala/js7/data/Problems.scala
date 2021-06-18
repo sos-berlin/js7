@@ -6,10 +6,17 @@ import js7.data.event.EventId
 import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
 import js7.data.item.{InventoryItemKey, InventoryItemPath, VersionId, VersionedItemId, VersionedItemPath}
 import js7.data.order.OrderId
+import js7.data.value.expression.Expression.FunctionCall
 
 object Problems
 {
   case object PassiveClusterNodeShutdownNotAllowedProblem extends Problem.ArgumentlessCoded
+
+  final case class InvalidFunctionParametersProblem(call: FunctionCall) extends Problem.Coded {
+    def arguments = Map(
+      "function" -> call.name,
+      "arguments" -> call.arguments.mkString(", "))
+  }
 
   final case class CancelChildOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" -> orderId.string)

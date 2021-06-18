@@ -7,27 +7,31 @@ import js7.data.value.expression.{Expression, Scope, ValueSearch}
 
 final class NowScope extends Scope
 {
-  lazy val now = Timestamp.now
-  private val timestampScope = new TimestampScope("now", Some(now))
+  private[scopes] val now = Timestamp.now
+  private lazy val timestampScope = TimestampScope("now", Some(now))
 
-  override def findValue(search: ValueSearch) =
-    Right(search match {
+  override def findValue(search: ValueSearch)(implicit scope: Scope) =
+    search match {
       // $epochMilli
       case ValueSearch(LastOccurred, Name("epochMilli")) =>
-        Some(NumberValue(now.toEpochMilli))
+        Right(Some(NumberValue(now.toEpochMilli)))
 
       // $epochSecond
       case ValueSearch(LastOccurred, Name("epochSecond")) =>
-        Some(NumberValue(now.toEpochMilli / 1000))
+        Right(Some(NumberValue(now.toEpochMilli / 1000)))
 
-      case _ => None
-    })
+      case _ =>
+        super.findValue(search)
+    }
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall) =
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
     timestampScope.evalFunctionCall(functionCall)
+
+  override def toString = s"NowScope($now)"
 }
 
 object NowScope
 {
-  def apply(): Scope = new NowScope
+  def apply(): Scope =
+    new NowScope
 }

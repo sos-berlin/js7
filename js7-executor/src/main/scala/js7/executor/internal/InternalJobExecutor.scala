@@ -1,6 +1,5 @@
 package js7.executor.internal
 
-import cats.syntax.traverse._
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.log.Logger
@@ -17,7 +16,6 @@ import js7.executor.internal.InternalJob.{JobContext, Step}
 import js7.executor.internal.InternalJobExecutor._
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.ListMap
 import scala.util.control.NonFatal
 
 final class InternalJobExecutor(
@@ -57,17 +55,8 @@ extends JobExecutor
     }
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
-    for {
-      args <- processOrder.scope.evaluator.evalExpressionMap(executable.arguments)
-      resourceToArgs <- processOrder.jobResources
-        .traverse(jobResource =>
-          processOrder.scopeForJobResources.evaluator
-            .evalExpressionMap(jobResource.variables)
-            .map(jobResource.path -> _))
-    } yield Step(
-      processOrder,
-      args,
-      resourceToArgs.to(ListMap))
+    for (args <- processOrder.scope.evalExpressionMap(executable.arguments)) yield
+      Step(processOrder, args)
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =
     Checked.catchNonFatal(

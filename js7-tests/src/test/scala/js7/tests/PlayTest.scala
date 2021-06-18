@@ -89,7 +89,7 @@ object PlayTest
       OrderProcess(
         Task {
           Outcome.Completed.fromChecked(
-            for (number <- step.arguments.checked("ARG").flatMap(_.toNumber).map(_.number)) yield
+            for (number <- step.arguments.checked("ARG").flatMap(_.toNumberValue).map(_.number)) yield
               Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
   }

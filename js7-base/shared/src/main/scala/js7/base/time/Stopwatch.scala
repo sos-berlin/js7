@@ -6,6 +6,7 @@ import js7.base.time.Stopwatch._
 import js7.base.utils.ScalaUtils.syntax._
 import scala.concurrent.duration._
 import scala.language.implicitConversions
+import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
@@ -40,13 +41,17 @@ object Stopwatch
     (nanoTime - start).nanoseconds
   }
 
-  def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit): Result = {
-    for (_ <- 1 to warmUp) body
-    val start = nanoTime
-    for (_ <- 1 to n) body
-    val duration = (nanoTime - start).nanoseconds
-    Result(duration, n, ops)
-  }
+  def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit): Result =
+    try {
+      for (_ <- 1 to warmUp) body
+      val start = nanoTime
+      for (_ <- 1 to n) body
+      val duration = (nanoTime - start).nanoseconds
+      Result(duration, n, ops)
+    } catch { case NonFatal(t) =>
+      t.addSuppressed(new RuntimeException(s"In measureTime($n, $ops)"))
+      throw t
+    }
 
   //def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: => Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
   //  (for (_ <- 1 to warmUp) yield Future { body }).awaitInfinite

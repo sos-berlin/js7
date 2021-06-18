@@ -15,7 +15,7 @@ import js7.data.parser.Parsers.checkedParse
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
 import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
-import js7.data.value.expression.{Evaluator, Expression}
+import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -129,10 +129,10 @@ object WorkflowParser
             else checkedToP(CommandLineParser.parse(command)
               .map(CommandLineExecutable(_, env.nameToExpr, returnCodeMeaning = returnCodeMeaning)))
           case ("script", script: Expression) =>
-            checkedToP(Evaluator.eval(script).flatMap(_.toStringValue)
+            checkedToP(script.eval(Scope.empty).flatMap(_.asStringValue)
               .map(v => ShellScriptExecutable(v.string, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible)))
           case ("internalJobClass", className: Expression) =>
-            checkedToP(Evaluator.eval(className).flatMap(_.toStringValue)
+            checkedToP(className.eval(Scope.empty).flatMap(_.asStringValue)
               .map(v => InternalExecutable(v.string, jobArguments.nameToExpr, arguments.nameToExpr)))
           case _ => Fail.opaque("Invalid executable")  // Does not happen
         }
@@ -163,7 +163,7 @@ object WorkflowParser
       (Index ~ keyword("fail") ~
         inParentheses(keyValues(
           keyValueConvert("namedValues", objectExpression)(o =>
-            Evaluator.eval(o).map(_.asInstanceOf[ObjectValue].nameToValue)) |
+            o.eval(Scope.empty).map(_.asInstanceOf[ObjectValue].nameToValue)) |
           keyValue("message", expression) |
           keyValue("uncatchable", booleanConstant))).? ~
         hardEnd)

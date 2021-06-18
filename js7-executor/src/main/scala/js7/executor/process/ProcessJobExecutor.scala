@@ -27,15 +27,12 @@ trait ProcessJobExecutor extends JobExecutor
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
   : OrderProcess = {
-    import processOrder.{order, scopeForEnv, scopeForJobResources}
+    import processOrder.{evalLazilyJobResourceVariables, order, scopeForJobResourceEnv}
 
-    def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] = {
-      val jobResourceVariablesScope = LazyNamedValueScope(
-        scopeForJobResources.evalLazilyNameToExpression(jobResource.variables))
+    def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] =
       evalEnv(
         jobResource.env,
-        scopeForEnv |+| jobResourceVariablesScope)
-    }
+        scopeForJobResourceEnv |+| LazyNamedValueScope(evalLazilyJobResourceVariables(jobResource)))
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =
       processOrder.jobResources
@@ -88,7 +85,7 @@ trait ProcessJobExecutor extends JobExecutor
 
   protected final def evalEnv(nameToExpr: Map[String, Expression], scope: Scope)
   : Checked[Map[String, String]] =
-    scope.evaluator.evalExpressionMap(nameToExpr)
+    scope.evalExpressionMap(nameToExpr)
       .flatMap(_
         .view
         .filter(_._2 != NullValue)

@@ -310,7 +310,7 @@ object InternalJobTest
         Outcome.Completed.fromChecked(
           step.arguments
             .checked("STEP_ARG")
-            .flatMap(_.toNumber)
+            .flatMap(_.toNumberValue)
             .map(value => Outcome.Succeeded(NamedValues(
               "START" -> NumberValue(startCount.get()),
               "PROCESS" -> NumberValue(processCount.get()),

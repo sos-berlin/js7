@@ -10,7 +10,7 @@ final class LazyNamedValueScopeTest extends AnyFreeSpec
 {
   private var a = 0
   private var failed = 0
-  private lazy val scope = new LazyNamedValueScope(
+  private implicit lazy val scope = new LazyNamedValueScope(
     Map(
       "A" -> Lazy {
         a += 1
@@ -24,11 +24,11 @@ final class LazyNamedValueScopeTest extends AnyFreeSpec
     ).view.mapValues(_.apply()))
 
   "eval" in {
-    assert(scope.evaluator.eval(NamedValue("B")) == Right(StringValue("BBB")))
+    assert(NamedValue("B").eval == Right(StringValue("BBB")))
     assert(a == 0)
-    assert(scope.evaluator.eval(NamedValue("A")) == Right(NumberValue(1)))
+    assert(NamedValue("A").eval == Right(NumberValue(1)))
     assert(a == 1)
-    assert(scope.evaluator.eval(NamedValue("A")) == Right(NumberValue(1)))
+    assert(NamedValue("A").eval == Right(NumberValue(1)))
     assert(a == 1)
   }
 

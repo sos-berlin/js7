@@ -1,22 +1,28 @@
 package js7.data.value.expression.scopes
 
+import js7.data.value.Value
 import js7.data.value.expression.ValueSearch.{LastOccurred, Name}
 import js7.data.value.expression.{Scope, ValueSearch}
-import js7.data.value.{NamedValues, Value}
 
-final class NamedValueScope(nameToValue: Map[String, Value]) extends Scope
+final class NamedValueScope(nameToValue: PartialFunction[String, Value])
+extends Scope
 {
-  override def findValue(search: ValueSearch) =
-    Right(search match {
-      case ValueSearch(LastOccurred, Name(name)) =>
-        nameToValue.get(name)
+  private lazy val nameToMaybeValue = nameToValue.lift
 
-      case _ => None
-    })
+  override def findValue(search: ValueSearch)(implicit scope: Scope) =
+    search match {
+      case ValueSearch(LastOccurred, Name(name)) =>
+        Right(nameToMaybeValue(name))
+
+      case _ =>
+        super.findValue(search)
+    }
+
+  override def toString = "NamedValueScope"
 }
 
 object NamedValueScope
 {
-  def apply(namedValues: NamedValues): Scope =
-    new NamedValueScope(namedValues)
+  def apply(nameToValue: PartialFunction[String, Value]): Scope =
+    new NamedValueScope(nameToValue)
 }

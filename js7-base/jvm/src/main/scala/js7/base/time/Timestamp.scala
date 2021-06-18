@@ -1,7 +1,8 @@
 package js7.base.time
 
-import java.time.Instant
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, OffsetDateTime, ZoneId}
+import js7.base.problem.Checked
 import js7.base.time.Timestamp.dateTimeFormatter
 
 /**
@@ -21,6 +22,12 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
   def toJavaUtilDate: java.util.Date =
     new java.util.Date(toEpochMilli)
 
+  def format(format: String, maybeTimezone: Option[String] = None): Checked[String] =
+    Checked.catchNonFatal {
+      val zoneId = maybeTimezone.fold(ZoneId.systemDefault())(ZoneId.of)
+      OffsetDateTime.ofInstant(toInstant, zoneId).format(DateTimeFormatter.ofPattern(format))
+    }
+
   def copy(epochMilli: Long): Timestamp =
     Timestamp.ofEpochMilli(epochMilli)
 }
@@ -28,6 +35,7 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
 object Timestamp extends GenericTimestamp.Companion[Timestamp]
 {
   val MaxValue = ofEpochMilli(Long.MaxValue)
+  private val UTC = ZoneId.of("UTC")
 
   // Hide IntelliJ red underlines here
   override def apply(string: String): Timestamp =

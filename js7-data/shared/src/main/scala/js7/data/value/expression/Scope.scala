@@ -1,82 +1,68 @@
 package js7.data.value.expression
 
-import cats.kernel.Monoid
-import cats.syntax.semigroup._
+import cats.Monoid
 import cats.syntax.traverse._
 import js7.base.problem.Checked
 import js7.base.utils.Lazy
-import js7.base.utils.ScalaUtils.checkedCast
+import js7.data.value.Value
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
-import js7.data.value.expression.scopes.{DoubleScope, EnvScope, NowScope}
-import js7.data.value.{NumberValue, Value}
+import js7.data.value.expression.scopes.CombinedScope
 import scala.collection.MapView
 
-/**
-  * @author Joacim Zschimmer
-  */
+/** Provides data for `Expression` evaluation.
+  * A `Scope` can provide specialized access or can be a CombinedScope,
+  * which combines multiple scopes to a stack.
+  * The methods get a `fullScope`
+  * which can be a different `Scope` or a greater CombinedScope
+  * (while `this` is the own specicialized `Scope`). */
 trait Scope
 {
-  final lazy val evaluator = Evaluator(this)
-
-  def symbolToValue(symbol: String): Option[Checked[Value]] =
+  def symbolToValue(symbol: String)(implicit fullScope: Scope): Option[Checked[Value]] =
     None
 
-  def findValue(valueSearch: ValueSearch): Checked[Option[Value]] =
+  def findValue(valueSearch: ValueSearch)(implicit fullScope: Scope): Checked[Option[Value]] =
     Checked(None)
 
-  final def evalBoolean(expression: Expression): Checked[Boolean] =
-    evaluator.evalBoolean(expression).map(_.booleanValue)
-
-  final def evalString(expression: Expression): Checked[String] =
-    evaluator.evalString(expression).map(_.string)
-
-  def evalFunctionCall(functionCall: FunctionCall): Option[Checked[Value]] =
+  def evalFunctionCall(functionCall: FunctionCall)(implicit fullScope: Scope): Option[Checked[Value]] =
     None
 
-  def evalJobResourceVariable(jobResourceVariable: JobResourceVariable): Option[Checked[Value]] =
+  def evalJobResourceVariable(v: JobResourceVariable)(implicit fullScope: Scope): Option[Checked[Value]] =
     None
 
-  def namedValue(name: String): Checked[Option[Value]] =
-    findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
-
-  def parseAndEvalToBigDecimal(expression: String): Checked[BigDecimal] =
-    parseAndEval(expression)
-      .flatMap(checkedCast[NumberValue])
-      .map(_.number)
+  final def namedValue(name: String): Checked[Option[Value]] =
+    findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))(this)
 
   def parseAndEval(expression: String): Checked[Value] =
     ExpressionParser.parse(expression)
-      .flatMap(evaluator.eval)
+      .flatMap(_.eval(this))
 
-  def evalNameToExpression(nameToExpression: Map[String, Expression]): Checked[Map[String, Value]] =
-    nameToExpression
-      .toVector
-      .traverse { case (k, v) => evaluator.eval(v).map(k -> _) }
-      .map(_.toMap)
-
-  def evalLazilyNameToExpression(nameToExpression: Map[String, Expression])
-  : MapView[String, Checked[Value]] =
-    nameToExpression.view
-      .mapValues(expr => Lazy(evaluator.eval(expr)))
+  def evalLazilyExpressionMap(nameToExpr: Map[String, Expression]): MapView[String, Checked[Value]] =
+    nameToExpr.view
+      .mapValues(expr => Lazy(expr.eval(this)))
       .toMap
       .view
       .mapValues(_.apply())
+
+  def evalExpressionMap(nameToExpr: Map[String, Expression]): Checked[Map[String, Value]] =
+    nameToExpr.toVector
+      .traverse { case (k, v) => v.eval(this).map(k -> _) }
+      .map(_.toMap)
 }
 
-object Scope
+object Scope extends Monoid[Scope]
 {
-  implicit object monoid extends Monoid[Scope] {
-    def empty: Scope =
-      Empty
-
-    def combine(a: Scope, b: Scope): Scope =
-      new DoubleScope(a, b)
-  }
+  implicit val monoid: Monoid[Scope] = this
 
   val empty: Scope = Empty
 
-  def jobArgumentsScope(): Scope =
-    NowScope() |+| EnvScope
+  def combine(a: Scope, b: Scope) =
+    (a, b) match {
+      case (a, Empty) => a
+      case (Empty, b) => b
+      case _ => new CombinedScope(a, b)
+    }
 
-  private object Empty extends Scope
+  private object Empty extends Scope {
+    override def toString = "EmptyScope"
+  }
 }

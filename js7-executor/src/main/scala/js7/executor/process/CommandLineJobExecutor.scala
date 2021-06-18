@@ -19,7 +19,7 @@ extends ProcessJobExecutor
 
   def prepareOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]] =
     Task {
-      new CommandLineEvaluator(processOrder.scope.evaluator)
+      new CommandLineEvaluator()(processOrder.scope)
         .eval(executable.commandLineExpression)
         .flatMap { commandLine =>
           warnIfNotExecutable(commandLine.file)

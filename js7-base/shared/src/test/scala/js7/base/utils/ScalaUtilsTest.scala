@@ -160,6 +160,13 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(f.toString == "TEST")
   }
 
+  "Option" - {
+    "!!" in {
+      assert((false !! Problem("PROBLEM")) == Left(Problem("PROBLEM")))
+      assert((true !! Problem("PROBLEM")) == Right(()))
+    }
+  }
+
   "Throwable" - {
     "rootCause" in {
       new Exception("A", new Exception("B", new Exception("ROOT"))).rootCause.getMessage shouldEqual "ROOT"

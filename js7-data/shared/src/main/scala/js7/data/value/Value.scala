@@ -12,7 +12,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.expression.Evaluator.MissingValueProblem
+import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
@@ -24,19 +24,40 @@ sealed trait Value
   final def toStringValueString: Checked[String] =
     toStringValue.map(_.string)
 
+  def asString: Checked[String] =
+    asStringValue.map(_.string)
+
   def toStringValue: Checked[StringValue] =
+    asStringValue
+
+  def asStringValue: Checked[StringValue] =
     Left(UnexpectedValueTypeProblem(StringValue, this))
 
-  def toNumber: Checked[NumberValue] =
+  def asNumber: Checked[BigDecimal] =
+    asNumberValue.map(_.number)
+
+  def toNumberValue: Checked[NumberValue] =
+    asNumberValue
+
+  def asNumberValue: Checked[NumberValue] =
     Left(UnexpectedValueTypeProblem(NumberValue, this))
 
-  def toBoolean: Checked[BooleanValue] =
+  def asBoolean: Checked[Boolean] =
+    asBooleanValue.map(_.booleanValue)
+
+  def toBooleanValue: Checked[BooleanValue] =
+    asBooleanValue
+
+  def asBooleanValue: Checked[BooleanValue] =
     Left(UnexpectedValueTypeProblem(BooleanValue, this))
 
-  def toList: Checked[ListValue] =
+  def asList: Checked[Seq[Value]] =
+    asListValue.map(_.list)
+
+  def asListValue: Checked[ListValue] =
     Left(UnexpectedValueTypeProblem(ListValue, this))
 
-  def toObject: Checked[ObjectValue] =
+  def asObjectValue: Checked[ObjectValue] =
     Left(UnexpectedValueTypeProblem(ObjectValue, this))
 
   @javaApi @Nullable/*for NullValue ???*/
@@ -116,16 +137,18 @@ final case class StringValue(string: String) extends Value
 
   def valueType = StringValue
 
-  override def toStringValue = Right(this)
+  override def asStringValue = Right(this)
 
-  override def toNumber =
+  override def toNumberValue =
     try Right(NumberValue(BigDecimal(string)))
-    catch { case NonFatal(t) => Left(Problem.pure(t.toStringWithCauses)) }
+    catch { case NonFatal(_: NumberFormatException) =>
+      Left(Problem.pure(s"Not a valid number: " + string.truncateWithEllipsis(50)))
+    }
 
-  override def toBoolean = string match {
+  override def toBooleanValue = string match {
     case "true" => Right(BooleanValue.True)
     case "false" => Right(BooleanValue.False)
-    case _ => super.toBoolean
+    case _ => super.toBooleanValue
   }
 
   def toJava = string
@@ -147,14 +170,14 @@ final case class NumberValue(number: BigDecimal) extends Value
 
   override def toStringValue = Right(StringValue(number.toString))
 
-  override def toNumber = Right(this)
+  override def asNumberValue = Right(this)
 
-  override def toBoolean =
+  override def toBooleanValue =
     if (number == NumberValue.One.number) Right(BooleanValue.True)
     else
     if (number == NumberValue.Zero.number) Right(BooleanValue.False)
     else
-      super.toBoolean
+      super.toBooleanValue
 
   @javaApi @Nonnull
   def toJava: java.math.BigDecimal =
@@ -191,10 +214,10 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
 {
   def valueType = BooleanValue
 
-  override def toNumber =
+  override def toNumberValue =
     Right(if (booleanValue) NumberValue.One else NumberValue.Zero)
 
-  override def toBoolean = Right(BooleanValue(booleanValue))
+  override def asBooleanValue = Right(this)
 
   def toJava = java.lang.Boolean.valueOf(booleanValue)
 
@@ -218,7 +241,7 @@ final case class ListValue(list: Seq[Value]) extends Value
 {
   def valueType = ListValue
 
-  override def toList = Right(this)
+  override def asListValue = Right(this)
 
   def toJava = list.asJava
 
@@ -239,7 +262,7 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
 {
   def valueType = ObjectValue
 
-  override def toObject = Right(this)
+  override def asObjectValue = Right(this)
 
   def toJava = ???
 
@@ -315,10 +338,12 @@ object ValueType
       case None => Left(Problem("ValueType expected"))
       case Some(string) => nameToType.checked(string)
     }).toDecoderResult(cursor.history)
-}
 
-final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value) extends Problem.Coded {
-  def arguments = Map(
-    "type" -> valueType.name,
-    "value" -> value.toString.truncateWithEllipsis(30))
+  final case object MissingValueProblem extends Problem.ArgumentlessCoded
+
+  final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value) extends Problem.Coded {
+    def arguments = Map(
+      "type" -> valueType.name,
+      "value" -> value.toString.truncateWithEllipsis(30))
+  }
 }

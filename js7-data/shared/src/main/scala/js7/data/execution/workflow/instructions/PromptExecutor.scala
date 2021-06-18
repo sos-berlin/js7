@@ -17,11 +17,11 @@ object PromptExecutor extends EventInstructionExecutor
       case _: Order.Ready =>
         if (order.isAttached)
           Right((order.id <-: OrderDetachable) :: Nil)
-        for {
-          scope <- state.makeScope(order)
-          question <- scope.evaluator.eval(prompt.question)
-        } yield
-          (order.id <-: OrderPrompted(question)) :: Nil
+        else
+          for {
+            scope <- state.toScope(order)
+            question <- prompt.question.eval(scope)
+          } yield (order.id <-: OrderPrompted(question)) :: Nil
 
       case _ => Right(Nil)
     }

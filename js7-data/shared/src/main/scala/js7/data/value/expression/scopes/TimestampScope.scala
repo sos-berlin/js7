@@ -3,51 +3,56 @@ package js7.data.value.expression.scopes
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.data.Problems.InvalidFunctionParametersProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
-import js7.data.value.expression.scopes.TimestampScope._
 import js7.data.value.expression.{Expression, Scope}
 
-final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp]) extends Scope
+final class TimestampScope(name: String, lazyTimestamp: => Option[Timestamp])
+extends Scope
 {
   private lazy val maybeTimestamp = lazyTimestamp
 
-  override def evalFunctionCall(functionCall: Expression.FunctionCall) =
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
     functionCall match {
-      // now(format='yyyy-MM-dd', timezone='Antarctica/Troll'
-      case FunctionCall(`name`, Seq(
-        Argument(formatExpr, None | Some("format")),
-        Argument(timezoneExpr, None | Some("timezone")))) =>
-        Some(func(formatExpr, timezoneExpr))
+      case FunctionCall(`name`, arguments) =>
+        // now(format='yyyy-MM-dd', timezone='Antarctica/Troll'
+        Some(arguments match {
+          case Seq(
+            Argument(formatExpr, None | Some("format")),
+            Argument(timezoneExpr, None | Some("timezone"))) =>
+            func(formatExpr, timezoneExpr)
 
-      case FunctionCall(`name`, Seq(Argument(formatExpr, None | Some("format")))) =>
-        Some(func2(formatExpr, None))
+          case Seq(Argument(formatExpr, None | Some("format"))) =>
+            func2(formatExpr, None)
 
-      case _ => None
+          case _ =>
+            Left(InvalidFunctionParametersProblem(functionCall))
+        })
+
+      case _ =>
+        super.evalFunctionCall(functionCall)
     }
 
-  private def func(formatExpr: Expression, timezoneExpr: Expression) =
+  private def func(formatExpr: Expression, timezoneExpr: Expression)(implicit scope: Scope) =
     for {
-      timezoneName <- evaluator.eval(timezoneExpr).flatMap(_.toStringValueString)
+      timezoneName <- timezoneExpr.evalAsString
       timezone = timezoneName.nonEmpty ? timezoneName
       result <- func2(formatExpr, timezone)
     } yield result
 
-  private def func2(formatExpr: Expression, timezone: Option[String]) = {
+  private def func2(formatExpr: Expression, timezone: Option[String])(implicit scope: Scope) = {
     for {
-      format <- evaluator.eval(formatExpr).flatMap(_.toStringValueString)
-      result <- maybeTimestamp.fold(Checked(""))(formatTimestamp(_, format, timezone))
+      format <- formatExpr.evalAsString
+      result <- maybeTimestamp.fold(Checked(""))(_.format(format, timezone))
     } yield StringValue(result)
   }
+
+  override def toString = s"TimestampScope('$name')"
 }
 
 object TimestampScope
 {
   def apply(name: String, lazyTimestamp: => Option[Timestamp]): Scope =
     new TimestampScope(name, lazyTimestamp)
-
-  /** JVM only */
-  private def formatTimestamp(timestamp: Timestamp, format: String, maybeTimezone: Option[String])
-  : Checked[String] =
-    MyDateTimeFormatter.formatTimestamp(timestamp, format, maybeTimezone)
 }

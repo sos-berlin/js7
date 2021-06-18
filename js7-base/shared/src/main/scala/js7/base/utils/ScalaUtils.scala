@@ -88,6 +88,15 @@ object ScalaUtils
         }
     }
 
+    implicit final class RichOption[A](private val option: Option[A]) extends AnyVal
+    {
+      def !!(problem: => Problem): Checked[A] =
+        option match {
+          case None => Left(problem)
+          case Some(a) => Right(a)
+        }
+    }
+
     /** orElse inside a F[Option]. */
     implicit final class RichOptionF[F[_], A](private val underlying: F[Option[A]]) extends AnyVal
     {

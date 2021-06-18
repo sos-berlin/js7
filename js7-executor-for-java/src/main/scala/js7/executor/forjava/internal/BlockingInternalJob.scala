@@ -2,9 +2,11 @@ package js7.executor.forjava.internal
 
 import io.vavr.control.{Either => VEither}
 import java.io.{PrintWriter, Writer}
+import java.util.{Map => JMap}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
 import js7.data.value.Value
 import js7.data_for_java.common.JavaUtils.Void
@@ -72,12 +74,20 @@ object BlockingInternalJob
       finally for (o <- errLazy) o.close()
 
     def evalExpression(expression: JExpression): VEither[Problem, Value] =
-      asScala.processOrder.scope.evaluator.eval(expression.asScala)
+      expression.asScala.eval(asScala.processOrder.scope)
         .toVavr
 
-    def jobResourceToNameToValue: java.util.Map[JobResourcePath, java.util.Map[String, Value]] =
+    /** Value access throws on expression error due to lazy evaluation. */
+    @Deprecated
+    def jobResourceToNameToValue: JMap[JobResourcePath, JMap[String, Value]] =
       asScala.jobResourceToVariables
-        .view.mapValues(_.asJava).to(ListMap).asJava
+        .view.mapValues(_.mapValues(_.orThrow).toMap.asJava)
+        .to(ListMap).asJava
+
+    def jobResourceToNameToCheckedValue: JMap[JobResourcePath, JMap[String, VEither[Problem, Value]]] =
+      asScala.jobResourceToVariables
+        .view.mapValues(_.mapValues(_.toVavr).toMap.asJava)
+        .to(ListMap).asJava
 
     @Deprecated
     def byJobResourceAndName(jobResourcePath: JobResourcePath, name: String): VEither[Problem, Value] =

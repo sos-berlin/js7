@@ -1,5 +1,6 @@
 package js7.executor.internal
 
+import cats.syntax.semigroup._
 import java.nio.file.Files.{exists, getPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
@@ -9,7 +10,7 @@ import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourcePath, RelativePathExecutable, ShellScriptExecutable}
-import js7.data.value.expression.Scope
+import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.process.{AbsolutePathJobExecutor, CommandLineJobExecutor, RelativePathJobExecutor, ScriptJobExecutor}
@@ -67,10 +68,12 @@ object JobExecutor
       case executable: InternalExecutable =>
         if (!executorConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
-        else
-          for (jobArguments <- Scope.jobArgumentsScope().evalNameToExpression(executable.jobArguments))
+        else {
+          val scope = NowScope() |+| EnvScope
+          for (jobArguments <- scope.evalExpressionMap(executable.jobArguments))
             yield new InternalJobExecutor(executable, jobConf, pathToJobResource, jobArguments,
               executorConf.blockingJobScheduler)
+        }
     }
   }
 

@@ -1,6 +1,7 @@
 package js7.base.time
 
 import java.time.Instant
+import js7.base.problem.Problem
 import scala.math.abs
 import scala.scalajs.js
 
@@ -59,6 +60,9 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
   }
 
   def toLocaleString = toJsDate.toLocaleString()
+
+  def format(format: String, maybeTimezone: Option[String]) =
+    Left(Problem("Date formatting is not available for Scala.js"))
 
   def toJsDate: js.Date =
     new js.Date(toEpochMilli.toDouble)

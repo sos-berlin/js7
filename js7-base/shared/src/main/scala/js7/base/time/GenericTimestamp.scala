@@ -2,6 +2,7 @@ package js7.base.time
 
 import cats.Show
 import io.circe.{Decoder, Encoder, Json}
+import js7.base.problem.Checked
 import js7.base.time.GenericTimestamp._
 import scala.concurrent.duration._
 
@@ -21,6 +22,8 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
     * For example "2017-12-04T11:22:33.456Z".
     */
   def toIsoString: String
+
+  def format(format: String, maybeTimezone: Option[String] = None): Checked[String]
 
   //Problem with sbt: def toIsoStringBuilder: StringBuilder
 

@@ -12,6 +12,7 @@ import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observer
+import scala.collection.MapView
 import scala.collection.immutable.ListMap
 
 trait InternalJob
@@ -38,11 +39,14 @@ object InternalJob
     ioExecutor: IOExecutor,
     blockingJobScheduler: Scheduler)
 
-  final case class Step private(
-    processOrder: ProcessOrder,
-    arguments: NamedValues,
-    jobResourceToVariables: ListMap[JobResourcePath, NamedValues])
-  { self =>
+  final case class Step private(processOrder: ProcessOrder, arguments: NamedValues) {
+    self =>
+
+    lazy val jobResourceToVariables: ListMap[JobResourcePath, MapView[String, Checked[Value]]] =
+      processOrder.jobResources.view
+        .map(jr => jr.path -> processOrder.evalLazilyJobResourceVariables(jr))
+        .to(ListMap)
+
     def order = processOrder.order
     def workflow = processOrder.workflow
     def outObserver = processOrder.stdObservers.out
@@ -69,5 +73,6 @@ object InternalJob
       jobResourceToVariables
         .rightOr(jobResourcePath, UnknownKeyProblem("JobResource", jobResourcePath.string))
         .flatMap(_.rightOr(variableName, UnknownKeyProblem("JobResource variable", variableName)))
+        .flatten
   }
 }
