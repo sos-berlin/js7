@@ -20,7 +20,7 @@ import js7.data.value.expression.ExpressionParser
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.data.workflow.{OrderRequirements, Workflow, WorkflowId, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.ExecuteTest._
@@ -342,6 +342,37 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "CONTROLLER_ID" -> StringValue("Controller"),
           "JOB_RESOURCE_VARIABLE" -> StringValue("JOB-RESOURCE-VARIABLE-VALUE")))
     }
+
+    "$js7JobExecutionCount" in {
+      // $js7JobExecutionCount depends on a complete, not shortened Seq[HistoricOutcome].
+      val jobName = WorkflowJob.Name("JOB")
+      val workflowId = nextWorkflowId()
+      val workflow = Workflow(
+        workflowId,
+        Seq(Execute(jobName), Execute(jobName), Execute(jobName)),
+        nameToJob = Map(
+          jobName -> WorkflowJob(
+            agentPath,
+            ShellScriptExecutable(
+              if (isWindows)
+                """@echo off
+                  |echo jobExecutionCount=%jobExecutionCount% >>%JS7_RETURN_VALUES%""".stripMargin
+              else
+                """echo "jobExecutionCount=$jobExecutionCount" >>"$JS7_RETURN_VALUES"""",
+              env = Map(
+                "jobExecutionCount" -> NamedValue("js7JobExecutionCount"))))))
+      directoryProvider.updateVersionedItems(controller, workflowId.versionId, Seq(workflow))
+      val order = FreshOrder(orderIdIterator.next(), workflow.path)
+      val processed = controller.runOrder(order).map(_.value)
+        .collect { case o: OrderProcessed => o }
+      assert(processed == Seq(
+        OrderProcessed(Outcome.Succeeded(Map("jobExecutionCount" -> StringValue("1"),
+          "returnCode" -> NumberValue(0)))),
+        OrderProcessed(Outcome.Succeeded(Map("jobExecutionCount" -> StringValue("2"),
+          "returnCode" -> NumberValue(0)))),
+        OrderProcessed(Outcome.Succeeded(Map("jobExecutionCount" -> StringValue("3"),
+          "returnCode" -> NumberValue(0))))))
+    }
   }
 
   "Jobs in nested workflow" in {
@@ -417,14 +448,20 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     orderArguments: Map[String, Value] = Map.empty)
   : Seq[OrderEvent] = {
     //TODO OrderRequirements are missing: testPrintAndParse(anonymousWorkflow)
-
-    val versionId = versionIdIterator.next()
-    val workflow = anonymousWorkflow.withId(workflowPathIterator.next() ~ versionId)
+    val workflow = addWorkflow(anonymousWorkflow)
     val order = FreshOrder(orderIdIterator.next(), workflow.path, arguments = orderArguments)
-    directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
-
     controller.runOrder(order).map(_.value)
   }
+
+  private def addWorkflow(anonymousWorkflow: Workflow): Workflow = {
+    val workflowId = nextWorkflowId()
+    val workflow = anonymousWorkflow.withId(workflowId)
+    directoryProvider.updateVersionedItems(controller, workflowId.versionId, Seq(workflow))
+    workflow
+  }
+
+  private def nextWorkflowId(): WorkflowId =
+    workflowPathIterator.next() ~ versionIdIterator.next()
 
   private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
     val workflowNotation = WorkflowPrinter.print(anonymousWorkflow.withoutSource)
