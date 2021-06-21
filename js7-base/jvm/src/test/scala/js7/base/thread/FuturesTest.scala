@@ -8,7 +8,6 @@ import js7.base.time.Stopwatch.measureTime
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.Failure
 
@@ -29,17 +28,17 @@ final class FuturesTest extends AnyFreeSpec
 
   "successValue's failure exception is extended with future's creation stack trace" in {
     val future = Future[Int] { throw new TestException }
-    Await.ready(future, 2.seconds)
+    Await.ready(future, 5.s)
     assert(!stackTraceContainsCreationsStackTrace { future.value.get.get })
     assert(stackTraceContainsCreationsStackTrace { future.successValue })
   }
 
   "appendCurrentStackTrace failure exception is extended with future's creation stack trace" in {
     val future = Future[Int] { throw new TestException }
-    Await.ready(future, 2.seconds)
+    Await.ready(future, 2.s)
     assert(!stackTraceContainsCreationsStackTrace { future.value.get.get })
     val f = future.appendCurrentStackTrace
-    Await.ready(f, 2.seconds)
+    Await.ready(f, 2.s)
     assert(stackTraceContainsCreationsStackTrace { f.value.get.get })
   }
 
@@ -49,18 +48,18 @@ final class FuturesTest extends AnyFreeSpec
       Future { throw new RuntimeException }
     }
     intercept[RuntimeException] { f(true) }
-    Await.ready(f(false), 99.seconds).value.get.failed.get
-    Await.ready(catchInFuture { f(true) }, 99.seconds).value.get.failed.get
+    Await.ready(f(false), 99.s).value.get.failed.get
+    Await.ready(catchInFuture { f(true) }, 99.s).value.get.failed.get
   }
 
   "namedThreadFuture" in {
     val (n, warmUp) = sys.props.get("test.speed").fold((100, 100))(o => (o.toInt, 1000))
     info(measureTime(n, "namedThreadFuture", warmUp = warmUp) {
       val future = namedThreadFuture("FuturesTest") { "x" }
-      assert(Await.result(future, 2.seconds) == "x")
+      assert(Await.result(future, 2.s) == "x")
     }.toString)
     val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
-    assert(Await.ready(future, 2.seconds).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
+    assert(Await.ready(future, 2.s).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
   }
 
   "promiseFuture" in {
