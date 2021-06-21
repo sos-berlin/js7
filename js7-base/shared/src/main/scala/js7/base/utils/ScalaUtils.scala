@@ -257,11 +257,27 @@ object ScalaUtils
       def switchOff(body: => Unit) = if (delegate.compareAndSet(true, false)) body
     }
 
+    implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])
+    extends AnyVal
+    {
+      def checked(key: K)(implicit A: ClassTag[K]): Checked[V] =
+        rightOr(key, UnknownKeyProblem(A.runtimeClass.shortClassName, key))
+
+      def rightOr(key: K, notFound: => Problem): Checked[V] =
+        underlying.get(key) match {
+          case None => Left(notFound)
+          case Some(a) => Right(a)
+        }
+    }
+
     implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B])
     extends AnyVal
     {
       def checked(key: A)(implicit A: ClassTag[A]): Checked[B] =
-        rightOr(key, UnknownKeyProblem(A.runtimeClass.shortClassName, key))
+        underlying.lift(key) match {
+          case None => Left(UnknownKeyProblem(A.runtimeClass.shortClassName, key))
+          case Some(a) => Right(a)
+        }
 
       def rightOr(key: A, notFound: => Problem): Checked[B] =
         toChecked(_ => notFound)(key)

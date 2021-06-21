@@ -268,6 +268,21 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(x == 3)
   }
 
+  "RichMap" - {
+    val map = Map(1 -> "ONE")
+
+    "Map.checked" in {
+      assert(map.checked(1) == Right("ONE"))
+      assert(map.checked(2) == Left(UnknownKeyProblem("Int", 2)))
+    }
+
+    "Map.checked as curried function" in {
+      val checked: Int => Checked[String] = map.checked
+      assert(checked(1) == Right("ONE"))
+      assert(checked(2) == Left(UnknownKeyProblem("Int", 2)))
+    }
+  }
+
   "RichPartialFunction" - {
     val pf: PartialFunction[Int, String] = {
       case 1 => "ONE"

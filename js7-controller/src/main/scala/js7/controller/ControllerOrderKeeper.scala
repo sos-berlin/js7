@@ -198,6 +198,7 @@ with MainJournalingActor[ControllerState, Event]
       notified = false
       val orderIds = queue.result()
       queue.clear()
+      known.clear()
       orderIds
     }
 
