@@ -182,7 +182,7 @@ final case class Repo private(
       v <- unusedVersionIds(entries, inUse)
     } yield path ~ v
 
-  def deleteItem(id: VersionedItemId_): Checked[Repo] = {
+  def deleteItem(id: VersionedItemId_): Checked[Repo] =
     for (entries <- pathToVersionToSignedItems
       .checked(id.path)
       .map(_.filter(_.versionId != id.versionId))) yield
@@ -192,7 +192,6 @@ final case class Repo private(
             case Nil | Entry(_, None) :: Nil => pathToVersionToSignedItems - id.path
             case entries => pathToVersionToSignedItems + (id.path -> entries)
           })
-  }
 
   def applyEvents(events: Seq[VersionedEvent]): Checked[Repo] = {
     var result = Checked(this)
