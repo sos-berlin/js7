@@ -198,6 +198,14 @@ final class ExpressionTest extends AnyFreeSpec
       result = 3,
       Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("returnCode"))))
 
+    testEval("""toNumber($ASTRING)""",
+      result = Left(Problem("Not a valid number: AA")),
+      Right(ToNumber(NamedValue.last("ASTRING"))))
+
+    testEval("""toNumber('123')""",
+      result = 123,
+      Right(ToNumber(StringConstant("123"))))
+
     testEval("""$ASTRING.toNumber""",
       result = Left(Problem("Not a valid number: AA")),
       Right(ToNumber(NamedValue.last("ASTRING"))))
@@ -205,6 +213,22 @@ final class ExpressionTest extends AnyFreeSpec
     testEval("""$ANUMBER""",
       result = 7,
       Right(NamedValue.last("ANUMBER")))
+
+    testEval("""toBoolean('true')""",
+      result = true,
+      Right(ToBoolean(StringConstant("true"))))
+
+    testEval("""toBoolean('false')""",
+      result = false,
+      Right(ToBoolean(StringConstant("false"))))
+
+    testEval("""123.mkString""",
+      result = "123",
+      Right(MkString(NumericConstant(123))))
+
+    testEval("stripMargin('  |ONE\n  |TWO')",
+      result = "ONE\nTWO",
+      Right(StripMargin(StringConstant("  |ONE\n  |TWO"))))
 
     testEval(""""true".toBoolean""",
       result = true,

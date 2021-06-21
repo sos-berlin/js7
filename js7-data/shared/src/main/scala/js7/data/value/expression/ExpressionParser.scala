@@ -133,12 +133,33 @@ object ExpressionParser
         default <- kv.get[Expression]("default")
       } yield NamedValue(where, NamedValue.KeyValue(key), default)))
 
-  private def functionCall[_: P] = P[FunctionCall](
+  private def functionCall[_: P] = P[Expression](
     (identifier ~/ w ~/ inParentheses(commaSequence((identifier ~ w ~ "=").? ~ w ~ expression)))
-      .map { case (name, arguments) =>
-        FunctionCall(
-          name,
-          arguments.map { case (maybeName, expr) => Argument(expr, maybeName) })
+      .flatMap {
+        case ("toBoolean", arguments) =>
+          arguments match {
+            case Seq((None, arg)) => valid(ToBoolean(arg))
+            case _ => invalid("toBoolean function expected exacly one argument")
+          }
+        case ("toNumber", arguments) =>
+          arguments match {
+            case Seq((None, arg)) => valid(ToNumber(arg))
+            case _ => invalid("toNumber function expected exacly one argument")
+          }
+        case ("stripMargin", arguments) =>
+          arguments match {
+            case Seq((None, arg)) => valid(StripMargin(arg))
+            case _ => invalid("stripMargin function expected exacly one argument")
+          }
+        case ("mkString", arguments) =>
+          arguments match {
+            case Seq((None, arg)) => valid(MkString(arg))
+            case _ => invalid("mkString function expected exacly one argument")
+          }
+        case (name, arguments) =>
+          valid(FunctionCall(
+            name,
+            arguments.map { case (maybeName, expr) => Argument(expr, maybeName) }))
       })
 
   private def namedValueKeyValue[_: P] = P[(String, Any)](
@@ -163,7 +184,7 @@ object ExpressionParser
   private def factor[_: P] = P(
     factorOnly ~ (w ~ "." ~ w ~/ identifier).? flatMap {
       case (o, None) => valid(o)
-      // TODO Don't block these names:
+      // TODO Don't use these legacy names:
       case (o, Some("toNumber")) => valid(ToNumber(o))
       case (o, Some("toBoolean")) => valid(ToBoolean(o))
       case (o, Some("stripMargin")) => valid(StripMargin(o))

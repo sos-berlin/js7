@@ -316,7 +316,7 @@ object Expression
     protected def evalAllowMissing(implicit scope: Scope) =
       expression.eval.flatMap(_.toNumberValue)
 
-    override def toString = Precedence.inParentheses(expression, precedence) + ".toNumber"
+    override def toString = s"toNumber($expression)"
   }
 
   final case class ToBoolean(expression: Expression) extends BooleanExpression {
@@ -326,7 +326,7 @@ object Expression
     protected def evalAllowMissing(implicit scope: Scope) =
       expression.eval.flatMap(_.toBooleanValue)
 
-    override def toString = Precedence.inParentheses(expression, precedence) + ".toBoolean"
+    override def toString = s"toBoolean($expression)"
   }
 
   final case class BooleanConstant(booleanValue: Boolean) extends BooleanExpression {
@@ -540,7 +540,7 @@ object Expression
     def evalAllowMissing(implicit scope: Scope) =
       a.evalAsString.map(string => StringValue(string.stripMargin))
 
-    override def toString = Precedence.inParentheses(a, precedence) + ".stripMargin"
+    override def toString = s"stripMargin($a)"
   }
 
   final case class MkString(expression: Expression) extends StringExpression {
@@ -554,7 +554,7 @@ object Expression
         case value => value.toStringValue
       }
 
-    override def toString = Precedence.inParentheses(expression, precedence) + ".mkString"
+    override def toString = s"mkString($expression)"
   }
 
   /** Like MkString, but with a different toString representation. */
