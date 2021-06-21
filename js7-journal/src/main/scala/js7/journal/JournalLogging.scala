@@ -80,7 +80,7 @@ trait JournalLogging
             val k = (1000.0 * n / micros).toInt
             if (k < 1000) {
               sb.append(k)
-              sb.append("K/s")
+              sb.append("k/s")
             } else {
               sb.append(k / 1000)
               sb.append("M/s")
