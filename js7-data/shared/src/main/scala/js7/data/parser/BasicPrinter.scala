@@ -1,9 +1,16 @@
 package js7.data.parser
 
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
+import js7.base.utils.ScalaUtils.withStringBuilder
 
 object BasicPrinter
 {
+  def identifierToString(identifier: String): String =
+    if (identifierRequiresBacktick(identifier))
+      withStringBuilder(appendIdentifierWithBackticks(_, identifier))
+    else
+      identifier
+
   def appendIdentifier(sb: StringBuilder, identifier: String): Unit =
     if (identifierRequiresBacktick(identifier)) {
       appendIdentifierWithBackticks(sb, identifier)

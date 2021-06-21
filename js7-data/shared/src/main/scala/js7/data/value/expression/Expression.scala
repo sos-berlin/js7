@@ -7,11 +7,12 @@ import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichOption
 import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
-import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, isIdentifierPart}
-import js7.data.value.ValuePrinter.{appendQuotedContent, quoteString}
+import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
+import js7.data.value.ValuePrinter.appendQuotedContent
 import js7.data.value.ValueType.MissingValueProblem
 import js7.data.value.{BooleanValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
 import js7.data.workflow.Label
@@ -256,6 +257,22 @@ object Expression
     override def toString = Precedence.inParentheses(a, precedence) + "?"
   }
 
+  final case class DotExpression(a: Expression, name: String) extends Expression {
+    def subexpressions = a :: Nil
+    def precedence = Precedence.DotOperator
+
+    protected def evalAllowMissing(implicit scope: Scope) =
+      a.eval flatMap {
+        case a: ObjectValue =>
+          a.nameToValue.get(name) !! Problem(s"Unknown object '$name' field name in: $toString")
+
+        case _ => Left(Problem(s"Object expected: $toString"))
+      }
+
+    override def toString =
+      Precedence.inParentheses(a, precedence) + "." + identifierToString(name)
+  }
+
   final case class ListExpression(subexpressions: List[Expression]) extends Expression {
     def precedence = Precedence.Factor
 
@@ -279,7 +296,7 @@ object Expression
         .map(pairs => ObjectValue(pairs.toMap))
 
     override def toString = nameToExpr
-      .map { case (k, v) => quoteString(k) + ":" + v }
+      .map { case (k, v) => identifierToString(k) + ":" + v }
       .mkString("{", ", ", "}")
   }
   object ObjectExpression {
@@ -607,6 +624,7 @@ object Expression
   object Precedence {
     // Higher number means higher precedence
     private val next = Iterator.from(1).next _
+    val DotOperator = next()
     val WordOperator = next()
     val Word1Operator = next()
     val Or = next()

@@ -3,6 +3,7 @@ package js7.data.value.expression
 import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.Checked
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
 import js7.data.parser.BasicParsers
@@ -53,9 +54,6 @@ object ExpressionParser
   private def numericConstant[_: P] = P[NumericConstant](
     int.map(o => NumericConstant(o)))
 
-  private def stringConstant[_: P] = P[StringConstant](quotedString
-    .map(StringConstant.apply))
-
   private def singleQuotedStringConstant[_: P] = P[StringConstant](singleQuoted
     .map(StringConstant.apply))
 
@@ -85,6 +83,13 @@ object ExpressionParser
       }
   }
 
+  private def objectConstant[_: P] = P[ObjectExpression] {
+    ("{" ~~/ w ~~ commaSequence(identifier ~~ w ~~ ":" ~~/ w ~~ expression) ~~ w ~~ "}")
+      .flatMap(pairs =>
+        checkedToP(pairs.checkUniqueness(_._1)
+          .map(_ => ObjectExpression(pairs.toMap))))
+  }
+
   def dollarNamedValue[_: P] = P[Expression] {
     //def arg = P[NamedValue](("arg::" ~~/ identifier)
     //  .map(key => NamedValue(NamedValue.Argument, NamedValue.KeyValue(StringConstant(key)))))
@@ -103,7 +108,7 @@ object ExpressionParser
   }
 
   private def jobResourceVariable[_: P] = P[JobResourceVariable](
-    ("JobResource" ~ ":" ~/ jobResourcePath ~ ":" ~/ identifier)
+    ("JobResource" ~ ":" ~/ jobResourcePath ~ (":" ~/ identifier).?)
       .map((JobResourceVariable.apply(_, _)).tupled))
 
   private def jobResourcePath[_: P] = P[JobResourcePath](
@@ -149,19 +154,21 @@ object ExpressionParser
 
   private def factorOnly[_: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant |
-      singleQuotedStringConstant | interpolatedString | dollarNamedValue |
+      singleQuotedStringConstant | interpolatedString | objectConstant | dollarNamedValue |
       catchCount | argumentFunctionCall | variableFunctionCall |
       missing | nullConstant |
       jobResourceVariable |
       functionCall)
 
   private def factor[_: P] = P(
-    factorOnly ~ (w ~ "." ~ w ~/ keyword).? flatMap {
+    factorOnly ~ (w ~ "." ~ w ~/ identifier).? flatMap {
       case (o, None) => valid(o)
+      // TODO Don't block these names:
       case (o, Some("toNumber")) => valid(ToNumber(o))
       case (o, Some("toBoolean")) => valid(ToBoolean(o))
       case (o, Some("stripMargin")) => valid(StripMargin(o))
       case (o, Some("mkString")) => valid(MkString(o))
+      case (o, Some(identifier)) => valid(DotExpression(o, identifier))
       case (_, Some(f)) => invalid(s"known function: .$f")   //  for ${o.getClass.simpleScalaName}")
     })
 

@@ -296,16 +296,12 @@ final class ExpressionParserTest extends AnyFreeSpec
     def parser[_: P] = expression ~ End
     assert(checkedParse(""""123".toNumber""", parser(_)) ==
       Right(ToNumber(StringConstant("123"))))
-    assert(checkedParse(""""123".UNKNOWN""", parser(_)) ==
-      Left(Problem("""Expected known function: .UNKNOWN:1:14, found """"")))
   }
 
   "Unknown boolean function" in {
     def parser[_: P] = expression ~ End
     assert(checkedParse(""""true".toBoolean""", parser(_)) ==
       Right(ToBoolean(StringConstant("true"))))
-    assert(checkedParse(""""true".UNKNOWN""", parser(_)) ==
-      Left(Problem("""Expected known function: .UNKNOWN:1:15, found """"")))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =

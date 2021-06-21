@@ -70,10 +70,10 @@ final class ExpressionTest extends AnyFreeSpec
 
         override def evalJobResourceVariable(v: JobResourceVariable)(implicit scope: Scope) =
           v match {
-            case JobResourceVariable(JobResourcePath("myJobResource"), "VARIABLE") =>
+            case JobResourceVariable(JobResourcePath("myJobResource"), Some("VARIABLE")) =>
              Some(Right(StringValue("myJobResource,VARIABLE,value")))
 
-            case JobResourceVariable(JobResourcePath("JOB-RESOURCE"), "VARIABLE-NAME") =>
+            case JobResourceVariable(JobResourcePath("JOB-RESOURCE"), Some("VARIABLE-NAME")) =>
              Some(Right(StringValue("JOB-RESOURCE,VARIABLE-NAME,value")))
 
             case _ => None
@@ -96,6 +96,10 @@ final class ExpressionTest extends AnyFreeSpec
     testEval( """ "\\" """,
       result = "\\",
       Right(StringConstant("\\")))
+
+    testEval("{a: 'AAA'}.a",
+      result = "AAA",
+      Right(DotExpression(ObjectExpression(Map("a" -> StringConstant("AAA"))), "a")))
 
     testEval(""""-->$ASTRING${ABOOLEAN}$(100 + $ANUMBER)<--"""",
       result = "-->AAtrue107<--",
@@ -132,11 +136,11 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval("JobResource:myJobResource:VARIABLE",
       result = "myJobResource,VARIABLE,value",
-      Right(JobResourceVariable(JobResourcePath("myJobResource"), "VARIABLE")))
+      Right(JobResourceVariable(JobResourcePath("myJobResource"), Some("VARIABLE"))))
 
     testEval("JobResource:JOB-RESOURCE:`VARIABLE-NAME`",
       result = "JOB-RESOURCE,VARIABLE-NAME,value",
-      Right(JobResourceVariable(JobResourcePath("JOB-RESOURCE"), "VARIABLE-NAME")))
+      Right(JobResourceVariable(JobResourcePath("JOB-RESOURCE"), Some("VARIABLE-NAME"))))
 
     //testEval("${label::LABEL.KEY}",
     //  result = "LABEL-VALUE",
