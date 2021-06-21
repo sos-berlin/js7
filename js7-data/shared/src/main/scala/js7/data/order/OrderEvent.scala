@@ -37,7 +37,8 @@ object OrderEvent
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
-    externalOrderKey: Option[ExternalOrderKey] = None)
+    externalOrderKey: Option[ExternalOrderKey] = None,
+    variables: NamedValues = Map.empty)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
   }
@@ -46,16 +47,19 @@ object OrderEvent
       o => JsonObject(
         "workflowId" -> o.workflowId.asJson,
         "scheduledFor" -> o.scheduledFor.asJson,
+        "externalOrderKey" -> o.externalOrderKey.asJson,
         "arguments" -> o.arguments.??.asJson,
-        "externalOrderKey" -> o.externalOrderKey.asJson)
+        "variables" -> o.variables.??.asJson,
+      )
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
       c => for {
         workflowId <- c.get[WorkflowId]("workflowId")
         scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
-        arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
         externalOrderKey <- c.get[Option[ExternalOrderKey]]("externalOrderKey")
-      } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey)
+        arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
+        variables <- c.getOrElse[NamedValues]("variables")(Map.empty)
+      } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey, variables)
   }
 
   /** Agent-only event. */

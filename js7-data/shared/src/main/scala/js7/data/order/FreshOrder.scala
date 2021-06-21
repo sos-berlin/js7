@@ -26,8 +26,8 @@ final case class FreshOrder private(
 {
   workflowPath.requireNonAnonymous()
 
-  def toOrderAdded(versionId: VersionId): KeyedEvent[OrderAdded] =
-    id <-: OrderAdded(workflowPath ~ versionId, arguments, scheduledFor)
+  def toOrderAdded(versionId: VersionId, variables: NamedValues = Map.empty): KeyedEvent[OrderAdded] =
+    id <-: OrderAdded(workflowPath ~ versionId, arguments, scheduledFor, variables = variables)
 }
 
 object FreshOrder

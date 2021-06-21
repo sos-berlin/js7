@@ -158,7 +158,8 @@ extends UnsignedSimpleItemState
               .map(v => orderId <-: OrderAdded(
                 orderWatch.workflowPath ~ v,
                 arguments,
-                externalOrderKey = Some(ExternalOrderKey(id, externalOrderName))))
+                externalOrderKey = Some(ExternalOrderKey(id, externalOrderName)),
+                variables = Map.empty/*TODO caclulate variables*/))
 
           case _ => None
         })

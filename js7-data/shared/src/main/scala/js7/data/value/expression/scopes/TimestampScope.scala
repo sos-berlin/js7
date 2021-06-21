@@ -3,7 +3,7 @@ package js7.data.value.expression.scopes
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.data.Problems.InvalidFunctionParametersProblem
+import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
@@ -27,7 +27,7 @@ extends Scope
             func2(formatExpr, None)
 
           case _ =>
-            Left(InvalidFunctionParametersProblem(functionCall))
+            Left(InvalidFunctionArgumentsProblem(functionCall))
         })
 
       case _ =>

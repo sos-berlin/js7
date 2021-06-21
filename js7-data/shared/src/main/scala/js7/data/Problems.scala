@@ -12,7 +12,7 @@ object Problems
 {
   case object PassiveClusterNodeShutdownNotAllowedProblem extends Problem.ArgumentlessCoded
 
-  final case class InvalidFunctionParametersProblem(call: FunctionCall) extends Problem.Coded {
+  final case class InvalidFunctionArgumentsProblem(call: FunctionCall) extends Problem.Coded {
     def arguments = Map(
       "function" -> call.name,
       "arguments" -> call.arguments.mkString(", "))

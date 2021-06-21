@@ -3,6 +3,7 @@ package js7.data.value.expression
 import fastparse.NoWhitespace._
 import fastparse._
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
 import js7.data.parser.BasicParsers
 import js7.data.parser.BasicParsers._
@@ -10,12 +11,17 @@ import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 import js7.data.workflow.instructions.executable.WorkflowJob
+import org.jetbrains.annotations.TestOnly
 
 /**
   * @author Joacim Zschimmer
   */
 object ExpressionParser
 {
+  @TestOnly
+  def expr(expressionString: String): Expression =
+    parse(expressionString).orThrow
+
   def parse(string: String): Checked[Expression] =
     checkedParse(string, expressionOnly(_))
       .left.map(_.withPrefix("Error in expression:"))

@@ -4,6 +4,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.isJVM
 import js7.data.value.StringValue
 import org.scalatest.freespec.AnyFreeSpec
+import scala.PartialFunction.condOpt
 import scala.util.Random
 
 final class EnvScopeTest extends AnyFreeSpec
@@ -34,6 +35,14 @@ final class EnvScopeTest extends AnyFreeSpec
       "Default parameter is lazy" in {
         val unknownDefault = randomString()
         assert(EnvScope.parseAndEval(s"env('PATH', env('$unknownDefault'))") == Right(StringValue(sys.env("PATH"))))
+      }
+
+      "Nested call" in {
+        val envScope = new EnvScope(condOpt(_) {
+          case "A" => "B"
+          case "B" => "RESULT"
+        })
+        assert(envScope.parseAndEval("env(env('A'))") == Right(StringValue("RESULT")))
       }
     }
   }

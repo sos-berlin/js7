@@ -4,15 +4,16 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable}
-import js7.data.order.{Order, OrderId}
-import js7.data.value.StringValue
+import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.scopes.OrderScopesTest._
+import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Label, Workflow, WorkflowPath}
@@ -22,26 +23,29 @@ import scala.collection.View
 final class OrderScopesTest extends AnyFreeSpec
 {
   "OrderScopes" - {
-    lazy val orderScopes: OrderScopes = new OrderScopes {
-      protected val controllerId = OrderScopesTest.controllerId
-      protected val workflow = OrderScopesTest.workflow
-      protected val order = OrderScopesTest.order
-    }
+    lazy val orderScopes = OrderScopes(order, workflow, controllerId)
 
     "instructionLabel" in {
       assert(orderScopes.instructionLabel == Some(Label("LABEL")))
     }
 
-    "orderScope, for Order[Order.State], used by if, prompt and fail instructions" in {
-      import orderScopes.orderScope
-      assert(orderScope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
-      assert(orderScope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
-      assert(orderScope.parseAndEval("$js7WorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:0")))
-      assert(orderScope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
-      assert(orderScope.parseAndEval("$js7Label") == Right(StringValue("LABEL")))
-      assert(orderScope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
-      assert(orderScope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") ==
-        Right(StringValue("2021-06-17 14:00")))
+    "if, prompt and fail instructions" in {
+      val scope = orderScopes.orderScope
+      assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
+      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
+      assert(scope.parseAndEval("catchCount") == Right(NumberValue(0)))
+
+      assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
+      assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("$js7WorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:0")))
+      assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL")))
+
+      assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
+
+      assert(scope.parseAndEval("$epochMilli") == Left(Problem("No such named value: epochMilli")))
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") == Left(
+        Problem("JobResources are not accessible here: JobResource:JOB-RESOURCE:VARIABLE")))
     }
   }
 
@@ -54,34 +58,50 @@ final class OrderScopesTest extends AnyFreeSpec
       protected val jobResources = Seq(jobResource)
     }
 
-    "scopeForJobResourceEnv, for JobResource.env" in {
-      import orderScopes.scopeForJobResourceEnv
+    "JobResource.env" in {
+      val scope = orderScopes.scopeForJobResourceEnv
 
-      assert(scopeForJobResourceEnv.parseAndEval("$orderArgument") == Left(Problem("No such named value: orderArgument")))
-      assert(scopeForJobResourceEnv.parseAndEval("$VARIABLE") == Left(Problem("No such named value: VARIABLE")))
-      assert(scopeForJobResourceEnv.parseAndEval("$SELF") == Left(Problem("No such named value: SELF")))
+      assert(scope.parseAndEval("$orderArgument") == Left(Problem("No such named value: orderArgument")))
+      assert(scope.parseAndEval("scheduledOrEmpty('yyyy')") == Right(StringValue("2021")))
+      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat)") == Left(
+        Problem("No such named value: dateTimeFormat")))
 
-      assert(scopeForJobResourceEnv.parseAndEval("$js7Label") == Right(StringValue("LABEL")))
-      assert(scopeForJobResourceEnv.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
+      assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("$js7WorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:0")))
+      assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL")))
+
+      assert(scope.parseAndEval("$VARIABLE") == Left(Problem("No such named value: VARIABLE")))
+      assert(scope.parseAndEval("$SELF") == Left(Problem("No such named value: SELF")))
+
+      assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL")))
+      assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("$epochMilli") == Right(
+        NumberValue(orderScopes.nowScope.now.toEpochMilli)))
+
+      // Könnte zugelassen werden ?
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") == Left(
+        Problem("JobResources are not accessible here: JobResource:JOB-RESOURCE:VARIABLE")))
     }
 
     "evalLazilyJobResourceVariables, for JobResource.variables" in {
-      val nameToValue = orderScopes.evalLazilyJobResourceVariables(jobResource)
-      assert(nameToValue.get("unknown") == None)
-      assert(nameToValue.get("A") == Some(Right(StringValue("AAA"))))
-      assert(nameToValue.get("UNKNOWN") == Some(Left(Problem("No such named value: unknown"))))
-      assert(nameToValue.get("VARIABLE") == Some(Left(Problem("No such named value: orderArgument"))))
-      assert(nameToValue.get("SELF") == Some(Left(Problem("No such named value: SELF"))))
-      assert(nameToValue.get("SCHEDULED") == Some(Right(StringValue("2021-06-17 14:00:00+0200"))))
-      assert(nameToValue.get("TASKSTART") == Some(Right(StringValue(
+      val variables = orderScopes.evalLazilyJobResourceVariables(jobResource)
+      assert(variables.get("unknown") == None)
+      assert(variables.get("A") == Some(Right(StringValue("AAA"))))
+      assert(variables.get("UNKNOWN") == Some(Left(Problem("No such named value: unknown"))))
+      assert(variables.get("VARIABLE") == Some(Left(Problem("No such named value: orderArgument"))))
+      assert(variables.get("SELF") == Some(Left(Problem("No such named value: SELF"))))
+      assert(variables.get("SCHEDULED") == Some(Right(StringValue("2021-06-17 14:00:00+0200"))))
+      assert(variables.get("NOW") == Some(Right(StringValue(
         orderScopes.nowScope.now.format("yyyy-MM-dd HH:mm:ssZ", Some("Europe/Berlin")).orThrow))))
-      assert(nameToValue.get("orderArgument") == None)
-      assert(nameToValue.get("js7Label") == None)
-      assert(nameToValue.get("js7WorkflowPath") == None)
+      assert(variables.get("orderArgument") == None)
+      assert(variables.get("js7Label") == None)
+      assert(variables.get("js7WorkflowPath") == None)
     }
 
     "scopeForJobDefaultArguments, for (WorkflowJob + Execute).defaultArguments" in {
-      val nameToValue = orderScopes.evalLazilyJobDefaultArguments(Map(
+      val defaultArguments = orderScopes.evalLazilyJobDefaultArguments(Map(
         "defaultJobName" -> NamedValue("js7JobName"),
         "defaultOrderId" -> NamedValue("js7OrderId"),
         "defaultWorkflowPosition" -> expr("$js7WorkflowPosition"),
@@ -89,21 +109,35 @@ final class OrderScopesTest extends AnyFreeSpec
         "defaultLabel" -> expr("$js7Label"),
         "defaultControllerId" -> expr("$js7ControllerId"),
         "defaultScheduled" -> expr("scheduledOrEmpty('yyyy-MM-dd', 'UTC')")))
-      assert(nameToValue.get("orderArgument") == None)
-      assert(nameToValue.get("defaultJobName") == Some(Right(StringValue("JOB"))))
-      assert(nameToValue.get("defaultOrderId") == Some(Right(StringValue("ORDER"))))
-      assert(nameToValue("defaultWorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:0")))
-      assert(nameToValue("defaultWorkflowPath") == Right(StringValue("WORKFLOW")))
-      assert(nameToValue("defaultLabel") == Right(StringValue("LABEL")))
-      assert(nameToValue("defaultControllerId") == Right(StringValue("CONTROLLER")))
-      assert(nameToValue("defaultScheduled") == Right(StringValue("2021-06-17")))
+      assert(defaultArguments.get("orderArgument") == None)
+      assert(defaultArguments("defaultJobName") == Right(StringValue("JOB")))
+      assert(defaultArguments("defaultOrderId") == Right(StringValue("ORDER")))
+      assert(defaultArguments("defaultWorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(defaultArguments("defaultWorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:0")))
+      assert(defaultArguments("defaultLabel") == Right(StringValue("LABEL")))
+      assert(defaultArguments("defaultControllerId") == Right(StringValue("CONTROLLER")))
+      assert(defaultArguments("defaultScheduled") == Right(StringValue("2021-06-17")))
     }
 
-    "processingOrderScope, for Order[Processing]" in {
+    "Exeutable.arguments, Exeutable.env" in {
+      // Also for ‚BlockingInternalJob.evalExpression and BlockingInternalJob.namedValue
       val scope = orderScopes.processingOrderScope
+
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
+      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
+      assert(scope.parseAndEval("catchCount") == Right(NumberValue(0)))
+
+      assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
       assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("$js7WorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:0")))
       assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL")))
+
+      assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
+
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:`ORDER-ID`") ==
+        Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:NOW").isRight)
 
       assert(scope.parseAndEval("JobResource:UNKNOWN:VARIABLE") ==
         Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
@@ -111,18 +145,59 @@ final class OrderScopesTest extends AnyFreeSpec
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") ==
         Left(Problem("No such named value: orderArgument")))
 
-      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:`ORDER-ID`") ==
-        Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:SELF") ==
+        Left(Problem("No such named value: SELF")))
+
+      assert(scope.parseAndEval("$epochMilli") == Right(
+        NumberValue(orderScopes.nowScope.now.toEpochMilli)))
+    }
+
+    "Workflow.orderVariables" in {
+      import OrderScopes.workflowOrderVariablesScope
+      val scope = workflowOrderVariablesScope(freshOrder, Seq(jobResource).toKeyedMap(_.path),
+        controllerId, nowScope = NowScope(Timestamp("2021-06-21T12:33:44Z")))
+
+      assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
+      assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
+      assert(scope.parseAndEval("catchCount") == Left(Problem("Unknown symbol: catchCount")))
+
+      assert(scope.parseAndEval("$js7ControllerId") == Right(StringValue("CONTROLLER")))
+      assert(scope.parseAndEval("$js7OrderId") == Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
+      assert(scope.parseAndEval("$js7WorkflowPosition") == Left(
+        Problem("No such named value: js7WorkflowPosition")))
+      assert(scope.parseAndEval("$js7Label") == Left(Problem("No such named value: js7Label")))
+
+      assert(scope.parseAndEval("$epochMilli").isRight)
+
+      assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
+
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:`ORDER-ID`") == Right(StringValue("ORDER")))
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:SCHEDULED") == Right(
+        StringValue("2021-06-17 14:00:00+0200")))
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:NOW") == Right(
+        StringValue("2021-06-21 14:33:44+0200")))
+
+      assert(scope.parseAndEval("JobResource:UNKNOWN:VARIABLE") ==
+        Left(UnknownKeyProblem("JobResource", "UNKNOWN")))
+
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") ==
+        Left(Problem("No such named value: orderArgument")))
 
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:SELF") ==
         Left(Problem("No such named value: SELF")))
+
+      assert(scope.parseAndEval("$VARIABLE") == Left(Problem("No such named value: VARIABLE")))
+
+      assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") ==
+        Left(Problem("No such named value: orderArgument")))
     }
 
     "Speed" in {
       implicit val scope = orderScopes.processingOrderScope
       val n = sys.props.get("test.speed").fold(10_000)(_.toInt)
       val expressionsStrings = View("$orderArgument", "$js7Label", "$js7WorkflowPosition",
-        "JobResource:JOB-RESOURCE:`ORDER-ID`", "JobResource:JOB-RESOURCE:TASKSTART",
+        "JobResource:JOB-RESOURCE:`ORDER-ID`", "JobResource:JOB-RESOURCE:NOW",
         "now($dateTimeFormat, $timezone)")
       for (exprString <- expressionsStrings) {
         val expression = expr(exprString)
@@ -145,7 +220,7 @@ object OrderScopesTest
       "VARIABLE" -> expr("$orderArgument"),
       "ORDER-ID" -> expr("$js7OrderId"),
       "SCHEDULED" -> expr("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Berlin')"),
-      "TASKSTART" -> expr("now(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Berlin')"),
+      "NOW" -> expr("now(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Berlin')"),
       "UNKNOWN" -> expr("$unknown"),
       "SELF" -> expr("$SELF")))
 
@@ -155,12 +230,17 @@ object OrderScopesTest
     Map(
       jobName -> WorkflowJob(agentPath, ShellScriptExecutable(":"))))
 
-  private val order = Order(OrderId("ORDER"), workflow.id, Order.Ready,
+  private val freshOrder = FreshOrder(OrderId("ORDER"), workflow.path,
     Map(
       "orderArgument" -> StringValue("ORDER-ARGUMENT"),
       "dateTimeFormat" -> StringValue("yyyy-MM-dd HH:mm"),
       "timezone" -> StringValue("Europe/Berlin")),
     scheduledFor = Some(Timestamp("2021-06-17T12:00:00Z")))
+
+  private val expectedSchedule = StringValue("2021-06-17 14:00")
+
+  private val order = Order(freshOrder.id, workflow.id, Order.Ready, freshOrder.arguments,
+    scheduledFor = freshOrder.scheduledFor)
 
   private def expr(string: String) =
     ExpressionParser.parse(string).orThrow

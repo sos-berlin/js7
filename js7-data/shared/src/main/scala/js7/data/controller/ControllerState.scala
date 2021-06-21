@@ -471,6 +471,21 @@ extends JournaledState[ControllerState]
       allOrderWatchesState.pathToOrderWatchState
     ).map(_._2.item)
 
+  lazy val pathToJobResource = keyTo(JobResource)
+
+  def keyTo[I <: SignableSimpleItem](I: SignableSimpleItem.Companion[I]): MapView[I.Key, I] =
+    new MapView[I.Key, I] {
+      def get(key: I.Key) =
+        pathToSignedSimpleItem.get(key).map(_.value.asInstanceOf[I])
+
+      def iterator =
+        pathToSignedSimpleItem.iterator
+          .collect { case (key: I.Key @unchecked, Signed(item: I @unchecked, _))
+            if item.companion eq I =>
+              key -> item
+          }
+    }
+
   lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
     new MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] {
       def get(path: UnsignedSimpleItemPath): Option[UnsignedSimpleItem] =
@@ -507,6 +522,8 @@ extends JournaledState[ControllerState]
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
       case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
     }
+
+  def controllerId = controllerMetaState.controllerId
 
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
     s"Repo(${repo.currentVersionSize} objects, ...))"

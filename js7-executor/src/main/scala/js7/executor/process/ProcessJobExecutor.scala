@@ -6,6 +6,7 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
 import js7.data.job.{CommandLine, JobResource, ProcessExecutable}
 import js7.data.order.Outcome
+import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.value.expression.scopes.LazyNamedValueScope
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NullValue, StringValue}
@@ -83,9 +84,9 @@ trait ProcessJobExecutor extends JobExecutor
         .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
         .toMap
 
-  protected final def evalEnv(nameToExpr: Map[String, Expression], scope: Scope)
+  protected final def evalEnv(nameToExpr: Map[String, Expression], scope: => Scope)
   : Checked[Map[String, String]] =
-    scope.evalExpressionMap(nameToExpr)
+    evalExpressionMap(nameToExpr, scope)
       .flatMap(_
         .view
         .filter(_._2 != NullValue)

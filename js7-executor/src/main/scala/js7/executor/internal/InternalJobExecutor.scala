@@ -11,6 +11,7 @@ import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{InternalExecutable, JobConf, JobResource, JobResourcePath}
 import js7.data.value.NamedValues
+import js7.data.value.expression.Scope.evalExpressionMap
 import js7.executor.ProcessOrder
 import js7.executor.internal.InternalJob.{JobContext, Step}
 import js7.executor.internal.InternalJobExecutor._
@@ -55,7 +56,7 @@ extends JobExecutor
     }
 
   private def toStep(processOrder: ProcessOrder): Checked[InternalJob.Step] =
-    for (args <- processOrder.scope.evalExpressionMap(executable.arguments)) yield
+    for (args <- evalExpressionMap(executable.arguments, processOrder.scope)) yield
       Step(processOrder, args)
 
   private def toInstantiator(className: String): Checked[() => Checked[InternalJob]] =

@@ -10,6 +10,7 @@ import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourcePath, RelativePathExecutable, ShellScriptExecutable}
+import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
@@ -69,8 +70,8 @@ object JobExecutor
         if (!executorConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else {
-          val scope = NowScope() |+| EnvScope
-          for (jobArguments <- scope.evalExpressionMap(executable.jobArguments))
+          lazy val scope = NowScope() |+| EnvScope
+          for (jobArguments <- evalExpressionMap(executable.jobArguments, scope))
             yield new InternalJobExecutor(executable, jobConf, pathToJobResource, jobArguments,
               executorConf.blockingJobScheduler)
         }

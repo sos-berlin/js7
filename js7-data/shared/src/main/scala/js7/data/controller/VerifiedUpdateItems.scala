@@ -75,20 +75,20 @@ object VerifiedUpdateItems
 
     observable
       .mapParallelUnorderedBatch() {
-          case AddOrChangeSigned(signedString) =>
-            if (problemOccurred.isEmpty)
-              verify(signedString) match {
-                case Left(problem) =>
-                  problemOccurred = Some(problem)
-                  ()  // Delay error until input stream is completely eaten
-                case Right(verified) =>
-                  verified
-              }
-            else
-              ()
+        case AddOrChangeSigned(signedString) =>
+          if (problemOccurred.isEmpty)
+            verify(signedString) match {
+              case Left(problem) =>
+                problemOccurred = Some(problem)
+                ()  // Delay error until input stream is completely eaten
+              case Right(verified) =>
+                verified
+            }
+          else
+            ()
 
-          case o => o
-        }
+        case o => o
+      }
       .foreachL {
         case AddOrChangeSimple(item) => unsignedSimpleItems_ += item
         case DeleteSimple(path) => simpleDeletes_ += path

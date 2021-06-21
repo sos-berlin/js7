@@ -25,7 +25,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
-import js7.base.utils.Collections.implicits._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
@@ -182,17 +181,22 @@ with MainJournalingActor[ControllerState, Event]
   /** Next orders to be processed. */
   private object orderQueue {
     private val queue = new VectorBuilder[OrderId]
+    private val known = mutable.Set.empty[OrderId]
     private var notified = false
 
     def enqueue(orderIds: Iterable[OrderId]): Unit =
       if (!shuttingDown && switchover.isEmpty && orderIds.nonEmpty) {
-        queue ++= orderIds
+        for (orderId <- orderIds.iterator) {
+          if (known.add(orderId)) {
+            queue += orderId
+          }
+        }
         notifiy()
       }
 
     def readAll(): Seq[OrderId] = {
       notified = false
-      val orderIds = queue.result().distinct
+      val orderIds = queue.result()
       queue.clear()
       orderIds
     }
@@ -270,8 +274,8 @@ with MainJournalingActor[ControllerState, Event]
 
   private def recover(recovered: Recovered[ControllerState]): Unit = {
     for (controllerState <- recovered.recoveredState) {
-      if (controllerState.controllerMetaState.controllerId != controllerConfiguration.controllerId)
-        throw Problem(s"Recovered controllerId='${controllerState.controllerMetaState.controllerId}' " +
+      if (controllerState.controllerId != controllerConfiguration.controllerId)
+        throw Problem(s"Recovered controllerId='${controllerState.controllerId}' " +
           s"differs from configured controllerId='${controllerConfiguration.controllerId}'"
         ).throwable
       this._controllerState = controllerState
@@ -859,46 +863,31 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def addOrderWithUncheckedId(freshOrder: FreshOrder): Future[Checked[Boolean]] =
-    _controllerState.idToOrder.get(freshOrder.id) match {
-      case Some(_) =>
+    _controllerState.addOrder(freshOrder) match {
+      case Left(problem) => Future.successful(Left(problem))
+      case Right(None) =>
         logger.debug(s"Discarding duplicate added Order: $freshOrder")
         Future.successful(Right(false))
 
-      case None =>
-        _controllerState.repo.pathTo[Workflow](freshOrder.workflowPath) match {
-          case Left(problem) => Future.successful(Left(problem))
-          case Right(workflow) =>
-            workflow.orderRequirements.checkArguments(freshOrder.arguments) match {
-              case Left(problem) => Future.successful(Left(problem))
-              case Right(()) =>
-                val events = freshOrder.toOrderAdded(workflow.id.versionId) :: Nil
-                persistTransactionAndSubsequentEvents(events) { (stamped, updatedState) =>
-                  handleEvents(stamped, updatedState)
-                  Right(true)
-                }
-                .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
-            }
+      case Right(Some(orderAdded)) =>
+        persistTransactionAndSubsequentEvents(orderAdded :: Nil) { (stamped, updatedState) =>
+          handleEvents(stamped, updatedState)
+          Right(true)
         }
+        .flatMap(o => testAddOrderDelay.runToFuture.map(_ => o))  // test only
     }
 
   private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[EventId]] =
-    freshOrders.checkUniqueness(_.id) match {
+    _controllerState.addOrders(freshOrders) match {
       case Left(problem) => Future.successful(Left(problem))
-      case _ =>
-        freshOrders.toVector
-          .filterNot(o => _controllerState.idToOrder contains o.id)  // Ignore known orders
-          .traverse(o => _controllerState.repo.pathTo[Workflow](o.workflowPath).map(o.->))
-          .traverse { ordersAndWorkflows =>
-            val events = for ((order, workflow) <- ordersAndWorkflows) yield
-              order.id <-: OrderAdded(workflow.id/*reuse*/, order.arguments, order.scheduledFor)
-            persistTransaction(events) { (stamped, updatedState) =>
-              handleEvents(stamped, updatedState)
-              // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
-              orderQueue.enqueue(freshOrders.view.map(_.id))
-              updatedState.eventId
-            }
-          }
-    }
+      case Right(events) =>
+        persistTransaction(events) { (stamped, updatedState) =>
+          handleEvents(stamped, updatedState)
+          // Emit subsequent events later for earlier addOrders response (and smaller event chunk)
+          orderQueue.enqueue(freshOrders.view.map(_.id))
+          Right(updatedState.eventId)
+        }
+      }
 
   private def persistTransactionAndSubsequentEvents[A](keyedEvents: Seq[KeyedEvent[Event]])
     (callback: (Seq[Stamped[KeyedEvent[Event]]], ControllerState) => A)

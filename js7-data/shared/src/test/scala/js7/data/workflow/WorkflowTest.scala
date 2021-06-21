@@ -1,7 +1,7 @@
 package js7.data.workflow
 
 import io.circe.syntax._
-import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -9,10 +9,9 @@ import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant}
+import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant, StringConstant}
 import js7.data.value.expression.PositionSearch
 import js7.data.value.{NumberValue, StringValue}
-import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
@@ -29,33 +28,17 @@ import org.scalatest.freespec.AnyFreeSpec
 final class WorkflowTest extends AnyFreeSpec
 {
   "JSON" - {
-    "Workflow without WorkflowID, when placed in configuration directory" in {
-      testJson[Workflow](
-        Workflow(WorkflowPath.NoId,
-          Vector(Labeled(Some("TEST-LABEL"), Execute(WorkflowJob.Name("JOB")))),
-          Map(WorkflowJob.Name("JOB") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE")))),
-        json"""{
-          "instructions": [
-            {
-              "label": "TEST-LABEL",
-              "TYPE": "Execute.Named",
-              "jobName": "JOB"
-            }
-          ],
-          "jobs": {
-            "JOB": {
-              "agentPath": "AGENT",
-              "executable": {
-                "TYPE": "PathExecutable",
-                "path": "EXECUTABLE"
-              },
-              "parallelism": 1
-            }
-          }
-        }""")
+    "Minimum readable Workflow" in {
+      val json = json"""{
+        "path": "WORKFLOW",
+        "versionId": "VERSION",
+        "instructions": []
+      }"""
+      assert(json.as[Workflow].toChecked.orThrow ==
+        Workflow(WorkflowPath("WORKFLOW") ~ "VERSION", Nil))
     }
 
-    "Workflow with WorkflowId" in {
+    "Workflow" in {
       testJson[Workflow](TestWorkflow,
         json"""{
           "path": "TEST",
@@ -70,6 +53,9 @@ final class WorkflowTest extends AnyFreeSpec
                 "type": "Number"
               }
             }
+          },
+          "orderVariables": {
+            "VARIABLE": "'VALUE'"
           },
           "instructions": [
             {
@@ -209,7 +195,7 @@ final class WorkflowTest extends AnyFreeSpec
         }""")
     }
 
-    "Workflow with WorkflowId and positions (for JOC GUI)" in {
+    "Workflow with positions (for JOC GUI)" in {
       assert(normalizeJson(removeJNull(TestWorkflow.withPositions(Nil).asJson)) ==
         normalizeJson(json"""{
           "path": "TEST",
@@ -224,6 +210,9 @@ final class WorkflowTest extends AnyFreeSpec
                 "type": "Number"
               }
             }
+          },
+          "orderVariables": {
+            "VARIABLE": "'VALUE'"
           },
           "instructions": [
             {
@@ -740,6 +729,7 @@ final class WorkflowTest extends AnyFreeSpec
     val c = JobResourcePath("C")
     val d = JobResourcePath("D")
     val e = JobResourcePath("E")
+    val f = JobResourcePath("F")
     val job = WorkflowJob(
       AgentPath("AGENT"),
       ShellScriptExecutable("", env = Map("X" -> JobResourceVariable(e, "SETTING"))))
@@ -751,10 +741,12 @@ final class WorkflowTest extends AnyFreeSpec
           Execute(job.copy(jobResourcePaths = Seq(b, c))),
           Fork.of(
             "BRANCH" -> Workflow.of(
-              Execute(job.copy(jobResourcePaths = Seq(c, d)))))))))
+              Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
+      orderVariables = Map(
+        "V" -> JobResourceVariable(f, "V")))
     assert(workflow.referencedLockPaths.isEmpty)
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
-    assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e))
+    assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e, f))
   }
 
   "namedJobs" in {
@@ -1188,6 +1180,8 @@ private object WorkflowTest
       Some(WorkflowParameters(Seq(
         WorkflowParameter("stringParameter", StringValue, Some(StringValue("DEFAULT"))),
         WorkflowParameter("numberParameter", NumberValue))))),
+    Map(
+      "VARIABLE" -> StringConstant("VALUE")),
     jobResourcePaths = Seq(
       JobResourcePath("JOB-RESOURCE")))
 }

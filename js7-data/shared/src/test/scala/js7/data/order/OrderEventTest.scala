@@ -107,8 +107,8 @@ final class OrderEventTest extends AnyFreeSpec
           "TYPE": "Suspending",
           "mode": {}
         },
-        "isSuspended":  true,
-        "deleteWhenTerminated":  true
+        "isSuspended": true,
+        "deleteWhenTerminated": true
       }""")
   }
 
@@ -425,7 +425,7 @@ final class OrderEventTest extends AnyFreeSpec
           {
             "position": [ 0 ],
             "outcome":{
-              "TYPE":  "Succeeded"
+              "TYPE": "Succeeded"
             }
           }
         ]
@@ -441,7 +441,7 @@ final class OrderEventTest extends AnyFreeSpec
           {
             "position": [ 0 ],
             "outcome": {
-              "TYPE":  "Succeeded"
+              "TYPE": "Succeeded"
             }
           }
         ]

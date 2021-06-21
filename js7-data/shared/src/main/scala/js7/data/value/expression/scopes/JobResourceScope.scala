@@ -1,19 +1,22 @@
 package js7.data.value.expression.scopes
 
+import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.value.MissingValue
-import js7.data.value.expression.Expression.JobResourceVariable
+import js7.data.value.expression.Expression.{Argument, FunctionCall, JobResourceVariable}
 import js7.data.value.expression.{Expression, Scope}
-import scala.collection.MapView
+import js7.data.value.{MissingValue, Value}
 
 final class JobResourceScope(
-  pathToJobResource: MapView[JobResourcePath, JobResource],
+  pathToJobResource: PartialFunction[JobResourcePath, JobResource],
   useScope: Scope)
 extends Scope
 {
-  override def evalJobResourceVariable(v: Expression.JobResourceVariable)(implicit fullScope: Scope) = {
+  override def evalJobResourceVariable(v: Expression.JobResourceVariable)
+    (implicit fullScope: Scope)
+  = {
     // fullScope is the complete scope, maybe containing order variables,
     // which should not be accessible for a JobResource, to avoid name clash and
     // unexpected depedency to the order.
@@ -21,27 +24,54 @@ extends Scope
     evalJobResourceVariable2(v)(useScope)  // escape implicit fullScope
   }
 
-  private def evalJobResourceVariable2(v: Expression.JobResourceVariable)(implicit scope: Scope) =
-    v match { case JobResourceVariable(path: JobResourcePath, name) =>
-      Some(
-        pathToJobResource
-          .rightOr(path, UnknownKeyProblem("JobResource", path.string))
-          .flatMap(_
-            .variables.get(name) match {
-              case None =>
-                Right(MissingValue(UnknownKeyProblem("JobResource variable", s"$path:$name")))
-              case Some(expr) =>
-                expr.eval
-            }))
+  private def evalJobResourceVariable2(v: Expression.JobResourceVariable)(implicit s: Scope) =
+    v match {
+      case JobResourceVariable(path: JobResourcePath, variableName) =>
+        Some(jobResourceVariable(path, variableName))
 
       case _ =>
-        super.evalJobResourceVariable(v)}
+        super.evalJobResourceVariable(v)
+    }
 
-  override def toString = s"JobResourceScope(${pathToJobResource.keys.mkString(", ")})"
+  override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit s: Scope) =
+    functionCall match {
+      case FunctionCall("jobResourceVariable", arguments) =>
+        Some(arguments match {
+          case Seq(
+            Argument(jobResourcePathExpr, None),
+            Argument(variableNameExpr, None)) =>
+            for {
+                jobResourcePathString <- jobResourcePathExpr.evalAsString
+                jobResourcePath <- JobResourcePath.checked(jobResourcePathString)
+                variableName <- variableNameExpr.evalAsString
+                value <- jobResourceVariable(jobResourcePath, variableName)
+              } yield value
+
+          case _ =>
+            Left(InvalidFunctionArgumentsProblem(functionCall))
+        })
+
+      case _ => None
+    }
+
+  private def jobResourceVariable(jrPath: JobResourcePath, variableName: String)(implicit s: Scope)
+  : Checked[Value] =
+    pathToJobResource
+      .rightOr(jrPath, UnknownKeyProblem("JobResource", jrPath.string))
+      .flatMap(_
+        .variables.get(variableName) match {
+          case None =>
+            Right(MissingValue(
+              UnknownKeyProblem("JobResource variable", s"$jrPath:$variableName")))
+          case Some(expr) =>
+            expr.eval
+        })
+
+  override def toString = s"JobResourceScope"
 }
 
 object JobResourceScope
 {
-  def apply(pathToJobResource: MapView[JobResourcePath, JobResource], useScope: Scope): Scope =
+  def apply(pathToJobResource: PartialFunction[JobResourcePath, JobResource], useScope: Scope): Scope =
     new JobResourceScope(pathToJobResource, useScope)
 }

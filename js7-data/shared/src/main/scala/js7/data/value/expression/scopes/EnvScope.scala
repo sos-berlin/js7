@@ -3,13 +3,13 @@ package js7.data.value.expression.scopes
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.Problems.InvalidFunctionParametersProblem
+import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{StringValue, Value}
 
 /** Accesses environment variables. */
-object EnvScope extends Scope
+sealed class EnvScope(env: String => Option[String]) extends Scope
 {
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
     functionCall match {
@@ -18,7 +18,7 @@ object EnvScope extends Scope
           case Seq(Argument(nameExpr, None | Some("name"))) =>
             for {
               name <- nameExpr.evalAsString
-              string <- sys.env.get(name) !! UnknownKeyProblem("environment variable", name)
+              string <- env(name) !! UnknownKeyProblem("environment variable", name)
             } yield StringValue(string)
 
           case Seq(
@@ -26,12 +26,11 @@ object EnvScope extends Scope
           Argument(defaultExpr, None | Some("default"))) =>
             for {
               name <- nameExpr.evalAsString
-              result <- sys.env.get(name)
-                .fold(defaultExpr.eval)(v => Checked(StringValue(v): Value))
+              result <- env(name).fold(defaultExpr.eval)(v => Checked(StringValue(v): Value))
             } yield result
 
           case _ =>
-            Left(InvalidFunctionParametersProblem(functionCall))
+            Left(InvalidFunctionArgumentsProblem(functionCall))
         })
 
       case _ =>
@@ -40,3 +39,5 @@ object EnvScope extends Scope
 
   override def toString = "EnvScope"
 }
+
+object EnvScope extends EnvScope(sys.env.lift)

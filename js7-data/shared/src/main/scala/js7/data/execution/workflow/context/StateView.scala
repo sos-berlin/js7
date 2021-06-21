@@ -49,13 +49,7 @@ trait StateView
 
   protected def idToWorkflow(id: WorkflowId): Checked[Workflow]
 
-  final def toScope(order: Order[Order.State]): Checked[Scope] = {
-    val o = order
+  final def toScope(order: Order[Order.State]): Checked[Scope] =
     for (w <- idToWorkflow(order.workflowId)) yield
-      new OrderScopes {
-        protected val order = o
-        protected val workflow = w
-        protected val controllerId = StateView.this.controllerId
-      }.orderScope
-  }
+      OrderScopes(order, w, controllerId).orderScope
 }

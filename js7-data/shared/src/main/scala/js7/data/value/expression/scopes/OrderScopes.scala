@@ -2,14 +2,16 @@ package js7.data.value.expression.scopes
 
 import cats.syntax.semigroup._
 import js7.base.problem.Checked
+import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.controller.ControllerId
-import js7.data.job.{JobKey, JobResource}
-import js7.data.order.Order
+import js7.data.job.{JobKey, JobResource, JobResourcePath}
+import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.value.expression.scopes.OrderScopes._
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NumberValue, StringValue, Value}
-import js7.data.workflow.{Label, Workflow}
+import js7.data.workflow.{Label, Workflow, WorkflowPath}
 import scala.collection.MapView
 
 /** Provide some Scopes for an Order in any state. */
@@ -22,20 +24,19 @@ trait OrderScopes
   final lazy val instructionLabel: Option[Label] =
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
 
-  private def js7VariablesScope = NamedValueScope {
-    case "js7OrderId" => StringValue(order.id.string)
-    case "js7WorkflowPosition" => StringValue(order.workflowPosition.toString)
-    case "js7WorkflowPath" => StringValue(order.workflowId.path.string)
-    case "js7Label" => StringValue(instructionLabel.fold("")(_.string))
-    case "js7ControllerId" => StringValue(controllerId.string)
-  }
+  private def js7VariablesScope =
+    minimalJs7VariablesScope(order.id, order.workflowId.path, controllerId) |+|
+      NamedValueScope {
+        case "js7Label" => StringValue(instructionLabel.fold("")(_.string))
+        case "js7WorkflowPosition" => StringValue(order.workflowPosition.toString)
+      }
 
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */
   protected final lazy val variablelessOrderScope: Scope =
     combine(
       js7VariablesScope,
-      TimestampScope("scheduledOrEmpty", order.scheduledFor),
+      scheduledScope(order.scheduledFor),
       SymbolScope {
         case "catchCount" => NumberValue(order.workflowPosition.position.catchCount)
       },
@@ -45,6 +46,52 @@ trait OrderScopes
   /** For `Order[Order.State]`. */
   final lazy val orderScope =
     OrderVariablesScope(order, workflow) |+| variablelessOrderScope
+
+  protected[scopes] lazy val nowScope = new NowScope()
+}
+
+object OrderScopes
+{
+  def apply(order: Order[Order.State], workflow: Workflow, controllerId: ControllerId)
+  : OrderScopes = {
+    val (o, w, id) = (order, workflow, controllerId)
+    new OrderScopes {
+      protected val order = o
+      protected val workflow = w
+      protected val controllerId = id
+    }
+  }
+
+  /** For calculating Workflow.orderVariables. */
+  def workflowOrderVariablesScope(
+    freshOrder: FreshOrder,
+    pathToJobResource: PartialFunction[JobResourcePath, JobResource],
+    controllerId: ControllerId,
+    nowScope: Scope)
+  : Scope = {
+    val nestedScope = combine(
+      scheduledScope(freshOrder.scheduledFor),
+      minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
+      EnvScope,
+      nowScope)
+    combine(
+      nestedScope,
+      NamedValueScope(freshOrder.arguments),
+      JobResourceScope(pathToJobResource, useScope = nestedScope))
+  }
+
+  private def minimalJs7VariablesScope(
+    orderId: OrderId,
+    workflowPath: WorkflowPath,
+    controllerId: ControllerId)
+  = NamedValueScope {
+    case "js7OrderId" => StringValue(orderId.string)
+    case "js7WorkflowPath" => StringValue(workflowPath.string)
+    case "js7ControllerId" => StringValue(controllerId.string)
+  }
+
+  private def scheduledScope(scheduledFor: Option[Timestamp]) =
+    TimestampScope("scheduledOrEmpty", scheduledFor)
 }
 
 /** Provide more Scopes for an `Order[Order.Processed]`. */
@@ -69,14 +116,12 @@ trait ProcessingOrderScopes extends OrderScopes
     case "js7JobExecutionCount" => NumberValue(jobExecutionCount)
   }
 
-  private[scopes] lazy val nowScope = new NowScope()
-
   /** To avoid name clash, are JobResources not allowed to access order variables. */
   private lazy val scopeForJobResources =
     js7JobVariablesScope |+| variablelessOrderScope |+| nowScope
 
   private lazy val jobResourceScope = JobResourceScope(
-    jobResources.toKeyedMap(_.path).view,
+    jobResources.toKeyedMap(_.path),
     useScope = scopeForJobResources)
 
   final lazy val scopeForJobResourceEnv =
@@ -85,7 +130,8 @@ trait ProcessingOrderScopes extends OrderScopes
   final lazy val processingOrderScope =
     js7JobVariablesScope |+| orderScope |+| nowScope |+| jobResourceScope
 
-  private lazy val scopeForJobDefaultArguments =
+  /** For defaultArguments (Execute and WorkflowJob). */
+  private lazy val scopeForOrderDefaultArguments =
     js7JobVariablesScope |+| variablelessOrderScope |+| jobResourceScope
 
   final def evalLazilyJobResourceVariables(jobResource: JobResource): MapView[String, Checked[Value]] =
@@ -93,5 +139,5 @@ trait ProcessingOrderScopes extends OrderScopes
 
   protected[scopes] final def evalLazilyJobDefaultArguments(expressionMap: Map[String, Expression])
   : MapView[String, Checked[Value]] =
-    scopeForJobDefaultArguments.evalLazilyExpressionMap(expressionMap)
+    scopeForOrderDefaultArguments.evalLazilyExpressionMap(expressionMap)
 }

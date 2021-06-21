@@ -5,9 +5,8 @@ import js7.data.value.NumberValue
 import js7.data.value.expression.ValueSearch.{LastOccurred, Name}
 import js7.data.value.expression.{Expression, Scope, ValueSearch}
 
-final class NowScope extends Scope
+final class NowScope(val now: Timestamp = Timestamp.now) extends Scope
 {
-  private[scopes] val now = Timestamp.now
   private lazy val timestampScope = TimestampScope("now", Some(now))
 
   override def findValue(search: ValueSearch)(implicit scope: Scope) =
@@ -32,6 +31,6 @@ final class NowScope extends Scope
 
 object NowScope
 {
-  def apply(): Scope =
-    new NowScope
+  def apply(now: Timestamp = Timestamp.now): Scope =
+    new NowScope(now)
 }

@@ -62,6 +62,15 @@ object Scope extends Monoid[Scope]
       case _ => new CombinedScope(a, b)
     }
 
+  /** Optimized for empty nameToExpr. */
+  def evalExpressionMap(nameToExpr: Map[String, Expression], scope: => Scope)
+  : Checked[Map[String, Value]] =
+    if (nameToExpr.isEmpty)
+      Right(Map.empty)
+    else
+      scope.evalExpressionMap(nameToExpr)
+
+
   private object Empty extends Scope {
     override def toString = "EmptyScope"
   }

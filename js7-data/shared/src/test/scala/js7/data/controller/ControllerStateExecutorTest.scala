@@ -4,7 +4,7 @@ import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
-import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
+import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem, UnknownItemPathProblem}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.ControllerStateExecutorTest._
@@ -19,12 +19,17 @@ import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderStarted}
-import js7.data.order.OrderId
+import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.{NumberValue, StringValue}
+import js7.data.workflow.WorkflowParameters.{MissingOrderArgumentProblem, WrongOrderArgumentTypeProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.View
 
 final class ControllerStateExecutorTest extends AnyFreeSpec
 {
@@ -39,7 +44,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
         bAgentRef.withRevision(None),
         lock.withRevision(None)),
       Seq(
-        Verified(itemSigner.sign(jobResource.withRevision(None)), Nil)),
+        Verified(itemSigner.sign(aJobResource.withRevision(None)), Nil),
+        Verified(itemSigner.sign(bJobResource.withRevision(None)), Nil)),
       delete = Nil),
     Some(VerifiedUpdateItems.Versioned(
       v1,
@@ -64,7 +70,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           MissingReferencedItemProblem(aWorkflow.id, aAgentRef.path),
           MissingReferencedItemProblem(bWorkflow.id, bAgentRef.path),
           MissingReferencedItemProblem(bWorkflow.id, lock.path),
-          MissingReferencedItemProblem(bWorkflow.id, jobResource.path)))))
+          MissingReferencedItemProblem(bWorkflow.id, aJobResource.path),
+          MissingReferencedItemProblem(bWorkflow.id, bJobResource.path)))))
     }
 
     "Delete AgentRef but it is in use by a workflow" in {
@@ -174,6 +181,67 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     }
   }
 
+  "addOrders" - {
+    val aOrderId = OrderId("A")
+    val bOrderId = OrderId("B")
+    val executor = new Executor(ControllerState.empty)
+
+    "addOrder for unknown workflow is rejected" in {
+      assert(executor.controllerState.addOrders(Seq(FreshOrder(aOrderId, aWorkflow.path))) ==
+        Left(UnknownItemPathProblem(aWorkflow.path)))
+    }
+
+    "addOrder with required argument is rejected" in {
+      executor.executeVerifiedUpdateItems(verifiedUpdateItems).orThrow
+      assert(
+        executor.execute(_.addOrders(Seq(
+          FreshOrder(aOrderId, aWorkflow.path),
+          FreshOrder(bOrderId, bWorkflow.path)
+        ))) ==
+          Left(MissingOrderArgumentProblem(WorkflowParameter("required", NumberValue))))
+    }
+
+    "addOrder with wrong argument type is rejected" in {
+      assert(
+        executor.execute(_.addOrders(Seq(
+          FreshOrder(bOrderId, bWorkflow.path, Map("required" -> StringValue("STRING")))
+        ))) ==
+          Left(WrongOrderArgumentTypeProblem(WorkflowParameter("required", NumberValue), StringValue)))
+    }
+
+    "addOrder resolved default argument and provides variables" in {
+      executor.execute(_.addOrders(Seq(
+        FreshOrder(aOrderId, aWorkflow.path),
+        FreshOrder(bOrderId, bWorkflow.path, Map("required" -> NumberValue(7))))))
+
+      assert(executor.controllerState.idToOrder.values.toSet == Set(
+        Order(aOrderId, aWorkflow.id /: Position(0), Order.Fresh,
+          attachedState = Some(Order.Attaching(aAgentRef.path))),
+        Order(bOrderId, bWorkflow.id /: (Position(0) / "lock" % 0), Order.Ready,
+          arguments = Map(
+            "required" -> NumberValue(7),
+            "variable" -> StringValue("VARIABLE-VALUE")),
+          attachedState = Some(Order.Attaching(bAgentRef.path)))))
+    }
+
+    "addOrder argument name sets and variable name sets must be disjoint" in {
+      val versionId = VersionId("DUPLICATE NAMES")
+      val workflow = bWorkflow.copy(
+        id = WorkflowPath("DUPLICATE-NAMES") ~ versionId,
+        orderRequirements = OrderRequirements.empty)
+      executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
+        VerifiedUpdateItems.Simple(),
+        Some(VerifiedUpdateItems.Versioned(versionId, Seq(
+          Verified(itemSigner.sign(workflow), Nil))))))
+
+      val checked = executor.controllerState.addOrders(Seq(
+        FreshOrder(OrderId("DUPLICATE-NAMES"), workflow.path, Map(
+          "variable" -> StringValue("DUPLICATE")))))
+      assert(checked == Left(Problem(
+        "Names are duplicate in order arguments and order variables: variable")))
+    }
+  }
+
   "applyEventsAndReturnSubsequentEvents" - {
     var _controllerState = ControllerState.empty
     var updated = ControllerState.empty
@@ -193,7 +261,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       assert(
         VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, ControllerState.empty) ==
           Right(Seq[AnyKeyedEvent](
-            NoKey <-: SignedItemAdded(itemSigner.sign(jobResource)),
+            NoKey <-: SignedItemAdded(itemSigner.sign(aJobResource)),
+            NoKey <-: SignedItemAdded(itemSigner.sign(bJobResource)),
             NoKey <-: UnsignedSimpleItemAdded(aAgentRef),
             NoKey <-: UnsignedSimpleItemAdded(bAgentRef),
             NoKey <-: UnsignedSimpleItemAdded(lock),
@@ -201,7 +270,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
             NoKey <-: VersionedItemAdded(itemSigner.sign(aWorkflow)),
             NoKey <-: VersionedItemAdded(itemSigner.sign(bWorkflow)))))
 
-      _controllerState = updated // FIXME
+      _controllerState = updated
     }
 
     //"After VersionedItemRemoved, the unused workflows are deleted" in {
@@ -244,7 +313,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
       assert(
         executor.applyEventsAndReturnSubsequentEvents(Seq(
-          NoKey <-: ItemAttached(jobResource.path, Some(ItemRevision(0)), bAgentRef.path),
+          NoKey <-: ItemAttached(aJobResource.path, Some(ItemRevision(0)), bAgentRef.path),
           NoKey <-: ItemAttached(aWorkflow.id, None, aAgentRef.path),
           NoKey <-: ItemAttached(bWorkflow.id, None, bAgentRef.path),
           aOrderId <-: OrderAttached(aAgentRef.path),
@@ -388,11 +457,24 @@ object ControllerStateExecutorTest
   private val aAgentRef = AgentRef(AgentPath("A-AGENT"), Uri("http://0.0.0.0:0"), Some(ItemRevision(0)))
   private val bAgentRef = AgentRef(AgentPath("B-AGENT"), Uri("http://0.0.0.0:0"), Some(ItemRevision(0)))
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(0)))
-  private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(0)))
+
+  private val aJobResource = JobResource(
+    JobResourcePath("A-JOB-RESOURCE"),
+    itemRevision = Some(ItemRevision(0)))
+
+  // Referenced only by Workflow.orderVariables
+  private val bJobResource = JobResource(
+    JobResourcePath("B-JOB-RESOURCE"),
+    itemRevision = Some(ItemRevision(0)),
+    variables = Map(
+      "VARIABLE" -> StringConstant("VARIABLE-VALUE")))
+
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")
+
   private val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ v1, Seq(execute(aAgentRef.path)))
+
   private val bWorkflow = Workflow(
     WorkflowPath("B-WORKFLOW") ~ v1,
     Seq(
@@ -400,7 +482,13 @@ object ControllerStateExecutorTest
         lock.path,
         None,
         Workflow.of(execute(bAgentRef.path)))),
-    jobResourcePaths = Seq(jobResource.path))
+    orderRequirements = OrderRequirements(Some(WorkflowParameters(View(
+      WorkflowParameter("required", NumberValue, None),
+      WorkflowParameter("hasDefault", StringValue, Some(StringValue("DEFAULT"))))))),
+    orderVariables = Map(
+      "variable" -> expr("JobResource:B-JOB-RESOURCE:VARIABLE")),
+    jobResourcePaths = Seq(aJobResource.path))
+
   private val aOrderId = OrderId("A-ORDER")
   private val bOrderId = OrderId("B-ORDER")
 
@@ -418,11 +506,19 @@ object ControllerStateExecutorTest
           applyEventsAndReturnSubsequentEvents(keyedEvents)
             .map(keyedEvents ++ _))
 
+    def execute(body: ControllerState => Checked[Seq[KeyedEvent[Event]]])
+    : Checked[Seq[KeyedEvent[Event]]] =
+      for {
+        events <- body(controllerState)
+        events <- applyEventsAndReturnSubsequentEvents(events)
+      } yield events
+
     def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
     : Checked[Seq[KeyedEvent[Event]]] =
       for (eventsAndState <- controllerState.applyEventsAndReturnSubsequentEvents(keyedEvents)) yield {
         controllerState = eventsAndState.controllerState
         eventsAndState.keyedEvents.toVector
       }
+
   }
 }
