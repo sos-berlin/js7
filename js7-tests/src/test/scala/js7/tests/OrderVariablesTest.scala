@@ -9,6 +9,7 @@ import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, NamedValue, NumericConstant, StringConstant}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -29,7 +30,7 @@ final class OrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaT
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(workflow, deJobResource, svJobResource)
+  protected val items = Seq(workflow, objectWorkflow, deJobResource, svJobResource)
 
   "Variables are copied to the order" in {
     def runOrder(jobResource: String, variableName: String, expected: String) =
@@ -39,8 +40,8 @@ final class OrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaT
           "variableName" -> StringValue(variableName),
           "expected" -> StringValue(expected))
         )).map(_.value)
-    val deEvents = runOrder("de", "maple", "Ahorn")
-    val svEvents = runOrder("sv", "maple", "lönn")
+    val deEvents = runOrder("de", "Acer", "Ahorn")
+    val svEvents = runOrder("sv", "Acer", "lönn")
     assert(deEvents.contains(OrderFinished) && svEvents.contains(OrderFinished))
   }
 
@@ -48,10 +49,16 @@ final class OrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaT
     val checked = controllerApi.addOrders(Observable(
       FreshOrder(OrderId("DUPLICATE-NAME"), workflow.path, arguments = Map(
         "jobResource" -> StringValue("de"),
-        "variableName" -> StringValue("maple"),
+        "variableName" -> StringValue("Acer"),
         "PLANT" -> StringValue("THE DUPLICATE"))
       ))).await(99.s)
     assert(checked == Left(Problem("Names are duplicate in order arguments and order variables: PLANT")))
+  }
+
+  "JobResource.variables as an object" in {
+    val orderId = OrderId("RESOURCE-VARIABLES-AS-OBJECT")
+    val events = controller.runOrder(FreshOrder(orderId, objectWorkflow.path), delete = true)
+    assert(events.map(_.value).contains(OrderFinished))
   }
 }
 
@@ -63,12 +70,12 @@ object OrderVariablesTest
   private val deJobResource = JobResource(
     JobResourcePath("de"),
     variables = Map(
-      "maple" -> StringConstant("Ahorn")))
+      "Acer" -> StringConstant("Ahorn")))
 
   private val svJobResource = JobResource(
     JobResourcePath("sv"),
     variables = Map(
-      "maple" -> StringConstant("lönn")))
+      "Acer" -> StringConstant("lönn")))
 
   private val workflow =
     Workflow(
@@ -80,7 +87,7 @@ object OrderVariablesTest
             classOf[TestInternalJob].getName,
             arguments = Map(
               "myONE" -> NamedValue("ONE"),
-              "myPlant" -> NamedValue("PLANT"),
+              "myPLANT" -> NamedValue("PLANT"),
               "myExpected" -> NamedValue("expected")))))),
       orderVariables = Map(
         "ONE" -> NumericConstant(1),
@@ -88,11 +95,27 @@ object OrderVariablesTest
           Argument(NamedValue("jobResource")),
           Argument(NamedValue("variableName"))))))
 
+  private val objectWorkflow =
+    Workflow(
+      WorkflowPath("OBJECT-WORKFLOW") ~ "INITIAL",
+      Vector(Execute(
+        WorkflowJob(
+          agentPath,
+          InternalExecutable(
+            classOf[TestInternalJob].getName,
+            arguments = Map(
+              "myONE" -> expr("1"),
+              "myPLANT" -> expr("$de.Acer"),
+              "myExpected" -> expr("'Ahorn'")))))),
+      orderVariables = Map(
+        "de" -> expr("JobResource:de"),
+        "sv" -> expr("JobResource:sv")))
+
   final class TestInternalJob extends InternalJob {
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
         assert(step.arguments("myONE") == NumberValue(1))
-        assert(step.arguments("myPlant") == step.arguments("myExpected"))
+        assert(step.arguments("myPLANT") == step.arguments("myExpected"))
         Outcome.succeeded
       })
   }

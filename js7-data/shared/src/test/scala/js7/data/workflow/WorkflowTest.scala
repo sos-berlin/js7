@@ -732,7 +732,7 @@ final class WorkflowTest extends AnyFreeSpec
     val f = JobResourcePath("F")
     val job = WorkflowJob(
       AgentPath("AGENT"),
-      ShellScriptExecutable("", env = Map("X" -> JobResourceVariable(e, "SETTING"))))
+      ShellScriptExecutable("", env = Map("X" -> JobResourceVariable(e, Some("SETTING")))))
     val workflow = Workflow(
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
@@ -743,7 +743,7 @@ final class WorkflowTest extends AnyFreeSpec
             "BRANCH" -> Workflow.of(
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
       orderVariables = Map(
-        "V" -> JobResourceVariable(f, "V")))
+        "V" -> JobResourceVariable(f, Some("V"))))
     assert(workflow.referencedLockPaths.isEmpty)
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
     assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e, f))

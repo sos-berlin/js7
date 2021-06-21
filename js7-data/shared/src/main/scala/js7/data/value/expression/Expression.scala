@@ -496,7 +496,7 @@ object Expression
     override def toString = maybeName.fold("")(_ + "=") + expression
   }
 
-  final case class JobResourceVariable(jobResourcePath: JobResourcePath, name: String)
+  final case class JobResourceVariable(jobResourcePath: JobResourcePath, name: Option[String])
   extends Expression {
     protected def precedence = Precedence.Factor
 
@@ -512,8 +512,10 @@ object Expression
       sb.append("JobResource")
       sb.append(':')
       sb.append(jobResourcePath.string)
-      sb.append(':')
-      appendIdentifier(sb, name)
+      for (nam <- name) {
+        sb.append(':')
+        appendIdentifier(sb, nam)
+      }
     }
   }
 

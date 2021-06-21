@@ -1,5 +1,6 @@
 package js7.data.value.expression.scopes
 
+import cats.syntax.traverse._
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.ScalaUtils.syntax._
@@ -7,7 +8,7 @@ import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, JobResourceVariable}
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{MissingValue, Value}
+import js7.data.value.{MissingValue, ObjectValue, Value}
 
 final class JobResourceScope(
   pathToJobResource: PartialFunction[JobResourcePath, JobResource],
@@ -40,12 +41,10 @@ extends Scope
           case Seq(
             Argument(jobResourcePathExpr, None),
             Argument(variableNameExpr, None)) =>
-            for {
-                jobResourcePathString <- jobResourcePathExpr.evalAsString
-                jobResourcePath <- JobResourcePath.checked(jobResourcePathString)
-                variableName <- variableNameExpr.evalAsString
-                value <- jobResourceVariable(jobResourcePath, variableName)
-              } yield value
+            evalFunctionCall2(jobResourcePathExpr, Some(variableNameExpr))
+
+          case Seq(Argument(jobResourcePathExpr, None)) =>
+            evalFunctionCall2(jobResourcePathExpr, None)
 
           case _ =>
             Left(InvalidFunctionArgumentsProblem(functionCall))
@@ -54,17 +53,36 @@ extends Scope
       case _ => None
     }
 
-  private def jobResourceVariable(jrPath: JobResourcePath, variableName: String)(implicit s: Scope)
+  private def evalFunctionCall2(
+    jobResourcePathExpr: Expression,
+    variableNameExpr: Option[Expression])
+    (implicit s: Scope)
+  : Checked[Value] =
+    for {
+      jobResourcePathString <- jobResourcePathExpr.evalAsString
+      jobResourcePath <- JobResourcePath.checked(jobResourcePathString)
+      variableName <- variableNameExpr.traverse(_.evalAsString)
+      value <- jobResourceVariable(jobResourcePath, variableName)
+    } yield value
+
+  private def jobResourceVariable(jrPath: JobResourcePath, variableName: Option[String])
+    (implicit s: Scope)
   : Checked[Value] =
     pathToJobResource
       .rightOr(jrPath, UnknownKeyProblem("JobResource", jrPath.string))
-      .flatMap(_
-        .variables.get(variableName) match {
+      .flatMap(jobResource =>
+        variableName match {
           case None =>
-            Right(MissingValue(
-              UnknownKeyProblem("JobResource variable", s"$jrPath:$variableName")))
-          case Some(expr) =>
-            expr.eval
+            evalExpressionMap(jobResource.variables).map(ObjectValue(_))
+
+          case Some(variableName) =>
+            jobResource.variables.get(variableName) match {
+              case None =>
+                Right(MissingValue(
+                  UnknownKeyProblem("JobResource variable", s"$jrPath:$variableName")))
+              case Some(expr) =>
+                expr.eval
+            }
         })
 
   override def toString = s"JobResourceScope"
