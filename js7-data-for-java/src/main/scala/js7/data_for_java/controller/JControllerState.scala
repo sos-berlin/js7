@@ -2,6 +2,7 @@ package  js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
+import java.util.{Map => JMap, Optional => JOptional}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
@@ -15,6 +16,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.cluster.JClusterState
@@ -131,7 +133,7 @@ extends JJournaledState[JControllerState, ControllerState]
     asScala.idToOrder.keySet.asJava
 
   @Nonnull
-  def idToOrder(@Nonnull orderId: OrderId): java.util.Optional[JOrder] =
+  def idToOrder(@Nonnull orderId: OrderId): JOptional[JOrder] =
     asScala.idToOrder.get(orderId)
       .map(JOrder.apply)
       .toJava
@@ -146,7 +148,7 @@ extends JJournaledState[JControllerState, ControllerState]
       }
 
   @Deprecated
-  lazy val eagerIdToOrder: java.util.Map[OrderId, JOrder] =
+  lazy val eagerIdToOrder: JMap[OrderId, JOrder] =
     asScala.idToOrder
       .view.values.map(JOrder.apply)
       .toKeyedMap(_.id)
@@ -160,16 +162,23 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JOrder.apply)
       .asJavaSeqStream
 
+  /** The named values as seen at the current workflow position. */
+  @Nonnull
+  def orderNamedValues(@Nonnull orderId: OrderId): VEither[Problem, JMap[String, Value]] =
+    asScala.orderNamedValues(orderId)
+      .map(_.asJava)
+      .toVavr
+
   @Nonnull
   def orderIsInCurrentVersionWorkflow: Order[Order.State] => Boolean =
     _.workflowId.versionId == asScala.repo.versionId
 
   @Nonnull
-  def orderStateToCount(): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
+  def orderStateToCount(): JMap[Class[_ <: Order.State], java.lang.Integer] =
     orderStateToCount(any)
 
   @Nonnull
-  def orderStateToCount(predicate: Order[Order.State] => Boolean): java.util.Map[Class[_ <: Order.State], java.lang.Integer] =
+  def orderStateToCount(predicate: Order[Order.State] => Boolean): JMap[Class[_ <: Order.State], java.lang.Integer] =
     asScala.idToOrder.values.view
       .filter(predicate)
       .groupBy(_.state.getClass)
