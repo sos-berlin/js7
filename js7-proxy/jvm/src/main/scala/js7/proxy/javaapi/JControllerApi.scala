@@ -6,7 +6,9 @@ import java.util.concurrent.CompletableFuture
 import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.log.Logger
 import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.web.Uri
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand
@@ -16,6 +18,7 @@ import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data_for_java.agent.JAgentRef
 import js7.data_for_java.command.{JCancellationMode, JSuspensionMode}
+import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.item.JUpdateItemOperation
 import js7.data_for_java.order.{JFreshOrder, JHistoricOutcome}
@@ -24,6 +27,7 @@ import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
+import js7.proxy.javaapi.JControllerApi._
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import monix.execution.FutureUtils.Java8Extensions
@@ -31,13 +35,23 @@ import monix.execution.Scheduler
 import reactor.core.publisher.Flux
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
+import scala.util.Failure
 
 @javaApi
 final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Scheduler)
 extends AutoCloseable
 {
   def close() =
-    asScala.close()
+    asScala.stop
+      .runToFuture.onComplete {
+        case Failure(t) => logger.error("JControllerApi.close: " + t.toStringWithCauses)
+        case _ =>
+      }
+
+  def stop: CompletableFuture[Void] =
+    asScala.stop
+      .as(Void)
+      .runToFuture.asJava
 
   /** Fetch event stream from Controller. */
   @Nonnull
@@ -299,4 +313,9 @@ extends AutoCloseable
       .runToFuture
       .asJava
   }
+}
+
+object JControllerApi
+{
+  private val logger = Logger[this.type]
 }

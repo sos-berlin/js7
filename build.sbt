@@ -273,7 +273,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .jvmSettings {
     import Dependencies._
     libraryDependencies ++=
-      scalaLogging ++
+      scalaLogging ++ log4j % "test" ++ lmaxDisruptor % "test" ++
       typesafeConfig
   }
   .jvmSettings(

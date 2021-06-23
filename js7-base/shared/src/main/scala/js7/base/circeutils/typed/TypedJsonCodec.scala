@@ -5,7 +5,6 @@ import js7.base.circeutils.typed.TypedJsonCodec._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
-import scala.collection.immutable.ArraySeq
 import scala.reflect.ClassTag
 
 /**

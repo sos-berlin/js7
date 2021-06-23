@@ -157,7 +157,7 @@ object StdoutTest
   private val chunkSize = 50
   private val delay = 200.ms
   private val shortDelay = 10.ms
-  private val longDelay = delay + 200.ms
+  private val longDelay = delay + 300.ms
 
   private def sleepCommand(delay: FiniteDuration) =
     if (isWindows) s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows

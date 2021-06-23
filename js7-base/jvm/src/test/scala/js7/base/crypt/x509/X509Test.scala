@@ -11,12 +11,13 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.process.Processes.runProcess
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch
+import js7.base.time.Stopwatch.itemsPerSecondString
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.Assertions._
@@ -141,7 +142,7 @@ final class X509Test extends AnyFreeSpec
             signedString
           }
           .toListL.await(999.s)
-        scribe.info(Stopwatch.itemsPerSecondString(t.elapsed, n, "signs"))
+        logger.info(itemsPerSecondString(t.elapsed, n, "signs"))
 
         val verifier = X509SignatureVerifier.checked(Seq(ca.certificateFile.byteArray), origin = ca.certificateFile.toString)
           .orThrow
@@ -151,7 +152,7 @@ final class X509Test extends AnyFreeSpec
             .mapParallelUnorderedBatch()(signedString =>
               assert(verifier.verify(signedString) == Right(Seq(SignerId("CN=SIGNER")))))
             .completedL.await(999.s)
-          scribe.info(Stopwatch.itemsPerSecondString(t.elapsed, n, "verifys"))
+          logger.info(itemsPerSecondString(t.elapsed, n, "verifys"))
         }
       }
     }
@@ -160,6 +161,8 @@ final class X509Test extends AnyFreeSpec
 
 object X509Test
 {
+  private val logger = Logger[this.type]
+
   def verify(certificateFile: Path, documentFile: Path, signature: X509Signature): Checked[Seq[SignerId]] = {
     lazy val verifier = X509SignatureVerifier.checked(Seq(certificateFile.byteArray), origin = certificateFile.toString).orThrow
     val verified = verifier.verifyString(documentFile.contentString, signature)
