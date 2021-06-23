@@ -75,21 +75,21 @@ trait ProcessJobExecutor extends JobExecutor
     else
       for (defaultArguments <- processOrder.checkedDefaultArguments) yield
         (defaultArguments.view ++
-          processOrder.order.namedValues ++
-          processOrder.workflow.defaultArguments)
-        .map { case (k, v) => k -> v.toStringValue }
-        .collect {
-          case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)
-        }
-        .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
-        .toMap
+          processOrder.order.v1CompatibleNamedValues(
+            processOrder.workflow.orderRequirements.defaultArguments)
+        ) .map { case (k, v) => k -> v.toStringValue }
+          .collect {
+            case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)
+          }
+          .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
+          .toMap
 
   protected final def evalEnv(nameToExpr: Map[String, Expression], scope: => Scope)
   : Checked[Map[String, String]] =
     evalExpressionMap(nameToExpr, scope)
       .flatMap(_
         .view
-        .filter(_._2 != NullValue)
+        .filter(_._2 != NullValue)  // TODO Experimental
         .toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
       .map(_.toMap)
 }

@@ -8,6 +8,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.controller.ControllerCommand
+import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -52,9 +53,11 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
 
         // SWITCH-OVER
 
+        val eventId = primaryController.eventWatch.lastAddedEventId
         primaryController.executeCommandAsSystemUser(ControllerCommand.ClusterSwitchOver).await(99.s).orThrow
         primaryController.terminated await 99.s
         primaryController.close()
+        backupController.eventWatch.await[ControllerReady](after = eventId)
         runOrder(OrderId("ORDER-ON-BACKUP-1"))
 
         // RESTART BACKUP

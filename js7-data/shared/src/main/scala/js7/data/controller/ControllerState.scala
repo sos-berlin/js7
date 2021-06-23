@@ -28,6 +28,7 @@ import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
+import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId}
 import monix.reactive.Observable
 import scala.collection.{MapView, View}
@@ -328,6 +329,13 @@ extends JournaledState[ControllerState]
 
     case _ => applyStandardEvent(keyedEvent)
   }
+
+  /** The named values as seen at the current workflow position. */
+  def orderNamedValues(orderId: OrderId): Checked[Map[String, Value]] =
+    for {
+      order <- idToOrder.checked(orderId)
+      workflow <- repo.idTo[Workflow](order.workflowId)
+    } yield order.namedValues(workflow.orderRequirements.defaultArguments)
 
   private[controller] def checkAddedOrChangedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
     itemKeys

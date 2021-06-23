@@ -43,7 +43,7 @@ final case class WorkflowParameters private(nameToParameter: Map[String, Workflo
     nameToParameter.get(name)
       .flatMap(_.default)
 
-  def defaultArguments: NamedValues =
+  lazy val defaultArguments: NamedValues =
     nameToParameter.values.view
       .collect { case WorkflowParameter(name, _, Some(default)) => name -> default }
       .toMap
@@ -54,7 +54,7 @@ object WorkflowParameters
   private val SupportedTypes: Set[ValueType] = Set(StringValue, BooleanValue, NumberValue)
 
   def apply(parameters: WorkflowParameter*): WorkflowParameters =
-    apply(parameters.toSeq)
+    apply(parameters)
 
   def apply(parameters: Iterable[WorkflowParameter]): WorkflowParameters =
     checked(parameters).orThrow

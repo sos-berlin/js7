@@ -327,9 +327,25 @@ final case class Order[+S <: Order.State](
   def lastOutcome: Outcome =
     historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
 
-  def namedValues: NamedValues = historicOutcomes
-    .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues }
-    .fold(arguments)((a, b) => a ++ b)
+  // Test in OrderScopesTest
+  /** The named values as seen at the current workflow position. */
+  def namedValues(defaultArguments: Map[String, Value]): NamedValues =
+    historicOutcomes.view
+      .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues }
+      .flatten
+      .concat(defaultArguments)
+      .concat(arguments)
+      .toMap
+
+  /** In JobScheduler 1, job results overwrote order arguments. */
+  def v1CompatibleNamedValues(defaultArguments: Map[String, Value]): NamedValues =
+    defaultArguments.view
+      .concat(arguments)
+      .concat(
+        historicOutcomes.view
+          .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues }
+          .flatten)
+      .toMap
 
   def isStarted = isState[IsStarted]
 

@@ -12,14 +12,14 @@ extends Scope
   override def findValue(search: ValueSearch)(implicit scope: Scope) =
     Right(search match {
       case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
-        order.historicOutcomes
-          .reverseIterator
-          .collectFirst {
-            case HistoricOutcome(_, outcome: Outcome.Completed)
-              if outcome.namedValues.contains(name) =>
-              outcome.namedValues(name)
-          }
-          .orElse(argument(name))
+        argument(name)
+          .orElse(order
+            .historicOutcomes.view
+            .reverse
+            .flatMap {
+              case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues.get(name)
+              case _ => None
+            }.headOption)
 
       case ValueSearch(ValueSearch.Argument, ValueSearch.Name(name)) =>
         argument(name)

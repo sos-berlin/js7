@@ -403,8 +403,6 @@ extends VersionedItem
         .toRight(Problem(s"Unknown position $position in workflow '$id'"))
     } yield instr
 
-  def defaultArguments = orderRequirements.defaultArguments
-
   def withoutSource: Workflow =
     copy(source = None).withoutSourcePos
 
