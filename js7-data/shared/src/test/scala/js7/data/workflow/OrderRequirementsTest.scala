@@ -11,7 +11,7 @@ final class OrderRequirementsTest extends AnyFreeSpec
   private val stringParameter = WorkflowParameter("string", StringValue)
   private val orderRequirements = OrderRequirements(Some(WorkflowParameters.checked(Seq(
     stringParameter,
-    WorkflowParameter("string-default", StringValue, Some(StringValue("DEFAULT")))
+    WorkflowParameter("string-default", StringValue("DEFAULT"))
   )).orThrow))
 
   "checkArguments" - {

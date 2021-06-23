@@ -12,7 +12,7 @@ final class WorkflowParametersTest extends AnyFreeSpec
 {
   private val stringParameter = WorkflowParameter("string", StringValue)
   private val booleanParameter = WorkflowParameter("boolean", BooleanValue)
-  private val numberParameter = WorkflowParameter("number", NumberValue, Some(NumberValue(7)))
+  private val numberParameter = WorkflowParameter("number", NumberValue(7))
 
   "JSON" in {
     testJson(
@@ -39,9 +39,9 @@ final class WorkflowParametersTest extends AnyFreeSpec
     stringParameter,
     WorkflowParameter("number", NumberValue),
     booleanParameter,
-    WorkflowParameter("string-default", StringValue, Some(StringValue("DEFAULT"))),
-    WorkflowParameter("boolean-default", BooleanValue, Some(BooleanValue(false))),
-    WorkflowParameter("number-default", NumberValue, Some(NumberValue(-1)))
+    WorkflowParameter("string-default", StringValue("DEFAULT")),
+    WorkflowParameter("boolean-default", BooleanValue(false)),
+    WorkflowParameter("number-default", NumberValue(-1))
   )).orThrow
 
   private val validArguments = NamedValues(

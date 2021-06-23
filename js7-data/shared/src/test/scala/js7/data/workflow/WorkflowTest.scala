@@ -1178,7 +1178,7 @@ private object WorkflowTest
       BJobName -> BJob),
     OrderRequirements(
       Some(WorkflowParameters(Seq(
-        WorkflowParameter("stringParameter", StringValue, Some(StringValue("DEFAULT"))),
+        WorkflowParameter("stringParameter", StringValue("DEFAULT")),
         WorkflowParameter("numberParameter", NumberValue))))),
     Map(
       "VARIABLE" -> StringConstant("VALUE")),

@@ -98,7 +98,7 @@ object AddOrderTest
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val emptyWorkflow = Workflow.of(WorkflowPath("EMPTY"))
-  private val stringParameter = WorkflowParameter("myString", StringValue, Some(StringValue("DEFAULT")))
+  private val stringParameter = WorkflowParameter("myString", StringValue("DEFAULT"))
   private val numberParameter = WorkflowParameter("myNumber", NumberValue)
 
   private val unknownArgWorkflow = Workflow(WorkflowPath("UNKNOWN-ARG"),

@@ -223,7 +223,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
               v1Compatible = true)))),
       orderRequirements = OrderRequirements(Some(WorkflowParameters(
         WorkflowParameter("A", NumberValue),
-        WorkflowParameter("B", StringValue, Some(StringValue("WORKFLOW PARAMETER DEFAULT VALUE"))))))),
+        WorkflowParameter("B", StringValue("WORKFLOW PARAMETER DEFAULT VALUE")))))),
       orderArguments = Map(
         "A" -> NumberValue(4711)),
       expectedOutcomes = Seq(

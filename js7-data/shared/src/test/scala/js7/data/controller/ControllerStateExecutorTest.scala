@@ -483,8 +483,8 @@ object ControllerStateExecutorTest
         None,
         Workflow.of(execute(bAgentRef.path)))),
     orderRequirements = OrderRequirements(Some(WorkflowParameters(View(
-      WorkflowParameter("required", NumberValue, None),
-      WorkflowParameter("hasDefault", StringValue, Some(StringValue("DEFAULT"))))))),
+      WorkflowParameter("required", NumberValue),
+      WorkflowParameter("hasDefault", StringValue("DEFAULT")))))),
     orderVariables = Map(
       "variable" -> expr("JobResource:B-JOB-RESOURCE:VARIABLE")),
     jobResourcePaths = Seq(aJobResource.path))

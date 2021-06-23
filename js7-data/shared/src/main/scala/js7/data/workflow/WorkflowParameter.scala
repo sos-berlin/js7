@@ -14,6 +14,9 @@ object WorkflowParameter
   def apply(name: String, valueType: ValueType, default: Option[Value] = None): WorkflowParameter =
     checked(name, valueType, default).orThrow
 
+  def apply(name: String, default: Value): WorkflowParameter =
+    checked(name, default.valueType, Some(default)).orThrow
+
   def checked(name: String, valueType: ValueType, default: Option[Value] = None)
   : Checked[WorkflowParameter] =
     if (!default.forall(_.valueType == valueType))

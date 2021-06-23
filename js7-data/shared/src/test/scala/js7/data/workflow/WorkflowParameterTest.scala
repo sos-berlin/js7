@@ -10,7 +10,7 @@ final class WorkflowParameterTest extends AnyFreeSpec
     assert(WorkflowParameter.checked("TEST", NumberValue, Some(StringValue("STRING"))) ==
       Left(Problem("Parameter 'TEST': type of default value does not match parameter type 'Number'")))
     assert(WorkflowParameter.checked("TEST", StringValue, Some(StringValue("STRING"))) ==
-      Right(WorkflowParameter("TEST", StringValue, Some(StringValue("STRING")))))
+      Right(WorkflowParameter("TEST", StringValue("STRING"))))
     assert(WorkflowParameter.checked("TEST", StringValue) ==
       Right(WorkflowParameter("TEST", StringValue)))
   }
