@@ -2,7 +2,6 @@ package js7.common.http
 
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.session.TestSessionApi
 import js7.base.time.ScalaTime._
@@ -18,8 +17,6 @@ import scala.concurrent.Await
   */
 final class RecouplingStreamReaderTest extends AsyncFreeSpec
 {
-  coupleScribeWithSlf4j()
-
   "RecouplingStreamReader" in {
     val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))
     val api = new TestSessionApi(Some(userAndPassword))

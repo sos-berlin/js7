@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.JobResourcePath
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, Value, ValueType}
-import js7.data.workflow.OrderParameter.{Optional, Required, WorkflowDefined}
+import js7.data.workflow.OrderParameter.{Final, Optional, Required}
 import js7.data.workflow.OrderParameters._
 import scala.collection.View
 
@@ -42,21 +42,18 @@ final case class OrderParameters private(
             case (None, required: OrderParameter.Required) =>
               Left(MissingOrderArgumentProblem(required): Problem)
 
-            case (None, OrderParameter.Optional(name, default)) =>
-              Right(None)
-
-            case (None, OrderParameter.WorkflowDefined(name, expr)) =>
-              (!expr.isConstant ? expr.eval.map(name -> _))
+            case (None, p @ OrderParameter.HasExpression(expr)) =>
+              (!expr.isConstant ? expr.eval.map(p.name -> _))
                 .sequence
+
+            case (Some(_), _: OrderParameter.Final) =>
+              Left(FixedOrderArgumentProblem(param.name))
 
             case (Some(value), parameter: OrderParameter.HasType) =>
               if (value.valueType != parameter.valueType)
                 Left(WrongOrderArgumentTypeProblem(parameter, value.valueType))
               else
                 Right(Some(param.name -> value))
-
-            case (Some(_), _: OrderParameter.WorkflowDefined) =>
-              Left(FixedOrderArgumentProblem(param.name))
           })
         .reduceLeftEither
         .map(_.flatten)
@@ -104,11 +101,17 @@ object OrderParameters
         param.name -> Json.fromJsonObject(
           param match {
             case Required(_, valueType) =>
-              JsonObject("type" -> valueType.asJson)
-            case Optional(_, default) =>
-              JsonObject("default" -> default.asJson)
-            case WorkflowDefined(_, expression) =>
-              JsonObject("expression" -> expression.asJson)
+              JsonObject(
+                "type" -> valueType.asJson)
+
+            case Optional(_, valueType, expression) =>
+              JsonObject(
+                "type" -> valueType.asJson,
+                "default" -> expression.asJson)
+
+            case Final(_, expression) =>
+              JsonObject(
+                "final" -> expression.asJson)
           })))
 
   implicit val jsonDecoder: Decoder[OrderParameters] =
@@ -122,14 +125,21 @@ object OrderParameters
             for {
               p <- {
                 val json = c.value.asObject.get
-                if (json.contains("type"))
-                  c.get[ValueType]("type").map(Required(name, _))
-                else if (json.contains("default"))
-                  c.get[Value]("default").map(Optional(name, _))
-                else if (json.contains("expression"))
-                  c.get[Expression]("expression").map(WorkflowDefined(name, _))
+                if (json.contains("default"))
+                  for {
+                    default <- c.get[Expression]("default")
+                    typ <- c.get[ValueType]("type")
+                  } yield Optional(name, typ, default)
+                else if (json.contains("final"))
+                  for {
+                    expression <- c.get[Expression]("final")
+                  } yield Final(name, expression)
+                else if (json.contains("type"))
+                  for {
+                    typ <- c.get[ValueType]("type")
+                  } yield Required(name, typ)
                 else
-                  Left(DecodingFailure("Missing type, default or value field", c.history))
+                  Left(DecodingFailure("""Missing "type", "default" or "final" field""", c.history))
               }
             } yield p
           }

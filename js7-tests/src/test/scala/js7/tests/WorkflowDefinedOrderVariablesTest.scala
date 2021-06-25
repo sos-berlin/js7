@@ -16,7 +16,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
-import js7.tests.OrderVariablesTest._
+import js7.tests.WorkflowDefinedOrderVariablesTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -24,7 +24,7 @@ import monix.reactive.Observable
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 
-final class OrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class WorkflowDefinedOrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
@@ -72,7 +72,7 @@ final class OrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaT
   }
 }
 
-object OrderVariablesTest
+object WorkflowDefinedOrderVariablesTest
 {
   private val agentPath = AgentPath("AGENT")
 
@@ -101,8 +101,8 @@ object OrderVariablesTest
               "myExpected" -> NamedValue("expected")))))),
       orderPreparation = OrderPreparation(OrderParameters(
         Seq(
-          OrderParameter.WorkflowDefined("ONE", NumericConstant(1)),
-            OrderParameter.WorkflowDefined("PLANT", FunctionCall("jobResourceVariable", Seq(
+          OrderParameter.Final("ONE", NumericConstant(1)),
+            OrderParameter.Final("PLANT", FunctionCall("jobResourceVariable", Seq(
             Argument(NamedValue("jobResource")),
             Argument(NamedValue("variableName")))))),
         allowUndeclared = true)))
@@ -120,8 +120,8 @@ object OrderVariablesTest
               "myPLANT" -> expr("$de.Acer"),
               "myExpected" -> expr("'Ahorn'")))))),
       orderPreparation = OrderPreparation(OrderParameters(
-        OrderParameter.WorkflowDefined("de", expr("JobResource:de")),
-        OrderParameter.WorkflowDefined("sv", expr("JobResource:sv")))))
+        OrderParameter.Final("de", expr("JobResource:de")),
+        OrderParameter.Final("sv", expr("JobResource:sv")))))
 
   final class TestInternalJob extends InternalJob {
     def toOrderProcess(step: Step) =

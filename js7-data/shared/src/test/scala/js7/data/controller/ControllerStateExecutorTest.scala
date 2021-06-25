@@ -468,11 +468,11 @@ object ControllerStateExecutorTest
         Workflow.of(execute(bAgentRef.path)))),
     orderPreparation = OrderPreparation(OrderParameters(View(
       requiredParameter,
-      OrderParameter("hasDefault", StringValue("DEFAULT")),
+      OrderParameter("hasDefault", StringConstant("DEFAULT")),
       // Constants are not stored in Order but re-evaluated with each access
-      OrderParameter.WorkflowDefined("constantVariable", expr("'CONSTANT'")),
+      OrderParameter.Final("final", expr("'CONSTANT'")),
       // Other expressions are evaluated once and the results are stored as order arguments
-      OrderParameter.WorkflowDefined("variable", expr("JobResource:B-JOB-RESOURCE:VARIABLE"))))),
+      OrderParameter.Final("variable", expr("JobResource:B-JOB-RESOURCE:VARIABLE"))))),
     jobResourcePaths = Seq(aJobResource.path))
 
   private val aOrderId = OrderId("A-ORDER")

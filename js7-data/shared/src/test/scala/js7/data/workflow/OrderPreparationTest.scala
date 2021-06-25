@@ -3,7 +3,7 @@ package js7.data.workflow
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{BooleanConstant, StringConstant}
 import js7.data.value.expression.Scope
 import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue}
 import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
@@ -15,7 +15,7 @@ final class OrderPreparationTest extends AnyFreeSpec
   private val stringParameter = OrderParameter.Required("string", StringValue)
   private val orderPreparation = OrderPreparation(OrderParameters.checked(Seq(
     stringParameter,
-    OrderParameter("string-default", StringValue("DEFAULT"))
+    OrderParameter("string-default", StringConstant("DEFAULT"))
   )).orThrow)
 
   "JSON" in {
@@ -29,21 +29,24 @@ final class OrderPreparationTest extends AnyFreeSpec
 
     testJson(OrderPreparation(OrderParameters(
       Seq(
-        OrderParameter.Required("required", NumberValue),
-        OrderParameter.Optional("optional", BooleanValue.True),
-        OrderParameter.WorkflowDefined("variable", StringConstant("VARIABLE"))))),
+        OrderParameter.Required("myRequired", NumberValue),
+        OrderParameter.Optional("myOptional", BooleanValue, BooleanConstant(true)),
+        OrderParameter.Final("myFinal", StringConstant("FINAL"))),
+      allowUndeclared = true)),
       json"""{
         "parameters": {
-          "optional": {
-            "default": true
+          "myOptional": {
+            "type": "Boolean",
+            "default": "true"
           },
-          "required": {
+          "myRequired": {
             "type": "Number"
           },
-          "variable": {
-            "expression": "'VARIABLE'"
+          "myFinal": {
+            "final": "'FINAL'"
           }
-        }
+        },
+        "allowUndeclared": true
       }""")
   }
 

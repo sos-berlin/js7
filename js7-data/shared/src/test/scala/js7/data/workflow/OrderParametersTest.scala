@@ -3,7 +3,7 @@ package js7.data.workflow
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{BooleanConstant, NumericConstant, StringConstant}
 import js7.data.value.expression.Scope
 import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue}
 import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
@@ -14,8 +14,8 @@ final class OrderParametersTest extends AnyFreeSpec
 {
   private val stringParameter = OrderParameter.Required("string", StringValue)
   private val booleanParameter = OrderParameter.Required("boolean", BooleanValue)
-  private val numberParameter = OrderParameter.Optional("number", NumberValue(7))
-  private val workflowDefined = OrderParameter.WorkflowDefined("workflowDefined", StringConstant("EXPRESSION"))
+  private val numberParameter = OrderParameter.Optional("number", NumberValue, NumericConstant(7))
+  private val workflowDefined = OrderParameter.Final("workflowDefined", StringConstant("EXPRESSION"))
 
   "JSON" in {
     testJson(
@@ -29,13 +29,14 @@ final class OrderParametersTest extends AnyFreeSpec
           "type": "Boolean"
         },
         "number": {
-          "default": 7
+          "type": "Number",
+          "default": "7"
         },
         "string": {
           "type": "String"
         },
         "workflowDefined": {
-          "expression": "'EXPRESSION'"
+          "final": "'EXPRESSION'"
         }
       }""")
   }
@@ -44,10 +45,10 @@ final class OrderParametersTest extends AnyFreeSpec
     stringParameter,
     OrderParameter("number", NumberValue),
     booleanParameter,
-    OrderParameter("string-default", StringValue("DEFAULT")),
-    OrderParameter("boolean-default", BooleanValue(false)),
-    OrderParameter("number-default", NumberValue(-1)),
-    OrderParameter.WorkflowDefined("workflowDefined", StringConstant("EXPRESSION"))
+    OrderParameter("string-default", StringConstant("DEFAULT")),
+    OrderParameter("boolean-default", BooleanConstant(false)),
+    OrderParameter("number-default", NumericConstant(-1)),
+    OrderParameter.Final("workflowDefined", StringConstant("EXPRESSION"))
   )).orThrow
 
   private val validArguments = NamedValues(

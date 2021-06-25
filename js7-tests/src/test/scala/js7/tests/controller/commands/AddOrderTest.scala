@@ -15,7 +15,7 @@ import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminat
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.OrderParameters.MissingOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
@@ -98,7 +98,7 @@ object AddOrderTest
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val emptyWorkflow = Workflow.of(WorkflowPath("EMPTY"))
-  private val stringParameter = OrderParameter.Optional("myString", StringValue("DEFAULT"))
+  private val stringParameter = OrderParameter.Optional("myString", StringValue, StringConstant("DEFAULT"))
   private val numberParameter = OrderParameter.Required("myNumber", NumberValue)
 
   private val unknownArgWorkflow = Workflow(WorkflowPath("UNKNOWN-ARG"),

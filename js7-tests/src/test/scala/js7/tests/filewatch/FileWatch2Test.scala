@@ -387,7 +387,7 @@ object FileWatch2Test
     orderPreparation = OrderPreparation(
       OrderParameters(
         Seq(
-          OrderParameter.WorkflowDefined("var",
+          OrderParameter.Final("var",
             MkString/*force non-constant early evaluation*/(StringConstant("VAR")))),
         allowUndeclared = true)))
 

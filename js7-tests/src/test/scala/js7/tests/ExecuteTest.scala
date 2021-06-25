@@ -17,6 +17,7 @@ import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -208,6 +209,35 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Outcome.Succeeded.rc(33)))
   }
 
+  "Different types of OrderParameter" in {
+    testWithWorkflow(
+      Workflow(WorkflowPath.Anonymous,
+        Vector(
+          Execute.Anonymous(WorkflowJob(agentPath,
+            ShellScriptExecutable(
+              """set -euo pipefail
+                |echo "REQUIRED=$REQUIRED" >>"$JS7_RETURN_VALUES"
+                |echo "OPTIONAL=$OPTIONAL" >>"$JS7_RETURN_VALUES"
+                |echo "FINAL=$FINAL" >>"$JS7_RETURN_VALUES"
+                |""".stripMargin,
+              env = Map(
+                "REQUIRED" -> expr("$required"),
+                "OPTIONAL" -> expr("$optional"),
+                "FINAL" -> expr("$final")))))),
+      orderPreparation = OrderPreparation(OrderParameters(
+        OrderParameter.Required("required", NumberValue),
+        OrderParameter.Optional("optional", StringValue, StringConstant("DEFAULT VALUE")),
+        OrderParameter.Final("final", StringConstant("FINAL VALUE"))))),
+      orderArguments = Map(
+        "required" -> NumberValue(123)),
+      expectedOutcomes = Seq(
+        Outcome.Succeeded(NamedValues(
+          "returnCode" -> NumberValue(0),
+          "REQUIRED" -> StringValue("123"),
+          "OPTIONAL" -> StringValue("DEFAULT VALUE"),
+          "FINAL" -> StringValue("FINAL VALUE")))))
+  }
+
   "Arguments when v1Compatible include workflow defaults" in {
     testWithWorkflow(
       Workflow(WorkflowPath.Anonymous,
@@ -223,7 +253,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
               v1Compatible = true)))),
       orderPreparation = OrderPreparation(OrderParameters(
         OrderParameter("A", NumberValue),
-        OrderParameter("B", StringValue("WORKFLOW PARAMETER DEFAULT VALUE"))))),
+        OrderParameter("B", StringConstant("WORKFLOW PARAMETER DEFAULT VALUE"))))),
       orderArguments = Map(
         "A" -> NumberValue(4711)),
       expectedOutcomes = Seq(

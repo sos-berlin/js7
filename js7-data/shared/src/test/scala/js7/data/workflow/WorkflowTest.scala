@@ -9,9 +9,9 @@ import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
+import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant, StringConstant}
 import js7.data.value.expression.PositionSearch
-import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
@@ -45,16 +45,18 @@ final class WorkflowTest extends AnyFreeSpec
           "versionId": "VERSION",
           "orderPreparation": {
             "parameters": {
-              "stringParameter": {
-                "default": "DEFAULT"
-              },
-              "numberParameter": {
+              "myRequired": {
                 "type": "Number"
               },
-              "variable": {
-                "expression": "'VALUE'"
+              "myOptional": {
+                "type": "String",
+                "default": "'DEFAULT'"
+              },
+              "myFinal": {
+                "final": "'FINAL'"
               }
-            }
+            },
+            "allowUndeclared": true
           },
           "instructions": [
             {
@@ -100,7 +102,7 @@ final class WorkflowTest extends AnyFreeSpec
                       "executable": {
                         "TYPE": "PathExecutable",
                         "v1Compatible": true,
-                          "path": "B.cmd"
+                        "path": "B.cmd"
                       },
                       "parallelism": 3,
                       "defaultArguments": { "JOB_B": "'B-VALUE'" }
@@ -122,7 +124,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
-                                  "path": "A.cmd"
+                            "path": "A.cmd"
                           },
                           "parallelism": 3,
                           "defaultArguments": { "JOB_A": "'A-VALUE'" }
@@ -143,7 +145,7 @@ final class WorkflowTest extends AnyFreeSpec
                           "executable": {
                             "TYPE": "PathExecutable",
                             "v1Compatible": true,
-                                  "path": "B.cmd"
+                            "path": "B.cmd"
                           },
                           "parallelism": 3,
                           "defaultArguments": { "JOB_B": "'B-VALUE'" }
@@ -201,16 +203,18 @@ final class WorkflowTest extends AnyFreeSpec
           "versionId": "VERSION",
           "orderPreparation": {
             "parameters": {
-              "stringParameter": {
-                "default": "DEFAULT"
-              },
-              "numberParameter": {
+              "myRequired": {
                 "type": "Number"
               },
-              "variable": {
-                "expression": "'VALUE'"
+              "myOptional": {
+                "type": "String",
+                "default": "'DEFAULT'"
+              },
+              "myFinal": {
+                "final": "'FINAL'"
               }
-            }
+            },
+            "allowUndeclared": true
           },
           "instructions": [
             {
@@ -741,7 +745,7 @@ final class WorkflowTest extends AnyFreeSpec
             "BRANCH" -> Workflow.of(
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
       orderPreparation = OrderPreparation(OrderParameters(
-        OrderParameter.WorkflowDefined("V", JobResourceVariable(f, Some("V"))))))
+        OrderParameter.Final("V", JobResourceVariable(f, Some("V"))))))
     assert(workflow.referencedLockPaths.isEmpty)
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
     assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e, f))
@@ -1176,9 +1180,11 @@ private object WorkflowTest
       BJobName -> BJob),
     OrderPreparation(
       OrderParameters(
-        OrderParameter("stringParameter", StringValue("DEFAULT")),
-        OrderParameter("numberParameter", NumberValue),
-        OrderParameter.WorkflowDefined("variable", StringConstant("VALUE")))),
+        Seq(
+          OrderParameter("myRequired", NumberValue),
+          OrderParameter("myOptional", StringConstant("DEFAULT")),
+          OrderParameter.Final("myFinal", StringConstant("FINAL"))),
+        allowUndeclared = true)),
     jobResourcePaths = Seq(
       JobResourcePath("JOB-RESOURCE")))
 }

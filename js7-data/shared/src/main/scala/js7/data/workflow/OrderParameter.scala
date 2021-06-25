@@ -21,20 +21,27 @@ object OrderParameter
   }
 
   object HasValue {
-    def unapply(p: OrderParameter) =
+    def unapply(p: OrderParameter): Option[Value] =
       PartialFunction.condOpt(p) {
-        case OrderParameter.Optional(_, value) => value
-        case OrderParameter.WorkflowDefined(_, expr: Expression.Constant) => expr.toValue
+        case OrderParameter.Optional(_, _, expr: Expression.Constant) => expr.toValue
+        case OrderParameter.Final(_, expr: Expression.Constant) => expr.toValue
       }
   }
 
-  final case class Optional(name: String, value: Value)
-  extends HasType {
-    def valueType = value.valueType
-    def referencedJobResourcePaths = Nil
+  object HasExpression {
+    def unapply(p: OrderParameter): Option[Expression] =
+      PartialFunction.condOpt(p) {
+        case OrderParameter.Optional(_, _, expr) => expr
+        case OrderParameter.Final(_, expr) => expr
+      }
   }
 
-  final case class WorkflowDefined(name: String, expression: Expression)
+  final case class Optional(name: String, valueType: ValueType, expression: Expression)
+  extends HasType {
+    def referencedJobResourcePaths = expression.referencedJobResourcePaths
+  }
+
+  final case class Final(name: String, expression: Expression)
   extends OrderParameter {
     def referencedJobResourcePaths = expression.referencedJobResourcePaths
   }
@@ -42,6 +49,9 @@ object OrderParameter
   def apply(name: String, valueType: ValueType): OrderParameter =
     Required(name, valueType)
 
-  def apply(name: String, default: Value): OrderParameter =
-    Optional(name, default)
+  def apply(name: String, valueType: ValueType, expression: Expression): OrderParameter =
+    Optional(name, valueType, expression)
+
+  def apply(name: String, expression: Expression.Constant): OrderParameter =
+    Optional(name, expression.toValue.valueType, expression)
 }

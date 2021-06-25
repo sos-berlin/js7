@@ -11,7 +11,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.scopes.OrderScopesTest._
 import js7.data.value.{NumberValue, StringValue}
@@ -302,8 +302,8 @@ object OrderScopesTest
       jobName -> WorkflowJob(agentPath, ShellScriptExecutable(":"))),
     orderPreparation = OrderPreparation(OrderParameters(
       // Order parameters are not checked in this test, but defaults are used.
-      OrderParameter("b", StringValue("b from workflow defaults")),
-      OrderParameter("c", StringValue("c from workflow defaults")))))
+      OrderParameter("b", StringConstant("b from workflow defaults")),
+      OrderParameter("c", StringConstant("c from workflow defaults")))))
 
   private val freshOrder = FreshOrder(OrderId("ORDER"), workflow.path,
     Map(

@@ -24,12 +24,16 @@ Beispiele in JSON:
   "versionId": "0.1",
   "orderPreparation": {
     "parameters": {
-      "myString": {
+      "myRequiredString": {
         "type": "String",
-        "default": "MY-DEFAULT"
+        "default": "'MY-DEFAULT'"
       },
-      "myNumber": {
+      "myOptionalNumber": {
         "type": "Number"
+      },
+      "myFinalVariable": {
+        "type": "String",
+        "final": "'Final workflow defined variable'"
       }
     }
   },
@@ -68,7 +72,11 @@ Beispiele in JSON:
       "String" | "Boolean" | "Number"
     * default (optional)
 
-      Der voreingestellte Wert
+      Ein Ausdruck, der errechnet wird, wenn der Parameter nicht im Auftrag angegeben ist.
+    * final (optional)
+
+      Ein Ausdruck für einen Auftragsparameter.
+      Der Parameter kann nicht beim Hinzufügen des Auftrags angegeben (überschrieben) werden.
 
 * `jobResourcePaths`
   JobResourcePaths, die für die Jobs im Workflow verwendet werden sollen.
@@ -103,7 +111,7 @@ Beispiel in JSON den beiden Parametern
     "parameters": {
       "myString": {
         "type": "String",
-        "default": "DEFAULT"
+        "default": "'DEFAULT'"
       },
       "myNumber": {
         "type": "Number"
