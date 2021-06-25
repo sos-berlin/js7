@@ -120,7 +120,7 @@ Beispiel in JSON den beiden Parametern
 ```json
 {
   "path": "PARAMETERIZED-WORKFLOW",
-  "orderRequirements": {
+  "orderPreparation": {
     "parameters": {
       "myString": {
         "type": "String",

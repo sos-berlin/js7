@@ -9,14 +9,13 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
-import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState, VersionId}
+import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState._
 import js7.data.value.NamedValues
 import js7.data.value.expression.Scope
-import js7.data.value.expression.scopes.OrderScopes.workflowOrderVariablesScope
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.View
@@ -157,7 +156,7 @@ extends UnsignedSimpleItemState
         .flatMap {
           case Arised(orderId, arguments) =>
             for (workflow <- pathToWorkflow(orderWatch.workflowPath)) yield
-              workflow.orderRequirements.parameters.prepareOrderArguments(arguments)(Scope.empty/*TODO*/) match {
+              workflow.orderPreparation.parameters.prepareOrderArguments(arguments)(Scope.empty/*TODO*/) match {
                 case Left(problem) =>
                   logger.error(s"Arised($orderId) => $problem")
                   None

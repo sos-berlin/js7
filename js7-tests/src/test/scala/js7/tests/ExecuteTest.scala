@@ -20,7 +20,7 @@ import js7.data.value.expression.ExpressionParser
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.ExecuteTest._
@@ -221,7 +221,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
                 |echo "C=$SCHEDULER_PARAM_C" >>"$SCHEDULER_RETURN_VALUES"
                 |""".stripMargin,
               v1Compatible = true)))),
-      orderRequirements = OrderRequirements(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameters(
         OrderParameter("A", NumberValue),
         OrderParameter("B", StringValue("WORKFLOW PARAMETER DEFAULT VALUE"))))),
       orderArguments = Map(
@@ -447,7 +447,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     anonymousWorkflow: Workflow,
     orderArguments: Map[String, Value] = Map.empty)
   : Seq[OrderEvent] = {
-    //TODO OrderRequirements are missing: testPrintAndParse(anonymousWorkflow)
+    //TODO OrderPreparation are missing: testPrintAndParse(anonymousWorkflow)
     val workflow = addWorkflow(anonymousWorkflow)
     val order = FreshOrder(orderIdIterator.next(), workflow.path, arguments = orderArguments)
     controller.runOrder(order).map(_.value)

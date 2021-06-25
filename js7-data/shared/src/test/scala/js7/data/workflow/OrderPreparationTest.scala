@@ -10,24 +10,24 @@ import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, Undeclare
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class OrderRequirementsTest extends AnyFreeSpec
+final class OrderPreparationTest extends AnyFreeSpec
 {
   private val stringParameter = OrderParameter.Required("string", StringValue)
-  private val orderRequirements = OrderRequirements(OrderParameters.checked(Seq(
+  private val orderPreparation = OrderPreparation(OrderParameters.checked(Seq(
     stringParameter,
     OrderParameter("string-default", StringValue("DEFAULT"))
   )).orThrow)
 
   "JSON" in {
-    testJson(OrderRequirements(OrderParameters()),
+    testJson(OrderPreparation(OrderParameters()),
       json"""{}""")
 
-    testJson(OrderRequirements(OrderParameters(allowUndeclared = true)),
+    testJson(OrderPreparation(OrderParameters(allowUndeclared = true)),
       json"""{
          "allowUndeclared": true
       }""")
 
-    testJson(OrderRequirements(OrderParameters(
+    testJson(OrderPreparation(OrderParameters(
       Seq(
         OrderParameter.Required("required", NumberValue),
         OrderParameter.Optional("optional", BooleanValue.True),
@@ -49,36 +49,36 @@ final class OrderRequirementsTest extends AnyFreeSpec
 
   "prepareOrderArguments" - {
     "No arguments" in {
-      assert(orderRequirements.parameters.prepareOrderArguments(NamedValues.empty)(Scope.empty) == Left(
+      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues.empty)(Scope.empty) == Left(
         MissingOrderArgumentProblem(stringParameter).toSerialized))
     }
 
     "Undeclared argument" in {
-      assert(orderRequirements.parameters.prepareOrderArguments(NamedValues("UNEXPECTED" -> BooleanValue.True))(Scope.empty) ==
+      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues("UNEXPECTED" -> BooleanValue.True))(Scope.empty) ==
         Left(Problem.Combined(Set(
           UndeclaredOrderArgumentProblem("UNEXPECTED").toSerialized,
           MissingOrderArgumentProblem(stringParameter).toSerialized))))
     }
 
     "Wrong type" in {
-      assert(orderRequirements.parameters.prepareOrderArguments(NamedValues("string" -> BooleanValue.True))(Scope.empty) == Left(
+      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues("string" -> BooleanValue.True))(Scope.empty) == Left(
         WrongOrderArgumentTypeProblem(stringParameter, BooleanValue).toSerialized))
     }
 
     "Valid arguments" in {
       val args = NamedValues("string" -> StringValue("STRING"))
-      assert(orderRequirements.parameters.prepareOrderArguments(args)(Scope.empty) == Right(args))
+      assert(orderPreparation.parameters.prepareOrderArguments(args)(Scope.empty) == Right(args))
     }
   }
 
   "defaultArgument" in {
-    assert(orderRequirements.parameters.defaultArgument("UNKNOWN").isEmpty)
-    assert(orderRequirements.parameters.defaultArgument("string").isEmpty)
-    assert(orderRequirements.parameters.defaultArgument("string-default") == Some(StringValue("DEFAULT")))
+    assert(orderPreparation.parameters.defaultArgument("UNKNOWN").isEmpty)
+    assert(orderPreparation.parameters.defaultArgument("string").isEmpty)
+    assert(orderPreparation.parameters.defaultArgument("string-default") == Some(StringValue("DEFAULT")))
   }
 
   "defaultArguments" in {
-    assert(orderRequirements.parameters.defaultArguments == Map(
+    assert(orderPreparation.parameters.defaultArguments == Map(
       "string-default" -> StringValue("DEFAULT")))
   }
 }

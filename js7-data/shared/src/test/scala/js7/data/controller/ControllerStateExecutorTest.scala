@@ -27,7 +27,7 @@ import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, WrongOrde
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 
@@ -466,7 +466,7 @@ object ControllerStateExecutorTest
         lock.path,
         None,
         Workflow.of(execute(bAgentRef.path)))),
-    orderRequirements = OrderRequirements(OrderParameters(View(
+    orderPreparation = OrderPreparation(OrderParameters(View(
       requiredParameter,
       OrderParameter("hasDefault", StringValue("DEFAULT")),
       // Constants are not stored in Order but re-evaluated with each access

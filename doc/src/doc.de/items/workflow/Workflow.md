@@ -22,7 +22,7 @@ Beispiele in JSON:
 {
   "path": "MY-WORKFLOW",
   "versionId": "0.1",
-  "orderRequirements": {
+  "orderPreparation": {
     "parameters": {
       "myString": {
         "type": "String",
@@ -57,7 +57,7 @@ Beispiele in JSON:
 
 **Felder**
 
-* orderRequirements (optional)
+* orderPreparation (optional)
   * parameters
 
     Eine Abbildung mit den Namen der verlangten Auftragsparameter auf der linken
@@ -99,7 +99,7 @@ Beispiel in JSON den beiden Parametern
 ```json
 {
   "path": "PARAMETERIZED-WORKFLOW",
-  "orderRequirements": {
+  "orderPreparation": {
     "parameters": {
       "myString": {
         "type": "String",

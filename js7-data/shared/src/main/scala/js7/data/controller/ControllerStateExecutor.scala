@@ -15,7 +15,7 @@ import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionId, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
 import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
@@ -51,7 +51,7 @@ final case class ControllerStateExecutor private(
     else
       for {
         workflow <- controllerState.repo.pathTo[Workflow](order.workflowPath)
-        preparedArguments <- workflow.orderRequirements.parameters.prepareOrderArguments(order.arguments)(
+        preparedArguments <- workflow.orderPreparation.parameters.prepareOrderArguments(order.arguments)(
           workflowOrderVariablesScope(order, pathToJobResource, controllerId, nowScope))
       } yield Some(
         order.toOrderAdded(workflow.id.versionId, preparedArguments))

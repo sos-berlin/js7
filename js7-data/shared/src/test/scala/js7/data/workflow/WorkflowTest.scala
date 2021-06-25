@@ -43,7 +43,7 @@ final class WorkflowTest extends AnyFreeSpec
         json"""{
           "path": "TEST",
           "versionId": "VERSION",
-          "orderRequirements": {
+          "orderPreparation": {
             "parameters": {
               "stringParameter": {
                 "default": "DEFAULT"
@@ -199,7 +199,7 @@ final class WorkflowTest extends AnyFreeSpec
         normalizeJson(json"""{
           "path": "TEST",
           "versionId": "VERSION",
-          "orderRequirements": {
+          "orderPreparation": {
             "parameters": {
               "stringParameter": {
                 "default": "DEFAULT"
@@ -740,7 +740,7 @@ final class WorkflowTest extends AnyFreeSpec
           Fork.of(
             "BRANCH" -> Workflow.of(
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
-      orderRequirements = OrderRequirements(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameters(
         OrderParameter.WorkflowDefined("V", JobResourceVariable(f, Some("V"))))))
     assert(workflow.referencedLockPaths.isEmpty)
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
@@ -1174,7 +1174,7 @@ private object WorkflowTest
     Map(
       AJobName -> AJob,
       BJobName -> BJob),
-    OrderRequirements(
+    OrderPreparation(
       OrderParameters(
         OrderParameter("stringParameter", StringValue("DEFAULT")),
         OrderParameter("numberParameter", NumberValue),

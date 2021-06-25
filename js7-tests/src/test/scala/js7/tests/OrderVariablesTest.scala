@@ -13,7 +13,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.OrderParameters.FixedOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.OrderVariablesTest._
@@ -99,7 +99,7 @@ object OrderVariablesTest
               "myONE" -> NamedValue("ONE"),
               "myPLANT" -> NamedValue("PLANT"),
               "myExpected" -> NamedValue("expected")))))),
-      orderRequirements = OrderRequirements(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameters(
         Seq(
           OrderParameter.WorkflowDefined("ONE", NumericConstant(1)),
             OrderParameter.WorkflowDefined("PLANT", FunctionCall("jobResourceVariable", Seq(
@@ -119,7 +119,7 @@ object OrderVariablesTest
               "myONE" -> expr("1"),
               "myPLANT" -> expr("$de.Acer"),
               "myExpected" -> expr("'Ahorn'")))))),
-      orderRequirements = OrderRequirements(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameters(
         OrderParameter.WorkflowDefined("de", expr("JobResource:de")),
         OrderParameter.WorkflowDefined("sv", expr("JobResource:sv")))))
 
