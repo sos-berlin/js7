@@ -16,7 +16,8 @@ import js7.data.agent.AgentPath
 import js7.data.item.{VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.lock.LockPath
-import js7.data.value.expression.{Expression, PositionSearch}
+import js7.data.value.{NamedValues, Value}
+import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -34,7 +35,6 @@ final case class Workflow private(
   rawLabeledInstructions: IndexedSeq[Instruction.Labeled],
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   orderRequirements: OrderRequirements,
-  orderVariables: Map[String, Expression],
   jobResourcePaths: Seq[JobResourcePath],
   source: Option[String],
   outer: Option[Workflow])
@@ -46,7 +46,6 @@ extends VersionedItem
       rawLabeledInstructions == o.rawLabeledInstructions &&
       nameToJob == o.nameToJob &&
       orderRequirements == o.orderRequirements &&
-      orderVariables == o.orderVariables &&
       jobResourcePaths == o.jobResourcePaths &&
       source == o.source
       // Ignore `outer`
@@ -145,7 +144,7 @@ extends VersionedItem
   override lazy val referencedJobResourcePaths: Set[JobResourcePath] =
     (jobResourcePaths.view ++
       workflowJobs.flatMap(_.referencedJobResourcePaths) ++
-      orderVariables.values.view.flatMap(_.referencedJobResourcePaths)
+      orderRequirements.referencedJobResourcePaths
     ).toSet
 
   private[workflow] def workflowJobs: View[WorkflowJob] =
@@ -403,6 +402,12 @@ extends VersionedItem
         .toRight(Problem(s"Unknown position $position in workflow '$id'"))
     } yield instr
 
+  def defaultArguments: NamedValues =
+    orderRequirements.parameters.defaultArguments
+
+  def defaultArgument(name: String): Option[Value] =
+    orderRequirements.parameters.defaultArgument(name)
+
   def withoutSource: Workflow =
     copy(source = None).withoutSourcePos
 
@@ -432,7 +437,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderRequirements.empty,
+    apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderRequirements.default,
       source = source, outer = outer)
 
   /** Test only. */
@@ -440,13 +445,12 @@ object Workflow extends VersionedItem.Companion[Workflow]
     id: WorkflowId,
     labeledInstructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
-    orderRequirements: OrderRequirements = OrderRequirements.empty,
-    orderVariables: Map[String, Expression] = Map.empty,
+    orderRequirements: OrderRequirements = OrderRequirements.default,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    checkedSub(id, labeledInstructions.toIndexedSeq, nameToJob, orderRequirements, orderVariables,
+    checkedSub(id, labeledInstructions.toIndexedSeq, nameToJob, orderRequirements,
       jobResourcePaths, source, outer).orThrow
 
   /** Checks a subworkflow.
@@ -455,8 +459,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     id: WorkflowId,
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
-    orderRequirements: OrderRequirements = OrderRequirements.empty,
-    orderVariables: Map[String, Expression] = Map.empty,
+    orderRequirements: OrderRequirements = OrderRequirements.default,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
@@ -466,7 +469,6 @@ object Workflow extends VersionedItem.Companion[Workflow]
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
       orderRequirements,
-      orderVariables,
       jobResourcePaths ,
       source,
       outer
@@ -477,8 +479,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     id: WorkflowId,
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
-    orderRequirements: OrderRequirements = OrderRequirements.empty,
-    orderVariables: Map[String, Expression] = Map.empty,
+    orderRequirements: OrderRequirements = OrderRequirements.default,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
@@ -488,7 +489,6 @@ object Workflow extends VersionedItem.Companion[Workflow]
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
       orderRequirements,
-      orderVariables,
       jobResourcePaths,
       source,
       outer
@@ -514,12 +514,11 @@ object Workflow extends VersionedItem.Companion[Workflow]
   implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 
   private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
-    case Workflow(id, instructions, namedJobs, orderRequirements, variables, jobResourcePaths, source, _) =>
+    case Workflow(id, instructions, namedJobs, orderRequirements, jobResourcePaths, source, _) =>
       implicit val x: Encoder.AsObject[Instruction] = Instructions.jsonCodec
       id.asJsonObject ++
         JsonObject(
           "orderRequirements" -> orderRequirements.??.asJson,
-          "orderVariables" -> variables.??.asJson,
           "jobResourcePaths" -> jobResourcePaths.??.asJson,
           "instructions" -> instructions
             .dropLastWhile(labeled =>
@@ -535,14 +534,12 @@ object Workflow extends VersionedItem.Companion[Workflow]
       implicit val x: Decoder[Instruction] = Instructions.jsonCodec
       for {
         id <- cursor.value.as[WorkflowId]
-        orderRequirements <- cursor.getOrElse[OrderRequirements]("orderRequirements")(OrderRequirements.empty)
-        variables <- cursor.getOrElse[Map[String, Expression]]("orderVariables")(Map.empty)
+        orderRequirements <- cursor.getOrElse[OrderRequirements]("orderRequirements")(OrderRequirements.default)
         jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
         instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
         namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
         source <- cursor.get[Option[String]]("source")
         workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderRequirements,
-          variables,
           jobResourcePaths = jobResourcePaths, source)
           .toDecoderResult(cursor.history)
       } yield workflow

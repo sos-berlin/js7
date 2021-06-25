@@ -127,7 +127,7 @@ final class OrderScopesTest extends AnyFreeSpec
       lazy val scope = orderScopes.processingOrderScope
 
       "Named values precedence" - {
-        val namedValues = order.namedValues(workflow.orderRequirements.defaultArguments)
+        val namedValues = order.namedValues(workflow.defaultArguments)
 
         "Order.namedValues" in {
           assert(namedValues == Map(
@@ -144,7 +144,7 @@ final class OrderScopesTest extends AnyFreeSpec
 
         "Order.v1CompatibleNamedValues" in {
           val v1NamedValues = order.v1CompatibleNamedValues(
-            workflow.orderRequirements.defaultArguments)
+            workflow.defaultArguments)
           assert(v1NamedValues == Map(
             "a" -> StringValue("a from order"),
             "b" -> StringValue("b from order"),
@@ -300,10 +300,10 @@ object OrderScopesTest
       "LABEL-2" @: Execute(jobName)),
     Map(
       jobName -> WorkflowJob(agentPath, ShellScriptExecutable(":"))),
-    orderRequirements = OrderRequirements(Some(WorkflowParameters(
+    orderRequirements = OrderRequirements(WorkflowParameters(
       // Order parameters are not checked in this test, but defaults are used.
       WorkflowParameter("b", StringValue("b from workflow defaults")),
-      WorkflowParameter("c", StringValue("c from workflow defaults"))))))
+      WorkflowParameter("c", StringValue("c from workflow defaults")))))
 
   private val freshOrder = FreshOrder(OrderId("ORDER"), workflow.path,
     Map(

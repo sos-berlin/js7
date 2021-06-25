@@ -6,10 +6,9 @@ import js7.base.problem.Checked
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent}
 import js7.data.order.{OrderEvent, OrderId}
-import js7.data.workflow.WorkflowPath
+import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.View
 
@@ -62,10 +61,10 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
         pathToOrderWatchState = pathToOrderWatchState + (orderWatchPath -> o)))
   }
 
-  def nextEvents(workflowPathToVersionId: WorkflowPath => Option[VersionId])
+  def nextEvents(pathToWorkflow: WorkflowPath => Option[Workflow])
   : View[KeyedEvent[OrderEvent.OrderCoreEvent]] =
     pathToOrderWatchState.values.view
-      .flatMap(_.nextEvents(workflowPathToVersionId))
+      .flatMap(_.nextEvents(pathToWorkflow))
 
   def estimatedSnapshotSize =
     pathToOrderWatchState.view.values.map(_.estimatedSnapshotSize).sum

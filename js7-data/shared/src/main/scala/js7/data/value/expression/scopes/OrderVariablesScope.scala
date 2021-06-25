@@ -37,7 +37,7 @@ extends Scope
 
   private def argument(name: String)(implicit scope: Scope): Option[Value] =
     order.arguments.get(name) orElse
-      workflow.orderRequirements.defaultArgument(name)
+      workflow.defaultArgument(name)
 
   override def toString = s"OrderVariablesScope(${order.id})"
 }

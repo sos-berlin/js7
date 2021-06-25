@@ -471,7 +471,7 @@ final case class Order[+S <: Order.State](
 object Order
 {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
-    Order(id, event.workflowId, Fresh, event.arguments ++ event.variables,
+    Order(id, event.workflowId, Fresh, event.arguments,
       event.scheduledFor, event.externalOrderKey)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =

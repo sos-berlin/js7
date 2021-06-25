@@ -2,7 +2,7 @@ package js7.data.controller
 
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
 import js7.data.Problems.AgentResetProblem
@@ -20,7 +20,6 @@ import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Scope
-import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.value.expression.scopes.NowScope
 import js7.data.value.expression.scopes.OrderScopes.workflowOrderVariablesScope
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -35,8 +34,8 @@ final case class ControllerStateExecutor private(
   import ControllerStateExecutor.convertImplicitly
   import controllerState.{controllerId, pathToJobResource}
 
-  private def workflowPathToVersionId(workflowPath: WorkflowPath): Option[VersionId] =
-    controllerState.repo.pathTo[Workflow](workflowPath).toOption.map(_.id.versionId)
+  private def pathToWorkflow(workflowPath: WorkflowPath): Option[Workflow] =
+    controllerState.repo.pathTo[Workflow](workflowPath).toOption
 
   def addOrders(freshOrders: Seq[FreshOrder]): Checked[Seq[KeyedEvent[OrderAdded]]] = {
     val nowScope = NowScope()  // Same time for all orders
@@ -47,26 +46,15 @@ final case class ControllerStateExecutor private(
 
   def addOrder(order: FreshOrder, nowScope: Scope = NowScope()): Checked[Option[KeyedEvent[OrderAdded]]] =
   {
-    def mustBeDisjoint(arguments: Set[String], variables: Set[String]): Checked[Unit] = {
-      val intersection = arguments intersect variables
-      intersection.isEmpty !!
-        Problem("Names are duplicate in order arguments and order variables: " +
-          intersection.mkString(", "))
-    }
-    def evalVariables(workflow: Workflow) = evalExpressionMap(
-      workflow.orderVariables,
-      workflowOrderVariablesScope(order, pathToJobResource, controllerId, nowScope))
-
     if (controllerState.idToOrder.contains(order.id))
       Right(None) // Ignore known orders  — TODO ignore only when !deleteWhenTerminated ?
     else
       for {
         workflow <- controllerState.repo.pathTo[Workflow](order.workflowPath)
-        variables <- evalVariables(workflow)
-        _ <- workflow.orderRequirements.checkArguments(order.arguments)
-        _ <- mustBeDisjoint(order.arguments.keySet, workflow.orderVariables.keySet)
+        preparedArguments <- workflow.orderRequirements.parameters.prepareOrderArguments(order.arguments)(
+          workflowOrderVariablesScope(order, pathToJobResource, controllerId, nowScope))
       } yield Some(
-        order.toOrderAdded(workflow.id.versionId, variables))
+        order.toOrderAdded(workflow.id.versionId, preparedArguments))
   }
 
   def resetAgent(agentPath: AgentPath): Seq[AnyKeyedEvent] = {
@@ -254,7 +242,7 @@ final case class ControllerStateExecutor private(
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     controllerState.allOrderWatchesState
-      .nextEvents(workflowPathToVersionId)
+      .nextEvents(pathToWorkflow)
       .filter {
         case KeyedEvent(orderId: OrderId, OrderDeletionMarked) =>
           // OrderWatchState emits OrderDeletionMarked without knowledge of the order

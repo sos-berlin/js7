@@ -221,9 +221,9 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
                 |echo "C=$SCHEDULER_PARAM_C" >>"$SCHEDULER_RETURN_VALUES"
                 |""".stripMargin,
               v1Compatible = true)))),
-      orderRequirements = OrderRequirements(Some(WorkflowParameters(
+      orderRequirements = OrderRequirements(WorkflowParameters(
         WorkflowParameter("A", NumberValue),
-        WorkflowParameter("B", StringValue("WORKFLOW PARAMETER DEFAULT VALUE")))))),
+        WorkflowParameter("B", StringValue("WORKFLOW PARAMETER DEFAULT VALUE"))))),
       orderArguments = Map(
         "A" -> NumberValue(4711)),
       expectedOutcomes = Seq(

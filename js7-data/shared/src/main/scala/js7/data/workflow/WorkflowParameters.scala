@@ -4,79 +4,112 @@ import cats.instances.vector._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue, Value, ValueType}
+import js7.data.job.JobResourcePath
+import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.{NamedValues, Value, ValueType}
+import js7.data.workflow.WorkflowParameter.{Optional, Required, WorkflowDefined}
 import js7.data.workflow.WorkflowParameters._
+import scala.collection.View
 
-final case class WorkflowParameters private(nameToParameter: Map[String, WorkflowParameter])
+final case class WorkflowParameters private(
+  nameToParameter: Map[String, WorkflowParameter],
+  allowUndeclared: Boolean)
 {
-  def checkNamedValues(namedValues: NamedValues): Checked[Unit] =
+  def referencedJobResourcePaths: Iterable[JobResourcePath] =
+    nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
+
+  def prepareOrderArguments(arguments: NamedValues)(implicit scope: Scope): Checked[NamedValues] =
   {
-    val checkedAllExpected = (namedValues.keySet -- nameToParameter.values.map(_.name).toSet)
-      .map[Problem](name => UnexpectedOrderArgumentProblem(name))
-      .reduceOption(_ |+| _)
-      .toLeft(())
+    val checkedAllDeclared =
+      if (allowUndeclared)
+        Checked.unit
+      else
+        (arguments.keySet -- nameToParameter.keySet)
+          .map[Problem](name => UndeclaredOrderArgumentProblem(name))
+          .reduceOption(_ |+| _)
+          .toLeft(())
 
-    val checked = nameToParameter.values
-      .map(param =>
-        (namedValues.get(param.name), param.default) match {
-          case (None, None) => Left(MissingOrderArgumentProblem(param): Problem)
-          case (None, Some(_/*default*/)) => RightUnit
-          case (Some(value), _) =>
-            if (value.valueType != param.valueType)
-              Left(WrongOrderArgumentTypeProblem(param, value.valueType))
-            else
-              RightUnit
-        })
-      .reduceLeftEither
+    val declared: Checked[View[(String, Value)]] =
+      nameToParameter.values.view
+        .map(param =>
+          (arguments.get(param.name), param) match {
+            case (None, required: WorkflowParameter.Required) =>
+              Left(MissingOrderArgumentProblem(required): Problem)
 
-    checkedAllExpected.combineLeft(checked).rightAs(())
+            case (None, WorkflowParameter.Optional(name, default)) =>
+              Right(None)
+
+            case (None, WorkflowParameter.WorkflowDefined(name, expr)) =>
+              (!expr.isConstant ? expr.eval.map(name -> _))
+                .sequence
+
+            case (Some(value), parameter: WorkflowParameter.HasType) =>
+              if (value.valueType != parameter.valueType)
+                Left(WrongOrderArgumentTypeProblem(parameter, value.valueType))
+              else
+                Right(Some(param.name -> value))
+
+            case (Some(_), _: WorkflowParameter.WorkflowDefined) =>
+              Left(FixedOrderArgumentProblem(param.name))
+          })
+        .reduceLeftEither
+        .map(_.flatten)
+
+    checkedAllDeclared.combineLeft(declared)
+      .map(_._2)
+      .pipeIf(allowUndeclared)(_.map(arguments.view ++ _))
+      .map(_.toMap)
   }
 
   def defaultArgument(name: String): Option[Value] =
     nameToParameter.get(name)
-      .flatMap(_.default)
+      .collect {
+        case WorkflowParameter.HasValue(value) => value
+      }
 
   lazy val defaultArguments: NamedValues =
-    nameToParameter.values.view
-      .collect { case WorkflowParameter(name, _, Some(default)) => name -> default }
+    nameToParameter.view
+      .collect {
+        case (name, WorkflowParameter.HasValue(value)) => name -> value
+      }
       .toMap
 }
 
 object WorkflowParameters
 {
-  private val SupportedTypes: Set[ValueType] = Set(StringValue, BooleanValue, NumberValue)
+  val default = new WorkflowParameters(Map.empty, allowUndeclared = true)
 
   def apply(parameters: WorkflowParameter*): WorkflowParameters =
     apply(parameters)
 
-  def apply(parameters: Iterable[WorkflowParameter]): WorkflowParameters =
-    checked(parameters).orThrow
+  def apply(parameters: Iterable[WorkflowParameter] = Nil, allowUndeclared: Boolean = false)
+  : WorkflowParameters =
+    checked(parameters, allowUndeclared).orThrow
 
-  def checked(parameters: Iterable[WorkflowParameter]): Checked[WorkflowParameters] =
+  def checked(parameters: Iterable[WorkflowParameter] = Nil, allowUndeclared: Boolean = false)
+  : Checked[WorkflowParameters] =
     parameters.toCheckedKeyedMap(_.name)
-      .flatMap(nameToParam =>
-        nameToParam.values
-          .map(p =>
-            if (!SupportedTypes(p.valueType))
-              Left(Problem(s"Unsupported type of parameter '${p.name}': ${p.valueType}"))
-            else
-              RightUnit)
-          .reduceLeftEither
-          .map(_ => new WorkflowParameters(nameToParam)))
+      .map(new WorkflowParameters(_, allowUndeclared))
 
+  // allowUndeclared serialized or deserialized separately (for compatibility)
   implicit val jsonEncoder: Encoder.AsObject[WorkflowParameters] =
     o => JsonObject.fromIterable(
       o.nameToParameter.values.map(param =>
-        param.name -> Json.fromJsonObject(JsonObject(
-          "type" -> param.valueType.asJson,
-          "default" -> param.default.asJson))))
+        param.name -> Json.fromJsonObject(
+          param match {
+            case Required(_, valueType) =>
+              JsonObject("type" -> valueType.asJson)
+            case Optional(_, default) =>
+              JsonObject("default" -> default.asJson)
+            case WorkflowDefined(_, expression) =>
+              JsonObject("expression" -> expression.asJson)
+          })))
 
   implicit val jsonDecoder: Decoder[WorkflowParameters] =
     cursor =>
@@ -87,30 +120,46 @@ object WorkflowParameters
           .traverse { case (name, json) =>
             val c = json.hcursor
             for {
-              typ <- c.get[ValueType]("type")
-              default <- c.get[Option[Value]]("default")
-              w <- WorkflowParameter.checked(name, typ, default).toDecoderResult(c.history)
-            } yield w
+              p <- {
+                val json = c.value.asObject.get
+                if (json.contains("type"))
+                  c.get[ValueType]("type").map(Required(name, _))
+                else if (json.contains("default"))
+                  c.get[Value]("default").map(Optional(name, _))
+                else if (json.contains("expression"))
+                  c.get[Expression]("expression").map(WorkflowDefined(name, _))
+                else
+                  Left(DecodingFailure("Missing type, default or value field", c.history))
+              }
+            } yield p
           }
-          .flatMap(w => WorkflowParameters.checked(w).toDecoderResult(cursor.history))
+          .flatMap(p => WorkflowParameters.checked(p).toDecoderResult(cursor.history))
       })
 
-  final case class MissingOrderArgumentProblem(parameter: WorkflowParameter) extends Problem.Coded {
+  final case class MissingOrderArgumentProblem(parameter: WorkflowParameter.Required)
+  extends Problem.Coded {
     def arguments = Map(
       "name" -> parameter.name,
       "type" -> parameter.valueType.name)
   }
 
-  final case class UnexpectedOrderArgumentProblem(name: String) extends Problem.Coded {
+  final case class UndeclaredOrderArgumentProblem(name: String) extends Problem.Coded {
     def arguments = Map(
       "name" -> name)
   }
 
-  final case class WrongOrderArgumentTypeProblem(parameter: WorkflowParameter, argumentType: ValueType)
+  final case class WrongOrderArgumentTypeProblem(
+    parameter: WorkflowParameter.HasType,
+    argumentType: ValueType)
   extends Problem.Coded {
     def arguments = Map(
       "name" -> parameter.name,
-      "type" -> parameter.valueType.name,
-      "argumentType" -> argumentType.name)
+      "expectedType" -> parameter.valueType.name,
+      "type" -> argumentType.name)
+  }
+
+  final case class FixedOrderArgumentProblem(name: String)
+  extends Problem.Coded {
+    def arguments = Map("name" -> name)
   }
 }

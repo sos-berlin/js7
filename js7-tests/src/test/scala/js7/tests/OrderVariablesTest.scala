@@ -1,7 +1,6 @@
 package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
@@ -11,9 +10,10 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
+import js7.data.workflow.WorkflowParameters.FixedOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.OrderVariablesTest._
@@ -33,15 +33,25 @@ final class OrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaT
   protected val items = Seq(workflow, objectWorkflow, deJobResource, svJobResource)
 
   "Variables are copied to the order" in {
-    def runOrder(jobResource: String, variableName: String, expected: String) =
-      controller.runOrder(
-        FreshOrder(OrderId(s"$jobResource-$variableName"), workflow.path, arguments = Map(
+    def runOrder(jobResource: String, variableName: String, expected: String) = {
+      val orderId = OrderId(s"$jobResource-$variableName")
+      val events = controller.runOrder(
+        FreshOrder(orderId, workflow.path, arguments = Map(
           "jobResource" -> StringValue(jobResource),
           "variableName" -> StringValue(variableName),
           "expected" -> StringValue(expected))
         )).map(_.value)
-    val deEvents = runOrder("de", "Acer", "Ahorn")
-    val svEvents = runOrder("sv", "Acer", "lönn")
+      orderId -> events
+    }
+
+    val (deOrderId, deEvents) = runOrder("de", "Acer", "Ahorn")
+    val (_        , svEvents) = runOrder("sv", "Acer", "lönn")
+
+    assert(controller.controllerState.await(99.s).idToOrder(deOrderId).arguments == Map(
+      "jobResource" -> StringValue("de"),
+      "variableName" -> StringValue("Acer"),
+      "expected" -> StringValue("Ahorn"),
+      "PLANT" -> StringValue("Ahorn")))
     assert(deEvents.contains(OrderFinished) && svEvents.contains(OrderFinished))
   }
 
@@ -52,7 +62,7 @@ final class OrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaT
         "variableName" -> StringValue("Acer"),
         "PLANT" -> StringValue("THE DUPLICATE"))
       ))).await(99.s)
-    assert(checked == Left(Problem("Names are duplicate in order arguments and order variables: PLANT")))
+    assert(checked == Left(FixedOrderArgumentProblem("PLANT")))
   }
 
   "JobResource.variables as an object" in {
@@ -89,11 +99,13 @@ object OrderVariablesTest
               "myONE" -> NamedValue("ONE"),
               "myPLANT" -> NamedValue("PLANT"),
               "myExpected" -> NamedValue("expected")))))),
-      orderVariables = Map(
-        "ONE" -> NumericConstant(1),
-        "PLANT" -> FunctionCall("jobResourceVariable", Seq(
-          Argument(NamedValue("jobResource")),
-          Argument(NamedValue("variableName"))))))
+      orderRequirements = OrderRequirements(WorkflowParameters(
+        Seq(
+          WorkflowParameter.WorkflowDefined("ONE", NumericConstant(1)),
+            WorkflowParameter.WorkflowDefined("PLANT", FunctionCall("jobResourceVariable", Seq(
+            Argument(NamedValue("jobResource")),
+            Argument(NamedValue("variableName")))))),
+        allowUndeclared = true)))
 
   private val objectWorkflow =
     Workflow(
@@ -107,9 +119,9 @@ object OrderVariablesTest
               "myONE" -> expr("1"),
               "myPLANT" -> expr("$de.Acer"),
               "myExpected" -> expr("'Ahorn'")))))),
-      orderVariables = Map(
-        "de" -> expr("JobResource:de"),
-        "sv" -> expr("JobResource:sv")))
+      orderRequirements = OrderRequirements(WorkflowParameters(
+        WorkflowParameter.WorkflowDefined("de", expr("JobResource:de")),
+        WorkflowParameter.WorkflowDefined("sv", expr("JobResource:sv")))))
 
   final class TestInternalJob extends InternalJob {
     def toOrderProcess(step: Step) =

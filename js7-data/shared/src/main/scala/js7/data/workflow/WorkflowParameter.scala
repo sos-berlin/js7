@@ -1,27 +1,47 @@
 package js7.data.workflow
 
-import js7.base.problem.Checked._
-import js7.base.problem.{Checked, Problem}
+import js7.data.job.JobResourcePath
+import js7.data.value.expression.Expression
 import js7.data.value.{Value, ValueType}
 
-final case class WorkflowParameter private(
-  name: String,
-  valueType: ValueType,
-  default: Option[Value] = None)
+sealed trait WorkflowParameter {
+  val name: String
+  def referencedJobResourcePaths: Iterable[JobResourcePath]
+}
 
 object WorkflowParameter
 {
-  def apply(name: String, valueType: ValueType, default: Option[Value] = None): WorkflowParameter =
-    checked(name, valueType, default).orThrow
+  sealed trait HasType extends WorkflowParameter {
+    def valueType: ValueType
+  }
+
+  final case class Required(name: String, valueType: ValueType)
+  extends HasType {
+    def referencedJobResourcePaths = Nil
+  }
+
+  object HasValue {
+    def unapply(p: WorkflowParameter) =
+      PartialFunction.condOpt(p) {
+        case WorkflowParameter.Optional(_, value) => value
+        case WorkflowParameter.WorkflowDefined(_, expr: Expression.Constant) => expr.toValue
+      }
+  }
+
+  final case class Optional(name: String, value: Value)
+  extends HasType {
+    def valueType = value.valueType
+    def referencedJobResourcePaths = Nil
+  }
+
+  final case class WorkflowDefined(name: String, expression: Expression)
+  extends WorkflowParameter {
+    def referencedJobResourcePaths = expression.referencedJobResourcePaths
+  }
+
+  def apply(name: String, valueType: ValueType): WorkflowParameter =
+    Required(name, valueType)
 
   def apply(name: String, default: Value): WorkflowParameter =
-    checked(name, default.valueType, Some(default)).orThrow
-
-  def checked(name: String, valueType: ValueType, default: Option[Value] = None)
-  : Checked[WorkflowParameter] =
-    if (!default.forall(_.valueType == valueType))
-      Left(Problem(
-        s"Parameter '$name': type of default value does not match parameter type '$valueType'"))
-    else
-      Right(new WorkflowParameter(name, valueType, default))
+    Optional(name, default)
 }

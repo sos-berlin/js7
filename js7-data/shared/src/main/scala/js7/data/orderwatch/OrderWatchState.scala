@@ -15,7 +15,9 @@ import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState._
 import js7.data.value.NamedValues
-import js7.data.workflow.WorkflowPath
+import js7.data.value.expression.Scope
+import js7.data.value.expression.scopes.OrderScopes.workflowOrderVariablesScope
+import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.View
 
@@ -142,27 +144,33 @@ extends UnsignedSimpleItemState
         Left(Problem(s"onOrderDeleted($externalOrderName, $orderId) but state=$state"))
     }
 
-  def nextEvents(workflowPathToVersionId: WorkflowPath => Option[VersionId])
+  def nextEvents(pathToWorkflow: WorkflowPath => Option[Workflow])
   : Seq[KeyedEvent[OrderCoreEvent]] =
-    (nextOrderAddedEvents(workflowPathToVersionId) ++ nextOrderDeletionMarkedEvents)
+    (nextOrderAddedEvents(pathToWorkflow) ++ nextOrderDeletionMarkedEvents)
       .toVector
 
-  private def nextOrderAddedEvents(workflowPathToVersionId: WorkflowPath => Option[VersionId])
+  private def nextOrderAddedEvents(pathToWorkflow: WorkflowPath => Option[Workflow])
   : View[KeyedEvent[OrderAdded]] =
     arisedQueue.view
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
         .flatMap {
           case Arised(orderId, arguments) =>
-            workflowPathToVersionId(orderWatch.workflowPath)
-              .map(v => orderId <-: OrderAdded(
-                orderWatch.workflowPath ~ v,
-                arguments,
-                externalOrderKey = Some(ExternalOrderKey(id, externalOrderName)),
-                variables = Map.empty/*TODO caclulate variables*/))
+            for (workflow <- pathToWorkflow(orderWatch.workflowPath)) yield
+              workflow.orderRequirements.parameters.prepareOrderArguments(arguments)(Scope.empty/*TODO*/) match {
+                case Left(problem) =>
+                  logger.error(s"Arised($orderId) => $problem")
+                  None
+                case Right(arguments) =>
+                  Some(orderId <-: OrderAdded(
+                    workflow.id,
+                    arguments,
+                    externalOrderKey = Some(ExternalOrderKey(id, externalOrderName))))
+              }
 
           case _ => None
-        })
+        }
+        .flatten)
 
   private def nextOrderDeletionMarkedEvents: View[KeyedEvent[OrderDeletionMarked]] =
     vanishedQueue.view

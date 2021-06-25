@@ -46,16 +46,15 @@ final class WorkflowTest extends AnyFreeSpec
           "orderRequirements": {
             "parameters": {
               "stringParameter": {
-                "type": "String",
                 "default": "DEFAULT"
               },
               "numberParameter": {
                 "type": "Number"
+              },
+              "variable": {
+                "expression": "'VALUE'"
               }
             }
-          },
-          "orderVariables": {
-            "VARIABLE": "'VALUE'"
           },
           "instructions": [
             {
@@ -203,16 +202,15 @@ final class WorkflowTest extends AnyFreeSpec
           "orderRequirements": {
             "parameters": {
               "stringParameter": {
-                "type": "String",
                 "default": "DEFAULT"
               },
               "numberParameter": {
                 "type": "Number"
+              },
+              "variable": {
+                "expression": "'VALUE'"
               }
             }
-          },
-          "orderVariables": {
-            "VARIABLE": "'VALUE'"
           },
           "instructions": [
             {
@@ -742,8 +740,8 @@ final class WorkflowTest extends AnyFreeSpec
           Fork.of(
             "BRANCH" -> Workflow.of(
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
-      orderVariables = Map(
-        "V" -> JobResourceVariable(f, Some("V"))))
+      orderRequirements = OrderRequirements(WorkflowParameters(
+        WorkflowParameter.WorkflowDefined("V", JobResourceVariable(f, Some("V"))))))
     assert(workflow.referencedLockPaths.isEmpty)
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
     assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e, f))
@@ -1177,11 +1175,10 @@ private object WorkflowTest
       AJobName -> AJob,
       BJobName -> BJob),
     OrderRequirements(
-      Some(WorkflowParameters(Seq(
+      WorkflowParameters(
         WorkflowParameter("stringParameter", StringValue("DEFAULT")),
-        WorkflowParameter("numberParameter", NumberValue))))),
-    Map(
-      "VARIABLE" -> StringConstant("VALUE")),
+        WorkflowParameter("numberParameter", NumberValue),
+        WorkflowParameter.WorkflowDefined("variable", StringConstant("VALUE")))),
     jobResourcePaths = Seq(
       JobResourcePath("JOB-RESOURCE")))
 }

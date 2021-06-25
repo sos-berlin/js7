@@ -198,15 +198,14 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           FreshOrder(aOrderId, aWorkflow.path),
           FreshOrder(bOrderId, bWorkflow.path)
         ))) ==
-          Left(MissingOrderArgumentProblem(WorkflowParameter("required", NumberValue))))
+          Left(MissingOrderArgumentProblem(requiredParameter)))
     }
 
     "addOrder with wrong argument type is rejected" in {
       assert(
         executor.execute(_.addOrders(Seq(
           FreshOrder(bOrderId, bWorkflow.path, Map("required" -> StringValue("STRING")))
-        ))) ==
-          Left(WrongOrderArgumentTypeProblem(WorkflowParameter("required", NumberValue), StringValue)))
+        ))) == Left(WrongOrderArgumentTypeProblem(requiredParameter, StringValue)))
     }
 
     "addOrder resolved default argument and provides variables" in {
@@ -222,23 +221,6 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
             "required" -> NumberValue(7),
             "variable" -> StringValue("VARIABLE-VALUE")),
           attachedState = Some(Order.Attaching(bAgentRef.path)))))
-    }
-
-    "addOrder argument name sets and variable name sets must be disjoint" in {
-      val versionId = VersionId("DUPLICATE NAMES")
-      val workflow = bWorkflow.copy(
-        id = WorkflowPath("DUPLICATE-NAMES") ~ versionId,
-        orderRequirements = OrderRequirements.empty)
-      executor.executeVerifiedUpdateItems(VerifiedUpdateItems(
-        VerifiedUpdateItems.Simple(),
-        Some(VerifiedUpdateItems.Versioned(versionId, Seq(
-          Verified(itemSigner.sign(workflow), Nil))))))
-
-      val checked = executor.controllerState.addOrders(Seq(
-        FreshOrder(OrderId("DUPLICATE-NAMES"), workflow.path, Map(
-          "variable" -> StringValue("DUPLICATE")))))
-      assert(checked == Left(Problem(
-        "Names are duplicate in order arguments and order variables: variable")))
     }
   }
 
@@ -475,6 +457,8 @@ object ControllerStateExecutorTest
 
   private val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ v1, Seq(execute(aAgentRef.path)))
 
+  private val requiredParameter = WorkflowParameter.Required("required", NumberValue)
+
   private val bWorkflow = Workflow(
     WorkflowPath("B-WORKFLOW") ~ v1,
     Seq(
@@ -482,11 +466,13 @@ object ControllerStateExecutorTest
         lock.path,
         None,
         Workflow.of(execute(bAgentRef.path)))),
-    orderRequirements = OrderRequirements(Some(WorkflowParameters(View(
-      WorkflowParameter("required", NumberValue),
-      WorkflowParameter("hasDefault", StringValue("DEFAULT")))))),
-    orderVariables = Map(
-      "variable" -> expr("JobResource:B-JOB-RESOURCE:VARIABLE")),
+    orderRequirements = OrderRequirements(WorkflowParameters(View(
+      requiredParameter,
+      WorkflowParameter("hasDefault", StringValue("DEFAULT")),
+      // Constants are not stored in Order but re-evaluated with each access
+      WorkflowParameter.WorkflowDefined("constantVariable", expr("'CONSTANT'")),
+      // Other expressions are evaluated once and the results are stored as order arguments
+      WorkflowParameter.WorkflowDefined("variable", expr("JobResource:B-JOB-RESOURCE:VARIABLE"))))),
     jobResourcePaths = Seq(aJobResource.path))
 
   private val aOrderId = OrderId("A-ORDER")

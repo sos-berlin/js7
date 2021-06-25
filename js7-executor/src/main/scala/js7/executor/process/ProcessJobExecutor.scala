@@ -76,7 +76,7 @@ trait ProcessJobExecutor extends JobExecutor
       for (defaultArguments <- processOrder.checkedDefaultArguments) yield
         (defaultArguments.view ++
           processOrder.order.v1CompatibleNamedValues(
-            processOrder.workflow.orderRequirements.defaultArguments)
+            processOrder.workflow.defaultArguments)
         ) .map { case (k, v) => k -> v.toStringValue }
           .collect {
             case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)
