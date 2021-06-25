@@ -11,12 +11,10 @@ import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked}
-import js7.data.order.OrderId
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState._
 import js7.data.value.NamedValues
-import js7.data.value.expression.Scope
-import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.View
 
@@ -143,33 +141,32 @@ extends UnsignedSimpleItemState
         Left(Problem(s"onOrderDeleted($externalOrderName, $orderId) but state=$state"))
     }
 
-  def nextEvents(pathToWorkflow: WorkflowPath => Option[Workflow])
+  def nextEvents(toOrderAdded: ToOrderAdded)
   : Seq[KeyedEvent[OrderCoreEvent]] =
-    (nextOrderAddedEvents(pathToWorkflow) ++ nextOrderDeletionMarkedEvents)
+    (nextOrderAddedEvents(toOrderAdded) ++ nextOrderDeletionMarkedEvents)
       .toVector
 
-  private def nextOrderAddedEvents(pathToWorkflow: WorkflowPath => Option[Workflow])
+  private def nextOrderAddedEvents(toOrderAdded: ToOrderAdded)
   : View[KeyedEvent[OrderAdded]] =
     arisedQueue.view
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
-        .flatMap {
-          case Arised(orderId, arguments) =>
-            for (workflow <- pathToWorkflow(orderWatch.workflowPath)) yield
-              workflow.orderPreparation.parameters.prepareOrderArguments(arguments)(Scope.empty/*TODO*/) match {
-                case Left(problem) =>
-                  logger.error(s"Arised($orderId) => $problem")
-                  None
-                case Right(arguments) =>
-                  Some(orderId <-: OrderAdded(
-                    workflow.id,
-                    arguments,
-                    externalOrderKey = Some(ExternalOrderKey(id, externalOrderName))))
-              }
-
-          case _ => None
-        }
-        .flatten)
+        .flatMap { case Arised(orderId, arguments) =>
+          val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments)
+          val externalOrderKey = ExternalOrderKey(id, externalOrderName)
+          toOrderAdded(freshOrder, Some(externalOrderKey)) match {
+            case Left(problem) =>
+              // Handle this error ???
+              logger.error(s"$externalOrderKey: $problem")
+              None
+            case Right(None) =>
+              // Handle duplicate OrderId as error ???
+              logger.error(s"$externalOrderKey: Duplicate OrderId ?")
+              None
+            case Right(Some(added)) =>
+              Some(added)
+          }
+        })
 
   private def nextOrderDeletionMarkedEvents: View[KeyedEvent[OrderDeletionMarked]] =
     vanishedQueue.view
@@ -199,6 +196,8 @@ extends UnsignedSimpleItemState
 
 object OrderWatchState
 {
+  type ToOrderAdded = (FreshOrder, Option[ExternalOrderKey]) => Checked[Option[KeyedEvent[OrderAdded]]]
+
   private val logger = scribe.Logger[this.type]
 
   def apply(orderWatch: OrderWatch): OrderWatchState =

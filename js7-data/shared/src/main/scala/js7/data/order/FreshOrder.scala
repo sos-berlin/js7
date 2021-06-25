@@ -11,6 +11,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderAdded
+import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import org.jetbrains.annotations.TestOnly
@@ -26,8 +27,12 @@ final case class FreshOrder private(
 {
   workflowPath.requireNonAnonymous()
 
-  def toOrderAdded(versionId: VersionId, preparedArguments: NamedValues): KeyedEvent[OrderAdded] =
-    id <-: OrderAdded(workflowPath ~ versionId, preparedArguments, scheduledFor)
+  def toOrderAdded(
+    versionId: VersionId,
+    preparedArguments: NamedValues,
+    externalOrderKey: Option[ExternalOrderKey] = None)
+  : KeyedEvent[OrderAdded] =
+    id <-: OrderAdded(workflowPath ~ versionId, preparedArguments, scheduledFor, externalOrderKey)
 }
 
 object FreshOrder

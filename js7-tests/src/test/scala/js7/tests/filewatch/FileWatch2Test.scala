@@ -23,9 +23,10 @@ import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.value.StringValue
+import js7.data.value.expression.Expression.{MkString, StringConstant}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.filewatch.FileWatch2Test._
@@ -220,7 +221,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       NoKey <-: ControllerShutDown(None),
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(0)), aAgentPath),
       orderId1 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$aDirectory/1")),
+        Map(
+          FileArgumentName -> StringValue(s"$aDirectory/1"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("1")))),
       NoKey <-: ItemAttached(workflow.id, None, bAgentPath),
@@ -230,7 +233,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId1 <-: OrderDeleted,
 
       orderId2 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$aDirectory/2")),
+        Map(
+          FileArgumentName -> StringValue(s"$aDirectory/2"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("2")))),
       orderId2 <-: OrderStarted,
@@ -239,7 +244,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId2 <-: OrderDeleted,
 
       orderId3 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$aDirectory/3")),
+        Map(
+          FileArgumentName -> StringValue(s"$aDirectory/3"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("3")))),
       orderId3 <-: OrderStarted,
@@ -248,7 +255,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId3 <-: OrderDeleted,
 
       orderId4 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$aDirectory/4")),
+        Map(
+          FileArgumentName -> StringValue(s"$aDirectory/4"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("4")))),
       orderId4 <-: OrderStarted,
@@ -260,7 +269,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId4 <-: OrderDeleted,
 
       orderId5 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$bDirectory/5")),
+        Map(
+          FileArgumentName -> StringValue(s"$bDirectory/5"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("5")))),
       orderId5 <-: OrderStarted,
@@ -269,7 +280,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId5 <-: OrderDeleted,
 
       orderId6 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$bDirectory/6")),
+        Map(
+          FileArgumentName -> StringValue(s"$bDirectory/6"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
@@ -278,7 +291,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId6 <-: OrderDeleted,
       // And again
       orderId6 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$bDirectory/6")),
+        Map(
+          FileArgumentName -> StringValue(s"$bDirectory/6"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
@@ -287,7 +302,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderId6 <-: OrderDeleted,
 
       orderId7 <-: OrderAdded(workflow.id,
-        Map(FileArgumentName -> StringValue(s"$bDirectory/7")),
+        Map(
+          FileArgumentName -> StringValue(s"$bDirectory/7"),
+          "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("7")))),
       orderId7 <-: OrderStarted,
@@ -366,7 +383,13 @@ object FileWatch2Test
     Vector(
       Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName))),
       Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[DeleteFileJob].getName))),
-      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName)))))
+      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName)))),
+    orderPreparation = OrderPreparation(
+      OrderParameters(
+        Seq(
+          OrderParameter.WorkflowDefined("var",
+            MkString/*force non-constant early evaluation*/(StringConstant("VAR")))),
+        allowUndeclared = true)))
 
   private val semaphore = Semaphore[Task](0).memoize
 

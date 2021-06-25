@@ -19,10 +19,10 @@ import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, Simp
 import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.Scope
+import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
 import js7.data.value.expression.scopes.OrderScopes.workflowOrderVariablesScope
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
@@ -34,28 +34,27 @@ final case class ControllerStateExecutor private(
   import ControllerStateExecutor.convertImplicitly
   import controllerState.{controllerId, pathToJobResource}
 
-  private def pathToWorkflow(workflowPath: WorkflowPath): Option[Workflow] =
-    controllerState.repo.pathTo[Workflow](workflowPath).toOption
+  // Same clock for a chunk of operations
+  private lazy val nowScope = NowScope()
 
-  def addOrders(freshOrders: Seq[FreshOrder]): Checked[Seq[KeyedEvent[OrderAdded]]] = {
-    val nowScope = NowScope()  // Same time for all orders
+  def addOrders(freshOrders: Seq[FreshOrder]): Checked[Seq[KeyedEvent[OrderAdded]]] =
     freshOrders.checkUniqueness(_.id) >>
-      freshOrders.traverse(addOrder(_, nowScope))
+      freshOrders.traverse(addOrder(_))
         .map(_.flatten)
-  }
 
-  def addOrder(order: FreshOrder, nowScope: Scope = NowScope()): Checked[Option[KeyedEvent[OrderAdded]]] =
-  {
+  def addOrder(
+    order: FreshOrder,
+    externalOrderKey: Option[ExternalOrderKey] = None)
+  : Checked[Option[KeyedEvent[OrderAdded]]] =
     if (controllerState.idToOrder.contains(order.id))
-      Right(None) // Ignore known orders  — TODO ignore only when !deleteWhenTerminated ?
+      Right(None) // Ignore known orders  — TODO Fail as duplicate if deleteWhenTerminated ?
     else
       for {
         workflow <- controllerState.repo.pathTo[Workflow](order.workflowPath)
         preparedArguments <- workflow.orderPreparation.parameters.prepareOrderArguments(order.arguments)(
           workflowOrderVariablesScope(order, pathToJobResource, controllerId, nowScope))
       } yield Some(
-        order.toOrderAdded(workflow.id.versionId, preparedArguments))
-  }
+        order.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
 
   def resetAgent(agentPath: AgentPath): Seq[AnyKeyedEvent] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted)
@@ -242,7 +241,7 @@ final case class ControllerStateExecutor private(
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     controllerState.allOrderWatchesState
-      .nextEvents(pathToWorkflow)
+      .nextEvents(addOrder)
       .filter {
         case KeyedEvent(orderId: OrderId, OrderDeletionMarked) =>
           // OrderWatchState emits OrderDeletionMarked without knowledge of the order

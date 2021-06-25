@@ -1,17 +1,17 @@
 package js7.data.orderwatch
 
-import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderDeletionMarked}
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, HasOrder, Vanished}
 import js7.data.value.{NamedValues, StringValue}
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec
 
 final class AllOrderWatchesStateTest extends AnyFreeSpec
@@ -53,13 +53,13 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       val events = Seq(externalOrderArised("A"), externalOrderArised("X"), externalOrderArised("B"), externalOrderVanished("X"))
       for (event <- events) aows = aows.onOrderWatchEvent(event).orThrow
       assert(state("A") == Some(Arised(orderId("A"), arguments("A"))))
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderAdded("A"), orderAdded("B")))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderAdded("A"), orderAdded("B")))
     }
 
     "ExternalOrderVanished A, cancels previous Arised if OrderAdded was not emitted" in {
       aows = aows.onOrderWatchEvent(externalOrderVanished("A")).orThrow
       assert(state("A") == None)
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderAdded("B")))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderAdded("B")))
     }
 
     "ExternalOrderArised A" in {
@@ -67,50 +67,50 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       assert(aows
         .pathToOrderWatchState(aOrderWatch.path)
         .externalToState(ExternalOrderName("A")) == Arised(orderId("A"), arguments("A")))
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderAdded("B"), orderAdded("A")))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderAdded("B"), orderAdded("A")))
     }
 
     "OrderAdded A, B" in {
       aows = aows.onOrderAdded(orderAdded("A")).orThrow
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderAdded("B")))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderAdded("B")))
 
       aows = aows.onOrderAdded(orderAdded("B")).orThrow
-      assert(aows.nextEvents(pathToWorkflow).isEmpty)
+      assert(aows.nextEvents(toOrderAdded).isEmpty)
     }
 
     "ExternalOrderVanished A => OrderRemovedMarked" in {
       aows = aows.onOrderWatchEvent(externalOrderVanished("A")).orThrow
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderId("A") <-: OrderDeletionMarked))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderId("A") <-: OrderDeletionMarked))
     }
 
     "OrderDeletionMarked A" in {
       aows = aows.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderDeletionMarked).orThrow
-      assert(aows.nextEvents(pathToWorkflow).isEmpty)
+      assert(aows.nextEvents(toOrderAdded).isEmpty)
     }
 
     "OrderDeleted A" in {
       aows = aows.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderDeleted).orThrow
-      assert(aows.nextEvents(pathToWorkflow).isEmpty)
+      assert(aows.nextEvents(toOrderAdded).isEmpty)
     }
 
     "ExternalOrderVanished B => OrderRemovedMarked" in {
       aows = aows.onOrderWatchEvent(externalOrderVanished("B")).orThrow
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderId("B") <-: OrderDeletionMarked))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderId("B") <-: OrderDeletionMarked))
     }
 
     "OrderDeletionMarked B" in {
       aows = aows.onOrderEvent(externalOrderKey("B"), orderId("B") <-: OrderDeletionMarked).orThrow
-      assert(aows.nextEvents(pathToWorkflow).isEmpty)
+      assert(aows.nextEvents(toOrderAdded).isEmpty)
     }
 
     "ExternalOrderArised B, while B order is running" in {
       aows = aows.onOrderWatchEvent(externalOrderArised("B")).orThrow
-      assert(aows.nextEvents(pathToWorkflow).isEmpty)
+      assert(aows.nextEvents(toOrderAdded).isEmpty)
     }
 
     "OrderDeleted B => OrderAdded" in {
       aows = aows.onOrderEvent(externalOrderKey("B"), orderId("B") <-: OrderDeleted).orThrow
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderAdded("B")))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderAdded("B")))
       aows = aows.onOrderAdded(orderAdded("B")).orThrow
     }
 
@@ -124,7 +124,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       aows = aows.onOrderWatchEvent(externalOrderVanished("B")).orThrow
       assert(state("B") == Some(HasOrder(orderId("B"), None)))
 
-      assert(aows.nextEvents(pathToWorkflow).toSeq == Seq(orderId("B") <-: OrderDeletionMarked))
+      assert(aows.nextEvents(toOrderAdded).toSeq == Seq(orderId("B") <-: OrderDeletionMarked))
 
       aows = aows.onOrderWatchEvent(externalOrderArised("B")).orThrow
     }
@@ -141,10 +141,10 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       """Duplicate ExternalOrderVanished(C), state=HasOrder(Order:file:A-SOURCE:C,Some(VanishedAck))""")))
 
     a = a.onOrderEvent(externalOrderKey("C"), orderId("C") <-: OrderDeleted).orThrow
-    assert(a.nextEvents(pathToWorkflow).isEmpty)
+    assert(a.nextEvents(toOrderAdded).isEmpty)
 
     a = a.onOrderWatchEvent(externalOrderArised("C")).orThrow
-    assert(a.nextEvents(pathToWorkflow).toSeq == Seq(orderAdded("C")))
+    assert(a.nextEvents(toOrderAdded).toSeq == Seq(orderAdded("C")))
   }
 
   "Events in illegal order" - {
@@ -192,9 +192,9 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
       assert(aows.onOrderEvent(externalOrderKey("A"), orderId("A") <-: OrderDeletionMarked) == Right(aows))
     }
   }
-
-  private def pathToWorkflow(workflowPath: WorkflowPath) =
-    Some(Workflow(workflowPath ~ v1, Nil))
+  private def toOrderAdded(order: FreshOrder, externalOrderKey: Option[ExternalOrderKey] = None)
+  : Checked[Option[KeyedEvent[OrderAdded]]] =
+    Right(Some(order.toOrderAdded(v1, order.arguments, externalOrderKey)))
 
   private def arguments(name: String) =
     NamedValues("file" -> StringValue(s"/DIR/$name"))
