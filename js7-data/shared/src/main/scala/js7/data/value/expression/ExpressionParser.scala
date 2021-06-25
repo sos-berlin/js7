@@ -190,7 +190,6 @@ object ExpressionParser
       case (o, Some("stripMargin")) => valid(StripMargin(o))
       case (o, Some("mkString")) => valid(MkString(o))
       case (o, Some(identifier)) => valid(DotExpression(o, identifier))
-      case (_, Some(f)) => invalid(s"known function: .$f")   //  for ${o.getClass.simpleScalaName}")
     })
 
   private def not[_: P]: P[Expression] = P(

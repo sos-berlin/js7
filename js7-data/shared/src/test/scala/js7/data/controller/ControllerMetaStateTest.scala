@@ -13,7 +13,10 @@ final class ControllerMetaStateTest extends AnyFreeSpec
   "ControllerMetaState" in {
     java.time.ZoneId.of("Europe/Berlin")  // Proper timezone
     implicit val x = ControllerState.snapshotObjectJsonCodec
-    testJson[Any](ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), "Europe/Berlin"),
+    testJson[Any](ControllerMetaState(
+      ControllerId("CONTROLLER-ID"),
+      Timestamp("2019-05-24T12:00:00Z"),
+      "Europe/Berlin"),
       json"""{
         "TYPE": "ControllerMetaState",
         "controllerId": "CONTROLLER-ID",

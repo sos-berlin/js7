@@ -24,8 +24,6 @@ sealed trait Executable
 
   def referencedJobResourcePaths: Iterable[JobResourcePath] =
     arguments.values.view.flatMap(_.referencedJobResourcePaths)
-
-  protected def subexpressinos = arguments.values.view
 }
 
 sealed trait ProcessExecutable extends Executable
@@ -242,7 +240,7 @@ final case class InternalExecutable(
   className: String,
   /** Arguments for the job itself. */
   jobArguments: Map[String, Expression] = Map.empty,
-  /** Argument expressions evalutated for each `processOrder`. */
+  /** Argument expressions evaluated for each `processOrder`. */
   arguments: Map[String, Expression] = Map.empty)
 extends Executable
 

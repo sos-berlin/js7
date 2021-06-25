@@ -27,7 +27,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
     assertThat(Right(order) == state.idToOrder(order.id).map(_ withPosition order.position))
     for {
       scope <- state.toScope(order)
-      condition <- instruction.predicate.evalAsBooolean(scope)
+      condition <- instruction.predicate.evalAsBoolean(scope)
     } yield
       Some(
         condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match {
