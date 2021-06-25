@@ -17,11 +17,11 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue, StringValue}
-import js7.data.workflow.WorkflowParameters.MissingOrderArgumentProblem
+import js7.data.workflow.OrderParameters.MissingOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
-import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.controller.commands.AddOrderTest._
@@ -98,8 +98,8 @@ object AddOrderTest
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
   private val emptyWorkflow = Workflow.of(WorkflowPath("EMPTY"))
-  private val stringParameter = WorkflowParameter.Optional("myString", StringValue("DEFAULT"))
-  private val numberParameter = WorkflowParameter.Required("myNumber", NumberValue)
+  private val stringParameter = OrderParameter.Optional("myString", StringValue("DEFAULT"))
+  private val numberParameter = OrderParameter.Required("myNumber", NumberValue)
 
   private val unknownArgWorkflow = Workflow(WorkflowPath("UNKNOWN-ARG"),
     labeledInstructions = Vector(
@@ -122,7 +122,7 @@ object AddOrderTest
             "STRING" -> NamedValue.last("myString"),
             "NUMBER" -> NamedValue.last("myNumber")))))
     ),
-    orderRequirements = OrderRequirements(WorkflowParameters(
+    orderRequirements = OrderRequirements(OrderParameters(
       stringParameter,
       numberParameter)))
 }

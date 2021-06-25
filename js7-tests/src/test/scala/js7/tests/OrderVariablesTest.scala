@@ -10,10 +10,10 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
-import js7.data.workflow.WorkflowParameters.FixedOrderArgumentProblem
+import js7.data.workflow.OrderParameters.FixedOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.OrderVariablesTest._
@@ -99,10 +99,10 @@ object OrderVariablesTest
               "myONE" -> NamedValue("ONE"),
               "myPLANT" -> NamedValue("PLANT"),
               "myExpected" -> NamedValue("expected")))))),
-      orderRequirements = OrderRequirements(WorkflowParameters(
+      orderRequirements = OrderRequirements(OrderParameters(
         Seq(
-          WorkflowParameter.WorkflowDefined("ONE", NumericConstant(1)),
-            WorkflowParameter.WorkflowDefined("PLANT", FunctionCall("jobResourceVariable", Seq(
+          OrderParameter.WorkflowDefined("ONE", NumericConstant(1)),
+            OrderParameter.WorkflowDefined("PLANT", FunctionCall("jobResourceVariable", Seq(
             Argument(NamedValue("jobResource")),
             Argument(NamedValue("variableName")))))),
         allowUndeclared = true)))
@@ -119,9 +119,9 @@ object OrderVariablesTest
               "myONE" -> expr("1"),
               "myPLANT" -> expr("$de.Acer"),
               "myExpected" -> expr("'Ahorn'")))))),
-      orderRequirements = OrderRequirements(WorkflowParameters(
-        WorkflowParameter.WorkflowDefined("de", expr("JobResource:de")),
-        WorkflowParameter.WorkflowDefined("sv", expr("JobResource:sv")))))
+      orderRequirements = OrderRequirements(OrderParameters(
+        OrderParameter.WorkflowDefined("de", expr("JobResource:de")),
+        OrderParameter.WorkflowDefined("sv", expr("JobResource:sv")))))
 
   final class TestInternalJob extends InternalJob {
     def toOrderProcess(step: Step) =

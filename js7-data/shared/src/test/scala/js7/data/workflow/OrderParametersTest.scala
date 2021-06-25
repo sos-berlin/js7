@@ -6,20 +6,20 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.Scope
 import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue}
-import js7.data.workflow.WorkflowParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
+import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class WorkflowParametersTest extends AnyFreeSpec
+final class OrderParametersTest extends AnyFreeSpec
 {
-  private val stringParameter = WorkflowParameter.Required("string", StringValue)
-  private val booleanParameter = WorkflowParameter.Required("boolean", BooleanValue)
-  private val numberParameter = WorkflowParameter.Optional("number", NumberValue(7))
-  private val workflowDefined = WorkflowParameter.WorkflowDefined("workflowDefined", StringConstant("EXPRESSION"))
+  private val stringParameter = OrderParameter.Required("string", StringValue)
+  private val booleanParameter = OrderParameter.Required("boolean", BooleanValue)
+  private val numberParameter = OrderParameter.Optional("number", NumberValue(7))
+  private val workflowDefined = OrderParameter.WorkflowDefined("workflowDefined", StringConstant("EXPRESSION"))
 
   "JSON" in {
     testJson(
-      WorkflowParameters(
+      OrderParameters(
         stringParameter,
         numberParameter,
         booleanParameter,
@@ -40,14 +40,14 @@ final class WorkflowParametersTest extends AnyFreeSpec
       }""")
   }
 
-  private val parameters = WorkflowParameters.checked(Seq(
+  private val parameters = OrderParameters.checked(Seq(
     stringParameter,
-    WorkflowParameter("number", NumberValue),
+    OrderParameter("number", NumberValue),
     booleanParameter,
-    WorkflowParameter("string-default", StringValue("DEFAULT")),
-    WorkflowParameter("boolean-default", BooleanValue(false)),
-    WorkflowParameter("number-default", NumberValue(-1)),
-    WorkflowParameter.WorkflowDefined("workflowDefined", StringConstant("EXPRESSION"))
+    OrderParameter("string-default", StringValue("DEFAULT")),
+    OrderParameter("boolean-default", BooleanValue(false)),
+    OrderParameter("number-default", NumberValue(-1)),
+    OrderParameter.WorkflowDefined("workflowDefined", StringConstant("EXPRESSION"))
   )).orThrow
 
   private val validArguments = NamedValues(
@@ -57,7 +57,7 @@ final class WorkflowParametersTest extends AnyFreeSpec
 
   "prepareOrderArguments" - {
     implicit val scope = Scope.empty
-    val numberParameter = WorkflowParameter.Required("number", NumberValue)
+    val numberParameter = OrderParameter.Required("number", NumberValue)
 
     "Missing names" in {
       assert(parameters.prepareOrderArguments(NamedValues.empty) == Left(Problem.Combined(Set(

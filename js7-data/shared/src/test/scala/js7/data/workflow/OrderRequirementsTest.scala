@@ -6,32 +6,32 @@ import js7.base.problem.Problem
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.Scope
 import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue}
-import js7.data.workflow.WorkflowParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
+import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 final class OrderRequirementsTest extends AnyFreeSpec
 {
-  private val stringParameter = WorkflowParameter.Required("string", StringValue)
-  private val orderRequirements = OrderRequirements(WorkflowParameters.checked(Seq(
+  private val stringParameter = OrderParameter.Required("string", StringValue)
+  private val orderRequirements = OrderRequirements(OrderParameters.checked(Seq(
     stringParameter,
-    WorkflowParameter("string-default", StringValue("DEFAULT"))
+    OrderParameter("string-default", StringValue("DEFAULT"))
   )).orThrow)
 
   "JSON" in {
-    testJson(OrderRequirements(WorkflowParameters()),
+    testJson(OrderRequirements(OrderParameters()),
       json"""{}""")
 
-    testJson(OrderRequirements(WorkflowParameters(allowUndeclared = true)),
+    testJson(OrderRequirements(OrderParameters(allowUndeclared = true)),
       json"""{
          "allowUndeclared": true
       }""")
 
-    testJson(OrderRequirements(WorkflowParameters(
+    testJson(OrderRequirements(OrderParameters(
       Seq(
-        WorkflowParameter.Required("required", NumberValue),
-        WorkflowParameter.Optional("optional", BooleanValue.True),
-        WorkflowParameter.WorkflowDefined("variable", StringConstant("VARIABLE"))))),
+        OrderParameter.Required("required", NumberValue),
+        OrderParameter.Optional("optional", BooleanValue.True),
+        OrderParameter.WorkflowDefined("variable", StringConstant("VARIABLE"))))),
       json"""{
         "parameters": {
           "optional": {

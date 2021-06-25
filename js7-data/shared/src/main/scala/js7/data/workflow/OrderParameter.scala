@@ -4,14 +4,14 @@ import js7.data.job.JobResourcePath
 import js7.data.value.expression.Expression
 import js7.data.value.{Value, ValueType}
 
-sealed trait WorkflowParameter {
+sealed trait OrderParameter {
   val name: String
   def referencedJobResourcePaths: Iterable[JobResourcePath]
 }
 
-object WorkflowParameter
+object OrderParameter
 {
-  sealed trait HasType extends WorkflowParameter {
+  sealed trait HasType extends OrderParameter {
     def valueType: ValueType
   }
 
@@ -21,10 +21,10 @@ object WorkflowParameter
   }
 
   object HasValue {
-    def unapply(p: WorkflowParameter) =
+    def unapply(p: OrderParameter) =
       PartialFunction.condOpt(p) {
-        case WorkflowParameter.Optional(_, value) => value
-        case WorkflowParameter.WorkflowDefined(_, expr: Expression.Constant) => expr.toValue
+        case OrderParameter.Optional(_, value) => value
+        case OrderParameter.WorkflowDefined(_, expr: Expression.Constant) => expr.toValue
       }
   }
 
@@ -35,13 +35,13 @@ object WorkflowParameter
   }
 
   final case class WorkflowDefined(name: String, expression: Expression)
-  extends WorkflowParameter {
+  extends OrderParameter {
     def referencedJobResourcePaths = expression.referencedJobResourcePaths
   }
 
-  def apply(name: String, valueType: ValueType): WorkflowParameter =
+  def apply(name: String, valueType: ValueType): OrderParameter =
     Required(name, valueType)
 
-  def apply(name: String, default: Value): WorkflowParameter =
+  def apply(name: String, default: Value): OrderParameter =
     Optional(name, default)
 }

@@ -23,11 +23,11 @@ import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
-import js7.data.workflow.WorkflowParameters.{MissingOrderArgumentProblem, WrongOrderArgumentTypeProblem}
+import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, WrongOrderArgumentTypeProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 
@@ -457,7 +457,7 @@ object ControllerStateExecutorTest
 
   private val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ v1, Seq(execute(aAgentRef.path)))
 
-  private val requiredParameter = WorkflowParameter.Required("required", NumberValue)
+  private val requiredParameter = OrderParameter.Required("required", NumberValue)
 
   private val bWorkflow = Workflow(
     WorkflowPath("B-WORKFLOW") ~ v1,
@@ -466,13 +466,13 @@ object ControllerStateExecutorTest
         lock.path,
         None,
         Workflow.of(execute(bAgentRef.path)))),
-    orderRequirements = OrderRequirements(WorkflowParameters(View(
+    orderRequirements = OrderRequirements(OrderParameters(View(
       requiredParameter,
-      WorkflowParameter("hasDefault", StringValue("DEFAULT")),
+      OrderParameter("hasDefault", StringValue("DEFAULT")),
       // Constants are not stored in Order but re-evaluated with each access
-      WorkflowParameter.WorkflowDefined("constantVariable", expr("'CONSTANT'")),
+      OrderParameter.WorkflowDefined("constantVariable", expr("'CONSTANT'")),
       // Other expressions are evaluated once and the results are stored as order arguments
-      WorkflowParameter.WorkflowDefined("variable", expr("JobResource:B-JOB-RESOURCE:VARIABLE"))))),
+      OrderParameter.WorkflowDefined("variable", expr("JobResource:B-JOB-RESOURCE:VARIABLE"))))),
     jobResourcePaths = Seq(aJobResource.path))
 
   private val aOrderId = OrderId("A-ORDER")

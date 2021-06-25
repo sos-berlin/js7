@@ -740,8 +740,8 @@ final class WorkflowTest extends AnyFreeSpec
           Fork.of(
             "BRANCH" -> Workflow.of(
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
-      orderRequirements = OrderRequirements(WorkflowParameters(
-        WorkflowParameter.WorkflowDefined("V", JobResourceVariable(f, Some("V"))))))
+      orderRequirements = OrderRequirements(OrderParameters(
+        OrderParameter.WorkflowDefined("V", JobResourceVariable(f, Some("V"))))))
     assert(workflow.referencedLockPaths.isEmpty)
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
     assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e, f))
@@ -1175,10 +1175,10 @@ private object WorkflowTest
       AJobName -> AJob,
       BJobName -> BJob),
     OrderRequirements(
-      WorkflowParameters(
-        WorkflowParameter("stringParameter", StringValue("DEFAULT")),
-        WorkflowParameter("numberParameter", NumberValue),
-        WorkflowParameter.WorkflowDefined("variable", StringConstant("VALUE")))),
+      OrderParameters(
+        OrderParameter("stringParameter", StringValue("DEFAULT")),
+        OrderParameter("numberParameter", NumberValue),
+        OrderParameter.WorkflowDefined("variable", StringConstant("VALUE")))),
     jobResourcePaths = Seq(
       JobResourcePath("JOB-RESOURCE")))
 }

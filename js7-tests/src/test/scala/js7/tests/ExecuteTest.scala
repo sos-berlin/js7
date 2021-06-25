@@ -20,7 +20,7 @@ import js7.data.value.expression.ExpressionParser
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderRequirements, Workflow, WorkflowId, WorkflowParameter, WorkflowParameters, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.data.workflow.{OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.ExecuteTest._
@@ -221,9 +221,9 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
                 |echo "C=$SCHEDULER_PARAM_C" >>"$SCHEDULER_RETURN_VALUES"
                 |""".stripMargin,
               v1Compatible = true)))),
-      orderRequirements = OrderRequirements(WorkflowParameters(
-        WorkflowParameter("A", NumberValue),
-        WorkflowParameter("B", StringValue("WORKFLOW PARAMETER DEFAULT VALUE"))))),
+      orderRequirements = OrderRequirements(OrderParameters(
+        OrderParameter("A", NumberValue),
+        OrderParameter("B", StringValue("WORKFLOW PARAMETER DEFAULT VALUE"))))),
       orderArguments = Map(
         "A" -> NumberValue(4711)),
       expectedOutcomes = Seq(

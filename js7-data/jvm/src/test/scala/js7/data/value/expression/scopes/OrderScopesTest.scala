@@ -18,7 +18,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Label, OrderRequirements, Workflow, WorkflowParameter, WorkflowParameters, WorkflowPath}
+import js7.data.workflow.{Label, OrderParameter, OrderParameters, OrderRequirements, Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 
@@ -300,10 +300,10 @@ object OrderScopesTest
       "LABEL-2" @: Execute(jobName)),
     Map(
       jobName -> WorkflowJob(agentPath, ShellScriptExecutable(":"))),
-    orderRequirements = OrderRequirements(WorkflowParameters(
+    orderRequirements = OrderRequirements(OrderParameters(
       // Order parameters are not checked in this test, but defaults are used.
-      WorkflowParameter("b", StringValue("b from workflow defaults")),
-      WorkflowParameter("c", StringValue("c from workflow defaults")))))
+      OrderParameter("b", StringValue("b from workflow defaults")),
+      OrderParameter("c", StringValue("c from workflow defaults")))))
 
   private val freshOrder = FreshOrder(OrderId("ORDER"), workflow.path,
     Map(
