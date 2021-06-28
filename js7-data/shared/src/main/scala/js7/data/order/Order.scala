@@ -416,6 +416,7 @@ final case class Order[+S <: Order.State](
     parent.isEmpty &&
       (isState[IsFreshOrReady] ||
        isState[ProcessingKilled] ||
+       isState[Prompting] ||
        isState[FailedWhileFresh] ||
        isState[DelayedAfterError] ||
        isState[Failed] ||

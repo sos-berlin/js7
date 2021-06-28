@@ -3,8 +3,8 @@ package js7.tests
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.controller.ControllerCommand.AnswerOrderPrompt
-import js7.data.order.OrderEvent.{OrderFinished, OrderPrompted}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders}
+import js7.data.order.OrderEvent.{OrderCancelled, OrderFinished, OrderPrompted}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
@@ -34,6 +34,16 @@ final class PromptTest extends AnyFreeSpec with ControllerAgentForScalaTest
       AnswerOrderPrompt(orderId/*, Outcome.Succeeded(NamedValues("myAnswer" -> StringValue("MY ANSWER")))*/)
     ).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId).head.value.event
+  }
+
+  "Prompting is cancelable" in {
+    val orderId = OrderId("PROMPT-CANCELABLE")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path))
+      .await(99.s).orThrow
+    val orderPrompted = eventWatch.await[OrderPrompted](_.key == orderId).head.value.event
+
+    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    eventWatch.await[OrderCancelled](_.key == orderId).head.value.event
   }
 }
 

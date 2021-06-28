@@ -432,8 +432,9 @@ final class OrderTest extends AnyFreeSpec
         markable[Prompting] orElse
         cancelMarkedAllowed[Prompting] orElse
         suspendMarkedAllowed[Prompting] orElse {
-          case (_: OrderPromptAnswered  , _                 , IsDetached) => _.isInstanceOf[Ready]
-          case (_: OrderBroken          , _                 , _         ) => _.isInstanceOf[Broken]
+          case (_: OrderPromptAnswered, _, IsDetached) => _.isInstanceOf[Ready]
+          case (OrderCancelled        , _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken        , _, _         ) => _.isInstanceOf[Broken]
         })
     }
 
