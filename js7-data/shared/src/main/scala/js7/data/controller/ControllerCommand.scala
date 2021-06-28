@@ -17,7 +17,8 @@ import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState._
 import js7.data.event.EventId
 import js7.data.node.NodeId
-import js7.data.order.{FreshOrder, HistoricOutcome, OrderId}
+import js7.data.order.OrderEvent.OrderResumed
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
@@ -171,8 +172,8 @@ object ControllerCommand extends CommonCommand.Companion
   final case class ResumeOrder(
     orderId: OrderId,
     position: Option[Position] = None,
-    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
-  extends ControllerCommand {
+    historyOperations: Seq[OrderResumed.HistoryOperation] = Nil)
+  extends ControllerCommand with Big {
     type Response = Response.Accepted
   }
 

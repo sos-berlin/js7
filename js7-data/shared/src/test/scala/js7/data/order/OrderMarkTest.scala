@@ -40,7 +40,8 @@ final class OrderMarkTest extends AnyFreeSpec
     testJson[OrderMark](OrderMark.Resuming(Some(Position(1))), json"""
       {
         "TYPE": "Resuming",
-        "position": [ 1 ]
+        "position": [ 1 ],
+        "historicOperations": []
       }""")
   }
 }

@@ -7,6 +7,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
+import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
@@ -247,13 +248,59 @@ object OrderEvent
 
   final case class OrderResumptionMarked(
     position: Option[Position] = None,
-    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
-  extends OrderActorEvent
+    historyOperations: Seq[OrderResumed.HistoryOperation] = Nil)
+  extends OrderActorEvent with Big
 
   final case class OrderResumed(
     position: Option[Position] = None,
-    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
-  extends OrderActorEvent
+    historyOperations: Seq[OrderResumed.HistoryOperation] = Nil)
+  extends OrderActorEvent with Big
+  object OrderResumed
+  {
+    sealed trait HistoryOperation {
+      def positions: Iterable[Position]
+    }
+
+    final case class ReplaceHistoricOutcome(position: Position, outcome: Outcome)
+    extends HistoryOperation {
+      def positions = position :: Nil
+    }
+    object ReplaceHistoricOutcome {
+      def apply(historicOutcome: HistoricOutcome) =
+        new ReplaceHistoricOutcome(historicOutcome.position, historicOutcome.outcome)
+    }
+
+    final case class InsertHistoricOutcome(before: Position, position: Position, outcome: Outcome)
+    extends HistoryOperation {
+      def positions = before :: position :: Nil
+    }
+    object InsertHistoricOutcome {
+      def apply(at: Position, historicOutcome: HistoricOutcome) =
+        new InsertHistoricOutcome(at, historicOutcome.position, historicOutcome.outcome)
+    }
+
+    final case class DeleteHistoricOutcome(position: Position)
+    extends HistoryOperation {
+      def positions = position :: Nil
+    }
+
+    final case class AppendHistoricOutcome(position: Position, outcome: Outcome)
+    extends HistoryOperation {
+      def positions = position :: Nil
+    }
+    object AppendHistoricOutcome {
+      def apply(historicOutcome: HistoricOutcome) =
+        new AppendHistoricOutcome(historicOutcome.position, historicOutcome.outcome)
+    }
+
+    object HistoryOperation {
+      implicit val jsonCodec = TypedJsonCodec[HistoryOperation](
+        Subtype.named(deriveCodec[ReplaceHistoricOutcome], "Replace"),
+        Subtype.named(deriveCodec[InsertHistoricOutcome], "Insert"),
+        Subtype.named(deriveCodec[DeleteHistoricOutcome], "Delete"),
+        Subtype.named(deriveCodec[AppendHistoricOutcome], "Append"))
+    }
+  }
 
   final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int] = None)
   extends OrderLockEvent {

@@ -10,7 +10,8 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand._
 import js7.data.item.VersionId
 import js7.data.node.NodeId
-import js7.data.order.{FreshOrder, HistoricOutcome, OrderId, Outcome}
+import js7.data.order.OrderEvent.OrderResumed
+import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -250,15 +251,16 @@ final class ControllerCommandTest extends AnyFreeSpec
       ResumeOrder(
         OrderId("ORDER"),
         Some(Position(1)),
-        Some(Seq(
-          HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))),
-          HistoricOutcome(Position(1), Outcome.Failed(NamedValues.rc(1)))))),
+        Seq(
+          OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))),
+          OrderResumed.ReplaceHistoricOutcome(Position(1), Outcome.Failed(NamedValues.rc(1))))),
       json"""{
         "TYPE": "ResumeOrder",
         "orderId": "ORDER",
         "position": [ 1 ],
-        "historicOutcomes": [
+        "historyOperations": [
           {
+            "TYPE": "Replace",
             "position": [ 0 ],
             "outcome": {
               "TYPE": "Succeeded",
@@ -267,6 +269,7 @@ final class ControllerCommandTest extends AnyFreeSpec
               }
             }
           }, {
+            "TYPE": "Replace",
             "position": [ 1 ],
             "outcome": {
               "TYPE": "Failed",

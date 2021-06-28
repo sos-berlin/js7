@@ -19,7 +19,7 @@ import js7.data_for_java.command.{JCancellationMode, JSuspensionMode}
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.item.JUpdateItemOperation
-import js7.data_for_java.order.{JFreshOrder, JHistoricOutcome}
+import js7.data_for_java.order.{JFreshOrder, JHistoryOperation}
 import js7.data_for_java.reactor.ReactorConverters._
 import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.position.JPosition
@@ -205,12 +205,12 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
   def resumeOrder(
     @Nonnull orderId: OrderId,
     @Nonnull position: Optional[JPosition],
-    @Nonnull historyOutcomes: Optional[java.util.List[JHistoricOutcome]])
+    @Nonnull historyOperations: java.util.List[JHistoryOperation])
   : CompletableFuture[VEither[Problem, Void]] =
     execute(ResumeOrder(
       requireNonNull(orderId),
       position.toScala.map(_.asScala),
-      historyOutcomes.toScala.map(_.asScala.toVector).map(_.map(_.asScala))))
+      historyOperations.asScala.view.map(_.asScala).toVector))
 
   @Nonnull
   def resumeOrders(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =

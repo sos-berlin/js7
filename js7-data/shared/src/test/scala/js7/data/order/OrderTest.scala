@@ -688,6 +688,83 @@ final class OrderTest extends AnyFreeSpec
         assert(problem.toString contains "ORDER-ID")
       }
     }
+
+  }
+
+  "Events" - {
+    "OrderResumed" - {
+      import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, HistoryOperation, InsertHistoricOutcome, ReplaceHistoricOutcome}
+
+      lazy val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Ready,
+        historicOutcomes = Seq(
+          HistoricOutcome(Position(0), Outcome.succeeded),
+          HistoricOutcome(Position(1), Outcome.succeeded),
+          HistoricOutcome(Position(2), Outcome.succeeded)),
+        isSuspended = true)
+
+      "Truncate history at position" in {
+        for (i <- 0 to 2) withClue(s"Position $i: ") {
+          assert(order.applyEvent(OrderResumed(Some(Position(i)), Nil)).toOption.get.historicOutcomes
+            == order.historicOutcomes.take(i))
+        }
+      }
+
+      def resume(operations: Seq[HistoryOperation]): Seq[HistoricOutcome] =
+        order
+          .applyEvent(OrderResumed(None, operations))
+          .toOption.get.historicOutcomes
+
+      "ReplaceHistoricOutcome" in {
+        assert(resume(Seq(
+          ReplaceHistoricOutcome(Position(1), Outcome.failed))) ==
+          Seq(
+            HistoricOutcome(Position(0), Outcome.succeeded),
+            HistoricOutcome(Position(1), Outcome.failed),
+            HistoricOutcome(Position(2), Outcome.succeeded)))
+      }
+
+      "DeletedHistoricOutcome" in {
+        assert(resume(Seq(
+          DeleteHistoricOutcome(Position(1)))) ==
+          Seq(
+            HistoricOutcome(Position(0), Outcome.succeeded),
+            HistoricOutcome(Position(2), Outcome.succeeded)))
+      }
+
+      "InsertHistoricOutcome" in {
+        assert(resume(Seq(
+          InsertHistoricOutcome(Position(1), Position(1) / Then % 0, Outcome.failed),
+          InsertHistoricOutcome(Position(1), Position(1) / Then % 1, Outcome.failed))) ==
+          Seq(
+            HistoricOutcome(Position(0), Outcome.succeeded),
+            HistoricOutcome(Position(1) / Then % 0, Outcome.failed),
+            HistoricOutcome(Position(1) / Then % 1, Outcome.failed),
+            HistoricOutcome(Position(1), Outcome.succeeded),
+            HistoricOutcome(Position(2), Outcome.succeeded)))
+      }
+
+      "AppendHistoricOutcome" in {
+        assert(resume(Seq(
+          AppendHistoricOutcome(Position(3), Outcome.failed),
+          AppendHistoricOutcome(Position(4), Outcome.failed))) ==
+          Seq(
+            HistoricOutcome(Position(0), Outcome.succeeded),
+            HistoricOutcome(Position(1), Outcome.succeeded),
+            HistoricOutcome(Position(2), Outcome.succeeded),
+            HistoricOutcome(Position(3), Outcome.failed),
+            HistoricOutcome(Position(4), Outcome.failed)))
+      }
+
+      "Mixed" in {
+        assert(resume(Seq(
+          InsertHistoricOutcome(Position(2), Position(2) / Then % 0, Outcome.failed),
+          DeleteHistoricOutcome(Position(1)),
+          DeleteHistoricOutcome(Position(2)))) ==
+          Seq(
+            HistoricOutcome(Position(0), Outcome.succeeded),
+            HistoricOutcome(Position(2) / Then % 0, Outcome.failed)))
+      }
+    }
   }
 
   "forkPositionOf" in {

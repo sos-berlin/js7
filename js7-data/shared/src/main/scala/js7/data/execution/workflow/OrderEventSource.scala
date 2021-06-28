@@ -16,7 +16,7 @@ import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecut
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
-import js7.data.order.{HistoricOutcome, Order, OrderId, OrderMark, Outcome}
+import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
@@ -216,7 +216,7 @@ final class OrderEventSource(
         mark match {
           case OrderMark.Cancelling(mode) => tryCancel(order, mode)
           case OrderMark.Suspending(_) => trySuspend(order)
-          case OrderMark.Resuming(position, historicOutcomes) => tryResume(order, position, historicOutcomes)
+          case OrderMark.Resuming(position, historyOperations) => tryResume(order, position, historyOperations)
           case _ => None
         })
 
@@ -299,54 +299,49 @@ final class OrderEventSource(
   def resume(
     orderId: OrderId,
     position: Option[Position],
-    historicOutcomes: Option[Seq[HistoricOutcome]])
+    historyOperations: Seq[OrderResumed.HistoryOperation])
   : Checked[Option[OrderActorEvent]] =
-    withOrder(orderId)(order =>
-      order.mark match {
-        case Some(_: OrderMark.Cancelling) =>
-          Left(CannotResumeOrderProblem)
+    withOrder(orderId) { order =>
+      lazy val checkedWorkflow = idToWorkflow(order.workflowId)
 
-        case Some(OrderMark.Resuming(`position`, `historicOutcomes`)) =>
-          Right(order.isDetached ? OrderResumed(position, historicOutcomes)/*should already have happened*/)
+      val checkPosition = position.fold(Checked.unit)(position =>
+        checkedWorkflow.flatMap(workflow =>
+          workflow.isMoveable(order.position, position) !! UnreachableOrderPositionProblem))
 
-        case Some(OrderMark.Resuming(_, _)) =>
-           Left(CannotResumeOrderProblem)
+      val checkHistoricPositions =
+        checkedWorkflow.flatMap(workflow =>
+          historyOperations
+            .flatMap(_.positions)
+            .traverse(workflow.checkedPosition))
 
-        case Some(OrderMark.Suspending(_)) if position.isDefined || historicOutcomes.isDefined =>
-           Left(CannotResumeOrderProblem)
+      checkPosition
+        .flatMap(_ => checkHistoricPositions)
+        .flatMap(_ =>
+          order.mark match {
+            case Some(_: OrderMark.Cancelling) =>
+              Left(CannotResumeOrderProblem)
 
-        case None | Some(OrderMark.Suspending(_)) =>
-          val okay = order.isSuspended ||
-            order.mark.exists(_.isInstanceOf[OrderMark.Suspending]) ||
-            order.isState[Failed] && order.isDetached
-          if (!okay)
-            Left(CannotResumeOrderProblem)
-          else {
-            lazy val checkedWorkflow = idToWorkflow(order.workflowId)
-            val checkedPosition = position match {
-              case None => Right(None)
-              case Some(position) =>
-                checkedWorkflow.flatMap(workflow =>
-                  if (!workflow.isMoveable(order.position, position))
-                    Left(UnreachableOrderPositionProblem)
-                  else
-                    Right(Some(position)))
-            }
-            val checkedHistoricOutcomes = historicOutcomes match {
-              case None => Right(None)
-              case Some(historicOutcomes) =>
-                checkedWorkflow.flatMap(workflow =>
-                  historicOutcomes.traverse(o => workflow.checkedPosition(o.position).map(_ => o)))
-                .map(Some.apply)
-            }
-            for {
-              position <- checkedPosition
-              historicOutcomes <- checkedHistoricOutcomes
-            } yield Some(
-              tryResume(order, position, historicOutcomes)
-                .getOrElse(OrderResumptionMarked(position, historicOutcomes)))
-          }
-      })
+            case Some(OrderMark.Resuming(`position`, `historyOperations`)) =>
+              Right(order.isDetached ? OrderResumed(position, historyOperations)/*should already have happened*/)
+
+            case Some(OrderMark.Resuming(_, _)) =>
+               Left(CannotResumeOrderProblem)
+
+            case Some(OrderMark.Suspending(_)) if position.isDefined || historyOperations.nonEmpty =>
+               Left(CannotResumeOrderProblem)
+
+            case None | Some(OrderMark.Suspending(_)) =>
+              val okay = order.isSuspended ||
+                order.mark.exists(_.isInstanceOf[OrderMark.Suspending]) ||
+                order.isState[Failed] && order.isDetached
+              if (!okay)
+                Left(CannotResumeOrderProblem)
+              else
+                Right(Some(
+                  tryResume(order, position, historyOperations)
+                    .getOrElse(OrderResumptionMarked(position, historyOperations))))
+          })
+    }
 
   /** Retrieve the Order, check if calculated event is applicable. */
   private def withOrder[E <: OrderCoreEvent](orderId: OrderId)(body: Order[Order.State] => Checked[Option[E]]): Checked[Option[E]] =
@@ -358,9 +353,9 @@ final class OrderEventSource(
   private def tryResume(
     order: Order[Order.State],
     position: Option[Position],
-    historicOutcomes: Option[Seq[HistoricOutcome]])
+    historyOperations: Seq[OrderResumed.HistoryOperation])
   : Option[OrderActorEvent] =
-    (weHave(order) && order.isResumable) ? OrderResumed(position, historicOutcomes)
+    (weHave(order) && order.isResumable) ? OrderResumed(position, historyOperations)
 
   def answer(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     for {

@@ -17,7 +17,8 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumptionMarked, OrderResumed, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderSuspended}
+import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.{BooleanValue, NamedValues}
@@ -92,7 +93,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     eventWatch.await[OrderFinished](_.key == order.id)
     assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
-      OrderResumed(None),
+      OrderResumed(),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -132,7 +133,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderFinished](_.key == order.id)
 
     assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
-      OrderResumed(None),
+      OrderResumed(),
       OrderFinished))
   }
 
@@ -176,7 +177,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderFinished](_.key == order.id)
 
     assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
-      OrderResumed(None),
+      OrderResumed(),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted,
@@ -218,7 +219,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderFinished](_.key == order.id)
     assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-        OrderResumed(None),
+        OrderResumed(),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted,
@@ -388,10 +389,16 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(
       executeCommand(ResumeOrder(order.id, Some(Position(99)))).await(99.s) ==
         Left(UnreachableOrderPositionProblem))
-    assert(
-      executeCommand(ResumeOrder(order.id,
-        historicOutcomes = Some(Seq(HistoricOutcome(Position(99), Outcome.succeeded))))
-      ).await(99.s) == Left(Problem("Unknown position 99 in workflow 'Workflow:TRY~INITIAL'")))
+
+    val invalidOps = Seq(
+      ReplaceHistoricOutcome(Position(99), Outcome.succeeded),
+      InsertHistoricOutcome(Position(99), Position(0), Outcome.succeeded),
+      InsertHistoricOutcome(Position(0), Position(99), Outcome.succeeded),
+      DeleteHistoricOutcome(Position(99)),
+      AppendHistoricOutcome(Position(99), Outcome.succeeded))
+    for (op <- invalidOps) assert(
+      executeCommand(ResumeOrder(order.id, historyOperations = Seq(op))).await(99.s) ==
+        Left(Problem("Unknown position 99 in workflow 'Workflow:TRY~INITIAL'")))
 
     executeCommand(CancelOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
@@ -424,17 +431,17 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     val lastEventId = eventWatch.lastAddedEventId
     val newPosition = Position(2) / Try_ % 0
-    val newHistoricOutcomes = Seq(
-      HistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> BooleanValue(true)))),
-      HistoricOutcome(Position(1), Outcome.failed))
+    val historicOutcomeOps = Seq(
+      ReplaceHistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> BooleanValue(true)))),
+      AppendHistoricOutcome(Position(1), Outcome.failed))
 
-    executeCommand(ResumeOrder(order.id, Some(newPosition), Some(newHistoricOutcomes)))
+    executeCommand(ResumeOrder(order.id, Some(newPosition), historicOutcomeOps))
       .await(99.s).orThrow
     eventWatch.await[OrderFailed](_.key == order.id)
 
     assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
-        OrderResumed(Some(newPosition), Some(newHistoricOutcomes)),
+        OrderResumed(Some(newPosition), historicOutcomeOps),
         OrderCatched(Position(2) / catch_(0) % 0, Some(Outcome.failed)),
         OrderRetrying(Position(2) / try_(1) % 0, None),
         OrderFailed(Position(2) / try_(1) % 0, Some(Outcome.failed))))
@@ -442,9 +449,11 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(controller.orderApi.order(order.id).await(99.s) == Right(Some(Order(
       order.id, order.workflowPath ~ "INITIAL" /: (Position(2) / try_(1) % 0),
       Order.Failed,
-      historicOutcomes = newHistoricOutcomes :+
-        HistoricOutcome(Position(2) / Try_ % 0, Outcome.failed) :+
-        HistoricOutcome(Position(2) / try_(1) % 0, Outcome.failed)))))
+      historicOutcomes = Seq(
+        HistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> BooleanValue(true)))),
+        HistoricOutcome(Position(1), Outcome.failed),
+        HistoricOutcome(Position(2) / Try_ % 0, Outcome.failed),
+        HistoricOutcome(Position(2) / try_(1) % 0, Outcome.failed))))))
   }
 
   "Resume when Failed" in {

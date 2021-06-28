@@ -11,11 +11,12 @@ import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
+import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.order.OrderEvent._
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{BranchId, Position}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
@@ -417,32 +418,57 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderResumptionMarked" in {
-    check(OrderResumptionMarked(Some(Position(1)), Some(Seq(HistoricOutcome(Position(0), Outcome.succeeded)))), json"""
-      {
-        "TYPE": "OrderResumptionMarked",
-        "position": [ 1 ],
-        "historicOutcomes": [
-          {
-            "position": [ 0 ],
-            "outcome":{
-              "TYPE": "Succeeded"
+    check(OrderResumptionMarked(
+      Some(Position(1)),
+      Seq(
+        OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.succeeded))),
+      json"""
+        {
+          "TYPE": "OrderResumptionMarked",
+          "position": [ 1 ],
+          "historyOperations": [
+            {
+              "TYPE": "Replace",
+              "position": [ 0 ],
+              "outcome": {
+                "TYPE": "Succeeded"
+              }
             }
-          }
-        ]
-      }""")
+          ]
+        }""")
   }
 
   "OrderResumed" in {
-    check(OrderResumed(Some(Position(1)), Some(Seq(HistoricOutcome(Position(0), Outcome.succeeded)))), json"""
+    check(OrderResumed(
+      Some(Position(1)),
+      Seq(
+        ReplaceHistoricOutcome(Position(0), Outcome.succeeded),
+        InsertHistoricOutcome(Position(2), Position(1) / BranchId.Then % 0, Outcome.succeeded),
+        DeleteHistoricOutcome(Position(3)),
+        AppendHistoricOutcome(Position(4), Outcome.succeeded),
+      )
+    ), json"""
       {
         "TYPE": "OrderResumed",
         "position": [ 1 ],
-        "historicOutcomes": [
+        "historyOperations": [
           {
+            "TYPE": "Replace",
             "position": [ 0 ],
-            "outcome": {
-              "TYPE": "Succeeded"
-            }
+            "outcome": { "TYPE": "Succeeded" }
+          }, {
+            "TYPE": "Insert",
+            "before": [ 2 ],
+            "position": [ 1, "then", 0 ],
+            "outcome": { "TYPE": "Succeeded" }
+          }, {
+            "TYPE": "Delete",
+            "position": [ 3 ]
+          },
+          {
+            "TYPE": "Append",
+            "position": [ 4 ],
+            "outcome": { "TYPE": "Succeeded" }
           }
         ]
       }""")

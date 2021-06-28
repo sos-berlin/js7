@@ -19,6 +19,7 @@ import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId}
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 /**
@@ -254,12 +255,12 @@ final case class Order[+S <: Order.State](
             mark = None,
             state = if (isSuspendingWithKill && isState[ProcessingKilled]) Ready else state))
 
-      case OrderResumptionMarked(position, historicOutcomes) =>
+      case OrderResumptionMarked(position, historyOperations) =>
         if (!force && !isMarkable)
           inapplicable
         else if (isSuspended)
-          Right(copy(mark = Some(OrderMark.Resuming(position, historicOutcomes))))
-        else if (!force && (position.isDefined || historicOutcomes.isDefined))
+          Right(copy(mark = Some(OrderMark.Resuming(position, historyOperations))))
+        else if (!force && (position.isDefined || historyOperations.nonEmpty))
             // Inhibited because we cannot be sure wether order will pass a fork barrier
           inapplicable
         else if (!isSuspended && isSuspending)
@@ -267,14 +268,76 @@ final case class Order[+S <: Order.State](
         else
           Right(copy(mark = Some(OrderMark.Resuming(None))))
 
-      case OrderResumed(maybePosition, maybeHistoricOutcomes) =>
-        check(isResumable,
-          copy(
-            isSuspended = false,
-            mark = None,
-            state = if (isState[Broken] || isState[Failed]) Ready else state,
-            historicOutcomes = maybeHistoricOutcomes getOrElse historicOutcomes
-          ).withPosition(maybePosition getOrElse position))
+      case OrderResumed(maybePosition, historyOps) =>
+        import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
+        val updatedHistoryOutcomes =
+          if (maybePosition.isEmpty && historyOps.isEmpty)
+            Checked(historicOutcomes)
+          else {
+            // historyOutcomes positions should be unique, but is this sure?
+            final class Entry(h: Option[HistoricOutcome]) {
+              val inserted = mutable.Buffer.empty[HistoricOutcome]
+              var current: Option[HistoricOutcome] = h
+            }
+            var positionFound = false
+            val array = historicOutcomes.view
+              .map { h =>
+                for (pos <- maybePosition) {
+                  if (!positionFound && (h.position == pos || h.position.normalized == pos)) {
+                    positionFound = true
+                  }
+                }
+                new Entry(!positionFound ? h)
+              }
+              .concat(new Entry(None) :: Nil)
+              .toArray
+            val append = mutable.Buffer.empty[HistoricOutcome]
+            val pToi = historicOutcomes.view.zipWithIndex.map { case (h, i) => h.position -> i }.toMap
+            var checked: Checked[Unit] = Right(())
+
+            def get(pos: Position): Option[Int] =
+              pToi.checked(pos) match {
+                case Left(problem) =>
+                  checked = Left(problem)
+                  None
+                case Right(i) =>
+                  Some(i)
+              }
+
+            historyOps foreach {
+              case ReplaceHistoricOutcome(pos, o) =>
+                for (i <- get(pos)) {
+                  array(i).current = Some(HistoricOutcome(pos, o))
+                }
+
+              case InsertHistoricOutcome(pos, newPos, o) =>
+                for (i <- get(pos)) {
+                  array(i).inserted += HistoricOutcome(newPos, o)
+                }
+
+              case AppendHistoricOutcome(pos, o) =>
+                append += HistoricOutcome(pos, o)
+
+              case DeleteHistoricOutcome(pos) =>
+                for (i <- get(pos)) {
+                  array(i).current = None
+                }
+            }
+            checked.map(_ =>
+              array.view
+                .flatMap(entry => entry.inserted.view ++ entry.current)
+                .concat(append)
+                .toVector)
+          }
+
+        updatedHistoryOutcomes.flatMap(historicOutcomes =>
+          check(isResumable,
+            copy(
+              isSuspended = false,
+              mark = None,
+              state = if (isState[Broken] || isState[Failed]) Ready else state,
+              historicOutcomes = historicOutcomes
+            ).withPosition(maybePosition getOrElse position)))
 
       case _: OrderLockAcquired =>
         // LockState handles this event, too

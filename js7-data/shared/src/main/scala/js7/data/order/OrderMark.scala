@@ -2,7 +2,9 @@ package js7.data.order
 
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.Big
 import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.order.OrderEvent.OrderResumed
 import js7.data.workflow.position.Position
 
 sealed trait OrderMark
@@ -17,8 +19,8 @@ object OrderMark
 
   case class Resuming(
     position: Option[Position] = None,
-    historicOutcomes: Option[Seq[HistoricOutcome]] = None)
-  extends OrderMark
+    historicOperations: Seq[OrderResumed.HistoryOperation] = Nil)
+  extends OrderMark with Big
 
   implicit val jsonCodec = TypedJsonCodec[OrderMark](
     Subtype(deriveCodec[Cancelling]),

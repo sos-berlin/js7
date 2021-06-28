@@ -644,11 +644,11 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.SuspendOrders(orderIds, mode) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.suspend(_, mode))
 
-      case ControllerCommand.ResumeOrder(orderId, position, historyOutcomes) =>
-        executeOrderMarkCommands(Vector(orderId))(orderEventSource.resume(_, position, historyOutcomes))
+      case ControllerCommand.ResumeOrder(orderId, position, historicOps) =>
+        executeOrderMarkCommands(Vector(orderId))(orderEventSource.resume(_, position, historicOps))
 
       case ControllerCommand.ResumeOrders(orderIds) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, None))
+        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
 
       case ControllerCommand.DeleteOrdersWhenTerminated(orderIds) =>
         orderIds.toVector
@@ -784,7 +784,8 @@ with MainJournalingActor[ControllerState, Event]
       else
         OrderDeletionMarked)
 
-  private def executeOrderMarkCommands(orderIds: Vector[OrderId])(toEvent: OrderId => Checked[Option[OrderActorEvent]])
+  private def executeOrderMarkCommands(orderIds: Vector[OrderId])
+    (toEvent: OrderId => Checked[Option[OrderActorEvent]])
   : Future[Checked[ControllerCommand.Response]] =
     if (orderIds.distinct.sizeIs < orderIds.size)
       Future.successful(Left(Problem.pure("OrderIds must be unique")))
