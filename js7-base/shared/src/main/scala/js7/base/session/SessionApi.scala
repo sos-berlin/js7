@@ -7,6 +7,7 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import monix.eval.Task
 import scala.concurrent.duration._
@@ -57,7 +58,8 @@ object SessionApi
 
   trait LoginUntilReachable extends SessionApi
   {
-    protected def isTemporaryUnreachable(throwable: Throwable): Boolean
+    protected def isTemporaryUnreachable(throwable: Throwable): Boolean =
+      HttpClient.isTemporaryUnreachable(throwable)
 
     def hasSession: Boolean
 
@@ -73,12 +75,11 @@ object SessionApi
         else
           login_(userAndPassword)
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
-              onError(throwable).flatMap {
-                case true if delays.hasNext && isTemporaryUnreachable(throwable) =>
+              onError(throwable).flatMap(continue =>
+                if (continue && delays.hasNext && isTemporaryUnreachable(throwable))
                   retry(()) delayExecution delays.next()
-                case _ =>
-                  Task.raiseError(throwable)
-              }
+                else
+                  Task.raiseError(throwable))
             }
       }
 
@@ -106,24 +107,27 @@ object SessionApi
     protected val loginDelays: () => Iterator[FiniteDuration] =
       () => defaultLoginDelays()
 
-    override final def retryUntilReachable[A](onError: Throwable => Task[Boolean] = logError)(body: => Task[A]): Task[A] =
+    override final def retryUntilReachable[A](onError: Throwable => Task[Boolean] = logError)
+      (body: => Task[A])
+    : Task[A] =
       Task.defer {
         val delays = loginDelays()
         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
           .flatMap((_: Completed) =>
             body.onErrorRestartLoop(()) { (throwable, _, retry) =>
               (throwable match {
-                case HttpException.HasProblem(problem) if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                case HttpException.HasProblem(problem)
+                  if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
                   // Do not call onError on this minor problem
                   scribe.debug(problem.toString)
                   loginUntilReachable(delays, onError = onError)
 
                 case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
-                  onError(e).flatMap {
-                    case false => Task.raiseError(e)
-                    case true =>
+                  onError(e).flatMap(continue =>
+                    if (continue)
                       loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
-                  }
+                    else
+                      Task.raiseError(e))
 
                 case _ =>
                   Task.raiseError(throwable)

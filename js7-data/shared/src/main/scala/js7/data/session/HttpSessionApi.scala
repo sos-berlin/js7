@@ -39,12 +39,6 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
       }
     }
 
-  protected def isTemporaryUnreachable(throwable: Throwable) =
-    throwable match {
-      case e: HttpClient.HttpException => e.isTemporaryUnreachable
-      case _ => true  // Maybe a TCP exception
-    }
-
   final def logout(): Task[Completed] =
     Task.defer {
       sessionTokenRef.get() match {
