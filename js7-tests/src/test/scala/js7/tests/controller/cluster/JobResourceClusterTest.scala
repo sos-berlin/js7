@@ -5,6 +5,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent
+import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
@@ -47,6 +48,7 @@ final class JobResourceClusterTest extends ControllerClusterTester
         val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
         val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
         primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
+        primaryController.eventWatch.await[ControllerReady]()
 
         assert(primaryController.controllerState.await(99.s).pathToSignedSimpleItem(jobResource.path).value == jobResource0)
         assert(backupController.controllerState.await(99.s).pathToSignedSimpleItem(jobResource.path).value == jobResource0)
