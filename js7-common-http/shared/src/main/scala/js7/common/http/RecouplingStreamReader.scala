@@ -251,8 +251,7 @@ abstract class RecouplingStreamReader[
               case Left(problem) =>
                 if (isStopped)
                   Task.pure(Left(()))  // Fail in next iteration
-                else {
-                  scribe.warn(problem.toString)
+                else
                   for {
                     _ <- api.tryLogout
                     // FIXME akka.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Akka
@@ -263,7 +262,6 @@ abstract class RecouplingStreamReader[
                       else
                         Task.raiseError(problem.throwable)
                   } yield either
-                }
 
               case Right(Completed) =>
                 for {
