@@ -50,3 +50,17 @@ java=java
 if [ -n "$javaHome" ]; then :
     java="$javaHome/bin/java"
 fi
+
+timestamp() {
+  local t
+  t=$(date +"%Y-%m-%d %H:%M:%S.%N")
+  echo "${t:0:23}"
+}
+
+log() {
+  if [ $# -eq 0 ]; then
+    echo
+  else
+    echo "$(timestamp)" "$@"
+  fi
+}

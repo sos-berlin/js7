@@ -74,7 +74,11 @@ logs="$data/logs"
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
-echo -e "\n-------\n$(date --iso-8601=ns)" >>"$logs/stdouterr.log"
+# Copy stdout and stderr to stdouterr.log
+if [ -e "$logs/stdouterr.log" ]; then
+  echo >>"$logs/stdouterr.log" \
+    -e "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
 exec &> >(exec tee -a "$logs"/stdouterr.log)
 
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
@@ -101,24 +105,25 @@ execute=(
   -classpath "$classpathString"
   js7.provider.ProviderMain
   "${providerOptions[@]}")
-echo "${execute[@]}"
+log "${execute[@]}"
 
 "${execute[@]}" &
 
 pid=$!
 pidFile="$stateDir/pid"
 echo "$pid" >"$pidFile"
-echo PID $pid
+log PID $pid
 
 terminate() {
-  echo
-  echo ShutDown JS7 Provider
+  echo -e "⚡$1"
+  log Shutdown JS7 Provider
   kill $pid
 }
 
-trap terminate SIGTERM SIGINT
-wait $pid || echo "JS7 Provider exited with exit code $?"
+trap "terminate SIGTERM" SIGTERM
+trap "terminate SIGINT" SIGINT
+wait $pid || log "JS7 Provider exited with exit code $?"
 rm "$pidFile"
 trap - SIGTERM SIGINT
 
-echo -e "\n$(date --iso-8601=ns) JS7 Provider has been shut down" >>"$logs/stdouterr.log"
+log "JS7 Provider has been shut down"

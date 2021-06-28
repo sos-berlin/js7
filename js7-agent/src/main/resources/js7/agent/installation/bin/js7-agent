@@ -82,6 +82,11 @@ logs="$data/logs"
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
+# Copy stdout and stderr to stdouterr.log
+if [ -e "$logs/stdouterr.log" ]; then
+  echo >>"$logs/stdouterr.log" \
+    -e "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
 exec &> >(exec tee -a "$logs"/stdouterr.log)
 
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
@@ -100,7 +105,7 @@ agentOptions+=("--data-directory=$data")
 [ -z "$httpsPort" ] || agentOptions+=("--https-port=$httpsPort")
 
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
-echo "crashKillScript=$crashKillScript"
+log "crashKillScript=$crashKillScript"
 [ -z "$crashKillScript" ] || rm -f "$crashKillScript"
 
 execute=(
@@ -113,18 +118,17 @@ execute=(
 while true; do
   rm -rf "$data"/tmp
 
-  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n-------\n${t:0:23}" "${execute[@]}")
-
+  log "${execute[@]}"
   "${execute[@]}" &
 
   pid=$!
   pidFile="$stateDir/pid"
   echo "$pid" >"$pidFile"
-  echo "PID $pid"
+  log "PID $pid"
 
   terminate() {
-    echo
-    echo "ShutDown JS7 Agent"
+    echo -e "⚡$1"
+    log "ShutDown JS7 Agent"
     # Add some seconds to start Java with AgentClientMain
     terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
@@ -145,27 +149,33 @@ while true; do
     kill $killer
   }
 
-  trap terminate SIGTERM SIGINT
+  trap "terminate SIGTERM" SIGTERM
+  trap "terminate SIGINT" SIGINT
   returnCode=0
+  if wait $pid; then
+    returnCode=$?
+    log "JS7 Agent has been shut down"
+  else
+    returnCode=$?
+    log "JS7 Agent exited with exit code $returnCode"
+  fi
   wait $pid || {
     returnCode=$?
-    echo "JS7 Agent exited with exit code $returnCode"
+    log "JS7 Agent exited with exit code $returnCode"
   }
   rm "$pidFile"
   trap - SIGTERM SIGINT
 
   if [ -n "$crashKillScript" ] && [ -s "$crashKillScript" ]; then :
     ps fux || true
-    echo "Executing crash kill script $crashKillScript:"
+    log "Executing crash kill script $crashKillScript:"
     cat "$crashKillScript"
     (. "$crashKillScript" || true)
     ps fux || true
   fi
-  (t=$(date +"%Y-%m-%d %H:%M:%S.%N"); echo -e "\n${t:0:23} JS7 Agent has been shut down" >>"$logs/stdouterr.log")
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode
   fi
-  echo
-  echo "Starting again"
+  log "Starting again"
 done
