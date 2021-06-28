@@ -27,7 +27,6 @@ services:
       - ./volumes/controller/config:/var/opt/js7/controller/config:ro
       - ./volumes/controller/data:/var/opt/js7/controller/data:delegated
     depends_on:
-      - backup-controller
       - agent-1
       - agent-2
     stop_grace_period: 10s

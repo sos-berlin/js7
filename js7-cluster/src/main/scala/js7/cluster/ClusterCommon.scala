@@ -46,14 +46,9 @@ private[cluster] final class ClusterCommon(
   private val _clusterWatchSynchronizer = AtomicAny[Option[ClusterWatchSynchronizer]](None)
 
   def stop: Task[Completed] =
-    _clusterWatchSynchronizer.get() match {
-      case None => Task.completed
-      case Some(o) =>
-        Task.defer {
-          o.stopHeartbeating >>
-            o.clusterWatch.logout().onErrorHandle(_ => Completed)
-        }
-    }
+    _clusterWatchSynchronizer.get().fold(Task.completed)(o =>
+      o.stopHeartbeating >>
+        o.clusterWatch.logout().onErrorHandle(_ => Completed))
 
   def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] = {
     import clusterState.setting

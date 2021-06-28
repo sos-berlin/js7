@@ -59,7 +59,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
   private val fetchingAcksTerminatedUnexpectedlyPromise = Promise[Checked[Completed]]()
   private val startingBackupNode = AtomicBoolean(false)
   private val sendingClusterStartBackupNode = SerialCancelable()
-  @volatile private var switchoverAcknowledged = false
+  @volatile private var noMoreJournaling = false
   @volatile private var stopRequested = false
   @volatile private var clusterWatchSynchronizer = common.initialClusterWatchSynchronizer(initialClusterState)
 
@@ -264,7 +264,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
           Left(Problem.pure("Switchover is possible only for the active and coupled cluster node," +
             s" but cluster state is: $state"))
       } .map(_.map { case (_: Seq[Stamped[_]], _) =>
-          switchoverAcknowledged = true
+          noMoreJournaling = true
           Completed
         }))
 
@@ -275,7 +275,10 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
           Right(Some(ClusterActiveNodeShutDown))
         case _ =>
           Right(None)
-      } .map(_.map((_: (Seq[Stamped[_]], _)) => Completed)))
+      } .map(_.map { case (_: (Seq[Stamped[_]], _)) =>
+        noMoreJournaling = true
+        Completed
+      }))
 
   private def proceed(state: ClusterState): Task[Completed] =
     state match {
@@ -424,7 +427,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
           observeEventIds(api, Some(timing.heartbeat))
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
             .detectPauses(timing.longHeartbeatTimeout)
-            .takeWhile(_ => !switchoverAcknowledged)  // Race condition: may be set too late
+            .takeWhile(_ => !noMoreJournaling)  // Race condition: may be set too late
             .mapEval {
               case Left(noHeartbeatSince) =>
                 val problem = MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
@@ -433,7 +436,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
 
               case Right(eventId) =>
                 Task.deferFuture {
-                  // Possible dead letter when `switchoverAcknowledged` is detected too late,
+                  // Possible dead letter when `noMoreJournaling` is detected too late !!!
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                   (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
                     .mapTo[Completed]

@@ -60,7 +60,11 @@ final class SimpleClusterTest extends ControllerClusterTester
 
       primaryController.terminate() await 99.s
       backupController.terminate() await 99.s
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+
+      // The last events and the terminating snapshot is not replicated by the passive node,
+      // because after ClusterActiveNodeShutDown, the active node does not await acknowledges.
+      // This allows simultaneous shutdown of both nodes.
+      //assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
     }
   }
 }

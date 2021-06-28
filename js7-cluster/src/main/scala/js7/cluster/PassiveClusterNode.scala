@@ -74,16 +74,40 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
 
-  def onShutDown: Task[Unit] =
-    common.clusterContext.clusterNodeApi(setting.activeUri, "ClusterPassiveDown")
-      .use(api =>
-        (api.login(onlyIfNotLoggedIn = true) >>
-          api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)).void
-        ).onErrorHandle(throwable => Task {
-          logger.debug(s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
-            throwable.nullIfNoStackTrace)
-        })
-      )
+  def onShutDown: Task[Unit] = {
+    // Active and passive node may be shut down at the same time. We try to handle this here.
+    val untilDecoupled = Task
+      .tailRecM(())(_ =>
+        stateBuilderAndAccessor.state
+          .map(_.clusterState)
+          .flatMap {
+            case _: Coupled => Task.pure(Left(())).delayResult(1.s)
+            case clusterState => Task.pure(Right(clusterState))
+          })
+
+    val notifyActive =
+      common.clusterContext
+        .clusterNodeApi(setting.activeUri, "ClusterPassiveDown")
+        .use(api =>
+          (api.login(onlyIfNotLoggedIn = true) >>
+            api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)).void
+          ).onErrorHandle(throwable => Task {
+            logger.debug(s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
+              throwable.nullIfNoStackTrace)
+          }))
+
+    Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
+      .tapEval {
+        case Left(clusterState) =>
+          // The connection of the killed notifyActive HTTP request may be still blocked !!!
+          // until it is responded (see AkkaHttpClient)
+          // It should not disturb the shutdown.
+          Task(logger.debug(s"onShutDown: clusterState=$clusterState"))
+        case Right(()) =>
+          Task(logger.debug("Active node has been notified about shutdown"))
+      }
+      .as(())
+  }
 
   def state: Task[S] =
     stateBuilderAndAccessor.state
