@@ -42,16 +42,16 @@ final case class OrderParameters private(
             case (None, required: OrderParameter.Required) =>
               Left(MissingOrderArgumentProblem(required): Problem)
 
-            case (None, p @ OrderParameter.HasExpression(expr)) =>
-              (!expr.isConstant ? expr.eval.map(p.name -> _))
+            case (None, p: OrderParameter.HasExpression) =>
+              (!p.expression.isConstant ? p.expression.eval.map(p.name -> _))
                 .sequence
 
             case (Some(_), _: OrderParameter.Final) =>
               Left(FixedOrderArgumentProblem(param.name))
 
-            case (Some(value), parameter: OrderParameter.HasType) =>
-              if (value.valueType != parameter.valueType)
-                Left(WrongOrderArgumentTypeProblem(parameter, value.valueType))
+            case (Some(value), p: OrderParameter.HasType) =>
+              if (value.valueType != p.valueType)
+                Left(WrongOrderArgumentTypeProblem(p, value.valueType))
               else
                 Right(Some(param.name -> value))
           })

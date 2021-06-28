@@ -28,6 +28,9 @@ object OrderParameter
       }
   }
 
+  sealed trait HasExpression extends OrderParameter {
+    def expression: Expression
+  }
   object HasExpression {
     def unapply(p: OrderParameter): Option[Expression] =
       PartialFunction.condOpt(p) {
@@ -37,12 +40,12 @@ object OrderParameter
   }
 
   final case class Optional(name: String, valueType: ValueType, expression: Expression)
-  extends HasType {
+  extends HasType with HasExpression {
     def referencedJobResourcePaths = expression.referencedJobResourcePaths
   }
 
   final case class Final(name: String, expression: Expression)
-  extends OrderParameter {
+  extends HasExpression {
     def referencedJobResourcePaths = expression.referencedJobResourcePaths
   }
 

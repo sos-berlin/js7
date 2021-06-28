@@ -25,11 +25,11 @@ Beispiele in JSON:
   "orderPreparation": {
     "parameters": {
       "myRequiredString": {
-        "type": "String",
-        "default": "'MY-DEFAULT'"
+        "type": "String"
       },
       "myOptionalNumber": {
-        "type": "Number"
+        "type": "Number",
+        "default": "'MY-DEFAULT'"
       },
       "myFinalVariable": {
         "type": "String",
