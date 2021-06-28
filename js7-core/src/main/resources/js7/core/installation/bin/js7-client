@@ -27,14 +27,13 @@ Accept-Charset: UTF-8\r
 
 argToPost() {
   arg="$1"
-  echo -e "POST $baseUri/api/command HTTP/1.1\r
+  echo -en "POST $baseUri/api/command HTTP/1.1\r
 Host: host\r
 Connection: close\r
 x-js7-session: $(cat "$sessionTokenFile")\r
 Content-Type: application/json\r
 Content-Length: ${#arg}\r
 Accept: text/plain;charset=UTF-8\r
-Accept-Charset: UTF-8\r
 \r
 $arg"
 }
@@ -73,7 +72,7 @@ for arg in "${args[@]}"; do
     sleep 1
   done
   request=$(argToRequest "$arg")
-  echo "$request" >&3
+  echo -n "$request" >&3
 
   IFS=' ' read -r httpVersion status remainder <&3
   if [ "$status" != '200' ]; then
