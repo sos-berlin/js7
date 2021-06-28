@@ -181,7 +181,7 @@ final class AgentStateTest extends AsyncFreeSpec
             val a = agentState.copy(eventId = 0)
             if (fromSnapshot != a) {  // Diff.compare do not uses our equals implementation
               val diffResult = diffx.Diff.compare(fromSnapshot, a)
-              fail(diffResult.show)
+              fail(diffResult.show())
             } else
               succeed
           }

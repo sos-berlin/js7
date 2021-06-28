@@ -574,7 +574,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
         s" ${recoveredJournalFile.fileEventId} does not match snapshot in next replicated journal file"
       // msg may get very big
       logger.error(msg)
-      msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show
+      msg ++= ":\n" ++ diffx.compare(recoveredJournalFile.state, snapshot).show()
       logger.info(msg)  // Without colors because msg is already colored
       sys.error(msg)
     }

@@ -409,7 +409,7 @@ extends Actor with Stash with JournalLogging
     if (conf.slowCheckState && committedState != uncommittedState) {
       val msg = "JournaledState update mismatch: committedState != uncommittedState"
       logger.error(msg)
-      logger.error(diffx.compare(committedState, uncommittedState).show)
+      logger.error(diffx.compare(committedState, uncommittedState).show())
       sys.error(msg)
     }
     uncommittedState = committedState    // Reduce duplicate allocated objects
@@ -591,7 +591,7 @@ extends Actor with Stash with JournalLogging
       logger.error(msg)
       for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
       // msg may get very big
-      msg ++= s":\n" ++ diffx.compare(snapshotState, uncommittedState).show
+      msg ++= s":\n" ++ diffx.compare(snapshotState, uncommittedState).show()
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)
     }
