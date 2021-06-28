@@ -83,127 +83,127 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
         var releaseEventsEventId = EventId.BeforeFirst
         var lastAddedEventId = EventId.BeforeFirst
         primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
-        autoClosing(new ControllerApi(apiResources)) { controllerApi =>
-          @volatile var lastState = ControllerState.empty
-          @volatile var finished = false
-          var rounds = 0
-          while (!finished && rounds <= 100) {
-            logger.info(s"Round $rounds")
-            var proxyStartedReceived = false
-            try {
-              controllerApi.eventAndStateObservable(new StandardEventBus, Some(lastState.eventId))
-                .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
-                .takeWhileInclusive {
-                  case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
-                    finished = true
-                    false
-                  case _=>
-                    true
+        val controllerApi = new ControllerApi(apiResources)
+        @volatile var lastState = ControllerState.empty
+        @volatile var finished = false
+        var rounds = 0
+        while (!finished && rounds <= 100) {
+          logger.info(s"Round $rounds")
+          var proxyStartedReceived = false
+          try {
+            controllerApi.eventAndStateObservable(new StandardEventBus, Some(lastState.eventId))
+              .doOnNext(es => Task(scribe.debug(s"observe ${es.stampedEvent}")))
+              .takeWhileInclusive {
+                case EventAndState(Stamped(_, _, KeyedEvent(TestOrder.id, _: OrderFinished)), _, _) =>
+                  finished = true
+                  false
+                case _=>
+                  true
+              }
+              .take(3)  // Process two events (and initial ProxyStarted) each test round
+              .doOnNext(es => Task {
+                es.stampedEvent.value.event match {
+                  case ProxyStarted =>
+                    assert(!proxyStartedReceived)
+                    proxyStartedReceived = true
+                    es.state should matchTo(lastState)
+                  case _ =>
+                    assert(lastState.eventId < es.stampedEvent.eventId)
                 }
-                .take(3)  // Process two events (and initial ProxyStarted) each test round
-                .doOnNext(es => Task {
-                  es.stampedEvent.value.event match {
-                    case ProxyStarted =>
-                      assert(!proxyStartedReceived)
-                      proxyStartedReceived = true
-                      es.state should matchTo(lastState)
-                    case _ =>
-                      assert(lastState.eventId < es.stampedEvent.eventId)
-                  }
-                  lastState = es.state
-                  var keyedEvent = es.stampedEvent.value
-                  for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
-                    keyedEvent = keyedEvent.copy(event = controllerReady.copy(totalRunningTime = 333.s))
-                  }
-                  es.stampedEvent.value match {
-                    case KeyedEvent(orderId: OrderId, event: OrderEvent) => keyedEvents += orderId <-: event
-                    case _ =>
-                  }
-                })
-                .completedL
-                .await(99.s)
-              assert(proxyStartedReceived)
-            }
-            catch { case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
-              // TODO NoMoreElementsNeeded occurs occasionally for unknown reason
-              // Anyway, the caller should repeat the call.
-              logger.error(s"Ignore ${t.toString}")
-            }
-            rounds += 1
+                lastState = es.state
+                var keyedEvent = es.stampedEvent.value
+                for (controllerReady <- ifCast[ControllerReady](keyedEvent.event)) {
+                  keyedEvent = keyedEvent.copy(event = controllerReady.copy(totalRunningTime = 333.s))
+                }
+                es.stampedEvent.value match {
+                  case KeyedEvent(orderId: OrderId, event: OrderEvent) => keyedEvents += orderId <-: event
+                  case _ =>
+                }
+              })
+              .completedL
+              .await(99.s)
+            assert(proxyStartedReceived)
           }
-          assert(rounds > 2)
-
-          assertJournalFileCount(2)
-          assert(listJournalFilenames.contains("controller--0.journal"))
-          api.releaseEvents(finishedEventId).await(99.s).orThrow
-          assertJournalFileCount(1)
-          assert(!listJournalFilenames.contains("controller--0.journal"))  // First file deleted
-
-          releaseEventsEventId = finishedEventId
-          lastAddedEventId = primaryController.eventWatch.lastAddedEventId
-
-          assert(keyedEvents.groupMap(_.key)(_.event).view.mapValues(_.toList).to(mutable.SortedMap) == mutable.SortedMap(
-            OrderId("🔺") -> List(
-              OrderAdded(TestWorkflowId.asScala, Map("KEY" -> StringValue("VALUE"))),
-              OrderAttachable(AAgentPath),
-              OrderAttached(AAgentPath),
-              OrderStarted,
-              OrderProcessingStarted,
-              OrderStdoutWritten(StdoutOutput),
-              OrderProcessed(Succeeded(NamedValues.rc(0))),
-              OrderMoved(Position(1)),
-              OrderForked(List(
-                OrderForked.Child("🥕",OrderId("🔺|🥕")),
-                OrderForked.Child("🍋",OrderId("🔺|🍋")))),
-              OrderDetachable,
-              OrderDetached,
-              OrderJoined(succeeded),
-              OrderMoved(Position(2)),
-              OrderAttachable(AAgentPath),
-              OrderAttached(AAgentPath),
-              OrderProcessingStarted,
-              OrderStdoutWritten(StdoutOutput),
-              OrderProcessed(Succeeded(NamedValues.rc(0))),
-              OrderMoved(Position(3)),
-              OrderDetachable,
-              OrderDetached,
-              OrderFinished),
-            OrderId("🔺|🥕") -> List(
-              OrderProcessingStarted,
-              OrderStdoutWritten(StdoutOutput),
-              OrderProcessed(Succeeded(NamedValues.rc(0))),
-              OrderMoved(Position(1) / "fork+🥕" % 1),
-              OrderProcessingStarted,
-              OrderStdoutWritten(StdoutOutput),
-              OrderProcessed(Succeeded(NamedValues.rc(0))),
-              OrderMoved(Position(1) / "fork+🥕" % 2),
-              OrderDetachable,
-              OrderDetached),
-            OrderId("🔺|🍋") -> List(
-              OrderProcessingStarted,
-              OrderStdoutWritten(StdoutOutput),
-              OrderProcessed(Succeeded(NamedValues.rc(0))),
-              OrderMoved(Position(1) / "fork+🍋" % 1),
-              OrderDetachable,
-              OrderDetached,
-              OrderAttachable(BAgentPath),
-              OrderAttached(BAgentPath),
-              OrderProcessingStarted,
-              OrderStdoutWritten(StdoutOutput),
-              OrderProcessed(Succeeded(NamedValues.rc(0))),
-              OrderMoved(Position(1) / "fork+🍋" % 2),
-              OrderDetachable,
-              OrderDetached)))
-
-          // TORN EVENT STREAM
-          val problem = JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(EventId.BeforeFirst), _ => (), ProxyConf.default)
-            .take(1).completedL.materialize.await(99.s).failed.get.asInstanceOf[ProblemException].problem
-          assert(problem == SnapshotForUnknownEventIdProblem(EventId.BeforeFirst))
-
-          val eventId = JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(finishedEventId), _ => (), ProxyConf.default)
-            .headL.await(99.s).state.eventId
-          assert(eventId == finishedEventId)
+          catch { case t @ akka.stream.SubscriptionWithCancelException.NoMoreElementsNeeded =>
+            // TODO NoMoreElementsNeeded occurs occasionally for unknown reason
+            // Anyway, the caller should repeat the call.
+            logger.error(s"Ignore ${t.toString}")
+          }
+          rounds += 1
         }
+        assert(rounds > 2)
+
+        assertJournalFileCount(2)
+        assert(listJournalFilenames.contains("controller--0.journal"))
+        api.releaseEvents(finishedEventId).await(99.s).orThrow
+        assertJournalFileCount(1)
+        assert(!listJournalFilenames.contains("controller--0.journal"))  // First file deleted
+
+        releaseEventsEventId = finishedEventId
+        lastAddedEventId = primaryController.eventWatch.lastAddedEventId
+
+        assert(keyedEvents.groupMap(_.key)(_.event).view.mapValues(_.toList).to(mutable.SortedMap) == mutable.SortedMap(
+          OrderId("🔺") -> List(
+            OrderAdded(TestWorkflowId.asScala, Map("KEY" -> StringValue("VALUE"))),
+            OrderAttachable(AAgentPath),
+            OrderAttached(AAgentPath),
+            OrderStarted,
+            OrderProcessingStarted,
+            OrderStdoutWritten(StdoutOutput),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
+            OrderMoved(Position(1)),
+            OrderForked(List(
+              OrderForked.Child("🥕",OrderId("🔺|🥕")),
+              OrderForked.Child("🍋",OrderId("🔺|🍋")))),
+            OrderDetachable,
+            OrderDetached,
+            OrderJoined(succeeded),
+            OrderMoved(Position(2)),
+            OrderAttachable(AAgentPath),
+            OrderAttached(AAgentPath),
+            OrderProcessingStarted,
+            OrderStdoutWritten(StdoutOutput),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
+            OrderMoved(Position(3)),
+            OrderDetachable,
+            OrderDetached,
+            OrderFinished),
+          OrderId("🔺|🥕") -> List(
+            OrderProcessingStarted,
+            OrderStdoutWritten(StdoutOutput),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
+            OrderMoved(Position(1) / "fork+🥕" % 1),
+            OrderProcessingStarted,
+            OrderStdoutWritten(StdoutOutput),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
+            OrderMoved(Position(1) / "fork+🥕" % 2),
+            OrderDetachable,
+            OrderDetached),
+          OrderId("🔺|🍋") -> List(
+            OrderProcessingStarted,
+            OrderStdoutWritten(StdoutOutput),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
+            OrderMoved(Position(1) / "fork+🍋" % 1),
+            OrderDetachable,
+            OrderDetached,
+            OrderAttachable(BAgentPath),
+            OrderAttached(BAgentPath),
+            OrderProcessingStarted,
+            OrderStdoutWritten(StdoutOutput),
+            OrderProcessed(Succeeded(NamedValues.rc(0))),
+            OrderMoved(Position(1) / "fork+🍋" % 2),
+            OrderDetachable,
+            OrderDetached)))
+
+        // TORN EVENT STREAM
+        val problem = JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(EventId.BeforeFirst), _ => (), ProxyConf.default)
+          .take(1).completedL.materialize.await(99.s).failed.get.asInstanceOf[ProblemException].problem
+        assert(problem == SnapshotForUnknownEventIdProblem(EventId.BeforeFirst))
+
+        val eventId = JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(finishedEventId), _ => (), ProxyConf.default)
+          .headL.await(99.s).state.eventId
+        assert(eventId == finishedEventId)
+        controllerApi.stop.await(99.s)
       }
     }
   }

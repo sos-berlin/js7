@@ -6,8 +6,12 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
+import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
+import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.session.SessionApi
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF}
+import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
 import js7.data.agent.AgentRef
@@ -32,17 +36,16 @@ final class ControllerApi(
   apiResources: Seq[Resource[Task, HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default)
 extends ControllerApiWithHttp
-with AutoCloseable
 {
-  protected val apiResource: Resource[Task, HttpControllerApi] =
-    JournaledProxy.selectActiveNodeApi(apiResources,
-      onCouplingError = api => t => api.logError(t).void)
+  private val apiCache = new RefCountedResource(
+    JournaledProxy.selectActiveNodeApi(
+      apiResources,
+      onCouplingError = api => t => api.logError(t).void))
 
-  /** No operation, but this may change in future. */
-  def close() = {}
+  protected val apiResource = apiCache.resource
 
   def stop: Task[Unit] =
-    Task.unit
+    apiCache.release
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean): Task[EventAndState[Event, ControllerState]] =
@@ -149,11 +152,32 @@ with AutoCloseable
   def controllerState: Task[Checked[ControllerState]] =
     untilReachable(_.snapshot())
 
-  private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
-    HttpClient.liftProblem(
-      apiResource.use(api =>
-        api.retryUntilReachable()(
-          body(api))))
+  private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] = {
+    // TODO Similar to SessionApi.retryUntilReachable
+    val delays = SessionApi.defaultLoginDelays()
+    apiResource
+      .use(api =>
+        HttpClient.liftProblem(
+          api.login(onlyIfNotLoggedIn = true) >>
+            body(api).onErrorRestartLoop(()) {
+              case (HttpException.HasProblem(problem), _, retry)
+                if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                scribe.debug(problem.toString)
+                Task.sleep(delays.next()) >>
+                  api.loginUntilReachable() >>
+                  retry(())
+              case (t, _, _) =>
+                Task.raiseError(t)
+            }))
+      .onErrorRestartLoop(()) {
+        case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
+          apiCache.clear >>
+            Task.sleep(delays.next()) >>
+            retry(())
+        case (t, _, _) =>
+          Task.raiseError(t)
+      }
+  }
 }
 
 object ControllerApi

@@ -6,7 +6,6 @@ import js7.base.configutils.Configs._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
@@ -40,8 +39,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     controller.localUri,
     Some(directoryProvider.controller.userAndPassword))
   protected lazy val controllerApi = new ControllerApi(
-    admissionsToApiResources(Seq(controllerAdmission))(controller.actorSystem)
-  ).closeWithCloser
+    admissionsToApiResources(Seq(controllerAdmission))(controller.actorSystem))
 
   protected def controllerHttpsMutual = false
 
@@ -56,6 +54,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   }
 
   override def afterAll() = {
+    controllerApi.stop await 99.s
     controller.terminate() await 15.s
     controller.close()
     agents.map(_.terminate()) await 15.s

@@ -49,7 +49,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
   private var agent: RunningAgent = null
 
   override def afterAll() = {
-    controllerApi.close()
+    controllerApi.stop.await(99.s)
     controller.terminate() await 99.s
     super.afterAll()
   }

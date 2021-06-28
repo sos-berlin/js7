@@ -214,7 +214,6 @@ object JournaledProxy
       .tapEach(o => scribe.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
   }
 
-
   /** Drop all events until the requested one and
     * replace the first event by ProxyStarted.
     * The original ProxyStarted event may have been dropped.

@@ -74,6 +74,12 @@ object HttpClient
     }
   }
 
+  def isTemporaryUnreachable(throwable: Throwable) =
+    throwable match {
+      case e: HttpClient.HttpException => e.isTemporaryUnreachable
+      case _ => true  // Maybe a TCP exception
+    }
+
   private val isTemporaryUnreachableStatus = Set[Int](
     408, // Request Timeout
     429, // Too Many Requests

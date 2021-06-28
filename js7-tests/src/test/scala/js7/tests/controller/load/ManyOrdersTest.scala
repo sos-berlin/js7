@@ -42,6 +42,7 @@ final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   override def afterAll() = {
+    controllerApi.stop await 99.s
     controller.terminate() await longTimeout
     super.afterAll()
   }

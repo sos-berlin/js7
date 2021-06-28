@@ -165,6 +165,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "stop" in {
+    controllerApi.stop await 99.s
     controller.terminate() await 99.s
     agent.terminate() await 99.s
     assert(SimpleJob.stopped)
