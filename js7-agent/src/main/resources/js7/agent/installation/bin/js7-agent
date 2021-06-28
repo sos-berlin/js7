@@ -82,7 +82,8 @@ logs="$data/logs"
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
-exec > >(tee -a "$logs"/stdouterr.log) 2>&1  # Redirects stderr to stdout as a side effect
+exec &> >(exec tee -a "$logs"/stdouterr.log)
+
 javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
