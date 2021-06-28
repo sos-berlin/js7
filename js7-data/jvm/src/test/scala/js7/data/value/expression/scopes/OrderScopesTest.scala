@@ -14,7 +14,7 @@ import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.scopes.OrderScopesTest._
-import js7.data.value.{NumberValue, StringValue}
+import js7.data.value.{NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -205,6 +205,8 @@ final class OrderScopesTest extends AnyFreeSpec
 
         assert(scope.parseAndEval("JobResource:JOB-RESOURCE:`ORDER-ID`") ==
           Right(StringValue("ORDER")))
+        assert(scope.parseAndEval("jobResourceVariable('JOB-RESOURCE', 'ORDER-ID')") ==
+          Right(StringValue("ORDER")))
         assert(scope.parseAndEval("JobResource:JOB-RESOURCE:NOW").isRight)
 
         assert(scope.parseAndEval("JobResource:UNKNOWN:VARIABLE") ==
@@ -223,7 +225,8 @@ final class OrderScopesTest extends AnyFreeSpec
 
     "Workflow.orderVariables" in {
       import OrderScopes.workflowOrderVariablesScope
-      val scope = workflowOrderVariablesScope(freshOrder, Seq(jobResource).toKeyedMap(_.path),
+      val scope = workflowOrderVariablesScope(freshOrder,
+        Seq(jobResource, simpleJobResource, dotJobResource).toKeyedMap(_.path),
         controllerId, nowScope = NowScope(Timestamp("2021-06-21T12:33:44Z")))
 
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
@@ -260,6 +263,34 @@ final class OrderScopesTest extends AnyFreeSpec
 
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") ==
         Left(Problem("No such named value: orderArgument")))
+
+      // Whole JobResource as object
+      assert(scope.parseAndEval("JobResource:SIMPLE") ==
+        Right(ObjectValue(Map(
+          "X" -> StringValue("XXX"),
+          "Y" -> StringValue("YYY")))))
+      assert(scope.parseAndEval("JobResource:WITH.DOT") ==
+        Right(ObjectValue(Map(
+          "dot" -> StringValue("DOT")))))
+      assert(scope.parseAndEval("jobResourceVariables('SIMPLE')") ==
+        Right(ObjectValue(Map(
+          "X" -> StringValue("XXX"),
+          "Y" -> StringValue("YYY")))))
+
+      // A variable out of a JobResource
+      assert(scope.parseAndEval("JobResource:SIMPLE:X") ==
+        Right(StringValue("XXX")))
+      assert(scope.parseAndEval("JobResource:WITH.DOT:dot") ==
+        Right(StringValue("DOT")))
+
+      // Not recommended.
+      // The whole JobResource is evaluated, and the syntax is ugly
+      assert(scope.parseAndEval("(JobResource:SIMPLE).X") ==
+        Right(StringValue("XXX")))
+      assert(scope.parseAndEval("(JobResource:WITH.DOT).dot") ==
+        Right(StringValue("DOT")))
+      assert(scope.parseAndEval("jobResourceVariables('SIMPLE').X") ==
+        Right(StringValue("XXX")))
     }
 
     "Speed" in {
@@ -292,6 +323,13 @@ object OrderScopesTest
       "NOW" -> expr("now(format='yyyy-MM-dd HH:mm:ssZ', 'Europe/Berlin')"),
       "UNKNOWN" -> expr("$unknown"),
       "SELF" -> expr("$SELF")))
+  private val simpleJobResource = JobResource(JobResourcePath("SIMPLE"),
+    variables = Map(
+      "X" -> expr("'XXX'"),
+      "Y" -> expr("'YYY'")))
+  private val dotJobResource = JobResource(JobResourcePath("WITH.DOT"),
+    variables = Map(
+      "dot" -> expr("'DOT'")))
 
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "VERSION",
     Seq(

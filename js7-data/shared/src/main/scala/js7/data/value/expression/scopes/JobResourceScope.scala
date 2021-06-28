@@ -43,6 +43,12 @@ extends Scope
             Argument(variableNameExpr, None)) =>
             evalFunctionCall2(jobResourcePathExpr, Some(variableNameExpr))
 
+          case _ =>
+            Left(InvalidFunctionArgumentsProblem(functionCall))
+        })
+
+      case FunctionCall("jobResourceVariables", arguments) =>
+        Some(arguments match {
           case Seq(Argument(jobResourcePathExpr, None)) =>
             evalFunctionCall2(jobResourcePathExpr, None)
 
