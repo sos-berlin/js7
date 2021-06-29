@@ -32,19 +32,20 @@ object Https
 {
   private val logger = Logger[this.type]
   private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
+  private val algorithm = KeyManagerFactory.getDefaultAlgorithm  // "SunX509", but for IBM Java: "IbmX509"
 
   def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
     val keyManagers = keyStoreRef match {
       case None => Array.empty[KeyManager]
       case Some(ref) =>
         val keyStore = loadKeyStore(ref, "private")
-        val factory = KeyManagerFactory.getInstance("SunX509")
+        val factory = KeyManagerFactory.getInstance(algorithm)
         ref.keyPassword.provideCharArray(
           factory.init(keyStore, _))
         factory.getKeyManagers
     }
     val trustManagers = trustStoreRefs.view.flatMap { trustStoreRef =>
-      val factory = TrustManagerFactory.getInstance("SunX509")
+      val factory = TrustManagerFactory.getInstance(algorithm)
       factory.init(loadKeyStore(trustStoreRef, "trust"))
       factory.getTrustManagers
     }.collect {
