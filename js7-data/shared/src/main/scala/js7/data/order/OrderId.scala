@@ -22,7 +22,7 @@ final case class OrderId private(string: String) extends GenericString
     OrderId(string + ChildSeparator + childId.string)
 
   def allParents: Seq[OrderId] =
-    string.split(ChildSeparatorQuoted)
+    string.split(ChildSeparatorRegex)
       .view
       .dropRight(1)
       .scanLeft(Vector.empty[String])(_ :+ _)
@@ -44,19 +44,16 @@ final case class OrderId private(string: String) extends GenericString
     if (string.isEmpty)
       Left(Problem("OrderId must not be empty"))
     else if (string.exists(ReservedCharacters))
-      Left(Problem("OrderId must not contain reserved characters: " + ReservedCharacters.mkString(", ")))
+      Left(Problem("OrderId must not contain reserved characters: " +
+        ReservedCharacters.mkString(", ")))
     else
       Right(this)
-    //firstProblem(string.stripPrefix("/").split('/').iterator map nameValidator.checked) match {
-    //  case Some(problem) => problem withKey toString
-    //  case None => Right(this)
-    //}
 }
 
 object OrderId extends GenericString.NonEmpty[OrderId]
 {
   val ChildSeparator = "|"
-  val ChildSeparatorQuoted = Regex.quote(ChildSeparator)
+  private val ChildSeparatorRegex = Regex.quote(ChildSeparator)
   private val ReservedCharacters = Set('|')
 
   protected def unchecked(string: String) = new OrderId(string)

@@ -34,15 +34,27 @@ final case class ControllerStateExecutor private(
   import ControllerStateExecutor.convertImplicitly
   import controllerState.{controllerId, pathToJobResource}
 
-  // Same clock for a chunk of operations
+  // Same clock time for a chunk of operations
   private lazy val nowScope = NowScope()
 
-  def addOrders(freshOrders: Seq[FreshOrder]): Checked[Seq[KeyedEvent[OrderAdded]]] =
+  def addOrders(freshOrders: Seq[FreshOrder], suppressOrderIdCheckFor: Option[String] = None)
+  : Checked[Seq[KeyedEvent[OrderAdded]]] =
     freshOrders.checkUniqueness(_.id) >>
-      freshOrders.traverse(addOrder(_))
+      freshOrders
+        .traverse(addOrder(_, suppressOrderIdCheckFor = suppressOrderIdCheckFor))
         .map(_.flatten)
 
   def addOrder(
+    order: FreshOrder,
+    externalOrderKey: Option[ExternalOrderKey] = None,
+    suppressOrderIdCheckFor: Option[String] = None)
+  : Checked[Option[KeyedEvent[OrderAdded]]] =
+    ( if (suppressOrderIdCheckFor.contains(order.id.string)) Checked.unit
+      else order.id.checkedNameSyntax
+    ) >>
+      addOrderWithPrecheckedId(order, externalOrderKey)
+
+  private def addOrderWithPrecheckedId(
     order: FreshOrder,
     externalOrderKey: Option[ExternalOrderKey] = None)
   : Checked[Option[KeyedEvent[OrderAdded]]] =
@@ -241,7 +253,7 @@ final case class ControllerStateExecutor private(
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     controllerState.allOrderWatchesState
-      .nextEvents(addOrder)
+      .nextEvents(addOrder(_, _))
       .filter {
         case KeyedEvent(orderId: OrderId, OrderDeletionMarked) =>
           // OrderWatchState emits OrderDeletionMarked without knowledge of the order

@@ -45,7 +45,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, Agent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler, toLiveOrderEventSource}
-import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
+import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
@@ -852,20 +852,9 @@ with MainJournalingActor[ControllerState, Event]
         .foreach(tryAttachOrderToAgent)
     }
 
-  private def addOrder(order: FreshOrder): Future[Checked[Boolean]] =
-    suppressOrderIdCheckFor match {
-      case Some(order.id.string) =>  // Test only
-        addOrderWithUncheckedId(order)
-
-      case _ =>
-        order.id.checkedNameSyntax match {
-          case Left(problem) => Future.successful(Left(problem))
-          case Right(_) => addOrderWithUncheckedId(order)
-        }
-    }
-
-  private def addOrderWithUncheckedId(freshOrder: FreshOrder): Future[Checked[Boolean]] =
-    _controllerState.addOrder(freshOrder) match {
+  private def addOrder(freshOrder: FreshOrder): Future[Checked[Boolean]] =
+    _controllerState.addOrder(freshOrder, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
+    match {
       case Left(problem) => Future.successful(Left(problem))
       case Right(None) =>
         logger.debug(s"Discarding duplicate added Order: $freshOrder")
@@ -880,7 +869,8 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def addOrders(freshOrders: Seq[FreshOrder]): Future[Checked[EventId]] =
-    _controllerState.addOrders(freshOrders) match {
+    _controllerState.addOrders(freshOrders, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
+    match {
       case Left(problem) => Future.successful(Left(problem))
       case Right(events) =>
         persistTransaction(events) { (stamped, updatedState) =>
