@@ -4,7 +4,6 @@ import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.commandline.CommandLineArguments
@@ -27,7 +26,7 @@ final class ControllerMain
     logger.info("")
     logger.info("━" * 100)  // In case, the previous file is appended
     logger.info("")
-    logger.info(s"JS7 JobScheduler Controller ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info(s"JS7 Controller ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
     logger.info(startUpLine())
     logger.debug(arguments.toString)
     val conf = ControllerConfiguration.fromCommandLine(arguments)
@@ -60,7 +59,7 @@ final class ControllerMain
       }
     } while (restartInProcess)
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JS7 Controller terminates at ${Timestamp.now.show}" + (terminate.restart ?? " – will try to restart")
+    val msg = s"JS7 Controller terminates now" + (terminate.restart ?? " and is expected to restart")
     logger.info(msg)
     printlnWithClock(msg)
     terminate
@@ -82,7 +81,7 @@ object ControllerMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JS7 JobScheduler Controller ${BuildInfo.longVersion}")
+    printlnWithClock(s"JS7 Controller ${BuildInfo.longVersion}")
     var terminate = ControllerTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminate = new ControllerMain().run(commandLineArguments)

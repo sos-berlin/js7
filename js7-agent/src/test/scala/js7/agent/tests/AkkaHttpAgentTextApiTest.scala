@@ -110,7 +110,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
       client.login() await 99.s
       client.requireIsResponding()
     }
-    assert(output == List("JS7 JobScheduler Agent is responding"))
+    assert(output == List("JS7 Agent is responding"))
     val agentUri = Uri(s"http://127.0.0.1:${findFreeTcpPort()}")
     autoClosing(new AkkaHttpAgentTextApi(agentUri, None, _ => ())) { client =>
       val t = intercept[Exception] {

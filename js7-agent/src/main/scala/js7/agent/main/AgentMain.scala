@@ -45,7 +45,7 @@ final class AgentMain
       }
     }
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JS7 JobScheduler Agent terminates at ${Timestamp.now.show}"
+    val msg = s"JS7 Agent terminates now"
     logger.info(msg)
     printlnWithClock(msg)
     terminated
@@ -70,7 +70,7 @@ object AgentMain
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
 
   def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JS7 JobScheduler Agent ${BuildInfo.longVersion}")
+    printlnWithClock(s"JS7 Agent ${BuildInfo.longVersion}")
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)
