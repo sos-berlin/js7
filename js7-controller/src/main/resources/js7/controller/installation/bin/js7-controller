@@ -124,10 +124,10 @@ while true; do
   log PID $pid
 
   terminate() {
-    echo -e "⚡$1"
-    log ShutDown JS7 Controller
+    echo "⚡$1"
+    log "$1: ShutDown JS7 Controller"
     # Add some seconds to start Java with ControllerClientMain
-    terminateTimeout=30
+    #local terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
       "$JOBSCHEDULER_HOME/bin/js7-client" --data-directory="$data" '{ "TYPE": "ShutDown" }' &
     else
@@ -140,25 +140,27 @@ while true; do
         "$terminateCommand" \
         >/dev/null &
     fi
-    (sleep $terminateTimeout && kill $pid) &
-    killer=$!
+    #(sleep $terminateTimeout && kill $pid) &
+    #killer=$!
     wait $pid
-    kill $killer
+    returnCode=$?
+    #kill $killer
+    #wait $killer
   }
 
+  returnCode=
   trap "terminate SIGTERM" SIGTERM
   trap "terminate SIGINT" SIGINT
-  returnCode=0
   if wait $pid; then
-    returnCode=$?
+    # After a trapped signal, $? is 128+signal, but not the real $returnCode (only in Docker?)
+    returnCode=${returnCode:-$?}
     log "JS7 Controller has been shut down"
   else
-    returnCode=$?
+    returnCode=${returnCode:-$?}
     log "JS7 Controller exited with exit code $returnCode"
   fi
   rm "$pidFile"
   trap - SIGTERM SIGINT
-  log "JS7 Controller has been shut down"
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
     exit $returnCode

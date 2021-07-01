@@ -115,8 +115,8 @@ echo "$pid" >"$pidFile"
 log PID $pid
 
 terminate() {
-  echo -e "⚡$1"
-  log Shutdown JS7 Provider
+  echo "⚡$1"
+  log "$1: Shutdown JS7 Provider"
   kill $pid
 }
 

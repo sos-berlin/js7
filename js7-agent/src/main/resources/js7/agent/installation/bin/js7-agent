@@ -127,10 +127,10 @@ while true; do
   log "PID $pid"
 
   terminate() {
-    echo -e "⚡$1"
-    log "ShutDown JS7 Agent"
+    echo "⚡$1"
+    log "$1: ShutDown JS7 Agent"
     # Add some seconds to start Java with AgentClientMain
-    terminateTimeout=30
+    #local terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
       "$JOBSCHEDULER_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
     else
@@ -143,26 +143,24 @@ while true; do
         "$terminateCommand" \
         >/dev/null &
     fi
-    (sleep $terminateTimeout && kill $pid) &
-    killer=$!
+    #(sleep $terminateTimeout && kill $pid) &
+    #killer=$!
     wait $pid
-    kill $killer
+    returnCode=$?
+    #kill $killer
+    #wait $killer
   }
 
+  returnCode=""
   trap "terminate SIGTERM" SIGTERM
   trap "terminate SIGINT" SIGINT
-  returnCode=0
   if wait $pid; then
-    returnCode=$?
+    returnCode=${returnCode:-$?}
     log "JS7 Agent has been shut down"
   else
-    returnCode=$?
+    returnCode=${returnCode:-$?}
     log "JS7 Agent exited with exit code $returnCode"
   fi
-  wait $pid || {
-    returnCode=$?
-    log "JS7 Agent exited with exit code $returnCode"
-  }
   rm "$pidFile"
   trap - SIGTERM SIGINT
 
