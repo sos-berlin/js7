@@ -3,7 +3,7 @@ package js7.base.io.file
 import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
-import java.nio.file.Files.{delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
+import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import java.util.concurrent.ThreadLocalRandom
@@ -41,6 +41,19 @@ object FileUtils
     val file = path.toFile
     if (!file.createNewFile() && !file.setLastModified(System.currentTimeMillis))
       throw new IOException("touchFile file: unable to update modification time of " + file)
+  }
+
+  def copyDirectory(from: Path, to: Path): Unit = {
+    createDirectory(to)
+    autoClosing(Files.list(from)) { stream =>
+      for (file <- stream.asScala) {
+        val destination = to.resolve(file.getFileName)
+        if (isDirectory(file))
+          copyDirectory(file, destination)
+        else
+          copy(file, destination)
+      }
+    }
   }
 
   object implicits {

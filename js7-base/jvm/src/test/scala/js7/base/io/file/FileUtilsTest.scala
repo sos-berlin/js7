@@ -4,13 +4,13 @@ import io.circe.Json
 import java.io.File
 import java.io.File.separator
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
-import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
+import java.nio.file.Files.{createDirectories, createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.{Files, NotDirectoryException, Path, Paths}
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.implicits._
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, touchFile, withTemporaryFile}
+import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectory, deleteDirectoryRecursively, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest._
 import js7.base.problem.ProblemException
 import org.scalatest.BeforeAndAfterAll
@@ -139,6 +139,24 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
       assert(dir.directoryContentsAs(Set) == files)
       files foreach delete
       delete(dir)
+    }
+  }
+
+  "copyDirectory" in {
+    withTemporaryDirectory("FileUtilsTest-A-") { a =>
+      a / "1" := 1
+      createDirectories(a / "aa" / "aaa")
+      a / "aa" / "aaa" / "2" := 2
+      createDirectories(a / "ax")
+
+      withTemporaryDirectory("FileUtilsTest-B-") { bParent =>
+        val b = bParent / "B"
+        copyDirectory(a, b)
+        assert((b / "1").contentString == "1")
+        assert((b / "aa" / "aaa" / "2").contentString == "2")
+        assert((b / "ax").isDirectory)
+        deleteDirectoryRecursively(b)
+      }
     }
   }
 
