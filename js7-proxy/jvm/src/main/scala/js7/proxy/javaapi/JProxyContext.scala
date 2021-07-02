@@ -42,13 +42,18 @@ extends HasCloser
   private val proxyConf = ProxyConfs.fromConfig(config)
 
   private val useJavaThreadPool = config_.getBoolean("js7.thread-pools.use-java-thread-pool")
-  private val ownScheduler = !useJavaThreadPool ? ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
+  private val ownScheduler = !useJavaThreadPool ?
+    ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
   private[proxy] implicit val scheduler = ownScheduler getOrElse Scheduler(ForkJoinPool.commonPool)
-  private val actorSystemLazy = Lazy(newActorSystem("JS7-Proxy", defaultExecutionContext = scheduler))
+
+  private val actorSystemLazy = Lazy(newActorSystem(
+    "JS7-Proxy",
+    defaultExecutionContext = scheduler))
   private lazy val actorSystem = actorSystemLazy()
 
   onClose {
     for (a <- actorSystemLazy) Akkas.terminateAndWait(a)
+    for (s <- ownScheduler) s.shutdown()
   }
 
   @javaApi @Nonnull
