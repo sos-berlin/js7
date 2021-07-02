@@ -97,7 +97,7 @@ extends ReceiveLoggingActor.WithStash
   {
     private var attachedOrderIds: Set[OrderId] = null
 
-    override protected def couple(eventId: EventId) = {
+    override protected def couple(eventId: EventId) =
       Task(persistence.currentState.pathToAgentRefState.checked(agentPath))
         .flatMapT(agentRefState =>
           ((agentRefState.couplingState, agentRunIdOnce.toOption) match {
@@ -115,7 +115,6 @@ extends ReceiveLoggingActor.WithStash
               attachedOrderIds = orderIds
               Completed
             })))
-    }
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>

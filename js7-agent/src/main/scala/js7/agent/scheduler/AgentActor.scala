@@ -6,7 +6,7 @@ import com.softwaremill.diffx.generic.auto._
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
-import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
+import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentWrongControllerProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent.AgentCreated
@@ -30,7 +30,6 @@ import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.executor.configuration.JobExecutorConf
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -202,11 +201,12 @@ extends Actor with Stash with SimpleStateActor
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
         // Command does not change state. It only checks the coupling (for now)
         response.success(
-         if (agentRunId != persistence.currentState.meta.agentRunId)
-            Left(AgentRunIdMismatchProblem(agentPath))
-         else
-           for (_ <- checkAgentPath(agentPath, eventId)) yield
-             CoupleController.Response(persistence.currentState.idToOrder.keySet))
+          for {
+            _ <- checkAgentPath(agentPath)
+            _ <- persistence.currentState.checkAgentRunId(agentRunId)
+            _ <- eventWatch.checkEventId(eventId)
+          } yield
+            CoupleController.Response(persistence.currentState.idToOrder.keySet))
 
       case command @ (_: AgentCommand.OrderCommand |
                       _: AgentCommand.TakeSnapshot |
@@ -229,12 +229,6 @@ extends Actor with Stash with SimpleStateActor
             new RuntimeException(s"Unexpected command for AgentActor: $command"))
     }
   }
-
-  private def checkAgentPath(requestedAgentPath: AgentPath, eventId: EventId): Checked[Unit] =
-    for {
-      _ <- checkAgentPath(requestedAgentPath)
-      _ <- eventWatch.checkEventId(eventId)
-    } yield ()
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
     val agentState = persistence.currentState

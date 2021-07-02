@@ -1,9 +1,11 @@
 package js7.tests
 
+import java.nio.file.Files.move
+import java.nio.file.Paths
 import js7.agent.RunningAgent
-import js7.agent.data.Problems.AgentRunIdMismatchProblem
+import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentNotCreatedProblem, AgentRunIdMismatchProblem}
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
+import js7.base.io.file.FileUtils.{copyDirectory, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
@@ -54,7 +56,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     super.afterAll()
   }
 
-  "Standard operation" in {
+  "Add AgentRef and run an order" in {
     directoryProvider.prepareAgentFiles(agentFileTree)
 
     val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
@@ -70,7 +72,11 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     controller.runOrder(FreshOrder(OrderId("🔵"), workflow.path), delete=true)
   }
 
+  private lazy val outdatedState = agentFileTree.stateDir.resolveSibling(Paths.get("state~"))
+
   "Delete AgentRef" in {
+    copyDirectory(agentFileTree.stateDir, outdatedState)
+
     assert(controllerApi.updateItems(Observable(DeleteSimple(agentPath))).await(99.s) ==
       Left(ItemIsStillReferencedProblem(agentPath, workflow.path ~ v1)))
 
@@ -86,10 +92,10 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     agent.terminate() await 99.s
   }
 
-  "Add AgentRef again" in {
-    deleteDirectoryContentRecursively(agentFileTree.stateDir)
+  "Add AgentRef again but keep Agent's journal: should fail" in {
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
+    val eventId = controller.eventWatch.lastFileTornEventId
     val versionId = VersionId("AGAIN")
     val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
     controllerApi
@@ -99,11 +105,22 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
           AddVersion(versionId),
           AddOrChangeSigned(sign(workflow withVersion versionId).signedString)))
       .await(99.s).orThrow
-    controller.runOrder(FreshOrder(OrderId("AGAIN"), workflow.path))
+
+    controller.eventWatch.await[AgentCouplingFailed](
+      _.event.problem == AgentAlreadyCreatedProblem,
+      after = eventId)
+    agent.terminate().await(99.s)
   }
 
-  "Change Agent's URI and keep Agent's state" in {
+  "Restart Agent and do not keep its state" in {
+    deleteDirectoryContentRecursively(agentFileTree.stateDir)
+    agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
+
+    controller.runOrder(FreshOrder(OrderId("AGAIN"), workflow.path))
     agent.terminate() await 99.s
+  }
+
+  "Change Agent's URI and keep Agent's state (move the Agent)" in {
     val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = RunningAgent.startForTest(
       agentFileTree.agentConfiguration.copy(
@@ -111,10 +128,27 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     ) await 99.s
     controllerApi.updateUnsignedSimpleItems(Seq(agentRef)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
+    agent.terminate() await 99.s
   }
 
-  "Change Agent's URI and start Agent with clean state: should fail" in {
+  "Use AgentRef with an outdated Agent: coupling fails" in {
+    deleteDirectoryRecursively(agentFileTree.stateDir)
+    move(outdatedState, agentFileTree.stateDir)
+    val eventId = controller.eventWatch.lastFileTornEventId
+
+    agent = RunningAgent.startForTest(
+      agentFileTree.agentConfiguration.copy(
+        webServerPorts = List(WebServerPort.localhost(agentPort2)))
+    ) await 99.s
+
+    controller.eventWatch.await[AgentCouplingFailed](
+      _.event.problem == AgentRunIdMismatchProblem(agentPath),
+      after = eventId)
+
     agent.terminate() await 99.s
+  }
+
+  "Change Agent's URI and start Agent with clean state: fails" in {
     val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
     // DELETE AGENT'S STATE DIRECTORY
     deleteDirectoryContentRecursively(agentFileTree.stateDir)
@@ -122,12 +156,13 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort3)))
     ) await 99.s
-    val beforeUpdate = controller.eventWatch.lastFileTornEventId
+
+    val eventId = controller.eventWatch.lastFileTornEventId
     controllerApi.updateUnsignedSimpleItems(Seq(agentRef)).await(99.s).orThrow
-    controller.addOrderBlocking(FreshOrder(OrderId("❌"), workflow.path))
     controller.eventWatch.await[AgentCouplingFailed](
-      _.event.problem == AgentRunIdMismatchProblem(agentPath),
-      after = beforeUpdate)
+      _.event.problem == AgentNotCreatedProblem,
+      after = eventId)
+
     agent.terminate() await 99.s
   }
 }

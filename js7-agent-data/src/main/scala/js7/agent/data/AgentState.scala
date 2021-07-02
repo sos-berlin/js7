@@ -173,10 +173,10 @@ extends JournaledState[AgentState]
         Right(this)
     }
 
-  def checkAgentRunId(requiredAgentRunId: AgentRunId): Checked[Unit] =
+  def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] =
     if (!isCreated)
       Left(AgentNotCreatedProblem)
-    else if (requiredAgentRunId != meta.agentRunId)
+    else if (requestedAgentRunId != meta.agentRunId)
       Left(AgentRunIdMismatchProblem(meta.agentPath))
     else
       Checked.unit
