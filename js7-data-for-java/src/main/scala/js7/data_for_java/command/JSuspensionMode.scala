@@ -16,8 +16,13 @@ extends JavaWrapper
 
 object JSuspensionMode
 {
+  @Nonnull
+  val standard: JSuspensionMode =
+    JSuspensionMode(SuspensionMode.standard)
+
   /** Kill a running job (with SIGTERM if possible). */
-  def kill: JSuspensionMode =
+  @Nonnull
+  val kill: JSuspensionMode =
     kill(immediately = false)
 
   /** Kill a running job.
@@ -36,5 +41,7 @@ object JSuspensionMode
     @Nonnull position: Optional[JWorkflowPosition]
   ): JSuspensionMode =
     JSuspensionMode(SuspensionMode(Some(
-      Kill(immediately = immediately, position.toScala.map(_.asScala)))))
+      Kill(
+        immediately = immediately,
+        position.toScala.map(_.asScala)))))
 }
