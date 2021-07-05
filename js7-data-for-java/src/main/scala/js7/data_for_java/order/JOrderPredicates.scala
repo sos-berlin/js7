@@ -1,4 +1,4 @@
-package  js7.data_for_java.order
+package js7.data_for_java.order
 
 import java.util.Objects.requireNonNull
 import javax.annotation.Nonnull

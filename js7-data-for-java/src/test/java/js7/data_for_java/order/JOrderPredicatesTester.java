@@ -1,4 +1,4 @@
-package  js7.data_for_java.order;
+package js7.data_for_java.order;
 
 import java.util.function.Predicate;
 import js7.data.order.Order;

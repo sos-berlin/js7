@@ -1,4 +1,4 @@
-package  js7.data_for_java.agent
+package js7.data_for_java.agent
 
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef}

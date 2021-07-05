@@ -1,4 +1,4 @@
-package  js7.data_for_java.item
+package js7.data_for_java.item
 
 import javax.annotation.Nonnull
 import js7.base.crypt.SignedString

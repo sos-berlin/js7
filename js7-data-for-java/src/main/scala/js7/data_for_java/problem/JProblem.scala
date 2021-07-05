@@ -1,4 +1,4 @@
-package  js7.data_for_java.problem
+package js7.data_for_java.problem
 
 import io.vavr.control.{Either => VEither}
 import java.util.Optional

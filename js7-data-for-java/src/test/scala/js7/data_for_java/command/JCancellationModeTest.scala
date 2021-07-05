@@ -1,4 +1,4 @@
-package  js7.data_for_java.command
+package js7.data_for_java.command
 
 import java.util.Arrays.asList
 import java.util.Optional

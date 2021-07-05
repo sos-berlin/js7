@@ -1,4 +1,4 @@
-package  js7.data_for_java.cluster;
+package js7.data_for_java.cluster;
 
 import java.util.HashMap;
 import java.util.Map;

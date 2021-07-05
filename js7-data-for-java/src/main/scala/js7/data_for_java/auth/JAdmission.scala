@@ -1,4 +1,4 @@
-package  js7.data_for_java.auth
+package js7.data_for_java.auth
 
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull

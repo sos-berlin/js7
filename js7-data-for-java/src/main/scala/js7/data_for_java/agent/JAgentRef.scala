@@ -1,4 +1,4 @@
-package  js7.data_for_java.agent
+package js7.data_for_java.agent
 
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull

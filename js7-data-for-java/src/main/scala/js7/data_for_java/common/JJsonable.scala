@@ -1,4 +1,4 @@
-package  js7.data_for_java.common
+package js7.data_for_java.common
 
 import io.circe.{Decoder, Encoder}
 import io.vavr.control.{Either => VEither}

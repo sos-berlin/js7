@@ -1,4 +1,4 @@
-package  js7.data_for_java.common
+package js7.data_for_java.common
 
 import js7.data.event.JournaledState
 

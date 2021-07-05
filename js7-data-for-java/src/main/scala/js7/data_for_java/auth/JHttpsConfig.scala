@@ -1,4 +1,4 @@
-package  js7.data_for_java.auth
+package js7.data_for_java.auth
 
 import java.util.Optional
 import javax.annotation.Nonnull

@@ -1,4 +1,4 @@
-package  js7.data_for_java.cluster
+package js7.data_for_java.cluster
 
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri

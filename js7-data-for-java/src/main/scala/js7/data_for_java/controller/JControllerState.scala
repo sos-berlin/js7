@@ -1,4 +1,4 @@
-package  js7.data_for_java.controller
+package js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant

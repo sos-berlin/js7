@@ -1,4 +1,4 @@
-package  js7.data_for_java.lock
+package js7.data_for_java.lock
 
 import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.lock.{Lock, LockPath, LockState}

@@ -1,4 +1,4 @@
-package  js7.data_for_java.workflow;
+package js7.data_for_java.workflow;
 
 import js7.data.item.VersionId;
 import js7.data.workflow.WorkflowPath;

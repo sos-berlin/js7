@@ -1,4 +1,4 @@
-package  js7.data_for_java.common
+package js7.data_for_java.common
 
 import cats.instances.vector._
 import cats.syntax.traverse._

@@ -1,4 +1,4 @@
-package  js7.data_for_java.workflow.position;
+package js7.data_for_java.workflow.position;
 
 import static java.util.Arrays.asList;
 import static js7.data_for_java.vavr.VavrUtils.getOrThrow;

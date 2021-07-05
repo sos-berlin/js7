@@ -1,4 +1,4 @@
-package  js7.data_for_java.order
+package js7.data_for_java.order
 
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath

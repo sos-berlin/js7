@@ -1,4 +1,4 @@
-package  js7.data_for_java.controller
+package js7.data_for_java.controller
 
 import js7.base.auth.UserId
 import js7.base.crypt.silly.SillySigner
