@@ -80,6 +80,10 @@ object Value
   @javaApi def of(value: Int) = NumberValue(BigDecimal(value))
   @javaApi def of(value: Boolean) = BooleanValue(value)
 
+  def catchNonFatal[V <: Value](body: => V): Value =
+    try body
+    catch { case NonFatal(t) => ErrorValue(Problem.fromThrowable(t)) }
+
   implicit val jsonEncoder: Encoder[Value] = {
     case StringValue(o) => Json.fromString(o)
     case NumberValue.Zero => NumberValue.ZeroJson
@@ -282,14 +286,28 @@ object ObjectValue extends ValueType
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
 }
 
-/** Just a reminder that MissingValue could be an instance of a future ErrorValue.
+/** Just a reminder that MissingValue could be an instance of a future IsErrorValue.
   * For example, division by zero. */
-sealed trait ErrorValue extends Value {
+sealed trait IsErrorValue extends Value {
   def problem: Problem
 }
 
 /** A missing value due to a problem. */
-final case class MissingValue(problem: Problem = MissingValueProblem) extends ErrorValue {
+final case class ErrorValue(problem: Problem) extends IsErrorValue {
+  def valueType = ErrorValue
+
+  def toJava = problem // ???
+
+  override def convertToString = s"[Problem: $problem]"
+
+  override def toString = convertToString
+}
+object ErrorValue extends ValueType {
+  val name = "Problem"
+}
+
+/** A missing value due to a problem. */
+final case class MissingValue(problem: Problem = MissingValueProblem) extends IsErrorValue {
   def valueType = MissingValue
 
   def toJava = problem // ???

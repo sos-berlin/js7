@@ -200,9 +200,17 @@ object ExpressionParser
 
   private def bFactor[_: P] = P(not | factor)
 
-  private def addition[_: P] = P[Expression](
+  private def multiplication[_: P] = P[Expression](
     bFactor.flatMap(initial =>
-      leftRecurse(initial, P(StringIn("++", "+", "-")).!, bFactor) {
+      leftRecurse(initial, P(StringIn("*", "/")).!, bFactor) {
+        case (a, "*", b) => valid(Multiply(a, b))
+        case (a, "/", b) => valid(Divide(a, b))
+        case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
+      }))
+
+  private def addition[_: P] = P[Expression](
+    multiplication.flatMap(initial =>
+      leftRecurse(initial, P(StringIn("++", "+", "-")).!, multiplication) {
         case (a, "++", b) => valid(Concat(a, b))
         case (a, "+", b) => valid(Add(a, b))
         case (a, "-", b) => valid(Substract(a, b))

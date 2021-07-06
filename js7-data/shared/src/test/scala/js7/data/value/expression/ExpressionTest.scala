@@ -277,6 +277,39 @@ final class ExpressionTest extends AnyFreeSpec
     testEval("""$returnCode < 1""", false,
       Right(LessThan(LastReturnCode, NumericConstant(1))))
 
+    testEval("""$returnCode * 3 == 3""",
+      result = true,
+      Right(Equal(Multiply(LastReturnCode, NumericConstant(3)), NumericConstant(3))))
+
+    testEval("""1 / 3""",
+      result = Right(NumberValue(BigDecimal("0.3333333333333333333333333333333333"))),
+      Right(Divide(NumericConstant(1), NumericConstant(3))))
+
+    testEval("""(6 / 3)?""",
+      result = Right(NumberValue(2)),
+      Right(OrNull(Divide(NumericConstant(6), NumericConstant(3)))))
+
+    testEval("""1 / 0""",
+      result = Left(Problem("java.lang.ArithmeticException: Division by zero")),
+      Right(Divide(NumericConstant(1), NumericConstant(0))))
+
+    testEval("""(1 / 0)?""",
+      result = Right(NullValue),
+      Right(OrNull(Divide(NumericConstant(1), NumericConstant(0)))))
+
+    testEval("""(1 / 0) orElse -1""",
+      result = Right(NumberValue(-1)),
+      Right(OrElse(Divide(NumericConstant(1), NumericConstant(0)), NumericConstant(-1))))
+
+    testEval("""100 + 2 * 3 - 12 / 3""",
+      result = Right(NumberValue(100 + 2 * 3 - 12 / 3)),
+      Right(
+        Substract(
+          Add(
+            NumericConstant(100),
+            Multiply(NumericConstant(2), NumericConstant(3))),
+          Divide(NumericConstant(12), NumericConstant(3)))))
+
     testEval("""$returnCode + 0 == 1""",
       result = true,
       Right(Equal(Add(LastReturnCode, NumericConstant(0)), NumericConstant(1))))
