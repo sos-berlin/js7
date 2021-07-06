@@ -32,7 +32,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms"""
+    js7.controller.agent-driver.event-buffer-delay = 1ms"""
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     js7.order.stdout-stderr.chunk-size = $chunkSize
@@ -157,7 +157,7 @@ object StdoutTest
   private val chunkSize = 50
   private val delay = 200.ms
   private val shortDelay = 10.ms
-  private val longDelay = delay + 300.ms
+  private val longDelay = delay + 400.ms
 
   private def sleepCommand(delay: FiniteDuration) =
     if (isWindows) s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows

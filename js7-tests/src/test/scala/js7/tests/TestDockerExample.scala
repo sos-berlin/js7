@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.syntax.traverse._
 import com.google.inject.Guice
 import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
@@ -95,7 +96,7 @@ object TestDockerExample
       controller.terminated await 365 * 24.h
       controller.close()
       for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
-      agents.map(_.terminated) await 60.s
+      agents.traverse(_.terminated) await 60.s
       agents foreach (_.close())
     }
   }

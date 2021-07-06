@@ -50,6 +50,11 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
     server.start() await 99.s
   }
 
+  override def afterAll() = {
+    closer.close()
+    super.afterAll()
+  }
+
   "HttpClusterWatch" in {
     val clusterWatch = new HttpClusterWatch(server.localUri, userAndPassword = None, HttpsConfig.empty, actorSystem)
     val primaryId = NodeId("A")

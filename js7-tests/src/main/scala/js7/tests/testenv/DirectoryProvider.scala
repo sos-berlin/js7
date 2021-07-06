@@ -1,5 +1,6 @@
 package js7.tests.testenv
 
+import cats.syntax.traverse._
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.ConfigUtil.quoteString
@@ -192,18 +193,18 @@ extends HasCloser
     multipleAutoClosing(agents
       .filter(o => agentPaths.contains(o.agentPath))
       .map(_.agentConfiguration)
-      .map(RunningAgent.startForTest)
+      .traverse(RunningAgent.startForTest)
       .await(99.s))
     { agents =>
       val result =
         try body(agents)
         catch { case NonFatal(t) =>
           logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
-          try agents.map(_.terminate()) await 99.s
+          try agents.traverse(_.terminate()) await 99.s
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t
         }
-      agents.map(_.terminate()) await 99.s
+      agents.traverse(_.terminate()) await 99.s
       result
     }
 

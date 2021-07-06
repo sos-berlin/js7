@@ -1,5 +1,6 @@
 package js7.tests.controller.cluster
 
+import cats.syntax.traverse._
 import com.typesafe.config.ConfigUtil.quoteString
 import js7.agent.RunningAgent
 import js7.base.auth.UserId
@@ -104,7 +105,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         // CHANGE CLUSTER WATCH
 
         // Terminate ClusterWatch
-        agents.map(_.terminate()).await(99.s)
+        agents.traverse(_.terminate()).await(99.s)
 
         // Start new ClusterWatch
         val bAgentUri = Uri(s"http://127.0.0.1:$otherClusterWatchPort")
@@ -142,7 +143,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
 
         whenClusterWatchAgrees await 99.s
 
-        primaryController.terminate() await 99.s
+        primaryController.terminated await 99.s
         backupController.terminate() await 99.s
         bAgent.terminate() await 90.s
       }

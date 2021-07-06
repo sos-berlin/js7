@@ -1,5 +1,6 @@
 package js7.tests
 
+import cats.syntax.traverse._
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs._
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
@@ -125,12 +126,12 @@ final class RecoveryTest extends AnyFreeSpec
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
-    multipleAutoClosing(directoryProvider.agents.map(_.agentConfiguration) map RunningAgent.startForTest await 10.s) { agents =>
+    multipleAutoClosing(directoryProvider.agents.map(_.agentConfiguration).traverse(RunningAgent.startForTest) await 10.s) { agents =>
       // TODO Duplicate code in DirectoryProvider
       try body(agents)
       catch { case NonFatal(t) =>
         logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
-        try agents.map(_.terminate()) await 99.s
+        try agents.traverse(_.terminate()) await 99.s
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }

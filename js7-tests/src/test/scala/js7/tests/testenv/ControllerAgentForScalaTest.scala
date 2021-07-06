@@ -13,6 +13,7 @@ import js7.proxy.ControllerApi
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
+import cats.syntax.traverse._
 
 /**
   * @author Joacim Zschimmer
@@ -57,8 +58,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     controllerApi.stop await 99.s
     controller.terminate() await 15.s
     controller.close()
-    agents.map(_.terminate()) await 15.s
-    for (a <- agents) a.close()
+    agents.traverse(a => a.terminate() >> Task(a.close())) await 15.s
     super.afterAll()
   }
 

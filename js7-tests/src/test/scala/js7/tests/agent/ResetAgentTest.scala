@@ -100,6 +100,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == childOrderId)
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    agent.terminated.await(99.s)
 
     eventWatch.await[OrderFailedInFork](_.key == childOrderId)
     assert(eventWatch.keyedEvents[OrderEvent](childOrderId) == Seq(

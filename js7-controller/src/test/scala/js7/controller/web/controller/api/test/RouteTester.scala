@@ -53,4 +53,9 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
     AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
     super.beforeAll()
   }
+
+  override def afterAll() = {
+    cleanUp()
+    super.afterAll()
+  }
 }
