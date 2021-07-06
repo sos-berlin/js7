@@ -375,6 +375,60 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderCancelled](_.key == order.id)
   }
 
+  "Suspend and resume twice on same Agent" in {
+    deleteIfExists(triggerFile)
+    val order = FreshOrder(OrderId("🟧"), twoJobsWorkflow.path)
+    addOrder(order).await(99.s).orThrow
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
+
+    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
+
+    touchFile(triggerFile)
+    eventWatch.await[OrderSuspended](_.key == order.id)
+    val eventId = eventWatch.lastAddedEventId
+
+    executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
+    eventWatch.await[OrderProcessingStarted](_.key == order.id, after = eventId)
+
+    executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
+    eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id, after = eventId)
+
+    touchFile(triggerFile)
+    eventWatch.await[OrderSuspended](_.key == order.id, after = eventId)
+    executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
+    eventWatch.await[OrderFinished](_.key == order.id, after = eventId)
+
+    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+      OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderStarted,
+      OrderProcessingStarted,
+      OrderSuspensionMarked(),
+      OrderSuspensionMarkedOnAgent,
+      OrderProcessed(Outcome.succeededRC0),
+      OrderMoved(Position(1)),
+      OrderDetachable,
+      OrderDetached,
+      OrderSuspended,
+
+      OrderResumed(),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderProcessingStarted,
+      OrderSuspensionMarked(),
+      OrderSuspensionMarkedOnAgent,
+      OrderProcessed(Outcome.succeededRC0),
+      OrderMoved(Position(2)),
+      OrderDetachable,
+      OrderDetached,
+      OrderSuspended,
+
+      OrderResumed(),
+      OrderFinished))
+  }
+
   "Resume with invalid position is rejected" in {
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("INVALID-POSITION"), tryWorkflow.path)

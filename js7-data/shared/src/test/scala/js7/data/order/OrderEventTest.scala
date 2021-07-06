@@ -381,6 +381,13 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
+  "OrderCancellationMarkedOnAgent" in {
+    check(OrderCancellationMarkedOnAgent, json"""
+      {
+        "TYPE": "OrderCancellationMarkedOnAgent"
+      }""")
+  }
+
   "OrderCancelled" in {
     check(OrderCancelled, json"""
       {
@@ -407,6 +414,13 @@ final class OrderEventTest extends AnyFreeSpec
       {
         "TYPE": "OrderSuspensionMarked",
         "mode": {}
+      }""")
+  }
+
+  "OrderSuspensionMarkedOnAgent" in {
+    check(OrderSuspensionMarkedOnAgent, json"""
+      {
+        "TYPE": "OrderSuspensionMarkedOnAgent"
       }""")
   }
 

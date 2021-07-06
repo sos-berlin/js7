@@ -45,7 +45,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, Agent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler, toLiveOrderEventSource}
-import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, ControllerStateExecutor, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
+import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
@@ -55,7 +55,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderResumptionMarked, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -452,9 +452,6 @@ with MainJournalingActor[ControllerState, Event]
 
                       case KeyedEvent(orderId: OrderId, _: OrderSuspensionMarked) =>
                         Timestamped(orderId <-: OrderSuspensionMarkedOnAgent, Some(timestampMillis)) :: Nil
-
-                      case KeyedEvent(_, _: OrderResumptionMarked) =>
-                        Nil /*Agent does not emit OrderResumptionMarked*/
 
                       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
                         val ownEvent = event match {
@@ -1042,6 +1039,7 @@ with MainJournalingActor[ControllerState, Event]
 
       case OrderDetached =>
         orderEntry.isDetaching = false
+        orderEntry.agentOrderMark = None
 
       case _ =>
     }
@@ -1055,10 +1053,12 @@ with MainJournalingActor[ControllerState, Event]
   private def proceedWithOrder(orderId: OrderId): Unit =
     for (order <- _controllerState.idToOrder.get(orderId)) {
       for (mark <- order.mark) {
-        if (order.isAttached && !orderMarkTransferredToAgent(order.id).contains(mark)) {
+        if (order.isAttached
+          && !orderRegister.get(orderId).flatMap(_.agentOrderMark).contains(mark)) {
           // On Recovery, MarkOrder is sent again, because orderEntry.agentOrderMark is lost
           for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
-            // CommandQueue filters multiple equal MarkOrder because we may send multiple due to asynchronous excecution
+            // CommandQueue filters multiple equal MarkOrder
+            // because we may send multiple ones due to asynchronous execution
             agentEntry.actor ! AgentDriver.Input.MarkOrder(order.id, mark)
           }
         }
@@ -1187,9 +1187,6 @@ with MainJournalingActor[ControllerState, Event]
           })
         .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
         .runToFuture
-
-  private def orderMarkTransferredToAgent(orderId: OrderId): Option[OrderMark] =
-    orderRegister.get(orderId).flatMap(_.agentOrderMark)
 
   override def toString = "ControllerOrderKeeper"
 }
