@@ -67,7 +67,7 @@ extends Actor {
       val idsOrUser = _idsOrUser.map(_.asInstanceOf[S#User])
       val sessionOption = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
-          logger.debug(s"Rejecting unknown session token of user '${idsOrUser.fold(identity, _.id)}'")
+          logger.debug(s"Rejecting unknown session token of user '${idsOrUser.fold(_.mkString("|"), _.id)}'")
           None
 
         case (Some(session), Right(user)) if !user.id.isAnonymous && user.id != session.currentUser.id =>

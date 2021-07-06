@@ -131,7 +131,7 @@ object Processes
       Task(processBuilder.start())
         .onErrorRestartLoop(()) {
           case (TextFileBusyIOException(e), _, restart) if durationsIterator.hasNext =>
-            logger.warn(s"Retrying process start after error: $e")
+            logger.warn(s"Retrying process start after error: ${e.toString}")
             restart(()).delayExecution(durationsIterator.next())
 
           case (throwable, _, _) =>

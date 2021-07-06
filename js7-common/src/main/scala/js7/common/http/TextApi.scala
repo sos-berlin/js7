@@ -47,7 +47,7 @@ trait TextApi
       print(s"$serverName is responding")
     } catch {
       case ConnectionLost(t) =>
-        print(s"$serverName is not responding: $t")
+        print(s"$serverName is not responding: ${t.toStringWithCauses}")
         throw t
     }
 

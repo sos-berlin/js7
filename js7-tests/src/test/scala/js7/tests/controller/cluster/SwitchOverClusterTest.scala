@@ -8,6 +8,7 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.controller.RunningController
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
 import js7.data.controller.ControllerCommand.ClusterSwitchOver
@@ -45,7 +46,8 @@ final class SwitchOverClusterTest extends ControllerClusterTester
           //May already be terminated: primaryController.eventWatch.await[ClusterSwitchedOver]()
           backupController.eventWatch.await[ClusterSwitchedOver]()
           // Controller terminates after switched-over
-          for (t <- Try(primaryController.terminated.await(timeout)).failed) logger.error(s"Controller terminated. $t")
+          for (t <- Try(primaryController.terminated.await(timeout)).failed)
+            logger.error(s"Controller terminated. ${t.toStringWithCauses}")
 
           //backupController.eventWatch.await[ClusterSwitchedOver](timeout = timeout)
           lastEventId = backupController.eventWatch.await[OrderFinished](_.key == orderId, timeout = timeout).head.eventId
@@ -68,7 +70,8 @@ final class SwitchOverClusterTest extends ControllerClusterTester
           backupController.executeCommandAsSystemUser(ClusterSwitchOver).await(timeout).orThrow
           primaryController.eventWatch.await[ClusterSwitchedOver]()
           Try(backupController.terminated.await(timeout)).failed foreach { t =>
-            logger.error(s"Controller terminated. $t")  // Erstmal beendet sich der Controller nach SwitchOver
+            // Erstmal beendet sich der Controller nach SwitchOver
+            logger.error(s"Controller terminated. ${t.toStringWithCauses}")
           }
           assert(!primaryController.journalActorState.isRequiringClusterAcknowledgement)
           lastEventId = primaryController.eventWatch.await[OrderFinished](_.key == orderId, timeout = timeout).head.eventId

@@ -9,6 +9,7 @@ import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.closeOnError
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.provider.DirectoryWatcher._
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{Ack, Cancelable, Scheduler}
@@ -62,10 +63,10 @@ extends AutoCloseable
           case Success(Completed) =>
             logger.trace(s"$directory: completed")
           case Failure(e: ClosedWatchServiceException) =>
-            logger.trace(s"$directory: subscriber.onComplete due to $e")
+            logger.trace(s"$directory: subscriber.onComplete due to ${e.toStringWithCauses}")
             subscriber.onComplete()
           case Failure(t) =>
-            logger.trace(s"$directory: $t")
+            logger.trace(s"$directory: ${t.toStringWithCauses}")
             subscriber.onError(t)
         }
       }

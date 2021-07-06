@@ -81,7 +81,7 @@ object JournalFiles
         logger.info(s"DELETE JOURNAL FILE: $file")
         delete(file)
       } catch { case e: IOException if ignoreFailure =>
-        scribe.warn(s"Delete journal file: $file => $e")
+        scribe.warn(s"Delete journal file: $file => ${e.toStringWithCauses}")
         failed = true
       }
     }

@@ -9,6 +9,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -56,7 +57,7 @@ object ProcessTextFileBusyTest
     // "The process cannot access the file because it is being used by another process.".
     try delete(path)
     catch {
-      case NonFatal(t) => scribe.warn(s"$path: $t")
+      case NonFatal(t) => scribe.warn(s"$path: ${t.toStringWithCauses}")
     }
   }
 }

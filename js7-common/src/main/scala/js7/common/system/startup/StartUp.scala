@@ -24,7 +24,7 @@ object StartUp
   def logJavaSettings(): Unit = {
     if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
-      logger.debug(Logger.Java, s"Classpath contains ${paths.length} libraries:")
+      logger.debug(Logger.Java, s"Classpath contains ${paths.length} entries:")
       for (o <- paths) {
         logger.debug(Logger.Java, s"Classpath $o")
       }

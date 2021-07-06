@@ -1,6 +1,7 @@
 package js7.common.utils
 
 import js7.base.log.Logger
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.utils.JavaShutdownHook._
 import scala.util.control.NonFatal
 
@@ -26,7 +27,7 @@ final class JavaShutdownHook private(onShutdown: () => Unit, name: String) exten
   def remove(): Unit =
     try sys.runtime.removeShutdownHook(hook)
     catch {
-      case t: IllegalStateException => logger.trace(s"JavaShutdownHook.remove: $t")  // "Shutdown in progress"
+      case t: IllegalStateException => logger.trace(s"JavaShutdownHook.remove: ${t.toStringWithCauses}")  // "Shutdown in progress"
       case NonFatal(t) => logger.warn(s"JavaShutdownHook.remove: $t", t)
     }
 }

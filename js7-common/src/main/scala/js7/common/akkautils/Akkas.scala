@@ -53,7 +53,8 @@ object Akkas
       terminate(actorSystem).await(timeout)
       logger.debug(s"ActorSystem('${actorSystem.name}') terminated (${since.elapsed.pretty})")
     } catch {
-      case NonFatal(t) => logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): $t")
+      case NonFatal(t) =>
+        logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): ${t.toStringWithCauses}")
     }
   }
 

@@ -24,11 +24,11 @@ object JsonStreamingSupport
   val CustomMediaTypes = `application/json-seq` :: `application/x-ndjson` :: Nil
 
   /** Useable for HTTP request expecting a Checked[Observable] response. */
+  val StreamingJsonHeader = Accept(
+    MediaRange.One(`application/x-ndjson`, 1.0f),   // For observed items
+    MediaRange.One(`application/json`, 0.9f))       // For Problem response
   val StreamingJsonHeaders: List[Accept] =
-    Accept(
-      MediaRange.One(`application/x-ndjson`, 1.0f),   // For observed items
-      MediaRange.One(`application/json`, 0.9f)) ::    // For Problem response
-    Nil
+    StreamingJsonHeader :: Nil
 
   val JsonObjectMaxSize = 1024*1024  // TODO Maybe 10MB? For very big Workflows or snapshot objects
   private val RS = ByteString(Ascii.RS)

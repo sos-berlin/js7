@@ -100,7 +100,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     recovered.clusterState match {
       case Empty =>
         if (clusterConf.isPrimary) {
-          logger.debug(s"Active primary cluster node '${ownId.string}', still with no backup node appointed")
+          logger.debug(s"Active primary cluster node '${ownId.string}', no backup node appointed")
           Task.pure(None) ->
             (activationInhibitor.startActive >>
               Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))

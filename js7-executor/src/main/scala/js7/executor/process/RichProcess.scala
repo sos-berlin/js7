@@ -66,8 +66,8 @@ class RichProcess protected[process](
           processConfiguration.toKillScriptCommandArgumentsOption(pidOption) match {
             case Some(args) =>
               val pidArgs = pidOption map { o => s"--pid=${o.string}" }
-              executeKillScript(args ++ pidArgs) recover {
-                case t => logger.error(s"Cannot start kill script command '$args': $t")
+              executeKillScript(args ++ pidArgs) recover { case t =>
+                logger.error(s"Cannot start kill script command '$args': ${t.toStringWithCauses}")
               } onComplete { _ =>
                 killNow()
               }

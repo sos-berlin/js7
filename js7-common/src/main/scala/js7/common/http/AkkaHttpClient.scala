@@ -23,6 +23,8 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.log.LogLevel.syntax.LevelLogger
+import js7.base.log.LogLevel.{Debug, Trace}
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
@@ -38,7 +40,7 @@ import js7.common.akkautils.JsonObservableForAkka.syntax._
 import js7.common.http.AkkaHttpClient._
 import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decompressResponse, encodeGzip}
 import js7.common.http.CirceJsonSupport._
-import js7.common.http.JsonStreamingSupport.{StreamingJsonHeaders, `application/x-ndjson`}
+import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.StreamingSupport._
 import monix.eval.Task
 import monix.execution.atomic.AtomicLong
@@ -280,9 +282,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           }
           .map(decompressResponse)
           .pipeIf(logger.underlying.isDebugEnabled)(
-            _.whenItTakesLonger()(_ => Task {
-              logger.debug(s"$responseLogPrefix => Still waiting for response" + (closed ?? " (closed)"))
-            })
+            _.whenItTakesLonger() {
+              val level = if (request.headers contains StreamingJsonHeader) Trace else Debug
+              _ => Task(logger.underlying.log(level,
+                s"$responseLogPrefix => Still waiting for response" + (closed ?? " (closed)")))
+            }
             .tapEval(response => Task {
               logger.debug(s"$responseLogPrefix => ${response.status}")
             }))
