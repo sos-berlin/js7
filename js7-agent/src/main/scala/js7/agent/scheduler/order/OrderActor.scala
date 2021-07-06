@@ -103,13 +103,13 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def fresh = startable
 
   private def ready: Receive =
-    startable orElse receiveCommand
+    startable orElse receiveCommand orElse receiveTerminate
 
   private def processingKilled: Receive =
-    receiveEvent() orElse receiveCommand
+    receiveEvent() orElse receiveCommand orElse receiveTerminate
 
   private def delayedAfterError: Receive =
-    startable orElse receiveCommand
+    startable orElse receiveCommand orElse receiveTerminate
 
   private def startable: Receive =
     receiveEvent() orElse {
