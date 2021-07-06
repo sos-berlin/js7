@@ -17,7 +17,7 @@ object TryExecutor extends PositionInstructionExecutor with EventInstructionExec
   type Instr = TryInstruction
 
   def nextPosition(instruction: TryInstruction, order: Order[Order.State], state: StateView): Checked[Option[Position]] = {
-    assertThat(Right(order) == state.idToOrder(order.id).map(_ withPosition order.position))
+    assertThat(Some(order) == state.idToOrder.get(order.id).map(_ withPosition order.position))
     Right(Some(nextPos(order)))
   }
 

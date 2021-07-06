@@ -24,7 +24,7 @@ object IfExecutor extends EventInstructionExecutor with PositionInstructionExecu
         .map(_.toList)
 
   def nextPosition(instruction: If, order: Order[Order.State], state: StateView) = {
-    assertThat(Right(order) == state.idToOrder(order.id).map(_ withPosition order.position))
+    assertThat(Some(order) == state.idToOrder.get(order.id).map(_ withPosition order.position))
     for {
       scope <- state.toScope(order)
       condition <- instruction.predicate.evalAsBoolean(scope)

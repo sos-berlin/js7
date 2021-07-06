@@ -1,8 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.LockExecutorTest._
 import js7.data.job.PathExecutable
@@ -12,21 +10,23 @@ import js7.data.order.{Order, OrderId}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.{BranchId, Position}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class LockExecutorTest extends AnyFreeSpec {
 
-  private lazy val stateView = new StateView {
-    def idToOrder = Map(freeLockOrder.id -> freeLockOrder, freeLockedOrder.id -> freeLockedOrder, occupiedLockOrder.id -> occupiedLockOrder).checked
-    def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
-    def idToWorkflow(id: WorkflowId) = Map(workflow.id -> workflow).checked(id)
-    val pathToLockState = Map(
-      freeLockPath -> LockState(Lock(freeLockPath, limit = 1)),
-      occupiedLockPath -> LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))),
-    ).checked
-    val controllerId = ControllerId("CONTROLLER")
-  }
+  private lazy val stateView = StateView.forTest(
+    isAgent = false,
+    idToOrder = Map(
+      freeLockOrder.id -> freeLockOrder,
+      freeLockedOrder.id -> freeLockedOrder,
+      occupiedLockOrder.id -> occupiedLockOrder),
+    idToWorkflow = Map(workflow.id -> workflow),
+    pathToLockState = Map(
+      freeLockPath ->
+        LockState(Lock(freeLockPath, limit = 1)),
+      occupiedLockPath ->
+        LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT")))))
 
   "Lock acquired" in {
     assert(InstructionExecutor.toEvents(workflow.instruction(freeLockOrder.position), freeLockOrder, stateView) ==

@@ -7,7 +7,6 @@ trait VersionedItem extends SignableItem
 {
   type Self <: VersionedItem
   type Path = companion.Path
-  type Key = VersionedItemId[Path]
 
   val companion: VersionedItem.Companion[Self]
   final def key = id
@@ -44,7 +43,8 @@ object VersionedItem
     type Path <: VersionedItemPath
     val Path: VersionedItemPath.Companion[Path]
 
-    type Key = VersionedItemId[Path]
+    type ItemId = VersionedItemId[Path]
+    type Key = ItemId
     final lazy val Key: SignableItemKey.Companion[Key] = Path.VersionedItemIdCompanion
 
     implicit def self: Companion[A] = this

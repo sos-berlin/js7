@@ -2,18 +2,16 @@ package js7.data.execution.workflow
 
 import cats.instances.either._
 import cats.syntax.traverse._
-import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.controller.ControllerId
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
-import js7.data.lock.{LockPath, LockState}
+import js7.data.lock.LockPath
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
@@ -27,33 +25,12 @@ import scala.annotation.tailrec
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventSource(
-  idToOrder: OrderId => Checked[Order[Order.State]],
-  idToWorkflow: WorkflowId => Checked[Workflow],
-  pathToLockState: LockPath => Checked[LockState],
-  controllerId: ControllerId,
-  isAgent: Boolean)
+final class OrderEventSource(state: StateView)
 {
-  private val stateView = new StateView {
-    def idToOrder                    = OrderEventSource.this.idToOrder
-    def idToWorkflow(id: WorkflowId) = OrderEventSource.this.idToWorkflow(id)
-    def pathToLockState              = OrderEventSource.this.pathToLockState
-    val controllerId                 = OrderEventSource.this.controllerId
-
-    def childOrderEnded(order: Order[Order.State]): Boolean =
-      order.parent.flatMap(o => idToOrder(o).toOption) match {
-        case Some(parentOrder) =>
-          lazy val endReached = instruction(order.workflowPosition).isInstanceOf[End] &&
-            order.state == Order.Ready &&
-            order.position.dropChild.contains(parentOrder.position)
-          order.attachedState == parentOrder.attachedState &&
-            (endReached || order.isState[Order.FailedInFork])
-        case _ => false
-      }
-  }
+  import state.{idToOrder, idToWorkflow, isAgent}
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
-    val order = idToOrder(orderId).orThrow
+    val order = idToOrder(orderId)
     if (order.isState[Order.Broken])
       Nil  // Avoid issuing a second OrderBroken (would be a loop)
     else
@@ -72,7 +49,7 @@ final class OrderEventSource(
             case Left(problem) => Left(problem)
             case Right(Some(event)) => Right(event :: Nil)
             case Right(None) =>
-              InstructionExecutor.toEvents(instruction(order.workflowPosition), order, stateView)
+              InstructionExecutor.toEvents(instruction(order.workflowPosition), order, state)
                 // Multiple returned events are expected to be independent and are applied to same idToOrder
                 .flatMap(_
                   .traverse {
@@ -96,7 +73,7 @@ final class OrderEventSource(
     var id2o = Map.empty[OrderId, Checked[Order[Order.State]]]
     var problem: Option[Problem] = None
     for (KeyedEvent(orderId, event) <- keyedEvents if problem.isEmpty) {
-      id2o.getOrElse(orderId, idToOrder(orderId)).flatMap(_.applyEvent(event)) match {
+      id2o.getOrElse(orderId, idToOrder.checked(orderId)).flatMap(_.applyEvent(event)) match {
         case Left(prblm) => problem = Some(prblm)
         case Right(order) => id2o += orderId -> Right(order)
       }
@@ -155,7 +132,8 @@ final class OrderEventSource(
 
   private def fail(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
   : Checked[OrderFailedEvent] =
-    idToWorkflow(order.workflowId)
+    idToWorkflow
+      .checked(order.workflowId)
       .flatMap(workflow => failToPosition(workflow, order.position, outcome, uncatchable = uncatchable))
 
   private[workflow] def failToPosition(
@@ -195,9 +173,9 @@ final class OrderEventSource(
   private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     if ((order.isDetached || order.isAttached) && order.isState[Order.FailedInFork])
       order.forkPosition.flatMap(forkPosition =>
-        stateView.instruction(order.workflowId /: forkPosition) match {
+        state.instruction(order.workflowId /: forkPosition) match {
           case fork: Fork =>
-            Right(ForkExecutor.tryJoinChildOrder(stateView, order, fork))
+            Right(ForkExecutor.tryJoinChildOrder(state, order, fork))
           case _ =>
             // Self-test
             Left(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))
@@ -302,7 +280,7 @@ final class OrderEventSource(
     historyOperations: Seq[OrderResumed.HistoryOperation])
   : Checked[Option[OrderActorEvent]] =
     withOrder(orderId) { order =>
-      lazy val checkedWorkflow = idToWorkflow(order.workflowId)
+      lazy val checkedWorkflow = idToWorkflow.checked(order.workflowId)
 
       val checkPosition = position.fold(Checked.unit)(position =>
         checkedWorkflow.flatMap(workflow =>
@@ -344,11 +322,15 @@ final class OrderEventSource(
     }
 
   /** Retrieve the Order, check if calculated event is applicable. */
-  private def withOrder[E <: OrderCoreEvent](orderId: OrderId)(body: Order[Order.State] => Checked[Option[E]]): Checked[Option[E]] =
-    idToOrder(orderId).flatMap(order =>
-      body(order).flatMapT(event =>
-        order.applyEvent(event)
-          .map(_ => Some(event))))
+  private def withOrder[E <: OrderCoreEvent](orderId: OrderId)(body: Order[Order.State] => Checked[Option[E]])
+  : Checked[Option[E]] =
+    idToOrder
+      .checked(orderId)
+      .flatMap(order => body(order)
+        .flatMapT(event =>
+          order
+            .applyEvent(event)
+            .map(_ => Some(event))))
 
   private def tryResume(
     order: Order[Order.State],
@@ -359,7 +341,7 @@ final class OrderEventSource(
 
   def answer(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     for {
-      order <- idToOrder(orderId)
+      order <- idToOrder.checked(orderId)
       _ <- order.checkedState[Order.Prompting]
       moved <- applyMoveInstructions(order, OrderMoved(order.position.increment))
     } yield
@@ -385,7 +367,7 @@ final class OrderEventSource(
           if (visited contains position)
             Left(Problem(s"${order.id} is in a workflow loop: " +
               visited.reverse.map(pos => pos.toString + " " +
-                idToWorkflow(order.workflowId).flatMap(_.labeledInstruction(pos))
+                idToWorkflow.checked(order.workflowId).flatMap(_.labeledInstruction(pos))
                   .fold(_.toString, _.toString).truncateWithEllipsis(50)).mkString(" --> ")))
           else
             loop(order.withPosition(position), position :: visited)
@@ -400,7 +382,7 @@ final class OrderEventSource(
   }
 
   private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
-    idToWorkflow(order.workflowId) flatMap { workflow =>
+    idToWorkflow.checked(order.workflowId) flatMap { workflow =>
       workflow.instruction(order.position) match {
         case Goto(label, _) =>
           workflow.labelToPosition(order.position.branchPath, label) map Some.apply
@@ -412,7 +394,7 @@ final class OrderEventSource(
             Right(Some(order.position.increment))
 
         case instr: Instruction =>
-          InstructionExecutor.nextPosition(instr, order, stateView)
+          InstructionExecutor.nextPosition(instr, order, state)
 
         //case _: End if order.position.isNested =>
         //  order.position.dropChild.flatMap(returnPosition =>
@@ -428,7 +410,7 @@ final class OrderEventSource(
   }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    idToWorkflow(workflowPosition.workflowId) match {
+    idToWorkflow.checked(workflowPosition.workflowId) match {
       case Left(_) =>
         scribe.error(s"Missing ${workflowPosition.workflowId}")
         Gap.empty

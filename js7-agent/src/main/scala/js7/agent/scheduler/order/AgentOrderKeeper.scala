@@ -87,12 +87,6 @@ with Stash
   private val fileWatchManager = new FileWatchManager(ownAgentPath, persistence, conf.config)
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
-  private val orderEventSource = new OrderEventSource(
-    orderRegister.idToOrder.checked,
-    workflowRegister.idToWorkflow.checked,
-    _ => Left(Problem.pure("Locks are available only at the Controller")),
-    controllerId,
-    isAgent = true)
   private val orderEventHandler = new OrderEventHandler(
     workflowRegister.idToWorkflow.checked,
     orderRegister.idToOrder.checked)
@@ -631,6 +625,9 @@ with Stash
       case _ =>
         super.unhandled(message)
     }
+
+  private def orderEventSource =
+    new OrderEventSource(persistence.currentState)
 
   override def toString = "AgentOrderKeeper"
 }

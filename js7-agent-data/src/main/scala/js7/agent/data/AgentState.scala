@@ -15,6 +15,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
+import js7.data.execution.workflow.context.StateView
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -36,8 +37,13 @@ final case class AgentState(
   idToWorkflow: Map[WorkflowId, Workflow],
   allFileWatchesState: AllFileWatchesState,
   pathToJobResource: Map[JobResourcePath, JobResource])
-extends JournaledState[AgentState]
+extends StateView
+with JournaledState[AgentState]
 {
+  def isAgent = true
+
+  def controllerId = meta.controllerId
+
   def companion = AgentState
 
   def isCreated =
@@ -197,6 +203,8 @@ extends JournaledState[AgentState]
           allFileWatchesState.pathToFileWatchState.view.mapValues(_.fileWatch).iterator ++
           idToWorkflow.iterator
     }
+
+  def pathToLockState = Map.empty
 }
 
 object AgentState extends JournaledState.Companion[AgentState]

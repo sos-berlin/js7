@@ -18,6 +18,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
+import js7.data.execution.workflow.context.StateView
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -50,8 +51,13 @@ final case class ControllerState(
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]])
-extends JournaledState[ControllerState]
+extends StateView
+with JournaledState[ControllerState]
 {
+  def isAgent = false
+
+  def controllerId = controllerMetaState.controllerId
+
   def companion = ControllerState
 
   def estimatedSnapshotSize: Int =
@@ -481,6 +487,15 @@ extends JournaledState[ControllerState]
 
   lazy val pathToJobResource = keyTo(JobResource)
 
+  lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
+    new PartialFunction[WorkflowId, Workflow] {
+      def isDefinedAt(workflowId: WorkflowId) =
+        repo.idToSigned[Workflow](workflowId).isRight
+
+      def apply(workflowId: WorkflowId): Workflow =
+        repo.idToSigned[Workflow](workflowId).orThrow.value
+    }
+
   def keyTo[I <: SignableSimpleItem](I: SignableSimpleItem.Companion[I]): MapView[I.Key, I] =
     new MapView[I.Key, I] {
       def get(key: I.Key) =
@@ -530,8 +545,6 @@ extends JournaledState[ControllerState]
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
       case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
     }
-
-  def controllerId = controllerMetaState.controllerId
 
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
     s"Repo(${repo.currentVersionSize} objects, ...))"

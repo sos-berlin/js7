@@ -2,10 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
-import js7.base.problem.Problem
-import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.TryExecutorTest._
 import js7.data.job.PathExecutable
@@ -16,7 +13,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
 import js7.data.workflow.position.BranchId.try_
 import js7.data.workflow.position._
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -25,13 +22,9 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class TryExecutorTest extends AnyFreeSpec
 {
-  private lazy val stateView = new StateView {
-    def idToOrder = Map(AOrder.id -> AOrder).checked
-    def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
-    def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-    val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
-    val controllerId = ControllerId("CONTROLLER")
-  }
+  private lazy val stateView = StateView.forTest(
+    isAgent = false,
+    idToOrder = Map(AOrder.id -> AOrder))
 
   "JSON" - {
     "try" in {

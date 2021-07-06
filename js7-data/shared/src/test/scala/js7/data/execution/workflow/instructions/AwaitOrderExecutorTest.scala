@@ -1,17 +1,14 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.controller.ControllerId
 import js7.data.event.<-:
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.AwaitOrderExecutorTest._
 import js7.data.order.OrderEvent.{OrderAwaiting, OrderOffered}
 import js7.data.order.{Order, OrderId}
+import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.{AwaitOrder, Offer}
-import js7.data.workflow.{WorkflowId, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -20,13 +17,12 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AwaitOrderExecutorTest extends AnyFreeSpec {
 
   "test" in {
-    val stateView = new StateView {
-      val idToOrder = Map(awaitingOrder.id -> awaitingOrder, offeredOrder.id -> offeredOrder).checked
-      def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
-      def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-      val pathToLockState = _ => Left(Problem("pathToLockState is not implemented"))
-      val controllerId = ControllerId("CONTROLLER")
-    }
+    val stateView = StateView.forTest(
+      isAgent = false,
+      idToOrder = Map(
+        awaitingOrder.id -> awaitingOrder,
+        offeredOrder.id -> offeredOrder))
+
     assert(InstructionExecutor.toEvents(AwaitOrder(offeredOrder.id), awaitingOrder, stateView) ==
       Right(Seq(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id))))
 

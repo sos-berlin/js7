@@ -8,7 +8,6 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFun
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
-import js7.data.controller.ControllerStateExecutor._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, KeyedEvent}
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
@@ -93,7 +92,7 @@ final case class ControllerStateExecutor private(
         }
         val detached = stateEvents :+ (order.id <-: OrderDetached)
         val detachedState = controllerState.applyEvents(detached).orThrow
-        val fail = toLiveOrderEventSource(() => detachedState)
+        val fail = new OrderEventSource(detachedState)
           .failOrDetach(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
           .orThrow
         detached :+ (order.id <-: fail)
@@ -269,8 +268,7 @@ final case class ControllerStateExecutor private(
       queue.removeHeadOption() match {
         case Some(orderId) =>
           if (controllerState.idToOrder contains orderId) {
-            val orderEventSource = toLiveOrderEventSource(() => controllerState)
-            val keyedEvents = orderEventSource.nextEvents(orderId)
+            val keyedEvents = new OrderEventSource(controllerState).nextEvents(orderId)
             for (KeyedEvent(orderId, OrderBroken(problem)) <- keyedEvents) {
               scribe.error(s"Order '${orderId.string}' is broken: $problem") // ???
             }
@@ -315,12 +313,7 @@ object ControllerStateExecutor
     apply(controllerState)
 
   def toLiveOrderEventSource(controllerState: () => ControllerState) =
-    new OrderEventSource(
-      id => controllerState().idToOrder.checked(id),
-      id => controllerState().repo.idTo[Workflow](id),
-      id => controllerState().pathToLockState.checked(id),
-      controllerState().controllerId,
-      isAgent = false)
+    new OrderEventSource(controllerState())
 
   def toLiveOrderEventHandler(controllerState: () => ControllerState) =
     new OrderEventHandler(

@@ -1,9 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.problem.Problem
-import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.FailExecutorTest._
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
@@ -11,7 +8,7 @@ import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -19,25 +16,27 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class FailExecutorTest extends AnyFreeSpec
 {
-  private lazy val stateView = new StateView {
-    val idToOrder = Map(TestOrder.id -> TestOrder, ForkedOrder.id -> ForkedOrder, Carrot.id -> Carrot, Lemon.id -> Lemon).checked
+  private lazy val stateView = new StateView.ForTest {
+    val isAgent = false
 
-    val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
+    override val idToOrder = Map(
+      TestOrder.id -> TestOrder,
+      ForkedOrder.id -> ForkedOrder,
+      Carrot.id -> Carrot,
+      Lemon.id -> Lemon)
 
-    def childOrderEnded(order: Order[Order.State]) = Set(Carrot.id, Lemon.id)(order.id)
+    override def childOrderEnded(order: Order[Order.State]) =
+      Set(Carrot.id, Lemon.id)(order.id)
 
-    override def instruction(position: WorkflowPosition) = position match {
-      case WorkflowPosition(TestWorkflowId, Position(Nil, InstructionNr(1))) =>
-        Fork.of(
-          "🥕" -> Workflow.empty,
-          "🍋" -> Workflow.empty)
-      //case WorkflowPosition(TestWorkflowId, Position(BranchPath.Segment(InstructionNr(1), BranchId.Named("fork+🥕")) :: Nil, InstructionNr(2))) =>
-      case pos => fail(s"No instruction at $pos")
-    }
-
-    def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-
-    val controllerId = ControllerId("CONTROLLER")
+    override def instruction(position: WorkflowPosition) =
+      position match {
+        case WorkflowPosition(TestWorkflowId, Position(Nil, InstructionNr(1))) =>
+          Fork.of(
+            "🥕" -> Workflow.empty,
+            "🍋" -> Workflow.empty)
+        //case WorkflowPosition(TestWorkflowId, Position(BranchPath.Segment(InstructionNr(1), BranchId.Named("fork+🥕")) :: Nil, InstructionNr(2))) =>
+        case pos => fail(s"No instruction at $pos")
+      }
   }
 
   "toEvents" - {

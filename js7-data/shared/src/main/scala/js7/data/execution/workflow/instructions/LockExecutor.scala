@@ -22,7 +22,7 @@ object LockExecutor extends EventInstructionExecutor
       Right((order.id <-: OrderStarted) :: Nil)
     else if (order.isState[Order.Ready] || order.isState[Order.WaitingForLock])
       for {
-        lockState <- state.pathToLockState(lockPath)
+        lockState <- state.pathToLockState.checked(lockPath)
         event <- lockState.checkAcquire(order.id, count) match {
           case Right(()) =>
             Right(Some(OrderLockAcquired(lockPath, count)))

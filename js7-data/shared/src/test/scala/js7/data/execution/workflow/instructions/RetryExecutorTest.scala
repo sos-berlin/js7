@@ -3,8 +3,6 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.controller.ControllerId
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.RetryExecutorTest._
 import js7.data.order.OrderEvent.OrderRetrying
@@ -12,7 +10,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
@@ -53,15 +51,14 @@ object RetryExecutorTest
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) = {
     val order = Order(orderId, workflowId /: position, Order.Ready,
       historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
-    val stateView = new StateView {
-      def idToOrder = Map(order.id -> order).checked
-      def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError
+    val stateView = new StateView.ForTest {
+      def isAgent = false
+
+      override def idToOrder = Map(order.id -> order)
+
       override def instruction(position: WorkflowPosition) =
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap.empty
-      def idToWorkflow(id: WorkflowId) = throw new NotImplementedError
-      val pathToLockState = _ => Left(Problem("pathToLockState is not implemented here"))
-      val controllerId = ControllerId("CONTROLLER")
     }
     new RetryExecutor(() => now).toEvents(Retry(), order, stateView)
   }

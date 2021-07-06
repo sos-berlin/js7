@@ -9,10 +9,10 @@ import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.controller.ControllerId
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
+import js7.data.execution.workflow.context.StateView
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderResumed.ReplaceHistoricOutcome
@@ -37,11 +37,12 @@ final class OrderEventSourceTest extends AnyFreeSpec
 {
   "JobSchedulerRestarted" in {
     val eventSource = new OrderEventSource(
-      Map(disruptedOrder.id -> disruptedOrder).checked,
-      Map(TestWorkflowId -> ForkWorkflow).checked,
-      _ => Left(Problem("OrderEventSourceTest does not now locks")),
-      ControllerId("CONTROLLER"),
-      isAgent = false)
+      StateView.forTest(
+        isAgent = false,
+        idToOrder = Map(
+          disruptedOrder.id -> disruptedOrder),
+        idToWorkflow = Map(
+          TestWorkflowId -> ForkWorkflow)))
     assert(eventSource.nextEvents(disruptedOrder.id) ==
       List(disruptedOrder.id <-: OrderMoved(disruptedOrder.position)))  // Move to same InstructionNr
   }
@@ -692,12 +693,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
       (body: (Order[Order.State], OrderEventSource, OrderEventSource) => Unit)
     = {
       val order = templateOrder.copy(attachedState = attachedState)
-      def eventSource(isAgent: Boolean) = new OrderEventSource(
-        Map(order.id -> order).checked,
-        Map(TestWorkflowId -> ForkWorkflow).checked,
-        Map.empty[LockPath, LockState].checked,
-        ControllerId("CONTROLLER"),
-        isAgent = isAgent)
+      def eventSource(isAgent: Boolean) = new OrderEventSource(StateView.forTest(
+        isAgent = isAgent,
+        idToOrder = Map(order.id -> order),
+        idToWorkflow = Map(TestWorkflowId -> ForkWorkflow)))
       body(order, eventSource(isAgent = false), eventSource(isAgent = true))
     }
 
@@ -765,14 +764,14 @@ final class OrderEventSourceTest extends AnyFreeSpec
       def isResumable(workflow: Workflow, from: Position, to: Position) =
         testResume(workflow, from, to) == Right(Some(OrderResumed(Some(to))))
 
-      def testResume(workflow: Workflow, from: Position, to: Position): Checked[Option[OrderEvent.OrderActorEvent]] = {
+      def testResume(workflow: Workflow, from: Position, to: Position)
+      : Checked[Option[OrderEvent.OrderActorEvent]] = {
         val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready, isSuspended = true)
-        def eventSource = new OrderEventSource(
-          Map(order.id -> order).checked,
-          Map(workflow.id -> workflow).checked,
-          Map(lockPath -> LockState(Lock(lockPath))).checked,
-          ControllerId("CONTROLLER"),
-          isAgent = false)
+        def eventSource = new OrderEventSource(StateView.forTest(
+          isAgent = false,
+          idToOrder = Map(order.id -> order),
+          idToWorkflow = Map(workflow.id -> workflow),
+          pathToLockState = Map(lockPath -> LockState(Lock(lockPath)))))
         eventSource.resume(order.id, Some(to), Nil)
       }
     }
@@ -781,12 +780,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
   "Failed" in {
     lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(Fail()))
     val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Failed)
-    val eventSource = new OrderEventSource(
-      Map(order.id -> order).checked,
-      Map(workflow.id -> workflow).checked,
-      _ => Left(Problem("OrderEventSourceTest does not know locks")),
-      ControllerId("CONTROLLER"),
-      isAgent = false)
+    val eventSource = new OrderEventSource(StateView.forTest(
+      isAgent = false,
+      idToOrder = Map(order.id -> order),
+      idToWorkflow = Map(workflow.id -> workflow)))
     assert(eventSource.nextEvents(order.id) == Nil)
     assert(eventSource.suspend(order.id, SuspensionMode()) == Left(CannotSuspendOrderProblem))
     assert(eventSource.cancel(order.id, CancellationMode.Default) == Right(Some(OrderCancelled)))
@@ -814,12 +811,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
          |}""".stripMargin).orThrow
 
     def eventSource(order: Order[Order.State]) =
-      new OrderEventSource(
-        Map(order.id -> order).checked,
-        Map(workflow.id -> workflow).checked,
-        _ => Left(Problem("OrderEventSourceTest does not know locks")),
-        ControllerId("CONTROLLER"),
-        isAgent = false)
+      new OrderEventSource(StateView.forTest(
+        isAgent = false,
+        idToOrder = Map(order.id -> order),
+        idToWorkflow = Map(workflow.id -> workflow)))
 
     val failed7 = Outcome.Failed(NamedValues.rc(7))
 
@@ -931,24 +926,23 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Order.Forked(Vector(
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
-      def liveEventSource = new OrderEventSource(
-        Map(
+
+      def eventSource = new OrderEventSource(StateView.forTest(
+        isAgent = false,
+        idToOrder = Map(
           forkingOrder.id -> forkingOrder,
           aChild.id -> aChild,
-          bChild.id -> bChild
-        ).checked,
-        Map(workflow.id -> workflow).checked,
-        Map.empty[LockPath, LockState].checked,
-        ControllerId("CONTROLLER"),
-        isAgent = false)
+          bChild.id -> bChild),
+        idToWorkflow = Map(
+          workflow.id -> workflow)))
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
-      assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
+      assert(eventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
       aChild = aChild.applyEvent(orderFailedInFork).orThrow
 
-      assert(liveEventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
-      assert(liveEventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
-      assert(liveEventSource.nextEvents(forkingOrder.id) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
+      assert(eventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
+      assert(eventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
+      assert(eventSource.nextEvents(forkingOrder.id) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
     }
 
     "Try catch, fork and lock" in {
@@ -989,20 +983,18 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Order.Forked(Vector(
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
-      def liveEventSource = new OrderEventSource(
-        Map(
+      def liveEventSource = new OrderEventSource(StateView.forTest(
+        isAgent = false,
+        idToOrder = Map(
           forkingOrder.id -> forkingOrder,
           aChild.id -> aChild,
-          bChild.id -> bChild
-        ).checked,
-        Map(workflow.id -> workflow).checked,
-        Map(
-          LockPath("LOCK") -> LockState(Lock(LockPath("LOCK"), limit = 1)),
-          LockPath("LOCK-1") -> LockState(Lock(LockPath("LOCK-1"), limit = 1)),
-          LockPath("LOCK-2") -> LockState(Lock(LockPath("LOCK-2"), limit = 1))
-        ).checked,
-        ControllerId("CONTROLLER"),
-        isAgent = false)
+          bChild.id -> bChild),
+        idToWorkflow = Map(
+          workflow.id -> workflow),
+        pathToLockState = Map(
+          LockPath("LOCK") -> LockState(Lock(LockPath("LOCK"))),
+          LockPath("LOCK-1") -> LockState(Lock(LockPath("LOCK-1"))),
+          LockPath("LOCK-2") -> LockState(Lock(LockPath("LOCK-2"))))))
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
       assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
@@ -1066,14 +1058,16 @@ object OrderEventSourceTest
   }
 
   final class Process(workflow: Workflow) {
-    val idToWorkflow = Map(workflow.id -> workflow).checked(_)
+    val idToWorkflow = Map(workflow.id -> workflow)
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-    private val eventHandler = new OrderEventHandler(idToWorkflow, o => idToOrder.checked(o))
+    private val eventHandler = new OrderEventHandler(idToWorkflow.checked, o => idToOrder.checked(o))
     private val inProcess = mutable.Set.empty[OrderId]
 
     private def eventSource(isAgent: Boolean) =
-      new OrderEventSource(o => idToOrder.checked(o), idToWorkflow,
-        Map.empty[LockPath, LockState].checked, ControllerId("CONTROLLER"), isAgent = isAgent)
+      new OrderEventSource(StateView.forTest(
+        isAgent = isAgent,
+        idToOrder = idToOrder.toMap,
+        idToWorkflow = idToWorkflow))
 
     def jobStep(orderId: OrderId, outcome: Outcome = Outcome.succeeded): Unit = {
       update(orderId <-: OrderProcessingStarted)
@@ -1153,11 +1147,12 @@ object OrderEventSourceTest
       }
   }
 
-  private def newWorkflowEventSource(workflow: Workflow, orders: Iterable[Order[Order.State]], isAgent: Boolean) =
-    new OrderEventSource(
-      orders.toKeyedMap(_.id).checked,
-      Map(TestWorkflowId -> workflow).checked,
-      _ => Left(Problem("OrderEventSourceTest does not know locks")),
-      ControllerId("CONTROLLER"),
-      isAgent = isAgent)
+  private def newWorkflowEventSource(
+    workflow: Workflow,
+    orders: Iterable[Order[Order.State]],
+    isAgent: Boolean) =
+    new OrderEventSource(StateView.forTest(
+      isAgent = isAgent,
+      idToOrder = orders.toKeyedMap(_.id),
+      idToWorkflow = Map(TestWorkflowId -> workflow)))
 }

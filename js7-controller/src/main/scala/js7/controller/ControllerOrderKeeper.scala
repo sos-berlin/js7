@@ -44,12 +44,13 @@ import js7.data.agent.AgentRefState.{Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler, toLiveOrderEventSource}
+import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler}
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
+import js7.data.execution.workflow.OrderEventSource
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -97,7 +98,6 @@ with MainJournalingActor[ControllerState, Event]
 
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
-  private val orderEventSource = toLiveOrderEventSource(() => _controllerState)
   private val orderEventHandler = toLiveOrderEventHandler(() => _controllerState)
 
   private val agentRegister = new AgentRegister
@@ -1187,6 +1187,8 @@ with MainJournalingActor[ControllerState, Event]
           })
         .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
         .runToFuture
+
+  private def orderEventSource = new OrderEventSource(_controllerState)
 
   override def toString = "ControllerOrderKeeper"
 }
