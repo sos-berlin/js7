@@ -45,11 +45,13 @@ val isForDevelopment                 = sys.props contains "dev"
 addCommandAlias("clean-all"      , "; js7JS/clean; js7-tester/clean; clean")
 addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
 addCommandAlias("clean-build"    , "; clean-all; build")
-addCommandAlias("clean-build-fast", "; clean-all; build-fast")
 addCommandAlias("clean-build-only", "; clean-all; build-only")
 addCommandAlias("clean-pack"     , "; clean-all; compile-only; pack")
-addCommandAlias("build"          , "; compile-all; test-all; pack")
-addCommandAlias("build-fast"     , "; test-all; pack")
+addCommandAlias("build"          ,
+  if (testParallelization > 1)
+    "; test-all; pack"
+  else
+    "; compile-all; test-all; pack")
 addCommandAlias("build-only"     , "; compile-only; pack")
 addCommandAlias("compile-all"    , "; Test/compile")
 addCommandAlias("compile-only"   , "; compile")
