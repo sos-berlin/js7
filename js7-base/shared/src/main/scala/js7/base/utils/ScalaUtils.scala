@@ -270,9 +270,19 @@ object ScalaUtils
         }
     }
 
+    // Like PartialFunction.Lifted:
+    private val fallback_fn: Any => Any = _ => fallback_fn
+    private def checkFallback[B] = fallback_fn.asInstanceOf[Any => B]
+    private def fallbackOccurred[B](x: B) = fallback_fn eq x.asInstanceOf[AnyRef]
+
     implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B])
     extends AnyVal
     {
+      def get(key: A): Option[B] = {
+        val b = underlying.applyOrElse(key, checkFallback[B])
+        if (fallbackOccurred(b)) None else Some(b)
+      }
+
       def checked(key: A)(implicit A: ClassTag[A]): Checked[B] =
         underlying.lift(key) match {
           case None => Left(UnknownKeyProblem(A.runtimeClass.shortClassName, key))
@@ -299,18 +309,23 @@ object ScalaUtils
       def getOrElse[BB >: B](key: A, default: => BB): BB =
         underlying.applyOrElse(key, (_: A) => default)
 
-      /** applyOrElse calls isDefined, not optimized. */
       def map[C](f: B => C): PartialFunction[A, C] =
         mapPartialFunction(f)
 
-      /** applyOrElse calls isDefined, not optimized. */
-      def mapPartialFunction[C](f: B => C): PartialFunction[A, C] = {
-        case o if underlying.isDefinedAt(o) => f(underlying(o))
-      }
-    }
+      def mapPartialFunction[C](bToC: B => C): PartialFunction[A, C] =
+        new PartialFunction[A, C] {
+          def isDefinedAt(a: A) = underlying.isDefinedAt(a)
 
-    implicit final class RichUnitPartialFunction[A](private val delegate: PartialFunction[A, Unit]) extends AnyVal {
-      def callIfDefined(a: A): Unit = delegate.getOrElse(a, ())
+          def apply(a: A) = bToC(underlying.apply(a))
+
+          override def applyOrElse[A1 <: A, C1 >: C](a: A1, default: A1 => C1): C1 = {
+            val b = underlying.applyOrElse(a, checkFallback[B])
+            if (fallbackOccurred(b))
+              default(a)
+            else
+              bToC(b)
+          }
+        }
     }
 
     private val SomeTrue = Some(true)

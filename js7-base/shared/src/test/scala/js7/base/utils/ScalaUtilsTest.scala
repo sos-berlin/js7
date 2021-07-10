@@ -314,17 +314,6 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(pf.getOrElse(2, "DEFAULT") == "DEFAULT")
     }
 
-    "PartialFunction.callIfDefined" in {
-      var x = 0
-      val pf: PartialFunction[Int, Unit] = {
-        case 1 => x = 1
-      }
-      pf.callIfDefined(2)
-      assert(x == 0)
-      pf.callIfDefined(1)
-      assert(x == 1)
-    }
-
     "PartialFunction map" in {
       case class A(string: String)
       val pf: PartialFunction[Int, A] = {
