@@ -61,7 +61,7 @@ final case class EventRequest[E <: Event](
 
 object EventRequest
 {
-  private val DefaultDelay = Duration.Zero
+  private val DefaultDelay = ZeroDuration
   private val DefaultLimit = Int.MaxValue
   val LongTimeout = 365.days
 
@@ -72,7 +72,7 @@ object EventRequest
     /** Begin with events after `after`. `after` must be a known EventId. */
     after: EventId = EventId.BeforeFirst,
     /** Wait not longer then `timeout` for events. */
-    timeout: Option[FiniteDuration] = Some(Duration.Zero),
+    timeout: Option[FiniteDuration] = Some(ZeroDuration),
     /** Delay after the first event to collect more events at once. **/
     delay: FiniteDuration = DefaultDelay,
     /** Limit the number of events. */

@@ -25,7 +25,7 @@ final class EventDirectivesTest extends AnyFreeSpec with ScalatestRouteTest {
   private def route =
     path("test") {
       eventRequest[MyEvent].apply { eventReq =>
-        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(1), delay = EventDirectives.DefaultDelay, timeout = Some(Duration.Zero)))
+        if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(1), delay = EventDirectives.DefaultDelay, timeout = Some(0.s)))
           complete("DEFAULT")
         else
         if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(66), delay = 770.millis, timeout = Some(88.s), limit = 99, tornOlder = Some(10.s)))

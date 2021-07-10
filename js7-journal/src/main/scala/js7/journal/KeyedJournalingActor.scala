@@ -2,11 +2,12 @@ package js7.journal
 
 import js7.base.generic.Accepted
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.Future
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -26,7 +27,7 @@ trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
     }
 
   /** Fast lane for events not affecting the journaled state. */
-  protected final def persistAcceptEarlyTask[EE <: E, A](event: EE, delay: FiniteDuration = Duration.Zero)
+  protected final def persistAcceptEarlyTask[EE <: E, A](event: EE, delay: FiniteDuration = ZeroDuration)
   : Task[Checked[Accepted]] =
     super.persistKeyedEventAcceptEarlyTask(KeyedEvent(key, event), delay = delay)
 

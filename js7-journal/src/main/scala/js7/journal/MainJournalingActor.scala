@@ -1,9 +1,10 @@
 package js7.journal
 
+import js7.base.time.ScalaTime.ZeroDuration
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import scala.collection.immutable
 import scala.concurrent.Future
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Instances of this trait are thought to be a controlling actor, the only for a journal.
@@ -36,7 +37,7 @@ trait MainJournalingActor[S <: JournaledState[S], E <: Event]
     persistTransactionTimestamped(toTimestamped(keyedEvents), async = async)(callback)
 
   protected final def persistTransactionTimestamped[EE <: E, A](keyedEvents: Seq[Timestamped[EE]],
-    async: Boolean = false, delay: FiniteDuration = Duration.Zero, alreadyDelayed: FiniteDuration = Duration.Zero)
+    async: Boolean = false, delay: FiniteDuration = ZeroDuration, alreadyDelayed: FiniteDuration = ZeroDuration)
     (callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
     super.persistKeyedEvents(keyedEvents, async = async, transaction = true, delay = delay, alreadyDelayed = alreadyDelayed)(callback)

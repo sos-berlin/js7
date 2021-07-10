@@ -1,9 +1,10 @@
 package js7.data.event
 
 import js7.base.BuildInfo
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.data.event.JournalHeader.Version
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 object JournalHeaders
 {
@@ -32,7 +33,7 @@ object JournalHeaders
       eventId = eventId,
       generation = 1,
       totalEventCount = 0,
-      Duration.Zero,
+      ZeroDuration,
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
       js7Version = BuildInfo.longVersion,
@@ -45,7 +46,7 @@ object JournalHeaders
       eventId = EventId.BeforeFirst,
       generation = 0,
       totalEventCount = 0,
-      Duration.Zero,
+      ZeroDuration,
       timestamp = Timestamp.now,
       startedAt = Timestamp.now,
       version = Version,

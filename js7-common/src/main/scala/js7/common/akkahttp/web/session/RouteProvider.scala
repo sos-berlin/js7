@@ -18,7 +18,6 @@ import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.Duration
 
 /**
   * @author Joacim Zschimmer
@@ -105,7 +104,8 @@ trait RouteProvider extends ExceptionHandling
         if (problem == InvalidLoginProblem) {
           logger.debug(s"$problem - delaying response for ${gateKeeper.invalidAuthenticationDelay.pretty}")
           gateKeeper.invalidAuthenticationDelay
-        } else Duration.Zero
+        } else
+          ZeroDuration
       complete {
         Task.pure(statusCode -> problem)
           .delayExecution(delay)

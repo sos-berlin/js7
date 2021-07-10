@@ -37,7 +37,7 @@ import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.{Deadline, Duration, FiniteDuration}
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.concurrent.{Await, Promise}
 import scala.util.control.NonFatal
 
@@ -307,7 +307,7 @@ extends Actor with Stash with JournalLogging
       }
   }
 
-  private def forwardCommit(delay: FiniteDuration = Duration.Zero): Unit = {
+  private def forwardCommit(delay: FiniteDuration = ZeroDuration): Unit = {
     val deadline = now + delay
     if (commitDeadline == null || deadline < commitDeadline) {
       commitDeadline = deadline

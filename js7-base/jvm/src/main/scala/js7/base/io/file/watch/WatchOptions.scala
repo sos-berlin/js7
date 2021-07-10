@@ -2,7 +2,7 @@ package js7.base.io.file.watch
 
 import java.nio.file.{Path, WatchEvent}
 import js7.base.time.ScalaTime._
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 final case class WatchOptions(
   directory: Path,
@@ -10,7 +10,7 @@ final case class WatchOptions(
   matches: Path => Boolean,
   retryDelays: Seq[FiniteDuration],
   pollTimeout: FiniteDuration,
-  delay: FiniteDuration = Duration.Zero)
+  delay: FiniteDuration = ZeroDuration)
 
 object WatchOptions
 {
@@ -19,6 +19,6 @@ object WatchOptions
     fileMatches: Path => Boolean = _ => true,
     retryDurations: Seq[FiniteDuration] = Seq(100.ms),
     pollTimeout: FiniteDuration = 99.s,
-    delay: FiniteDuration = Duration.Zero)
+    delay: FiniteDuration = ZeroDuration)
   = WatchOptions(directory, kinds, fileMatches, retryDurations, pollTimeout, delay)
 }

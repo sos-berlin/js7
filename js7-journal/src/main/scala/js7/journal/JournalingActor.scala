@@ -21,7 +21,7 @@ import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 import scala.util.control.NonFatal
@@ -73,7 +73,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   protected final def persistKeyedEventAcceptEarlyTask[EE <: E](
     keyedEvent: KeyedEvent[EE],
     timestampMillis: Option[Long] = None,
-    delay: FiniteDuration = Duration.Zero)
+    delay: FiniteDuration = ZeroDuration)
   : Task[Checked[Accepted]] =
     promiseTask[Checked[Accepted]] { promise =>
       self ! PersistAcceptEarly(keyedEvent, timestampMillis, delay, promise)
@@ -93,8 +93,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   protected final def persistKeyedEvents[EE <: E, A](
     timestamped: Seq[Timestamped[EE]],
     transaction: Boolean = false,
-    delay: FiniteDuration = Duration.Zero,
-    alreadyDelayed: FiniteDuration = Duration.Zero,
+    delay: FiniteDuration = ZeroDuration,
+    alreadyDelayed: FiniteDuration = ZeroDuration,
     async: Boolean = false)(
     callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
@@ -127,7 +127,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     start(async = async, "defer")
     journalActor.forward(
       JournalActor.Input.Store(Nil, self, acceptEarly = false, transaction = false,
-        delay = Duration.Zero, alreadyDelayed = Duration.Zero, since = now,
+        delay = ZeroDuration, alreadyDelayed = ZeroDuration, since = now,
         Deferred(async = async, {
           case Left(problem) => throw problem.throwable.appendCurrentStackTrace
           case Right(Accepted) => callback
@@ -158,7 +158,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       val timestamped = Timestamped(keyedEvent, timestampMillis) :: Nil
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
-          delay = delay, alreadyDelayed = Duration.Zero, since = now,
+          delay = delay, alreadyDelayed = ZeroDuration, since = now,
           Deferred(async = true, checked => promise.success(checked))))
 
     case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>

@@ -8,7 +8,6 @@ import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
@@ -22,7 +21,6 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise, TimeoutException}
 import scala.util.chaining.scalaUtilChainingOps
-import scala.util.{Failure, Success, Try}
 
 object MonixBase
 {
@@ -80,7 +78,7 @@ object MonixBase
         if (!duration.isPositive)
           task
         else
-          whenItTakesLonger(duration :: Duration.Zero :: Nil)(_ => thenDo)
+          whenItTakesLonger(duration :: ZeroDuration :: Nil)(_ => thenDo)
 
       /** As long as `this` has not completed, call `thenDo` after each of `durations` .
         * @param durations if empty then `thenDo` will not be called.
@@ -96,7 +94,7 @@ object MonixBase
         else
           monotonicClock.flatMap(since =>
             Task
-              .tailRecM(Duration.Zero) { lastDuration =>
+              .tailRecM(ZeroDuration) { lastDuration =>
                 val d = durationIterator.nextOption() getOrElse lastDuration
                 if (d.isPositive)
                   Task.sleep(d)
@@ -178,7 +176,7 @@ object MonixBase
       //  (f: A => B)
       //  (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
       //: Observable[Seq[B]] =
-      //  if (maxDelay <= Duration.Zero)
+      //  if (maxDelay <= ZeroDuration)
       //    underlying.map(f)
       //  else
       //    underlying

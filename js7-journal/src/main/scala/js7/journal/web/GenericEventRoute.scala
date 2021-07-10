@@ -4,15 +4,12 @@ import akka.NotUsed
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
-import io.circe.syntax.EncoderOps
 import js7.base.auth.ValidUserPermission
-import js7.base.circeutils.CirceUtils.{CompactPrinter, RichJson}
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -173,7 +170,7 @@ trait GenericEventRoute extends RouteProvider
                 request.copy[Event](
                   after = head.eventId,
                   limit = request.limit - 1,
-                  delay = (request.delay - runningSince.elapsed) min Duration.Zero),
+                  delay = (request.delay - runningSince.elapsed) min ZeroDuration),
                 predicate,
                 eventWatch)
               implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]

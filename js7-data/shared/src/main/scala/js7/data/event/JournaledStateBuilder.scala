@@ -14,7 +14,6 @@ import js7.data.event.JournaledStateBuilder._
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
@@ -146,7 +145,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     _journalHeader.toOption.map(_.copy(
       eventId = eventId,
       totalEventCount = totalEventCount,
-      totalRunningTime = _journalHeader.toOption.fold(Duration.Zero) { header =>
+      totalRunningTime = _journalHeader.toOption.fold(ZeroDuration) { header =>
         val lastJournalDuration = lastEventIdTimestamp - header.timestamp
         header.totalRunningTime + lastJournalDuration roundUpToNext 1.ms
       },

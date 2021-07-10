@@ -3,7 +3,6 @@ package js7.data.event
 import js7.base.time.ScalaTime._
 import js7.data.event.EventRequestTest._
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +22,7 @@ final class EventRequestTest extends AnyFreeSpec {
     assert(EventRequest[Event](
       Set[Class[_ <: Event]](classOf[AEvent], classOf[BEvent]),
       after = EventId(3),
-      timeout = Some(Duration.Zero),
+      timeout = Some(0.s),
       limit = Int.MaxValue)
       .toQueryParameters ==
         Vector(

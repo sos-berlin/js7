@@ -207,7 +207,7 @@ trait RealEventWatch extends EventWatch
                       s" unexpected $empty, delaying ${AvoidOverheatingDelay.pretty}")
                     AvoidOverheatingDelay
                   } else
-                    Duration.Zero
+                    ZeroDuration
                 whenAnyKeyedEvents2(lastEventId, deadline, delay, collect, limit, maybeTornOlder)
                   .delayExecution(preventOverheating)
               } else

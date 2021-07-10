@@ -45,7 +45,6 @@ import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
@@ -167,7 +166,7 @@ extends ReceiveLoggingActor.WithStash
       for {
         _ <- Task.defer {
           val delay = delayCommandExecutionAfterErrorUntil.timeLeft
-          if (delay >= Duration.Zero) logger.debug(s"${AgentDriver.this.toString}: Delay command after error until ${Timestamp.now + delay}")
+          if (delay.isPositive) logger.debug(s"${AgentDriver.this.toString}: Delay command after error until ${Timestamp.now + delay}")
           Task.sleep(delay)
         }
         checkedApi <- eventFetcher.coupledApi.map(_.toRight(DecoupledProblem))
@@ -344,7 +343,7 @@ extends ReceiveLoggingActor.WithStash
     case Internal.ReleaseEvents(lastEventId, promise) =>
       lastCommittedEventId = lastEventId
       if (releaseEventsCancelable.isEmpty) {
-        val delay = if (delayNextReleaseEvents) conf.releaseEventsPeriod else Duration.Zero
+        val delay = if (delayNextReleaseEvents) conf.releaseEventsPeriod else ZeroDuration
         releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
           self ! Internal.ReleaseEventsNow
         })

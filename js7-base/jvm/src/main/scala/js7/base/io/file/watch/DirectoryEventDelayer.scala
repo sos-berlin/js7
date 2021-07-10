@@ -116,7 +116,7 @@ extends Observable[Seq[DirectoryEvent]]
 
           nextTimerDelay() match {
             case None =>
-            case Some(Duration.Zero) => forward()
+            case Some(ZeroDuration) => forward()
             case Some(nextDelay) => setTimer(nextDelay)
           }
         }

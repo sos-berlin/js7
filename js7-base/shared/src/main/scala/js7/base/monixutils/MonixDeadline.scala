@@ -34,13 +34,13 @@ extends Ordered[MonixDeadline]
     nanos <= nowNanos
 
   def elapsedOrZero: FiniteDuration =
-    elapsed max Duration.Zero
+    elapsed max ZeroDuration
 
   def elapsed: FiniteDuration =
     Duration(nowNanos - nanos, NANOSECONDS)
 
   def timeLeftOrZero: FiniteDuration =
-    timeLeft max Duration.Zero
+    timeLeft max ZeroDuration
 
   /**
    * Calculate time difference between this duration and now; the result is negative if the deadline has passed.

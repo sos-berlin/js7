@@ -29,7 +29,7 @@ import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.observables.ConnectableObservable
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NoStackTrace
@@ -253,7 +253,7 @@ object JournaledProxy
             tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
             timeout = Some(55.s/*TODO*/)))
         .doOnFinish {
-          case None => Task { addToTornOlder = Duration.Zero }
+          case None => Task { addToTornOlder = ZeroDuration }
           case _ => Task.unit
         })
     }

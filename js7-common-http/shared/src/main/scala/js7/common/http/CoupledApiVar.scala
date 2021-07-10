@@ -8,7 +8,6 @@ import js7.base.time.ScalaTime._
 import js7.common.http.RecouplingStreamReader.TerminatedProblem
 import monix.catnap.MVar
 import monix.eval.Task
-import scala.concurrent.duration.Duration
 
 /** Resembles Monix MVar with but may contain `Left(TerminatedProblem)` to indicate termination.
   * With `Left(TerminatedProblem)` the read operations fail with `ProblemException`.
@@ -23,7 +22,7 @@ private[http] final class CoupledApiVar[Api <: SessionApi]
   def isStopped = stopped
 
   def terminate: Task[Completed] =
-    Task.tailRecM(Duration.Zero)(delay =>
+    Task.tailRecM(ZeroDuration)(delay =>
       Task {
         stopped = true
       } >>
@@ -59,4 +58,3 @@ private[http] final class CoupledApiVar[Api <: SessionApi]
   def put(api: Api): Task[Unit] =
     coupledApiMVar.flatMap(_.put(Right(api)))
 }
-

@@ -5,6 +5,7 @@ import io.circe.generic.extras.Configuration.default.withDefaults
 import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
@@ -12,7 +13,7 @@ import js7.data.item.ItemRevision
 import js7.data.orderwatch.FileWatch.defaultPattern
 import js7.data.value.expression.Expression
 import js7.data.workflow.WorkflowPath
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.FiniteDuration
 
 final case class FileWatch(
   path: OrderWatchPath,
@@ -21,7 +22,7 @@ final case class FileWatch(
   directory: String,
   pattern: Option[SimplePattern] = None,
   orderIdExpression: Option[Expression] = None,
-  delay: FiniteDuration = Duration.Zero,
+  delay: FiniteDuration = ZeroDuration,
   itemRevision: Option[ItemRevision] = None)
 extends OrderWatch
 {

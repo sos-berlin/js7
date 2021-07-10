@@ -39,7 +39,7 @@ final class EventSync(initial: Long, valueToString: Long => String)
   /**
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
-  def whenAvailable(after: Long, until: Option[MonixDeadline], delay: FiniteDuration = Duration.Zero): Task[Boolean] = {
+  def whenAvailable(after: Long, until: Option[MonixDeadline], delay: FiniteDuration = ZeroDuration): Task[Boolean] = {
     lazy val logPrefix = s"whenAvailable($after delay=${delay.pretty}${until.fold("")(o => " until="+o.timeLeft.pretty)})"
     if (after < _last) {
       logger.trace(s"$logPrefix => fulfilled immediately")

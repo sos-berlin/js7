@@ -8,6 +8,11 @@ import scala.concurrent.duration._
 
 final class ScalaTimeTest extends AnyFreeSpec
 {
+  "ZeroDuration" in {
+    assert(ZeroDuration.toString == "0 seconds")
+    assert(Duration.Zero.toString == "0 days")
+  }
+
   "Duration" - {
     "Int.µs" in {
       assert(7.µs == Duration(7000, NANOSECONDS))

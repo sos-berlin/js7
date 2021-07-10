@@ -11,6 +11,8 @@ import scala.util.Random
 
 object ScalaTime
 {
+  /** This is 0 seconds, while Scala's Duration Zero is 0 days. */
+  val ZeroDuration = Duration(0, SECONDS)
   private val MaxDuration = Duration(Long.MaxValue, NANOSECONDS)
   private val MinDuration = Duration(Long.MinValue + 1, NANOSECONDS)
 
@@ -32,7 +34,7 @@ object ScalaTime
      * Duration, counted in seconds.
      */
     def s =
-      if (delegate == 0) Duration.Zero
+      if (delegate == 0) ZeroDuration
       else Duration(delegate, SECONDS)
 
     /**
@@ -108,7 +110,7 @@ object ScalaTime
 
   implicit final class RichDuration(private val duration: Duration) extends AnyVal with Ordered[RichDuration]
   {
-    def unary_- = Duration.Zero - duration
+    def unary_- = ZeroDuration - duration
 
     def min(o: Duration): Duration =
       if (this <= o) duration else o
@@ -138,7 +140,7 @@ object ScalaTime
 
     def pretty: String =
       duration match {
-        case Duration.Zero => "0s"
+        case ZeroDuration => "0s"
         case o: FiniteDuration =>
           if (abs(o.toSeconds) < 3*60) smallPretty
           else bigPretty
@@ -291,13 +293,13 @@ object ScalaTime
       underlying.time.toNanos <= System.nanoTime
 
     def elapsedOrZero: FiniteDuration =
-      elapsed max Duration.Zero
+      elapsed max ZeroDuration
 
     def elapsed: FiniteDuration =
       (System.nanoTime - underlying.time.toNanos).nanoseconds
 
     def timeLeftOrZero: FiniteDuration =
-      underlying.timeLeft max Duration.Zero
+      underlying.timeLeft max ZeroDuration
 
     //def roundTo(duration: FiniteDuration): Deadline =
     //  (underlying + duration / 2) roundDownTo duration
