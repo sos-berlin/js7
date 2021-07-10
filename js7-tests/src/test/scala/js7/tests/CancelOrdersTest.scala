@@ -1,5 +1,6 @@
 package js7.tests
 
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.Ops
@@ -12,7 +13,7 @@ import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, Response}
 import js7.data.item.VersionId
-import js7.data.job.RelativePathExecutable
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
@@ -27,6 +28,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.sleepingScript
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -34,13 +36,12 @@ import scala.concurrent.duration._
   */
 final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentPaths = agentPath :: Nil
-  protected val items = singleJobWorkflow :: twoJobsWorkflow :: forkWorkflow :: Nil
+  override protected def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
+    """
 
-  override def beforeAll() = {
-    for (a <- directoryProvider.agents) a.writeExecutable(pathExecutable, sleepingScript("SLEEP"))
-    super.beforeAll()
-  }
+  protected val agentPaths = Seq(agentPath)
+  protected val items = Seq(singleJobWorkflow, sigkillDelayWorkflow, twoJobsWorkflow, forkWorkflow)
 
   "Cancel a fresh order" in {
     val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
@@ -147,6 +148,28 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       immediately = true)
   }
 
+  if (!isWindows) {
+    "Cancel with sigkillDelay" in {
+      val order = FreshOrder(OrderId("🟥️"), sigkillDelayWorkflow.id.path)
+      val t = now
+      testCancel(order, None, immediately = false,
+        mode => Vector(
+          OrderAdded(order.workflowPath ~ versionId, order.arguments),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderStarted,
+          OrderProcessingStarted,
+          OrderCancellationMarked(mode),
+          OrderCancellationMarkedOnAgent,
+          OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
+          OrderProcessingKilled,
+          OrderDetachable,
+          OrderDetached,
+          OrderCancelled))
+      assert(t.elapsed > sigkillDelay)
+    }
+  }
+
   private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition], immediately: Boolean): Unit =
     testCancel(order, workflowPosition, immediately = immediately,
       mode => Vector(
@@ -193,20 +216,19 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderId("FORK") <-: OrderCancelled))
   }
 
-  "Cancel with sigkillDelay" in {
-    pending  // TODO
-  }
-
-  private def testCancel(order: FreshOrder, workflowPosition: Option[WorkflowPosition], immediately: Boolean,
+  private def testCancel(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
+    immediately: Boolean,
     expectedEvents: CancellationMode => Seq[OrderEvent])
   : Unit = {
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(immediately = immediately, workflowPosition)))
+    val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(immediately = immediately,
+      workflowPosition)))
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) ==
+    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id)
+      .filterNot(_.isInstanceOf[OrderStdWritten]) ==
       expectedEvents(mode))
   }
 
@@ -227,24 +249,40 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
 object CancelOrdersTest
 {
-  private val pathExecutable = RelativePathExecutable("executable.cmd",
+  private val scriptExecutable = ShellScriptExecutable(
+    sleepingScript("SLEEP"),
     Map("SLEEP" -> NamedValue.last("sleep")))
   private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentPath, pathExecutable)))
+    Execute(WorkflowJob(agentPath, scriptExecutable)))
+
+  private val sigkillDelay = 1.s
+  private val sigkillDelayWorkflow = Workflow.of(
+    WorkflowPath("SIGKILLDELAY") ~ versionId,
+    Execute(WorkflowJob(
+      agentPath,
+      ShellScriptExecutable(
+        """#!/usr/bin/env bash
+          |set -euo pipefail
+          |trap "" SIGTERM
+          |for i in {0..99}; do
+          |  sleep 0.1
+          |done
+          |""".stripMargin),
+      sigkillDelay = Some(sigkillDelay))))
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("TWO") ~ versionId,
-    Execute(WorkflowJob(agentPath, pathExecutable)),
-    Execute(WorkflowJob(agentPath, pathExecutable)))
+    Execute(WorkflowJob(agentPath, scriptExecutable)),
+    Execute(WorkflowJob(agentPath, scriptExecutable)))
 
   private val forkWorkflow = Workflow.of(
     WorkflowPath("FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
-        Execute(WorkflowJob(agentPath, pathExecutable)))),
-    Execute(WorkflowJob(agentPath, pathExecutable)))
+        Execute(WorkflowJob(agentPath, scriptExecutable)))),
+    Execute(WorkflowJob(agentPath, scriptExecutable)))
 }
