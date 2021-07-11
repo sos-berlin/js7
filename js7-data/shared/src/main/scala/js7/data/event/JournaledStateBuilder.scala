@@ -54,26 +54,30 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
   def addSnapshotObject(obj: Any): Unit = {
     recordCount += 1
-    try
-      obj match {
-        case journalHeader: JournalHeader =>
-          this._journalHeader := journalHeader
+    obj match {
+      case journalHeader: JournalHeader =>
+        try {
           require(_firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst, "EventId mismatch in snapshot")
+          _journalHeader := journalHeader
           _firstEventId = journalHeader.eventId
           _eventId = journalHeader.eventId
+        } catch { case NonFatal(t) => throw new RuntimeException(
+          s"Application of JournalHeader failed in record #$recordCount for $S", t)
+        }
 
-        case SnapshotEventId(eventId) =>
-          require(eventId == _firstEventId && eventId == _eventId ||
-                  _firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst,
-            "EventId mismatch in snapshot")
-          _firstEventId = eventId
-          _eventId = eventId
+      case SnapshotEventId(eventId) =>
+        require(eventId == _firstEventId && eventId == _eventId ||
+                _firstEventId == EventId.BeforeFirst && _eventId == EventId.BeforeFirst,
+          "EventId mismatch in snapshot")
+        _firstEventId = eventId
+        _eventId = eventId
 
-        case _ =>
-          onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNotApplicable)
-      }
-    catch { case NonFatal(t) =>
-      throw new RuntimeException(s"Decoding JournalHeader or snapshot failed in record #$recordCount for $S", t)
+      case _ =>
+        try onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNotApplicable)
+        catch { case NonFatal(t) => throw new RuntimeException(
+          s"Application of snapshot object '${obj.getClass.simpleScalaName}' failed " +
+            s"in record #$recordCount for $S", t)
+        }
     }
   }
 

@@ -139,17 +139,17 @@ object ExpressionParser
         case ("toBoolean", arguments) =>
           arguments match {
             case Seq((None, arg)) => valid(ToBoolean(arg))
-            case _ => invalid("toBoolean function expected exacly one argument")
+            case _ => invalid("toBoolean function expects exacly one argument")
           }
         case ("toNumber", arguments) =>
           arguments match {
             case Seq((None, arg)) => valid(ToNumber(arg))
-            case _ => invalid("toNumber function expected exacly one argument")
+            case _ => invalid("toNumber function expects exacly one argument")
           }
         case ("stripMargin", arguments) =>
           arguments match {
             case Seq((None, arg)) => valid(StripMargin(arg))
-            case _ => invalid("stripMargin function expected exacly one argument")
+            case _ => invalid("stripMargin function expects exacly one argument")
           }
         case ("mkString", arguments) =>
           arguments match {
