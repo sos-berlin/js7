@@ -556,14 +556,16 @@ with Stash
       }
     }
 
-  private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit = {
-    jobEntry.queue += orderId
-    if (jobEntry.waitingForOrder) {
-      tryStartProcessing(jobEntry)
-    } else {
-      jobEntry.actor ! JobActor.Input.OrderAvailable
+  private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit =
+    // TODO Make this more functional!
+    if (!jobEntry.queue.contains(orderId)) {
+      jobEntry.queue += orderId
+      if (jobEntry.waitingForOrder) {
+        tryStartProcessing(jobEntry)
+      } else {
+        jobEntry.actor ! JobActor.Input.OrderAvailable
+      }
     }
-  }
 
   private def tryStartProcessing(jobEntry: JobEntry): Unit =
     jobEntry.queue.dequeue() match {
