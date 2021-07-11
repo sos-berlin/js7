@@ -52,7 +52,7 @@ object ExpressionParser
   def booleanConstant[_: P] = P(trueConstant | falseConstant)
 
   private def numericConstant[_: P] = P[NumericConstant](
-    int.map(o => NumericConstant(o)))
+    bigDecimal.map(o => NumericConstant(o)))
 
   private def singleQuotedStringConstant[_: P] = P[StringConstant](singleQuoted
     .map(StringConstant.apply))

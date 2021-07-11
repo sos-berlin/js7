@@ -126,6 +126,13 @@ final class ExpressionTest extends AnyFreeSpec
       result = true,
       Right(BooleanConstant(true)))
 
+    locally {
+      val number = "-111222333444555666777888999000111222333444555666777888999000"
+      testEval(number,
+        result = Right(NumberValue(BigDecimal(number))),
+        Right(NumericConstant(BigDecimal(number))))
+    }
+
     testEval("$ASTRING",
       result = "AA",
       Right(NamedValue.last("ASTRING")))
