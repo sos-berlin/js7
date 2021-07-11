@@ -23,7 +23,7 @@ object JavaTimeConverters
 
   implicit final class AsScalaInstant(private val delegate: Instant) extends AnyVal
   {
-    def toTimestamp = Timestamp.ofEpochMilli(delegate.toEpochMilli)
+    def toTimestamp = JavaTimestamp.ofEpochMilli(delegate.toEpochMilli)
   }
 
   implicit final class AsScalaDuration(private val underlying: Duration) extends AnyVal

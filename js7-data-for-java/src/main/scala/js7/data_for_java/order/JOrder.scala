@@ -6,6 +6,7 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
+import js7.base.time.JavaTimestamp.specific._
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.agent.AgentPath
 import js7.data.order.{Order, OrderId}

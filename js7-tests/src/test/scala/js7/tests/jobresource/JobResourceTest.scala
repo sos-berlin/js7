@@ -9,6 +9,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.JavaTimestamp.specific._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
@@ -141,7 +142,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
       controllerApi.updateSignedItems(Seq(sign(sosJobResource))).await(99.s).orThrow
 
       val orderId = OrderId("ORDER-SOS-SCHEDULED")
-      val scheduledFor = Timestamp.parse("2021-04-26T00:11:22.789Z")
+      val scheduledFor = Timestamp("2021-04-26T00:11:22.789Z")
       controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path, scheduledFor = Some(scheduledFor)))
         .await(99.s).orThrow
       val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head

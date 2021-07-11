@@ -4,6 +4,7 @@ import com.typesafe.config.Config
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters._
+import js7.base.time.JavaTimestamp.specific._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.FreshOrder

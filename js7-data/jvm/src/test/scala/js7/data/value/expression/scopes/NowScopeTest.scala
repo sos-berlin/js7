@@ -2,6 +2,7 @@ package js7.data.value.expression.scopes
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
+import js7.base.time.JavaTimestamp.specific._
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec

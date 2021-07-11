@@ -39,7 +39,7 @@ public final class TestJControllerProxy
     }
 
     private static String orderEventToString(Stamped<KeyedEvent<OrderEvent>> stamped) {
-        Instant timestamp = stamped.timestamp().toInstant();
+        Instant timestamp = Instant.ofEpochMilli(stamped.timestamp().toEpochMilli());
         KeyedEvent<OrderEvent> event = stamped.value();
         return timestamp + " " + event;
     }

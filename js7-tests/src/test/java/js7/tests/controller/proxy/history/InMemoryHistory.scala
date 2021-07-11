@@ -2,6 +2,7 @@ package js7.tests.controller.proxy.history
 
 import java.time.Instant
 import java.util.Optional
+import js7.base.time.JavaTimestamp.specific._
 import js7.base.web.Uri
 import js7.data.event.{Event, EventId, KeyedEvent}
 import js7.data.order.{OrderEvent, OrderId}

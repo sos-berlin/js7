@@ -225,5 +225,5 @@ object JavaTime
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
   implicit val JavaUtilDateShow = Show[java.util.Date](o =>
-    Timestamp(o).show)
+    JavaTimestamp(o).show)
 }

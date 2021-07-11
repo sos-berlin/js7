@@ -5,6 +5,7 @@ import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import js7.base.convert.As
 import js7.base.time.JavaTime._
+import js7.base.time.JavaTimestamp.specific._
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.util.Random
@@ -317,8 +318,8 @@ final class JavaTimeTest extends AnyFreeSpec {
   }
 
   "java.util.Date.show" in {
-    assert(Timestamp.parse("2018-11-21T12:34:56Z").toJavaUtilDate.show == "2018-11-21T12:34:56Z")
-    assert(Timestamp.parse("2018-11-21T12:34:56.987Z").toJavaUtilDate.show == "2018-11-21T12:34:56.987Z")
+    assert(Timestamp("2018-11-21T12:34:56Z").toJavaUtilDate.show == "2018-11-21T12:34:56Z")
+    assert(Timestamp("2018-11-21T12:34:56.987Z").toJavaUtilDate.show == "2018-11-21T12:34:56.987Z")
   }
 
   private def randomDuration(maximum: Duration): Duration =
