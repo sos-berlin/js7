@@ -31,7 +31,7 @@ object ExpressionParser
     expression
 
   def expressionOnly[_: P]: P[Expression] =
-    P(wordOperation ~ End)
+    P(w ~~ wordOperation ~ End)
 
   def expression[_: P]: P[Expression] =
     P(wordOperation)
@@ -154,7 +154,13 @@ object ExpressionParser
         case ("mkString", arguments) =>
           arguments match {
             case Seq((None, arg)) => valid(MkString(arg))
-            case _ => invalid("mkString function expected exacly one argument")
+            case _ => invalid("mkString function expects exacly one argument")
+          }
+        case ("replaceAll", arguments) =>
+          arguments match {
+            case Seq((None, string), (None, pattern), (None, replacement)) =>
+              valid(ReplaceAll(string, pattern, replacement))
+            case _ => invalid("replaceAll function expects exacly three arguments")
           }
         case (name, arguments) =>
           valid(FunctionCall(

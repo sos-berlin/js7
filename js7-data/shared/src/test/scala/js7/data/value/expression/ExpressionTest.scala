@@ -478,6 +478,11 @@ final class ExpressionTest extends AnyFreeSpec
         Right(BooleanValue(true)))
     }
 
+    "replaceAll" in {
+      assert(ReplaceAll(StringConstant("abcdef"), StringConstant("([ae])"), StringConstant("($1)")).eval
+        == Right(StringValue("(a)bcd(e)f")))
+    }
+
     "mkString" in {
       assert(MkString(ListExpression(StringConstant("»") :: NamedValue.last("ASTRING") :: NumericConstant(7) :: Nil)).eval
         == Right(StringValue("»AA7")))

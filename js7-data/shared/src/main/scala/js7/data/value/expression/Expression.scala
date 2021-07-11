@@ -4,6 +4,7 @@ import cats.syntax.traverse._
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
+import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
@@ -669,6 +670,23 @@ object Expression
         }
         sb.append('"')
       }
+  }
+
+  final case class ReplaceAll(string: Expression, pattern: Expression, replacement: Expression)
+  extends StringExpression with PurityDependsOnSubexpressions {
+    def precedence = Precedence.Factor
+    def subexpressions = View(string, pattern, replacement)
+
+    def evalAllowError(implicit scope: Scope) =
+      for {
+        string <- string.eval.flatMap(_.asString)
+        pattern <- pattern.eval.flatMap(_.asString)
+        pattern <- Checked.catchNonFatal(Pattern.compile(pattern))
+        replacement <- replacement.eval.flatMap(_.asString)
+        result <- Checked.catchNonFatal(StringValue(pattern.matcher(string).replaceAll(replacement)))
+      } yield result
+
+    override def toString = s"replaceAll($string, $pattern, $replacement)"
   }
 
   /** `problem` must be defined only if internally generated. */
