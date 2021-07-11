@@ -47,7 +47,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected def agentConfig: Config = ConfigFactory.empty
 
-  protected val controllerModule: Module = EMPTY_MODULE
+  protected def controllerModule: Module = EMPTY_MODULE
   protected lazy val controllerHttpPort = findFreeTcpPort().some
   protected lazy val controllerHttpsPort = none[Int]
   protected def agentHttpsMutual = false

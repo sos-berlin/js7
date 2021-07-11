@@ -253,15 +253,18 @@ object RunningController
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
-    name: String)
+    name: String,
+    scheduler: Option[Scheduler] = None)
   : Injector =
     Guice.createInjector(DEVELOPMENT,
-      Modules `override` new ControllerModule(ControllerConfiguration.forTest(
-        configAndData = directory,
-        config,
-        httpPort = httpPort,
-        httpsPort = httpsPort,
-        name = name))
+      Modules `override` new ControllerModule(
+        ControllerConfiguration.forTest(
+          configAndData = directory,
+          config,
+          httpPort = httpPort,
+          httpsPort = httpsPort,
+          name = name),
+        commonScheduler = scheduler)
       `with` module)
 
   def apply(configuration: ControllerConfiguration): Future[RunningController] =

@@ -23,7 +23,10 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerModule(configuration: ControllerConfiguration) extends AbstractModule
+final class ControllerModule(
+  configuration: ControllerConfiguration,
+  commonScheduler: Option[Scheduler] = None)
+extends AbstractModule
 {
   import configuration.config
 
@@ -48,8 +51,9 @@ final class ControllerModule(configuration: ControllerConfiguration) extends Abs
     scheduler
 
   @Provides @Singleton
-  def monixScheduler(closer: Closer): Scheduler =
-    ThreadPools.newStandardScheduler(configuration.name, config, closer)
+  def scheduler(closer: Closer): Scheduler =
+    commonScheduler getOrElse
+      ThreadPools.newStandardScheduler(configuration.name, config, closer)
 
   @Provides @Singleton
   def actorRefFactory(actorSystem: ActorSystem): ActorRefFactory =

@@ -14,12 +14,15 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
 import cats.syntax.traverse._
+import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
   */
 trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   this: org.scalatest.Suite =>
+
+  protected def commonScheduler: Option[Scheduler] = None
 
   protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
   protected final lazy val agent: RunningAgent = agents.head
@@ -30,7 +33,8 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
         controllerModule,
         config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
         httpPort = controllerHttpPort,
-        httpsPort = controllerHttpsPort)
+        httpsPort = controllerHttpsPort,
+        scheduler = commonScheduler)
       .tapEval(controller =>
         Task(controller.httpApiDefaultLogin(Some(directoryProvider.controller.userAndPassword))))
       .await(99.s)

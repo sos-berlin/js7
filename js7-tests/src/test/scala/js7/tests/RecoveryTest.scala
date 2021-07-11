@@ -125,8 +125,12 @@ final class RecoveryTest extends AnyFreeSpec
       Akkas.terminateAndWait(controller.actorSystem, 99.s)
     }
 
-  private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit =
-    multipleAutoClosing(directoryProvider.agents.map(_.agentConfiguration).traverse(RunningAgent.startForTest) await 10.s) { agents =>
+  private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit = {
+    val agents = directoryProvider.agents
+      .map(_.agentConfiguration)
+      .traverse(RunningAgent.startForTest(_))
+      .await(10.s)
+    multipleAutoClosing(agents) { _ =>
       // TODO Duplicate code in DirectoryProvider
       try body(agents)
       catch { case NonFatal(t) =>
@@ -139,6 +143,7 @@ final class RecoveryTest extends AnyFreeSpec
       // Kill Agents ActorSystems
       for (agent <- agents) Akkas.terminateAndWait(agent.actorSystem, 99.s)
     }
+  }
 }
 
 private object RecoveryTest {

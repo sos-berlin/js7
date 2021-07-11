@@ -127,8 +127,11 @@ object RunningAgent {
       }
     }
 
-  def startForTest(conf: AgentConfiguration)(implicit ec: ExecutionContext): Future[RunningAgent] =
-    startForTest(new AgentModule(conf))
+  def startForTest(conf: AgentConfiguration,
+    scheduler: Option[Scheduler] = None)(
+    implicit ec: ExecutionContext)
+  : Future[RunningAgent] =
+    startForTest(new AgentModule(conf, scheduler))
 
   def startForTest(module: Module)(implicit ec: ExecutionContext): Future[RunningAgent] = {
     val whenAgent = apply(module)

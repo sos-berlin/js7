@@ -26,7 +26,9 @@ import scala.concurrent.ExecutionContext
 /**
  * @author Joacim Zschimmer
  */
-final class AgentModule(originalAgentConfiguration: AgentConfiguration)
+final class AgentModule(
+  originalAgentConfiguration: AgentConfiguration,
+  commonScheduler: Option[Scheduler] = None)
 extends AbstractModule
 {
   @Provides @Singleton
@@ -60,8 +62,9 @@ extends AbstractModule
     scheduler
 
   @Provides @Singleton
-  def monixScheduler(configuration: AgentConfiguration, closer: Closer): Scheduler =
-    ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
+  def scheduler(configuration: AgentConfiguration, closer: Closer): Scheduler =
+    commonScheduler getOrElse
+      ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
 
   @Provides @Singleton
   def jobExecutorConf(conf: AgentConfiguration, iox: IOExecutor, closer: Closer)

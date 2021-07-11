@@ -40,6 +40,7 @@ import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, Si
 import js7.data.job.RelativePathExecutable
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
 import monix.reactive.Observable
@@ -56,6 +57,7 @@ final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
   items: Seq[InventoryItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
+  controllerModule: Module = EMPTY_MODULE,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
@@ -68,7 +70,8 @@ final class DirectoryProvider(
   verifier: SignatureVerifier = defaultVerifier,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
-  doNotAddItems: Boolean = false)
+  doNotAddItems: Boolean = false,
+  scheduler: Option[Scheduler] = None)
 extends HasCloser
 {
   coupleScribeWithSlf4j()
@@ -117,7 +120,7 @@ extends HasCloser
     itemSigner.sign(item)
 
   def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
-    runAgents()(agents =>
+    runAgents(scheduler = scheduler)(agents =>
       runController()(controller =>
         body(controller, agents)))
 
@@ -151,18 +154,19 @@ extends HasCloser
   }
 
   def startController(
-    module: Module = EMPTY_MODULE,
+    module: Module = controllerModule,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None,
     items: Seq[InventoryItem] = items,
-    name: String = controllerName)
+    name: String = controllerName,
+    scheduler: Option[Scheduler] = None)
   : Task[RunningController]
   =
     Task.deferFuture(
       RunningController.fromInjector(
         RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
-          httpPort = httpPort, httpsPort = httpsPort, name = name)))
+          httpPort = httpPort, httpsPort = httpsPort, name = name, scheduler)))
     .map { runningController =>
       if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
         if (!itemsHasBeenAdded.getAndSet(true)) {
@@ -189,11 +193,15 @@ extends HasCloser
       runningController
     }
 
-  def runAgents[A](agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(body: IndexedSeq[RunningAgent] => A): A =
+  def runAgents[A](
+    agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths,
+    scheduler: Option[Scheduler] = None)(
+    body: IndexedSeq[RunningAgent] => A)
+  : A =
     multipleAutoClosing(agents
       .filter(o => agentPaths.contains(o.agentPath))
       .map(_.agentConfiguration)
-      .traverse(RunningAgent.startForTest)
+      .traverse(RunningAgent.startForTest(_, scheduler))
       .await(99.s))
     { agents =>
       val result =
