@@ -241,8 +241,7 @@ object FileWatchManager
     }
   }
 
-  private def eval(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) = {
-    val nowScope = new NowScope
-    expression.eval(FileWatchScope(orderWatchPath, matchedMatcher) |+| nowScope)
-  }
+  private def eval(orderWatchPath: OrderWatchPath, expression: Expression, matchedMatcher: Matcher) =
+    expression.eval(
+      FileWatchScope(orderWatchPath, matchedMatcher) |+| NowScope())
 }
