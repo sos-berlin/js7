@@ -143,11 +143,6 @@ object OrderEvent
   case object OrderNoticeRead
   extends OrderNoticeEvent
 
-  final case class OrderOffered(orderId: OrderId, until: Timestamp)
-  extends OrderActorEvent
-
-  final case class OrderAwaiting(orderId: OrderId) extends OrderActorEvent
-
   type OrderProcessingKilled = OrderProcessingKilled.type
   final case object OrderProcessingKilled
   extends OrderActorEvent
@@ -352,8 +347,6 @@ object OrderEvent
     Subtype(deriveCodec[OrderMoved]),
     Subtype(deriveCodec[OrderForked]),
     Subtype(deriveCodec[OrderJoined]),
-    Subtype(deriveCodec[OrderOffered]),
-    Subtype(deriveCodec[OrderAwaiting]),
     Subtype(deriveCodec[OrderSuspensionMarked]),
     Subtype(OrderSuspensionMarkedOnAgent),
     Subtype(OrderSuspended),

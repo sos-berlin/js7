@@ -75,11 +75,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       order = o
       becomeAsStateOf(order, force = true)
 
-    case Input.AddOffering(o) =>
-      assertThat(order == null)
-      order = o
-      becomeAsStateOf(order, force = true)
-
     case command: Command =>
       command match {
         case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
@@ -201,9 +196,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def forked: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-  private def offering: Receive =
-    receiveEvent() orElse receiveCommand orElse receiveTerminate
-
   private def receiveEvent(jobActor: ActorRef = noSender): Receive = {
     case Command.HandleEvent(event) => handleEvent(event, jobActor) pipeTo sender()
   }
@@ -246,14 +238,13 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case _: Order.Processed  => become("processed")(processed)
         case _: Order.ProcessingKilled  => become("processingKilled")(processingKilled)
         case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
-        case _: Order.Offering   => become("offering")(offering)
         case _: Order.Forked     => become("forked")(forked)
         case _: Order.Failed     => become("failed")(failedOrBroken)
         case _: Order.FailedWhileFresh => become("stoppedWhileFresh")(failedOrBroken)
         case _: Order.FailedInFork => become("failedInFork")(failedOrBroken)
         case _: Order.Broken     => become("broken")(failedOrBroken)
         case Order.WaitingForLock | _: Order.WaitingForNotice | _: Order.Prompting |
-             _: Order.Awaiting | Order.Finished | Order.Cancelled | Order.Deleted =>
+             Order.Finished | Order.Cancelled | Order.Deleted =>
           sys.error(s"Order is expected to be at the Controller, not on Agent: ${order.state}")   // A Finished order must be at Controller
       }
     }
@@ -386,7 +377,6 @@ private[order] object OrderActor
   object Input {
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
-    final case class AddOffering(order: Order[Order.Offering]) extends Input
 
     final case class StartProcessing(
       jobActor: ActorRef,

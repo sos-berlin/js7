@@ -88,8 +88,7 @@ final case class ControllerStateExecutor private(
         val stateEvents = (order.state: State) match {
           case Order.Processing =>
             Vector(order.id <-: OrderProcessed(outcome))
-          //case _: Order.Offering =>
-          //case _: Order.Awaiting =>
+
           case _ => Vector.empty
         }
         val detached = stateEvents :+ (order.id <-: OrderDetached)

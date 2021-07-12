@@ -9,7 +9,6 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.order.OrderId
 import js7.data.parser.BasicParsers._
 import js7.data.parser.Parsers.checkedParse
 import js7.data.source.SourcePos
@@ -19,7 +18,7 @@ import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Prompt, Retry, TryInstruction, End => EndInstr, Fail => FailInstr}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Prompt, Retry, TryInstruction, End => EndInstr, Fail => FailInstr}
 import scala.concurrent.duration._
 
 /**
@@ -195,19 +194,6 @@ object WorkflowParser
         .flatMap { case (start, end, (branch, more)) => checkedToP(Fork.checked(Vector(branch) ++ more, sourcePos(start, end))) }
     }
 
-    private def offerInstruction[_: P] = P[Offer](
-      (Index ~ keyword("offer") ~ w ~
-        specificKeyValue("orderId", quotedString) ~ comma ~/
-        specificKeyValue("timeout", int) ~
-        hardEnd
-      ) map { case (start, orderId_, duration_, end) =>
-          Offer(OrderId(orderId_), Duration(duration_, SECONDS), sourcePos(start, end))
-        })
-
-    private def awaitInstruction[_: P] = P[AwaitOrder](
-      (Index ~ keyword("await") ~ w ~ specificKeyValue("orderId", quotedString) ~ hardEnd)
-        map { case (start, orderId_, end) => AwaitOrder(OrderId(orderId_), sourcePos(start, end)) })
-
     private def ifInstruction[_: P] = P[If](
       (Index ~ keyword("if") ~ w ~/ inParentheses(expression) ~ Index ~
         w ~/ curlyWorkflowOrInstruction ~/
@@ -268,8 +254,7 @@ object WorkflowParser
       }  ~~/ instructionTerminator.?)
 
     private def instruction[_: P]: P[Instruction] =
-      P(awaitInstruction |
-        endInstruction |
+      P(endInstruction |
         executeInstruction |
         failInstruction |
         finishInstruction |
@@ -281,8 +266,7 @@ object WorkflowParser
         promptInstruction |
         retryInstruction |
         tryInstruction |
-        lockInstruction |
-        offerInstruction)
+        lockInstruction)
 
     private def labeledInstruction[_: P] = P[Labeled](
       (labelDef.? ~ instruction)

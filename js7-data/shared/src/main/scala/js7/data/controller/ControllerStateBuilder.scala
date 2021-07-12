@@ -20,7 +20,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeAwaiting, OrderNoticeEvent, OrderNoticePosted, OrderNoticeRead, OrderOffered, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeAwaiting, OrderNoticeEvent, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -326,18 +326,9 @@ with StateView
           case forked: Order.Forked =>
             _idToOrder --= forked.childOrderIds
 
-          case awaiting: Order.Awaiting =>
-            // Offered order is being kept ???
-            //idToOrder -= awaiting.offeredOrderId
-
           case state =>
             sys.error(s"Event $event recovered, but $orderId is in state $state")
         }
-
-      case event: OrderOffered =>
-        val offered = _idToOrder(orderId).newOfferedOrder(event)
-        _idToOrder += offered.id -> offered
-        _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
 
       case _ =>
     }

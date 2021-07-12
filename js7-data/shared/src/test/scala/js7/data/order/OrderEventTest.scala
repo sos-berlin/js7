@@ -326,23 +326,6 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  "OrderOffered" in {
-    check(OrderOffered(OrderId("ORDER-ID"), Timestamp.ofEpochMilli(123)), json"""
-      {
-        "TYPE": "OrderOffered",
-        "orderId": "ORDER-ID",
-        "until": 123
-      }""")
-  }
-
-  "OrderAwaiting" in {
-    check(OrderAwaiting(OrderId("ORDER-ID")), json"""
-      {
-        "TYPE": "OrderAwaiting",
-        "orderId": "ORDER-ID"
-      }""")
-  }
-
   "OrderMoved" in {
     check(OrderMoved(Position(7)), json"""
       {

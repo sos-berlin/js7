@@ -28,7 +28,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeAwaiting, OrderNoticeEvent, OrderNoticePosted, OrderNoticeRead, OrderOffered, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeAwaiting, OrderNoticeEvent, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.value.Value
@@ -276,20 +276,9 @@ with JournaledState[ControllerState]
                     Right(copy(
                       idToOrder = updatedIdToOrder -- forked.childOrderIds))
 
-                  case awaiting: Order.Awaiting =>
-                    // Offered order is being kept ???
-                    //Right(idToOrder - awaiting.offeredOrderId)
-                    Right(this)
-
                   case state =>
                     Left(Problem(s"For event $event, $orderId must be in state Forked or Awaiting, not: $state"))
                 }
-
-              case event: OrderOffered =>
-                val offered = previousOrder.newOfferedOrder(event)
-                for (_ <- idToOrder.checkNoDuplicate(offered.id)) yield
-                  copy(
-                    idToOrder = updatedIdToOrder + (offered.id -> offered))
 
               case event: OrderLockEvent =>
                 event.lockPaths

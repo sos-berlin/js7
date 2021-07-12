@@ -13,8 +13,8 @@ import js7.data.board.{Notice, NoticeId}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Awaiting, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Offering, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock, WaitingForNotice}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwaiting, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeAwaiting, OrderNoticePosted, OrderNoticeRead, OrderOffered, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock, WaitingForNotice}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeAwaiting, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -185,14 +185,6 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
-      "Offering" in {
-        testJson[State](Offering(Timestamp.ofEpochMilli(123)),
-          json"""{
-            "TYPE": "Offering",
-            "until": 123
-          }""")
-      }
-
       "Prompting" in {
         testJson[State](Prompting(StringValue("QUESTION")),
           json"""{
@@ -272,8 +264,6 @@ final class OrderTest extends AnyFreeSpec
       OrderMoved(Position(1)),
       OrderForked(OrderForked.Child("BRANCH", orderId | "BRANCH") :: Nil),
       OrderJoined(Outcome.Succeeded(NamedValues.rc(0))),
-      OrderOffered(OrderId("OFFERED"), until = Timestamp.ofEpochSecond(1)),
-      OrderAwaiting(OrderId("OFFERED")),
       OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))),
       OrderFailedInFork(Position(1), None),
       OrderFinished,
@@ -359,8 +349,6 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderMoved            , _                 , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderProcessingStarted, IsSuspended(false), IsAttached             ) => _.isInstanceOf[Processing]
           case (_: OrderForked           , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Forked]
-          case (_: OrderOffered          , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Processed]
-          case (_: OrderAwaiting         , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Awaiting]
           case (_: OrderFailedInFork     , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
           case (_: OrderCatched          , IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderFailed           , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Failed]
@@ -525,27 +513,6 @@ final class OrderTest extends AnyFreeSpec
         detachingAllowed[Forked] orElse
         cancelMarkedAllowed[Forked] orElse
         suspendMarkedAllowed[Forked] orElse {
-          case (_: OrderJoined, IsSuspended(false), IsDetached) => _.isInstanceOf[Processed]
-          case (_: OrderBroken, _                 , _         ) => _.isInstanceOf[Broken]
-        })
-    }
-
-    "Offering" in {
-      checkAllEvents(Order(orderId, workflowId, Offering(Timestamp("2018-11-19T12:00:00Z"))),
-        deletionMarkable[Offering] orElse
-        markable[Offering] orElse
-        cancelMarkedAllowed[Offering] orElse
-        suspendMarkedAllowed[Offering] orElse {
-          case (_: OrderBroken, _, _) => _.isInstanceOf[Broken]
-        })
-    }
-
-    "Awaiting" in {
-      checkAllEvents(Order(orderId, workflowId, Awaiting(OrderId("OFFERED"))),
-        deletionMarkable[Awaiting] orElse
-        markable[Awaiting] orElse
-        cancelMarkedAllowed[Awaiting] orElse
-        suspendMarkedAllowed[Awaiting] orElse {
           case (_: OrderJoined, IsSuspended(false), IsDetached) => _.isInstanceOf[Processed]
           case (_: OrderBroken, _                 , _         ) => _.isInstanceOf[Broken]
         })

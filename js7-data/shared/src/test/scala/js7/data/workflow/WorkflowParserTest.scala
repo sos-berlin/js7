@@ -8,13 +8,12 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.order.OrderId
 import js7.data.source.SourcePos
 import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.tester.DiffxAssertions.assertEqual
 import org.scalatest.freespec.AnyFreeSpec
@@ -372,20 +371,6 @@ final class WorkflowParserTest extends AnyFreeSpec
                 sourcePos = sourcePos(147+2, 187+2))))),
             sourcePos(29, 33)),
         ImplicitEnd(sourcePos(211+2, 212+2))))
-  }
-
-  "offer" in {
-    checkWithSourcePos("""define workflow { offer orderId = "OFFERED", timeout = 60; }""",
-      Workflow(WorkflowPath.NoId, Vector(
-        Offer(OrderId("OFFERED"), 60.s, sourcePos(18, 57)),
-        ImplicitEnd(sourcePos(59, 60)))))
-  }
-
-  "await" in {
-    checkWithSourcePos("""define workflow { await orderId = "OFFERED"; }""",
-      Workflow(WorkflowPath.NoId, Vector(
-        AwaitOrder(OrderId("OFFERED"), sourcePos(18, 43)),
-        ImplicitEnd(sourcePos(45, 46)))))
   }
 
   "try" - {

@@ -1046,9 +1046,6 @@ with MainJournalingActor[ControllerState, Event]
                 case FollowUp.AddChild(childOrder) =>
                   dependentOrderIds += childOrder.id
 
-                case FollowUp.AddOffered(offeredOrder) =>
-                  dependentOrderIds += offeredOrder.id
-
                 case FollowUp.Delete(deleteOrderId) =>
                   orderRegister -= deleteOrderId
 
@@ -1119,14 +1116,6 @@ with MainJournalingActor[ControllerState, Event]
         instruction(order.workflowPosition) match {
           case _: Execute => tryAttachOrderToAgent(freshOrReady)
           case _ =>
-        }
-
-      case _: Order.Offering =>
-        for (awaitingOrderId <- orderEventHandler.offeredToAwaitingOrder(order.id);
-             awaitingOrder <- _controllerState.idToOrder.checked(awaitingOrderId).onProblem(p => logger.warn(p.toString));
-             _ <- awaitingOrder.checkedState[Order.Awaiting].onProblem(p => logger.error(p.toString)))  // TODO OrderBroken on error?
-        {
-          //not implemented —— proceedWithOrderOnController(awaitingOrder)
         }
 
       case _ =>

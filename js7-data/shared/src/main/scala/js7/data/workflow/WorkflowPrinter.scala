@@ -11,7 +11,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Offer, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Finish, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import scala.annotation.tailrec
 
 /**
@@ -136,11 +136,6 @@ final class WorkflowPrinter(sb: StringBuilder) {
       sb ++= ": "
     }
     labeled.instruction match {
-      case AwaitOrder(orderId, _) =>
-        sb ++= "await orderId="
-        appendQuoted(orderId.string)
-        sb ++= ";\n"
-
       case ExplicitEnd(_) =>
         sb ++= "end;\n"
 
@@ -253,13 +248,6 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case Retry(_) =>
         sb ++= "retry"
         sb ++= "\n"
-
-      case Offer(orderId, timeout, _) =>
-        sb ++= s"offer orderId="
-        appendQuoted(orderId.string)
-        sb ++= ", timeout="
-        sb.append(timeout.toSeconds)
-        sb ++= ";\n"
     }
   }
 

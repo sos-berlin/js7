@@ -16,7 +16,7 @@ import scala.collection.mutable
   */
 object WorkflowAndOrderRecovering
 {
-  // TODO Some events (OrderForked, OrderFinished, OrderOffered) handled by OrderActor let AgentOrderKeeper add or delete orders. This should be done in a single transaction.
+  // TODO Some events (OrderForked, OrderFinished) handled by OrderActor let AgentOrderKeeper add or delete orders. This should be done in a single transaction.
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
   final def followUpRecoveredWorkflowsAndOrders(idToWorkflow: WorkflowId => Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
   : (Map[OrderId, Order[Order.State]], Set[OrderId]) = {
@@ -46,12 +46,6 @@ object WorkflowAndOrderRecovering
   private def snapshotToEvent(order: Order[Order.State]): Option[KeyedEvent[OrderEvent]] =
     order.ifState[Order.Forked].map(order =>
       order.id <-: OrderForked(order.state.children))
-    //.orElse(
-    //  order.ifState[Order.Offering].map(order =>
-    //    Right(FollowUp.AddOffered(order.newOfferedOrder(event)) :: Nil)))
-    //.orElse(
-    //  order.ifState[Order.Awaiting].map(order =>   TODO Missing?
-    //  )
     .orElse(
       order.ifState[Order.Deleted].map(_ =>
         order.id <-: OrderDeleted))

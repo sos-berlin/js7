@@ -505,9 +505,6 @@ with Stash
 
         case FollowUp.Delete(deleteOrderId) =>
           deleteOrder(deleteOrderId)
-
-        case o: FollowUp.AddOffered =>
-          sys.error(s"Unexpected FollowUp: $o")  // Only Controller handles this
       }
     }
   }

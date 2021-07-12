@@ -55,11 +55,6 @@ final case class Order[+S <: Order.State](
         attachedState = attachedState,
         parent = Some(id))
 
-  def newOfferedOrder(event: OrderOffered): Order[Offering] = copy(
-    event.orderId,
-    state = Offering(event.until),
-    parent = None)
-
   def workflowId: WorkflowId =
     workflowPosition.workflowId
 
@@ -154,22 +149,10 @@ final case class Order[+S <: Order.State](
             mark = cleanMark))
 
       case OrderJoined(outcome_) =>
-        check((isState[Forked] || isState[Awaiting]) && !isSuspended && isDetached,
+        check(isState[Forked] && !isSuspended && isDetached,
           copy(
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
-
-      case _: OrderOffered =>
-        check(isState[Ready] && !isSuspended && isDetached,
-          copy(
-            state = Processed,
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, Outcome.succeeded)))
-
-      case OrderAwaiting(orderId) =>
-        check(isState[Ready] && !isSuspended && isDetached,
-          copy(
-            state = Awaiting(orderId),
-            mark = cleanMark))
 
       case OrderMoved(to) =>
         check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed])
@@ -647,11 +630,6 @@ object Order
   final case class Prompting(question: Value)
   extends IsStarted
 
-  final case class Offering(until: Timestamp)
-  extends IsStarted
-
-  final case class Awaiting(offeredOrderId: OrderId) extends IsStarted
-
   type Failed = Failed.type
   final case object Failed extends IsStarted
 
@@ -679,8 +657,6 @@ object Order
     Subtype(deriveCodec[DelayedAfterError]),
     Subtype(FailedWhileFresh),
     Subtype(deriveCodec[Forked]),
-    Subtype(deriveCodec[Offering]),
-    Subtype(deriveCodec[Awaiting]),
     Subtype(WaitingForLock),
     Subtype(Failed),
     Subtype(FailedInFork),

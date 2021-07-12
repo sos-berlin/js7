@@ -4,11 +4,10 @@ import cats.syntax.show._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
-import js7.data.order.OrderId
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{AwaitOrder, Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto, Offer}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -202,26 +201,6 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         |      execute agent='AGENT', executable='B';
         |    }
         |  };
-        |}
-        |""".stripMargin)
-  }
-
-  "offer" in {
-    check(
-      Workflow(WorkflowPath.NoId, Vector(
-        Offer(OrderId("OFFERED"), 60.s))),
-      """define workflow {
-        |  offer orderId='OFFERED', timeout=60;
-        |}
-        |""".stripMargin)
-  }
-
-  "await" in {
-    check(
-      Workflow(WorkflowPath.NoId, Vector(
-        AwaitOrder(OrderId("OFFERED")))),
-      """define workflow {
-        |  await orderId='OFFERED';
         |}
         |""".stripMargin)
   }
