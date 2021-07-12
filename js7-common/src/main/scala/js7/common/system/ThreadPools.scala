@@ -66,7 +66,7 @@ object ThreadPools
 
   private val nextNumber = AtomicInt(0)
 
-  def newStandardScheduler(name: String, config: Config, closer: Closer): ExecutorScheduler = {
+  def newStandardScheduler(name: String, config: Config, closer: Closer): SchedulerService = {
     val nr = nextNumber.incrementAndGet()
     val myName = if (nr == 1) name else s"$name-#$nr"
     val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
