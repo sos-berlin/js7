@@ -33,7 +33,10 @@ sealed trait Value
   def asStringValue: Checked[StringValue] =
     Left(UnexpectedValueTypeProblem(StringValue, this))
 
-  def asNumber: Checked[BigDecimal] =
+  final def asLong: Checked[Long] =
+    asNumber.map(_.toLong)
+
+  final def asNumber: Checked[BigDecimal] =
     asNumberValue.map(_.number)
 
   def toNumberValue: Checked[NumberValue] =
@@ -56,6 +59,9 @@ sealed trait Value
 
   def asListValue: Checked[ListValue] =
     Left(UnexpectedValueTypeProblem(ListValue, this))
+
+  def asObject: Checked[Map[String, Value]] =
+    asObjectValue.map(_.nameToValue)
 
   def asObjectValue: Checked[ObjectValue] =
     Left(UnexpectedValueTypeProblem(ObjectValue, this))

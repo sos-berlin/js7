@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.InstructionExecutor.ifProcessedThenOrderMoved
 import js7.data.order.OrderEvent.{OrderAwaiting, OrderJoined, OrderStarted}

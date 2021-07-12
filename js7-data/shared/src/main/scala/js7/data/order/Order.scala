@@ -11,6 +11,7 @@ import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
+import js7.data.board.NoticeId
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.JobKey
 import js7.data.order.Order._
@@ -171,8 +172,8 @@ final case class Order[+S <: Order.State](
             mark = cleanMark))
 
       case OrderMoved(to) =>
-        check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed]) &&
-          (isDetached || isAttached),
+        check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed])
+          && (isDetached || isAttached),
           withPosition(to).copy(
             state = if (isState[Fresh]) state else Ready))
 
@@ -357,6 +358,20 @@ final case class Order[+S <: Order.State](
         check(isDetached && isState[Ready],
           copy(
             state = WaitingForLock))
+
+      case _: OrderNoticePosted =>
+        check(isDetached && isState[Ready] && !isSuspended,
+          this)
+
+      case OrderNoticeAwaiting(noticeId) =>
+        check(isDetached && isState[Ready] && !isSuspended,
+          copy(
+            state = WaitingForNotice(noticeId)))
+
+      case OrderNoticeRead =>
+        check(isDetached && (isState[Ready] || isState[WaitingForNotice]) && !isSuspended,
+          copy(
+            state = Ready))
 
       case OrderPrompted(question) =>
         check(isDetached && isState[Ready],
@@ -624,6 +639,9 @@ object Order
 
   type WaitingForLock = WaitingForLock.type
   case object WaitingForLock
+  extends IsStarted
+
+  final case class WaitingForNotice(noticeId: NoticeId)
   extends IsStarted
 
   final case class Prompting(question: Value)

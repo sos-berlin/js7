@@ -11,6 +11,7 @@ import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
+import js7.data.board.{Notice, NoticeId}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.Event
 import js7.data.lock.LockPath
@@ -129,6 +130,18 @@ object OrderEvent
 
   final case class OrderJoined(outcome: Outcome)
   extends OrderActorEvent
+
+  sealed trait OrderNoticeEvent extends OrderActorEvent
+
+  final case class OrderNoticePosted(notice: Notice)
+  extends OrderNoticeEvent
+
+  final case class OrderNoticeAwaiting(noticeId: NoticeId)
+  extends OrderNoticeEvent
+
+  type OrderNoticeRead = OrderNoticeRead.type
+  case object OrderNoticeRead
+  extends OrderNoticeEvent
 
   final case class OrderOffered(orderId: OrderId, until: Timestamp)
   extends OrderActorEvent
@@ -361,6 +374,9 @@ object OrderEvent
     Subtype(deriveCodec[OrderLockAcquired]),
     Subtype(deriveCodec[OrderLockQueued]),
     Subtype(deriveCodec[OrderLockReleased]),
+    Subtype(deriveCodec[OrderNoticePosted]),
+    Subtype(deriveCodec[OrderNoticeAwaiting]),
+    Subtype(OrderNoticeRead),
     Subtype(deriveCodec[OrderPrompted]),
     Subtype(deriveCodec[OrderPromptAnswered]))
 }

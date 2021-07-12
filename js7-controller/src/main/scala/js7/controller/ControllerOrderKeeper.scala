@@ -44,6 +44,8 @@ import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrd
 import js7.data.agent.AgentRefState.{Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
+import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.{BoardPath, Notice, NoticeId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler}
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -58,7 +60,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -110,6 +112,19 @@ with MainJournalingActor[ControllerState, Event]
   private val deleteOrderDelay = config.getDuration("js7.order.delete-delay").toFiniteDuration
   private val testAddOrderDelay = config.optionAs[FiniteDuration]("js7.TEST-ONLY.add-order-delay").fold(Task.unit)(Task.sleep)
   private var journalTerminated = false
+
+  private object notices {
+    private val noticeToSchedule = mutable.Map.empty[(BoardPath, NoticeId), Cancelable]
+
+    def schedule(boardPath: BoardPath, notice: Notice): Unit =
+      noticeToSchedule += boardPath -> notice.id ->
+        alarmClock.scheduleAt(notice.endOfLife) {
+          self ! Internal.NoticeIsDue(boardPath, notice.id)
+        }
+
+    def deleteSchedule(boardPath: BoardPath, noticeId: NoticeId): Unit =
+      noticeToSchedule.remove(boardPath -> noticeId).foreach(_.cancel())
+  }
 
   private object shutdown {
     var delayUntil = now
@@ -288,6 +303,13 @@ with MainJournalingActor[ControllerState, Event]
       for (agentRef <- controllerState.pathToAgentRefState.values.map(_.agentRef)) {
         val agentRefState = controllerState.pathToAgentRefState.getOrElse(agentRef.path, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
+      }
+
+      for (
+        boardState <- controllerState.pathToBoardState.values;
+        notice <- boardState.notices)
+      {
+        notices.schedule(boardState.path, notice)
       }
 
       persistedEventId = controllerState.eventId
@@ -523,6 +545,9 @@ with MainJournalingActor[ControllerState, Event]
     case Internal.OrderIsDue(orderId) =>
       proceedWithOrders(orderId :: Nil)
       orderQueue.enqueue(orderId :: Nil)
+
+    case Internal.NoticeIsDue(boardPath, noticeId) =>
+      persistMultiple((boardPath <-: NoticeDeleted(noticeId)) :: Nil)(handleEvents)
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = now + config.getDuration("js7.web.server.delay-shutdown").toFiniteDuration
@@ -914,6 +939,9 @@ with MainJournalingActor[ControllerState, Event]
           itemKeys += event.key
           handleItemEvent(event)
 
+        case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
+          notices.deleteSchedule(boardPath, noticeId)
+
         case _ =>
           _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
       }
@@ -1005,11 +1033,11 @@ with MainJournalingActor[ControllerState, Event]
       case _ =>
         _controllerState.idToOrder.get(orderId) match {
           case None =>
-            logger.error(s"Unknown OrderId in event ${orderId <-: event}")
+            logger.error(s"Unknown OrderId in event $keyedEvent")
             Nil
 
           case Some(order) =>
-            val checkedFollowUps = orderEventHandler.handleEvent(orderId <-: event)
+            val checkedFollowUps = orderEventHandler.handleEvent(keyedEvent)
             val dependentOrderIds = mutable.Buffer.empty[OrderId]
             for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
               followUps foreach {
@@ -1026,6 +1054,15 @@ with MainJournalingActor[ControllerState, Event]
 
                 case _: FollowUp.Processed =>
               }
+            }
+
+            event match {
+              case OrderNoticePosted(notice) =>
+                for (boardPath <- _controllerState.workflowPositionToBoardPath(order.workflowPosition)) {
+                  notices.deleteSchedule(boardPath, notice.id)
+                  notices.schedule(boardPath, notice)
+                }
+              case _ =>
             }
 
             dependentOrderIds.toSeq ++
@@ -1223,6 +1260,7 @@ private[controller] object ControllerOrderKeeper
     final case class JournalIsReady(journalHeader: Try[JournalHeader])
     case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
+    final case class NoticeIsDue(boardPath: BoardPath, noticeId: NoticeId) extends DeadLetterSuppression
     final case class Activated(recovered: Try[Unit])
     final case class ClusterModuleTerminatedUnexpectedly(tried: Try[Checked[Completed]]) extends DeadLetterSuppression
     final case class Ready(outcome: Checked[Completed])

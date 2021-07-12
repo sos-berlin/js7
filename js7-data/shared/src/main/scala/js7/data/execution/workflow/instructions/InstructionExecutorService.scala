@@ -7,11 +7,13 @@ import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.workflow.Instruction
-import js7.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Finish, Fork, Gap, If, LockInstruction, Offer, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{AwaitOrder, End, Execute, Fail, Finish, Fork, Gap, If, LockInstruction, Offer, PostNotice, Prompt, ReadNotice, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 
 final class InstructionExecutorService(clock: WallClock)
 {
+  private val postNoticeExecutor = new PostNoticeExecutor(clock)
+
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     instr match {
       case _: AwaitOrder => AwaitOrderExecutor
@@ -25,6 +27,8 @@ final class InstructionExecutorService(clock: WallClock)
       case _: TryInstruction => TryExecutor
       case _: LockInstruction => LockExecutor
       case _: Offer => OfferExecutor
+      case _: PostNotice => postNoticeExecutor
+      case _: ReadNotice => ReadNoticeExecutor
       case _: Prompt => PromptExecutor
       case _: Retry => new RetryExecutor(() => Timestamp.now)
     }

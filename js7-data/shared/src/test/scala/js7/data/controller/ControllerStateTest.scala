@@ -11,6 +11,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
+import js7.data.board.{AwaitingNotice, Board, BoardPath, BoardState, Notice, NoticeId}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -27,6 +28,7 @@ import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, VanishedAck}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.Position
@@ -43,7 +45,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 final class ControllerStateTest extends AsyncFreeSpec
 {
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 14)
+    assert(controllerState.estimatedSnapshotSize == 15)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -75,6 +77,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         ) ++
           controllerState.pathToAgentRefState.values ++
           controllerState.pathToLockState.values ++
+          Seq(boardState) ++
           Seq(
             UnsignedSimpleItemAdded(FileWatch(
               fileWatch.path,
@@ -137,11 +140,11 @@ final class ControllerStateTest extends AsyncFreeSpec
   }
 
   "fromIterator is the reverse of toSnapshotObservable + EventId" in {
-    controllerState.toSnapshotObservable.toListL
-      .flatMap(snapshotObjects =>
-        ControllerState.fromObservable(Observable.fromIterable(snapshotObjects)))
-      .map(expectedState => assertEqual(controllerState, expectedState))
-      .runToFuture
+    val task = for {
+      elems <- controllerState.toSnapshotObservable.toListL
+      expectedState <- ControllerState.fromObservable(Observable.fromIterable(elems))
+    } yield assertEqual(controllerState, expectedState)
+    task.runToFuture
   }
 
   private val expectedSnapshotJsonArray = json"""
@@ -198,6 +201,24 @@ final class ControllerStateTest extends AsyncFreeSpec
           "TYPE": "Available"
         },
         "queue": []
+      }, {
+        "TYPE": "BoardState",
+        "board": {
+          "path": "BOARD",
+          "toNotice": "$$orderId",
+          "readingOrderToNoticeId": "$$orderId",
+          "endOfLife": "$$epochMillis + 24 * 3600 * 1000",
+          "itemRevision": 7
+        },
+        "notices": [
+          {
+            "id": "NOTICE-1",
+            "endOfLife": 10086400000
+          }, {
+            "id": "NOTICE-2",
+            "awaitingOrderIds": [ "ORDER" ]
+          }
+        ]
       }, {
         "TYPE": "UnsignedSimpleItemAdded",
         "item": {
@@ -309,6 +330,18 @@ object ControllerStateTest
   private lazy val signedJobResource = itemSigner.sign(jobResource)
   private val agentRef = AgentRef(AgentPath("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0)))
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
+  private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
+  private val awaitingNotice = AwaitingNotice(NoticeId("NOTICE-2"), Seq(OrderId("ORDER")))
+  private val boardState = BoardState(
+    Board(
+      BoardPath("BOARD"),
+      toNotice = expr("$orderId"),
+      readingOrderToNoticeId = expr("$orderId"),
+      endOfLife = expr("$epochMillis + 24*3600*1000"),
+      itemRevision = Some(ItemRevision(7))),
+    Map(
+      notice.id -> notice,
+      awaitingNotice.id -> awaitingNotice))
   private val versionId = VersionId("1.0")
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction(lock.path, None, Workflow.of(
@@ -341,6 +374,8 @@ object ControllerStateTest
         agentRef, None, None, AgentRefState.Reset, EventId(7))),
     Map(
       lock.path -> LockState(lock)),
+    Map(
+      boardState.path -> boardState),
     AllOrderWatchesState(Map(
       fileWatch.path -> OrderWatchState(
         fileWatch,
@@ -358,5 +393,4 @@ object ControllerStateTest
     (Order(orderId, workflow.id /: Position(1), Order.Fresh,
       externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))
     ) :: Nil).toKeyedMap(_.id))
-
 }

@@ -19,9 +19,10 @@ final class AwaitOrderExecutorTest extends AnyFreeSpec {
   "test" in {
     val stateView = StateView.forTest(
       isAgent = false,
-      idToOrder = Map(
-        awaitingOrder.id -> awaitingOrder,
-        offeredOrder.id -> offeredOrder))
+      idToOrder = {
+        case awaitingOrder.id => awaitingOrder
+        case offeredOrder.id => offeredOrder
+      })
 
     val service = new InstructionExecutorService(WallClock)
     assert(service.toEvents(AwaitOrder(offeredOrder.id), awaitingOrder, stateView) ==

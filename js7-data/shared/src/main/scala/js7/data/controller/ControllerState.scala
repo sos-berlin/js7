@@ -12,6 +12,8 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
+import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.{Board, BoardEvent, BoardPath, BoardState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
@@ -26,7 +28,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeAwaiting, OrderNoticeEvent, OrderNoticePosted, OrderNoticeRead, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.value.Value
@@ -44,6 +46,7 @@ final case class ControllerState(
   controllerMetaState: ControllerMetaState,
   pathToAgentRefState: Map[AgentPath, AgentRefState],
   pathToLockState: Map[LockPath, LockState],
+  pathToBoardState: Map[BoardPath, BoardState],
   allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
@@ -67,6 +70,7 @@ with JournaledState[ControllerState]
     repo.estimatedEventCount +
     pathToAgentRefState.size +
     pathToLockState.size +
+    pathToBoardState.values.size +
     allOrderWatchesState.estimatedSnapshotSize +
     pathToSignedSimpleItem.size +
     itemToAgentToAttachedState.values.view.map(_.size).sum +
@@ -80,6 +84,7 @@ with JournaledState[ControllerState]
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
       Observable.fromIterable(pathToAgentRefState.values),
       Observable.fromIterable(pathToLockState.values),
+      Observable.fromIterable(pathToBoardState.values),
       allOrderWatchesState.toSnapshot/*TODO Separate Item from its state?*/,
       Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
@@ -134,6 +139,10 @@ with JournaledState[ControllerState]
                 case orderWatch: OrderWatch =>
                   for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
                     copy(allOrderWatchesState = o)
+
+                  case board: Board =>
+                    for (o <- pathToBoardState.insert(board.path -> BoardState(board))) yield
+                      copy(pathToBoardState = o)
               }
 
             case UnsignedSimpleItemChanged(item) =>
@@ -291,6 +300,30 @@ with JournaledState[ControllerState]
                       idToOrder = updatedIdToOrder,
                       pathToLockState = pathToLockState ++ (lockStates.map(o => o.lock.path -> o))))
 
+              case event: OrderNoticeEvent =>
+                orderIdToBoardState(orderId)
+                  .flatMap { boardState =>
+                    val boardPath = boardState.path
+                    event match {
+                      case OrderNoticePosted(notice) =>
+                        Right(copy(
+                          idToOrder = updatedIdToOrder,
+                          pathToBoardState = pathToBoardState +
+                            (boardPath -> boardState.addNotice(notice))))
+
+                      case OrderNoticeAwaiting(noticeId) =>
+                        boardState
+                          .addWaitingOrder(orderId, noticeId)
+                          .map(boardState => copy(
+                            idToOrder = updatedIdToOrder,
+                            pathToBoardState = pathToBoardState + (boardPath -> boardState)))
+
+                      case OrderNoticeRead =>
+                        Right(copy(
+                          idToOrder = updatedIdToOrder))
+                    }
+                  }
+
               case OrderDeletionMarked =>
                 previousOrder.externalOrderKey match {
                   case None =>
@@ -321,6 +354,10 @@ with JournaledState[ControllerState]
         case _: OrderStdWritten =>
           Right(this)
       }
+
+    case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
+      for (boardState <- pathToBoardState.checked(boardPath)) yield copy(
+        pathToBoardState = pathToBoardState + (boardPath -> boardState.deleteNotice(noticeId)))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
       allOrderWatchesState
@@ -494,6 +531,10 @@ with JournaledState[ControllerState]
 
       def apply(workflowId: WorkflowId): Workflow =
         repo.idToSigned[Workflow](workflowId).orThrow.value
+
+      override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
+        repo.idToSigned[Workflow](workflowId)
+          .fold(_ => default(workflowId), _.value)
     }
 
   def keyTo[I <: SignableSimpleItem](I: SignableSimpleItem.Companion[I]): MapView[I.Key, I] =
@@ -543,6 +584,7 @@ with JournaledState[ControllerState]
       case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
+      case path: BoardPath => pathToBoard.get(path)
       case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
     }
 
@@ -558,6 +600,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     ControllerMetaState.Undefined,
     Map.empty,
     Map.empty,
+    Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty,
@@ -570,7 +613,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   def newBuilder() = new ControllerStateBuilder
 
   protected val InventoryItems = Seq[InventoryItem.Companion_](
-    AgentRef, Lock, FileWatch, JobResource, Workflow)
+    AgentRef, Lock, Board, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec("ControllerState.Snapshot",
@@ -581,6 +624,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype(deriveCodec[ControllerMetaState]),
       Subtype[AgentRefState],
       Subtype[LockState],
+      Subtype[BoardState],
       Subtype[VersionedEvent],  // These events describe complete objects
       Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
       Subtype[OrderWatchState.Snapshot],
@@ -595,7 +639,8 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],
       KeyedSubtype[OrderWatchEvent],
-      KeyedSubtype[OrderEvent])
+      KeyedSubtype[OrderEvent],
+      KeyedSubtype[BoardEvent])
 
   object implicits {
     implicit val snapshotObjectJsonCodec = ControllerState.snapshotObjectJsonCodec

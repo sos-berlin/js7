@@ -20,6 +20,8 @@ object Instructions
     Subtype[If],
     Subtype[IfFailedGoto],
     Subtype[Prompt],
+    Subtype[PostNotice],
+    Subtype[ReadNotice],
     Subtype[Retry],
     Subtype.named[TryInstruction]("Try"),
     Subtype.named[LockInstruction]("Lock"),

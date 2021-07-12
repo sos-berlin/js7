@@ -3,12 +3,16 @@ package js7.data.controller
 import js7.base.crypt.Signed
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
+import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.{Board, BoardPath, BoardState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
 import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
+import js7.data.execution.workflow.context.StateView
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -16,37 +20,59 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderOffered, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeAwaiting, OrderNoticeEvent, OrderNoticePosted, OrderNoticeRead, OrderOffered, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
-import js7.data.workflow.Workflow
+import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
 final class ControllerStateBuilder
 extends JournaledStateBuilder[ControllerState]
+with StateView
 {
   protected val S = ControllerState
 
   private var standards: JournaledState.Standards = JournaledState.Standards.empty
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
-  private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
-  private val pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
-  private val pathToLockState = mutable.Map.empty[LockPath, LockState]
+  private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
+  private val _pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
+  private val _pathToLockState = mutable.Map.empty[LockPath, LockState]
+  private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
   private var allOrderWatchesState = AllOrderWatchesState.empty
   private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
 
+  val isAgent = false
+  val idToOrder = _idToOrder
+
+  lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
+    new PartialFunction[WorkflowId, Workflow] {
+      def isDefinedAt(workflowId: WorkflowId) =
+        repo.idToSigned[Workflow](workflowId).isRight
+
+      def apply(workflowId: WorkflowId): Workflow =
+        repo.idToSigned[Workflow](workflowId).orThrow.value
+
+      override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
+        repo.idToSigned[Workflow](workflowId)
+          .fold(_ => default(workflowId), _.value)
+    }
+
+  val pathToLockState = _pathToLockState
+  val pathToBoardState = _pathToBoardState
+  def controllerId = controllerMetaState.controllerId
+
   protected def onInitializeState(state: ControllerState): Unit = {
     standards = state.standards
     controllerMetaState = state.controllerMetaState
     repo = state.repo
-    idToOrder.clear()
-    idToOrder ++= state.idToOrder
-    pathToAgentRefState.clear()
-    pathToAgentRefState ++= state.pathToAgentRefState
-    pathToLockState ++= state.pathToLockState
+    _idToOrder.clear()
+    _idToOrder ++= state.idToOrder
+    _pathToAgentRefState.clear()
+    _pathToAgentRefState ++= state.pathToAgentRefState
+    _pathToLockState ++= state.pathToLockState
     allOrderWatchesState = state.allOrderWatchesState
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     itemToAgentToAttachedState ++= state.itemToAgentToAttachedState
@@ -54,16 +80,19 @@ extends JournaledStateBuilder[ControllerState]
 
   protected def onAddSnapshotObject = {
     case order: Order[Order.State] =>
-      idToOrder.insert(order.id -> order)
+      _idToOrder.insert(order.id -> order)
 
     case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
-      pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
+      _pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
 
     case lockState: LockState =>
-      pathToLockState.insert(lockState.lock.path -> lockState)
+      _pathToLockState.insert(lockState.lock.path -> lockState)
+
+    case boardState: BoardState =>
+      _pathToBoardState.insert(boardState.path -> boardState)
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
@@ -92,9 +121,9 @@ extends JournaledStateBuilder[ControllerState]
   }
 
   override protected def onOnAllSnapshotsAdded() = {
-    val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], idToOrder.toMap)
-    idToOrder ++= added
-    idToOrder --= deleted
+    val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], _idToOrder.toMap)
+    _idToOrder ++= added
+    _idToOrder --= deleted
     allOrderWatchesState = allOrderWatchesState.onEndOfRecovery.orThrow
   }
 
@@ -111,34 +140,45 @@ extends JournaledStateBuilder[ControllerState]
     case Stamped(_, _, KeyedEvent(_: NoKey, event: VersionedEvent)) =>
       repo = repo.applyEvent(event).orThrow
 
-    case Stamped(_, _, keyedEvent @ KeyedEvent(_: NoKey, event: InventoryItemEvent)) =>
+    case Stamped(_, _, KeyedEvent(_: NoKey, event: InventoryItemEvent)) =>
       event match {
         case event: UnsignedSimpleItemEvent =>
           event match {
             case UnsignedSimpleItemAdded(item) =>
               item match {
                 case lock: Lock =>
-                  pathToLockState.insert(lock.path -> LockState(lock))
+                  _pathToLockState.insert(lock.path -> LockState(lock))
 
                 case agentRef: AgentRef =>
-                  pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
+                  _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
+
+                case board: Board =>
+                  _pathToBoardState.insert(board.path -> BoardState(board))
               }
 
             case UnsignedSimpleItemChanged(item) =>
               item match {
                 case lock: Lock =>
-                  pathToLockState(lock.path) = pathToLockState(lock.path).copy(
+                  _pathToLockState(lock.path) = _pathToLockState(lock.path).copy(
                     lock = lock)
 
                 case agentRef: AgentRef =>
-                  pathToAgentRefState(agentRef.path) = pathToAgentRefState(agentRef.path).copy(
+                  _pathToAgentRefState(agentRef.path) = _pathToAgentRefState(agentRef.path).copy(
                     agentRef = agentRef)
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
+
+                case board: Board =>
+                  _pathToBoardState += board.path ->
+                    _pathToBoardState
+                      .checked(board.path)
+                      .map(boardState => boardState.copy(
+                        board = board))
+                      .orThrow
               }
           }
 
@@ -184,25 +224,25 @@ extends JournaledStateBuilder[ControllerState]
                   allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)
 
                 case path: LockPath =>
-                  pathToLockState -= path
+                  _pathToLockState -= path
 
                 case agentPath: AgentPath =>
-                  pathToAgentRefState -= agentPath
+                  _pathToAgentRefState -= agentPath
               }
           }
       }
 
     case Stamped(_, _, KeyedEvent(name: AgentPath, event: AgentRefStateEvent)) =>
-      pathToAgentRefState += name -> pathToAgentRefState(name).applyEvent(event).orThrow
+      _pathToAgentRefState += name -> _pathToAgentRefState(name).applyEvent(event).orThrow
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
         case orderAdded: OrderAdded =>
-          idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, orderAdded))
+          _idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, orderAdded))
           allOrderWatchesState = allOrderWatchesState.onOrderAdded(orderId <-: orderAdded).orThrow
 
         case orderDeleted: OrderDeleted =>
-          for (order <- idToOrder.remove(orderId)) {
+          for (order <- _idToOrder.remove(orderId)) {
             for (externalOrderKey <- order.externalOrderKey)
               allOrderWatchesState = allOrderWatchesState
                 .onOrderEvent(externalOrderKey, orderId <-: orderDeleted)
@@ -211,14 +251,33 @@ extends JournaledStateBuilder[ControllerState]
 
         case event: OrderLockEvent =>
           for (lockPath <- event.lockPaths) {
-            pathToLockState(lockPath) = pathToLockState(lockPath).applyEvent(orderId <-: event).orThrow
+            _pathToLockState(lockPath) = _pathToLockState(lockPath).applyEvent(orderId <-: event).orThrow
           }
-          idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
+          _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
+
+        case event: OrderNoticeEvent =>
+          val boardState = orderIdToBoardState(orderId).orThrow
+          val boardPath = boardState.path
+          event match {
+            case OrderNoticePosted(notice) =>
+              _pathToBoardState += boardPath ->
+                boardState.addNotice(notice)
+
+            case OrderNoticeAwaiting(noticeId) =>
+              pathToBoardState += boardPath -> boardState.addWaitingOrder(orderId, noticeId).orThrow
+
+            case OrderNoticeRead =>
+              //pathToBoardState += boardPath ->
+              //  pathToBoardState.getOrElse(boardPath, BoardState.empty)
+              //    .addNotice(notice)
+          }
+
+          _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
 
         case event: OrderCoreEvent =>
           handleForkJoinEvent(orderId, event)
-          val order = idToOrder(orderId)
-          idToOrder(orderId) = order.applyEvent(event).orThrow
+          val order = _idToOrder(orderId)
+          _idToOrder(orderId) = order.applyEvent(event).orThrow
 
           for (externalOrderKey <- order.externalOrderKey) {
             allOrderWatchesState = allOrderWatchesState
@@ -231,6 +290,11 @@ extends JournaledStateBuilder[ControllerState]
 
     case Stamped(_, _, KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent)) =>
       allOrderWatchesState = allOrderWatchesState.onOrderWatchEvent(orderWatchPath <-: event).orThrow
+
+    case Stamped(_, _, KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId))) =>
+      for (boardState <- _pathToBoardState.get(boardPath)) {
+        _pathToBoardState(boardState.path) = boardState.deleteNotice(noticeId)
+      }
 
     case Stamped(_, _, KeyedEvent(_, _: ControllerShutDown)) =>
     case Stamped(_, _, KeyedEvent(_, ControllerTestEvent)) =>
@@ -253,14 +317,14 @@ extends JournaledStateBuilder[ControllerState]
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
     event match {
       case event: OrderForked =>
-        for (childOrder <- idToOrder(orderId).newForkedOrders(event)) {
-          idToOrder += childOrder.id -> childOrder
+        for (childOrder <- _idToOrder(orderId).newForkedOrders(event)) {
+          _idToOrder += childOrder.id -> childOrder
         }
 
       case event: OrderJoined =>
-        idToOrder(orderId).state match {
+        _idToOrder(orderId).state match {
           case forked: Order.Forked =>
-            idToOrder --= forked.childOrderIds
+            _idToOrder --= forked.childOrderIds
 
           case awaiting: Order.Awaiting =>
             // Offered order is being kept ???
@@ -271,9 +335,9 @@ extends JournaledStateBuilder[ControllerState]
         }
 
       case event: OrderOffered =>
-        val offered = idToOrder(orderId).newOfferedOrder(event)
-        idToOrder += offered.id -> offered
-        idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
+        val offered = _idToOrder(orderId).newOfferedOrder(event)
+        _idToOrder += offered.id -> offered
+        _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
 
       case _ =>
     }
@@ -283,14 +347,15 @@ extends JournaledStateBuilder[ControllerState]
       eventId = eventId,
       standards,
       controllerMetaState,
-      pathToAgentRefState.toMap,
-      pathToLockState.toMap,
+      _pathToAgentRefState.toMap,
+      _pathToLockState.toMap,
+      _pathToBoardState.toMap,
       allOrderWatchesState,
       repo,
       pathToSignedSimpleItem.toMap,
       itemToAgentToAttachedState.toMap,
       deletionMarkedItems.toSet,
-      idToOrder.toMap)
+      _idToOrder.toMap)
 
   def journalState = standards.journalState
 

@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
+import js7.data.board.{Notice, NoticeId}
 import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
@@ -511,6 +512,37 @@ final class OrderEventTest extends AnyFreeSpec
       {
         "TYPE": "OrderLockReleased",
         "lockPath": "LOCK"
+      }""")
+  }
+
+  "OrderNoticePosted" in {
+    check(OrderNoticePosted(Notice(
+      NoticeId("NOTICE"),
+      endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
+      json"""
+      {
+        "TYPE": "OrderNoticePosted",
+        "notice": {
+          "id": "NOTICE",
+          "endOfLife": 3600000
+        }
+      }""")
+  }
+
+  "OrderNoticeAwaiting" in {
+    check(OrderNoticeAwaiting(NoticeId("NOTICE")),
+      json"""
+      {
+        "TYPE": "OrderNoticeAwaiting",
+        "noticeId": "NOTICE"
+      }""")
+  }
+
+  "OrderNoticeRead" in {
+    check(OrderNoticeRead,
+      json"""
+      {
+        "TYPE": "OrderNoticeRead"
       }""")
   }
 

@@ -205,6 +205,7 @@ with JournaledState[AgentState]
     }
 
   def pathToLockState = Map.empty
+  def pathToBoardState = Map.empty
 }
 
 object AgentState extends JournaledState.Companion[AgentState]
