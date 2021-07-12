@@ -24,6 +24,7 @@ import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
@@ -452,8 +453,9 @@ object RunningController
           val terminationPromise = Promise[ControllerTermination]()
           val actor = actorSystem.actorOf(
             Props {
-              new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode, controllerConfiguration,
-                testEventPublisher)
+              new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
+                injector.instance[AlarmClock],
+                controllerConfiguration, testEventPublisher)
             },
             "ControllerOrderKeeper")
           actor ! ControllerOrderKeeper.Input.Start(recovered)

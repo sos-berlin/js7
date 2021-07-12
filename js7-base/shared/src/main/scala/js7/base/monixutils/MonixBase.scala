@@ -280,14 +280,6 @@ object MonixBase
 
     implicit final class RichScheduler(private val underlying: Scheduler) extends AnyVal
     {
-      def scheduleFor(timestamp: Timestamp)(action: => Unit): Cancelable = {
-        val nw = Timestamp.ofEpochMilli(underlying.clockRealTime(MILLISECONDS))
-        Try(if (timestamp <= nw) Duration.Zero else timestamp - nw) match {
-          case Success(delay) => underlying.scheduleOnce(delay)(action)
-          case Failure(_) => Cancelable.empty  // More than 292 years
-        }
-      }
-
       def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable = {
         val cancelable = SerialCancelable()
         val iterator = durations.iterator

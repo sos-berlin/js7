@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
+import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.TryExecutorTest._
@@ -26,6 +27,8 @@ final class TryExecutorTest extends AnyFreeSpec
     isAgent = false,
     idToOrder = Map(AOrder.id -> AOrder))
 
+  private lazy val executorService = new InstructionExecutorService(WallClock)
+
   "JSON" - {
     "try" in {
       testJson(TryExecutor.nextPosition(tryInstruction, AOrder, stateView).orThrow,
@@ -39,12 +42,12 @@ final class TryExecutorTest extends AnyFreeSpec
   }
 
   "nextPosition" in {
-    assert(InstructionExecutor.nextPosition(tryInstruction, AOrder, stateView) ==
+    assert(executorService.nextPosition(tryInstruction, AOrder, stateView) ==
       Right(Some(Position(7) / try_(0) % 0)))
   }
 
   "toEvents" in {
-    assert(InstructionExecutor.toEvents(tryInstruction, AOrder, stateView) ==
+    assert(executorService.toEvents(tryInstruction, AOrder, stateView) ==
       Right(Seq(AOrder.id <-: OrderMoved(Position(7) / try_(0) % 0))))
   }
 }

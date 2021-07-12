@@ -20,8 +20,9 @@ import js7.base.log.Logger.ops._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
+import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
@@ -73,6 +74,8 @@ with Stash
   import conf.akkaAskTimeout
   import context.{actorOf, watch}
 
+  private val alarmClock = AlarmClock(
+    conf.config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration)
   private val ownAgentPath = persistence.currentState.meta.agentPath
   private val controllerId = persistence.currentState.meta.controllerId
 
@@ -515,7 +518,8 @@ with Stash
     if (order.isAttached) {
       order.maybeDelayedUntil match {
         case Some(until) if Timestamp.now < until =>
-          orderEntry.at(until) {  // TODO Schedule only the next order ?
+          // TODO Schedule only the next order ?
+          orderEntry.timer := alarmClock.scheduleAt(until) {
             self ! Internal.Due(orderId)
           }
 

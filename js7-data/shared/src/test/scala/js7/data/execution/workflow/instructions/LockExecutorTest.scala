@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.LockExecutorTest._
@@ -28,23 +29,25 @@ final class LockExecutorTest extends AnyFreeSpec {
       occupiedLockPath ->
         LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT")))))
 
+  private lazy val executorService = new InstructionExecutorService(WallClock)
+
   "Lock acquired" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockOrder.position), freeLockOrder, stateView) ==
+    assert(executorService.toEvents(workflow.instruction(freeLockOrder.position), freeLockOrder, stateView) ==
       Right(Seq(freeLockOrder.id <-: OrderLockAcquired(freeLockPath))))
   }
 
   "Lock released" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
+    assert(executorService.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
       Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockPath))))
   }
 
   "Lock can not acquired and is queued" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(occupiedLockOrder.position), occupiedLockOrder, stateView) ==
+    assert(executorService.toEvents(workflow.instruction(occupiedLockOrder.position), occupiedLockOrder, stateView) ==
       Right(Seq(occupiedLockOrder.id <-: OrderLockQueued(occupiedLockPath, None))))
   }
 
   "Lock released and waiting order continues" in {
-    assert(InstructionExecutor.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
+    assert(executorService.toEvents(workflow.instruction(freeLockedOrder.position), freeLockedOrder, stateView) ==
       Right(Seq(freeLockOrder.id <-: OrderLockReleased(freeLockPath))))
   }
 }

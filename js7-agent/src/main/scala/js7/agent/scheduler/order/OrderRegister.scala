@@ -2,10 +2,8 @@ package js7.agent.scheduler.order
 
 import akka.actor.ActorRef
 import js7.agent.scheduler.order.OrderRegister._
-import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.core.common.ActorRegister
 import js7.data.event.KeyedEvent
@@ -13,7 +11,7 @@ import js7.data.order.OrderEvent.OrderDetached
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import monix.execution.{Cancelable, Scheduler}
+import monix.execution.cancelables.SerialCancelable
 import scala.concurrent.Promise
 
 /**
@@ -40,7 +38,7 @@ private[order] final class OrderRegister extends ActorRegister[OrderId, OrderEnt
 
   override def remove(orderId: OrderId): Option[OrderEntry] =
     for (orderEntry <- super.remove(orderId)) yield {
-      orderEntry.timer foreach (_.cancel())
+      orderEntry.timer.cancel()
       orderEntry
     }
 
@@ -56,7 +54,7 @@ private[order] object OrderRegister
     val workflow: Workflow,
     val actor: ActorRef)
   {
-    @volatile private[OrderRegister] var timer: Option[Cancelable] = None
+    val timer = SerialCancelable()
     var detachResponses: List[Promise[Unit]] = Nil
 
     def isDetaching = detachResponses.nonEmpty
@@ -72,14 +70,5 @@ private[order] object OrderRegister
       workflow.checkedWorkflowJob(order.position) mapProblem (_ withKey order.id)
 
     def instruction = workflow.instruction(order.position)
-
-    def at(timestamp: Timestamp)(body: => Unit)(implicit scheduler: Scheduler): Unit = {
-      val t = scheduler.scheduleFor(timestamp) {  // TODO What to do when clock is adjusted?
-        timer = None
-        body
-      }
-      timer foreach (_.cancel())
-      timer = Some(t)
-    }
   }
 }

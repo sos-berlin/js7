@@ -10,6 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, KeyedEvent}
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
@@ -29,6 +30,7 @@ import scala.language.implicitConversions
 final case class ControllerStateExecutor private(
   keyedEvents: Seq[AnyKeyedEvent],
   controllerState: ControllerState)
+  (implicit instructionExecutorService: InstructionExecutorService)
 {
   import ControllerStateExecutor.convertImplicitly
   import controllerState.{controllerId, pathToJobResource}
@@ -306,14 +308,14 @@ final case class ControllerStateExecutor private(
 
 object ControllerStateExecutor
 {
-  def apply(controllerState: ControllerState): ControllerStateExecutor =
-    new ControllerStateExecutor(Nil, controllerState)
+  def apply(controllerState: ControllerState)(implicit ies: InstructionExecutorService)
+  : ControllerStateExecutor =
+    new ControllerStateExecutor(Nil, controllerState)(ies)
 
-  implicit def convertImplicitly(controllerState: ControllerState): ControllerStateExecutor =
+  implicit def convertImplicitly(controllerState: ControllerState)
+    (implicit ies: InstructionExecutorService)
+  : ControllerStateExecutor =
     apply(controllerState)
-
-  def toLiveOrderEventSource(controllerState: () => ControllerState) =
-    new OrderEventSource(controllerState())
 
   def toLiveOrderEventHandler(controllerState: () => ControllerState) =
     new OrderEventHandler(

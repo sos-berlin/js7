@@ -22,6 +22,7 @@ import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -51,6 +52,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSource
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -67,8 +69,8 @@ import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
+import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.{View, mutable}
 import scala.concurrent.duration._
@@ -82,6 +84,7 @@ final class ControllerOrderKeeper(
   stopped: Promise[ControllerTermination],
   persistence: JournaledStatePersistence[ControllerState],
   clusterNode: WorkingClusterNode[ControllerState],
+  alarmClock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,
   testEventPublisher: EventPublisher[Any])
   (implicit protected val scheduler: Scheduler)
@@ -96,6 +99,7 @@ with MainJournalingActor[ControllerState, Event]
   protected def journalConf = controllerConfiguration.journalConf
   protected def journalActor = persistence.journalActor
 
+  private implicit val instructionExecutorService = new InstructionExecutorService(alarmClock)
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
   private val orderEventHandler = toLiveOrderEventHandler(() => _controllerState)

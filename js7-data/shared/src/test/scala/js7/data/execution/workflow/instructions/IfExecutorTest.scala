@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.IfExecutorTest._
@@ -30,6 +31,7 @@ final class IfExecutorTest extends AnyFreeSpec {
       BOrder.id -> BOrder),
     idToWorkflow = Map(
       TestWorkflowId -> Workflow.of(TestWorkflowId)))
+  private lazy val executorService = new InstructionExecutorService(WallClock)
 
   "JSON BranchId" - {
     "then" in {
@@ -44,29 +46,29 @@ final class IfExecutorTest extends AnyFreeSpec {
   }
 
   "If true" in {
-    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView) ==
+    assert(executorService.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView) ==
       Right(Some(Position(7) / Then % 0)))
   }
 
   "If false" in {
-    assert(InstructionExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView) ==
+    assert(executorService.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView) ==
       Right(Some(Position(7) / Else % 0)))
   }
 
   "If false, no else branch" in {
-    assert(InstructionExecutor.nextPosition(ifThen(BooleanConstant(false)), AOrder, stateView) ==
+    assert(executorService.nextPosition(ifThen(BooleanConstant(false)), AOrder, stateView) ==
       Right(Some(Position(8))))
   }
 
   "Naned value comparison" in {
     val expr = Equal(NamedValue.last("A"), StringConstant("AA"))
-    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, stateView) == Right(Some(Position(7) / Then % 0)))
-    assert(InstructionExecutor.nextPosition(ifThenElse(expr), BOrder, stateView) == Right(Some(Position(7) / Else % 0)))
+    assert(executorService.nextPosition(ifThenElse(expr), AOrder, stateView) == Right(Some(Position(7) / Then % 0)))
+    assert(executorService.nextPosition(ifThenElse(expr), BOrder, stateView) == Right(Some(Position(7) / Else % 0)))
   }
 
   "Error in expression" in {
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(InstructionExecutor.nextPosition(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
+    assert(executorService.nextPosition(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
   }
 }
 

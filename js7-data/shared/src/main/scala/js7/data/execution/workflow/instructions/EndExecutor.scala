@@ -1,7 +1,6 @@
 package js7.data.execution.workflow.instructions
 
 import js7.data.execution.workflow.context.StateView
-import js7.data.execution.workflow.instructions.InstructionExecutor.instructionToExecutor
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved, OrderStarted}
 import js7.data.workflow.instructions.{End, Fork, LockInstruction}
@@ -9,7 +8,8 @@ import js7.data.workflow.instructions.{End, Fork, LockInstruction}
 /**
   * @author Joacim Zschimmer
   */
-object EndExecutor extends EventInstructionExecutor with PositionInstructionExecutor
+final class EndExecutor(service: InstructionExecutorService)
+extends EventInstructionExecutor with PositionInstructionExecutor
 {
   type Instr = End
 
@@ -45,7 +45,8 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
           }
       }))
 
-  def nextPosition(instruction: End, order: Order[Order.State], state: StateView) =
+  def nextPosition(instruction: End, order: Order[Order.State], state: StateView) = {
+    import service.instructionToExecutor
     Right(
       for {
         returnPosition <- order.position.dropChild
@@ -57,4 +58,5 @@ object EndExecutor extends EventInstructionExecutor with PositionInstructionExec
           case _ => None
         }
       } yield next)
+  }
 }

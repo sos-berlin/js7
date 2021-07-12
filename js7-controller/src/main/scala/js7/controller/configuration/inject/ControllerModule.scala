@@ -7,6 +7,7 @@ import javax.inject.Singleton
 import js7.base.auth.{Permission, SimpleUser, UpdateItemPermission}
 import js7.base.eventbus.StandardEventBus
 import js7.base.log.Logger
+import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
@@ -86,6 +87,12 @@ extends AbstractModule
   @Provides @Singleton
   def controllerConfiguration(): ControllerConfiguration =
     configuration
+
+  @Provides @Singleton
+  def alarmClock(config: Config)(implicit s: Scheduler): AlarmClock =
+    AlarmClock(config
+      .getDuration("js7.time.clock-setting-check-interval")
+      .toFiniteDuration)
 
   @Provides @Singleton
   def closer(): Closer =

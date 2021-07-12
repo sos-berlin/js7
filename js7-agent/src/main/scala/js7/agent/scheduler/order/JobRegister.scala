@@ -41,6 +41,9 @@ object JobRegister {
     private val queueSet = mutable.Set.empty[OrderId]
     private val inProcess = mutable.Set.empty[OrderId]
 
+    def contains(orderId: OrderId) =
+      queueSet.contains(orderId)
+
     def dequeue(): Option[OrderId] =
       queue.nonEmpty option {
         val orderId = queue.remove(0)

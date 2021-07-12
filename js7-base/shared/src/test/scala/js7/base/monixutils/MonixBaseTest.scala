@@ -5,13 +5,12 @@ import js7.base.monixutils.MonixBase._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
-import monix.execution.{Cancelable, Scheduler}
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.duration.Deadline.now
@@ -226,34 +225,6 @@ final class MonixBaseTest extends AsyncFreeSpec
   }
 
   "Scheduler convenience methods" - {
-    "scheduleFor far future" in {
-      val scheduler = TestScheduler()
-      var called = false
-      var cancelable = scheduler.scheduleFor(Timestamp("2500-01-01T00:00:00Z")) { called = true }
-      assert(cancelable.isInstanceOf[Cancelable.IsDummy])
-      scheduler.tick()
-      cancelable.cancel()
-      assert(!called)
-    }
-
-    "scheduleFor near future" in {
-      val scheduler = TestScheduler()
-      var called = false
-      scheduler.scheduleFor(Timestamp.ofEpochMilli(scheduler.clockRealTime(MILLISECONDS)) + 1.s) { called = true }
-      scheduler.tick()
-      assert(!called)
-      scheduler.tick(1.s)
-      assert(called)
-    }
-
-    "scheduleFor past" in {
-      val scheduler = TestScheduler()
-      var called = false
-      scheduler.scheduleFor(Timestamp("1500-01-01T00:00:00Z")) { called = true }
-      scheduler.tick()
-      assert(called)
-    }
-
     "scheduleAtFixedRate" in {
       val scheduler = TestScheduler()
       val i = AtomicInt(0)

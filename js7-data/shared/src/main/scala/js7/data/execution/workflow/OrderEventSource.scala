@@ -10,7 +10,7 @@ import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
-import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutor}
+import js7.data.execution.workflow.instructions.{ForkExecutor, InstructionExecutorService}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
@@ -26,6 +26,7 @@ import scala.annotation.tailrec
   * @author Joacim Zschimmer
   */
 final class OrderEventSource(state: StateView)
+  (implicit executorService: InstructionExecutorService)
 {
   import state.{idToOrder, idToWorkflow, isAgent}
 
@@ -49,7 +50,7 @@ final class OrderEventSource(state: StateView)
             case Left(problem) => Left(problem)
             case Right(Some(event)) => Right(event :: Nil)
             case Right(None) =>
-              InstructionExecutor.toEvents(instruction(order.workflowPosition), order, state)
+              executorService.toEvents(instruction(order.workflowPosition), order, state)
                 // Multiple returned events are expected to be independent and are applied to same idToOrder
                 .flatMap(_
                   .traverse {
@@ -394,7 +395,7 @@ final class OrderEventSource(state: StateView)
             Right(Some(order.position.increment))
 
         case instr: Instruction =>
-          InstructionExecutor.nextPosition(instr, order, state)
+          executorService.nextPosition(instr, order, state)
 
         //case _: End if order.position.isNested =>
         //  order.position.dropChild.flatMap(returnPosition =>
