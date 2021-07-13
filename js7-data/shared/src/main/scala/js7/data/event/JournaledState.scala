@@ -62,6 +62,12 @@ extends EventDrivenState[S, Event]
     }
 
   def eventId: EventId
+
+  /** For testing, should be equal to this. */
+  final def toRecovered: Task[S] =
+    companion
+      .fromObservable(toSnapshotObservable)
+      .map(_.withEventId(eventId))
 }
 
 object JournaledState

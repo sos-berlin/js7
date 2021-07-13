@@ -182,12 +182,7 @@ extends Actor with Stash with JournalLogging
 
           case Right(updatedState) =>
             uncommittedState = updatedState
-            if (conf.slowCheckState) {
-              stampedEvents.foreach(journaledStateBuilder.addEvent)
-              assertEqualSnapshotState("JournaledStateBuilder.result()",
-                journaledStateBuilder.result().withEventId(uncommittedState.eventId),
-                stampedEvents)
-            }
+            checkUncommittedState(stampedEvents)
             eventWriter.writeEvents(stampedEvents, transaction = transaction)
             val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
             for (o <- lastFileLengthAndEventId) {
@@ -588,18 +583,6 @@ extends Actor with Stash with JournalLogging
     onReadyForAcknowledgement()
   }
 
-  private def assertEqualSnapshotState(what: String, snapshotState: S, stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
-  : Unit =
-    if (snapshotState != uncommittedState) {
-      var msg = s"$what does not match actual '$S'"
-      logger.error(msg)
-      for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
-      // msg may get very big
-      msg ++= s":\n" ++ diffx.compare(snapshotState, uncommittedState).show()
-      logger.info(msg)  // Without colors because msg is already colored
-      throw new AssertionError(msg)
-    }
-
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
     assertThat(journalHeader != null)
     val file = journalMeta.file(after = after)
@@ -664,6 +647,30 @@ extends Actor with Stash with JournalLogging
         }
     }
   }
+
+  private def checkUncommittedState(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Unit =
+    if (conf.slowCheckState) {
+      stampedEvents.foreach(journaledStateBuilder.addEvent)
+      assertEqualSnapshotState("JournaledStateBuilder.result()",
+        journaledStateBuilder.result().withEventId(uncommittedState.eventId),
+        stampedEvents)
+
+      // Check recoverability
+      implicit val s = scheduler
+      assertEqualSnapshotState("recovered", uncommittedState.toRecovered.runSyncUnsafe(99.s))
+    }
+
+  private def assertEqualSnapshotState(what: String, snapshotState: S, stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
+  : Unit =
+    if (snapshotState != uncommittedState) {
+      var msg = s"$what does not match actual '$S'"
+      logger.error(msg)
+      for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
+      // msg may get very big
+      msg ++= s":\n" ++ diffx.compare(snapshotState, uncommittedState).show()
+      logger.info(msg)  // Without colors because msg is already colored
+      throw new AssertionError(msg)
+    }
 }
 
 object JournalActor

@@ -114,7 +114,10 @@ final class JournalTest extends AnyFreeSpec with BeforeAndAfterAll with TestJour
   "Massive parallel" - {
     def run(n: Int, coalesceEventLimit: Int): Unit = {
       listJournalFiles(journalMeta.fileBase).map(_.file) foreach delete
-      withTestActor(config"js7.journal.coalesce-event-limit = $coalesceEventLimit") { (_, actor) =>
+      val config = config"""
+       js7.journal.coalesce-event-limit = $coalesceEventLimit
+       js7.journal.slow-check-state = false"""
+      withTestActor(config) { (_, actor) =>
         val prefixes = for (i <- 1 to n) yield i.toString
         val stopwatch = new Stopwatch
         // Add "$p-A"

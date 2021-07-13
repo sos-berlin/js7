@@ -31,7 +31,6 @@ import js7.journal.state.JournaledStatePersistenceTest._
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
@@ -55,7 +54,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
     super.afterAll()
   }
 
-  private val n = 1000
+  private val n = 100
   private val keys = for (o <- 'A' to 'D') yield NumberKey(o.toString)
   private val expectedThingCollection = NumberThingCollection(
     Vector(
@@ -279,9 +278,6 @@ private object JournaledStatePersistenceTest
         }
       }
 
-    override def fromObservable(snapshotObjects: Observable[Any]): Task[TestState] =
-      throw new NotImplementedError  // Require for HTTP EventApi only
-
     protected val InventoryItems = Nil
 
     def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
@@ -289,10 +285,9 @@ private object JournaledStatePersistenceTest
         Subtype(deriveCodec[NumberThing]),
         Subtype(deriveCodec[StringThing]))
 
-
     override implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
       KeyedEventTypedJsonCodec[Event](
-          KeyedSubtype[JournalEvent],
-          KeyedSubtype[NumberEvent])
+        KeyedSubtype[JournalEvent],
+        KeyedSubtype[NumberEvent])
   }
 }
