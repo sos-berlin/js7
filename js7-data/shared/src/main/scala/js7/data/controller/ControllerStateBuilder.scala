@@ -6,7 +6,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.NoticeDeleted
-import js7.data.board.{Board, BoardPath, BoardState}
+import js7.data.board.{Board, BoardPath, BoardState, Notice}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
@@ -82,6 +82,13 @@ with StateView
     case order: Order[Order.State] =>
       _idToOrder.insert(order.id -> order)
 
+      order.state match {
+        case Order.WaitingForNotice(noticeId) =>
+          val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
+          _pathToBoardState += boardState.path -> boardState.addWaitingOrder(order.id, noticeId).orThrow
+        case _ =>
+      }
+
     case event: VersionedEvent =>
       repo = repo.applyEvent(event).orThrow
 
@@ -91,8 +98,12 @@ with StateView
     case lockState: LockState =>
       _pathToLockState.insert(lockState.lock.path -> lockState)
 
-    case boardState: BoardState =>
-      _pathToBoardState.insert(boardState.path -> boardState)
+    case board: Board =>
+      _pathToBoardState.insert(board.path -> BoardState(board))
+
+    case noticeSnapshot: Notice.Snapshot =>
+      _pathToBoardState(noticeSnapshot.boardPath) = _pathToBoardState(noticeSnapshot.boardPath)
+        .addNotice(noticeSnapshot.notice)
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)

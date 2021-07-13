@@ -1,8 +1,6 @@
 package js7.data.board
 
 import io.circe.generic.semiauto.deriveCodec
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Big
@@ -42,7 +40,18 @@ object Notice
         Left(Problem.pure("toNotice must return a String or an Object"))
     }
 
+
+  final case class Snapshot(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp) {
+    def notice = Notice(id, endOfLife)
+  }
+
+  object Snapshot {
+    def apply(boardPath: BoardPath, notice: Notice) =
+      new Snapshot(notice.id, boardPath, notice.endOfLife)
+  }
+
   implicit val jsonCodec = deriveCodec[Notice]
+  implicit val snapshotJsonCodec = deriveCodec[Notice.Snapshot]
 }
 
 
@@ -52,19 +61,4 @@ extends NoticeIdState with Big
 object AwaitingNotice
 {
   implicit val jsonCodec = deriveCodec[AwaitingNotice]  // TODO Big
-}
-
-
-object NoticeIdState
-{
-  implicit val jsonEncoder: Encoder.AsObject[NoticeIdState] = {
-    case o: Notice => o.asJsonObject
-    case o: AwaitingNotice => o.asJsonObject
-  }
-
-  implicit val jsonDecoder: Decoder[NoticeIdState] =
-    c => if (c.keys.exists(_.exists(_ == "awaitingOrderIds")))
-      c.value.as[AwaitingNotice]
-    else
-      c.value.as[Notice]
 }

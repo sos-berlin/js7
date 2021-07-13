@@ -1,16 +1,19 @@
 package js7.data.board
 
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.order.OrderId
+import monix.reactive.Observable
 
 final case class BoardState(
   board: Board,
   idToNotice: Map[NoticeId, NoticeIdState] = Map.empty)
 {
   def path = board.path
+
+  def toSnapshotObservable: Observable[Any] = {
+    board +: Observable.fromIterable(notices.map(Notice.Snapshot(board.path, _)))
+    // AwaitingNotice are recovered from Order[Order.WaitingForNotice]
+  }
 
   def addNotice(notice: Notice): BoardState =
     copy(
@@ -30,7 +33,7 @@ final case class BoardState(
               awaitingOrderIds = awaitingNotice.awaitingOrderIds.view.appended(orderId).toVector))))
 
       case Some(_: Notice) =>
-        Left(Problem("BoardState.addWaitingOrder but notice has been posted"))
+        Left(Problem("BoardState.addWaitingOrder despite notice has been posted"))
     }
 
   def waitingOrders(noticeId: NoticeId): Seq[OrderId] =
@@ -44,18 +47,4 @@ final case class BoardState(
 
   def deleteNotice(noticeId: NoticeId): BoardState =
     copy(idToNotice = idToNotice - noticeId)
-}
-
-object BoardState
-{
-  implicit val jsonEncoder: Encoder.AsObject[BoardState] =  // TODO Big
-    o => JsonObject(
-      "board" -> o.board.asJson,
-      "notices" -> o.idToNotice.values.??.asJson)
-
-  implicit val jsonDecoder: Decoder[BoardState] =
-    c => for {
-      board <- c.get[Board]("board")
-      notices <- c.getOrElse[Vector[NoticeIdState]]("notices")(Vector.empty)
-    } yield BoardState(board, notices.view.map(o => o.id -> o).toMap)
 }

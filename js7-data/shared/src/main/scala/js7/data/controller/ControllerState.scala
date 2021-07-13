@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.NoticeDeleted
-import js7.data.board.{Board, BoardEvent, BoardPath, BoardState}
+import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
@@ -71,6 +71,7 @@ with JournaledState[ControllerState]
     pathToAgentRefState.size +
     pathToLockState.size +
     pathToBoardState.values.size +
+    pathToBoardState.values.view.map(_.notices.size).sum +
     allOrderWatchesState.estimatedSnapshotSize +
     pathToSignedSimpleItem.size +
     itemToAgentToAttachedState.values.view.map(_.size).sum +
@@ -84,8 +85,9 @@ with JournaledState[ControllerState]
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
       Observable.fromIterable(pathToAgentRefState.values),
       Observable.fromIterable(pathToLockState.values),
-      Observable.fromIterable(pathToBoardState.values),
-      allOrderWatchesState.toSnapshot/*TODO Separate Item from its state?*/,
+      Observable.fromIterable(pathToBoardState.values.view.map(_.toSnapshotObservable))
+        .flatten,
+      allOrderWatchesState.toSnapshot,
       Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
       Observable.fromIterable(itemToAgentToAttachedState
@@ -613,7 +615,8 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype(deriveCodec[ControllerMetaState]),
       Subtype[AgentRefState],
       Subtype[LockState],
-      Subtype[BoardState],
+      Subtype[Board],
+      Subtype.named[Notice.Snapshot]("Notice"),
       Subtype[VersionedEvent],  // These events describe complete objects
       Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
       Subtype[OrderWatchState.Snapshot],

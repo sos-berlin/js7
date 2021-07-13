@@ -30,7 +30,7 @@ import js7.data.orderwatch.OrderWatchState.{HasOrder, VanishedAck}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, LockInstruction}
+import js7.data.workflow.instructions.{Execute, LockInstruction, ReadNotice}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -45,7 +45,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 final class ControllerStateTest extends AsyncFreeSpec
 {
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 15)
+    assert(controllerState.estimatedSnapshotSize == 17)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -77,7 +77,8 @@ final class ControllerStateTest extends AsyncFreeSpec
         ) ++
           controllerState.pathToAgentRefState.values ++
           controllerState.pathToLockState.values ++
-          Seq(boardState) ++
+          Seq(board) ++
+          boardState.notices.map(Notice.Snapshot(board.path, _)) ++
           Seq(
             UnsignedSimpleItemAdded(FileWatch(
               fileWatch.path,
@@ -139,7 +140,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         workflow.path -> Set(fileWatch.path)))
   }
 
-  "fromIterator is the reverse of toSnapshotObservable + EventId" in {
+  "fromIterator is the reverse of toSnapshotObservable" in {
     val task = for {
       elems <- controllerState.toSnapshotObservable.toListL
       expectedState <- ControllerState.fromObservable(Observable.fromIterable(elems))
@@ -147,8 +148,8 @@ final class ControllerStateTest extends AsyncFreeSpec
     task.runToFuture
   }
 
-  private val expectedSnapshotJsonArray = json"""
-    [
+  private val expectedSnapshotJsonArray =
+    json"""[
       {
         "TYPE": "SnapshotEventId",
         "eventId": 1001
@@ -202,23 +203,17 @@ final class ControllerStateTest extends AsyncFreeSpec
         },
         "queue": []
       }, {
-        "TYPE": "BoardState",
-        "board": {
-          "path": "BOARD",
-          "toNotice": "$$orderId",
-          "readingOrderToNoticeId": "$$orderId",
-          "endOfLife": "$$epochMillis + 24 * 3600 * 1000",
-          "itemRevision": 7
-        },
-        "notices": [
-          {
-            "id": "NOTICE-1",
-            "endOfLife": 10086400000
-          }, {
-            "id": "NOTICE-2",
-            "awaitingOrderIds": [ "ORDER" ]
-          }
-        ]
+        "TYPE": "Board",
+        "path": "BOARD",
+        "toNotice": "$$orderId",
+        "readingOrderToNoticeId": "$$orderId",
+        "endOfLife": "$$epochMillis + 24 * 3600 * 1000",
+        "itemRevision": 7
+      }, {
+        "TYPE": "Notice",
+        "boardPath": "BOARD",
+        "id": "NOTICE-1",
+        "endOfLife": 10086400000
       }, {
         "TYPE": "UnsignedSimpleItemAdded",
         "item": {
@@ -260,18 +255,16 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ReadNotice\",\"boardPath\":\"BOARD\"}]}"
         }
       }, {
         "TYPE": "ItemAttachable",
         "agentPath": "AGENT",
         "key": "JobResource:JOB-RESOURCE"
-      },
-      {
+      }, {
         "TYPE": "ItemDeletionMarked",
         "key": "OrderWatch:WATCH"
-      },
-      {
+      }, {
         "TYPE": "Order",
         "id": "ORDER",
         "state": {
@@ -280,6 +273,20 @@ final class ControllerStateTest extends AsyncFreeSpec
         "externalOrderKey": {
           "orderWatchPath": "WATCH",
           "name": "ORDER-NAME"
+        },
+        "workflowPosition": {
+          "position": [ 0 ],
+          "workflowId": {
+            "path": "WORKFLOW",
+            "versionId": "1.0"
+          }
+        }
+      }, {
+        "TYPE": "Order",
+        "id": "ORDER-WAITING-FOR-NOTICE",
+        "state": {
+          "TYPE": "WaitingForNotice",
+          "noticeId": "NOTICE-2"
         },
         "workflowPosition": {
           "position": [ 1 ],
@@ -325,29 +332,32 @@ final class ControllerStateTest extends AsyncFreeSpec
 
 object ControllerStateTest
 {
-  private lazy val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
+  private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private lazy val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
   private lazy val signedJobResource = itemSigner.sign(jobResource)
+  private val orderId = OrderId("ORDER")
+  private val waitingForNoticeOrderId = OrderId("ORDER-WAITING-FOR-NOTICE")
   private val agentRef = AgentRef(AgentPath("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0)))
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
   private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
-  private val awaitingNotice = AwaitingNotice(NoticeId("NOTICE-2"), Seq(OrderId("ORDER")))
+  private val postedNotice = AwaitingNotice(NoticeId("NOTICE-2"), Seq(waitingForNoticeOrderId))
+  private val board = Board(
+    BoardPath("BOARD"),
+    toNotice = expr("$orderId"),
+    readingOrderToNoticeId = expr("$orderId"),
+    endOfLife = expr("$epochMillis + 24*3600*1000"),
+    itemRevision = Some(ItemRevision(7)))
   private val boardState = BoardState(
-    Board(
-      BoardPath("BOARD"),
-      toNotice = expr("$orderId"),
-      readingOrderToNoticeId = expr("$orderId"),
-      endOfLife = expr("$epochMillis + 24*3600*1000"),
-      itemRevision = Some(ItemRevision(7))),
+    board,
     Map(
       notice.id -> notice,
-      awaitingNotice.id -> awaitingNotice))
+      postedNotice.id -> postedNotice))
   private val versionId = VersionId("1.0")
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction(lock.path, None, Workflow.of(
-      Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""), jobResourcePaths = Seq(jobResource.path)))))))
+      Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""), jobResourcePaths = Seq(jobResource.path))))),
+    ReadNotice(board.path)))
   private val signedWorkflow = itemSigner.sign(workflow)
-  private val orderId = OrderId("ORDER")
   private[controller] val fileWatch = FileWatch(
     OrderWatchPath("WATCH"),
     workflow.path,
@@ -390,7 +400,9 @@ object ControllerStateTest
     Map(
       jobResource.path -> Map(agentRef.path -> Attachable)),
     deletionMarkedItems = Set(fileWatch.path),
-    (Order(orderId, workflow.id /: Position(1), Order.Fresh,
-      externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))
-    ) :: Nil).toKeyedMap(_.id))
+    Seq(
+      Order(orderId, workflow.id /: Position(0), Order.Fresh,
+        externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))),
+      Order(waitingForNoticeOrderId, workflow.id /: Position(1), Order.WaitingForNotice(postedNotice.id))
+    ).toKeyedMap(_.id))
 }

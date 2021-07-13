@@ -12,7 +12,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.OrderScopes
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{End, Instructions, NoticeInstruction, PostNotice}
+import js7.data.workflow.instructions.{End, Instructions, NoticeInstruction}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.reflect.ClassTag
@@ -41,7 +41,7 @@ trait StateView
     } yield boardState
 
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
-    instruction_[PostNotice](workflowPosition)
+    instruction_[NoticeInstruction](workflowPosition)
       .map(_.boardPath)
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =

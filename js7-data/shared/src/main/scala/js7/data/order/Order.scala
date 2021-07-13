@@ -1,8 +1,8 @@
 package js7.data.order
 
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
@@ -658,6 +658,7 @@ object Order
     Subtype(FailedWhileFresh),
     Subtype(deriveCodec[Forked]),
     Subtype(WaitingForLock),
+    Subtype(deriveCodec[WaitingForNotice]),
     Subtype(Failed),
     Subtype(FailedInFork),
     Subtype(Finished),

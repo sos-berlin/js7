@@ -185,6 +185,14 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
+      "WaitingForNotice" in {
+        testJson[State](WaitingForNotice(NoticeId("NOTICE")),
+          json"""{
+            "TYPE": "WaitingForNotice",
+            "noticeId": "NOTICE"
+          }""")
+      }
+
       "Prompting" in {
         testJson[State](Prompting(StringValue("QUESTION")),
           json"""{
