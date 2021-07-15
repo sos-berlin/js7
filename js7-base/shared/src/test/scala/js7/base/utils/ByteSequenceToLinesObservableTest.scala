@@ -4,28 +4,28 @@ import js7.base.data.ByteArray
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
 
-final class ByteArrayToLinesObservableTest extends AsyncFreeSpec
+final class ByteSequenceToLinesObservableTest extends AsyncFreeSpec
 {
   "empty" in {
-    val obs = new ByteArrayToLinesObservable
+    val obs = new ByteSequenceToLinesObservable[ByteArray]
     for (list <- obs(ByteArray.empty).toListL.runToFuture) yield
       assert(list.isEmpty)
   }
 
   "one line" in {
-    val obs = new ByteArrayToLinesObservable
+    val obs = new ByteSequenceToLinesObservable[ByteArray]
     for (list <- obs(ByteArray("line\n")).toListL.runToFuture) yield
       assert(list == List(ByteArray("line\n")))
   }
 
   "more lines" in {
-    val obs = new ByteArrayToLinesObservable
+    val obs = new ByteSequenceToLinesObservable[ByteArray]
     for (list <- obs(ByteArray("line1\nline2\nline3\n")).toListL.runToFuture) yield
       assert(list == List(ByteArray("line1\n"), ByteArray("line2\n"), ByteArray("line3\n")))
   }
 
   "split lines" - {
-    lazy val obs = new ByteArrayToLinesObservable
+    lazy val obs = new ByteSequenceToLinesObservable[ByteArray]
 
     "part 1" in {
       for (list <- obs(ByteArray("line-begin")).toListL.runToFuture) yield
