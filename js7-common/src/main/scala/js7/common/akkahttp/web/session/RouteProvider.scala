@@ -5,10 +5,12 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.server.Directives.{complete, onSuccess, optionalHeaderValuePF, pass, respondWithHeader}
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import js7.base.auth.{Permission, SessionToken, UserId}
+import js7.base.configutils.Configs.RichConfig
 import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -31,6 +33,8 @@ trait RouteProvider extends ExceptionHandling
   protected def sessionRegister: SessionRegister[Session]
 
   protected def scheduler: Scheduler
+
+  protected final lazy val chunkSize = config.memorySizeAsInt("js7.web.chunk-size").orThrow
 
   private implicit def implicitScheduler: Scheduler = scheduler
 

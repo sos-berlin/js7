@@ -4,12 +4,17 @@ import akka.NotUsed
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
+import akka.http.scaladsl.model.HttpEntity
+import akka.http.scaladsl.model.HttpEntity.Chunk
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import io.circe.syntax.EncoderOps
 import js7.base.auth.ValidUserPermission
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -22,6 +27,7 @@ import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import js7.common.akkahttp.HttpStatusCodeException
@@ -29,7 +35,9 @@ import js7.common.akkahttp.StandardDirectives.routeTask
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import js7.common.akkahttp.web.session.RouteProvider
+import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport._
+import js7.common.http.StreamingSupport.AkkaObservable
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
@@ -155,7 +163,7 @@ trait GenericEventRoute extends RouteProvider
       val initialRequest = request.copy[Event](
         limit = 1 min request.limit)
       // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-      val future = eventWatch.when(initialRequest, predicate)
+      complete(eventWatch.when(initialRequest, predicate)
         .map {
           case TearableEventSeq.Torn(eventId) =>
             ToResponseMarshallable(
@@ -166,23 +174,32 @@ trait GenericEventRoute extends RouteProvider
 
           case EventSeq.NonEmpty(closeableIterator) =>
             val head = autoClosing(closeableIterator)(_.next())
-              val tail = observe(  // Continue with an Observable, skipping the already read event
-                request.copy[Event](
-                  after = head.eventId,
-                  limit = request.limit - 1,
-                  delay = (request.delay - runningSince.elapsed) min ZeroDuration),
-                predicate,
-                eventWatch)
-              implicit val x = jsonSeqMarshaller[Stamped[KeyedEvent[Event]]]
-              observableToMarshallable(head +: tail)
+            val tail = observe(  // Continue with an Observable, skipping the already read event
+              request.copy[Event](
+                after = head.eventId,
+                limit = request.limit - 1,
+                delay = (request.delay - runningSince.elapsed) min ZeroDuration),
+              predicate,
+              eventWatch)
+            val observable = head.asJson.toByteSequence[ByteString] +:
+              tail.map(_.asJson.toByteSequence[ByteString])
+            ToResponseMarshallable(
+              HttpEntity.Chunked(
+                streamingSupport.contentType,
+                observable
+                  .map(_ ++ LF)
+                  .chunk(chunkSize)
+                  .map(Chunk(_))
+                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+                    Task { logger.debug("whenShuttingDown completed") })
+                  .toAkkaSourceForHttpResponse))
         }
         .onCancelRaiseError(CanceledException)
         .onErrorRecover {
           case CanceledException => emptyResponseMarshallable
         }
         .runToFuture
-        .cancelOnCompletionOf(whenShuttingDownCompletion)
-      onSuccess(future)(complete(_))
+        .cancelOnCompletionOf(whenShuttingDownCompletion))
     }
 
     private def emptyResponseMarshallable(implicit streamingSupport: JsonEntityStreamingSupport)
@@ -245,6 +262,7 @@ object GenericEventRoute
   type StampedEventFilter = Observable[Stamped[KeyedEvent[Event]]] => Observable[Stamped[KeyedEvent[Event]]]
 
   private val logger = Logger(getClass)
+  private val LF = ByteString("\n")
 
   private def toLastEventId(header: `Last-Event-ID`): EventId =
     try java.lang.Long.parseLong(header.id)

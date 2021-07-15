@@ -4,7 +4,6 @@ import io.circe.Decoder
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs._
-import js7.base.log.Logger
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -55,6 +54,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
         timeout = 1 minute
       }
       akka.shutdown-timeout = 10s
+      web.chunk-size = 1MiB
       web.server {
         verbose-error-messages = on
         shutdown-timeout = 10s
@@ -301,8 +301,6 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
 
 object GenericEventRouteTest
 {
-  private val logger = Logger(getClass)
-
   private val TestEvents = for (i <- 1 to 18) yield
     Stamped(EventId(10 * i), Timestamp.ofEpochMilli(999),
       OrderId(i.toString) <-: OrderAdded(WorkflowPath("test") ~ "VERSION"))

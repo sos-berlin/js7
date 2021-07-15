@@ -3,7 +3,9 @@ package js7.tests.testenv
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs._
+import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
@@ -77,6 +79,8 @@ trait ControllerClusterForScalaTest
       }
     }
 
+  val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
+
   final def withControllerAndBackupWithoutAgents()
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
   : Unit =
@@ -91,7 +95,6 @@ trait ControllerClusterForScalaTest
               Primary: "http://127.0.0.1:$primaryControllerPort"
               Backup: "http://127.0.0.1:$backupControllerPort"
             }"""),
-
           config"""
             js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat.toSeconds}s
             js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout.toSeconds}s

@@ -116,6 +116,14 @@ object Configs
 
     def ifPath[A](path: String)(f: String => A): Option[A] =
       underlying.hasPath(path) ? f(path)
+
+    def memorySizeAsInt(path: String): Checked[Int] = {
+      val bigInteger = underlying.getMemorySize(path).toBytesBigInteger
+      if (bigInteger.bitLength >= 32)
+        Left(Problem(s"Number is to big: $path = $bigInteger"))
+      else
+        Right(bigInteger.intValue)
+    }
   }
 
   implicit val configMonoid: Monoid[Config] =

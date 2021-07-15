@@ -1,6 +1,7 @@
 package js7.controller.web.controller.api
 
 import akka.http.scaladsl.model.HttpEntity
+import akka.http.scaladsl.model.HttpEntity.Chunk
 import akka.http.scaladsl.server.Directives.{complete, get}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.ParameterDirectives._
@@ -8,6 +9,7 @@ import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
 import akka.util.ByteString
 import io.circe.syntax._
 import js7.base.auth.ValidUserPermission
+import js7.base.data.ByteSequence.ops._
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -15,6 +17,7 @@ import js7.base.problem.Checked
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
@@ -66,25 +69,32 @@ trait SnapshotRoute extends ControllerRouteProvider
           Left(SnapshotForUnknownEventIdProblem(eventId))
 
         case Some(observable) =>
-          Right(HttpEntity(
+          Right(HttpEntity.Chunked(
             `application/x-ndjson`,
             observable
               .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
                 Task { logger.debug("whenShuttingDown completed") })
               .map(_.toByteString)
+              .chunk(chunkSize)  // TODO Maybe fill-up chunks
+              .map(Chunk(_))
               .toAkkaSourceForHttpResponse))
       }
       checked
     }
 
-  private def snapshotToHttpEntity(state: ControllerState, filter: SnapshotFilter): HttpEntity.Chunked =
-    HttpEntity(
+  private def snapshotToHttpEntity(state: ControllerState, filter: SnapshotFilter) =
+    HttpEntity.Chunked(
       `application/x-ndjson`,
       filter(state.toSnapshotObservable)
         .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
           Task { logger.debug("whenShuttingDown completed") })
         .mapParallelOrderedBatch()(_
-          .asJson(ControllerState.snapshotObjectJsonCodec).toByteSequence[ByteString] ++ LF)
+          .asJson(ControllerState.snapshotObjectJsonCodec)
+          .toByteSequence[ByteString]
+          .concat(LF)
+          .chunk(chunkSize))
+        .flatMap(Observable.fromIterable)
+        .map(Chunk(_))
         .toAkkaSourceForHttpResponse)
 }
 

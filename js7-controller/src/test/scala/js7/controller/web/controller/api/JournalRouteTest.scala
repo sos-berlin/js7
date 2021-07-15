@@ -4,6 +4,7 @@ import akka.http.scaladsl.testkit.RouteTestTimeout
 import java.nio.file.Files.{createTempDirectory, size}
 import java.util.UUID
 import js7.base.auth.SessionToken
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Problem
@@ -47,7 +48,9 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
   protected implicit def scheduler: Scheduler = Scheduler.global
   private lazy val directory = createTempDirectory("JournalRouteTest-")
   private lazy val journalMeta = JournalMeta(ControllerState, directory / "test")
-  override protected def config = JournalEventWatch.TestConfig.withFallback(super.config)
+  override protected def config = config"js7.web.chunk-size = 1MiB"
+    .withFallback(JournalEventWatch.TestConfig)
+    .withFallback(super.config)
   protected var eventWatch = new JournalEventWatch(journalMeta, config)
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null

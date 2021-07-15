@@ -17,7 +17,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.ByteArrayToLinesObservable
+import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
@@ -65,7 +65,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     .toObservable
                     .map(_.toByteArray)
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
-                    .flatMap(new ByteArrayToLinesObservable)
+                    .flatMap(new ByteSequenceToLinesObservable)
                     .mapParallelOrderedBatch()(_
                       .parseJsonAs[FreshOrder].orThrow)
                     .toL(Vector)
@@ -148,7 +148,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
               .dataBytes
               .toObservable
               .map(_.toByteArray)
-              .flatMap(new ByteArrayToLinesObservable)
+              .flatMap(new ByteSequenceToLinesObservable)
               .mapParallelOrderedBatch()(_
                 .parseJsonAs[OrderId].orThrow)
               .toL(Vector)

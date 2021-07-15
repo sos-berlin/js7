@@ -1,5 +1,6 @@
 package js7.tests.testenv
 
+import cats.syntax.traverse._
 import js7.agent.RunningAgent
 import js7.base.auth.Admission
 import js7.base.configutils.Configs._
@@ -11,10 +12,9 @@ import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.proxy.ControllerApi
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
-import cats.syntax.traverse._
-import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer

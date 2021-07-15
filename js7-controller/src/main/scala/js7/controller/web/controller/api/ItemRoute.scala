@@ -17,7 +17,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
-import js7.base.utils.{ByteArrayToLinesObservable, FutureCompletion}
+import js7.base.utils.{ByteSequenceToLinesObservable, FutureCompletion}
 import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.StreamingSupport._
@@ -59,7 +59,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .toObservable
                   .map(_.toByteArray)
                   .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
-                  .flatMap(new ByteArrayToLinesObservable)
+                  .flatMap(new ByteSequenceToLinesObservable)
                   .mapParallelUnorderedBatch()(_
                     .parseJsonAs[ItemOperation].orThrow)
                 VerifiedUpdateItems.fromOperations(operations, verify, user)

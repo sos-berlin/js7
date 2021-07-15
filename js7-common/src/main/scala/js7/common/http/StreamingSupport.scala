@@ -24,6 +24,10 @@ object StreamingSupport
     def toAkkaSourceForHttpResponse(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =
       logAkkaStreamErrorToWebLogAndIgnore(toAkkaSource)
 
+    def toAkkaSourceTask(implicit A: TypeTag[A]): Task[Source[A, NotUsed]] =
+      Task.deferAction(implicit scheduler => Task(
+        toAkkaSource(scheduler, A)))
+
     def toAkkaSource(implicit scheduler: Scheduler, A: TypeTag[A]): Source[A, NotUsed] =
       Source.fromPublisher(
         observable

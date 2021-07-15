@@ -14,6 +14,7 @@ import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
@@ -67,13 +68,14 @@ trait JournalRoute extends ControllerRouteProvider
                     case (Some(f), Some(p)) => Right(JournalPosition(f, p))
                     case _ => Left(Problem("Missing one of the arguments: file, position, eventId"))
                   })
-                  .flatMapT(journalPosition =>
-                    Task.pure(parseReturnAckParameter(returnType)).flatMapT(returnAck =>
+                  .flatMapT(journalPosition => Task
+                    .pure(parseReturnAckParameter(returnType))
+                    .flatMapT(returnAck =>
                       eventWatch
                         .observeFile(journalPosition, timeout,
                           markEOF = markEOF, onlyAcks = returnAck)
                         .map(_.map(observable =>
-                          HttpEntity(
+                          HttpEntity.Chunked(
                             JournalContentType,
                             observable
                               .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {
@@ -83,6 +85,8 @@ trait JournalRoute extends ControllerRouteProvider
                               .pipeIf(heartbeat.isDefined)(_
                                 .insertHeartbeatsOnSlowUpstream(heartbeat.get, HeartbeatMarker))
                               .map(_.toByteString)
+                              .chunk(chunkSize)
+                              .map(HttpEntity.Chunk(_))
                               .toAkkaSourceForHttpResponse)))))
                   .runToFuture)
               }

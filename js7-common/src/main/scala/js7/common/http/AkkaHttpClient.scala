@@ -2,7 +2,7 @@ package js7.common.http
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.HttpEntity.{ChunkStreamPart, LastChunk}
+import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.GatewayTimeout
@@ -14,11 +14,15 @@ import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.ExitCase
+import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.CirceUtils.implicits._
+import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
@@ -31,12 +35,12 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.bytesPerSecondString
-import js7.base.utils.ByteArrayToLinesObservable
+import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkautils.ByteStrings.syntax._
-import js7.common.akkautils.JsonObservableForAkka.syntax._
 import js7.common.http.AkkaHttpClient._
 import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decompressResponse, encodeGzip}
 import js7.common.http.CirceJsonSupport._
@@ -67,6 +71,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   private lazy val http = Http(actorSystem)
   private lazy val baseAkkaUri = AkkaUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
+  private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
   @volatile private var closed = false
 
   protected def keyStoreRef: Option[KeyStoreRef]
@@ -109,7 +114,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
         .map(_.toByteArray)
-        .flatMap(new ByteArrayToLinesObservable))
+        .flatMap(new ByteSequenceToLinesObservable))
       .map(_.onErrorRecoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
       .onErrorRecover(ignoreIdleTimeout)
 
@@ -151,12 +156,16 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def postObservable[A: Encoder, B: Decoder](uri: Uri, data: Observable[A])
     (implicit s: Task[Option[SessionToken]])
   : Task[B] =
-    Task.deferAction(implicit s => Task(data
-      .encodeJson
-      .map(o => ChunkStreamPart(o ++ LF))
+    data
+      .mapParallelOrderedBatch()(_
+        .asJson.toByteSequence[ByteString]
+        .concat(LF)
+        .chunk(chunkSize))
+      .flatMap(Observable.fromIterable)
+      .map(Chunk(_))
       .append(LastChunk)
-      .toAkkaSource)
-    ) .flatMap(akkaChunks =>
+      .toAkkaSourceTask
+      .flatMap(akkaChunks =>
         sendReceive(
           HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
@@ -165,11 +174,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
   @TestOnly
   final def postObservableJsonString(uri: Uri, data: Observable[String])(implicit s: Task[Option[SessionToken]]): Task[Json] =
-    Task.deferAction(implicit s => Task(data
-      .map(o => ChunkStreamPart(ByteString(o) ++ LF))
+    data
+      .map(o => ByteString(o) ++ LF)
+      .chunk(chunkSize)
+      .map(Chunk(_))
       .append(LastChunk)
-      .toAkkaSource)
-    ) .flatMap(akkaChunks =>
+      .toAkkaSourceTask
+      .flatMap(akkaChunks =>
         sendReceive(
           HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),

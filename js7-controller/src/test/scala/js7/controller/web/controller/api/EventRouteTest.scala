@@ -42,6 +42,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   protected def eventWatch = eventCollector.eventWatch
 
   override protected def config = config"""
+    js7.web.chunk-size = 1MiB
     akka.actor.default-dispatcher.fork-join-executor {
       parallelism-min = 1
       parallelism-factor = 0

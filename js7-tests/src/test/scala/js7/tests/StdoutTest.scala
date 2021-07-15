@@ -155,9 +155,9 @@ object StdoutTest
   private val logger = Logger(getClass)
   private val agentPath = AgentPath("AGENT")
   private val chunkSize = 50
-  private val delay = 200.ms
+  private val delay = 400.ms
   private val shortDelay = 10.ms
-  private val longDelay = delay + 400.ms
+  private val longDelay = delay + 800.ms
 
   private def sleepCommand(delay: FiniteDuration) =
     if (isWindows) s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows
