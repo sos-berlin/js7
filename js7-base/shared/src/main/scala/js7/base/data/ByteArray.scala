@@ -83,6 +83,8 @@ final class ByteArray private(val unsafeArray: Array[Byte])
 
 object ByteArray extends ByteSequence[ByteArray]
 {
+  val clazz = classOf[ByteArray]
+
   val empty = new ByteArray(Array.empty)
 
   // Hide IntelliJ red underlines here

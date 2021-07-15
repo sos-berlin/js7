@@ -10,7 +10,7 @@ import js7.base.problem.Checked
 
 final class ByteStringByteSequence extends ByteSequence[ByteString]
 {
-  override val typeName = "ByteString"
+  val clazz = classOf[ByteString]
   val empty = ByteString.empty
 
   override def fromArray(bytes: Array[Byte]) =

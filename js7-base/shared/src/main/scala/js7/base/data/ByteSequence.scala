@@ -15,17 +15,24 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.IOUtils
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable
+import scala.collection.immutable.ArraySeq
 import scala.language.implicitConversions
+import scala.reflect.ClassTag
 import scala.util.Random
 import simulacrum._
 
 @typeclass(excludeParents = List("Writable", "Monoid", "Eq", "Show"))
-trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
+trait ByteSequence[ByteSeq] extends Writable[ByteSeq]
+with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
 {
   implicit def implicitByteSequence: ByteSequence[ByteSeq] = this
 
-  def typeName: String =
-    getClass.simpleScalaName
+  def clazz: Class[ByteSeq]
+
+  implicit lazy val classTag: ClassTag[ByteSeq] =
+    ClassTag(clazz)
+
+  final def typeName = clazz.simpleScalaName
 
   def apply[I](bytes: I*)(implicit I: Integral[I]): ByteSeq =
     unsafeWrap(bytes.view.map(i => I.toInt(i).toByte).toArray)
@@ -101,22 +108,24 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
     nonEmpty(byteSeq) ??
       ("»" +
         iterator(byteSeq).take(n).grouped(8).map(_.map(byteToPrintable).mkString).mkString +
-        ((withEllipsis || n < length(byteSeq)) ?? "…") +
+        ((withEllipsis || lengthIs(byteSeq) > n) ?? "…") +
         "« " +
         toHexRaw(byteSeq, n, withEllipsis))
 
   def toHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false): String =
     iterator(byteSeq).take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" ") +
-      ((withEllipsis || n < length(byteSeq)) ?? "...")
+      ((withEllipsis || lengthIs(byteSeq) > n) ?? "...")
 
   def nonEmpty(byteSeq: ByteSeq): Boolean =
     !isEmpty(byteSeq)
-
 
   def intLength(byteSeq: ByteSeq): Int =
     length(byteSeq)
 
   def length(byteSeq: ByteSeq): Int
+
+  def lengthIs(byteSeq: ByteSeq): Int =
+    length(byteSeq)
 
   @op("apply") def at(byteSeq: ByteSeq, i: Int): Byte
 
@@ -141,7 +150,7 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
 
   def startsWith(byteSeq: ByteSeq, prefix: ByteSeq): Boolean = {
     val n = length(prefix)
-    n <= length(byteSeq) &&
+    lengthIs(byteSeq) >= n &&
       (0 until n).forall(i => at(byteSeq, i) == at(prefix, i))
   }
 
@@ -159,10 +168,25 @@ trait ByteSequence[ByteSeq] extends Writable[ByteSeq] with Monoid[ByteSeq] with 
     slice(byteSeq, n, length(byteSeq))
 
   def slice(byteSeq: ByteSeq, from: Int, until: Int): ByteSeq =
-    if (from == 0 && until == length(byteSeq))
+    if (from <= 0 && lengthIs(byteSeq) <= until)
       byteSeq
     else
       unsafeWrap(unsafeArray(byteSeq).slice(from, until))
+
+  def chunk(byteSeq: ByteSeq, chunkSize: Int): Seq[ByteSeq] =
+    length(byteSeq) match {
+      case 0 => Nil
+      case 1 => byteSeq :: Nil
+      case len =>
+        val n = (len + chunkSize - 1) / chunkSize
+        val array = new Array[ByteSeq](n)
+        var i = 0
+        while (i < n) {
+          array(i) = slice(byteSeq, i * chunkSize, (i + 1) * chunkSize)
+          i += 1
+        }
+        ArraySeq.unsafeWrapArray(array)
+    }
 
   def iterator(byteSeq: ByteSeq): Iterator[Byte]
 

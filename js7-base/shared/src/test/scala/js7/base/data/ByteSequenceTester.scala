@@ -197,6 +197,14 @@ extends AnyFreeSpec
     assert(byteSeq.slice(99, 99) == ByteSeq.empty)
   }
 
+  "chunk" in {
+    val byteSeq = ByteSeq("abcd")
+    assert(byteSeq.chunk(1) == Seq(ByteSeq("a"), ByteSeq("b"), ByteSeq("c"), ByteSeq("d")))
+    assert(byteSeq.chunk(2) == Seq(ByteSeq("ab"), ByteSeq("cd")))
+    assert(byteSeq.chunk(3) == Seq(ByteSeq("abc"), ByteSeq("d")))
+    assert(byteSeq.chunk(4) == Seq(ByteSeq("abcd")))
+  }
+
   "utf8String" in {
     assert(ByteSeq("aå").utf8String == "aå")
     assert(ByteSeq('A', 'B').utf8String == "AB")
