@@ -12,7 +12,6 @@ import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.system.startup.Halt.haltJava
-import js7.common.system.startup.StartUp.printlnWithClockIgnoringException
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.{ExecutorScheduler, SchedulerService}
@@ -26,7 +25,6 @@ import scala.util.control.NonFatal
 object ThreadPools
 {
   private val logger = Logger(getClass)
-  private val heapSizeMessage = s"Heap size is ${toKiBGiB(sys.runtime.maxMemory)}"
 
   private[system] val ThreadCount = As[String, Int] {
     case s if s.last == 'x' => (sys.runtime.availableProcessors * s.dropRight(1).toDouble).ceil.toInt
@@ -49,9 +47,8 @@ object ThreadPools
         logger.error(msg, throwable.nullIfNoStackTrace)
         // Writes to stderr:
         UncaughtExceptionReporter.default.reportFailure(throwable)
-        logger.error(heapSizeMessage)
-        printlnWithClockIgnoringException(heapSizeMessage)
-        haltJava(s"HALT DUE TO $throwable", restart = true)
+        haltJava(s"HALT DUE TO $throwable (heap size is ${toKiBGiB(sys.runtime.maxMemory)})",
+          restart = true)
 
       case throwable =>
         logger.error(msg, throwable.nullIfNoStackTrace)

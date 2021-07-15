@@ -10,7 +10,8 @@ import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF}
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF, RichThrowable}
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
@@ -31,6 +32,7 @@ import js7.proxy.data.event.{EventAndState, ProxyEvent}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.immutable
+import scala.concurrent.duration.Deadline.now
 
 final class ControllerApi(
   apiResources: Seq[Resource[Task, HttpControllerApi]],
@@ -155,6 +157,7 @@ extends ControllerApiWithHttp
   private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] = {
     // TODO Similar to SessionApi.retryUntilReachable
     val delays = SessionApi.defaultLoginDelays()
+    var warned = now - 1.h
     apiResource
       .use(api =>
         HttpClient.liftProblem(
@@ -162,6 +165,7 @@ extends ControllerApiWithHttp
             body(api).onErrorRestartLoop(()) {
               case (HttpException.HasProblem(problem), _, retry)
                 if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                scribe.info(s"Login again due to: $problem")
                 scribe.debug(problem.toString)
                 Task.sleep(delays.next()) >>
                   api.loginUntilReachable() >>
@@ -171,6 +175,10 @@ extends ControllerApiWithHttp
             }))
       .onErrorRestartLoop(()) {
         case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
+          if (warned.elapsed >= 60.s) {
+            scribe.warn(t.toStringWithCauses)
+            warned = now
+          } else scribe.debug(t.toStringWithCauses)
           apiCache.clear >>
             Task.sleep(delays.next()) >>
             retry(())
