@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import cats.data.NonEmptyList
+import cats.syntax.foldable._
 import cats.syntax.option._
 import cats.{Functor, Monad, Monoid, Semigroup}
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
@@ -12,7 +13,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.Factory
+import scala.collection.{Factory, mutable}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Left
@@ -656,5 +657,40 @@ object ScalaUtils
     val sb = new StringBuilder(size)
     body(sb)
     sb.toString
+  }
+
+  def chunkStrings(strings: Seq[String], maxSize: Int): Iterable[String] = {
+    val total = strings.view.map(_.length).sum
+    if (total == 0)
+      Nil
+    else if (total <= maxSize)
+      strings.combineAll :: Nil
+    else {
+      val result = mutable.Buffer.empty[String]
+      val sb = new StringBuilder(maxSize)
+      for (str <- strings) {
+        if (sb.isEmpty && str.length == maxSize) {
+          result.append(str)
+        } else {
+          var start = 0
+          while (start < str.length) {
+            val end = (start + maxSize - sb.length) min str.length
+            val a = str.substring(start, end)
+            if (sb.isEmpty && a.length == maxSize) {
+              result.append(a)
+            } else {
+              sb.append(a)
+              if (sb.length == maxSize) {
+                result.append(sb.toString)
+                sb.clear()
+              }
+            }
+            start += a.length
+          }
+        }
+      }
+      if (sb.nonEmpty) result.append(sb.toString)
+      result
+    }
   }
 }

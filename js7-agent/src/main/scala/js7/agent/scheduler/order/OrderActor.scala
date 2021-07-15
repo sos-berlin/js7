@@ -3,7 +3,6 @@ package js7.agent.scheduler.order
 import akka.actor.ActorRef.noSender
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
 import akka.pattern.pipe
-import cats.syntax.foldable._
 import com.typesafe.config.Config
 import js7.agent.data.AgentState
 import js7.agent.scheduler.job.JobActor
@@ -19,6 +18,7 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerId
@@ -34,7 +34,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
-import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import shapeless.tag.@@
@@ -116,7 +115,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
             observable
               .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
-              .flatMap(strings => Observable.fromIterable(combineStringsAndSplit(strings, conf.stdouterr.chunkSize)))
+              .flatMap(strings => Observable.fromIterable(chunkStrings(strings, conf.stdouterr.chunkSize)))
               .flatMap(chunk => Observable.fromTask(
                 outErrStatistics(outerr).count(
                   chunk.length,
@@ -328,41 +327,6 @@ private[order] object OrderActor
     controllerId: ControllerId)
     (implicit s: Scheduler) =
     Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf, controllerId) }
-
-  private[order] def combineStringsAndSplit(strings: Seq[String], maxSize: Int): Iterable[String] = {
-    val total = strings.view.map(_.length).sum
-    if (total == 0)
-      Nil
-    else if (total <= maxSize)
-      strings.combineAll :: Nil
-    else {
-      val result = mutable.Buffer.empty[String]
-      val sb = new StringBuilder(maxSize)
-      for (str <- strings) {
-        if (sb.isEmpty && str.length == maxSize) {
-          result.append(str)
-        } else {
-          var start = 0
-          while (start < str.length) {
-            val end = (start + maxSize - sb.length) min str.length
-            val a = str.substring(start, end)
-            if (sb.isEmpty && a.length == maxSize) {
-              result.append(a)
-            } else {
-              sb.append(a)
-              if (sb.length == maxSize) {
-                result.append(sb.toString)
-                sb.clear()
-              }
-            }
-            start += a.length
-          }
-        }
-      }
-      if (sb.nonEmpty) result.append(sb.toString)
-      result
-    }
-  }
 
   private object Internal {
     final case class OutErrCompleted(outcome: Outcome)

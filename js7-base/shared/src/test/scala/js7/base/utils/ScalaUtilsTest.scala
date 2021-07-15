@@ -632,6 +632,16 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(List(1, 2, 3).when(true) == List(1, 2, 3))
     assert(List(1, 2, 3).when(false) == Nil)
   }
+
+  "chunkStrings" in {
+    def f(list: List[String]) = chunkStrings(list, 7)
+    assert(f(Nil) == Nil)
+    assert(f(List("")) == Nil)
+    assert(f(List("A")) == List("A"))
+    assert(f(
+      List("a", "bc", "def", "ghij", "klmnopqr", "1234567890ABCDEFHIJ")) ==
+      List("abcdefg", "hijklmn", "opqr123", "4567890", "ABCDEFH", "IJ"))
+  }
 }
 
 object ScalaUtilsTest
