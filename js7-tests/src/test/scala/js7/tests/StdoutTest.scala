@@ -43,6 +43,10 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
 
   "ShellScriptExecutable OrderStdoutWritten event compacting" in {
+    // Shell stdout timing seems not to be reliable !!!
+    // The other test with InternalExecutable should be adequate.
+    pending
+
     def runTest() =
       testExecutable(
         ShellScriptExecutable(
@@ -155,9 +159,9 @@ object StdoutTest
   private val logger = Logger(getClass)
   private val agentPath = AgentPath("AGENT")
   private val chunkSize = 50
-  private val delay = 400.ms
+  private val delay = 200.ms
   private val shortDelay = 10.ms
-  private val longDelay = delay + 800.ms
+  private val longDelay = delay + 400.ms
 
   private def sleepCommand(delay: FiniteDuration) =
     if (isWindows) s"SLEEP ${delay.toDecimalString}\n"  // TODO Windows
