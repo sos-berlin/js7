@@ -6,7 +6,7 @@ object Dependencies
 {
   val scalaVersion = "2.13.5"
 
-  val akkaVersion = "2.6.14"
+  val akkaVersion = "2.6.15"
   val akkaHttpVersion = "10.2.4"
   val slf4jVersion = "1.7.31"  // See also plugins.sbt
   val log4jVersion = "2.14.1"  // See also plugins.sbt
@@ -15,8 +15,8 @@ object Dependencies
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.1"
-  val scalaJava8Version = "0.9.1"
-  val scalaTestVersion = "3.2.5"
+  val scalaJava8Version = "0.9.0"
+  val scalaTestVersion = "3.2.9"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
@@ -28,8 +28,8 @@ object Dependencies
   val scalaJsDomVersion = "1.1.0"
   val shapelessVersion = "2.3.3"
   val diffxVersion = "0.5.1"
-  val reactorVersion = "3.4.4"
-  val vavrVersion = "0.10.3"
+  val reactorVersion = "3.4.8"
+  val vavrVersion = "0.10.4"
   val jnaVersion = "5.8.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion

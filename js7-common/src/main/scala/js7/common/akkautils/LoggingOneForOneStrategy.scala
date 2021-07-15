@@ -27,12 +27,15 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
       }
       case e => e.toStringWithCauses
     }
-    val logLevel = decision match {
-      case _ if !loggingEnabled => Debug
-      case Resume   => Warn
-      case Escalate => Debug
-      case Restart | Stop => Error
-    }
+    val logLevel =
+      if (!loggingEnabled)
+        Debug
+      else
+        decision match {
+          case Resume   => Warn
+          case Escalate => Debug
+          case Restart | Stop => Error
+        }
     logger.log(logLevel, s"$decision ${child.path.pretty}: $logMessage", throwable)
   }
 }
