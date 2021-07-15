@@ -526,23 +526,22 @@ extends Actor with Stash with JournalLogging
     locally {
       val builder = S.newBuilder()
 
+      val future = committedState.toSnapshotObservable
+        .filter {
+          case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
+          case _ => true
+        }
+        .mapParallelOrderedBatch() { snapshotObject =>
+          // TODO Crash with SerializationException like EventSnapshotWriter ?
+          snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
+        }
+        .foreach { case (snapshotObject, byteArray) =>
+          if (conf.slowCheckState) builder.addSnapshotObject(snapshotObject)
+          snapshotWriter.writeSnapshot(byteArray)
+          logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
+        }(scheduler)
       // TODO Do not block the thread
-      Await.result(
-        committedState.toSnapshotObservable
-          .filter {
-            case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
-            case _ => true
-          }
-          .mapParallelOrderedBatch() { snapshotObject =>
-            // TODO Crash with SerializationException like EventSnapshotWriter ?
-            snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
-          }
-          .foreach { case (snapshotObject, byteArray) =>
-            if (conf.slowCheckState) builder.addSnapshotObject(snapshotObject)
-            snapshotWriter.writeSnapshot(byteArray)
-            logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
-          }(scheduler),
-        999.s)
+      Await.result(future, 999.s)
 
       if (conf.slowCheckState) {
         builder.onAllSnapshotsAdded()

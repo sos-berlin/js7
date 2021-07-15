@@ -188,7 +188,7 @@ object ExpressionParser
       functionCall)
 
   private def factor[_: P] = P(
-    factorOnly ~ (w ~ "." ~ w ~/ identifier).? flatMap {
+    factorOnly ~/ (w ~ "." ~ w ~/ identifier).? flatMap {
       case (o, None) => valid(o)
       // TODO Don't use these legacy names:
       case (o, Some("toNumber")) => valid(ToNumber(o))

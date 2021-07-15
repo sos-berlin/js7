@@ -28,17 +28,17 @@ final class FuturesTest extends AnyFreeSpec
 
   "successValue's failure exception is extended with future's creation stack trace" in {
     val future = Future[Int] { throw new TestException }
-    Await.ready(future, 5.s)
+    Await.ready(future, 9.s)
     assert(!stackTraceContainsCreationsStackTrace { future.value.get.get })
     assert(stackTraceContainsCreationsStackTrace { future.successValue })
   }
 
   "appendCurrentStackTrace failure exception is extended with future's creation stack trace" in {
     val future = Future[Int] { throw new TestException }
-    Await.ready(future, 2.s)
+    Await.ready(future, 9.s)
     assert(!stackTraceContainsCreationsStackTrace { future.value.get.get })
     val f = future.appendCurrentStackTrace
-    Await.ready(f, 2.s)
+    Await.ready(f, 9.s)
     assert(stackTraceContainsCreationsStackTrace { f.value.get.get })
   }
 
@@ -56,10 +56,10 @@ final class FuturesTest extends AnyFreeSpec
     val (n, warmUp) = sys.props.get("test.speed").fold((100, 100))(o => (o.toInt, 1000))
     info(measureTime(n, "namedThreadFuture", warmUp = warmUp) {
       val future = namedThreadFuture("FuturesTest") { "x" }
-      assert(Await.result(future, 2.s) == "x")
+      assert(Await.result(future, 9.s) == "x")
     }.toString)
     val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
-    assert(Await.ready(future, 2.s).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
+    assert(Await.ready(future, 9.s).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
   }
 
   "promiseFuture" in {
@@ -70,14 +70,14 @@ final class FuturesTest extends AnyFreeSpec
   }
 
   "future.await" in {
-    Future { true } await 2.s shouldBe true
+    Future { true } await 9.s shouldBe true
     intercept[TimeoutException] {
       Future { sleep(1.s) } await 1.ms
     }
   }
 
   "futures.await" in {
-    List(Future { true }, Future { 1 }) await 2.s shouldBe List(true, 1)
+    List(Future { true }, Future { 1 }) await 9.s shouldBe List(true, 1)
     intercept[TimeoutException] {
       Future { sleep(1.s) } await 1.ms
     }

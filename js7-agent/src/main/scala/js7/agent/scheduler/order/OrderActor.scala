@@ -8,6 +8,7 @@ import com.typesafe.config.Config
 import js7.agent.data.AgentState
 import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.OrderActor._
+import js7.base.configutils.Configs.RichConfig
 import js7.base.generic.{Accepted, Completed}
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
@@ -403,7 +404,7 @@ private[order] object OrderActor
       val outErrConf = StdouterrConf(config)
       new Conf(
         stdoutCommitDelay = config.getDuration("js7.order.stdout-stderr.commit-delay").toFiniteDuration,
-        charBufferSize    = config.getInt     ("js7.order.stdout-stderr.char-buffer-size")
+        charBufferSize    = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size").orThrow
                               .min(outErrConf.chunkSize),
         journalConf,
         outErrConf)
@@ -413,7 +414,7 @@ private[order] object OrderActor
   final case class StdouterrConf(chunkSize: Int, delay: FiniteDuration/*, noDelayAfter: FiniteDuration*/)
   object StdouterrConf {
     def apply(config: Config): StdouterrConf = new StdouterrConf(
-      chunkSize    = config.getInt     ("js7.order.stdout-stderr.chunk-size"),
+      chunkSize    = config.memorySizeAsInt("js7.order.stdout-stderr.chunk-size").orThrow,
       delay        = config.getDuration("js7.order.stdout-stderr.delay").toFiniteDuration)
       //noDelayAfter = config.getDuration("js7.order.stdout-stderr.no-delay-after").toFiniteDuration)
   }

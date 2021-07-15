@@ -66,7 +66,7 @@ extends AbstractModule
     logger.debug(s"new ActorSystem('$name')")
     val actorSystem = ActorSystem(
       name,
-      config = Some(configuration.config),
+      config = Some(config),
       Some(getClass.getClassLoader),
       defaultExecutionContext = config.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
     closer.onClose {
@@ -82,7 +82,7 @@ extends AbstractModule
 
   @Provides @Singleton
   def provideConfig(): Config =
-    configuration.config
+    config
 
   @Provides @Singleton
   def controllerConfiguration(): ControllerConfiguration =
