@@ -1,6 +1,7 @@
 package js7.tests.agent
 
 import java.nio.file.Files.exists
+import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.touchFile
@@ -44,12 +45,15 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow, forkingWorkflow, lock, jobResource)
 
+  private var myAgent: RunningAgent = null
+
   "ResetAgent while an order is executed" in {
+    myAgent = agent
     val orderId = OrderId("RESET-AGENT-1")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
-    agent.terminated.await(99.s)
+    myAgent.terminated.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
@@ -75,7 +79,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     eventWatch.await[OrderAttachable](_.key == orderId)
 
     semaphore.flatMap(_.release).runSyncUnsafe()
-    directoryProvider.startAgent(agentPath) await 99.s
+    myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id),
@@ -100,7 +104,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == childOrderId)
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
-    agent.terminated.await(99.s)
+    myAgent.terminated.await(99.s)
 
     eventWatch.await[OrderFailedInFork](_.key == childOrderId)
     assert(eventWatch.keyedEvents[OrderEvent](childOrderId) == Seq(
@@ -129,7 +133,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Simulate journal deletion at restart" in {
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
-    agent.terminated.await(99.s)
+    myAgent.terminated.await(99.s)
 
     // Create some file to let it look like the Agent could not delete the journal
     val stateDir = directoryProvider.agentToTree(agentPath).stateDir
@@ -141,7 +145,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     touchFile(garbageFile)
 
     val eventId = controller.eventWatch.lastAddedEventId
-    directoryProvider.startAgent(agentPath) await 99.s
+    myAgent = directoryProvider.startAgent(agentPath) await 99.s
     controller.eventWatch.await[AgentCreated](after = eventId)
 
     // The restarted Agent has deleted the files (due to markerFile)
