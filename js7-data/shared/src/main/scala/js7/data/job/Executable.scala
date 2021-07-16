@@ -45,7 +45,12 @@ sealed trait ProcessExecutable extends Executable
   final def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
     Outcome.Completed(
       success = returnCodeMeaning.isSuccess(returnCode),
-      namedValues + ("returnCode" -> NumberValue(returnCode.number)))
+      namedValues + ProcessExecutable.toNamedValue(returnCode))
+}
+object ProcessExecutable
+{
+  def toNamedValue(returnCode: ReturnCode): (String, NumberValue) =
+    "returnCode" -> NumberValue(returnCode.number)
 }
 
 sealed trait PathExecutable

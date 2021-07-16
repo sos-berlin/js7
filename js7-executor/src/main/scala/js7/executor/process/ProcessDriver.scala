@@ -1,15 +1,16 @@
 package js7.executor.process
 
+import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import js7.base.generic.Completed
 import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.log.Logger
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{SetOnce, TaskLock}
-import js7.data.job.TaskId
 import js7.data.job.TaskId.newGenerator
+import js7.data.job.{ProcessExecutable, TaskId}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.executor.StdObservers
@@ -52,7 +53,16 @@ final class ProcessDriver(
     runProcess(orderId, env, stdObservers)
       .map {
         case Left(problem) => Outcome.Failed.fromProblem(problem)
-        case Right(returnCode) => conf.toOutcome(fetchReturnValuesThenDeleteFile(), returnCode)
+        case Right(returnCode) =>
+          fetchReturnValuesThenDeleteFile() match {
+            case Left(problem) =>
+              Outcome.Failed.fromProblem(
+                Problem("Reading return values failed:") |+| problem,
+                Map(ProcessExecutable.toNamedValue(returnCode)))
+
+            case Right(namedValues) =>
+              conf.toOutcome(namedValues, returnCode)
+          }
       }
 
   private def runProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
@@ -67,16 +77,16 @@ final class ProcessDriver(
           }
       }
 
-  private def fetchReturnValuesThenDeleteFile(): NamedValues = {
-    val result = returnValuesProvider.read() // TODO Catch exceptions
-    // TODO When Windows locks the file, try delete it later, asynchronously
-    try returnValuesProvider.deleteFile()
-    catch { case NonFatal(t) =>
-      logger.error(s"Cannot delete file '$returnValuesProvider': ${t.toStringWithCauses}")
-      throw t
+  private def fetchReturnValuesThenDeleteFile(): Checked[NamedValues] =
+    Checked.catchNonFatal {
+      val result = returnValuesProvider.read() // TODO Catch exceptions
+      try returnValuesProvider.deleteFile()
+      catch { case NonFatal(t) =>
+        logger.error(s"Cannot delete file '$returnValuesProvider': ${t.toStringWithCauses}")
+        // TODO When Windows locks the file, try delete it later, asynchronously
+      }
+      result
     }
-    result
-  }
 
   private def startProcess(env: Map[String, String], stdObservers: StdObservers)
   : Task[Checked[RichProcess]] =

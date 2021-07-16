@@ -47,7 +47,7 @@ trait ProcessJobExecutor extends JobExecutor
       jobExecutorConf)
 
     new OrderProcess {
-      def run = {
+      def run =
         ( for {
             jobResourcesEnv <- checkedJobResourcesEnv
             v1 <- v1Env(processOrder)
@@ -60,7 +60,6 @@ trait ProcessJobExecutor extends JobExecutor
               .guarantee(processDriver.terminate)
         ).valueOr(problem =>
           Task.pure(Outcome.Failed.fromProblem(problem)))
-      }
 
       override def cancel(immediately: Boolean) =
         Task {

@@ -40,6 +40,7 @@ object JOutcome extends JJsonable.Companion[JOutcome]
     asScala match {
       case asScala: Outcome.Succeeded => Succeeded(asScala)
       case asScala: Outcome.Failed => Failed(asScala)
+      case asScala: Outcome.TimedOut => TimedOut(asScala)
       case asScala: Outcome.Killed => Killed(asScala)
       case asScala: Outcome.Disrupted => Disrupted(asScala)
     }
@@ -57,6 +58,7 @@ object JOutcome extends JJsonable.Companion[JOutcome]
 
   final case class Succeeded(asScala: Outcome.Succeeded) extends Completed
   final case class Failed(asScala: Outcome.Failed) extends Completed
+  final case class TimedOut(asScala: Outcome.TimedOut) extends JOutcome
   final case class Killed(asScala: Outcome.Killed) extends JOutcome
   final case class Disrupted(asScala: Outcome.Disrupted) extends JOutcome
 

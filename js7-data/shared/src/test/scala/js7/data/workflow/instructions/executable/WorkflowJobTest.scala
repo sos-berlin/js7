@@ -45,6 +45,7 @@ final class WorkflowJobTest extends AnyFreeSpec
           Seq(JobResourcePath("JOB-RESOURCE")),
           parallelism = 3,
           Some(10.s),
+          Some(60.s),
           Some(KeyLogin("CREDENTIALS KEY", withUserProfile = true)),
           failOnErrWritten = true),
         json"""{
@@ -65,6 +66,7 @@ final class WorkflowJobTest extends AnyFreeSpec
           ],
           "parallelism": 3,
           "sigkillDelay": 10,
+          "timeout": 60,
           "failOnErrWritten": true
         }""")
     }

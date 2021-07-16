@@ -108,8 +108,8 @@ object Outcome
     def apply(errorMessage: Option[String]): Failed =
       Failed(errorMessage, Map.empty)
 
-    def fromProblem(problem: Problem): Failed =
-      Failed(Some(problem.toString))
+    def fromProblem(problem: Problem, namedValues: NamedValues = NamedValues.empty): Failed =
+      Failed(Some(problem.toString), namedValues)
 
     def fromThrowable(throwable: Throwable): Failed =
       Failed(Some(throwable.toStringWithCauses))
@@ -131,6 +131,11 @@ object Outcome
         errorMessage <- c.get[Option[String]]("message")
         namedValues <- c.getOrElse[NamedValues]("namedValues")(Map.empty)
       } yield Failed(errorMessage, namedValues)
+  }
+
+  final case class TimedOut(outcome: Outcome.Completed)
+  extends Outcome {
+    def isSucceeded = false
   }
 
   final case class Killed(outcome: Outcome.Completed)
@@ -174,6 +179,7 @@ object Outcome
     Subtype[Succeeded],
     Subtype[Failed],
     Subtype(deriveCodec[Killed]),
+    Subtype(deriveCodec[TimedOut]),
     Subtype(deriveCodec[Disrupted]))
 
   private val predefinedRC0SucceededJson: JsonObject =

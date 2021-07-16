@@ -176,7 +176,8 @@ private object OrderActorTest {
     private val eventWatch = new JournalEventWatch(journalMeta, config)
     private val jobActor = actorOf(
       JobActor.props(
-        JobConf(jobKey, workflowJob, Workflow.empty, ControllerId("CONTROLLER"), sigKillDelay = 5.s),
+        JobConf(jobKey, workflowJob, Workflow.empty, ControllerId("CONTROLLER"),
+          sigkillDelay = 5.s, timeout = None),
         executorConf,
         _ => Left(Problem("No JobResource here"))))
     private val orderActor = watch(actorOf(

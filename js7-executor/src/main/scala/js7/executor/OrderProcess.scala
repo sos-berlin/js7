@@ -19,7 +19,8 @@ trait OrderProcess
   def cancel(immediately: Boolean): Task[Unit] =
     Task { future.cancel() }
 
-  final def runToFuture(stdObservers: StdObservers)(implicit s: Scheduler): CancelableFuture[Outcome.Completed] =
+  final def runToFuture(stdObservers: StdObservers)(implicit s: Scheduler)
+  : CancelableFuture[Outcome.Completed] =
     futureOnce.getOrUpdate(
       run
         .tapEval(_ => stdObservers.stop)

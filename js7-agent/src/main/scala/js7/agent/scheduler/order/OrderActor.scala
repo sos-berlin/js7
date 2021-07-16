@@ -154,11 +154,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     stdoutStderrStatistics: () => Option[String])
   : Receive =
     receiveCommand orElse receiveEvent(jobActor) orElse {
-      case JobActor.Response.OrderProcessed(`orderId`, outcome_, isKilled) =>
-        val outcome = outcome_ match {
-          case o: Outcome.Completed => if (isKilled) Outcome.Killed(o) else outcome_
-          case o => o
-        }
+      case JobActor.Response.OrderProcessed(`orderId`, outcome) =>
         context.unwatch(jobActor)
         stdObservers.stop/*may already be stopped by OrderProcess/JobActor*/
           .flatMap(_ => Task.fromFuture(outerrCompleted))

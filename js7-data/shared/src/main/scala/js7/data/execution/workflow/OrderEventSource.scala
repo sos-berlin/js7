@@ -239,7 +239,7 @@ final class OrderEventSource(state: StateView)
     (mode != CancellationMode.FreshOnly || order.isState[Order.Fresh]) &&
       order.isCancelable &&
       // If workflow End is reached, the order is finished normally
-      !instruction(order.workflowPosition).isInstanceOf[End]
+      !instruction(order.workflowPosition).isInstanceOf[End]  // TODO Correct? Or should we check only the end of the main/forked workflow?
 
   /** Returns a `Right(Some(OrderSuspended | OrderSuspensionMarked))` iff order is not already marked as suspending. */
   def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[OrderActorEvent]] =

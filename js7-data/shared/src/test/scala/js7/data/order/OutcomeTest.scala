@@ -74,6 +74,20 @@ final class OutcomeTest extends AnyFreeSpec
         }""")
     }
 
+    "TimedOut with Succeeded and namedValues" in {
+      testJson[Outcome](Outcome.TimedOut(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "KEY" -> StringValue("VALUE")))), json"""
+        {
+          "TYPE": "TimedOut",
+          "outcome": {
+            "TYPE": "Succeeded",
+            "namedValues": {
+              "returnCode": 0,
+              "KEY": "VALUE"
+            }
+          }
+        }""")
+    }
+
     "Killed with Succeeded and namedValues" in {
       testJson[Outcome](Outcome.Killed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "KEY" -> StringValue("VALUE")))), json"""
         {

@@ -8,6 +8,7 @@ import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
@@ -278,26 +279,29 @@ object MonixBase
         underlying.materialize.map(Checked.flattenTryChecked)
     }
 
-    implicit final class RichScheduler(private val underlying: Scheduler) extends AnyVal
+    implicit final class RichScheduler(private val scheduler: Scheduler) extends AnyVal
     {
+      def timestamp: Timestamp =
+        Timestamp.ofEpochMilli(scheduler.clockRealTime(MILLISECONDS))
+
       def scheduleAtFixedRates(durations: IterableOnce[FiniteDuration])(body: => Unit): Cancelable = {
         val cancelable = SerialCancelable()
         val iterator = durations.iterator
         def loop(last: MonixDeadline): Unit = {
           val nextDuration = iterator.next()
           val next = last + nextDuration
-          val delay = next - underlying.now
+          val delay = next - scheduler.now
           cancelable := (
             if (iterator.hasNext)
-              underlying.scheduleOnce(delay) {
+              scheduler.scheduleOnce(delay) {
                 body
                 loop(next)
               }
             else
-              underlying.scheduleAtFixedRate(delay, nextDuration)(body))
+              scheduler.scheduleAtFixedRate(delay, nextDuration)(body))
         }
         if (iterator.hasNext) {
-          loop(underlying.now)
+          loop(scheduler.now)
         }
         cancelable
       }

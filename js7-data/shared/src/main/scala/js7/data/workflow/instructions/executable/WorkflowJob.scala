@@ -27,6 +27,7 @@ final case class WorkflowJob private(
   jobResourcePaths: Seq[JobResourcePath],
   parallelism: Int,
   sigkillDelay: Option[FiniteDuration],
+  timeout: Option[FiniteDuration],
   failOnErrWritten: Boolean)
 {
   def referencedJobResourcePaths =
@@ -58,11 +59,12 @@ object WorkflowJob
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
+    timeout: Option[FiniteDuration] = None,
     login: Option[KeyLogin] = None,
     failOnErrWritten: Boolean = false)
   : WorkflowJob =
-    checked(agentPath, executable, defaultArguments, jobResourcePaths, parallelism, sigkillDelay,
-      failOnErrWritten = failOnErrWritten
+    checked(agentPath, executable, defaultArguments, jobResourcePaths, parallelism,
+      sigkillDelay, timeout, failOnErrWritten = failOnErrWritten
     ).orThrow
 
   def checked(
@@ -72,12 +74,13 @@ object WorkflowJob
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
+    timeout: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false)
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, jobResourcePaths,
-        parallelism, sigkillDelay, failOnErrWritten)
+        parallelism, sigkillDelay, timeout, failOnErrWritten)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -96,6 +99,7 @@ object WorkflowJob
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
       "parallelism" -> workflowJob.parallelism.asJson,
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
+      "timeout" -> workflowJob.timeout.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson)
 
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
@@ -106,9 +110,10 @@ object WorkflowJob
       jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
       parallelism <- cursor.getOrElse[Int]("parallelism")(DefaultParallelism)
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
+      timeout <- cursor.get[Option[FiniteDuration]]("timeout")
       failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
       job <- checked(agentPath, executable, arguments, jobResourcePaths, parallelism,
-        sigkillDelay, failOnErrWritten
+        sigkillDelay, timeout, failOnErrWritten
       ).toDecoderResult(cursor.history)
     } yield job
 }

@@ -457,7 +457,8 @@ with Stash
       if (job.agentPath == ownAgentPath) {
         val jobConf = JobConf(
           jobKey, job, workflow, controllerId,
-          sigKillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
+          sigkillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay,
+          timeout = job.timeout)
         val jobActor = watch(actorOf(
           JobActor.props(jobConf, executorConf, id => persistence.currentState.pathToJobResource.checked(id)),
           uniqueActorName(encodeAsActorName("Job:" + jobKey.name))))

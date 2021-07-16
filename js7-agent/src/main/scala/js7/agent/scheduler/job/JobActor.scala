@@ -4,11 +4,14 @@ import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import cats.syntax.traverse._
 import js7.agent.scheduler.job.JobActor._
 import js7.base.io.process.ProcessSignal
-import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
+import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
+import js7.base.time.ScalaTime.{RichDuration, RichFiniteDuration}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
@@ -20,6 +23,7 @@ import js7.executor.internal.JobExecutor
 import js7.executor.{OrderProcess, ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.execution.cancelables.SerialCancelable
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 
@@ -30,11 +34,10 @@ private[agent] final class JobActor private(
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends Actor with Stash
 {
-  import jobConf.{jobKey, sigKillDelay, workflow, workflowJob}
+  import jobConf.{jobKey, sigkillDelay, timeout, workflow, workflowJob}
 
   private val logger = Logger.withPrefix[this.type](jobKey.name)
-  private val orderToProcess = mutable.Map.empty[OrderId, OrderProcess]
-  private val isOrderKilled = mutable.Set.empty[OrderId]
+  private val orderToProcess = mutable.Map.empty[OrderId, Entry]
   private var waitingForNextOrder = false
   private var terminating = false
 
@@ -67,8 +70,7 @@ extends Actor with Stash
       } yield jobExecutor -> resourcesPaths)
       match {
         case Left(problem) =>
-          replyWithOrderProcessed(
-            Response.OrderProcessed(order.id, Outcome.Disrupted(problem), isOrderKilled(order.id)))
+          replyWithOrderProcessed(order.id, Outcome.Disrupted(problem))
 
         case Right((jobExecutor, jobResources)) =>
           val processOrder = ProcessOrder(
@@ -87,8 +89,7 @@ extends Actor with Stash
       import processOrder.order
       checkedStart match {
         case Left(problem) =>
-          replyWithOrderProcessed(
-            Response.OrderProcessed(order.id, Outcome.Disrupted(problem), isOrderKilled(order.id)))
+          replyWithOrderProcessed(order.id, Outcome.Disrupted(problem))
 
         case Right(()) =>
           val sender = this.sender()
@@ -108,31 +109,51 @@ extends Actor with Stash
     case Internal.Process(processOrder, Right(orderProcess)) =>
       import processOrder.order
       val sender = this.sender()
-      orderToProcess.insert(order.id -> orderProcess)
-      orderProcess
-        .runToFuture(processOrder.stdObservers)  // runToFuture completes the out/err observers
-        .onComplete { tried =>
-          val outcome = tried match {
-            case Success(outcome: Succeeded) =>
-              processOrder.stdObservers.errorLine match {
-                case None => outcome
-                case Some(errorLine) =>
-                  assert(workflowJob.failOnErrWritten)  // see OrderActor
-                  Outcome.Failed(Some(s"The job's error channel: $errorLine"))
-              }
-            case Success(o) => o
-            case Failure(t) =>
-              logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-              Outcome.Failed.fromThrowable(t)
-          }
-          self.!(Internal.TaskFinished(order.id, outcome))(sender)
-        }
 
+      val entry = new Entry(orderProcess)
+      orderToProcess.insert(order.id -> entry)
+
+      // Start the orderProcess. The future completes the out/err observers
+      val future = orderProcess.runToFuture(processOrder.stdObservers)
+      entry.runningSince = scheduler.now
+
+      for (t <- timeout) {
+        // FIXME Maybe too early: the future may not yet have started the process
+        // Separate start: Future[?] and terminated: Future[Completed]
+        entry.timeoutSchedule := scheduler.scheduleOnce(t) {
+          self ! Internal.Timeout(order.id)
+        }
+      }
+
+      future.onComplete { tried =>
+        val outcome = tried match {
+          case Success(outcome: Succeeded) =>
+            processOrder.stdObservers.errorLine match {
+              case None => outcome
+              case Some(errorLine) =>
+                assert(workflowJob.failOnErrWritten) // see OrderActor
+                Outcome.Failed(Some(s"The job's error channel: $errorLine"))
+            }
+          case Success(o) => o
+          case Failure(t) =>
+            logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+            Outcome.Failed.fromThrowable(t)
+        }
+        self.!(Internal.TaskFinished(order.id, outcome))(sender)
+      }
+
+    case Internal.Timeout(orderId) =>
+      for (entry <- orderToProcess.get(orderId)) {
+        entry.timedOut = true
+        logger.warn("OrderProcess for " + orderId + " has been timed out after " +
+          entry.runningSince.elapsed.pretty + " and will be killed now")
+        killOrder(orderId, Some(SIGTERM))
+      }
 
     case Internal.TaskFinished(orderId, outcome) =>
+      for (o <- orderToProcess.get(orderId)) o.timeoutSchedule.cancel()
+      replyWithOrderProcessed(orderId, outcome)
       orderToProcess -= orderId
-      val killed = isOrderKilled.remove(orderId)
-      replyWithOrderProcessed(Response.OrderProcessed(orderId, outcome, isKilled = killed))
 
     case Input.Terminate(maybeSignal) =>
       logger.debug("Terminate")
@@ -141,31 +162,37 @@ extends Actor with Stash
         killAll(signal)
       }
       if (!maybeSignal.contains(SIGKILL) && orderProcessCount > 0) {
-        scheduler.scheduleOnce(sigKillDelay) {
+        scheduler.scheduleOnce(sigkillDelay) {
           self ! Internal.KillAll
         }
       }
       continueTermination()
 
     case Input.KillProcess(orderId, maybeSignal) =>
-      for (signal <- maybeSignal) {
-        killOrder(orderId, signal)
-      }
-      if (!maybeSignal.contains(SIGKILL) && orderProcessCount > 0) {
-        scheduler.scheduleOnce(sigKillDelay) {
-          self ! Internal.KillOrder(orderId)
-        }
-      }
+      killOrder(orderId, maybeSignal)
 
     case Internal.KillAll =>
       killAll(SIGKILL)
 
     case Internal.KillOrder(orderId) =>
-      killOrder(orderId, SIGKILL)
+      kill(orderId, SIGKILL)
   }
 
-  private def replyWithOrderProcessed(msg: Response.OrderProcessed): Unit = {
-    sender() ! msg
+  private def replyWithOrderProcessed(orderId: OrderId, outcome_ : Outcome): Unit = {
+    val outcome = outcome_ match {
+      case o: Outcome.Completed =>
+        orderToProcess.get(orderId) match {
+          case None => o
+          case Some(entry) =>
+            if (entry.timedOut)
+              Outcome.TimedOut(o)
+            else if (entry.isKilled)
+              Outcome.Killed(o)
+            else o
+        }
+      case o => o
+    }
+    sender() ! Response.OrderProcessed(orderId, outcome)
     continueTermination()
     handleIfReadyForOrder()
   }
@@ -180,18 +207,35 @@ extends Actor with Stash
     if (orderToProcess.nonEmpty) {
       logger.warn(s"Terminating, sending $signal to all $orderProcessCount tasks")
       for (orderId <- orderToProcess.keys.toVector/*copy*/) {
-        killOrder(orderId, signal)
+        kill(orderId, signal)
       }
     }
 
-  private def killOrder(orderId: OrderId, signal: ProcessSignal): Unit =
-    for (orderProcess <- orderToProcess.get(orderId)) {
+  private def killOrder(orderId: OrderId, maybeSignal: Option[ProcessSignal]): Unit = {
+    val signal = maybeSignal match {
+      case Some(signal) => Some(signal)
+      case None => !sigkillDelay.isPositive ? SIGKILL  // SIGKILL immediately on sigkillDelay = 0
+    }
+    for (signal <- signal) {
+      kill(orderId, signal)
+    }
+    if (!signal.contains(SIGKILL)) {
+      if (orderToProcess.contains(orderId)) {
+        scheduler.scheduleOnce(sigkillDelay) {
+          self ! Internal.KillOrder(orderId)
+        }
+      }
+    }
+  }
+
+  private def kill(orderId: OrderId, signal: ProcessSignal): Unit =
+    for (entry <- orderToProcess.get(orderId)) {
       logger.info(s"Kill $signal $orderId")
-      isOrderKilled += orderId
+      entry.isKilled = true
 
       Task
-        .defer/*catches exception*/ {
-          orderProcess.cancel(immediately = signal == SIGKILL)
+        .defer/*catch exception*/ {
+          entry.orderProcess.cancel(immediately = signal == SIGKILL)
         }
         .onErrorHandle { t =>
           logger.error(s"Kill $orderId: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
@@ -228,7 +272,7 @@ private[agent] object JobActor
     Props { new JobActor(jobConf, executorConf, pathToJobResource) }
 
   object Response {
-    final case class OrderProcessed(orderId: OrderId, outcome: Outcome, isKilled: Boolean)
+    final case class OrderProcessed(orderId: OrderId, outcome: Outcome)
   }
 
   object Input {
@@ -249,7 +293,15 @@ private[agent] object JobActor
     final case class Step(processOrder: ProcessOrder, jobExecutor: JobExecutor, checkedStart: Checked[Unit])
     final case class Process(processOrder: ProcessOrder, checkedOrderProcess: Checked[OrderProcess])
     final case class TaskFinished(orderId: OrderId, outcome: Outcome)
-    final case object KillAll extends DeadLetterSuppression
+    case object KillAll extends DeadLetterSuppression
+    final case class Timeout(orderId: OrderId) extends DeadLetterSuppression
     final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression
+  }
+
+  private final class Entry(val orderProcess: OrderProcess) {
+    val timeoutSchedule = SerialCancelable()
+    var runningSince: MonixDeadline = null
+    var isKilled = false
+    var timedOut = false
   }
 }
