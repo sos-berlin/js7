@@ -63,7 +63,7 @@ object JournalFiles
       val markerFile = deletionMarkerFile(fileBase)
       if (exists(markerFile)) {
         logger.warn("DELETE JOURNAL DUE TO AGENT RESET IN PREVIOUS RUN" +
-          s" ($markerFile marker file found")
+          s" ($markerFile marker file found)")
         deleteJournal(fileBase)
       }
       Checked.unit

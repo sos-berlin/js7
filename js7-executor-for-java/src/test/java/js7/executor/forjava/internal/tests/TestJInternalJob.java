@@ -73,7 +73,7 @@ public final class TestJInternalJob implements JInternalJob
     }
 
     private JOutcome.Completed process(Step step) {
-        logger.debug("processOrder " + step.order().id());
+        logger.debug("process " + step.order().id());
         // JS7 guarantees having awaited completion of the `start` method
         if (!started.equals("STARTED")) {
             throw new RuntimeException("NOT STARTED");
