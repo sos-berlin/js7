@@ -62,8 +62,8 @@ final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with Te
       val stdObservers = new StdObservers(out, err, charBufferSize = 7, keepLastErrLine = false)
       val whenOut = out.foldL.runToFuture
       val whenErr = err.foldL.runToFuture
-      val ended = taskRunner.processOrder(order.id, Map("VAR1" -> "VALUE1"), stdObservers)
-        .guarantee(taskRunner.terminate) await 30.s
+      val ended = taskRunner.startAndRunProcess(order.id, Map("VAR1" -> "VALUE1"), stdObservers)
+        .await(30.s).join.await(30.s)
       assert(ended == Outcome.Succeeded(Map(
         "result" -> StringValue("TEST-RESULT-VALUE1"),
         "returnCode" -> NumberValue(0))))
@@ -81,7 +81,7 @@ object ProcessDriverTest {
     if (isWindows) """
       |@echo off
       |echo Hej!
-      |echo THIS IS STDERR>&2
+      |echo THIS IS STDERR >&2
       |echo var1=%VAR1%
       |echo result=TEST-RESULT-%VAR1% >>"%JS7_RETURN_VALUES%"
       |""".stripMargin

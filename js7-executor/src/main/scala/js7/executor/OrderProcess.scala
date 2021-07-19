@@ -3,8 +3,9 @@ package js7.executor
 import js7.base.utils.SetOnce
 import js7.data.order.Outcome
 import js7.executor.OrderProcess._
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.{CancelableFuture, Scheduler}
+import scala.concurrent.Future
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 
@@ -12,17 +13,18 @@ trait OrderProcess
 {
   private val futureOnce = SetOnce[CancelableFuture[Outcome.Completed]]
 
-  protected def run: Task[Outcome.Completed]
+  protected def run: Task[Fiber[Outcome.Completed]]
 
   final def future = futureOnce.orThrow
 
   def cancel(immediately: Boolean): Task[Unit] =
     Task { future.cancel() }
 
-  final def runToFuture(stdObservers: StdObservers)(implicit s: Scheduler)
-  : CancelableFuture[Outcome.Completed] =
-    futureOnce.getOrUpdate(
-      run
+  final def start(stdObservers: StdObservers)(implicit s: Scheduler)
+  : Task[Future[Outcome.Completed]] =
+    run.map(fiber =>
+      futureOnce := fiber
+        .join
         .tapEval(_ => stdObservers.stop)
         .onCancelRaiseError(CanceledException)
         .materialize.map {
@@ -30,7 +32,8 @@ trait OrderProcess
           case Failure(t) => Outcome.Failed.fromThrowable(t)
           case Success(o) => o
         }
-        .runToFuture)
+        .runToFuture
+    )
 }
 
 object OrderProcess
@@ -38,8 +41,11 @@ object OrderProcess
   def apply(run: Task[Outcome.Completed]) =
     new Simple(run)
 
-  final class Simple(val run: Task[Outcome.Completed])
+  final class Simple(task: Task[Outcome.Completed])
   extends OrderProcess
+  {
+    def run = task.start
+  }
 
   private object CanceledException extends NoStackTrace
 }

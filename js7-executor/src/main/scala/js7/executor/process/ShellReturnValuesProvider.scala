@@ -3,10 +3,13 @@ package js7.executor.process
 import java.nio.file.Files.{createTempFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.value.{NamedValues, StringValue}
 import js7.executor.configuration.JobExecutorConf.FileEncoding
 import js7.executor.process.ShellReturnValuesProvider._
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -24,12 +27,15 @@ private final class ShellReturnValuesProvider(temporaryDirectory: Path, v1Compat
   def clear(): Unit =
     file := ""
 
-  def deleteFile(): Unit = {
+  def tryDeleteFile(): Unit =
     if (fileExists) {
-      deleteIfExists(file)
+      try deleteIfExists(file)
+      catch { case NonFatal(t) =>
+        logger.error(s"Cannot delete file '$file': ${t.toStringWithCauses}")
+        // TODO When Windows locks the file, try delete it later, asynchronously
+      }
       fileExists = false
     }
-  }
 
   def toEnv: (String, String) =
     varName -> file.toString
@@ -53,6 +59,7 @@ private final class ShellReturnValuesProvider(temporaryDirectory: Path, v1Compat
 
 private object ShellReturnValuesProvider
 {
+  private val logger = Logger[this.type]
   private val V1VarName = "SCHEDULER_RETURN_VALUES"
   private val VarName = "JS7_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r

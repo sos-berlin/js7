@@ -14,7 +14,7 @@ import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.internal.JobExecutor
 import js7.executor.process.ProcessJobExecutor._
 import js7.executor.{OrderProcess, ProcessOrder}
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 
 trait ProcessJobExecutor extends JobExecutor
 {
@@ -24,7 +24,7 @@ trait ProcessJobExecutor extends JobExecutor
   import executable.v1Compatible
   import jobConf.jobKey
 
-  final def start = Task.pure(Right(()))
+  final val start = Task.pure(Right(()))
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
   : OrderProcess = {
@@ -47,19 +47,22 @@ trait ProcessJobExecutor extends JobExecutor
       jobExecutorConf)
 
     new OrderProcess {
-      def run =
-        ( for {
-            jobResourcesEnv <- checkedJobResourcesEnv
-            v1 <- v1Env(processOrder)
-          } yield
+      def run: Task[Fiber[Outcome.Completed]] = {
+        val checkedEnv = for {
+          jobResourcesEnv <- checkedJobResourcesEnv
+          v1 <- v1Env(processOrder)
+        } yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
+        checkedEnv match {
+          case Left(problem) =>
+            Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
+          case Right(env) =>
             processDriver
-              .processOrder(
+              .startAndRunProcess(
                 order.id,
-                (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap,
+                env,
                 processOrder.stdObservers)
-              .guarantee(processDriver.terminate)
-        ).valueOr(problem =>
-          Task.pure(Outcome.Failed.fromProblem(problem)))
+        }
+      }
 
       override def cancel(immediately: Boolean) =
         Task {

@@ -25,6 +25,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 private[agent] final class JobActor private(
@@ -82,12 +83,12 @@ extends Actor with Stash
             .map { checked =>
               self.!(Internal.Step(processOrder, jobExecutor, checked))(sender)
             }
-            .runToFuture
+            .runAsyncAndForget
       }
 
-    case Internal.Step(processOrder, jobExecutor, checkedStart) =>
+    case Internal.Step(processOrder, jobExecutor, checkedJobContextStart) =>
       import processOrder.order
-      checkedStart match {
+      checkedJobContextStart match {
         case Left(problem) =>
           replyWithOrderProcessed(order.id, Outcome.Disrupted(problem))
 
@@ -103,7 +104,6 @@ extends Actor with Stash
     case Internal.Process(processOrder: ProcessOrder, Left(problem)) =>
       import processOrder.order
       val sender = this.sender()
-      logger.debug(s"Order '${order.id.string}' step could not be started: $problem")
       self.!(Internal.TaskFinished(order.id, Outcome.Disrupted(problem)))(sender)
 
     case Internal.Process(processOrder, Right(orderProcess)) =>
@@ -113,19 +113,30 @@ extends Actor with Stash
       val entry = new Entry(orderProcess)
       orderToProcess.insert(order.id -> entry)
 
-      // Start the orderProcess. The future completes the out/err observers
-      val future = orderProcess.runToFuture(processOrder.stdObservers)
-      entry.runningSince = scheduler.now
+      // Start the orderProcess.
+      // The future completes the out/err observers
+      orderProcess.start(processOrder.stdObservers)
+        .runToFuture
+        .onComplete {
+          case Failure(t) =>
+            val outcome = Outcome.Failed.fromThrowable(t)
+            self.!(Internal.TaskFinished(order.id, outcome))(sender)
 
+          case Success(runningProcessFuture) =>
+            self.!(Internal.ProcessStarted(processOrder, runningProcessFuture, entry))(sender)
+        }
+
+    case Internal.ProcessStarted(processOrder, runningProcessFuture, entry) =>
+      import processOrder.order
+      val sender = this.sender()
+      entry.runningSince = scheduler.now
       for (t <- timeout) {
-        // FIXME Maybe too early: the future may not yet have started the process
-        // Separate start: Future[?] and terminated: Future[Completed]
         entry.timeoutSchedule := scheduler.scheduleOnce(t) {
           self ! Internal.Timeout(order.id)
         }
       }
 
-      future.onComplete { tried =>
+      runningProcessFuture.onComplete { tried =>
         val outcome = tried match {
           case Success(outcome: Succeeded) =>
             processOrder.stdObservers.errorLine match {
@@ -292,6 +303,12 @@ private[agent] object JobActor
   private object Internal {
     final case class Step(processOrder: ProcessOrder, jobExecutor: JobExecutor, checkedStart: Checked[Unit])
     final case class Process(processOrder: ProcessOrder, checkedOrderProcess: Checked[OrderProcess])
+
+    final case class ProcessStarted(
+      processOrder: ProcessOrder,
+      runningProcessFuture: Future[Outcome.Completed],
+      entry: Entry)
+
     final case class TaskFinished(orderId: OrderId, outcome: Outcome)
     case object KillAll extends DeadLetterSuppression
     final case class Timeout(orderId: OrderId) extends DeadLetterSuppression

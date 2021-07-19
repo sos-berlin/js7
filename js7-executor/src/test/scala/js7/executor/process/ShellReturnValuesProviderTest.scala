@@ -21,7 +21,7 @@ final class ShellReturnValuesProviderTest extends AnyFreeSpec
         "A" -> StringValue("a"),
         "B" -> StringValue("b * *"),
         "C" -> StringValue("c = =")))
-      provider.deleteFile()
+      provider.tryDeleteFile()
       assert(!exists(provider.file))
     }
   }

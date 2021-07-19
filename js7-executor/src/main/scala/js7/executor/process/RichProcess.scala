@@ -43,8 +43,8 @@ class RichProcess protected[process](
 
   private lazy val _terminated: Task[ReturnCode] =
     Task.defer {
-      process.returnCode.map(Task.pure).getOrElse(
-        ioTask {
+      process.returnCode.map(Task.pure)
+        .getOrElse(ioTask {
           waitForProcessTermination(process)
         })
     }.memoize

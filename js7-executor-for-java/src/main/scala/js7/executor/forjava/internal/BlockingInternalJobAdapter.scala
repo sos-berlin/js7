@@ -32,8 +32,12 @@ extends InternalJob
         protected def run =
           for {
             orderProcess <- orderProcessTask
-            outcome <- Task(orderProcess.run()) executeOn jobContext.blockingJobScheduler
-          } yield outcome.asScala
+            fiber <- Task(orderProcess.run())
+              .executeOn(jobContext.blockingJobScheduler)
+              .map(_.asScala)
+              .start
+          } yield
+            fiber
 
         override def cancel(immediately: Boolean) =
           orderProcessTask.flatMap(orderProcess =>

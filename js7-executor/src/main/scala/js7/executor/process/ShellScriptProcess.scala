@@ -45,57 +45,61 @@ object ShellScriptProcess
         commandLine.file,
         commandLine.arguments.tail ++ conf.idArgumentOption/*TODO Should not be an argument*/)
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
-      val checkedProcess: Task[Checked[Js7Process]] =
-        conf.windowsLogon match {
-          case None =>
-            val processBuilder = new ProcessBuilder(commandArgs.asJava)
-            for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
-            processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
-            processBuilder.startRobustly().map(o => Right(JavaProcess(o)))
 
-          case Some(logon) =>
-            Task.pure(
-              WindowsProcess.startWithWindowsLogon(
-                StartWindowsProcess(
-                  commandArgs,
-                  stdinRedirect = PIPE,
-                  stdoutRedirect = PIPE,
-                  stderrRedirect = PIPE,
-                  additionalEnv = conf.additionalEnvironment),
-                  //conf.workingDirectory),
-                Some(logon)))
-        }
+      startProcess(commandArgs, conf)
+        .map(_.map { process =>
+          def toObservable(in: InputStream, onTerminated: Promise[Unit]): Observable[String] =
+            UnbufferedReaderObservable(Task(new InputStreamReader(in)), stdObservers.charBufferSize)
+              .executeOn(iox.scheduler)
+              .guaranteeCase {
+                case ExitCase.Error(t) => Task(onTerminated.failure(t))
+                case ExitCase.Completed | ExitCase.Canceled => Task(onTerminated.success(()))
+              }
 
-      checkedProcess.map(_.map { process =>
-        def toObservable(in: InputStream, onTerminated: Promise[Unit]): Observable[String] =
-          UnbufferedReaderObservable(Task(new InputStreamReader(in)), stdObservers.charBufferSize)
-            .executeOn(iox.scheduler)
-            .guaranteeCase {
-              case ExitCase.Error(t) => Task(onTerminated.failure(t))
-              case ExitCase.Completed | ExitCase.Canceled => Task(onTerminated.success(()))
-            }
+          val outClosed, errClosed = Promise[Unit]()
+          toObservable(process.stdout, outClosed).subscribe(stdObservers.out)
+          toObservable(process.stderr, errClosed).subscribe(stdObservers.err)
 
-        val outClosed, errClosed = Promise[Unit]()
-        toObservable(process.stdout, outClosed).subscribe(stdObservers.out)
-        toObservable(process.stderr, errClosed).subscribe(stdObservers.err)
-
-        new ShellScriptProcess(conf, process) {
-          override val terminated =
-            ( for {
-               outTried <- Task.fromFuture(outClosed.future).materialize
-               errTried <- Task.fromFuture(errClosed.future).materialize
-               returnCode <- super.terminated
-               returnCode <-
-                 if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
-                   for (t <- outTried.failed) logger.warn(t.toStringWithCauses)
-                   for (t <- errTried.failed) logger.warn(t.toStringWithCauses)
-                   Task.pure(returnCode)
-                 } else
-                   Task.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
-               _ <- whenTerminated
-              } yield returnCode
-            ).memoize
-        }
-      })
+          new ShellScriptProcess(conf, process) {
+            override val terminated =
+              ( for {
+                 outTried <- Task.fromFuture(outClosed.future).materialize
+                 errTried <- Task.fromFuture(errClosed.future).materialize
+                 returnCode <- super.terminated
+                 returnCode <-
+                   if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
+                     for (t <- outTried.failed) logger.warn(t.toStringWithCauses)
+                     for (t <- errTried.failed) logger.warn(t.toStringWithCauses)
+                     Task.pure(returnCode)
+                   } else
+                     Task.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
+                 _ <- whenTerminated
+                } yield returnCode
+              ).memoize
+          }
+        })
     }
+
+  private def startProcess(args: Seq[String], conf: ProcessConfiguration)
+  : Task[Checked[Js7Process]] =
+    conf.windowsLogon match {
+      case None =>
+        val processBuilder = new ProcessBuilder(args.asJava)
+        for (o <- conf.workingDirectory) processBuilder.directory(o.toFile)
+        processBuilder.environment.putAll(conf.additionalEnvironment.asJava)
+        processBuilder.startRobustly()
+          .map(o => Right(JavaProcess(o)))
+
+      case Some(logon) =>
+        Task(
+          WindowsProcess.startWithWindowsLogon(
+            StartWindowsProcess(
+              args,
+              stdinRedirect = PIPE,
+              stdoutRedirect = PIPE,
+              stderrRedirect = PIPE,
+              additionalEnv = conf.additionalEnvironment),
+            Some(logon)))
+
+  }
 }

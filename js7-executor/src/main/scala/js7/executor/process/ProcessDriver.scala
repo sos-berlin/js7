@@ -1,9 +1,8 @@
 package js7.executor.process
 
-import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import js7.base.generic.Completed
-import js7.base.io.process.{ProcessSignal, ReturnCode}
+import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -18,9 +17,8 @@ import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
 import js7.executor.forwindows.{WindowsLogon, WindowsProcess}
 import js7.executor.process.ProcessDriver._
 import js7.executor.process.ShellScriptProcess.startPipedShellScript
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import scala.concurrent.Promise
-import scala.util.control.NonFatal
 
 final class ProcessDriver(
   conf: TaskConfiguration,
@@ -37,62 +35,19 @@ final class ProcessDriver(
   private val richProcessOnce = SetOnce[RichProcess]
   private var killedBeforeStart = false
 
-  def terminate: Task[Unit] =
-    Task.defer {
-      returnValuesProvider.deleteFile()
-      richProcessOnce.toOption match {
-        case Some(richProcess) =>
-          richProcess.terminated.map((_: ReturnCode) => ())
-        case None =>
-          Task.unit
-      }
-    }
-
-  def processOrder(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
-  : Task[Outcome.Completed] =
-    runProcess(orderId, env, stdObservers)
-      .map {
-        case Left(problem) => Outcome.Failed.fromProblem(problem)
-        case Right(returnCode) =>
-          fetchReturnValuesThenDeleteFile() match {
-            case Left(problem) =>
-              Outcome.Failed.fromProblem(
-                Problem("Reading return values failed:") |+| problem,
-                Map(ProcessExecutable.toNamedValue(returnCode)))
-
-            case Right(namedValues) =>
-              conf.toOutcome(namedValues, returnCode)
-          }
+  def startAndRunProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
+  : Task[Fiber[Outcome.Completed]] =
+    startProcess(orderId, env, stdObservers)
+      .flatMap {
+        case Left(problem) => Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
+        case Right(richProcess) => outcomeOf(richProcess).start
       }
 
-  private def runProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
-  : Task[Checked[ReturnCode]] =
-    startProcess(env, stdObservers)
-      .flatMapT { richProcess =>
-        logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
-        richProcess.terminated.materialize
-          .flatMap { tried =>
-            logger.info(s"Process $richProcess terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
-            Task.fromTry(tried.map(Right(_)))
-          }
-      }
-
-  private def fetchReturnValuesThenDeleteFile(): Checked[NamedValues] =
-    Checked.catchNonFatal {
-      val result = returnValuesProvider.read() // TODO Catch exceptions
-      try returnValuesProvider.deleteFile()
-      catch { case NonFatal(t) =>
-        logger.error(s"Cannot delete file '$returnValuesProvider': ${t.toStringWithCauses}")
-        // TODO When Windows locks the file, try delete it later, asynchronously
-      }
-      result
-    }
-
-  private def startProcess(env: Map[String, String], stdObservers: StdObservers)
+  private def startProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
   : Task[Checked[RichProcess]] =
     Task.deferAction { implicit scheduler =>
       if (killedBeforeStart)
-        Task.raiseError(new RuntimeException(s"$taskId killed before start"))
+        Task.pure(Left(Problem.pure(s"$taskId killed before start")))
       else
         Task(
           checkedWindowsLogon
@@ -109,14 +64,44 @@ final class ProcessDriver(
                 killScriptOption = jobExecutorConf.killScript,
                 maybeWindowsLogon))
           }
-        ) .flatMapT(processConfiguration =>
-            startProcessLock/*required due to a Linux problem with many process starts ???*/
-              .lock(
-                startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
-              .map(_.map { richProcess =>
-                terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
-                richProcessOnce := richProcess
-              }))
+        ).flatMapT(processConfiguration =>
+          startProcessLock
+            .lock(
+              startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
+            .map(_.map { richProcess =>
+              logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
+              terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
+              richProcessOnce := richProcess
+            }))
+    }
+
+  private def outcomeOf(richProcess: RichProcess): Task[Outcome.Completed] =
+    richProcess
+      .terminated
+      .materialize.flatMap { tried =>
+        logger.info(s"Process $richProcess terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
+        Task.fromTry(tried)
+      }
+      .map { returnCode =>
+        fetchReturnValuesThenDeleteFile() match {
+          case Left(problem) =>
+            Outcome.Failed.fromProblem(
+              problem.withPrefix("Reading return values failed:"),
+              Map(ProcessExecutable.toNamedValue(returnCode)))
+
+          case Right(namedValues) =>
+            conf.toOutcome(namedValues, returnCode)
+        }
+      }
+      .guarantee(Task {
+        returnValuesProvider.tryDeleteFile()
+      })
+
+  private def fetchReturnValuesThenDeleteFile(): Checked[NamedValues] =
+    Checked.catchNonFatal {
+      val result = returnValuesProvider.read()
+      returnValuesProvider.tryDeleteFile()
+      result
     }
 
   def kill(signal: ProcessSignal): Unit =
@@ -135,6 +120,7 @@ object ProcessDriver
 {
   private val logger = Logger(getClass)
 
+  /** Linux may return a "busy" error when starting many processes at once. */
   private val startProcessLock = TaskLock("syncStartProcess")
 
   private object taskIdGenerator extends Iterator[TaskId] {

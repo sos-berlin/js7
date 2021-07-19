@@ -323,11 +323,13 @@ object InternalJobTest
   {
     def toOrderProcess(step: Step) =
       new OrderProcess {
-        def run = Task.sleep(9.s)
-          .as(Outcome.succeeded)
-          .guaranteeCase(exitCase => Task {
-            logger.debug(s"CancelableJob $exitCase")
-          })
+        def run =
+          Task.sleep(9.s)
+            .as[Outcome.Completed](Outcome.succeeded)
+            .start
+            .guaranteeCase(exitCase => Task {
+              logger.debug(s"CancelableJob $exitCase")
+            })
 
         override def cancel(immediately: Boolean) =
           if (immediately)

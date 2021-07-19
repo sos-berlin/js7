@@ -113,18 +113,18 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
     executor
       .start
       .flatMapT(_ =>
-        Task.deferFuture(
-          executor.prepareOrderProcess(
-            ProcessOrder(
-              Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
-              workflow,
-              executor.jobConf.jobKey,
-              jobResources = Nil,
-              Map("ORDER_ARG" -> arg),
-              ControllerId("CONTROLLER"),
-              stdObservers))
-          .await(99.s).orThrow
-          .runToFuture(stdObservers))
+        executor.prepareOrderProcess(
+          ProcessOrder(
+            Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
+            workflow,
+            executor.jobConf.jobKey,
+            jobResources = Nil,
+            Map("ORDER_ARG" -> arg),
+            ControllerId("CONTROLLER"),
+            stdObservers))
+        .await(99.s).orThrow
+        .start(stdObservers)
+        .flatMap(Task.fromFuture)
         .guarantee(Task {
           try out.onComplete()
           finally err.onComplete()
