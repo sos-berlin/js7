@@ -124,7 +124,7 @@ extends CommonConfiguration
 
 object AgentConfiguration
 {
-  private[configuration] val DefaultName = if (isTest) "Agent" else "JS7"
+  val DefaultName = if (isTest) "Agent" else "JS7"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("js7/agent/configuration/agent.conf")
@@ -140,7 +140,12 @@ object AgentConfiguration
     .withCommandLineArguments(arguments)
   }
 
-  private def fromDirectories(configDirectory: Path, dataDirectory: Path, extraDefaultConfig: Config): AgentConfiguration = {
+  private def fromDirectories(
+    configDirectory: Path,
+    dataDirectory: Path,
+    extraDefaultConfig: Config,
+    name: String = DefaultName)
+  : AgentConfiguration = {
     val config = resolvedConfig(configDirectory, extraDefaultConfig)
     var v = new AgentConfiguration(
       configDirectory = configDirectory,
@@ -151,7 +156,7 @@ object AgentConfiguration
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
-      name = DefaultName,
+      name = name,
       config = config)
     v = v.withKillScript(config.optionAs[String]("js7.job.execution.kill.script"))
     //for (o <- config.optionAs("js7.web.server.https-port")(StringToServerInetSocketAddress)) {
@@ -180,6 +185,7 @@ object AgentConfiguration
 
   def forTest(
     configAndData: Path,
+    name: String,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None)
@@ -187,7 +193,8 @@ object AgentConfiguration
     fromDirectories(
       configDirectory = configAndData / "config",
       dataDirectory = configAndData / "data",
-      config)
+      config,
+      name = name)
     .copy(
       webServerPorts  =
         httpPort.map(port => WebServerPort.localhost(port)) ++:

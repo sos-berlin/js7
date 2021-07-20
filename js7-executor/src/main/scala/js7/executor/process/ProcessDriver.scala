@@ -5,6 +5,7 @@ import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{SetOnce, TaskLock}
@@ -79,7 +80,8 @@ final class ProcessDriver(
     richProcess
       .terminated
       .materialize.flatMap { tried =>
-        logger.info(s"Process $richProcess terminated with ${tried getOrElse tried} after ${richProcess.duration.pretty}")
+        val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
+        logger.info(s"Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
         Task.fromTry(tried)
       }
       .map { returnCode =>

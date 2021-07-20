@@ -319,10 +319,10 @@ object DirectoryProvider
   extends Tree {
     val directory = rootDirectory / agentPath.string
     lazy val agentConfiguration = (AgentConfiguration.forTest(directory,
-        config,
-        httpPort = !https ? port,
-        httpsPort = https ? port))
-      .copy(name = name)
+      name = name,
+      config,
+      httpPort = !https ? port,
+      httpsPort = https ? port))
     lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
     lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
     lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))

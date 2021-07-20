@@ -53,7 +53,7 @@ final class OrderAgentTest extends AnyFreeSpec
       APathExecutable.toFile(jobDir).writeExecutable(TestScript)
       BPathExecutable.toFile(jobDir).writeExecutable(TestScript)
 
-      val agentConf = AgentConfiguration.forTest(directory)
+      val agentConf = AgentConfiguration.forTest(directory, name = "OrderAgentTest")
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
         withCloser { implicit closer =>
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
@@ -102,13 +102,16 @@ final class OrderAgentTest extends AnyFreeSpec
       val executableDir = directory / "config" / "executables"
       APathExecutable.toFile(executableDir).writeExecutable(TestScript)
       BPathExecutable.toFile(executableDir).writeExecutable(TestScript)
-      val agentConf = AgentConfiguration.forTest(directory, config"""
-        js7.journal.sync = on
-        js7.journal.delay = 0ms
-        js7.journal.simulate-sync = 10ms
-        js7.journal.snapshot.log-period = 1ms
-        js7.journal.snapshot.log-actor-limit = 10
-        """)
+      val agentConf = AgentConfiguration.forTest(
+        directory,
+        name = "OrderAgentTest",
+        config"""
+          js7.journal.sync = on
+          js7.journal.delay = 0ms
+          js7.journal.simulate-sync = 10ms
+          js7.journal.snapshot.log-period = 1ms
+          js7.journal.snapshot.log-actor-limit = 10
+          """)
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent =>
         withCloser { implicit closer =>

@@ -34,7 +34,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with TestAgentDirectoryProvider
 {
-  private lazy val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(agentDirectory)))
+  private lazy val injector = Guice.createInjector(new AgentModule(
+    AgentConfiguration.forTest(agentDirectory, name = "ProcessDriverTest")))
 
   override protected def afterAll() = {
     injector.instance[Closer].close()

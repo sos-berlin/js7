@@ -11,6 +11,7 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.execution.Scheduler.Implicits.global
 
 /**
@@ -23,7 +24,7 @@ trait TestAgentProvider extends TestAgentDirectoryProvider {
   protected lazy val agentConfiguration = newAgentConfiguration()
 
   protected final def newAgentConfiguration() =
-    AgentConfiguration.forTest(configAndData = agentDirectory)
+    AgentConfiguration.forTest(configAndData = agentDirectory, getClass.simpleScalaName)
 
   protected lazy final val agent: RunningAgent = {
     val confModule = new AgentModule(agentConfiguration)

@@ -37,31 +37,39 @@ final class AgentActorTest extends AnyFreeSpec
 
   for (n <- List(10) ++ (sys.props.contains("test.speed") ? 1000 /*needs Job.parallelism=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {
-      TestAgentActorProvider.provide { provider =>
+      TestAgentActorProvider.provide("AgentActorTest") { provider =>
         import provider.{agentDirectory, executeCommand}
+
         for (pathExecutable <- TestPathExecutables) {
           val file = pathExecutable.toFile(agentDirectory / "config" / "executables")
           file.writeExecutable(TestScript)
         }
+
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
+
         val agentRunId = executeCommand(CreateAgent(agentPath, controllerId))
           .await(99.s).orThrow.asInstanceOf[CreateAgent.Response].agentRunId
         val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch)(Timeout(88.s))
           .mapTo[Checked[EventWatch]].await(99.s).orThrow
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
+
         executeCommand(AttachSignedItem(provider.itemSigner.sign(SimpleTestWorkflow)))
           .await(99.s).orThrow
+
         orderIds.map(orderId =>
           executeCommand(
             AttachOrder(TestOrder.copy(id = orderId), TestAgentPath))
         ).await(99.s).foreach(o => assert(o.isRight))
+
         assert(
           executeCommand(
             AttachOrder(TestOrder.copy(id = orderIds.head), TestAgentPath)
           ).await(99.s) == Left(AgentDuplicateOrder(orderIds.head)))
+
         assert(executeCommand(CoupleController(agentPath, agentRunId, EventId.BeforeFirst)).await(99.s) ==
           Right(CoupleController.Response(orderIds.toSet)))
+
         for (orderId <- orderIds)
           eventWatch.whenKeyedEvent[OrderEvent.OrderDetachable](EventRequest.singleClass(timeout = Some(90.s)), orderId) await 99.s
         info(stopwatch.itemsPerSecondString(n, "Orders"))
@@ -71,6 +79,7 @@ final class AgentActorTest extends AnyFreeSpec
           val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
           !orders.exists(_.isAttached/*should be _.isDetaching*/)
         }
+
         val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
         assert(orders.toSet ==
           orderIds.map(orderId => Order(

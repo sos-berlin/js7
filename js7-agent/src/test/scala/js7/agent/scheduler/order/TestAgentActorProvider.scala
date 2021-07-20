@@ -22,12 +22,12 @@ import scala.concurrent.{Future, Promise}
 /**
   * @author Joacim Zschimmer
   */
-private class TestAgentActorProvider extends HasCloser
+private class TestAgentActorProvider(testName: String) extends HasCloser
 {
   private val directoryProvider = TestAgentDirectoryProvider().closeWithCloser
   lazy val agentDirectory = directoryProvider.agentDirectory
 
-  lazy val agentActor = start(agentDirectory)
+  lazy val agentActor = start(agentDirectory, testName)
 
   def startAgent() = agentActor
 
@@ -43,12 +43,12 @@ private class TestAgentActorProvider extends HasCloser
 object TestAgentActorProvider {
   private val ControllerUserId = UserId.Anonymous
 
-  def provide[A](body: TestAgentActorProvider => A): A =
-    autoClosing(new TestAgentActorProvider)(body)
+  def provide[A](testName: String)(body: TestAgentActorProvider => A): A =
+    autoClosing(new TestAgentActorProvider(testName))(body)
 
-  private def start(configAndData: Path)(implicit closer: Closer): ActorRef = {
-    implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData)
-    val actorSystem = newAgentActorSystem("TestAgentActorProvider")
+  private def start(configAndData: Path, testName: String)(implicit closer: Closer): ActorRef = {
+    implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData, name = testName)
+    val actorSystem = newAgentActorSystem(name = testName)
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
 
     // Initialize Akka here to solve a classloader problem when Akka reads its reference.conf

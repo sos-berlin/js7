@@ -2,6 +2,7 @@ package js7.base.io.process
 
 import js7.base.annotation.javaApi
 import js7.base.generic.GenericInt
+import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 
 /**
  * @author Joacim Zschimmer
@@ -12,6 +13,16 @@ final case class ReturnCode private(number: Int) extends GenericInt
 
   def isProcessSignal: Boolean =
     number > 128 && number < 256
+
+  def pretty(isWindows: Boolean) =
+    if (isWindows || !isProcessSignal)
+      toString
+    else
+      number - 128 match {
+        case SIGTERM.number => s"ReturnCode($number/SIGTERM)"
+        case SIGKILL.number => s"ReturnCode($number/SIGKILL)"
+        case signal => s"ReturnCode($number=128+$signal)"
+      }
 }
 
 object ReturnCode extends GenericInt.Companion[ReturnCode]

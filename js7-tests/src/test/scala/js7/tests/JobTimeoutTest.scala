@@ -57,7 +57,8 @@ final class JobTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted,
-        OrderProcessed(Outcome.TimedOut(Outcome.Failed(Map("returnCode" -> NumberValue(128 + SIGTERM.number))))),
+        OrderProcessed(Outcome.TimedOut(Outcome.Failed(Map(
+          "returnCode" -> NumberValue(128 + SIGTERM.number))))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))

@@ -60,6 +60,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
           val port = findFreeTcpPort()
           agent2 = RunningAgent.startForTest(AgentConfiguration.forTest(
             provider.agents.head.directory,
+            name = "UpdateRepoAgentTest",
             httpPort = Some(port))
           ).await(99.s)
 

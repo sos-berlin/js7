@@ -73,8 +73,9 @@ object TestDockerExample
         config = controllerConfiguration.config)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentPath <- TestAgentPaths) yield {
-        val agent = RunningAgent.startForTest(
-          AgentConfiguration.forTest(configAndData = env.agentDir(agentPath))
+        val agent = RunningAgent.startForTest(AgentConfiguration.forTest(
+          configAndData = env.agentDir(agentPath),
+          name = AgentConfiguration.DefaultName)
         ).map(_.closeWithCloser) await 99.s
         //env.file(agentPath, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
         agent

@@ -17,7 +17,8 @@ final class AgentAkkaNoStackoverflowTest extends AnyFreeSpec with AgentTester
   "Job working directory" in {
     val exception = intercept[RuntimeException] {
       provideAgentDirectory { directory =>
-        RunningAgent.run(AgentConfiguration.forTest(directory), timeout = Some(99.s)) { agent =>
+        val conf = AgentConfiguration.forTest(directory, "AgentAkkaNoStackoverflowTest")
+        RunningAgent.run(conf, timeout = Some(99.s)) { agent =>
           logger.warn("THROW TEST ERROR")
           sys.error("TEST ERROR")
         }

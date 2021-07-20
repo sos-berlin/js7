@@ -37,7 +37,9 @@ import scala.collection.mutable
 final class AkkaHttpAgentTextApiTest
 extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
 {
-  override protected lazy val agentConfiguration = AgentConfiguration.forTest(configAndData = agentDirectory,
+  override protected lazy val agentConfiguration = AgentConfiguration.forTest(
+    configAndData = agentDirectory,
+    name = "AkkaHttpAgentTextApiTest",
     config"js7.web.server.auth.https-client-authentication = off",   // TODO Test with client certificate
     httpPort = None, httpsPort = Some(findFreeTcpPort()))
 

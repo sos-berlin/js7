@@ -40,7 +40,7 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
   }
 
   "ShutDown" in {
-    val agentConfiguration = AgentConfiguration.forTest(configAndData = agentDirectory)
+    val agentConfiguration = AgentConfiguration.forTest(agentDirectory, "AgentShutDownTest")
     var agent = RunningAgent.startForTest(agentConfiguration).await(10.s)
 
     implicit val actorSystem = newAgentActorSystem("AgentShutDownTest")
