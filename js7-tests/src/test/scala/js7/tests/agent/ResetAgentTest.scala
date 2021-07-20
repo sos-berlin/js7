@@ -25,7 +25,7 @@ import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.agent.ResetAgentTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.catnap.Semaphore
+import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -52,6 +52,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderId = OrderId("RESET-AGENT-1")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
+
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.terminated.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
@@ -70,7 +71,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Some(Outcome.Disrupted(AgentResetProblem(agentPath))),
         lockPaths = Seq(lock.path))))
 
-      resetSemaphore()  // Semaphore may or may not be required
+      barrier.flatMap(_.tryPut(())).runSyncUnsafe()
   }
 
   "Run another order" in {
@@ -78,7 +79,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttachable](_.key == orderId)
 
-    semaphore.flatMap(_.release).runSyncUnsafe()
+    barrier.flatMap(_.tryPut(())).runSyncUnsafe()
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
@@ -128,7 +129,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    resetSemaphore()
+    barrier.flatMap(_.tryPut(())).runSyncUnsafe()
   }
 
   "Simulate journal deletion at restart" in {
@@ -165,7 +166,7 @@ object ResetAgentTest
           LockInstruction(lock.path, None, Workflow.of(
             Execute(WorkflowJob(
               agentPath,
-              InternalExecutable(classOf[SemaphoreJob].getName),
+              InternalExecutable(classOf[TestJob].getName),
               jobResourcePaths = Seq(jobResource.path)))))),
         Workflow.empty)))
 
@@ -177,26 +178,20 @@ object ResetAgentTest
             "FORK" -> Workflow.of(
               Execute(WorkflowJob(
                 agentPath,
-                InternalExecutable(classOf[SemaphoreJob].getName),
+                InternalExecutable(classOf[TestJob].getName),
                 jobResourcePaths = Seq(jobResource.path)))))),
         Workflow.empty)))
 
-  private val semaphore = Semaphore[Task](0).memoize
+  private val barrier = MVar.empty[Task, Unit]().memoize
 
-  private def resetSemaphore(): Unit =
-    semaphore
-      .flatMap(_.count)
-      .flatMap {
-        case 0 => Task.unit
-        case n => semaphore.flatMap(_.releaseN(n))
-      }
-      .runSyncUnsafe()
-
-  final class SemaphoreJob extends InternalJob
+  final class TestJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
       OrderProcess(
-        semaphore.flatMap(_.acquire)
+        barrier
+          .tapEval(_ => Task(scribe.debug("TestJob start")))
+          .flatMap(_.take)
+          .guaranteeCase(exitCase => Task(scribe.debug(s"TestJob $exitCase")))
           .as(Outcome.succeeded))
   }
 }

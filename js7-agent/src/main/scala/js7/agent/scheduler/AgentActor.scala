@@ -164,14 +164,16 @@ extends Actor with Stash with SimpleStateActor
           response.completeWith(terminateOrderKeeper(command))
         }
 
-      case AgentCommand.Reset(agentRunId) if !terminating =>
+      case AgentCommand.Reset(agentRunId) =>
         persistence.currentState.checkAgentRunId(agentRunId) match {
           case Left(problem) => response.success(Left(problem))
           case Right(()) =>
             isResetting = true
-            response.completeWith(terminateOrderKeeper(
-              AgentCommand.ShutDown(processSignal = Some(SIGKILL),
-                suppressSnapshot = true, restart = true)))
+            if (!terminating) {
+              response.completeWith(terminateOrderKeeper(
+                AgentCommand.ShutDown(processSignal = Some(SIGKILL),
+                  suppressSnapshot = true, restart = true)))
+            }
         }
 
       case AgentCommand.CreateAgent(agentPath, controllerId) if !terminating =>
