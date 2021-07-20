@@ -227,11 +227,9 @@ extends Actor with Stash
     for (signal <- signal) {
       kill(orderId, signal)
     }
-    if (!signal.contains(SIGKILL)) {
-      if (orderToProcess.contains(orderId)) {
-        scheduler.scheduleOnce(sigkillDelay) {
-          self ! Internal.KillOrder(orderId)
-        }
+    if (!signal.contains(SIGKILL) && orderToProcess.contains(orderId)) {
+      scheduler.scheduleOnce(sigkillDelay) {
+        self ! Internal.KillOrder(orderId)
       }
     }
   }

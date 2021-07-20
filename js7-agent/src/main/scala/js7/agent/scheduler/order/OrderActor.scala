@@ -20,10 +20,10 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.command.CancellationMode
+import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerId
 import js7.data.order.OrderEvent._
-import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.value.expression.Expression
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -140,6 +140,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               order.castState[Order.Processing],
               defaultArguments,
               stdObservers)
+            maybeKillOrder(jobActor)
           }
         }
 
@@ -213,13 +214,29 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               context.stop(self)
             } else
               event match {
-                case OrderKillingMarked(Some(CancellationMode.Kill(immediately, maybeWorkflowPos)))
-                  if maybeWorkflowPos.forall(_ == order.workflowPosition) && jobActor != noSender =>
-                  jobActor ! JobActor.Input.KillProcess(order.id, Some(if (immediately) SIGKILL else SIGTERM))
+                case OrderKillingMarked(Some(kill)) => maybeKillOrder(kill, jobActor)
                 case _ =>
               }
             Completed
           }
+    }
+
+  private def maybeKillOrder(jobActor: ActorRef): Unit =
+    order.mark match {
+      case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
+        maybeKillOrder(kill, jobActor)
+
+      case Some(OrderMark.Suspending(SuspensionMode(Some(kill)))) =>
+        maybeKillOrder(kill, jobActor)
+
+      case _ =>
+    }
+
+  private def maybeKillOrder(kill: CancellationMode.Kill, jobActor: ActorRef): Unit =
+    if (jobActor != noSender && kill.workflowPosition.forall(_ == order.workflowPosition)) {
+      jobActor ! JobActor.Input.KillProcess(
+        order.id,
+        Some(if (kill.immediately) SIGKILL else SIGTERM))
     }
 
   private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit = {
