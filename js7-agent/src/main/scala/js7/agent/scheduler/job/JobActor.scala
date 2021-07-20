@@ -223,10 +223,7 @@ extends Actor with Stash
     }
 
   private def killOrder(orderId: OrderId, maybeSignal: Option[ProcessSignal]): Unit = {
-    val signal = maybeSignal match {
-      case Some(signal) => Some(signal)
-      case None => !sigkillDelay.isPositive ? SIGKILL  // SIGKILL immediately on sigkillDelay = 0
-    }
+    val signal = if (sigkillDelay.isZeroOrBelow) Some(SIGKILL) else maybeSignal
     for (signal <- signal) {
       kill(orderId, signal)
     }

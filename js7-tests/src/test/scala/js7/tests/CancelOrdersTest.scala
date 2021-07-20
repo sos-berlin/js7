@@ -14,7 +14,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, Response}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.value.Value.convenience._
@@ -36,15 +36,20 @@ import scala.concurrent.duration._
   */
 final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
+  override protected val controllerConfig = config"""
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 1ms"""
+
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(singleJobWorkflow, sigkillDelayWorkflow, twoJobsWorkflow, forkWorkflow)
+  protected val items = Seq(singleJobWorkflow, sigkillDelayWorkflow, sigkillImmediatelyWorkflow,
+    twoJobsWorkflow, forkWorkflow)
 
   "Cancel a fresh order" in {
-    val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
+    val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderAttached](_.key == order.id)
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds).orThrow
@@ -60,7 +65,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancel a finishing order" in {
-    val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.id.path, Map("sleep" -> 1))
+    val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
@@ -81,7 +86,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancelling (mode=FreshOnly) a started order is not possible" in {
-    val order = FreshOrder(OrderId("❌"), twoJobsWorkflow.id.path, Map("sleep" -> 5))
+    val order = FreshOrder(OrderId("❌"), twoJobsWorkflow.path, Map("sleep" -> 5))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     sleep(100.ms)  // ControllerOrderKeeper may take some time to update its state
@@ -94,7 +99,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancel a started order between two jobs" in {
-    val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.id.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
@@ -115,14 +120,14 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancel an order and the first job" in {
-    val order = FreshOrder(OrderId("⭕️"), singleJobWorkflow.id.path, Map("sleep" -> 9))
+    val order = FreshOrder(OrderId("⭕️"), singleJobWorkflow.path, Map("sleep" -> 9))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)), immediately = false)
   }
 
   "Cancel an order but not the first job" in {
-    val order = FreshOrder(OrderId("🔶"), twoJobsWorkflow.id.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("🔶"), twoJobsWorkflow.path, Map("sleep" -> 2))
     testCancel(order, Some(twoJobsWorkflow.id /: Position(1)), immediately = false,
-      mode => Vector(
+      expectedEvents = mode => Vector(
         OrderAdded(twoJobsWorkflow.id, order.arguments),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
@@ -138,21 +143,21 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancel an order and the currently running job" in {
-    val order = FreshOrder(OrderId("🔷"), singleJobWorkflow.id.path, Map("sleep" -> 9))
+    val order = FreshOrder(OrderId("🔷"), singleJobWorkflow.path, Map("sleep" -> 9))
     testCancelFirstJob(order, None, immediately = false)
   }
 
   "Cancel an order and a certain running job with SIGKILL" in {
-    val order = FreshOrder(OrderId("🔵"), singleJobWorkflow.id.path, Map("sleep" -> 9))
+    val order = FreshOrder(OrderId("🔵"), singleJobWorkflow.path, Map("sleep" -> 9))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)),
       immediately = true)
   }
 
   if (!isWindows) {
     "Cancel with sigkillDelay" in {
-      val order = FreshOrder(OrderId("🟥️"), sigkillDelayWorkflow.id.path)
+      val order = FreshOrder(OrderId("🟥️"), sigkillDelayWorkflow.path)
       val t = now
-      testCancel(order, None, immediately = false,
+      testCancel(order, None, awaitTrapping = true, immediately = false,
         mode => Vector(
           OrderAdded(order.workflowPath ~ versionId, order.arguments),
           OrderAttachable(agentPath),
@@ -168,11 +173,29 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
           OrderCancelled))
       assert(t.elapsed > sigkillDelay)
     }
+
+    "Cancel with sigkillDelay=0s" in {
+      val order = FreshOrder(OrderId("🟧️"), sigkillImmediatelyWorkflow.path)
+      testCancel(order, None, awaitTrapping = true, immediately = false,
+        mode => Vector(
+          OrderAdded(order.workflowPath ~ versionId, order.arguments),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderStarted,
+          OrderProcessingStarted,
+          OrderCancellationMarked(mode),
+          OrderCancellationMarkedOnAgent,
+          OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
+          OrderProcessingKilled,
+          OrderDetachable,
+          OrderDetached,
+          OrderCancelled))
+    }
   }
 
   private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition], immediately: Boolean): Unit =
     testCancel(order, workflowPosition, immediately = immediately,
-      mode => Vector(
+      expectedEvents = mode => Vector(
         OrderAdded(order.workflowPath ~ versionId, order.arguments),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
@@ -188,7 +211,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderCancelled))
 
   "Cancel a forked order and kill job" in {
-    val order = FreshOrder(OrderId("FORK"), forkWorkflow.id.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("FORK"), forkWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))
@@ -217,12 +240,18 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   private def testCancel(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
+    awaitTrapping: Boolean = false,
     immediately: Boolean,
     expectedEvents: CancellationMode => Seq[OrderEvent])
   : Unit = {
     controller.addOrderBlocking(order)
     controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(immediately = immediately,
+    if (awaitTrapping) {
+      controller.eventWatch.await[OrderStdoutWritten](_ ==
+        order.id <-: OrderStdoutWritten("TRAPPING\n"))
+    }
+    val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
+      immediately = immediately,
       workflowPosition)))
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
@@ -238,7 +267,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancel multiple orders with Batch" in {
-    val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), singleJobWorkflow.id.path, scheduledFor = Some(Timestamp.now + 99.seconds))
+    val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     for (o <- orders) controller.addOrderBlocking(o)
     for (o <- orders) controller.eventWatch.await[OrderAttached](_.key == o.id)
     val response = controller.executeCommandAsSystemUser(CancelOrders(orders.map(_.id), CancellationMode.FreshOnly)).await(99.seconds).orThrow
@@ -249,7 +278,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
 object CancelOrdersTest
 {
-  private val scriptExecutable = ShellScriptExecutable(
+  private val sleepingExecutable = ShellScriptExecutable(
     sleepingScript("SLEEP"),
     Map("SLEEP" -> NamedValue.last("sleep")))
   private val agentPath = AgentPath("AGENT")
@@ -257,32 +286,36 @@ object CancelOrdersTest
 
   private val singleJobWorkflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    Execute(WorkflowJob(agentPath, scriptExecutable)))
+    Execute(WorkflowJob(agentPath, sleepingExecutable)))
+
+  private val trappingExecutable = ShellScriptExecutable(
+    """#!/usr/bin/env bash
+      |set -euo pipefail
+      |trap "" SIGTERM
+      |echo "TRAPPING"
+      |for i in {0..99}; do
+      |  sleep 0.1
+      |done
+      |""".stripMargin)
 
   private val sigkillDelay = 1.s
   private val sigkillDelayWorkflow = Workflow.of(
-    WorkflowPath("SIGKILLDELAY") ~ versionId,
-    Execute(WorkflowJob(
-      agentPath,
-      ShellScriptExecutable(
-        """#!/usr/bin/env bash
-          |set -euo pipefail
-          |trap "" SIGTERM
-          |for i in {0..99}; do
-          |  sleep 0.1
-          |done
-          |""".stripMargin),
-      sigkillDelay = Some(sigkillDelay))))
+    WorkflowPath("SIGKILL-DELAY") ~ versionId,
+    Execute(WorkflowJob(agentPath, trappingExecutable, sigkillDelay = Some(sigkillDelay))))
+
+  private val sigkillImmediatelyWorkflow = Workflow.of(
+    WorkflowPath("SIGKILL-DELAY-0") ~ versionId,
+    Execute(WorkflowJob(agentPath, trappingExecutable, sigkillDelay = Some(0.s))))
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("TWO") ~ versionId,
-    Execute(WorkflowJob(agentPath, scriptExecutable)),
-    Execute(WorkflowJob(agentPath, scriptExecutable)))
+    Execute(WorkflowJob(agentPath, sleepingExecutable)),
+    Execute(WorkflowJob(agentPath, sleepingExecutable)))
 
   private val forkWorkflow = Workflow.of(
     WorkflowPath("FORK") ~ versionId,
     Fork.of(
       "🥕" -> Workflow.of(
-        Execute(WorkflowJob(agentPath, scriptExecutable)))),
-    Execute(WorkflowJob(agentPath, scriptExecutable)))
+        Execute(WorkflowJob(agentPath, sleepingExecutable)))),
+    Execute(WorkflowJob(agentPath, sleepingExecutable)))
 }
