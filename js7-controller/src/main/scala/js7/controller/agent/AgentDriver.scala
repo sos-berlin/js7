@@ -426,7 +426,7 @@ extends ReceiveLoggingActor.WithStash
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.observe(client, after = lastFetchedEventId)
         .pipe(obs =>
-          if (!delay.isPositive)
+          if (delay.isZeroOrBelow)
             obs.bufferIntrospective(conf.eventBufferSize)
           else obs
             .buffer(

@@ -76,7 +76,7 @@ object MonixBase
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       def whenItTakesLonger(duration: FiniteDuration)(thenDo: Task[Unit]): Task[A] =
-        if (!duration.isPositive)
+        if (duration.isZeroOrBelow)
           task
         else
           whenItTakesLonger(duration :: ZeroDuration :: Nil)(_ => thenDo)

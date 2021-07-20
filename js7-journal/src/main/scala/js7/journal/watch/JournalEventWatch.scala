@@ -162,7 +162,7 @@ with JournalingObserver
 
   def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit = {
     val delay = (EventId.toTimestamp(untilEventId) + releaseEventsDelay) - Timestamp.now
-    if (!delay.isPositive) {
+    if (delay.isZeroOrBelow) {
       releaseEventsNow(untilEventId)
     } else {
       logger.debug(s"releaseEvents($untilEventId), delay ${delay.pretty}")

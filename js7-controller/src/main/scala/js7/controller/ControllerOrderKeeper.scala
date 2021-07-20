@@ -1122,7 +1122,7 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def delayOrderDeletion[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
-    if (!deleteOrderDelay.isPositive)
+    if (deleteOrderDelay.isZeroOrBelow)
       keyedEvents
     else
       keyedEvents.filter {

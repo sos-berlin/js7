@@ -306,7 +306,7 @@ extends Actor with Stash with JournalLogging
     val deadline = now + delay
     if (commitDeadline == null || deadline < commitDeadline) {
       commitDeadline = deadline
-      if (!delay.isPositive) {
+      if (delay.isZeroOrBelow) {
         self.forward(Internal.Commit)
       } else {
         val sender = context.sender()
