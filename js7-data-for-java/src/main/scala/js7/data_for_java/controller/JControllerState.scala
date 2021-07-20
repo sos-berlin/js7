@@ -10,6 +10,7 @@ import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
+import js7.data.board.BoardPath
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.data.job.{JobResource, JobResourcePath}
@@ -19,6 +20,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
+import js7.data_for_java.board.JBoard
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.item.{JInventoryItem, JRepo}
@@ -87,7 +89,7 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JAgentRefState.apply)
       .toVavr
 
-  /** Looks up an AgentRef VersionedItem in the current version. */
+  /** Looks up a Lock item in the current version. */
   @Nonnull
   def pathToLock(@Nonnull lockPath: LockPath): VEither[Problem, JLock] =
     asScala.pathToLockState.checked(lockPath)
@@ -100,6 +102,14 @@ extends JJournaledState[JControllerState, ControllerState]
   def pathToLockState(@Nonnull lockPath: LockPath): VEither[Problem, JLockState] =
     asScala.pathToLockState.checked(lockPath)
       .map(JLockState.apply)
+      .toVavr
+
+  /** Looks up a Board item in the current version. */
+  @Nonnull
+  def pathToBoard(@Nonnull boardPath: BoardPath): VEither[Problem, JBoard] =
+    asScala.pathToBoardState.checked(boardPath)
+      .map(_.board)
+      .map(JBoard.apply)
       .toVavr
 
   /** Looks up a JFileWatch. */

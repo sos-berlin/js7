@@ -165,6 +165,12 @@ with JournaledState[ControllerState]
                   allOrderWatchesState.changeOrderWatch(orderWatch)
                     .map(o => copy(
                       allOrderWatchesState = o))
+
+                case board: Board =>
+                  for (boardState <- pathToBoardState.checked(board.path))
+                    yield copy(
+                      pathToBoardState = pathToBoardState + (board.path -> boardState.copy(
+                        board = board)))
               }
           }
 

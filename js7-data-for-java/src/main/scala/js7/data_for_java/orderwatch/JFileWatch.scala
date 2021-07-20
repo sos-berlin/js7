@@ -11,6 +11,7 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
+import js7.data.item.ItemRevision
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.WorkflowPath
@@ -44,6 +45,10 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
   @Nonnull
   def pattern: Optional[Pattern] =
     asScala.pattern.map(_.pattern).toJava
+
+  @Nonnull
+  def withRevision(revision: Optional[ItemRevision]) =
+    copy(asScala.withRevision(revision.toScala))
 }
 
 object JFileWatch extends JJsonable.Companion[JFileWatch]

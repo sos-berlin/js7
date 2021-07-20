@@ -154,7 +154,7 @@ object BoardTest
   private val endOfLife = BoardTest.startTimestamp + lifeTime
 
   private val orderIdToNoticeId = expr(
-    """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', "\$1")""")
+    """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')""")
 
   private val board = Board(
     BoardPath("BOARD"),

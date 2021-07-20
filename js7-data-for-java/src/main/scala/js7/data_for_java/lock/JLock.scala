@@ -1,11 +1,14 @@
 package js7.data_for_java.lock
 
 import io.vavr.control.{Either => VEither}
+import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
+import js7.data.item.ItemRevision
 import js7.data.lock.{Lock, LockPath}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
+import scala.jdk.OptionConverters._
 
 final case class JLock(asScala: Lock)
 extends JJsonable[JLock] with JUnsignedSimpleItem
@@ -19,6 +22,10 @@ extends JJsonable[JLock] with JUnsignedSimpleItem
 
   def limit: Int =
     asScala.limit
+
+  @Nonnull
+  def withRevision(revision: Optional[ItemRevision]) =
+    copy(asScala.withRevision(revision.toScala))
 }
 
 object JLock extends JJsonable.Companion[JLock]

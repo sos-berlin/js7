@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 import js7.base.crypt.SignedString;
 import js7.base.problem.Problem;
 import js7.base.problem.ProblemCode;
+import js7.data.board.BoardPath;
 import js7.data.event.Event;
 import js7.data.event.KeyedEvent;
 import js7.data.item.VersionId;
@@ -19,15 +20,17 @@ import js7.data.item.VersionedEvent;
 import js7.data.item.VersionedItemPath;
 import js7.data.lock.LockPath;
 import js7.data.workflow.WorkflowPath;
+import js7.data_for_java.board.JBoard;
 import js7.data_for_java.item.JUnsignedSimpleItem;
 import js7.data_for_java.item.JUpdateItemOperation;
 import js7.data_for_java.lock.JLock;
+import js7.data_for_java.value.JExpression;
 import js7.data_for_java.workflow.JWorkflowId;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import reactor.core.publisher.Flux;
-import static java.util.Collections.singletonList;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -35,6 +38,7 @@ import static js7.data_for_java.item.JUpdateItemOperation.addOrChangeSigned;
 import static js7.data_for_java.item.JUpdateItemOperation.addVersion;
 import static js7.data_for_java.item.JUpdateItemOperation.removeVersioned;
 import static js7.data_for_java.vavr.VavrUtils.await;
+import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
@@ -89,7 +93,11 @@ final class JControllerProxyRepoTester
             awaitEvent(keyedEvent -> isItemAdded(keyedEvent, bWorkflowPath));
 
         JLock lock = JLock.of(LockPath.of("MY-LOCK"), 1);
-        List<JUnsignedSimpleItem> simpleItems = singletonList(lock);
+        JBoard board = JBoard.of(BoardPath.of("MY-BOARD"),
+            getOrThrow(JExpression.parse("replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+            getOrThrow(JExpression.parse("replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+            getOrThrow(JExpression.parse("$epochMillis + 24 * 3600 * 1000")));
+        List<JUnsignedSimpleItem> simpleItems = asList(lock, board);
         List<SignedString> signedItemJsons = itemJsons.stream().map(o -> sign(o)).collect(toList());
         // Add items
         addItemsOnly(simpleItems, signedItemJsons);
@@ -98,8 +106,25 @@ final class JControllerProxyRepoTester
         addItemsOnly(simpleItems, signedItemJsons);
 
         whenWorkflowAdded.get(99, SECONDS);
-        assertThat(proxy.currentState().repo().idToWorkflow(workflowId).map(o -> o.id().path()),
+
+        assertThat(proxy
+                .currentState()
+                .repo()
+                .idToWorkflow(workflowId)
+                .map(o -> o.id().path()),
             equalTo(Either.right(bWorkflowPath)));
+
+        assertThat(proxy
+                .currentState()
+                .pathToLock(lock.path())
+                .map(o -> o.withRevision(Optional.empty())),
+            equalTo(Either.right(lock)));
+
+        assertThat(proxy
+                .currentState()
+                .pathToBoard(board.path())
+                .map(o -> o.withRevision(Optional.empty())),
+            equalTo(Either.right(board)));
     }
 
     private void addItemsOnly(List<JUnsignedSimpleItem> simpleItems, List<SignedString> signedItemJsons) {
