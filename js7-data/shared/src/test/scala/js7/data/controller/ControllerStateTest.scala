@@ -207,8 +207,8 @@ final class ControllerStateTest extends AsyncFreeSpec
       }, {
         "TYPE": "Board",
         "path": "BOARD",
-        "toNotice": "$$orderId",
-        "expectingOrderToNoticeId": "$$orderId",
+        "postOrderToNoticeId": "$$orderId",
+        "expectOrderToNoticeId": "$$orderId",
         "endOfLife": "$$epochMillis + 24 * 3600 * 1000",
         "itemRevision": 7
       }, {
@@ -345,8 +345,8 @@ object ControllerStateTest
   private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Seq(expectingNoticeOrderId))
   private val board = Board(
     BoardPath("BOARD"),
-    toNotice = expr("$orderId"),
-    expectingOrderToNoticeId = expr("$orderId"),
+    postOrderToNoticeId = expr("$orderId"),
+    expectOrderToNoticeId = expr("$orderId"),
     endOfLife = expr("$epochMillis + 24*3600*1000"),
     itemRevision = Some(ItemRevision(7)))
   private val boardState = BoardState(

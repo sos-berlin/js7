@@ -11,15 +11,15 @@ final class BoardTest extends AnyFreeSpec
     testJson(
       Board(
         BoardPath("BOARD"),
-        toNotice = expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-        expectingOrderToNoticeId = expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+        postOrderToNoticeId = expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+        expectOrderToNoticeId = expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
         endOfLife = expr("$epochMillis + 24 * 3600 * 1000")),
       json"""
         {
           "path": "BOARD",
-          "toNotice": "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+          "postOrderToNoticeId": "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
           "endOfLife": "$$epochMillis + 24 * 3600 * 1000",
-          "expectingOrderToNoticeId": "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')"
+          "expectOrderToNoticeId": "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')"
         }"""
     )
   }

@@ -23,16 +23,16 @@ object Notice
       case StringValue(string) =>
         Right(Notice(NoticeId(string), endOfLife))
 
-      case obj: ObjectValue =>
-        for {
-          id <- obj.nameToValue
-            .checked("id")
-            .flatMap(_.asString)
-            .flatMap(NoticeId.checked)
-        } yield Notice(id, endOfLife)
+      //case obj: ObjectValue =>
+      //  for {
+      //    id <- obj.nameToValue
+      //      .checked("id")
+      //      .flatMap(_.asString)
+      //      .flatMap(NoticeId.checked)
+      //  } yield Notice(id, endOfLife)
 
       case _ =>
-        Left(Problem.pure("toNotice must return a String or an Object"))
+        Left(Problem.pure("postOrderToNoticeId must return a String"))
     }
 
 

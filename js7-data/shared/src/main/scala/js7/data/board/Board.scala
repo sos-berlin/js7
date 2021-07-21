@@ -11,8 +11,8 @@ import js7.data.value.expression.{Expression, Scope}
 
 final case class Board(
   path: BoardPath,
-  toNotice: Expression,
-  expectingOrderToNoticeId: Expression,
+  postOrderToNoticeId: Expression,
+  expectOrderToNoticeId: Expression,
   endOfLife: Expression,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
@@ -30,14 +30,14 @@ extends UnsignedSimpleItem
         .eval(scope)
         .flatMap(_.asLong)
         .map(Timestamp.ofEpochMilli)
-      notice <- toNotice
+      notice <- postOrderToNoticeId
         .eval/*(args)*/(scope)
         .flatMap(Notice.fromValue(_, endOfLife))
     } yield notice
   }
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
-    expectingOrderToNoticeId
+    expectOrderToNoticeId
       .eval(scope)
       .flatMap(_.asString)
       .flatMap(NoticeId.checked)

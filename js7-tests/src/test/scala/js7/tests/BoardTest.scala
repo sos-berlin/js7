@@ -158,9 +158,9 @@ object BoardTest
 
   private val board = Board(
     BoardPath("BOARD"),
-    toNotice = orderIdToNoticeId,
+    postOrderToNoticeId = orderIdToNoticeId,
     endOfLife = expr(s"$$epochMilli + ${lifeTime.toMillis}"),
-    expectingOrderToNoticeId = orderIdToNoticeId)
+    expectOrderToNoticeId = orderIdToNoticeId)
 
   private val readerWorkflow = Workflow(WorkflowPath("READER") ~ "INITIAL", Seq(
     ExpectNotice(board.path)))
