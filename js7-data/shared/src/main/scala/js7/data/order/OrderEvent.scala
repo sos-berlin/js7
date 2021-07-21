@@ -136,7 +136,7 @@ object OrderEvent
   final case class OrderNoticePosted(notice: Notice)
   extends OrderNoticeEvent
 
-  final case class OrderNoticeAwaiting(noticeId: NoticeId)
+  final case class OrderNoticeExpected(noticeId: NoticeId)
   extends OrderNoticeEvent
 
   type OrderNoticeRead = OrderNoticeRead.type
@@ -368,7 +368,7 @@ object OrderEvent
     Subtype(deriveCodec[OrderLockQueued]),
     Subtype(deriveCodec[OrderLockReleased]),
     Subtype(deriveCodec[OrderNoticePosted]),
-    Subtype(deriveCodec[OrderNoticeAwaiting]),
+    Subtype(deriveCodec[OrderNoticeExpected]),
     Subtype(OrderNoticeRead),
     Subtype(deriveCodec[OrderPrompted]),
     Subtype(deriveCodec[OrderPromptAnswered]))

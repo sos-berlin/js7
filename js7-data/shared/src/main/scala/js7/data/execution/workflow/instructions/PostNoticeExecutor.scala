@@ -28,13 +28,13 @@ final class PostNoticeExecutor(clock: WallClock) extends EventInstructionExecuto
         orderScope <- state.toScope(order)
         notice <- board.postingOrderToNotice(orderScope |+| NowScope(clock.now()))
         boardState <- state.pathToBoardState.checked(boardPath)
-        waitingOrders <- boardState
-          .waitingOrders(notice.id)
+        expectingOrders <- boardState
+          .expectingOrders(notice.id)
           .traverse(state.idToOrder.checked): Checked[Seq[Order[Order.State]]]
       } yield
         (order.id <-: OrderNoticePosted(notice)) ::
           (order.id <-: OrderMoved(order.position.increment)) ::
-          waitingOrders.view
+          expectingOrders.view
             .flatMap(o => View(
               o.id <-: OrderNoticeRead,
               o.id <-: OrderMoved(o.position.increment)))

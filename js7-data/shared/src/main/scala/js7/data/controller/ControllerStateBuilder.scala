@@ -20,7 +20,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeAwaiting, OrderNoticeEvent, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -83,9 +83,9 @@ with StateView
       _idToOrder.insert(order.id -> order)
 
       order.state match {
-        case Order.WaitingForNotice(noticeId) =>
+        case Order.ExpectingNotice(noticeId) =>
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
-          _pathToBoardState += boardState.path -> boardState.addWaitingOrder(order.id, noticeId).orThrow
+          _pathToBoardState += boardState.path -> boardState.addExpectingOrder(order.id, noticeId).orThrow
         case _ =>
       }
 
@@ -274,8 +274,9 @@ with StateView
               _pathToBoardState += boardPath ->
                 boardState.addNotice(notice)
 
-            case OrderNoticeAwaiting(noticeId) =>
-              pathToBoardState += boardPath -> boardState.addWaitingOrder(orderId, noticeId).orThrow
+            case OrderNoticeExpected(noticeId) =>
+              pathToBoardState +=
+                boardPath -> boardState.addExpectingOrder(orderId, noticeId).orThrow
 
             case OrderNoticeRead =>
               //pathToBoardState += boardPath ->

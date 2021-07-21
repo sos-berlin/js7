@@ -4,7 +4,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.data.board.BoardPath
 import js7.data.source.SourcePos
 
-final case class ReadNotice(
+final case class ExpectNotice(
   boardPath: BoardPath,
   sourcePos: Option[SourcePos] = None)
 extends BoardInstruction
@@ -12,7 +12,7 @@ extends BoardInstruction
   def withoutSourcePos = copy(sourcePos = None)
 }
 
-object ReadNotice
+object ExpectNotice
 {
-  implicit val jsonCodec = deriveCodec[ReadNotice]
+  implicit val jsonCodec = deriveCodec[ExpectNotice]
 }

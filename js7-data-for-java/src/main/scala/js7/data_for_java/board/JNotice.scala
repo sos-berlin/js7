@@ -47,6 +47,6 @@ object JNotice
 final case class JNoticeExpectation(asScala: NoticeExpectation)
 extends JNoticePlace
 {
-  def awaitingOrderIds: java.util.List[OrderId] =
-    asScala.awaitingOrderIds.asJava
+  def orderIds: java.util.List[OrderId] =
+    asScala.orderIds.asJava
 }

@@ -346,13 +346,13 @@ final case class Order[+S <: Order.State](
         check(isDetached && isState[Ready] && !isSuspended,
           this)
 
-      case OrderNoticeAwaiting(noticeId) =>
+      case OrderNoticeExpected(noticeId) =>
         check(isDetached && isState[Ready] && !isSuspended,
           copy(
-            state = WaitingForNotice(noticeId)))
+            state = ExpectingNotice(noticeId)))
 
       case OrderNoticeRead =>
-        check(isDetached && (isState[Ready] || isState[WaitingForNotice]) && !isSuspended,
+        check(isDetached && (isState[Ready] || isState[ExpectingNotice]) && !isSuspended,
           copy(
             state = Ready))
 
@@ -624,7 +624,7 @@ object Order
   case object WaitingForLock
   extends IsStarted
 
-  final case class WaitingForNotice(noticeId: NoticeId)
+  final case class ExpectingNotice(noticeId: NoticeId)
   extends IsStarted
 
   final case class Prompting(question: Value)
@@ -658,7 +658,7 @@ object Order
     Subtype(FailedWhileFresh),
     Subtype(deriveCodec[Forked]),
     Subtype(WaitingForLock),
-    Subtype(deriveCodec[WaitingForNotice]),
+    Subtype(deriveCodec[ExpectingNotice]),
     Subtype(Failed),
     Subtype(FailedInFork),
     Subtype(Finished),

@@ -7,7 +7,7 @@ import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.workflow.Instruction
-import js7.data.workflow.instructions.{End, Execute, Fail, Finish, Fork, Gap, If, LockInstruction, PostNotice, Prompt, ReadNotice, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, Execute, ExpectNotice, Fail, Finish, Fork, Gap, If, LockInstruction, PostNotice, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 
 final class InstructionExecutorService(clock: WallClock)
@@ -26,7 +26,7 @@ final class InstructionExecutorService(clock: WallClock)
       case _: TryInstruction => TryExecutor
       case _: LockInstruction => LockExecutor
       case _: PostNotice => postNoticeExecutor
-      case _: ReadNotice => ReadNoticeExecutor
+      case _: ExpectNotice => ExpectNoticeExecutor
       case _: Prompt => PromptExecutor
       case _: Retry => new RetryExecutor(() => Timestamp.now)
     }

@@ -12,14 +12,14 @@ final case class BoardState(
 
   def toSnapshotObservable: Observable[Any] = {
     board +: Observable.fromIterable(notices.map(Notice.Snapshot(board.path, _)))
-    // NoticeExpectation are recovered from Order[Order.WaitingForNotice]
+    // NoticeExpectation are recovered from Order[Order.ExpectingNotice]
   }
 
   def addNotice(notice: Notice): BoardState =
     copy(
       idToNotice = idToNotice + (notice.id -> notice))
 
-  def addWaitingOrder(orderId: OrderId, noticeId: NoticeId): Checked[BoardState] =
+  def addExpectingOrder(orderId: OrderId, noticeId: NoticeId): Checked[BoardState] =
     idToNotice.get(noticeId) match {
       case None =>
         Right(copy(
@@ -30,13 +30,13 @@ final case class BoardState(
         Right(copy(
           idToNotice = idToNotice +
             (noticeId -> expectation.copy(
-              awaitingOrderIds = expectation.awaitingOrderIds.view.appended(orderId).toVector))))
+              orderIds = expectation.orderIds.view.appended(orderId).toVector))))
 
       case Some(_: Notice) =>
-        Left(Problem("BoardState.addWaitingOrder despite notice has been posted"))
+        Left(Problem("BoardState.addExpectingOrder despite notice has been posted"))
     }
 
-  def waitingOrders(noticeId: NoticeId): Seq[OrderId] =
+  def expectingOrders(noticeId: NoticeId): Seq[OrderId] =
     idToNotice.get(noticeId) match {
       case Some(NoticeExpectation(_, orderIds)) => orderIds
       case _ => Nil

@@ -4,15 +4,15 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.board.{BoardState, Notice, NoticeId}
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderMoved, OrderNoticeAwaiting, OrderNoticeRead, OrderStarted}
-import js7.data.workflow.instructions.ReadNotice
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderMoved, OrderNoticeExpected, OrderNoticeRead, OrderStarted}
+import js7.data.workflow.instructions.ExpectNotice
 import js7.data.workflow.position.Position
 
-object ReadNoticeExecutor extends EventInstructionExecutor
+object ExpectNoticeExecutor extends EventInstructionExecutor
 {
-  type Instr = ReadNotice
+  type Instr = ExpectNotice
 
-  def toEvents(instruction: ReadNotice, order: Order[Order.State], state: StateView) = {
+  def toEvents(instruction: ExpectNotice, order: Order[Order.State], state: StateView) = {
     import instruction.boardPath
 
     val events =
@@ -31,12 +31,12 @@ object ReadNoticeExecutor extends EventInstructionExecutor
               case _: Order.Ready =>
                 for {
                   scope <- state.toScope(order)
-                  noticeId <- boardState.board.readingOrderToNoticeId(scope)
+                  noticeId <- boardState.board.expectingOrderToNoticeId(scope)
                 } yield
                   tryRead(boardState, noticeId, order.position)
-                    .getOrElse(OrderNoticeAwaiting(noticeId) :: Nil)
+                    .getOrElse(OrderNoticeExpected(noticeId) :: Nil)
 
-              case Order.WaitingForNotice(noticeId) =>
+              case Order.ExpectingNotice(noticeId) =>
                 Right(
                   tryRead(boardState, noticeId, order.position)
                     .toList

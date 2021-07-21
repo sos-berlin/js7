@@ -13,8 +13,8 @@ import js7.data.board.{Notice, NoticeId}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Broken, Cancelled, DelayedAfterError, Detaching, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock, WaitingForNotice}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeAwaiting, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -185,10 +185,10 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
-      "WaitingForNotice" in {
-        testJson[State](WaitingForNotice(NoticeId("NOTICE")),
+      "ExpectingNotice" in {
+        testJson[State](ExpectingNotice(NoticeId("NOTICE")),
           json"""{
-            "TYPE": "WaitingForNotice",
+            "TYPE": "ExpectingNotice",
             "noticeId": "NOTICE"
           }""")
       }
@@ -290,7 +290,7 @@ final class OrderTest extends AnyFreeSpec
       OrderLockReleased(LockPath("LOCK")),
 
       OrderNoticePosted(Notice(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
-      OrderNoticeAwaiting(NoticeId("NOTICE")),
+      OrderNoticeExpected(NoticeId("NOTICE")),
       OrderNoticeRead,
 
       OrderPrompted(StringValue("QUESTION")),
@@ -370,7 +370,7 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderLockAcquired     , _                 , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderLockQueued       , _                 , IsDetached             ) => _.isInstanceOf[WaitingForLock]
           case (_: OrderNoticePosted     , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Ready]
-          case (_: OrderNoticeAwaiting   , IsSuspended(false), IsDetached             ) => _.isInstanceOf[WaitingForNotice]
+          case (_: OrderNoticeExpected  , IsSuspended(false), IsDetached             ) => _.isInstanceOf[ExpectingNotice]
           case (_: OrderNoticeRead       , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderPrompted         , _                 , IsDetached             ) => _.isInstanceOf[Prompting]
           case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
@@ -388,12 +388,12 @@ final class OrderTest extends AnyFreeSpec
         })
     }
 
-    "WaitingForNotice" in {
-      checkAllEvents(Order(orderId, workflowId, WaitingForNotice(NoticeId("NOTICE"))),
-        deletionMarkable[WaitingForNotice] orElse
-        markable[WaitingForNotice] orElse
-        cancelMarkedAllowed[WaitingForNotice] orElse
-        suspendMarkedAllowed[WaitingForNotice] orElse {
+    "ExpectingNotice" in {
+      checkAllEvents(Order(orderId, workflowId, ExpectingNotice(NoticeId("NOTICE"))),
+        deletionMarkable[ExpectingNotice] orElse
+        markable[ExpectingNotice] orElse
+        cancelMarkedAllowed[ExpectingNotice] orElse
+        suspendMarkedAllowed[ExpectingNotice] orElse {
           case (_: OrderNoticeRead, IsSuspended(false), IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderBroken    , _                 , _         ) => _.isInstanceOf[Broken]
         })

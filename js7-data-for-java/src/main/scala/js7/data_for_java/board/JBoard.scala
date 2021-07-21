@@ -32,10 +32,10 @@ object JBoard extends JJsonable.Companion[JBoard]
   def of(
     @Nonnull lockPath: BoardPath,
     @Nonnull toNotice: JExpression,
-    readingOrderToNoticeId: JExpression,
+    expectingOrderToNoticeId: JExpression,
     endOfLife: JExpression)
   : JBoard =
-    JBoard(Board(lockPath, toNotice.asScala, readingOrderToNoticeId.asScala, endOfLife.asScala))
+    JBoard(Board(lockPath, toNotice.asScala, expectingOrderToNoticeId.asScala, endOfLife.asScala))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JBoard] =

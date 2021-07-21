@@ -512,11 +512,11 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  "OrderNoticeAwaiting" in {
-    check(OrderNoticeAwaiting(NoticeId("NOTICE")),
+  "OrderNoticeExpected" in {
+    check(OrderNoticeExpected(NoticeId("NOTICE")),
       json"""
       {
-        "TYPE": "OrderNoticeAwaiting",
+        "TYPE": "OrderNoticeExpected",
         "noticeId": "NOTICE"
       }""")
   }

@@ -10,10 +10,10 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.{Board, BoardPath, Notice, NoticeId}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeAwaiting, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{PostNotice, ReadNotice}
+import js7.data.workflow.instructions.{ExpectNotice, PostNotice}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.BoardTest._
@@ -61,14 +61,14 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
-  "Wait for a notice, then post it" in {
+  "Expect a notice, then post it" in {
     val qualifier = nextQualifier()
     val notice = Notice(NoticeId(qualifier), endOfLife)
 
-    val readerOrderId = OrderId(s"#$qualifier#READER")
-    controllerApi.addOrder(FreshOrder(readerOrderId, readerWorkflow.path))
+    val expectingOrderId = OrderId(s"#$qualifier#READER")
+    controllerApi.addOrder(FreshOrder(expectingOrderId, readerWorkflow.path))
       .await(99.s).orThrow
-    controller.eventWatch.await[OrderNoticeAwaiting](_.key == readerOrderId)
+    controller.eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
 
     val posterEvents = controller.runOrder(
       FreshOrder(OrderId(s"#$qualifier#POSTER"), posterWorkflow.path))
@@ -79,12 +79,12 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    controller.eventWatch.await[OrderFinished](_.key == readerOrderId)
-    val readerEvents = controller.eventWatch.keyedEvents[OrderCoreEvent](readerOrderId)
-    assert(readerEvents == Seq(
+    controller.eventWatch.await[OrderFinished](_.key == expectingOrderId)
+    val expectingEvents = controller.eventWatch.keyedEvents[OrderCoreEvent](expectingOrderId)
+    assert(expectingEvents == Seq(
       OrderAdded(readerWorkflow.id),
       OrderStarted,
-      OrderNoticeAwaiting(notice.id),
+      OrderNoticeExpected(notice.id),
       OrderNoticeRead,
       OrderMoved(Position(1)),
       OrderFinished))
@@ -92,7 +92,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Detach order when at Agent" in {
     // TODO Post kann am Agenten ausgeführt werden, wenn Board (ohne BoardState) dahin übertragen wird,
-    //  und anschließend der Controller Order.WaitingForNotice löst.
+    //  und anschließend der Controller Order.ExpectingNotice löst.
     val qualifier = nextQualifier()
     val notice = Notice(NoticeId(qualifier), endOfLife)
 
@@ -160,17 +160,17 @@ object BoardTest
     BoardPath("BOARD"),
     toNotice = orderIdToNoticeId,
     endOfLife = expr(s"$$epochMilli + ${lifeTime.toMillis}"),
-    readingOrderToNoticeId = orderIdToNoticeId)
+    expectingOrderToNoticeId = orderIdToNoticeId)
 
   private val readerWorkflow = Workflow(WorkflowPath("READER") ~ "INITIAL", Seq(
-    ReadNotice(board.path)))
+    ExpectNotice(board.path)))
 
   private val posterWorkflow = Workflow(WorkflowPath("POSTER") ~ "INITIAL", Seq(
     PostNotice(board.path)))
 
   private val readerAgentWorkflow = Workflow(WorkflowPath("READER-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
-    ReadNotice(board.path)))
+    ExpectNotice(board.path)))
 
   private val posterAgentWorkflow = Workflow(WorkflowPath("POSTER-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),

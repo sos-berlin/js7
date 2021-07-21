@@ -50,7 +50,7 @@ object Notice
 }
 
 
-final case class NoticeExpectation(id: NoticeId, awaitingOrderIds: Seq[OrderId])
+final case class NoticeExpectation(id: NoticeId, orderIds: Seq[OrderId])
 extends NoticePlace with Big
 
 object NoticeExpectation

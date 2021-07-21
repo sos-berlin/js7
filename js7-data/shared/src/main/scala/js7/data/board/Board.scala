@@ -12,7 +12,7 @@ import js7.data.value.expression.{Expression, Scope}
 final case class Board(
   path: BoardPath,
   toNotice: Expression,
-  readingOrderToNoticeId: Expression,
+  expectingOrderToNoticeId: Expression,
   endOfLife: Expression,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
@@ -36,10 +36,9 @@ extends UnsignedSimpleItem
     } yield notice
   }
 
-  def readingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
-    //val args = ListValue(Vector(StringValue(order.id.string)))
-    readingOrderToNoticeId
-      .eval/*(args)*/(scope)
+  def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
+    expectingOrderToNoticeId
+      .eval(scope)
       .flatMap(_.asString)
       .flatMap(NoticeId.checked)
 }

@@ -15,7 +15,7 @@ import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResource
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, PostNotice, ReadNotice, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExpectNotice, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, PostNotice, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.ForkTestSetting
@@ -712,7 +712,7 @@ final class WorkflowTest extends AnyFreeSpec
           Fork.of(
             "BRANCH" -> Workflow.of(
               PostNotice(b),
-              ReadNotice(c)))))))
+              ExpectNotice(c)))))))
     assert(workflow.referencedBoardPaths == Set(a, b, c))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c))
   }

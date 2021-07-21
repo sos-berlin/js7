@@ -42,8 +42,8 @@ public class JBoardTester
     private static final VersionId versionId = JControllerProxyTest.boardVersion();
     private static final WorkflowPath postingBoardWorkflowPath =
         (WorkflowPath)JControllerProxyTest.postingBoardWorkflow().path();
-    private static final WorkflowPath readingBoardWorkflowPath =
-        (WorkflowPath)JControllerProxyTest.readingBoardWorkflow().path();
+    private static final WorkflowPath expectingBoardWorkflowPath =
+        (WorkflowPath)JControllerProxyTest.expectingBoardWorkflow().path();
     private static final JBoard board = JBoard.of(JControllerProxyTest.boardPath(),
             getOrThrow(JExpression.parse(
                 "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
@@ -79,7 +79,7 @@ public class JBoardTester
             Flux
                 .just(
                     JControllerProxyTest.postingBoardWorkflowJson(),
-                    JControllerProxyTest.readingBoardWorkflowJson())
+                    JControllerProxyTest.expectingBoardWorkflowJson())
                 .map(o -> sign(o))
                 .map(JUpdateItemOperation::addOrChangeSigned))));
 
@@ -115,14 +115,14 @@ public class JBoardTester
 
     private void testExpectedNotice() throws ExecutionException, InterruptedException, TimeoutException {
         NoticeId expectedNoticeId = NoticeId.of("2021-07-20");
-        OrderId readerOrderId = OrderId.of("#2021-07-20#READER");
+        OrderId expectingOrderId = OrderId.of("#2021-07-20#READER");
 
         CompletableFuture<JEventAndControllerState<Event>> whenWaiting =
             awaitEvent(keyedEvent ->
-                keyedEvent.key().equals(readerOrderId)
-                    && keyedEvent.event() instanceof OrderEvent.OrderNoticeAwaiting);
+                keyedEvent.key().equals(expectingOrderId)
+                    && keyedEvent.event() instanceof OrderEvent.OrderNoticeExpected);
         await(
-            api.addOrders(Flux.just(JFreshOrder.of(readerOrderId, readingBoardWorkflowPath))));
+            api.addOrders(Flux.just(JFreshOrder.of(expectingOrderId, expectingBoardWorkflowPath))));
 
         whenWaiting.get(99, SECONDS);
         JNoticePlace noticeExpectation =
@@ -133,8 +133,8 @@ public class JBoardTester
             .get();
         assert noticeExpectation instanceof JNoticeExpectation;
         assertThat(noticeExpectation.id(), equalTo(expectedNoticeId));
-        assertThat(((JNoticeExpectation)noticeExpectation).awaitingOrderIds(),
-            equalTo(asList(readerOrderId)));
+        assertThat(((JNoticeExpectation)noticeExpectation).orderIds(),
+            equalTo(asList(expectingOrderId)));
     }
 
     private static boolean isItemAdded(KeyedEvent<Event> keyedEvent, InventoryItemPath path) {
