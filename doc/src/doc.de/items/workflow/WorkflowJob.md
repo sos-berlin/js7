@@ -13,7 +13,8 @@ Beispiel in JSON:
     "NUMBER": "7"
   },
   "parallelism": 1,
-  "sigkillDelay": 15
+  "sigkillDelay": 15,
+  "timeout": 3600
 }
 ```
 **Felder**
@@ -39,3 +40,26 @@ Beispiel in JSON:
 
   Default: Die [Einstellung](../../conf.md) `js7.job.execution.sigkill-delay`
   in der Datei `agent.conf`.
+
+* `timeout`
+
+### Timeout
+Wenn ein Job mit einem Timeout versehen ist und nach Verstreichen der Frist der Job noch läuft, dann bricht JS7 ihn ab
+und geht dabei wie bei `CancelOrder` vor.
+`sigkillDelay` wird beachtet.
+Der Auftragsschritt scheitert, was mit try/catch abgefangen werden kann.
+
+Outcome in JSON:
+```json
+{
+  "TYPE": "TimedOut",
+  "outcome": {
+    "TYPE": "Failed",
+    "namedValues": {
+      "returnCode": 143
+    }
+  }
+}
+```
+
+Die Java-Schnittstelle kennt das neue `JOutcome.TimedOut(Outcome)`.
