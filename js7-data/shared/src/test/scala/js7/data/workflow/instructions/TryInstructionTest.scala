@@ -150,13 +150,13 @@ final class TryInstructionTest extends AnyFreeSpec
   }
 
   "flattenedBranchToWorkflow" in {
-    assert(try_.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / "try") -> try_.tryWorkflow) ::
-      ((Position(7) / "catch") -> try_.catchWorkflow) :: Nil)
+    assert(try_.flattenedWorkflows(Position(7)).toSeq == Seq(
+      (Position(7) / "try") -> try_.tryWorkflow,
+      (Position(7) / "catch") -> try_.catchWorkflow))
   }
 
   "flattenedInstructions" in {
-    assert(try_.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
+    assert(try_.flattenedInstructions(Position(7)).toSeq == Seq[(Position, Instruction.Labeled)](
       Position(7) / "try" % 0 -> try_.tryWorkflow.instructions(0),
       Position(7) / "try" % 1 -> ImplicitEnd(),
       Position(7) / "catch" % 0 -> try_.catchWorkflow.instructions(0),

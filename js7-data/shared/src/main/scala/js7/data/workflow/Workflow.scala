@@ -58,12 +58,15 @@ extends VersionedItem
 
   val companion = Workflow
 
-  val labeledInstructions = rawLabeledInstructions.map(o => o.copy(
-    instruction = o.instruction.adopt(this)))
+  val labeledInstructions: IndexedSeq[Labeled] = rawLabeledInstructions
+    .map(o => o.copy(
+      instruction = o.instruction.adopt(this)))
   val instructions: IndexedSeq[Instruction] = labeledInstructions.map(_.instruction)
   private val labelToNumber: Map[Label, InstructionNr] =
-    numberedInstructions.flatMap { case (nr, Instruction.Labeled(maybeLabel, _, _)) => maybeLabel.map(_ -> nr) }
-      .uniqueToMap(labels => throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
+    numberedInstructions
+      .flatMap { case (nr, Instruction.Labeled(maybeLabel, _, _)) => maybeLabel.map(_ -> nr) }
+      .uniqueToMap(labels => throw new IllegalArgumentException(
+        s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   def withId(id: VersionedItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
 
@@ -84,7 +87,7 @@ extends VersionedItem
       checkJobReferences ++
       checkRetry() ++
       checkLabels
-    val problems = chk collect { case Left(problem) => problem }
+    val problems = chk.collect { case Left(problem) => problem }.toVector
     if (problems.nonEmpty)
       Left(Problem.Combined(problems))
     else
@@ -100,12 +103,13 @@ extends VersionedItem
           instruction = labeled.instruction withPositions position)
       })
 
-  private def checkJobReferences: Seq[Checked[Unit]] =
-    flattenedInstructions.collect {
-      case (position, _ @: (o: Execute.Named)) =>
-        nestedWorkflow(position.branchPath)
-          .flatMap(_.findJob(o.name).map(_ => ()))
-    }
+  private def checkJobReferences: View[Checked[Unit]] =
+    flattenedInstructions
+      .collect {
+        case (position, _ @: (o: Execute.Named)) =>
+          nestedWorkflow(position.branchPath)
+            .flatMap(_.findJob(o.name).map(_ => ()))
+      }
 
   private def checkRetry(inCatch: Boolean = false): Seq[Checked[Unit]] =
     instructions flatMap {
@@ -119,15 +123,19 @@ extends VersionedItem
         instr.workflows.flatMap(_.checkRetry())
     }
 
-  private def checkLabels: Iterable[Checked[Unit]] =
-    flattenedInstructions.collect {
-      case (position, Some(label) @: _) => (label, position)
-    } .groupBy(_._1)
+  private def checkLabels: View[Checked[Unit]] =
+    flattenedInstructions
+      .collect {
+        case (position, Some(label) @: _) => (label, position)
+      }
+      .toVector
+      .groupBy(_._1)
       .view
       .filter(_._2.lengthIs > 1)
       .mapValues(_.map(_._2))
       .map { case (label, positions) =>
-        Left(Problem(s"Label '${label.string}' is duplicated at positions " + positions.mkString(", ")))
+        Left(Problem(s"Label '${label.string}' is duplicated at positions " +
+          positions.mkString(", ")))
       }
 
   override lazy val referencedAgentPaths: Set[AgentPath] =
@@ -198,14 +206,17 @@ extends VersionedItem
     } yield branchPath % nr
 
   def labelToPosition(label: Label): Checked[Position] =
-    flattenedInstructions.find(_._2.maybeLabel contains label)
+    flattenedInstructions
+      .find(_._2.maybeLabel contains label)
       .map(_._1)
       .toChecked(UnknownKeyProblem("Label", label.toString))
 
-  def jobNameToPositions(name: WorkflowJob.Name): Checked[Seq[Position]] =
-    findJob(name).map(_ => flattenedInstructions collect {
-      case (pos, Labeled(_, ex: Execute.Named, _)) if ex.name == name => pos
-    })
+  private def jobNameToPositions(name: WorkflowJob.Name): Checked[Iterable[Position]] =
+    findJob(name)
+      .map(_ => flattenedInstructions
+        .collect {
+          case (pos, Labeled(_, ex: Execute.Named, _)) if ex.name == name => pos
+        })
 
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)
@@ -213,17 +224,17 @@ extends VersionedItem
   def lastNr: InstructionNr =
     instructions.length - 1
 
-  private def flattenedWorkflows: Seq[Workflow] =
+  private def flattenedWorkflows: View[Workflow] =
     flattenedWorkflowsOf(Nil).map(_._2)
 
   private[workflow] def flattenedBranchToWorkflow: Map[BranchPath, Workflow] =
     flattenedWorkflowsOf(Nil).toMap
 
-  private[workflow] def flattenedWorkflowsOf(parents: BranchPath): List[(BranchPath, Workflow)] =
-    (parents -> this) :: nestedWorkflows(parents)
+  private[workflow] def flattenedWorkflowsOf(parents: BranchPath): View[(BranchPath, Workflow)] =
+    View(parents -> this) ++ nestedWorkflows(parents)
 
-  private def nestedWorkflows(parents: BranchPath): List[(BranchPath, Workflow)] =
-    numberedInstructions.toList flatMap {
+  private def nestedWorkflows(parents: BranchPath): View[(BranchPath, Workflow)] =
+    numberedInstructions flatMap {
       case (nr, labeled) => labeled.instruction.flattenedWorkflows(parents % nr)
     }
 
@@ -233,18 +244,21 @@ extends VersionedItem
       case _ => Right(this)
     }
 
-  def flattenedInstructions: Seq[(Position, Instruction.Labeled)] =
+  private[workflow] def flattenedInstructions: View[(Position, Instruction.Labeled)] =
     flattenedInstructions(Nil)
 
-  private[workflow] def flattenedInstructions(branchPath: BranchPath): Seq[(Position, Instruction.Labeled)] =
-    numberedInstructions flatMap {
-      case (nr, labeled) => ((branchPath % nr) -> labeled) +: labeled.instruction.flattenedInstructions(branchPath % nr)
+  private[workflow] def flattenedInstructions(branchPath: BranchPath)
+  : View[(Position, Instruction.Labeled)] =
+    numberedInstructions.flatMap {
+      case (nr, labeled) =>
+        View((branchPath % nr) -> labeled) ++
+          labeled.instruction.flattenedInstructions(branchPath % nr)
     }
 
-  def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
-    labeledInstructions.zipWithIndex.map {
-      case (s, i) => InstructionNr(i) -> s
-    }
+  def numberedInstructions: View[(InstructionNr, Instruction.Labeled)] =
+    labeledInstructions.view
+      .zipWithIndex
+      .map { case (s, i) => InstructionNr(i) -> s }
 
   private[workflow] def reduce: Workflow =
     copy(rawLabeledInstructions =
@@ -356,7 +370,8 @@ extends VersionedItem
     if (!isDefinedAt(from))
       Nil
     else
-      flattenedInstructions.view.map(_._1)
+      flattenedInstructions.view
+        .map(_._1)
         .filter(isMoveablePrechecked(from, _))
 
   def isMoveable(from: Position, to: Position): Boolean =

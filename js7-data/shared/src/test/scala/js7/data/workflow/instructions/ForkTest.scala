@@ -83,13 +83,13 @@ final class ForkTest extends AnyFreeSpec {
   }
 
   "flattenedWorkflows" in {
-    assert(fork.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / "fork+A") -> fork.branches(0).workflow) ::
-      ((Position(7) / "fork+B") -> fork.branches(1).workflow) :: Nil)
+    assert(fork.flattenedWorkflows(Position(7)).toSeq == Seq(
+      (Position(7) / "fork+A") -> fork.branches(0).workflow,
+      (Position(7) / "fork+B") -> fork.branches(1).workflow))
   }
 
   "flattenedInstructions" in {
-    assert(fork.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
+    assert(fork.flattenedInstructions(Position(7)).toSeq == Seq[(Position, Instruction.Labeled)](
       Position(7) / "fork+A" % 0 -> fork.branches(0).workflow.instructions(0),
       Position(7) / "fork+A" % 1 -> ImplicitEnd(),
       Position(7) / "fork+B" % 0 -> fork.branches(1).workflow.instructions(0),

@@ -9,6 +9,7 @@ import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction.{Labeled, showSourcePos}
 import js7.data.workflow.position._
+import scala.collection.View
 import scala.language.implicitConversions
 
 /**
@@ -40,11 +41,13 @@ trait Instruction
   def branchWorkflows: Seq[(BranchId, Workflow)] =
     Nil
 
-  final def flattenedWorkflows(parent: Position): Seq[(BranchPath, Workflow)] =
-    branchWorkflows flatMap { case (branchId, workflow) => workflow.flattenedWorkflowsOf(parent / branchId) }
+  final def flattenedWorkflows(parent: Position): View[(BranchPath, Workflow)] =
+    branchWorkflows.view
+      .flatMap { case (branchId, workflow) => workflow.flattenedWorkflowsOf(parent / branchId) }
 
-  final def flattenedInstructions(parent: Position): Seq[(Position, Instruction.Labeled)] =
-    branchWorkflows flatMap { case (branchId, workflow) => workflow.flattenedInstructions(parent / branchId) }
+  final def flattenedInstructions(parent: Position): View[(Position, Instruction.Labeled)] =
+    branchWorkflows.view
+      .flatMap { case (branchId, workflow) => workflow.flattenedInstructions(parent / branchId) }
 
   def workflow(branchId: BranchId): Checked[Workflow] =
     Problem(s"Instruction '${getClass.simpleScalaName}' does not have a nested workflow for branch '$branchId'")

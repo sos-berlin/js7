@@ -70,13 +70,13 @@ final class IfTest extends AnyFreeSpec
   }
 
   "flattenedBranchToWorkflow" in {
-    assert(if_.flattenedWorkflows(Position(7)) ==
-      ((Position(7) / Then) -> if_.thenWorkflow) ::
-      ((Position(7) / Else) -> if_.elseWorkflow.get) :: Nil)
+    assert(if_.flattenedWorkflows(Position(7)).toSeq == Seq(
+      (Position(7) / Then) -> if_.thenWorkflow,
+      (Position(7) / Else) -> if_.elseWorkflow.get))
   }
 
   "flattenedInstructions" in {
-    assert(if_.flattenedInstructions(Position(7)) == Vector[(Position, Instruction.Labeled)](
+    assert(if_.flattenedInstructions(Position(7)).toSeq == Seq[(Position, Instruction.Labeled)](
       Position(7) / Then % 0 -> if_.thenWorkflow.instructions(0),
       Position(7) / Then % 1 -> ImplicitEnd(),
       Position(7) / Else % 0 -> if_.elseWorkflow.get.instructions(0),

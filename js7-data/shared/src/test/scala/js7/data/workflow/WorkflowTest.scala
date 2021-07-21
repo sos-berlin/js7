@@ -589,7 +589,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "numberedInstruction" in {
-    assert(TestWorkflow.numberedInstructions == Vector[(InstructionNr, Instruction.Labeled)](
+    assert(TestWorkflow.numberedInstructions.toSeq == Seq[(InstructionNr, Instruction.Labeled)](
       (InstructionNr(0), AExecute),
       (InstructionNr(1), "TEST-LABEL" @: TestWorkflow.instruction(1)),
       (InstructionNr(2), TestWorkflow.instruction(2)),
@@ -608,7 +608,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "flattenedInstruction" in {
-    assert(TestWorkflow.flattenedInstructions == Vector[(Position, Instruction.Labeled)](
+    assert(TestWorkflow.flattenedInstructions.toSeq == Seq[(Position, Instruction.Labeled)](
       (Position(0), AExecute),
       (Position(1), "TEST-LABEL" @: TestWorkflow.instruction(1)),
       (Position(1) / Then % 0, TestWorkflow.instruction(1).asInstanceOf[If].thenWorkflow.instructions(0)),
