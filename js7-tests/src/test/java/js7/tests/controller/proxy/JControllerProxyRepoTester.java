@@ -48,7 +48,7 @@ import static org.hamcrest.Matchers.greaterThan;
  */
 final class JControllerProxyRepoTester
 {
-    private static final WorkflowPath bWorkflowPath = WorkflowPath.of("B-WORKFLOW");  // As defined by ControllerProxyTest
+    private static final WorkflowPath bWorkflowPath = WorkflowPath.of("B-WORKFLOW");  // As defined by JControllerProxyTest
     private final JControllerProxy proxy;
     private final JControllerApi api;
     private static final VersionId versionId = VersionId.of("MY-VERSION");  // Must match the versionId in added or replaced objects
@@ -106,7 +106,6 @@ final class JControllerProxyRepoTester
         addItemsOnly(simpleItems, signedItemJsons);
 
         whenWorkflowAdded.get(99, SECONDS);
-
         assertThat(proxy
                 .currentState()
                 .repo()

@@ -20,7 +20,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
-import js7.data_for_java.board.JBoard
+import js7.data_for_java.board.{JBoard, JBoardState}
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.item.{JInventoryItem, JRepo}
@@ -104,12 +104,19 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JLockState.apply)
       .toVavr
 
-  /** Looks up a Board item in the current version. */
+  /** Looks up a Board item. */
   @Nonnull
   def pathToBoard(@Nonnull boardPath: BoardPath): VEither[Problem, JBoard] =
     asScala.pathToBoardState.checked(boardPath)
       .map(_.board)
       .map(JBoard.apply)
+      .toVavr
+
+  /** Looks up a BoardState. */
+  @Nonnull
+  def pathToBoardState(@Nonnull boardPath: BoardPath): VEither[Problem, JBoardState] =
+    asScala.pathToBoardState.checked(boardPath)
+      .map(JBoardState.apply)
       .toVavr
 
   /** Looks up a JFileWatch. */

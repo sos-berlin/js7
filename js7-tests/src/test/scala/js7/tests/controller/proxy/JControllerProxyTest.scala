@@ -13,10 +13,12 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerState.versionedItemJsonCodec
-import js7.data.item.{VersionId, VersionedItem}
+import js7.data.board.BoardPath
+import js7.data.controller.ControllerState.{inventoryItemJsonCodec, versionedItemJsonCodec}
+import js7.data.item.{InventoryItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
-import js7.data.workflow.WorkflowPath
+import js7.data.workflow.instructions.{PostNotice, ReadNotice}
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.data_for_java.auth.{JAdmission, JCredentials, JHttpsConfig}
 import js7.proxy.javaapi.JProxyContext
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
@@ -101,4 +103,20 @@ final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForSc
       assert(tried.failed.toOption.exists(_.isInstanceOf[CancellationException]))
     }
   }
+}
+
+object JControllerProxyTest
+{
+  val boardPath = BoardPath("BOARD")
+  val boardVersion = VersionId("BOARD-VERSION")
+
+  val postingBoardWorkflow = Workflow(WorkflowPath("POSTING-WORKFLOW") ~ boardVersion,
+      Seq(PostNotice(boardPath)))
+
+  val postingBoardWorkflowJson = (postingBoardWorkflow: InventoryItem).asJson.compactPrint
+
+  val readingBoardWorkflow = Workflow(WorkflowPath("READING-WORKFLOW") ~ boardVersion,
+      Seq(ReadNotice(boardPath)))
+
+  val readingBoardWorkflowJson = (readingBoardWorkflow: InventoryItem).asJson.compactPrint
 }

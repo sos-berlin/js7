@@ -7,7 +7,7 @@ import js7.data.source.SourcePos
 final case class ReadNotice(
   boardPath: BoardPath,
   sourcePos: Option[SourcePos] = None)
-extends NoticeInstruction
+extends BoardInstruction
 {
   def withoutSourcePos = copy(sourcePos = None)
 }

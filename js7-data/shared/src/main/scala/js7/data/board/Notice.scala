@@ -8,13 +8,13 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.order.OrderId
 import js7.data.value.{ObjectValue, StringValue, Value}
 
-sealed trait NoticeIdState
+sealed trait NoticePlace
 {
   def id: NoticeId
 }
 
 final case class Notice(id: NoticeId, endOfLife: Timestamp)
-extends NoticeIdState
+extends NoticePlace
 
 object Notice
 {
@@ -29,11 +29,6 @@ object Notice
             .checked("id")
             .flatMap(_.asString)
             .flatMap(NoticeId.checked)
-          //endOfLife <- obj.nameToValue
-          //  .checked("endOfLife")
-          //  .flatMap(_.asNumber)
-          //  .flatMap(o => Checked.catchNonFatal(o.toBigInt.toLong))
-          //  .map(Timestamp.ofEpochMilli)
         } yield Notice(id, endOfLife)
 
       case _ =>
@@ -55,10 +50,10 @@ object Notice
 }
 
 
-final case class AwaitingNotice(id: NoticeId, awaitingOrderIds: Seq[OrderId])
-extends NoticeIdState with Big
+final case class NoticeExpectation(id: NoticeId, awaitingOrderIds: Seq[OrderId])
+extends NoticePlace with Big
 
-object AwaitingNotice
+object NoticeExpectation
 {
-  implicit val jsonCodec = deriveCodec[AwaitingNotice]  // TODO Big
+  implicit val jsonCodec = deriveCodec[NoticeExpectation]  // TODO Big
 }

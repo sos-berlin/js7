@@ -6,13 +6,13 @@ import monix.reactive.Observable
 
 final case class BoardState(
   board: Board,
-  idToNotice: Map[NoticeId, NoticeIdState] = Map.empty)
+  idToNotice: Map[NoticeId, NoticePlace] = Map.empty)
 {
   def path = board.path
 
   def toSnapshotObservable: Observable[Any] = {
     board +: Observable.fromIterable(notices.map(Notice.Snapshot(board.path, _)))
-    // AwaitingNotice are recovered from Order[Order.WaitingForNotice]
+    // NoticeExpectation are recovered from Order[Order.WaitingForNotice]
   }
 
   def addNotice(notice: Notice): BoardState =
@@ -24,13 +24,13 @@ final case class BoardState(
       case None =>
         Right(copy(
           idToNotice = idToNotice +
-            (noticeId -> AwaitingNotice(noticeId, orderId :: Nil))))
+            (noticeId -> NoticeExpectation(noticeId, orderId :: Nil))))
 
-      case Some(awaitingNotice: AwaitingNotice) =>
+      case Some(expectation: NoticeExpectation) =>
         Right(copy(
           idToNotice = idToNotice +
-            (noticeId -> awaitingNotice.copy(
-              awaitingOrderIds = awaitingNotice.awaitingOrderIds.view.appended(orderId).toVector))))
+            (noticeId -> expectation.copy(
+              awaitingOrderIds = expectation.awaitingOrderIds.view.appended(orderId).toVector))))
 
       case Some(_: Notice) =>
         Left(Problem("BoardState.addWaitingOrder despite notice has been posted"))
@@ -38,7 +38,7 @@ final case class BoardState(
 
   def waitingOrders(noticeId: NoticeId): Seq[OrderId] =
     idToNotice.get(noticeId) match {
-      case Some(AwaitingNotice(_, orderIds)) => orderIds
+      case Some(NoticeExpectation(_, orderIds)) => orderIds
       case _ => Nil
     }
 

@@ -76,8 +76,8 @@ class JControllerProxyTester
                     JControllerProxy proxy = whenStarted.get(99, SECONDS);
                     try {
                         couplingState.coupled.get(99, SECONDS);
-                        JControllerProxyTester tester = new JControllerProxyTester(proxy);
-                        tester.test(itemJsons, manyItemJsons);
+                        new JControllerProxyTester(proxy).test(itemJsons, manyItemJsons);
+                        new JBoardTester(proxy).test();
                     } finally {
                         proxy.stop().get(99, SECONDS);
                     }

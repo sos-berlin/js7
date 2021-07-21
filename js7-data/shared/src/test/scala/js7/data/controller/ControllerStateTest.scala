@@ -11,7 +11,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{AwaitingNotice, Board, BoardPath, BoardState, Notice, NoticeId}
+import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -342,7 +342,7 @@ object ControllerStateTest
   private val agentRef = AgentRef(AgentPath("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0)))
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
   private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
-  private val postedNotice = AwaitingNotice(NoticeId("NOTICE-2"), Seq(waitingForNoticeOrderId))
+  private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Seq(waitingForNoticeOrderId))
   private val board = Board(
     BoardPath("BOARD"),
     toNotice = expr("$orderId"),
@@ -353,7 +353,7 @@ object ControllerStateTest
     board,
     Map(
       notice.id -> notice,
-      postedNotice.id -> postedNotice))
+      noticeExpectation.id -> noticeExpectation))
   private val versionId = VersionId("1.0")
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction(lock.path, None, Workflow.of(
@@ -405,6 +405,6 @@ object ControllerStateTest
     Seq(
       Order(orderId, workflow.id /: Position(0), Order.Fresh,
         externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))),
-      Order(waitingForNoticeOrderId, workflow.id /: Position(1), Order.WaitingForNotice(postedNotice.id))
+      Order(waitingForNoticeOrderId, workflow.id /: Position(1), Order.WaitingForNotice(noticeExpectation.id))
     ).toKeyedMap(_.id))
 }
