@@ -140,3 +140,16 @@ Operanden vom Typ Number und Boolean werden zu einem String gewandelt.
 * `EXPR.toString`
   Wandelt den Wert einen String.
   Kann nicht scheitern.
+
+* `*`, `/`
+  Multiplikation und Division.
+  Die Division kann eine gebrochene Zahl ergeben, die sich noch nicht auf eine ganze Zahl runden lässt.
+
+
+## Funktionen
+
+```replaceAll(string: String, regex: String, replacement: String)```
+
+Analog zu Javas (replaceAll)[https://docs.oracle.com/javase/8/docs/api/java/lang/String.html#replaceAll-java.lang.String-java.lang.String-].
+
+Zur Angabe von `$` und `\` in `replacement`: Wenn Gruppen aus `regex` in `replacement` verwendet werden, also etwa `$1`, dann ist `$1` keine Variable der Ausdruckssprache, sondern von `replaceAll`, wie in `replace($myString, 'x', '-->$1<--')`. `replacement` ist also ein String in Apostrophen. `replace($myString, 'x', "-->$1<--")` dagegen würde `$1` der Ausdruckssprache verwenden und nicht das gewünscht Ergebnis liefern (wahrscheinlich wird es scheitern).
