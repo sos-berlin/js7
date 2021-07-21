@@ -6,6 +6,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.data.agent.AgentPath
+import js7.data.board.BoardPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
@@ -14,7 +15,7 @@ import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResource
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, PostNotice, ReadNotice, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.ForkTestSetting
@@ -697,6 +698,23 @@ final class WorkflowTest extends AnyFreeSpec
     assert(workflow.referencedLockPaths == Set(a, b, c))
     assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
     assert(workflow.referencedJobResourcePaths.isEmpty)
+  }
+
+  "referencedBoardPaths" in {
+    val a = BoardPath("A")
+    val b = BoardPath("B")
+    val c = BoardPath("C")
+    val workflow = Workflow(
+      WorkflowPath("WORKFLOW") ~ "1",
+      Vector(
+        PostNotice(a),
+        If(BooleanConstant(true), Workflow.of(
+          Fork.of(
+            "BRANCH" -> Workflow.of(
+              PostNotice(b),
+              ReadNotice(c)))))))
+    assert(workflow.referencedBoardPaths == Set(a, b, c))
+    assert(workflow.referencedItemPaths.toSet == Set(a, b, c))
   }
 
   "referencedAgentPaths" in {

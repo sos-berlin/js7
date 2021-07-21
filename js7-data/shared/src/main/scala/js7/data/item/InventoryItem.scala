@@ -4,6 +4,7 @@ import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
+import js7.data.board.BoardPath
 import js7.data.item.InventoryItem.Companion
 import js7.data.job.JobResourcePath
 import js7.data.lock.LockPath
@@ -34,11 +35,15 @@ trait InventoryItem
 
   def referencedItemPaths: View[InventoryItemPath] =
     referencedLockPaths.view ++
+      referencedBoardPaths.view ++
       referencedAgentPaths ++
       referencedJobResourcePaths ++
       referencedWorkflowPaths
 
   def referencedLockPaths: Set[LockPath] =
+    Set.empty
+
+  def referencedBoardPaths: Set[BoardPath] =
     Set.empty
 
   def referencedAgentPaths: Set[AgentPath] =

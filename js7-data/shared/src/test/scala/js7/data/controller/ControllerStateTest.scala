@@ -117,6 +117,7 @@ final class ControllerStateTest extends AsyncFreeSpec
   "pathToReferencingItemKeys" in {
     assert(controllerState.pathToReferencingItemKeys.mapValuesStrict(_.toSet) == Map(
       lock.path -> Set(workflow.id),
+      board.path -> Set(workflow.id),
       agentRef.path -> Set(fileWatch.path, workflow.id),
       jobResource.path -> Set(workflow.id),
       workflow.path -> Set(fileWatch.path)))
@@ -135,6 +136,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(controllerState.pathToReferencingItemKeys.view.mapValues(_.toSet).toMap
       == Map(
         lock.path -> Set(workflow.id, changedWorkflowId),
+        board.path -> Set(workflow.id, changedWorkflowId),
         agentRef.path -> Set(workflow.id, changedWorkflowId, fileWatch.path),
         jobResource.path -> Set(workflow.id, changedWorkflowId),
         workflow.path -> Set(fileWatch.path)))

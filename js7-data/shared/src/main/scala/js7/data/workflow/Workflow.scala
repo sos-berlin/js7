@@ -13,6 +13,7 @@ import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
+import js7.data.board.BoardPath
 import js7.data.item.{VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.lock.LockPath
@@ -21,7 +22,7 @@ import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{BoardInstruction, End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
@@ -146,6 +147,14 @@ extends VersionedItem
       .map(_._2.instruction)
       .collect {
         case lock: LockInstruction => lock.lockPath
+      }
+      .toSet
+
+  override lazy val referencedBoardPaths: Set[BoardPath] =
+    flattenedInstructions.view
+      .map(_._2.instruction)
+      .collect {
+        case board: BoardInstruction => board.boardPath
       }
       .toSet
 
