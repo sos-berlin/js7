@@ -12,6 +12,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
+import js7.data.board.{BoardPath, NoticeId}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState._
@@ -89,6 +90,12 @@ object ControllerCommand extends CommonCommand.Companion
         orderIds <- c.get[Vector[OrderId]]("orderIds")
         mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
       } yield CancelOrders(orderIds, mode)
+  }
+
+  final case class DeleteNotice(boardPath: BoardPath, noticeId: NoticeId)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+    override def toShortString = s"DeleteNotice($boardPath, $noticeId)"
   }
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
@@ -238,6 +245,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[AddOrder]),
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],
+    Subtype(deriveCodec[DeleteNotice]),
     Subtype(deriveCodec[DeleteOrdersWhenTerminated]),
     Subtype(deriveCodec[AnswerOrderPrompt]),
     Subtype(deriveCodec[NoOperation]),

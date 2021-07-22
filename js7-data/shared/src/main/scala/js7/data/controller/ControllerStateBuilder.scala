@@ -310,7 +310,7 @@ with StateView
 
     case Stamped(_, _, KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId))) =>
       for (boardState <- _pathToBoardState.get(boardPath)) {
-        _pathToBoardState(boardState.path) = boardState.deleteNotice(noticeId)
+        _pathToBoardState(boardState.path) = boardState.deleteNotice(noticeId).orThrow
       }
 
     case Stamped(_, _, KeyedEvent(_, _: ControllerShutDown)) =>

@@ -5,6 +5,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
+import js7.data.board.{BoardPath, NoticeId}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand._
@@ -127,6 +128,15 @@ final class ControllerCommandTest extends AnyFreeSpec
           }
         }""")
     }
+  }
+
+  "DeleteNotice" in {
+    testJson[ControllerCommand](DeleteNotice(BoardPath("BOARD"), NoticeId("NOTICE")),
+      json"""{
+        "TYPE": "DeleteNotice",
+        "boardPath": "BOARD",
+        "noticeId": "NOTICE"
+      }""")
   }
 
   "DeleteOrdersWhenTerminated" in {

@@ -357,8 +357,11 @@ with JournaledState[ControllerState]
       }
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
-      for (boardState <- pathToBoardState.checked(boardPath)) yield copy(
-        pathToBoardState = pathToBoardState + (boardPath -> boardState.deleteNotice(noticeId)))
+      for {
+        boardState <- pathToBoardState.checked(boardPath)
+        o <- boardState.deleteNotice(noticeId)
+      } yield copy(
+        pathToBoardState = pathToBoardState + (o.path -> o))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
       allOrderWatchesState

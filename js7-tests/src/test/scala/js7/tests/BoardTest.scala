@@ -12,6 +12,7 @@ import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.{Board, BoardPath, Notice, NoticeId}
+import js7.data.controller.ControllerCommand.DeleteNotice
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
 import js7.data.order.Order.Fresh
@@ -141,8 +142,40 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
+  "Delete notice after endOfLife" in {
+    alarmClock := endOfLife - 1.s
+    sleep(100.ms)
+    val eventId = controller.eventWatch.lastAddedEventId
+    // NoticeDeleted do not occur before endOfLife
+    alarmClock := endOfLife
+    // Spare noticeIds.head for DeleteNotice test
+    for (noticeId <- noticeIds) {
+      controller.eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
+    }
+  }
+
+  "DeleteNotice command" in {
+    val qualifier = "2222-08-08"
+    val notice = Notice(NoticeId(qualifier), endOfLife + lifeTime)
+
+    val posterEvents = controller.runOrder(
+      FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
+    assert(posterEvents.map(_.value) == Seq(
+      OrderAdded(postingWorkflow.id),
+      OrderStarted,
+      OrderNoticePosted(notice),
+      OrderMoved(Position(1)),
+      OrderFinished))
+
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.executeCommand(DeleteNotice(board.path, notice.id)).await(99.s).orThrow
+    assert(eventWatch.await[NoticeDeleted](_.key == board.path, after = eventId).head.value.event ==
+      NoticeDeleted(notice.id))
+    sleep(100.ms)
+  }
+
   "PostNotice and ExpectNotice respect Order.scheduledFor" in {
-    val qualifier = nextQualifier()
+    val qualifier = "2222-09-09"
     val posterOrderId = OrderId(s"#$qualifier#POSTER")
     val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
     val startAt = startTimestamp + 10.days
@@ -159,18 +192,6 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     alarmClock := startAt
     eventWatch.await[OrderFinished](_.key == posterOrderId)
     eventWatch.await[OrderFinished](_.key == expectingOrderId)
-  }
-
-  "Delete notice after endOfLife" in {
-    pending
-    alarmClock := endOfLife - 1.s
-    sleep(100.ms)
-    val eventId = controller.eventWatch.lastAddedEventId
-    // NoticeDeleted do not occur before endOfLife
-    alarmClock := endOfLife
-    for (noticeId <- noticeIds) {
-      controller.eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
-    }
   }
 
   "Update Board" in {
@@ -207,7 +228,7 @@ object BoardTest
 {
   private val agentPath = AgentPath("AGENT")
 
-  private val qualifiers = Seq("2222-01-01", "2222-02-02", "2222-03-03", "2222-04-04")
+  private val qualifiers = Seq("2222-01-01", "2222-02-02", "2222-03-03")
   private val noticeIds = qualifiers.map(NoticeId(_))
   private val nextQualifier = qualifiers.iterator.next _
 

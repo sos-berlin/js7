@@ -6,6 +6,9 @@ import js7.base.utils.ScalaUtils.syntax._
 
 final case class NoticeId(string: String)
 extends GenericString
+{
+  override def toString = s"NoticeId:$string"
+}
 
 object NoticeId extends GenericString.NonEmpty[NoticeId]
 {

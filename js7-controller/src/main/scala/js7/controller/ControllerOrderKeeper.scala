@@ -678,6 +678,19 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ResumeOrders(orderIds) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
 
+      case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
+        val checked = for {
+          boardState <-_controllerState.pathToBoardState.checked(boardPath)
+          _ <- boardState.deleteNotice(noticeId)
+        } yield ()
+        checked match {
+          case Left(problem) => Future.successful(Left(problem))
+          case Right(()) =>
+           persistTransactionAndSubsequentEvents(Seq(boardPath <-: NoticeDeleted(noticeId)))(
+             handleEvents
+           ).map(_ => Right(ControllerCommand.Response.Accepted))
+        }
+
       case ControllerCommand.DeleteOrdersWhenTerminated(orderIds) =>
         orderIds.toVector
           .traverse(_controllerState.idToOrder.checked)

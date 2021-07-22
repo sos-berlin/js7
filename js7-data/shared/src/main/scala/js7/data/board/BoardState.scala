@@ -1,6 +1,7 @@
 package js7.data.board
 
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.order.OrderId
 import monix.reactive.Observable
 
@@ -45,6 +46,13 @@ final case class BoardState(
   def notices: Iterable[Notice] =
     idToNotice.values.view.collect { case o: Notice => o }
 
-  def deleteNotice(noticeId: NoticeId): BoardState =
-    copy(idToNotice = idToNotice - noticeId)
+  def deleteNotice(noticeId: NoticeId): Checked[BoardState] =
+    for {
+      notice <- idToNotice.checked(noticeId)
+      _ <- notice match {
+        case _: NoticeExpectation => Left(Problem("NoticeExpectation is not deletable"))
+        case _: Notice => Right(())
+      }
+    } yield
+      copy(idToNotice = idToNotice - noticeId)
 }
