@@ -31,8 +31,8 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected def agentPaths = Seq(agentPath)
 
   protected def items = Seq(board,
-    readerWorkflow, posterWorkflow,
-    readerAgentWorkflow, posterAgentWorkflow)
+    postingWorkflow, expectingWorkflow,
+    postingAgentWorkflow, expectingAgentWorkflow)
 
   private val alarmClock = AlarmClock.forTest(startTimestamp, clockCheckInterval = 100.ms)
 
@@ -44,17 +44,17 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val qualifier = nextQualifier()
     val notice = Notice(NoticeId(qualifier), endOfLife)
 
-    val posterEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTER"), posterWorkflow.path))
+    val posterEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
     assert(posterEvents.map(_.value) == Seq(
-      OrderAdded(posterWorkflow.id),
+      OrderAdded(postingWorkflow.id),
       OrderStarted,
       OrderNoticePosted(notice),
       OrderMoved(Position(1)),
       OrderFinished))
 
-    val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#READER"), readerWorkflow.path))
+    val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#EXPECTING"), expectingWorkflow.path))
     assert(readerEvents.map(_.value) == Seq(
-      OrderAdded(readerWorkflow.id),
+      OrderAdded(expectingWorkflow.id),
       OrderStarted,
       OrderNoticeRead,
       OrderMoved(Position(1)),
@@ -65,15 +65,15 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val qualifier = nextQualifier()
     val notice = Notice(NoticeId(qualifier), endOfLife)
 
-    val expectingOrderId = OrderId(s"#$qualifier#READER")
-    controllerApi.addOrder(FreshOrder(expectingOrderId, readerWorkflow.path))
+    val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
+    controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
 
     val posterEvents = controller.runOrder(
-      FreshOrder(OrderId(s"#$qualifier#POSTER"), posterWorkflow.path))
+      FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
     assert(posterEvents.map(_.value) == Seq(
-      OrderAdded(posterWorkflow.id),
+      OrderAdded(postingWorkflow.id),
       OrderStarted,
       OrderNoticePosted(notice),
       OrderMoved(Position(1)),
@@ -82,7 +82,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderFinished](_.key == expectingOrderId)
     val expectingEvents = controller.eventWatch.keyedEvents[OrderCoreEvent](expectingOrderId)
     assert(expectingEvents == Seq(
-      OrderAdded(readerWorkflow.id),
+      OrderAdded(expectingWorkflow.id),
       OrderStarted,
       OrderNoticeExpected(notice.id),
       OrderNoticeRead,
@@ -97,9 +97,9 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val notice = Notice(NoticeId(qualifier), endOfLife)
 
     val posterEvents = controller.runOrder(
-      FreshOrder(OrderId(s"#$qualifier#POSTER"), posterAgentWorkflow.path))
+      FreshOrder(OrderId(s"#$qualifier#POSTING"), postingAgentWorkflow.path))
     assert(posterEvents.map(_.value) == Seq(
-      OrderAdded(posterAgentWorkflow.id),
+      OrderAdded(postingAgentWorkflow.id),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -113,9 +113,9 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
 
     val readerEvents = controller.runOrder(
-      FreshOrder(OrderId(s"#$qualifier#READER"), readerAgentWorkflow.path))
+      FreshOrder(OrderId(s"#$qualifier#EXPECTING"), expectingAgentWorkflow.path))
     assert(readerEvents.map(_.value) == Seq(
-      OrderAdded(readerAgentWorkflow.id),
+      OrderAdded(expectingAgentWorkflow.id),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
@@ -162,17 +162,21 @@ object BoardTest
     endOfLife = expr(s"$$epochMilli + ${lifeTime.toMillis}"),
     expectOrderToNoticeId = orderIdToNoticeId)
 
-  private val readerWorkflow = Workflow(WorkflowPath("READER") ~ "INITIAL", Seq(
+  private val expectingWorkflow = Workflow(WorkflowPath("EXPECTING") ~ "INITIAL", Seq(
     ExpectNotice(board.path)))
 
-  private val posterWorkflow = Workflow(WorkflowPath("POSTER") ~ "INITIAL", Seq(
+  private val postingWorkflow = Workflow(WorkflowPath("POSTING") ~ "INITIAL", Seq(
     PostNotice(board.path)))
 
-  private val readerAgentWorkflow = Workflow(WorkflowPath("READER-AGENT") ~ "INITIAL", Seq(
+  private val postingAgentWorkflow = Workflow(WorkflowPath("POSTING-AT-AGENT") ~ "INITIAL", Seq(
+    EmptyJob.execute(agentPath),
+    PostNotice(board.path)))
+
+  private val expectingAgentWorkflow = Workflow(WorkflowPath("EXPECTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
     ExpectNotice(board.path)))
 
-  private val posterAgentWorkflow = Workflow(WorkflowPath("POSTER-AGENT") ~ "INITIAL", Seq(
+  private val posterAgentWorkflow = Workflow(WorkflowPath("POSTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
     PostNotice(board.path)))
 }

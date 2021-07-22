@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
-import js7.base.time.{Timestamp, WallClock}
+import js7.base.time.WallClock
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
@@ -13,10 +13,12 @@ import js7.data.workflow.position.Position
 final class InstructionExecutorService(clock: WallClock)
 {
   private val postNoticeExecutor = new PostNoticeExecutor(clock)
+  private val endExecutor = new EndExecutor(this)
+  private val retryExecutor = new RetryExecutor(() => clock.now())
 
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     instr match {
-      case _: End => new EndExecutor(this)
+      case _: End => endExecutor
       case _: Execute => ExecuteExecutor
       case _: Fail => FailExecutor
       case _: Finish => FinishExecutor
@@ -28,7 +30,7 @@ final class InstructionExecutorService(clock: WallClock)
       case _: PostNotice => postNoticeExecutor
       case _: ExpectNotice => ExpectNoticeExecutor
       case _: Prompt => PromptExecutor
-      case _: Retry => new RetryExecutor(() => Timestamp.now)
+      case _: Retry => retryExecutor
     }
 
   def nextPosition(instruction: Instruction, order: Order[Order.State], stateView: StateView)
