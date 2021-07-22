@@ -142,9 +142,9 @@ with JournaledState[ControllerState]
                   for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
                     copy(allOrderWatchesState = o)
 
-                  case board: Board =>
-                    for (o <- pathToBoardState.insert(board.path -> BoardState(board))) yield
-                      copy(pathToBoardState = o)
+                case board: Board =>
+                  for (o <- pathToBoardState.insert(board.path -> BoardState(board))) yield
+                    copy(pathToBoardState = o)
               }
 
             case UnsignedSimpleItemChanged(item) =>
@@ -240,6 +240,10 @@ with JournaledState[ControllerState]
                     deletionMarkedItems = deletionMarkedItems - path,
                     itemToAgentToAttachedState = itemToAgentToAttachedState - path,
                     allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)))
+
+                case boardPath: BoardPath =>
+                  Right(copy(
+                    pathToBoardState = pathToBoardState - boardPath))
 
                 case _ =>
                   Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))

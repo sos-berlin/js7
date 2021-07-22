@@ -3,13 +3,17 @@ package js7.tests
 import com.google.inject.{AbstractModule, Provides}
 import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.{Board, BoardPath, Notice, NoticeId}
+import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
+import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -20,11 +24,18 @@ import js7.tests.BoardTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
 final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
+  override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    js7.journal.remove-obsolete-files = false
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 1ms"""
+
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
@@ -138,6 +149,35 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     for (noticeId <- noticeIds) {
       controller.eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
     }
+  }
+
+  "Update Board" in {
+    val updatedBoard = board.copy(postOrderToNoticeId = expr("$jsOrderId"))
+    controllerApi.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
+  }
+
+  "Delete Board" in {
+    val checked = controllerApi.updateItems(Observable(DeleteSimple(board.path)))
+      .await(99.s)
+    assert(checked == Left(Problem.Combined(Set(
+      ItemIsStillReferencedProblem(board.path, postingWorkflow.id),
+      ItemIsStillReferencedProblem(board.path, expectingWorkflow.id),
+      ItemIsStillReferencedProblem(board.path, postingAgentWorkflow.id),
+      ItemIsStillReferencedProblem(board.path, expectingAgentWorkflow.id)))))
+
+    controllerApi
+      .deleteOrdersWhenTerminated(Observable.fromIterable(
+        controller.controllerState.await(99.s).idToOrder.keys))
+      .await(99.s).orThrow
+    controllerApi
+      .updateItems(Observable(
+        DeleteSimple(board.path),
+        AddVersion(VersionId("DELETION")),
+        RemoveVersioned(postingWorkflow.path),
+        RemoveVersioned(expectingWorkflow.path),
+        RemoveVersioned(postingAgentWorkflow.path),
+        RemoveVersioned(expectingAgentWorkflow.path)))
+      .await(99.s).orThrow
   }
 }
 

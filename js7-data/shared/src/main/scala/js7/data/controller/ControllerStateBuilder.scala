@@ -239,6 +239,9 @@ with StateView
 
                 case agentPath: AgentPath =>
                   _pathToAgentRefState -= agentPath
+
+                case boardPath: BoardPath =>
+                  _pathToBoardState -= boardPath
               }
           }
       }
