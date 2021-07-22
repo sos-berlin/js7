@@ -73,9 +73,11 @@ with StateView
     _pathToAgentRefState.clear()
     _pathToAgentRefState ++= state.pathToAgentRefState
     _pathToLockState ++= state.pathToLockState
+    _pathToBoardState ++= state.pathToBoardState
     allOrderWatchesState = state.allOrderWatchesState
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     itemToAgentToAttachedState ++= state.itemToAgentToAttachedState
+    deletionMarkedItems ++= state.deletionMarkedItems
   }
 
   protected def onAddSnapshotObject = {
