@@ -187,7 +187,7 @@ final case class ControllerStateExecutor private(
         .toVector
       controllerState = controllerState.applyEvents(makeWorkflowsDetachable.view ++ deleteItems).orThrow
 
-      val eventsAndState = controllerState.nextOrderEventsByOrderId(orderIds)
+      val eventsAndState = controllerState.nextOrderEvents(orderIds)
       controllerState = eventsAndState.controllerState
       val orderEvents = eventsAndState.keyedEvents
 
@@ -261,7 +261,7 @@ final case class ControllerStateExecutor private(
         case _ => true
       }
 
-  def nextOrderEventsByOrderId(orderIds: Iterable[OrderId]): ControllerStateExecutor = {
+  def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor = {
     var controllerState = this.controllerState
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
     val _keyedEvents = Vector.newBuilder[KeyedEvent[OrderCoreEvent]]

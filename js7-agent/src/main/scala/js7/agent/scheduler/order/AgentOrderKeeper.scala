@@ -20,9 +20,9 @@ import js7.base.log.Logger.ops._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
+import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
-import js7.base.time.{AlarmClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
@@ -515,7 +515,7 @@ with Stash
     val order = orderEntry.order
     if (order.isAttached) {
       order.maybeDelayedUntil match {
-        case Some(until) if Timestamp.now < until =>
+        case Some(until) if alarmClock.now < until =>
           // TODO Schedule only the next order ?
           orderEntry.timer := alarmClock.scheduleAt(until) {
             self ! Internal.Due(orderId)

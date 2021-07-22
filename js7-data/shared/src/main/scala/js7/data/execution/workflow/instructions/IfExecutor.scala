@@ -8,10 +8,8 @@ import js7.data.order.OrderEvent.OrderMoved
 import js7.data.workflow.instructions.If
 import js7.data.workflow.position.BranchId.{Else, Then}
 
-/**
-  * @author Joacim Zschimmer
-  */
-object IfExecutor extends EventInstructionExecutor with PositionInstructionExecutor
+private[instructions] final class IfExecutor(protected val service: InstructionExecutorService)
+extends EventInstructionExecutor with PositionInstructionExecutor
 {
   type Instr = If
 

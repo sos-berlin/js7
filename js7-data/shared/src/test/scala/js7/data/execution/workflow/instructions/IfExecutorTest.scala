@@ -24,6 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class IfExecutorTest extends AnyFreeSpec {
 
+  private val ifExecutor = new IfExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = StateView.forTest(
     isAgent = false,
     idToOrder = Map(
@@ -35,12 +36,12 @@ final class IfExecutorTest extends AnyFreeSpec {
 
   "JSON BranchId" - {
     "then" in {
-      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow,
+      testJson(ifExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow,
         json"""[ 7, "then", 0 ]""")
     }
 
     "else" in {
-      testJson(IfExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow,
+      testJson(ifExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow,
         json"""[ 7, "else", 0 ]""")
     }
   }

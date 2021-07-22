@@ -4,23 +4,22 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.board.{BoardState, Notice, NoticeId}
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderMoved, OrderNoticeExpected, OrderNoticeRead, OrderStarted}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderNoticeExpected, OrderNoticeRead, OrderStarted}
 import js7.data.workflow.instructions.ExpectNotice
 import js7.data.workflow.position.Position
 
-object ExpectNoticeExecutor extends EventInstructionExecutor
+private[instructions] final class ExpectNoticeExecutor(
+  protected val service: InstructionExecutorService)
+extends EventInstructionExecutor
 {
   type Instr = ExpectNotice
 
   def toEvents(instruction: ExpectNotice, order: Order[Order.State], state: StateView) = {
     import instruction.boardPath
 
-    val events =
-      if (order.isAttached)
-        Right(OrderDetachable :: Nil)
-      else if (order.isState[Order.Fresh] && order.isDetached)
-        Right(OrderStarted :: Nil)
-      else
+    detach(order)
+      .orElse(start(order))
+      .getOrElse(
         state.pathToBoardState
           .checked(boardPath)
           .flatMap(boardState =>
@@ -44,8 +43,7 @@ object ExpectNoticeExecutor extends EventInstructionExecutor
 
               case _ => Right(Nil)
             })
-
-    events.map(_.map(order.id <-: _))
+          .map(_.map(order.id <-: _)))
   }
 
   private def tryRead(boardState: BoardState, noticeId: NoticeId, position: Position)

@@ -8,34 +8,33 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderBroken, OrderDetachable,
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Fork
 
-/**
-  * @author Joacim Zschimmer
-  */
-object ForkExecutor extends EventInstructionExecutor
+private[instructions] final class ForkExecutor(protected val service: InstructionExecutorService)
+extends EventInstructionExecutor
 {
   type Instr = Fork
 
-  def toEvents(fork: Fork, order: Order[Order.State], state: StateView) =
-    Checked(
-      order.ifState[Order.Fresh].map(order =>
-        order.id <-: OrderStarted)
-      .orElse(
-        order.ifState[Order.Ready].map(order =>
-          checkOrderForked(state,
-            order.id <-: OrderForked(
-              for (branch <- fork.branches) yield
-                OrderForked.Child(branch.id, order.id | branch.id.string)))))
-      .orElse(toJoined(state, order))
-      .orElse(order.ifState[Order.Processed].map(order =>
-        order.id <-: (
-          order.lastOutcome match {
-            case _: Outcome.Succeeded =>
-              OrderMoved(order.position.increment)
+  def toEvents(fork: Fork, order: Order[Order.State], state: StateView) = {
+    start(order)
+      .getOrElse(Checked(order
+        .ifState[Order.Fresh].map(_.id <-: OrderStarted)
+        .orElse(
+          order.ifState[Order.Ready].map(order =>
+            checkOrderForked(state,
+              order.id <-: OrderForked(
+                for (branch <- fork.branches) yield
+                  OrderForked.Child(branch.id, order.id | branch.id.string)))))
+        .orElse(toJoined(state, order))
+        .orElse(order.ifState[Order.Processed].map(order =>
+          order.id <-: (
+            order.lastOutcome match {
+              case _: Outcome.Succeeded =>
+                OrderMoved(order.position.increment)
 
-            case _ =>
-              OrderFailedIntermediate_()
-          })))
-      .toList)
+              case _ =>
+                OrderFailedIntermediate_()
+            })))
+        .toList))
+  }
 
   private def checkOrderForked(state: StateView, orderForked: KeyedEvent[OrderForked]): KeyedEvent[OrderActorEvent] = {
     val duplicates = orderForked.event.children.map(_.orderId).flatMap(state.idToOrder.get)

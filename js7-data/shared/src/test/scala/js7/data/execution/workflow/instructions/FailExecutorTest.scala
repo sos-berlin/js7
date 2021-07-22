@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.FailExecutorTest._
@@ -16,6 +17,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class FailExecutorTest extends AnyFreeSpec
 {
+  private val failExecutor = new FailExecutor(new InstructionExecutorService(WallClock))
+
   private lazy val stateView = new StateView.ForTest {
     val isAgent = false
 
@@ -41,18 +44,18 @@ final class FailExecutorTest extends AnyFreeSpec
 
   "toEvents" - {
     "Fresh order will be started" in {
-      assert(FailExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh), stateView) ==
+      assert(failExecutor.toEvents(Fail(), TestOrder.copy(state = Order.Fresh), stateView) ==
         Right(Seq(TestOrder.id <-: OrderStarted)))
     }
 
     "Catchable Fail" - {
       "Detached order" in {
-        assert(FailExecutor.toEvents(Fail(), TestOrder, stateView) ==
+        assert(failExecutor.toEvents(Fail(), TestOrder, stateView) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
 
       "Attached order" in {
-        assert(FailExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentPath("AGENT")))), stateView) ==
+        assert(failExecutor.toEvents(Fail(), TestOrder.copy(attachedState = Some(Order.Attached(AgentPath("AGENT")))), stateView) ==
           Right(Seq(TestOrder.id <-: OrderFailedIntermediate_(Some(Outcome.failed)))))
       }
     }

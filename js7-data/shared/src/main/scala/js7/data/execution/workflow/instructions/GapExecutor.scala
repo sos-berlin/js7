@@ -6,10 +6,8 @@ import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.workflow.instructions.Gap
 
-/**
-  * @author Joacim Zschimmer
-  */
-object GapExecutor extends EventInstructionExecutor {
+private[instructions] final class GapExecutor(protected val service: InstructionExecutorService)
+extends EventInstructionExecutor {
 
   type Instr = Gap
 

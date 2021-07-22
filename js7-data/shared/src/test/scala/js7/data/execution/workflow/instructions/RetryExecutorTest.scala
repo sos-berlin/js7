@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
+import js7.base.time.{Timestamp, WallClock}
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.RetryExecutorTest._
 import js7.data.order.OrderEvent.OrderRetrying
@@ -48,6 +48,8 @@ object RetryExecutorTest
   private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val tryInstruction = TryInstruction(Workflow.empty, Workflow.empty)
 
+  private val retryExecutor = new RetryExecutor(new InstructionExecutorService(WallClock.fixed(now)))
+
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) = {
     val order = Order(orderId, workflowId /: position, Order.Ready,
       historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
@@ -60,6 +62,6 @@ object RetryExecutorTest
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap.empty
     }
-    new RetryExecutor(() => now).toEvents(Retry(), order, stateView)
+    retryExecutor.toEvents(Retry(), order, stateView)
   }
 }

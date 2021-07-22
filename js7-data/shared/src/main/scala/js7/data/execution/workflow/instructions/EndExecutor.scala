@@ -5,10 +5,7 @@ import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved, OrderStarted}
 import js7.data.workflow.instructions.{End, Fork, LockInstruction}
 
-/**
-  * @author Joacim Zschimmer
-  */
-final class EndExecutor(service: InstructionExecutorService)
+private[instructions] final class EndExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with PositionInstructionExecutor
 {
   type Instr = End
@@ -37,9 +34,9 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         case Some(returnPosition) =>
           state.instruction(order.workflowId /: returnPosition) match {
             case fork: Fork =>
-              ForkExecutor.tryJoinChildOrder(state, order, fork).toList
+              service.forkExecutor.tryJoinChildOrder(state, order, fork).toList
             case lock: LockInstruction =>
-              LockExecutor.onReturnFromSubworkflow(order, lock).toList
+              service.lockExecutor.onReturnFromSubworkflow(order, lock).toList
             case _ =>
               (order.id <-: OrderMoved(returnPosition.increment)) :: Nil
           }
@@ -51,8 +48,8 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       for {
         returnPosition <- order.position.dropChild
         next <- instructionToExecutor(state.instruction(order.workflowId /: returnPosition)) match {
-          case ForkExecutor => None
-          case LockExecutor => None
+          case _: ForkExecutor => None
+          case _: LockExecutor => None
           case _: PositionInstructionExecutor => Some(returnPosition.increment)  // Check this first for TryInstruction !!!
           case _: EventInstructionExecutor => Some(returnPosition)
           case _ => None

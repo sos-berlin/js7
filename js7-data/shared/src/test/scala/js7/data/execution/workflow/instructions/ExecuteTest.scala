@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
@@ -24,6 +25,7 @@ final class ExecuteTest extends AnyFreeSpec {
   private val executable = RelativePathExecutable("EXECUTABLE", returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9))
   private val executeAnonymous = Execute(WorkflowJob(AgentPath("AGENT"), executable))
   private val orderId = OrderId("ORDER")
+  private val executeExecutor = new ExecuteExecutor(new InstructionExecutorService(WallClock))
 
   private val stateView = StateView.forTest(isAgent = false)
 
@@ -44,6 +46,6 @@ final class ExecuteTest extends AnyFreeSpec {
   private def toEvents(outcome: Outcome): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = Order(orderId, (WorkflowPath("WORKFLOW") ~ "VERSION" ) /: (Position(1) / "A" % 20), Order.Processed,
       historicOutcomes = HistoricOutcome(Position(1) / "B" % 20, outcome) :: Nil)
-    ExecuteExecutor.toEvents(executeAnonymous, order, stateView).orThrow
+    executeExecutor.toEvents(executeAnonymous, order, stateView).orThrow
   }
 }

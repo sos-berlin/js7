@@ -10,26 +10,36 @@ import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{End, Execute, ExpectNotice, Fail, Finish, Fork, Gap, If, LockInstruction, PostNotice, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 
-final class InstructionExecutorService(clock: WallClock)
+final class InstructionExecutorService(val clock: WallClock)
 {
-  private val postNoticeExecutor = new PostNoticeExecutor(clock)
   private val endExecutor = new EndExecutor(this)
-  private val retryExecutor = new RetryExecutor(() => clock.now())
+  private val executeExecutor = new ExecuteExecutor(this)
+  private val failExecutor = new FailExecutor(this)
+  private val finishExecutor = new FinishExecutor(this)
+  private[workflow] val forkExecutor = new ForkExecutor(this)
+  private val gapExecutor = new GapExecutor(this)
+  private val ifExecutor = new IfExecutor(this)
+  private val tryExecutor = new TryExecutor(this)
+  private[instructions] val lockExecutor = new LockExecutor(this)
+  private val postNoticeExecutor = new PostNoticeExecutor(this)
+  private val expectNoticeExecutor = new ExpectNoticeExecutor(this)
+  private val promptExecutor = new PromptExecutor(this)
+  private val retryExecutor = new RetryExecutor(this)
 
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     instr match {
       case _: End => endExecutor
-      case _: Execute => ExecuteExecutor
-      case _: Fail => FailExecutor
-      case _: Finish => FinishExecutor
-      case _: Fork => ForkExecutor
-      case _: Gap => GapExecutor
-      case _: If => IfExecutor
-      case _: TryInstruction => TryExecutor
-      case _: LockInstruction => LockExecutor
+      case _: Execute => executeExecutor
+      case _: Fail => failExecutor
+      case _: Finish => finishExecutor
+      case _: Fork => forkExecutor
+      case _: Gap => gapExecutor
+      case _: If => ifExecutor
+      case _: TryInstruction => tryExecutor
+      case _: LockInstruction => lockExecutor
       case _: PostNotice => postNoticeExecutor
-      case _: ExpectNotice => ExpectNoticeExecutor
-      case _: Prompt => PromptExecutor
+      case _: ExpectNotice => expectNoticeExecutor
+      case _: Prompt => promptExecutor
       case _: Retry => retryExecutor
     }
 

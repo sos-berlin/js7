@@ -14,6 +14,7 @@ import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.{Board, BoardPath, Notice, NoticeId}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
+import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -140,7 +141,28 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
+  "PostNotice and ExpectNotice respect Order.scheduledFor" in {
+    val qualifier = nextQualifier()
+    val posterOrderId = OrderId(s"#$qualifier#POSTER")
+    val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
+    val startAt = startTimestamp + 10.days
+
+    controllerApi
+      .addOrders(Observable(
+        FreshOrder(posterOrderId, postingWorkflow.path, scheduledFor = Some(startAt)),
+        FreshOrder(expectingOrderId, expectingWorkflow.path, scheduledFor = Some(startAt))))
+      .await(99.s).orThrow
+    sleep(500.ms)
+    val idToOrder = controllerApi.controllerState.await(99.s).orThrow.idToOrder
+    assert(idToOrder(posterOrderId).isState[Fresh] && idToOrder(expectingOrderId).isState[Fresh])
+
+    alarmClock := startAt
+    eventWatch.await[OrderFinished](_.key == posterOrderId)
+    eventWatch.await[OrderFinished](_.key == expectingOrderId)
+  }
+
   "Delete notice after endOfLife" in {
+    pending
     alarmClock := endOfLife - 1.s
     sleep(100.ms)
     val eventId = controller.eventWatch.lastAddedEventId
@@ -185,7 +207,7 @@ object BoardTest
 {
   private val agentPath = AgentPath("AGENT")
 
-  private val qualifiers = Seq("2222-01-01", "2222-02-02", "2222-03-03")
+  private val qualifiers = Seq("2222-01-01", "2222-02-02", "2222-03-03", "2222-04-04")
   private val noticeIds = qualifiers.map(NoticeId(_))
   private val nextQualifier = qualifiers.iterator.next _
 
@@ -215,8 +237,4 @@ object BoardTest
   private val expectingAgentWorkflow = Workflow(WorkflowPath("EXPECTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
     ExpectNotice(board.path)))
-
-  private val posterAgentWorkflow = Workflow(WorkflowPath("POSTING-AT-AGENT") ~ "INITIAL", Seq(
-    EmptyJob.execute(agentPath),
-    PostNotice(board.path)))
 }

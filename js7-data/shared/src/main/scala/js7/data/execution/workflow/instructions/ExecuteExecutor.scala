@@ -6,10 +6,8 @@ import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Execute
 
-/**
-  * @author Joacim Zschimmer
-  */
-object ExecuteExecutor extends EventInstructionExecutor
+private[instructions] final class ExecuteExecutor(protected val service: InstructionExecutorService)
+extends EventInstructionExecutor
 {
   type Instr = Execute
 
@@ -18,10 +16,10 @@ object ExecuteExecutor extends EventInstructionExecutor
       for (job <- state.workflowJob(order.workflowPosition)) yield
         (order.id <-: OrderAttachable(job.agentPath)) :: Nil
     else
-    // Order.Ready: Execution has to be started by the caller
-    //order.ifState[Order.Fresh].map(order =>
-    //  order.id <-: OrderStarted)
-    //.orElse(
+      // Order.Ready: Execution has to be started by the caller
+      //order.ifState[Order.Fresh].map(order =>
+      //  order.id <-: OrderStarted)
+      //.orElse(
       Right(
         order.ifState[Order.Processed].map(order =>
           order.id <-:

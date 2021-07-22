@@ -60,6 +60,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
+import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -441,6 +442,7 @@ with MainJournalingActor[ControllerState, Event]
   private def ready: Receive = {
     case Internal.ContinueWithNextOrderEvents =>
       val orderIds = orderQueue.readAll()
+
       val keyedEvents = nextOrderEvents(orderIds)
       if (keyedEvents.nonEmpty) {
         persistTransaction(keyedEvents)(handleEvents)
@@ -921,7 +923,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =
     delayOrderDeletion(
-      _controllerState.nextOrderEventsByOrderId(orderIds).keyedEvents.toVector)
+      _controllerState.nextOrderEvents(orderIds).keyedEvents.toVector)
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
     val itemKeys = mutable.Buffer.empty[InventoryItemKey]
@@ -1047,7 +1049,9 @@ with MainJournalingActor[ControllerState, Event]
                   dependentOrderIds += childOrder.id
 
                 case FollowUp.Delete(deleteOrderId) =>
-                  orderRegister -= deleteOrderId
+                  for (entry <- orderRegister.remove(deleteOrderId)) {
+                    entry.timer.cancel()
+                  }
 
                 case _: FollowUp.Processed =>
               }
@@ -1090,6 +1094,19 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithOrder(orderId: OrderId): Unit =
     for (order <- _controllerState.idToOrder.get(orderId)) {
+      if (order.isDetached && order.isState[Fresh])  {
+        for (until <- order.maybeDelayedUntil) {
+          if (alarmClock.now < until) {
+            for (entry <- orderRegister.get(orderId)) {
+              // TODO Cancel timer when unused
+              entry.timer := alarmClock.scheduleAt(until) {
+                self ! Internal.OrderIsDue(orderId)
+              }
+            }
+          }
+        }
+      }
+
       for (mark <- order.mark) {
         if (order.isAttached
           && !orderRegister.get(orderId).flatMap(_.agentOrderMark).contains(mark)) {
@@ -1101,6 +1118,7 @@ with MainJournalingActor[ControllerState, Event]
           }
         }
       }
+
       order.attachedState match {
         case None |
              Some(_: Order.Attaching) => proceedWithOrderOnController(order)

@@ -12,4 +12,12 @@ object WallClock extends WallClock
 {
   override def epochMilli() =
     System.currentTimeMillis()
+
+  def fixed(timestamp: Timestamp): WallClock =
+    new Fixed(timestamp.toEpochMilli)
+
+  private final case class Fixed(fixed: Long) extends WallClock
+  {
+    def epochMilli() = fixed
+  }
 }

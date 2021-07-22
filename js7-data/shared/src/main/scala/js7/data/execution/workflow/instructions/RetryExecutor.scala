@@ -3,7 +3,6 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.RetryExecutor._
@@ -16,7 +15,8 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecutor
+private[instructions] final class RetryExecutor(protected val service: InstructionExecutorService)
+extends EventInstructionExecutor
 {
   type Instr = Retry
 
@@ -46,7 +46,7 @@ final class RetryExecutor(clock: () => Timestamp) extends EventInstructionExecut
               })
 
   private def nextTimestamp(delay: FiniteDuration) =
-    clock() + delay match {
+    clock.now() + delay match {
       case at if delay >= 10.s => at.roundToNextSecond
       case at => at
     }

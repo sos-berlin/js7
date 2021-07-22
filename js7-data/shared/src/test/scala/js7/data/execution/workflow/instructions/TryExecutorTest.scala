@@ -23,6 +23,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class TryExecutorTest extends AnyFreeSpec
 {
+  private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = StateView.forTest(
     isAgent = false,
     idToOrder = Map(AOrder.id -> AOrder))
@@ -31,7 +32,7 @@ final class TryExecutorTest extends AnyFreeSpec
 
   "JSON" - {
     "try" in {
-      testJson(TryExecutor.nextPosition(tryInstruction, AOrder, stateView).orThrow,
+      testJson(tryExecutor.nextPosition(tryInstruction, AOrder, stateView).orThrow,
         json"""[ 7, "try+0", 0 ]""")
     }
 

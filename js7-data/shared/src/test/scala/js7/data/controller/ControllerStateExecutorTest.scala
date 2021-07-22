@@ -412,7 +412,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     pending // TODO
   }
 
-  "nextOrderEventsByOrderId" in {
+  "nextOrderEvents" in {
     pending // TODO
   }
 

@@ -2,27 +2,23 @@ package js7.data.execution.workflow.instructions
 
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderDetachable, OrderPrompted, OrderStarted}
+import js7.data.order.Order.Ready
+import js7.data.order.OrderEvent.OrderPrompted
 import js7.data.workflow.instructions.Prompt
 
-object PromptExecutor extends EventInstructionExecutor
+private[instructions] final class PromptExecutor(protected val service: InstructionExecutorService)
+extends EventInstructionExecutor
 {
   type Instr = Prompt
 
   def toEvents(prompt: Prompt, order: Order[Order.State], state: StateView) =
-    order.state match {
-      case _: Order.Fresh =>
-        Right((order.id <-: OrderStarted) :: Nil)
-
-      case _: Order.Ready =>
-        if (order.isAttached)
-          Right((order.id <-: OrderDetachable) :: Nil)
-        else
+    detach(order)
+      .orElse(start(order))
+      .orElse(order
+        .ifState[Ready].map(_ =>
           for {
             scope <- state.toScope(order)
             question <- prompt.question.eval(scope)
-          } yield (order.id <-: OrderPrompted(question)) :: Nil
-
-      case _ => Right(Nil)
-    }
+          } yield (order.id <-: OrderPrompted(question)) :: Nil))
+      .getOrElse(Right(Nil))
 }

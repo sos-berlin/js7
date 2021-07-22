@@ -10,10 +10,8 @@ import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.position.BranchId.try_
 import js7.data.workflow.position.Position
 
-/**
-  * @author Joacim Zschimmer
-  */
-object TryExecutor extends PositionInstructionExecutor with EventInstructionExecutor {
+private[instructions] final class TryExecutor(protected val service: InstructionExecutorService)
+extends PositionInstructionExecutor with EventInstructionExecutor {
 
   type Instr = TryInstruction
 
