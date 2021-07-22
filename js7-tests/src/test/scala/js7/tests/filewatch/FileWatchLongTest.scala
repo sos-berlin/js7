@@ -34,7 +34,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
-    js7.filewatch.poll-timeout = 0ms
+    js7.filewatch.poll-timeout = 10ms  # >0 too let Controller breath
     js7.filewatch.retry-delays = [0ms]
     """
 
