@@ -657,6 +657,11 @@ extends Actor with Stash with JournalLogging
       // Check recoverability
       implicit val s = scheduler
       assertEqualSnapshotState("recovered", uncommittedState.toRecovered.runSyncUnsafe(99.s))
+
+      val builder = S.newBuilder()
+      builder.initializeState(None, uncommittedState.eventId, totalEventCount, uncommittedState)
+      assertEqualSnapshotState("Builder.initializeState",
+        builder.result().withEventId(uncommittedState.eventId))
     }
 
   private def assertEqualSnapshotState(what: String, snapshotState: S, stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
