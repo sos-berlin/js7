@@ -106,13 +106,17 @@ final class ProcessDriver(
       result
     }
 
-  def kill(signal: ProcessSignal): Unit =
-    richProcessOnce.toOption match {
-      case Some(richProcess) =>
-        richProcess.sendProcessSignal(signal)
-      case None =>
-        terminatedPromise.tryFailure(new RuntimeException(s"$taskId killed before start"))
-        killedBeforeStart = true
+  def kill(signal: ProcessSignal): Task[Unit] =
+    Task.defer {
+      richProcessOnce.toOption match {
+        case Some(richProcess) =>
+          richProcess.sendProcessSignal(signal)
+        case None =>
+          Task {
+            terminatedPromise.tryFailure(new RuntimeException(s"$taskId killed before start"))
+            killedBeforeStart = true
+          }
+      }
     }
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"

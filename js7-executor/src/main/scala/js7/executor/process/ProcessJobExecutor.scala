@@ -65,9 +65,7 @@ trait ProcessJobExecutor extends JobExecutor
       }
 
       override def cancel(immediately: Boolean) =
-        Task {
-          processDriver.kill(if (immediately: Boolean) SIGKILL else SIGTERM)
-        }
+        processDriver.kill(if (immediately) SIGKILL else SIGTERM)
     }
   }
 

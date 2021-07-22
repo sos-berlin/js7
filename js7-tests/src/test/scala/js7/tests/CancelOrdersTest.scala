@@ -25,7 +25,6 @@ import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.sleepingScript
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
@@ -42,6 +41,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
+    js7.job.execution.sigkill-delay = 30s
     """
 
   protected val agentPaths = Seq(agentPath)
@@ -51,10 +51,10 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   "Cancel a fresh order" in {
     val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderAttached](_.key == order.id)
+    eventWatch.await[OrderAttached](_.key == order.id)
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds).orThrow
-    controller.eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
+    eventWatch.await[OrderCancelled](_.key == order.id)
+    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -67,10 +67,10 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   "Cancel a finishing order" in {
     val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
-    controller.eventWatch.await[OrderFinished](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
+    eventWatch.await[OrderFinished](_.key == order.id)
+    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -88,23 +88,23 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   "Cancelling (mode=FreshOnly) a started order is not possible" in {
     val order = FreshOrder(OrderId("❌"), twoJobsWorkflow.path, Map("sleep" -> 5))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
     sleep(100.ms)  // ControllerOrderKeeper may take some time to update its state
     // Controller knows, the order has started
     assert(controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
       Left(CancelStartedOrderProblem(OrderId("❌"))))
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
       .await(99.seconds).orThrow
-    controller.eventWatch.await[OrderTerminated](_.key == order.id)
+    eventWatch.await[OrderTerminated](_.key == order.id)
   }
 
   "Cancel a started order between two jobs" in {
     val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
-    controller.eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
+    eventWatch.await[OrderCancelled](_.key == order.id)
+    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -120,7 +120,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancel an order and the first job" in {
-    val order = FreshOrder(OrderId("⭕️"), singleJobWorkflow.path, Map("sleep" -> 9))
+    val order = FreshOrder(OrderId("⭕️"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)), immediately = false)
   }
 
@@ -143,12 +143,12 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   }
 
   "Cancel an order and the currently running job" in {
-    val order = FreshOrder(OrderId("🔷"), singleJobWorkflow.path, Map("sleep" -> 9))
+    val order = FreshOrder(OrderId("🔷"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, None, immediately = false)
   }
 
   "Cancel an order and a certain running job with SIGKILL" in {
-    val order = FreshOrder(OrderId("🔵"), singleJobWorkflow.path, Map("sleep" -> 9))
+    val order = FreshOrder(OrderId("🔵"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)),
       immediately = true)
   }
@@ -213,11 +213,11 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   "Cancel a forked order and kill job" in {
     val order = FreshOrder(OrderId("FORK"), forkWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
+    eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
-    controller.eventWatch.await[OrderCancelled](_.key == order.id)
+    eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch
       .keyedEvents[OrderEvent]
       .filter(_.key.string startsWith "FORK")
@@ -245,18 +245,15 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     expectedEvents: CancellationMode => Seq[OrderEvent])
   : Unit = {
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    if (awaitTrapping) {
-      controller.eventWatch.await[OrderStdoutWritten](_ ==
-        order.id <-: OrderStdoutWritten("TRAPPING\n"))
-    }
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    eventWatch.await[OrderStdoutWritten](_ == order.id <-: OrderStdoutWritten("READY\n"))
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
       immediately = immediately,
       workflowPosition)))
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
-    controller.eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id)
+    eventWatch.await[OrderCancelled](_.key == order.id)
+    assert(eventWatch.keyedEvents[OrderEvent](order.id)
       .filterNot(_.isInstanceOf[OrderStdWritten]) ==
       expectedEvents(mode))
   }
@@ -269,17 +266,25 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   "Cancel multiple orders with Batch" in {
     val orders = for (i <- 1 to 3) yield FreshOrder(OrderId(i.toString), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     for (o <- orders) controller.addOrderBlocking(o)
-    for (o <- orders) controller.eventWatch.await[OrderAttached](_.key == o.id)
+    for (o <- orders) eventWatch.await[OrderAttached](_.key == o.id)
     val response = controller.executeCommandAsSystemUser(CancelOrders(orders.map(_.id), CancellationMode.FreshOnly)).await(99.seconds).orThrow
     assert(response == Response.Accepted)
-    for (o <- orders) controller.eventWatch.await[OrderCancelled](_.key == o.id)
+    for (o <- orders) eventWatch.await[OrderCancelled](_.key == o.id)
   }
 }
 
 object CancelOrdersTest
 {
   private val sleepingExecutable = ShellScriptExecutable(
-    sleepingScript("SLEEP"),
+     """#!/usr/bin/env bash
+       |set -euo pipefail
+       |echo "READY"
+       |for i in {0..$SLEEP}; do
+       |  for j in {0..9}; do
+       |    sleep 0.1
+       |  done
+       |done
+       |""".stripMargin,
     Map("SLEEP" -> NamedValue.last("sleep")))
   private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
@@ -292,7 +297,7 @@ object CancelOrdersTest
     """#!/usr/bin/env bash
       |set -euo pipefail
       |trap "" SIGTERM
-      |echo "TRAPPING"
+      |echo "READY"
       |for i in {0..99}; do
       |  sleep 0.1
       |done

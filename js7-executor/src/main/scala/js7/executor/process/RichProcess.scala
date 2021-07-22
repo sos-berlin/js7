@@ -5,7 +5,6 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes._
 import js7.base.io.process.{JavaProcess, Js7Process, ProcessSignal, ReturnCode, StdoutOrStderr}
@@ -13,14 +12,13 @@ import js7.base.log.LogLevel.syntax._
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.{ioFuture, ioTask}
+import js7.base.thread.IOExecutor.ioTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.executor.process.RichProcess._
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -30,7 +28,7 @@ import scala.util.control.NonFatal
 class RichProcess protected[process](
   val processConfiguration: ProcessConfiguration,
   process: Js7Process)
-  (implicit iox: IOExecutor, ec: ExecutionContext)
+  (implicit iox: IOExecutor)
 {
   private val runningSince = now
   val pidOption: Option[Pid] = process.pid
@@ -54,49 +52,58 @@ class RichProcess protected[process](
   def terminated: Task[ReturnCode] =
     _terminated
 
-  final def sendProcessSignal(signal: ProcessSignal): Unit =
-    if (process.isAlive) {
+  final def sendProcessSignal(signal: ProcessSignal): Task[Unit] =
+    Task.deferAction { implicit s =>
       _killed = true
       signal match {
         case SIGTERM =>
-          if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
-          logger.info("destroy (SIGTERM)")
-          process.destroy()
-        case SIGKILL =>
-          processConfiguration.toKillScriptCommandArgumentsOption(pidOption) match {
-            case Some(args) =>
-              val pidArgs = pidOption map { o => s"--pid=${o.string}" }
-              executeKillScript(args ++ pidArgs) recover { case t =>
-                logger.error(s"Cannot start kill script command '$args': ${t.toStringWithCauses}")
-              } onComplete { _ =>
-                killNow()
-              }
-            case None =>
-              killNow()
+          if (isWindows)
+            Task.raiseError(new UnsupportedOperationException(
+              "SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows"))
+          else {
+            logger.info("destroy (SIGTERM)")
+            process.destroy()
+            Task.unit
           }
+
+        case SIGKILL =>
+          processConfiguration
+            .toKillScriptCommandArgumentsOption(pidOption)
+            .fold(kill)(args =>
+              executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
+                .onErrorHandle(t => logger.error(
+                  s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
+                .tapEval(_ => kill))
       }
     }
 
-  private def executeKillScript(args: Seq[String]): Future[Completed] =
-    if (isMac) {
-      logger.warn("Execution of kill script is suppressed on MacOS")  // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
-      Future.successful(Completed)
-    } else {
-      logger.info("Executing kill script: " + args.mkString("  "))
-      val onKillProcess = new ProcessBuilder(args.asJava).redirectOutput(INHERIT).redirectError(INHERIT).start()
-      ioFuture {
-        waitForProcessTermination(JavaProcess(onKillProcess))
-        val exitCode = onKillProcess.exitValue
-        logger.log(if (exitCode == 0) LogLevel.Debug else LogLevel.Warn, s"Kill script '${args(0)}' has returned exit code $exitCode")
-        Completed
+  private def executeKillScript(args: Seq[String]): Task[Unit] =
+    if (isMac)
+      Task {
+        logger.warn("Execution of kill script is suppressed on MacOS")  // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
       }
-    }
+    else
+      Task.defer {
+        logger.info("Executing kill script: " + args.mkString("  "))
+        val processBuilder = new ProcessBuilder(args.asJava)
+          .redirectOutput(INHERIT)
+          .redirectError(INHERIT)
+        processBuilder
+          .startRobustly()
+          .executeOn(iox.scheduler)
+          .flatMap(onKillProcess =>
+            ioTask {
+              waitForProcessTermination(JavaProcess(onKillProcess))
+            } >> Task {
+              val exitCode = onKillProcess.exitValue
+              val logLevel = if (exitCode == 0) LogLevel.Debug else LogLevel.Warn
+              logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
+            })
+      }
 
-  private def killNow(): Unit = {
-    if (process.isAlive) {
-      logger.info("destroyForcibly" + (!isWindows ?? " (SIGKILL)"))
-      process.destroyForcibly()
-    }
+  private def kill = Task {
+    logger.info("destroyForcibly" + (!isWindows ?? " (SIGKILL)"))
+    process.destroyForcibly()
   }
 
   final def isKilled = _killed

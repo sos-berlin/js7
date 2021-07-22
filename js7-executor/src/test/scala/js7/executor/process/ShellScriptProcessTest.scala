@@ -109,7 +109,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
           val shellProcess = startShellScript(processConfig, scriptFile, stdFileMap).await(99.s)
           sleep(3.s)
           assert(shellProcess.isAlive)
-          shellProcess.sendProcessSignal(SIGKILL)
+          shellProcess.sendProcessSignal(SIGKILL).await(99.s)
           waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
           assert(!shellProcess.isAlive)
           val rc = shellProcess.terminated await 99.s
@@ -139,7 +139,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
             .await(99.s)
           sleep(3.s)
           assert(shellProcess.isAlive)
-          shellProcess.sendProcessSignal(SIGTERM)
+          shellProcess.sendProcessSignal(SIGTERM).await(99.s)
           waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
           assert(!shellProcess.isAlive)
           val rc = shellProcess.terminated await 99.s

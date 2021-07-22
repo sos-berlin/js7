@@ -72,47 +72,50 @@ extends Actor with Stash
       match {
         case Left(problem) =>
           replyWithOrderProcessed(order.id, Outcome.Disrupted(problem))
+          handleIfReadyForOrder()
 
         case Right((jobExecutor, jobResources)) =>
           val processOrder = ProcessOrder(
             order, workflow, jobKey, jobResources,
             defaultArgumentExpressions = workflowJob.defaultArguments ++ defaultArguments,
             jobConf.controllerId, stdObservers)
+          val entry = new Entry
+          orderToProcess.insert(order.id -> entry)
           jobExecutor.start
             .materializeIntoChecked
             .map { checked =>
-              self.!(Internal.Step(processOrder, jobExecutor, checked))(sender)
+              self.!(Internal.Step(processOrder, jobExecutor, checked, entry))(sender)
             }
             .runAsyncAndForget
       }
 
-    case Internal.Step(processOrder, jobExecutor, checkedJobContextStart) =>
+    case Internal.Step(processOrder, jobExecutor, checkedJobContextStart, entry) =>
       import processOrder.order
       checkedJobContextStart match {
         case Left(problem) =>
           replyWithOrderProcessed(order.id, Outcome.Disrupted(problem))
+          orderToProcess -= order.id
+          handleIfReadyForOrder()
 
         case Right(()) =>
           val sender = this.sender()
           jobExecutor
             .prepareOrderProcess(processOrder)
             .materializeIntoChecked
-            .foreach(o => self.!(Internal.Process(processOrder, o))(sender))
+            .foreach(o => self.!(Internal.Process(processOrder, entry, o))(sender))
       }
       handleIfReadyForOrder()
 
-    case Internal.Process(processOrder: ProcessOrder, Left(problem)) =>
+    case Internal.Process(processOrder: ProcessOrder, _, Left(problem)) =>
       import processOrder.order
       val sender = this.sender()
       self.!(Internal.TaskFinished(order.id, Outcome.Disrupted(problem)))(sender)
 
-    case Internal.Process(processOrder, Right(orderProcess)) =>
+    case Internal.Process(processOrder, entry, Right(orderProcess)) =>
       import processOrder.order
       val sender = this.sender()
 
-      val entry = new Entry(orderProcess)
-      orderToProcess.insert(order.id -> entry)
-
+      entry.orderProcess = Some(orderProcess)
       // Start the orderProcess.
       // The future completes the out/err observers
       orderProcess.start(processOrder.stdObservers)
@@ -153,6 +156,12 @@ extends Actor with Stash
         self.!(Internal.TaskFinished(order.id, outcome))(sender)
       }
 
+      for (signal <- entry.killSignal) {
+        // Input.KillProcess may have arrived after Internal.Process
+        // but before Internal.ProcessStarted, so we kill now.
+        kill(order.id, signal)
+      }
+
     case Internal.Timeout(orderId) =>
       for (entry <- orderToProcess.get(orderId)) {
         entry.timedOut = true
@@ -165,6 +174,7 @@ extends Actor with Stash
       for (o <- orderToProcess.get(orderId)) o.timeoutSchedule.cancel()
       replyWithOrderProcessed(orderId, outcome)
       orderToProcess -= orderId
+      handleIfReadyForOrder()
 
     case Input.Terminate(maybeSignal) =>
       logger.debug("Terminate")
@@ -205,7 +215,6 @@ extends Actor with Stash
     }
     sender() ! Response.OrderProcessed(orderId, outcome)
     continueTermination()
-    handleIfReadyForOrder()
   }
 
   private def handleIfReadyForOrder(): Unit =
@@ -225,6 +234,9 @@ extends Actor with Stash
   private def killOrder(orderId: OrderId, maybeSignal: Option[ProcessSignal]): Unit = {
     val signal = if (sigkillDelay.isZeroOrBelow) Some(SIGKILL) else maybeSignal
     for (signal <- signal) {
+      for (entry <- orderToProcess.get(orderId)) {
+        entry.killSignal = Some(signal)
+      }
       kill(orderId, signal)
     }
     if (!signal.contains(SIGKILL) && orderToProcess.contains(orderId)) {
@@ -236,17 +248,18 @@ extends Actor with Stash
 
   private def kill(orderId: OrderId, signal: ProcessSignal): Unit =
     for (entry <- orderToProcess.get(orderId)) {
-      logger.info(s"Kill $signal $orderId")
-      entry.isKilled = true
+      for (orderProcess <- entry.orderProcess) {
+        logger.info(s"Kill $signal $orderId")
+        entry.isKilled = true
 
-      Task
-        .defer/*catch exception*/ {
-          entry.orderProcess.cancel(immediately = signal == SIGKILL)
-        }
-        .onErrorHandle { t =>
-          logger.error(s"Kill $orderId: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-        }
-        .runAsyncAndForget
+        Task
+          .defer/*catch exception*/ {
+            orderProcess.cancel(immediately = signal == SIGKILL)
+          }
+          .onErrorHandle(t => logger.error(
+            s"Kill $orderId: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+          .runAsyncAndForget
+      }
     }
 
   private def continueTermination(): Unit =
@@ -296,8 +309,8 @@ private[agent] object JobActor
   }
 
   private object Internal {
-    final case class Step(processOrder: ProcessOrder, jobExecutor: JobExecutor, checkedStart: Checked[Unit])
-    final case class Process(processOrder: ProcessOrder, checkedOrderProcess: Checked[OrderProcess])
+    final case class Step(processOrder: ProcessOrder, jobExecutor: JobExecutor, checkedStart: Checked[Unit], entry: Entry)
+    final case class Process(processOrder: ProcessOrder, entry: Entry, checkedOrderProcess: Checked[OrderProcess])
 
     final case class ProcessStarted(
       processOrder: ProcessOrder,
@@ -310,7 +323,9 @@ private[agent] object JobActor
     final case class KillOrder(orderId: OrderId) extends DeadLetterSuppression
   }
 
-  private final class Entry(val orderProcess: OrderProcess) {
+  private final class Entry {
+    var orderProcess: Option[OrderProcess] = None
+    var killSignal: Option[ProcessSignal] = None
     val timeoutSchedule = SerialCancelable()
     var runningSince: MonixDeadline = null
     var isKilled = false

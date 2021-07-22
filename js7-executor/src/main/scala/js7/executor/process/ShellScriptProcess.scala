@@ -17,13 +17,13 @@ import js7.executor.forwindows.WindowsProcess
 import js7.executor.forwindows.WindowsProcess.StartWindowsProcess
 import monix.eval.Task
 import monix.reactive.Observable
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.Promise
 import scala.jdk.CollectionConverters._
 
 class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Js7Process)
-  (implicit ec: ExecutionContext, iox: IOExecutor)
+  (implicit iox: IOExecutor)
 extends RichProcess(processConfiguration, process)
 {
   stdin.close() // Process gets an empty stdin
