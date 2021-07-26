@@ -515,7 +515,7 @@ with Stash
     val order = orderEntry.order
     if (order.isAttached) {
       order.maybeDelayedUntil match {
-        case Some(until) if alarmClock.now < until =>
+        case Some(until) if alarmClock.now() < until =>
           // TODO Schedule only the next order ?
           orderEntry.timer := alarmClock.scheduleAt(until) {
             self ! Internal.Due(orderId)
