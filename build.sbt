@@ -669,7 +669,7 @@ releaseVersion := (
       }
       val version = currentVersion.withoutQualifier.string + "-" + prelease
       var v = version
-      var i = 1
+      var i = 0
       val tags = runProcess("git", "tag").toSet
       while (tags contains s"v$v") {
         i += 1
