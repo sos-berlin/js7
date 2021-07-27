@@ -44,8 +44,8 @@ object JobRegister {
     def isEmpty = queue.isEmpty
     def nonEmpty = !isEmpty
 
-    def contains(orderId: OrderId) =
-      queueSet.contains(orderId)
+    def isKnown(orderId: OrderId) =
+      queueSet.contains(orderId) || inProcess.contains(orderId)
 
     def dequeue(): Option[OrderId] =
       queue.nonEmpty option {

@@ -561,7 +561,7 @@ with Stash
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit =
     // TODO Make this more functional!
-    if (!jobEntry.queue.contains(orderId)) {
+    if (!jobEntry.queue.isKnown(orderId)) {
       jobEntry.queue += orderId
       if (jobEntry.waitingForOrders > 0) {
         tryStartProcessing(jobEntry)
