@@ -6,7 +6,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.{EventSeq, KeyedEvent}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Fork
@@ -30,7 +30,7 @@ final class FinishTest extends AnyFreeSpec
       |  fail;
       |}""".stripMargin,
       Vector(
-        OrderAdded(TestWorkflowId),
+        OrderAdded(TestWorkflowId, deleteWhenTerminated = true),
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
         OrderStarted,
@@ -39,7 +39,8 @@ final class FinishTest extends AnyFreeSpec
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFinished))
+        OrderFinished,
+        OrderDeleted))
   }
 
   "finish in fork, finish first" in {
@@ -61,14 +62,15 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId).map(_.event) ==
       Vector(
-        OrderAdded(TestWorkflowId),
+        OrderAdded(TestWorkflowId, deleteWhenTerminated = true),
         OrderStarted,
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
-        OrderFinished))
+        OrderFinished,
+        OrderDeleted))
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
@@ -111,14 +113,15 @@ final class FinishTest extends AnyFreeSpec
 
     assert(events.filter(_.key == orderId).map(_.event) ==
       Vector(
-        OrderAdded(TestWorkflowId),
+        OrderAdded(TestWorkflowId, deleteWhenTerminated = true),
         OrderStarted,
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
-        OrderFinished))
+        OrderFinished,
+        OrderDeleted))
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
       Vector(
@@ -148,12 +151,13 @@ final class FinishTest extends AnyFreeSpec
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
-    autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil, testName = Some("FinishTest"))) { directoryProvider =>
+    autoClosing(new DirectoryProvider(Seq(TestAgentPath), Seq(workflow), testName = Some("FinishTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(RelativePathExecutable("sleep.cmd"), DirectoryProvider.script(100.ms))
       directoryProvider.run { (controller, _) =>
-        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
         controller.eventWatch.await[E](_.key == orderId)
+        controller.eventWatch.await[OrderDeleted](_.key == orderId)
         controller.eventWatch.all[OrderEvent] match {
           case EventSeq.NonEmpty(stampeds) => stampeds.map(_.value).filterNot(_.event.isInstanceOf[OrderStdWritten]).toVector
           case o => fail(s"Unexpected EventSeq received: $o")

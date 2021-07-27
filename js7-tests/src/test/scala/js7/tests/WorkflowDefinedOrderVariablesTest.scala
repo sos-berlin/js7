@@ -67,7 +67,8 @@ final class WorkflowDefinedOrderVariablesTest extends AnyFreeSpec with Controlle
 
   "JobResource.variables as an object" in {
     val orderId = OrderId("RESOURCE-VARIABLES-AS-OBJECT")
-    val events = controller.runOrder(FreshOrder(orderId, objectWorkflow.path), delete = true)
+    val events = controller.runOrder(
+      FreshOrder(orderId, objectWorkflow.path, deleteWhenTerminated = true))
     assert(events.map(_.value).contains(OrderFinished))
   }
 }

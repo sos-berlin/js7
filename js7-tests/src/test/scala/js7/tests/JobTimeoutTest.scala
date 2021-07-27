@@ -42,7 +42,9 @@ final class JobTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "timeout" in {
     // Warm-up
-    controller.runOrder(FreshOrder(OrderId("WARM-UP"), workflowPath = workflow.path), delete = true)
+    controller
+      .runOrder(
+        FreshOrder(OrderId("WARM-UP"), workflowPath = workflow.path, deleteWhenTerminated = true))
       .map(_.value)
 
     val t = now

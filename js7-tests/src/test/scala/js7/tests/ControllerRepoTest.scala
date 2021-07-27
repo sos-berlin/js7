@@ -112,7 +112,7 @@ final class ControllerRepoTest extends AnyFreeSpec
               .await(99.s).orThrow
 
             val orderId = OrderId("DELETE-WITH-ORDER")
-            controllerApi.addOrder(FreshOrder(orderId, workflow.path), delete = true)
+            controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
               .await(99.s).orThrow
             controller.eventWatch.await[OrderPrompted](_.key == orderId)
 

@@ -162,31 +162,27 @@ extends AutoCloseable
       .flatMapT(itemUpdater.updateItems)
 
   @TestOnly
-  def addOrderBlocking(order: FreshOrder, delete: Boolean = false): Unit =
-    addOrder(order, delete = delete)
+  def addOrderBlocking(order: FreshOrder): Unit =
+    addOrder(order)
       .runToFuture.await(99.s).orThrow
 
   @TestOnly
-  def addOrder(order: FreshOrder, delete: Boolean = false): Task[Checked[Unit]] =
+  def addOrder(order: FreshOrder): Task[Checked[Unit]] =
     executeCommandAsSystemUser(AddOrder(order))
       .mapT(response =>
         (!response.ignoredBecauseDuplicate) !! Problem(s"Duplicate OrderId '${order.id}'"))
-      .pipeIf(delete)(_
-        .flatMap(_ =>
-          executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id)))
-            .rightAs(())))
 
   @TestOnly
-  def runOrder(order: FreshOrder, delete: Boolean = false): Seq[Stamped[OrderEvent]] = {
+  def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {
     val timeout = 99.s
     val eventId = eventWatch.lastAddedEventId
-    addOrderBlocking(order, delete = delete)
+    addOrderBlocking(order)
     eventWatch
       .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
       .filter(_.value.key == order.id)
       .map(o => o.copy(value = o.value.event))
       .takeWhileInclusive { case Stamped(_, _, event) =>
-        if (delete)
+        if (order.deleteWhenTerminated)
           event != OrderDeleted && !event.isInstanceOf[OrderFailed]
         else
           !event.isInstanceOf[OrderTerminated]

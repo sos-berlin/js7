@@ -43,11 +43,25 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     @Nonnull id: OrderId,
     @Nonnull workflowPath: WorkflowPath,
     @Nonnull scheduledFor: java.util.Optional[Instant],
-    @Nonnull arguments: java.util.Map[String, Value] = java.util.Collections.emptyMap())
+    @Nonnull arguments: java.util.Map[String, Value])
   : JFreshOrder =
-    JFreshOrder(FreshOrder(id, workflowPath,
+    of(id, workflowPath, scheduledFor, arguments, deleteWhenTerminated = false)
+
+  @Nonnull
+  @throws[RuntimeException]("on invalid syntax")
+  def of(
+    @Nonnull id: OrderId,
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull scheduledFor: java.util.Optional[Instant],
+    @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull deleteWhenTerminated: Boolean)
+  : JFreshOrder =
+    JFreshOrder(FreshOrder(
+      id,
+      workflowPath,
       arguments.asScala.toMap,
-      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli))))
+      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
+      deleteWhenTerminated = deleteWhenTerminated))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JFreshOrder] =

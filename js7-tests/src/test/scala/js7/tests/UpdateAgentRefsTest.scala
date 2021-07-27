@@ -69,7 +69,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
           AddVersion(v1),
           AddOrChangeSigned(sign(workflow withVersion v1).signedString)))
       .await(99.s).orThrow
-    controller.runOrder(FreshOrder(OrderId("🔵"), workflow.path), delete=true)
+    controller.runOrder(FreshOrder(OrderId("🔵"), workflow.path, deleteWhenTerminated = true))
   }
 
   private lazy val outdatedState = agentFileTree.stateDir.resolveSibling(Paths.get("state~"))

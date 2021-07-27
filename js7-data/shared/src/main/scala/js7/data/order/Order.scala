@@ -534,7 +534,8 @@ object Order
 {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
     Order(id, event.workflowId, Fresh, event.arguments,
-      event.scheduledFor, event.externalOrderKey)
+      event.scheduledFor, event.externalOrderKey,
+      deleteWhenTerminated = event.deleteWhenTerminated)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments,

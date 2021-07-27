@@ -11,14 +11,14 @@ import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichThrowable}
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
 import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand.Response.Accepted
-import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, Batch, DeleteOrdersWhenTerminated, ReleaseEvents}
+import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ReleaseEvents}
 import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -124,12 +124,9 @@ extends ControllerApiWithHttp
       .map(_.flatMap(_.checkedAs[AddOrders.Response]))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
-  def addOrder(order: FreshOrder, delete: Boolean = false): Task[Checked[Boolean]] =
-    executeCommand(Batch(
-      AddOrder(order) :: delete.thenList(DeleteOrdersWhenTerminated(Set(order.id)))))
-      .map(_.flatMap(o => o
-        .responses.head
-        .map(response => !response.asInstanceOf[AddOrder.Response].ignoredBecauseDuplicate)))
+  def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
+    executeCommand(AddOrder(order))
+      .map(_.map(o => !o.ignoredBecauseDuplicate))
 
   def deleteOrdersWhenTerminated(orderIds: Observable[OrderId])
   : Task[Checked[ControllerCommand.Response.Accepted]] =
