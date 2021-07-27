@@ -1,13 +1,16 @@
 package js7.tests
 
 import js7.base.configutils.Configs._
+import js7.base.log.Logger
 import js7.base.problem.Checked._
-import js7.base.system.OperatingSystem.isMac
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
+import js7.data.event.KeyedEvent
 import js7.data.job.InternalExecutable
-import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
+import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -21,65 +24,90 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.TimeoutException
+import scala.concurrent.duration.Deadline.now
 
 final class JobActorStarvationTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(workflow)
+  override protected def controllerConfig = config"""
+    js7.journal.slow-check-state = off
+    """
   override protected def agentConfig = config"""
+    js7.journal.slow-check-state = off
     js7.job.execution.signed-script-injection-allowed = on
     """
+  protected val agentPaths = Seq(agentPath)
+  protected val items = Seq(workflow)
 
   "Add a order to start AgentDriver CommandQueue" in {
     val zeroOrderId = OrderId("0")
-    controller.addOrderBlocking(FreshOrder(zeroOrderId, workflow.path))
+    controller.addOrderBlocking(FreshOrder(zeroOrderId, workflow.path, deleteWhenTerminated = true))
     semaphore.flatMap(_.releaseN(1)).runSyncUnsafe()
-    controller.eventWatch.await[OrderFinished](_.key == zeroOrderId)
+    eventWatch.await[OrderFinished](_.key == zeroOrderId)
+    eventWatch.await[OrderDeleted](_.key == zeroOrderId)
   }
 
   "Add two orders simultaneously and hold them in the job" in {
-    if (!isMac) pending // Test does not work under Liunx
-    pending // check again !!!
-
-    val aOrderId = OrderId("A")
-    val bOrderId = OrderId("B")
-    // FIXME Problem in protocol between AgentOrderKeeper and JobActor
-    // Possible solution: replace Actors by Tasks!
+    // TODO ? Problem in protocol between AgentOrderKeeper and JobActor
+    // Solution: replace Actors by Tasks!
     // AgentDriver transfers the two orders in one AgentCommand.Batch
     // AgentOrderKeeper processes these added orders at once
     // but sends only one to the JobActor,
     // letting the other starve until the JobActor requests the next order.
-    controllerApi
-      .addOrders(Observable(
-        FreshOrder(aOrderId, workflow.path),
-        FreshOrder(bOrderId, workflow.path)))
-      .await(99.s).orThrow
-    val startedOrderId = controller.eventWatch.await[OrderStarted](ke => ke.key == aOrderId || ke.key == bOrderId)
-      .head.value.key
-    val otherOrderId = (startedOrderId: @unchecked) match {
-      case `aOrderId` => bOrderId
-      case `bOrderId` => aOrderId
-    }
-    intercept[TimeoutException] {
-      controller.eventWatch.await[OrderStarted](_.key == otherOrderId, timeout = 1.s)
-    }
-    System.err.println("JobActorStarvationTest: Second order is starving in AgentOrderKeeper")
 
-    semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
-    controller.eventWatch.await[OrderFinished](_.key == aOrderId)
-    controller.eventWatch.await[OrderFinished](_.key == bOrderId)
+    val orderIds = for (i <- 1 to n) yield OrderId(s"ORDER-$i")
+    val proxy = controllerApi.startProxy().await(99.s)
+    val allOrdersProcessing = proxy.observable
+      .map(_.stampedEvent.value)
+      .collect {
+        case KeyedEvent(orderId: OrderId, _: OrderProcessingStarted) => orderId
+      }
+      .scan0(orderIds.toSet)(_ - _)
+      .takeWhile(_.nonEmpty)
+      .completedL
+      .runToFuture
+    val allOrdersDeleted = proxy.observable
+      .map(_.stampedEvent.value)
+      .collect {
+        case KeyedEvent(orderId: OrderId, _: OrderDeleted) => orderId
+      }
+      .scan0(orderIds.toSet)(_ - _)
+      .takeWhile(_.nonEmpty)
+      .completedL
+      .runToFuture
+
+    var t = now
+    controllerApi
+      .addOrders(Observable
+        .fromIterable(orderIds)
+        .map(FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
+      .await(99.s).orThrow
+    // Seems to work now: intercept[TimeoutException] {
+      allOrdersProcessing.await(99.s)
+    //}
+    //System.err.println("JobActorStarvationTest: Second order is starving in AgentOrderKeeper")
+    logger.info("🔵 " + itemsPerSecondString(t.elapsed, n, "started"))
+
+    t = now
+    semaphore.flatMap(_.releaseN(orderIds.size)).runSyncUnsafe()
+    allOrdersDeleted.await(99.s)
+    logger.info("🔵 " + itemsPerSecondString(t.elapsed, n, "completed"))
   }
 }
 
 object JobActorStarvationTest
 {
+  private val logger = Logger[this.type]
+  private val n = 10_000
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), parallelism = 2))))
+      Execute(
+        WorkflowJob(
+          agentPath,
+          InternalExecutable(classOf[SemaphoreJob].getName),
+          parallelism = n))))
 
   private val semaphore = Semaphore[Task](0).memoize
 
