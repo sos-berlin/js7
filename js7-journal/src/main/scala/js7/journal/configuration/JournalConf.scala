@@ -34,8 +34,8 @@ object JournalConf
     val syncOnCommit = config.getBoolean("js7.journal.sync")
     val delay = config.getDuration("js7.journal.delay").toFiniteDuration
     lazy val syncDelay = config.getDuration("js7.journal.sync-delay").toFiniteDuration
-    val checkJournaledState = config.getBoolean(checkStateKey)
-    if (checkJournaledState) logger.info(s"Slowing down due to $checkStateKey = true")
+    val slowCheckState = config.getBoolean(checkStateKey)
+    if (slowCheckState) logger.info(s"Slowing down due to $checkStateKey = true")
     new JournalConf(
       syncOnCommit = syncOnCommit,
       simulateSync = config.durationOption("js7.journal.simulate-sync").map(_.toFiniteDuration),
@@ -51,6 +51,6 @@ object JournalConf
         .asScala.toSeq.map(_.toFiniteDuration),
       deleteObsoleteFiles = config.getBoolean("js7.journal.remove-obsolete-files"),
       releaseEventsUserIds = config.seqAs[UserId]("js7.journal.users-allowed-to-release-events").toSet,
-      slowCheckState = checkJournaledState)
+      slowCheckState = slowCheckState)
   }
 }

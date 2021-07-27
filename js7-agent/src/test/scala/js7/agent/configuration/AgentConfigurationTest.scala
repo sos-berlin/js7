@@ -39,7 +39,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
         killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
         akkaAskTimeout = 1.hour,
         journalConf = JournalConf.fromConfig(DefaultConfig)
-          .copy(slowCheckState = sys.props.get("js7.journal.slow-check-state").fold(false)(StringAsBoolean(_))),
+          .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
         name = AgentConfiguration.DefaultName,
         DefaultConfig))
     }

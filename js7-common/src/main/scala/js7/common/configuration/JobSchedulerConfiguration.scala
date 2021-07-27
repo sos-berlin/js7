@@ -8,15 +8,16 @@ import scala.jdk.CollectionConverters._
 
 object JobSchedulerConfiguration
 {
-  val defaultConfig: Config =
+  val defaultConfig: Config = {
+    val map = Map(
+      "js7.version" -> BuildInfo.version,
+      "js7.longVersion" -> BuildInfo.longVersion,
+      "js7.test" -> sys.props.getOrElse("js7.test", "off"))
     ConfigFactory
-      .parseMap(
-        Map(
-          "js7.version" -> BuildInfo.version,
-          "js7.longVersion" -> BuildInfo.longVersion
-        ).asJava)
+      .parseMap(map.asJava)
       .withFallback(
         Configs.loadResource(
           JavaResource("js7/common/configuration/js7.conf")))
       .resolve()
+  }
 }
