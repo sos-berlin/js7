@@ -1,6 +1,7 @@
 package js7.journal
 
 import com.typesafe.scalalogging.Logger
+import java.util.Locale.ROOT
 import js7.base.time.ScalaTime.RichDuration
 import js7.base.utils.ScalaUtils.syntax._
 import js7.journal.JournalActor.LoggablePersist
@@ -21,6 +22,7 @@ trait JournalLogging
       "~sync "
     else
       "sync  "
+  private val ackSyncOrFlushString = syncOrFlushString.toUpperCase(ROOT)
 
   private val sb = new StringBuilder
 
@@ -58,20 +60,17 @@ trait JournalLogging
       val stamped = stampedIterator.next()
       val isLast = !stampedIterator.hasNext
 
-      if (ack) { // cluster
-        sb.append('+')
-      }
-      sb.fillRight(5) { sb.append(nr) }
+      //? sb.fillRight(5) { sb.append(nr) }
       sb.append(
         if (persistCount == 1) ' '
-        else if (isFirst & persistIndex == 0) '╮'
-        else if (isLast & persistIndex == persistCount - 1) '╯'
-        else if (isLast) '┤'
+        else if (isFirst & persistIndex == 0) '╭'  //'╮'
+        else if (isLast & persistIndex == persistCount - 1) '╰'  //'╯'
+        else if (isLast) '├'  //'┤'
         else '│')
 
       sb.fillRight(6) {
         if (isLast && persist.isLastOfFlushedOrSynced) {
-          sb.append(syncOrFlushString)
+          sb.append(if (ack) ackSyncOrFlushString else syncOrFlushString)
         } else if (isFirst && persistIndex == 0 && persistCount >= 2) {
           sb.append(persistCount)  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
         } else if (nr == penultimateNr && n >= 10_000) {
