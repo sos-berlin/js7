@@ -11,7 +11,6 @@ import scala.concurrent.duration.Deadline.now
 
 trait JournalLogging
 {
-  protected def isRequiringClusterAcknowledgement: Boolean
   protected def conf: JournalConf
   protected def logger: Logger
 
@@ -25,13 +24,13 @@ trait JournalLogging
 
   private val sb = new StringBuilder
 
-  protected final def logCommitted(persists: Iterable[LoggablePersist]) =
+  protected final def logCommitted(persists: Iterable[LoggablePersist], ack: Boolean) =
     logger.whenTraceEnabled {
       val committedAt = now
       var index = 0
       val loggablePersists = dropLastEmptyPersists(persists).toVector
       for (persist <- loggablePersists) {
-        logPersist(persist, persistCount = loggablePersists.size, persistIndex = index, committedAt)
+        logPersist(persist, loggablePersists.size, index, committedAt, ack)
         index += 1
       }
     }
@@ -46,7 +45,8 @@ trait JournalLogging
   }
 
   private def logPersist(persist: LoggablePersist, persistCount: Int, persistIndex: Int,
-    committedAt: Deadline) = {
+    committedAt: Deadline, ack: Boolean)
+  : Unit = {
     var nr = persist.eventNumber
     val n = persist.stampedSeq.size
     val penultimateNr = persist.eventNumber + n - 2
@@ -58,7 +58,7 @@ trait JournalLogging
       val stamped = stampedIterator.next()
       val isLast = !stampedIterator.hasNext
 
-      if (isRequiringClusterAcknowledgement) { // cluster
+      if (ack) { // cluster
         sb.append('+')
       }
       sb.fillRight(5) { sb.append(nr) }

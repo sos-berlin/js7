@@ -59,7 +59,6 @@ extends Actor with Stash with JournalLogging
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   protected def logger = JournalActor.logger
-  protected def isRequiringClusterAcknowledgement = requireClusterAcknowledgement
 
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
   private var snapshotSchedule: Cancelable = null
@@ -265,7 +264,9 @@ extends Actor with Stash with JournalLogging
       sender() ! Completed
       // The passive node does not know Persist bundles (maybe transactions) and acknowledges events as they arrive.
       // We take only complete Persist bundles as acknowledged.
-      onCommitAcknowledged(n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length)
+      onCommitAcknowledged(
+        n = persistBuffer.iterator.takeWhile(_.lastStamped.forall(_.eventId <= ack)).length,
+        ack = true)
       if (releaseEventIdsAfterClusterCoupledAck.isDefined) {
         releaseObsoleteEvents()
       }
@@ -342,12 +343,12 @@ extends Actor with Stash with JournalLogging
 
   private def onReadyForAcknowledgement(): Unit = {
     if (!requireClusterAcknowledgement) {
-      onCommitAcknowledged(persistBuffer.size)
+      onCommitAcknowledged(persistBuffer.size, ack = false)
     } else {
       val nonEventWrittenCount = persistBuffer.iterator.takeWhile(_.isEmpty).size
       if (nonEventWrittenCount > 0) {
         // `Persist` without events (Nil) are not being acknowledged, so we finish them now
-        onCommitAcknowledged(nonEventWrittenCount)
+        onCommitAcknowledged(nonEventWrittenCount, ack = true)
       }
       startWaitingForAcknowledgeTimer()
     }
@@ -370,18 +371,18 @@ extends Actor with Stash with JournalLogging
     commit()
   }
 
-  private def onCommitAcknowledged(n: Int): Unit = {
-    finishCommitted(n)
+  private def onCommitAcknowledged(n: Int, ack: Boolean): Unit = {
+    finishCommitted(n, ack = ack)
     if (lastAcknowledgedEventId == lastWrittenEventId) {
       onAllCommitsFinished()
     }
   }
 
-  private def finishCommitted(n: Int): Unit = {
+  private def finishCommitted(n: Int, ack: Boolean): Unit = {
     val ackWritten = persistBuffer.view.take(n)
     val standardPersistSeq = ackWritten collect { case o: StandardPersist => o }
 
-    logCommitted(standardPersistSeq)
+    logCommitted(standardPersistSeq, ack = ack)
 
     for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
       lastAcknowledgedEventId = lastFileLengthAndEventId.value
