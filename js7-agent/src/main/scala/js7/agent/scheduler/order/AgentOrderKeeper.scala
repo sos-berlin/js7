@@ -262,8 +262,9 @@ with Stash
         proceedWithOrder(order.id)
       }
 
-    case JobActor.Output.ReadyForOrder if jobRegister contains sender() =>
+    case JobActor.Output.ReadyForOrder(n) if jobRegister contains sender() =>
       if (!shuttingDown) {
+        jobRegister(sender()).waitingForOrders = n
         tryStartProcessing(jobRegister(sender()))
       }
 
@@ -562,7 +563,7 @@ with Stash
     // TODO Make this more functional!
     if (!jobEntry.queue.contains(orderId)) {
       jobEntry.queue += orderId
-      if (jobEntry.waitingForOrder) {
+      if (jobEntry.waitingForOrders > 0) {
         tryStartProcessing(jobEntry)
       } else {
         jobEntry.actor ! JobActor.Input.OrderAvailable
@@ -570,19 +571,17 @@ with Stash
     }
 
   private def tryStartProcessing(jobEntry: JobEntry): Unit =
-    jobEntry.queue.dequeue() match {
-      case Some(orderId) =>
+    while (jobEntry.waitingForOrders > 0 && jobEntry.queue.nonEmpty) {
+      for (orderId <- jobEntry.queue.dequeue()) {
         orderRegister.get(orderId) match {
           case None =>
             logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
 
           case Some(orderEntry) =>
             startProcessing(orderEntry, jobEntry)
-            jobEntry.waitingForOrder = false
+            jobEntry.waitingForOrders -= 1
         }
-
-      case None =>
-        jobEntry.waitingForOrder = true
+      }
     }
 
   private def startProcessing(orderEntry: OrderEntry, jobEntry: JobEntry): Unit = {

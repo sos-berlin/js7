@@ -212,7 +212,7 @@ private object OrderActorTest {
     }
 
     private def jobActorReady: Receive = {
-      case JobActor.Output.ReadyForOrder =>  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
+      case JobActor.Output.ReadyForOrder(1) =>  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder.copy(
           attachedState = Some(Order.Attached(TestAgentPath))))
         become(attaching)
@@ -225,7 +225,7 @@ private object OrderActorTest {
     }
 
     private def processing: Receive = receiveOrderEvent orElse {
-      case JobActor.Output.ReadyForOrder =>  // Ready for next order
+      case JobActor.Output.ReadyForOrder(1) =>  // Ready for next order
     }
 
     private def detachable: Receive = receiveOrderEvent
@@ -239,7 +239,7 @@ private object OrderActorTest {
         orderActorTerminated = true
         checkTermination()
 
-      case JobActor.Output.ReadyForOrder =>  // Ready for next order
+      case JobActor.Output.ReadyForOrder(1) =>  // Ready for next order
     }
 
     private def terminating: Receive = receiveOrderEvent orElse {

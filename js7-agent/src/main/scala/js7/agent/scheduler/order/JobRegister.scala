@@ -33,13 +33,16 @@ object JobRegister {
 
   final class JobEntry private[JobRegister](val jobKey: JobKey, val workflowJob: WorkflowJob, val actor: ActorRef) {
     val queue = new OrderQueue
-    var waitingForOrder = false
+    var waitingForOrders = 0
   }
 
   final class OrderQueue private[order] {
     private val queue = mutable.ListBuffer.empty[OrderId]
     private val queueSet = mutable.Set.empty[OrderId]
     private val inProcess = mutable.Set.empty[OrderId]
+
+    def isEmpty = queue.isEmpty
+    def nonEmpty = !isEmpty
 
     def contains(orderId: OrderId) =
       queueSet.contains(orderId)

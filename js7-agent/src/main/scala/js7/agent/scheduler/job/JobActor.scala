@@ -39,7 +39,7 @@ extends Actor with Stash
 
   private val logger = Logger.withPrefix[this.type](jobKey.name)
   private val orderToProcess = mutable.Map.empty[OrderId, Entry]
-  private var waitingForNextOrder = false
+  private var waitingForNextOrders = 0
   private var terminating = false
 
   private val checkedJobExecutor: Checked[JobExecutor] =
@@ -60,9 +60,9 @@ extends Actor with Stash
     case Input.OrderAvailable =>
       handleIfReadyForOrder()
 
-    case Input.ProcessOrder(order, defaultArguments, stdObservers) if waitingForNextOrder =>
+    case Input.ProcessOrder(order, defaultArguments, stdObservers) if waitingForNextOrders > 0 =>
       val sender = this.sender()
-      waitingForNextOrder = false
+      waitingForNextOrders -= 1
 
       // Read JobResources each time because they may change at any time
       (for {
@@ -217,11 +217,13 @@ extends Actor with Stash
     continueTermination()
   }
 
-  private def handleIfReadyForOrder(): Unit =
-    if (!waitingForNextOrder && !terminating && orderProcessCount < workflowJob.parallelism) {
-      context.parent ! Output.ReadyForOrder
-      waitingForNextOrder = true
+  private def handleIfReadyForOrder(): Unit = {
+    val available = workflowJob.parallelism - orderProcessCount
+    if (waitingForNextOrders == 0 && !terminating && available > 0) {
+      context.parent ! Output.ReadyForOrder(available)
+      waitingForNextOrders = available
     }
+  }
 
   private def killAll(signal: ProcessSignal): Unit =
     if (orderToProcess.nonEmpty) {
@@ -305,7 +307,7 @@ private[agent] object JobActor
   }
 
   object Output {
-    case object ReadyForOrder
+    final case class ReadyForOrder(n: Int)
   }
 
   private object Internal {

@@ -132,7 +132,7 @@ extends Actor with Stash with SimpleStateActor
         eventWatch.whenStarted.map(Right.apply) pipeTo sender()
       }
 
-    case msg: JobActor.Output.ReadyForOrder.type =>
+    case msg: JobActor.Output.ReadyForOrder =>
       for (actor <- agentOrderKeeperActor) {
         actor.forward(msg)
       }
