@@ -638,16 +638,24 @@ final class ExpressionTest extends AnyFreeSpec
       assert(ExpressionParser.parse(exprString) == Left(Problem(problem)))
     }
 
-  private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])
+    (implicit scope: Scope, pos: source.Position)
+  : Unit =
     testEval(exprString, Right(BooleanValue(result)), expression)
 
-  private def testEval(exprString: String, result: Int, expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: Int, expression: Checked[Expression])
+    (implicit scope: Scope, pos: source.Position)
+  : Unit =
     testEval(exprString, Right(NumberValue(result)), expression)
 
-  private def testEval(exprString: String, result: String, expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: String, expression: Checked[Expression])
+    (implicit scope: Scope, pos: source.Position)
+  : Unit =
     testEval(exprString, Right(StringValue(result)), expression)
 
-  private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit scope: Scope, pos: source.Position): Unit =
+  private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])
+    (implicit scope: Scope, pos: source.Position)
+  : Unit =
     registerTest(exprString) {
       val checked = checkedParse(exprString.trim, expressionOnly(_))
       assert(checked == expression)

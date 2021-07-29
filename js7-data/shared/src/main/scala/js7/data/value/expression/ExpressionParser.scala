@@ -27,6 +27,17 @@ object ExpressionParser
     checkedParse(string, expressionOnly(_))
       .left.map(_.withPrefix("Error in expression:"))
 
+  @TestOnly
+  def exprFunction(string: String): ExprFunction =
+    parseFunction(string).orThrow
+
+  def parseFunction(string: String): Checked[ExprFunction] =
+    checkedParse(string, functionOnly(_))
+      .left.map(_.withPrefix("Error in function:"))
+
+  private[expression] def functionOnly[_: P]: P[ExprFunction] =
+    P(function ~ End)
+
   def constantExpression[_: P]: P[Expression] =
     expression
 
@@ -39,6 +50,12 @@ object ExpressionParser
   private def parenthesizedExpression[_: P] = P[Expression](
     ("(" ~ w ~/ expression ~ w ~ ")") |
       bracketCommaSequence(expression).map(o => ListExpression(o.toList)))
+
+  private def function[_: P] = P[ExprFunction](
+    (inParentheses(commaSequence(identifier)) ~~/ w ~~ "=>" ~~/ w ~~ expression)
+      .map { case (names, expression) =>
+        ExprFunction(names.map(VariableDeclaration(_)), expression)
+      })
 
   private def trueConstant[_: P] = P[BooleanConstant](
     keyword("true").map(_ => BooleanConstant(true)))
