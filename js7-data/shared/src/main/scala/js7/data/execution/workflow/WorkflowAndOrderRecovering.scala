@@ -9,7 +9,6 @@ import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.order.OrderEvent.{OrderDeleted, OrderForked}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
-import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
@@ -18,15 +17,19 @@ object WorkflowAndOrderRecovering
 {
   // TODO Some events (OrderForked, OrderFinished) handled by OrderActor let AgentOrderKeeper add or delete orders. This should be done in a single transaction.
   /** A snapshot of a freshly forked Order may contain the child orders. This is handled here. **/
-  final def followUpRecoveredWorkflowsAndOrders(idToWorkflow: WorkflowId => Checked[Workflow], idToOrder: Map[OrderId, Order[Order.State]])
+  final def followUpRecoveredWorkflowsAndOrders(
+    idToWorkflow: WorkflowId => Checked[Workflow],
+    idToOrder: Map[OrderId, Order[Order.State]])
   : (Map[OrderId, Order[Order.State]], Set[OrderId]) = {
     val added = Map.newBuilder[OrderId, Order[Order.State]]
-    val deleted = mutable.Buffer.empty[OrderId]
+    val deleted = Set.newBuilder[OrderId]
     val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder.checked)
-    for (order <- idToOrder.values;
-         event <- snapshotToEvent(order);
-         followUps <- eventHandler.handleEvent(event)
-           .onProblem(p => scribe.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
+    for (
+      order <- idToOrder.values;
+      event <- snapshotToEvent(order);
+      followUps <- eventHandler.handleEvent(event)
+        .onProblem(p =>
+          scribe.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
     {
       followUps foreach {
         case FollowUp.AddChild(childOrder) =>  // OrderForked
@@ -40,7 +43,7 @@ object WorkflowAndOrderRecovering
         case _ =>
       }
     }
-    (added.result(), deleted.toSet)
+    (added.result(), deleted.result())
   }
 
   private def snapshotToEvent(order: Order[Order.State]): Option[KeyedEvent[OrderEvent]] =

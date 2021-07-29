@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderMoved, OrderStarted}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderStarted}
 import js7.data.workflow.Instruction
 import js7.data.workflow.position.Position
 
@@ -40,11 +40,4 @@ trait PositionInstructionExecutor extends InstructionExecutor
 {
   def nextPosition(instruction: Instr, order: Order[Order.State], stateView: StateView)
   : Checked[Option[Position]]
-}
-
-object InstructionExecutor
-{
-  private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], stateView: StateView) =
-    order.ifState[Order.Processed].map(order =>
-      order.id <-: OrderMoved(order.position.increment))
 }

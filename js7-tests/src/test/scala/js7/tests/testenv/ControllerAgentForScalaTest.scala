@@ -7,6 +7,7 @@ import js7.base.configutils.Configs._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.utils.Lazy
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
@@ -43,8 +44,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected lazy val controllerAdmission = Admission(
     controller.localUri,
     Some(directoryProvider.controller.userAndPassword))
-  protected lazy val controllerApi = new ControllerApi(
-    admissionsToApiResources(Seq(controllerAdmission))(controller.actorSystem))
+  private val controllerApiLazy = Lazy(new ControllerApi(
+    admissionsToApiResources(Seq(controllerAdmission))(controller.actorSystem)))
+  protected lazy val controllerApi = controllerApiLazy()
 
   protected def controllerHttpsMutual = false
 
@@ -59,7 +61,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   }
 
   override def afterAll() = {
-    controllerApi.stop await 99.s
+    for (o <- controllerApiLazy) o.stop await 99.s
     controller.terminate() await 15.s
     controller.close()
     agents.traverse(a => a.terminate() >> Task(a.close())) await 15.s

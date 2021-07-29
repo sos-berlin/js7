@@ -525,7 +525,7 @@ extends Actor with Stash with JournalLogging
     snapshotWriter.beginSnapshotSection()
 
     locally {
-      val builder = S.newBuilder()
+      lazy val checkingBuilder = S.newBuilder()
 
       val future = committedState.toSnapshotObservable
         .filter {
@@ -537,7 +537,7 @@ extends Actor with Stash with JournalLogging
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         }
         .foreach { case (snapshotObject, byteArray) =>
-          if (conf.slowCheckState) builder.addSnapshotObject(snapshotObject)
+          if (conf.slowCheckState) checkingBuilder.addSnapshotObject(snapshotObject)
           snapshotWriter.writeSnapshot(byteArray)
           logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
         }(scheduler)
@@ -545,9 +545,10 @@ extends Actor with Stash with JournalLogging
       Await.result(future, 999.s)
 
       if (conf.slowCheckState) {
-        builder.onAllSnapshotsAdded()
+        // Simulate recovery
+        checkingBuilder.onAllSnapshotsAdded()
         assertEqualSnapshotState("Written snapshot",
-          builder.result().withEventId(journalHeader.eventId))
+          checkingBuilder.result().withEventId(journalHeader.eventId))
       }
     }
 

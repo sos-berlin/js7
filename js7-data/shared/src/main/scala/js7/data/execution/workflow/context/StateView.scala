@@ -66,16 +66,13 @@ trait StateView
       job <- workflow.checkedWorkflowJob(workflowPosition.position)
     } yield job
 
-  def childOrderEnded(order: Order[Order.State]): Boolean =
-    order.parent.flatMap(idToOrder.get) match {
-      case Some(parentOrder) =>
-        lazy val endReached = instruction(order.workflowPosition).isInstanceOf[End] &&
-          order.state == Order.Ready &&
-          order.position.dropChild.contains(parentOrder.position)
-        order.attachedState == parentOrder.attachedState &&
-          (endReached || order.isState[Order.FailedInFork])
-      case _ => false
-    }
+  def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean = {
+    lazy val endReached = order.state == Order.Ready &&
+      order.position.parent.contains(parent.position) &&
+      instruction(order.workflowPosition).isInstanceOf[End]
+    order.attachedState == parent.attachedState &&
+      (order.state.eq(Order.FailedInFork) || endReached)
+  }
 
   final def toScope(order: Order[Order.State]): Checked[Scope] =
     for (w <- idToWorkflow.checked(order.workflowId)) yield
