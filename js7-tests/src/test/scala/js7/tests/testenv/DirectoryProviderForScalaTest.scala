@@ -8,10 +8,12 @@ import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.io.JavaResource
 import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.utils.HasCloser
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
 import js7.data.item.{InventoryItem, SignableItem}
+import monix.execution.Scheduler
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
 
@@ -23,6 +25,9 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
+
+  protected def commonScheduler: Option[Scheduler] =
+    sys.props.contains("test.speed") ? Scheduler.global
 
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
@@ -43,7 +48,8 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     signer = signer,
     verifier = verifier,
     testName = Some(getClass.getSimpleName),
-    doNotAddItems = doNotAddItems)
+    doNotAddItems = doNotAddItems,
+    scheduler = commonScheduler)
 
   protected def agentConfig: Config = ConfigFactory.empty
 

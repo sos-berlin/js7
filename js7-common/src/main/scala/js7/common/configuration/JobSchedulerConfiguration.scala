@@ -12,7 +12,11 @@ object JobSchedulerConfiguration
     val map = Map(
       "js7.version" -> BuildInfo.version,
       "js7.longVersion" -> BuildInfo.longVersion,
-      "js7.test" -> sys.props.getOrElse("js7.test", "off"))
+      "js7.test" -> (
+        if (sys.props.contains("test.speed"))
+          "off"
+        else
+          sys.props.getOrElse("js7.test", "off")))
     ConfigFactory
       .parseMap(map.asJava)
       .withFallback(

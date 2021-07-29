@@ -220,7 +220,9 @@ extends HasCloser
     Future.sequence(agents.map(_.agentPath) map startAgent)
 
   def startAgent(agentPath: AgentPath): Future[RunningAgent] =
-    RunningAgent.startForTest(agentToTree(agentPath).agentConfiguration)
+    RunningAgent.startForTest(
+      agentToTree(agentPath).agentConfiguration,
+      scheduler = scheduler)
 
   def updateVersionedItems(
     controller: RunningController,

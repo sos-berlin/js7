@@ -13,7 +13,6 @@ import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.proxy.ControllerApi
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
 
@@ -22,8 +21,6 @@ import scala.collection.mutable
   */
 trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   this: org.scalatest.Suite =>
-
-  protected def commonScheduler: Option[Scheduler] = None
 
   protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
   protected final lazy val agent: RunningAgent = agents.head
@@ -34,8 +31,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
         controllerModule,
         config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
         httpPort = controllerHttpPort,
-        httpsPort = controllerHttpsPort,
-        scheduler = commonScheduler)
+        httpsPort = controllerHttpsPort)
       .tapEval(controller =>
         Task(controller.httpApiDefaultLogin(Some(directoryProvider.controller.userAndPassword))))
       .await(99.s)
