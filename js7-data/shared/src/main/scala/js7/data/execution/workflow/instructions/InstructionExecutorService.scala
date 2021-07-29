@@ -16,7 +16,7 @@ final class InstructionExecutorService(val clock: WallClock)
   private val executeExecutor = new ExecuteExecutor(this)
   private val failExecutor = new FailExecutor(this)
   private val finishExecutor = new FinishExecutor(this)
-  private val forkExecutor = new ForkExecutor(this)
+  private[workflow] val forkExecutor = new ForkExecutor(this)
   private val forkListExecutor = new ForkListExecutor(this)
   private val gapExecutor = new GapExecutor(this)
   private val ifExecutor = new IfExecutor(this)
@@ -26,6 +26,8 @@ final class InstructionExecutorService(val clock: WallClock)
   private val expectNoticeExecutor = new ExpectNoticeExecutor(this)
   private val promptExecutor = new PromptExecutor(this)
   private val retryExecutor = new RetryExecutor(this)
+
+  private[instructions] val forkCache = new ForkInstructionExecutor.Cache
 
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     instr match {

@@ -299,7 +299,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderForked" in {
-    check(OrderForked(List(
+    check(OrderForked(Vector(
       OrderForked.Child("A", OrderId("A/1")),
       OrderForked.Child("B", OrderId("B/1")))), json"""
       {

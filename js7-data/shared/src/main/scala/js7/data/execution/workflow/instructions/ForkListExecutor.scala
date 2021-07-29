@@ -1,19 +1,21 @@
 package js7.data.execution.workflow.instructions
 
 import cats.instances.either._
+import cats.syntax.semigroup._
 import cats.syntax.traverse._
-import js7.base.problem.Checked
+import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
-import js7.data.execution.workflow.instructions.ForkInstructionExecutor.{checkOrderIdCollisions, toJoined}
+import js7.data.execution.workflow.instructions.ForkInstructionExecutor.checkOrderIdCollisions
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderForked, OrderMoved}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.instructions.ForkList
 
 private[instructions] final class ForkListExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
+extends EventInstructionExecutor with ForkInstructionExecutor
 {
   type Instr = ForkList
 
@@ -39,7 +41,7 @@ extends EventInstructionExecutor
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     for {
       scope <- state.toScope(order)
-      values <- fork.children.evalAsList(scope)
+      values <- fork.children.evalAsVector(scope)
       childStrings <- values.traverse(_.toStringValueString)
       childIds <- childStrings.traverse(OrderId.ChildId.checked)
       _ <- childIds.checkUniqueness

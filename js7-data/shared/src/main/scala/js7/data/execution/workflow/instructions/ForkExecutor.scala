@@ -2,13 +2,13 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked
 import js7.data.execution.workflow.context.StateView
-import js7.data.execution.workflow.instructions.ForkInstructionExecutor.{checkOrderIdCollisions, toJoined}
+import js7.data.execution.workflow.instructions.ForkInstructionExecutor.checkOrderIdCollisions
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderForked, OrderMoved}
 import js7.data.order.{Order, Outcome}
 import js7.data.workflow.instructions.Fork
 
 private[instructions] final class ForkExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor
+extends EventInstructionExecutor with ForkInstructionExecutor
 {
   type Instr = Fork
 
@@ -18,7 +18,7 @@ extends EventInstructionExecutor
         .ifState[Order.Ready].map(order =>
           checkOrderIdCollisions(state,
             order.id <-: OrderForked(
-              for (branch <- fork.branches) yield
+              for (branch <- fork.branches.toVector) yield
                 OrderForked.Child(branch.id, order.id | branch.id.string))))
         .orElse(
           for {

@@ -57,8 +57,8 @@ sealed trait Expression extends Expression.Precedence
   final def evalAsString(implicit scope: Scope): Checked[String] =
     eval.flatMap(_.asStringValue).map(_.string)
 
-  final def evalAsList(implicit scope: Scope): Checked[Seq[Value]] =
-    eval.flatMap(_.asListValue).map(_.list)
+  final def evalAsVector(implicit scope: Scope): Checked[Vector[Value]] =
+    eval.flatMap(_.asListValue).map(_.list.toVector)
 }
 
 object Expression
@@ -277,7 +277,7 @@ object Expression
     def subexpressions = View(a, b)
 
     protected def evalAllowError(implicit scope: Scope) =
-      for (a <- a.eval; b <- b.evalAsList) yield BooleanValue(b contains a)
+      for (a <- a.eval; b <- b.evalAsVector) yield BooleanValue(b contains a)
 
     override def toString = toString(a, "in", b)
   }
@@ -345,7 +345,7 @@ object Expression
     def precedence = Precedence.Factor
 
     protected def evalAllowError(implicit scope: Scope) =
-      subexpressions.traverse(_.eval).map(ListValue(_))
+      subexpressions.traverse(_.eval).map(_.toVector).map(ListValue(_))
 
     override def toString = subexpressions.mkString("[", ", ", "]")
   }

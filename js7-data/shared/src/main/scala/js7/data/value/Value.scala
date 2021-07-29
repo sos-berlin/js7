@@ -247,7 +247,7 @@ object BooleanValue extends ValueType
   @javaApi def of(value: Boolean) = BooleanValue(value)
 }
 
-final case class ListValue(list: Seq[Value]) extends Value
+final case class ListValue(list: Vector[Value]) extends Value
 {
   def valueType = ListValue
 
@@ -263,6 +263,10 @@ final case class ListValue(list: Seq[Value]) extends Value
 object ListValue extends ValueType
 {
   val name = "List"
+  val empty = ListValue(Vector.empty)
+
+  def apply(list: Seq[Value]): ListValue =
+    new ListValue(list.toVector)
 
   @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)

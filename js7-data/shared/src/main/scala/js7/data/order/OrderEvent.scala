@@ -123,7 +123,7 @@ object OrderEvent
 
   final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent
 
-  final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
+  final case class OrderForked(children: Vector[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
     final case class Child(
       orderId: OrderId,

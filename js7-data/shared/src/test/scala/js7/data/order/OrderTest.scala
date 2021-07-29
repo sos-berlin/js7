@@ -161,7 +161,7 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "Forked (distinct branches)" in {
-        testJson[State](Forked(List(
+        testJson[State](Forked(Vector(
           Forked.Child(Fork.Branch.Id("A"), OrderId("A") | "1"),
           Forked.Child(Fork.Branch.Id("B"), OrderId("B") | "2"))),
           json"""{
@@ -179,7 +179,7 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "Forked (ForkList) " in {
-        testJson[State](Forked(List(
+        testJson[State](Forked(Vector(
           Forked.Child(OrderId("A") | "1", Map("x" -> NumberValue(1))),
           Forked.Child(OrderId("B") | "2", Map.empty[String, Value]))),
           json"""{
@@ -289,7 +289,7 @@ final class OrderTest extends AnyFreeSpec
       OrderRetrying(Position(1)),
       OrderAwoke,
       OrderMoved(Position(1)),
-      OrderForked(OrderForked.Child("BRANCH", orderId | "BRANCH") :: Nil),
+      OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
       OrderJoined(Outcome.Succeeded(NamedValues.rc(0))),
       OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))),
       OrderFailedInFork(Position(1), None),
@@ -533,7 +533,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Forked" in {
-      checkAllEvents(Order(orderId, workflowId, Forked(Forked.Child("BRANCH", orderId | "CHILD") :: Nil)),
+      checkAllEvents(Order(orderId, workflowId, Forked(Vector(Forked.Child("BRANCH", orderId | "CHILD")))),
         deletionMarkable[Forked] orElse
         markable[Forked] orElse
         attachingAllowed[Forked] orElse

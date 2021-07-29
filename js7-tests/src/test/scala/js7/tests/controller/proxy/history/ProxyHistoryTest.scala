@@ -152,7 +152,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
-            OrderForked(List(
+            OrderForked(Vector(
               OrderForked.Child("🥕",OrderId("🔺|🥕")),
               OrderForked.Child("🍋",OrderId("🔺|🍋")))),
             OrderDetachable,

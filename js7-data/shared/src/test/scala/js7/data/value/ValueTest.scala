@@ -18,7 +18,7 @@ final class ValueTest extends AnyFreeSpec
       "1.112223334445556667778889999998887776665555444333222111E+125")
     testJson[Value](BooleanValue(false),
       json"""false""")
-    testJson[Value](ListValue(Nil),
+    testJson[Value](ListValue.empty,
       json"""[]""")
     testJson[Value](ListValue(List(
       StringValue("STRING"), NumberValue(1), BooleanValue.True, ListValue(List(BooleanValue.False)))),

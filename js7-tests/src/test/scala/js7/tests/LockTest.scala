@@ -310,7 +310,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
-      OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
+      OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
       OrderJoined(Outcome.failed),
       OrderFailed(Position(0)),
       OrderCancelled,
@@ -348,7 +348,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
-      OrderForked(Seq(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
+      OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
       OrderJoined(Outcome.failed),
       OrderFailed(Position(0), lockPaths = Seq(lockPath)),
       OrderCancelled,

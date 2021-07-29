@@ -13,7 +13,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ExprFunctionTest extends AnyFreeSpec
 {
   testEval("() => 1", Scope.empty,
-    args = ListValue(Nil),
+    args = ListValue.empty,
     result = Right(NumberValue(1)),
     Right(ExprFunction(Nil, NumericConstant(1))))
 

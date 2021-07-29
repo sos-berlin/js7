@@ -225,7 +225,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       Vector(
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
-        OrderId("FORK") <-: OrderForked(Seq(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
+        OrderId("FORK") <-: OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
         OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
         OrderId("FORK|🥕") <-: OrderAttached(agentPath),
         OrderId("FORK|🥕") <-: OrderProcessingStarted,

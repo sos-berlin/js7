@@ -217,7 +217,7 @@ final class AgentStateTest extends AsyncFreeSpec
       OrderAttachedToAgent(
         workflowId, Order.Ready, Map.empty, None, None, Nil, agentPath, None, None, false, false))
       .orThrow
-    agentState = agentState.applyEvent(orderId <-: OrderForked(Seq(OrderForked.Child("BRANCH", childOrderId))))
+    agentState = agentState.applyEvent(orderId <-: OrderForked(Vector(OrderForked.Child("BRANCH", childOrderId))))
       .orThrow
     assert(agentState == AgentState(
       EventId.BeforeFirst,
@@ -225,7 +225,7 @@ final class AgentStateTest extends AsyncFreeSpec
       meta,
       Map(
         orderId ->
-          Order(orderId, workflowId, Forked(Seq(Forked.Child("BRANCH", childOrderId))),
+          Order(orderId, workflowId, Forked(Vector(Forked.Child("BRANCH", childOrderId))),
             attachedState = Some(Order.Attached(agentPath))),
         childOrderId ->
           Order(childOrderId, workflowId /: (Position(0) / "fork+BRANCH" % 0), Ready,

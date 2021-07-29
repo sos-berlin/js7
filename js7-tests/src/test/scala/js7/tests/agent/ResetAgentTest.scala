@@ -123,7 +123,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAdded(forkingWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
-      OrderForked(List(OrderForked.Child("FORK", childOrderId))),
+      OrderForked(Vector(OrderForked.Child("FORK", childOrderId))),
       OrderJoined(Outcome.Failed(None,Map())),
       OrderCatched(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),

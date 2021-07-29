@@ -614,7 +614,7 @@ object Order
   type ProcessingKilled = ProcessingKilled.type
   case object ProcessingKilled extends IsStarted
 
-  final case class Forked(children: Seq[Forked.Child]) extends IsStarted {
+  final case class Forked(children: Vector[Forked.Child]) extends IsStarted {
     def childOrderIds = children.map(_.orderId)
   }
   object Forked {

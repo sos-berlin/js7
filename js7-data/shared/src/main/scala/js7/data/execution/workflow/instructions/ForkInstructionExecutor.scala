@@ -5,8 +5,54 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderBroken, OrderDetachable, OrderForked, OrderJoined}
-import js7.data.order.{Order, Outcome}
+import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.workflow.instructions.ForkInstruction
+import scala.collection.mutable
+
+trait ForkInstructionExecutor extends EventInstructionExecutor
+{
+  private[workflow] def tryJoinChildOrder(
+    state: StateView,
+    childOrder: Order[Order.State],
+    fork: ForkInstruction)
+  : Option[KeyedEvent[OrderActorEvent]] =
+    if (childOrder.isAttached)
+      Some(childOrder.id <-: OrderDetachable)
+    else {
+      childOrder.parent
+        .flatMap(state.idToOrder.get)
+        .flatMap(_.ifState[Order.Forked])
+        .flatMap { parentOrder =>
+          service.forkCache.onChildBecameJoinable(childOrder.id, parentOrder.id)
+          toJoined(state, parentOrder)
+        }
+    }
+
+  private[workflow] def toJoined(state: StateView, order: Order[Order.Forked])
+  : Option[KeyedEvent[OrderActorEvent]] =
+    if (order.isAttached)
+      Some(order.id <-: OrderDetachable)
+    else {
+      val joinableCount = service.forkCache.joinablesCount(order.id,
+        default = order.state.children
+          .view
+          .map(o => state.idToOrder(o.orderId))
+          .filter(state.childOrderEnded(_, parent = order))
+          .map(_.id))
+
+      (order.state.children.sizeIs == joinableCount) ? {
+        val allSucceeded = order.state.children.view
+          .map(child => state.idToOrder(child.orderId))
+          .forall(_.lastOutcome.isSucceeded)
+        service.forkCache.onJoined(order.id)
+        order.id <-: OrderJoined(
+          if (allSucceeded)
+            Outcome.succeeded
+          else
+            Outcome.failed)
+      }
+    }
+}
 
 private[workflow] object ForkInstructionExecutor
 {
@@ -24,43 +70,30 @@ private[workflow] object ForkInstructionExecutor
       orderForked
   }
 
-  private[workflow] def tryJoinChildOrder(
-    state: StateView,
-    childOrder: Order[Order.State],
-    evidence: ForkInstruction)
-  : Option[KeyedEvent[OrderActorEvent]] =
-    if (childOrder.isAttached)
-      Some(childOrder.id <-: OrderDetachable)
-    else
-      childOrder.parent
-        .flatMap(state.idToOrder.get)
-        .flatMap(parentOrder =>
-          toJoined(state, parentOrder.asInstanceOf[Order[Order.Forked]]))
+  private[instructions] class Cache
+  {
+    // Synchronization is not really needed, because it's used serially
+    private val forkedToJoinableChildren = mutable.Map.empty[OrderId, mutable.Set[OrderId]]
 
-  private[workflow] def toJoined(state: StateView, order: Order[Order.Forked])
-  : Option[KeyedEvent[OrderActorEvent]] =
-    if (order.isAttached)
-      Some(order.id <-: OrderDetachable)
-    else {
-      // TODO SLOW: computation time for n child orders is about the square of n
-      // because for each completed child order all other child orders are checked.
-      // The following imperative optimization has a small effect on speed.
-      var allSucceeded = true
-      var allEnded = true
-      val children = order.state.children.iterator
-      while (allEnded && children.hasNext) {
-        val child = children.next()
-        val childOrder = state.idToOrder(child.orderId)
-        if (state.childOrderEnded(childOrder, parent = order)) {
-          allSucceeded &&= childOrder.lastOutcome.isSucceeded
-        } else
-          allEnded = false
+    private[ForkInstructionExecutor] def onChildBecameJoinable(
+      childOrderId: OrderId,
+      parentOrderId: OrderId)
+    : Unit =
+      synchronized {
+        for (joinables <- forkedToJoinableChildren.get(parentOrderId)) {
+          joinables += childOrderId
+        }
       }
-      allEnded ? (
-        order.id <-: OrderJoined(
-          if (allSucceeded)
-            Outcome.succeeded
-          else
-            Outcome.failed))
-    }
+
+    private[ForkInstructionExecutor] def joinablesCount(parentOrderId: OrderId, default: => Iterable[OrderId]): Int =
+      synchronized {
+        forkedToJoinableChildren.getOrElseUpdate(parentOrderId, default.to(mutable.Set))
+          .size
+      }
+
+    private[ForkInstructionExecutor] def onJoined(parentOrderId: OrderId): Unit =
+      synchronized {
+        forkedToJoinableChildren -= parentOrderId
+      }
+  }
 }

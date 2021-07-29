@@ -108,7 +108,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     process.update(orderId <-: OrderAttached(TestAgentPath))
     assert(process.run(orderId) == List(
       orderId <-: OrderStarted,
-      orderId <-: OrderForked(List(
+      orderId <-: OrderForked(Vector(
         OrderForked.Child("🥕", orderId | "🥕"),
         OrderForked.Child("🍋", orderId | "🍋"))),
       orderId <-: OrderDetachable,
@@ -132,7 +132,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       orderId <-: OrderJoined(Outcome.succeeded)))
     assert(process.step(orderId) == Seq(orderId <-: OrderMoved(Position(1))))
 
-    assert(process.step(orderId) == Seq(orderId <-: OrderForked(List(
+    assert(process.step(orderId) == Seq(orderId <-: OrderForked(Vector(
       OrderForked.Child("🥕", orderId | "🥕"),
       OrderForked.Child("🍋", orderId | "🍋")))))
 
@@ -1020,7 +1020,7 @@ object OrderEventSourceTest
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil)
   private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId /: Position(2), Order.Processed,
     historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) :: Nil)
-  private val orderForked = OrderForked(List(
+  private val orderForked = OrderForked(Vector(
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))
 
