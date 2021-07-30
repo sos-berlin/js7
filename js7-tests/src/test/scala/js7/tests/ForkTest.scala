@@ -55,22 +55,25 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
-  "Existing child OrderId yields broken (and cancelable) order" in {
+  "Existing child OrderId" in {
+    // Existing child orders are thought only. This should not be possible.
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
     controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE|🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
     controller.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE|🥕"))
 
     controller.addOrderBlocking(order)
-    val expectedBroken = OrderBroken(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing,Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false)"))
-    assert(controller.eventWatch.await[OrderBroken](_.key == order.id).head.value.event == expectedBroken)
+    val expectedFailed = OrderFailed(
+      Position(0),
+      Some(Outcome.Disrupted(Problem(
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing,Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false)"))))
+    assert(controller.eventWatch.await[OrderFailed](_.key == order.id).head.value.event == expectedFailed)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(TestWorkflow.id, order.arguments),
       OrderStarted,
-      expectedBroken,
+      expectedFailed,
       OrderCancelled))
 
     controller.terminate() await 99.s

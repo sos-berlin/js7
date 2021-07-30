@@ -7,6 +7,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
+import js7.data.agent.AgentPath
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
@@ -353,6 +354,13 @@ final class OrderEventSource(state: StateView)
   private def weHave(order: Order[Order.State]) =
     order.isDetached && !isAgent ||
     order.isAttached && isAgent
+
+  def nextAgent(order: Order[Order.State]): Checked[Option[AgentPath]] =
+    for (pos <- applyMoveInstructions(order)) yield
+      for {
+        workflow <- idToWorkflow.get(order.workflowId)
+        agentPath <- workflow.agentPath(pos)
+      } yield agentPath
 
   private def applyMoveInstructions(order: Order[Order.State], orderMoved: OrderMoved): Checked[OrderMoved] =
     applyMoveInstructions(order.withPosition(orderMoved.to))

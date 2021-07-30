@@ -304,6 +304,12 @@ extends VersionedItem
   private[workflow] def isStartableOnAgent(agentPath: AgentPath): Boolean =
     checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentPath)
 
+  def agentPath(position: Position): Option[AgentPath] =
+    checkedAgentPath(position).toOption
+
+  def checkedAgentPath(position: Position): Checked[AgentPath] =
+    checkedWorkflowJob(position).map(_.agentPath)
+
   def isDefinedAt(position: Position): Boolean =
     position match {
       case Position(Nil, nr) => isDefinedAt(nr)

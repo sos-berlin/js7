@@ -1,6 +1,7 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.problem.Checked
+import cats.instances.list._
+import cats.syntax.traverse._
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.ForkInstructionExecutor.checkOrderIdCollisions
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderForked, OrderMoved}
@@ -14,26 +15,30 @@ extends EventInstructionExecutor with ForkInstructionExecutor
 
   def toEvents(fork: Fork, order: Order[Order.State], state: StateView) = {
     start(order)
-      .getOrElse(Checked(order
-        .ifState[Order.Ready].map(order =>
-          checkOrderIdCollisions(state,
-            order.id <-: OrderForked(
-              for (branch <- fork.branches.toVector) yield
-                OrderForked.Child(branch.id, order.id | branch.id.string))))
+      .getOrElse(order
+        .ifState[Order.Ready].map { order =>
+          val orderForked = OrderForked(
+            for (branch <- fork.branches.toVector) yield
+              OrderForked.Child(branch.id, order.id | branch.id.string))
+          for (_ <- checkOrderIdCollisions(state, orderForked)) yield
+            order.id <-: orderForked
+        }
         .orElse(
           for {
             order <- order.ifState[Order.Forked]
             joined <- toJoined(state, order)
-          } yield joined)
+          } yield Right(joined))
         .orElse(order.ifState[Order.Processed].map(order =>
-          order.id <-: (
-            order.lastOutcome match {
-              case _: Outcome.Succeeded =>
-                OrderMoved(order.position.increment)
+          Right(
+            order.id <-: (
+              order.lastOutcome match {
+                case _: Outcome.Succeeded =>
+                  OrderMoved(order.position.increment)
 
-              case _ =>
-                OrderFailedIntermediate_()
-            })))
-        .toList))
+                case _ =>
+                  OrderFailedIntermediate_()
+              }))))
+        .toList
+        .sequence)
   }
 }

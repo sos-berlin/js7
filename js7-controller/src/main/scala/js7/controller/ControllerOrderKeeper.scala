@@ -65,7 +65,6 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, 
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
-import js7.data.workflow.instructions.Execute
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
 import js7.journal.recover.Recovered
@@ -1124,7 +1123,7 @@ with MainJournalingActor[ControllerState, Event]
         if (order.isAttached
           && !orderRegister.get(orderId).flatMap(_.agentOrderMark).contains(mark)) {
           // On Recovery, MarkOrder is sent again, because orderEntry.agentOrderMark is lost
-          for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order).onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
+          for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
             // CommandQueue filters multiple equal MarkOrder
             // because we may send multiple ones due to asynchronous execution
             agentEntry.actor ! AgentDriver.Input.MarkOrder(order.id, mark)
@@ -1141,15 +1140,8 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def proceedWithOrderOnController(order: Order[Order.State]): Unit =
-    order.state match {
-      case _: Order.IsFreshOrReady if order.isProcessable =>
-        val freshOrReady = order.castState[Order.IsFreshOrReady]
-        instruction(order.workflowPosition) match {
-          case _: Execute => tryAttachOrderToAgent(freshOrReady)
-          case _ =>
-        }
-
-      case _ =>
+    for (order <- order.ifState[Order.IsFreshOrReady]) {
+      tryAttachOrderToAgent(order)
     }
 
   private def delayOrderDeletion[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =
@@ -1174,35 +1166,40 @@ with MainJournalingActor[ControllerState, Event]
       }
 
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
-    for ((signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order)
-      .onProblem(p => logger.error(p withPrefix "tryAttachOrderToAgent:"))
-    ) {  // TODO OrderBroken on error?
-      if (order.isAttaching && !agentEntry.isResetting) {
-        val orderEntry = orderRegister(order.id)
-        if (!orderEntry.triedToAttached) {
-          val jobResources = signedWorkflow.value.referencedJobResourcePaths
-            .flatMap(_controllerState.pathToSignedSimpleItem.get)
-          for (signedItem <- jobResources ++ View(signedWorkflow)) {
-            val item = signedItem.value
-            val attachedState = _controllerState
-              .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
-            if (attachedState == Detached || attachedState == Attachable) {
-              agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+    if (order.isProcessable) {
+      for ((signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
+        if (order.isAttaching && !agentEntry.isResetting) {
+          val orderEntry = orderRegister(order.id)
+          if (!orderEntry.triedToAttached) {
+            val jobResources = signedWorkflow.value.referencedJobResourcePaths
+              .flatMap(_controllerState.pathToSignedSimpleItem.get)
+            for (signedItem <- jobResources ++ View(signedWorkflow)) {
+              val item = signedItem.value
+              val attachedState = _controllerState
+                .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
+              if (attachedState == Detached || attachedState == Attachable) {
+                agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+              }
             }
-          }
 
-          orderEntry.triedToAttached = true
-          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentPath)
+            orderEntry.triedToAttached = true
+            agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentPath)
+          }
         }
       }
     }
 
-  private def checkedWorkflowAndAgentEntry(order: Order[Order.State]): Checked[(Signed[Workflow], AgentEntry)] =
-    for {
-      signedWorkflow <- _controllerState.repo.idToSigned[Workflow](order.workflowId)
-      job <- signedWorkflow.value.checkedWorkflowJob(order.position)
-      agentEntry <- agentRegister.checked(job.agentPath)
-    } yield (signedWorkflow, agentEntry)
+  private def checkedWorkflowAndAgentEntry(order: Order[Order.State]): Option[(Signed[Workflow], AgentEntry)] =
+    order.attachedState match {
+      case Some(Order.AttachedState.HasAgentPath(agentPath)) =>
+        ( for {
+            signedWorkflow <- _controllerState.repo.idToSigned[Workflow](order.workflowId)
+            agentEntry <- agentRegister.checked(agentPath)
+          } yield (signedWorkflow, agentEntry)
+        ).onProblem(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
+
+      case _ => None
+    }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     for (orderEntry <- orderRegister.get(orderId)) {

@@ -8,7 +8,8 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
-import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderTerminated}
+import js7.data.event.EventRequest
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, StringValue}
@@ -16,6 +17,7 @@ import js7.data.workflow.instructions.{ForkList, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ForkListRecoveryTest._
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
@@ -41,7 +43,11 @@ final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForSc
   "Join" in {
     directoryProvider.run { (controller, _) =>
       childOrderIds.toVector
-        .traverse(orderId => controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId)))
+        .traverse(orderId =>
+          controller.eventWatch.whenKeyedEvent[OrderPrompted](
+            EventRequest.singleClass(), childOrderIds.head
+          ) >>
+            controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId)))
         .await(99.s)
         .combineProblems
         .orThrow
@@ -58,6 +64,8 @@ final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForSc
             StringValue("CHILD-3")))),
           deleteWhenTerminated = true),
         OrderStarted,
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderForked(Vector(
           Order.Forked.Child(
             childOrderIds(0),
@@ -71,6 +79,8 @@ final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForSc
             childOrderIds(2),
             Map(
               "id" -> StringValue("CHILD-3"))))),
+        OrderDetachable,
+        OrderDetached,
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished,
@@ -78,9 +88,14 @@ final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForSc
 
       for (orderId <- childOrderIds) {
         assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+          OrderProcessingStarted,
+          OrderProcessed(Outcome.succeeded),
+          OrderMoved(Position(0) / "fork" % 1),
+          OrderDetachable,
+          OrderDetached,
           OrderPrompted(StringValue("QUESTION")),
           OrderPromptAnswered(),
-          OrderMoved(Position(0) / "fork" % 1)))
+          OrderMoved(Position(0) / "fork" % 2)))
       }
     }
   }
@@ -100,6 +115,7 @@ object ForkListRecoveryTest
         expr("$children"),
         exprFunction("(id) => { id: $id }"),
         Workflow.of(
+          EmptyJob.execute(agentPath),
           Prompt(expr("'QUESTION'"))))))
 
   private def newOrder(orderId: OrderId, workflowPath: WorkflowPath, n: Int) =

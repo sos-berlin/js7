@@ -1,6 +1,5 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
@@ -22,7 +21,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         .map(_.toList)
 
   def nextPosition(instruction: If, order: Order[Order.State], state: StateView) = {
-    assertThat(Some(order) == state.idToOrder.get(order.id).map(_ withPosition order.position))
+    // order may be predicted and different from actual idToOrder(order.id)
     for {
       scope <- state.toScope(order)
       condition <- instruction.predicate.evalAsBoolean(scope)
