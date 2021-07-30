@@ -4,6 +4,7 @@ import io.circe._
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.reuseIfEqual
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.{ExprFunction, Expression}
@@ -52,6 +53,15 @@ extends ForkInstruction
 
 object ForkList
 {
+  def apply(
+    children: Expression,
+    childToArguments: ExprFunction,
+    workflow: Workflow,
+    sourcePos: Option[SourcePos] = None)
+  : ForkList =
+    checked(children, childToArguments, workflow, sourcePos)
+      .orThrow
+
   def checked(
     children: Expression,
     childToArguments: ExprFunction,

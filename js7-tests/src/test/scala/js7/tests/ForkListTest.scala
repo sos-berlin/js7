@@ -1,5 +1,7 @@
 package js7.tests
 
+import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.log.Logger
@@ -11,7 +13,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.job.InternalExecutable
+import js7.data.job.{InternalExecutable, ShellScriptExecutable}
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
@@ -40,7 +42,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     """
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(atControllerWorkflow, atAgentWorkflow)
+  protected val items = Seq(atControllerWorkflow, atAgentWorkflow, exampleWorkflow)
   private lazy val proxy = controllerApi.startProxy().await(99.s)
 
   "Events and Order.Forked snapshot" in {
@@ -106,7 +108,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val eventId = eventWatch.lastAddedEventId
     val freshOrder = FreshOrder(
       orderId,
-      atControllerWorkflow.path,
+      workflowId.path,
       Map("children" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
       deleteWhenTerminated = true)
 
@@ -135,7 +137,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val eventId = eventWatch.lastAddedEventId
       val freshOrder = FreshOrder(
         orderId,
-        atControllerWorkflow.path,
+        workflowId.path,
         Map("children" -> ListValue(Seq(StringValue(childId)))),
         deleteWhenTerminated = true)
 
@@ -194,6 +196,36 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     childOrdersProcessed.await(9.s)
   }
+
+  "Example with a simple script" in {
+    logger.debug(exampleWorkflow.asJson.compactPrint)
+    val workflowId = exampleWorkflow.id
+    val orderId = OrderId(s"EXAMPLE")
+    val children = for (i <- 1 to 3) yield s"CHILD-$i"
+
+    val eventId = eventWatch.lastAddedEventId
+    val freshOrder = FreshOrder(
+      orderId,
+      workflowId.path,
+      Map("children" -> ListValue(children.map(StringValue(_)))),
+      deleteWhenTerminated = true)
+
+    controllerApi.addOrder(freshOrder).await(99.s).orThrow
+
+    assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+      .head.value.event == OrderFinished)
+    for (childId <- children) {
+      assert(eventWatch.keyedEvents[OrderEvent](orderId | childId) == Seq(
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted,
+        OrderStdoutWritten(s"CHILD_ID=$childId\n"),
+        OrderProcessed(Outcome.succeededRC0),
+        OrderMoved(Position(0) / "fork" % 1),
+        OrderDetachable,
+        OrderDetached))
+    }
+  }
 }
 
 object ForkListTest
@@ -201,15 +233,13 @@ object ForkListTest
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
 
-  private val forkList = ForkList
-    .checked(
-      expr("$children"),
-      exprFunction("(id) => { id: $id }"),
-      Workflow.of(Execute(WorkflowJob(
-        agentPath,
-        InternalExecutable(classOf[TestJob].getName),
-        parallelism = 100_000))))
-    .orThrow
+  private val forkList = ForkList(
+    expr("$children"),
+    exprFunction("(id) => { id: $id }"),
+    Workflow.of(Execute(WorkflowJob(
+      agentPath,
+      InternalExecutable(classOf[TestJob].getName),
+      parallelism = 100_000))))
 
   private val atControllerWorkflow = Workflow(
     WorkflowPath("AT-CONTROLLER-WORKFLOW") ~ "INITIAL",
@@ -232,6 +262,23 @@ object ForkListTest
         Outcome.succeeded
       })
   }
+
+  private val exampleWorkflow = Workflow(
+    WorkflowPath("EXAMPLE") ~ "INITIAL",
+    Vector(
+      ForkList(
+          expr("$children"),
+          exprFunction("(x) => { childId: $x }"),
+          Workflow.of(
+            Execute(WorkflowJob(
+              agentPath,
+              ShellScriptExecutable(
+               """#!/usr/bin/env bash
+                 |set -euo pipefail
+                 |echo CHILD_ID=$CHILD_ID
+                 |""".stripMargin,
+                env = Map(
+                  "CHILD_ID" -> expr("$childId")))))))))
 
   private def newOrder(orderId: OrderId, workflowPath: WorkflowPath, n: Int) =
     FreshOrder(

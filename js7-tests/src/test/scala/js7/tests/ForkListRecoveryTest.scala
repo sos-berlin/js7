@@ -96,13 +96,11 @@ object ForkListRecoveryTest
   private val workflow = Workflow(
     WorkflowPath("AT-CONTROLLER-WORKFLOW") ~ "INITIAL",
     Vector(
-      ForkList
-        .checked(
-          expr("$children"),
-          exprFunction("(id) => { id: $id }"),
-          Workflow.of(
-            Prompt(expr("'QUESTION'"))))
-        .orThrow))
+      ForkList(
+        expr("$children"),
+        exprFunction("(id) => { id: $id }"),
+        Workflow.of(
+          Prompt(expr("'QUESTION'"))))))
 
   private def newOrder(orderId: OrderId, workflowPath: WorkflowPath, n: Int) =
     FreshOrder(
