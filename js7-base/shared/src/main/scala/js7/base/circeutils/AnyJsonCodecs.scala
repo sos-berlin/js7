@@ -64,7 +64,7 @@ object AnyJsonCodecs
                     //  case None =>
                         number.toBigDecimal match {
                           case Some(decimal) => decimal: BigDecimal
-                          case None => sys.error(s"JSON type ${number.getClass.simpleScalaName} cannot be converted to YAML")
+                          case None => sys.error(s"Unexpected numerical JSON type ${number.getClass.simpleScalaName}")
                         }
                     //}
                 }

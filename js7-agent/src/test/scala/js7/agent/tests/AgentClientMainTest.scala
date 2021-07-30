@@ -5,6 +5,7 @@ import js7.agent.command.CommandHandler
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.agent.tests.AgentClientMainTest._
+import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.problem.Checked
@@ -45,13 +46,17 @@ final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with 
 
   "main" in {
     val output = mutable.Buffer.empty[String]
-    val commandYaml = """{ TYPE: ShutDown, processSignal: SIGTERM }"""
-    AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString, commandYaml, "?"), o => output += o)
-    assert(output.size == 3)
-    assert(output(0) == "TYPE: Accepted")
-    assert(output(1) == "---")
-    assert(output(2) contains "startedAt: ")
-    assert(output(2) contains "isTerminating: false")
+    val commandJson = json"""{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }"""
+    AgentClientMain.run(
+      List(
+        s"--data-directory=$dataDirectory",
+        agent.localUri.toString,
+        commandJson.compactPrint,
+        "?"),
+      o => output += o)
+    assert(output.size == 2)
+    assert(output(0).parseJson == Right(json"""{ "TYPE": "Accepted" }"""))
+    output(1).parseJsonOrThrow.fieldOrThrow("startedAt")
   }
 
   "main with Agent URI only checks wether Agent is responding (it is)" in {

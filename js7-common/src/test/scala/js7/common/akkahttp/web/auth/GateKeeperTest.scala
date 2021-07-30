@@ -18,11 +18,11 @@ import js7.base.generic.SecretString
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
+import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
 import js7.common.akkahttp.web.auth.GateKeeperTest._
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
-import js7.common.http.CirceJsonSupport._
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now

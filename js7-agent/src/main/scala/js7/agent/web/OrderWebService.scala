@@ -7,7 +7,7 @@ import js7.agent.web.common.AgentRouteProvider
 import js7.base.auth.ValidUserPermission
 import js7.base.problem.Checked
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonSupport._
 import js7.core.command.CommandMeta
 import js7.data.order.{Order, OrderId}
 import monix.execution.Scheduler

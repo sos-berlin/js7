@@ -14,7 +14,6 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.RouteProviderTest._
 import js7.common.auth.IdToUser
 import js7.common.http.AkkaHttpClient.`x-js7-session`
-import js7.common.http.CirceJsonSupport._
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

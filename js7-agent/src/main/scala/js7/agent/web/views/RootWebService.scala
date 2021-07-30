@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentRouteProvider
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonSupport._
 import monix.eval.Task
 import monix.execution.Scheduler
 

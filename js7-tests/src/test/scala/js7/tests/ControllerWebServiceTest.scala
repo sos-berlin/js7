@@ -1,7 +1,7 @@
 package js7.tests
 
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
-import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
+import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri => AkkaUri}
@@ -29,7 +29,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
-import js7.common.http.CirceToYaml.yamlToJson
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.Problems.UnknownItemPathProblem
 import js7.data.agent.AgentRefStateEvent.AgentCreated
@@ -739,12 +738,6 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
         testJson(
           manipulateResponse(httpClient.get[Json](Uri(s"$uri/$suburi"), headers) await 99.s),
           expected)
-      }
-
-      "YAML" in {
-        val yamlString = httpClient.get_[String](Uri(s"$uri/$suburi"), headers ::: Accept(`text/plain`) :: Nil) await 99.s
-        assert(yamlString.head.isLetter || yamlString.head == '-')  // A YAML object starts with the first field id or an array entry
-        testJson(manipulateResponse(yamlToJson(yamlString).orThrow), expected)
       }
     }
 }

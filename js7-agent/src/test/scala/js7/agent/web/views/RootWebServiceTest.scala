@@ -1,6 +1,6 @@
 package js7.agent.web.views
 
-import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
+import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import io.circe.Json
 import js7.agent.data.views.AgentOverview
@@ -11,8 +11,8 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import js7.common.akkahttp.CirceJsonSupport._
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
-import js7.common.http.CirceJsonSupport._
 import js7.data.system.JavaInformation
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -71,12 +71,5 @@ final class RootWebServiceTest extends AnyFreeSpec with WebServiceTest with Root
         assert(responseAs[Json] == expectedOverviewJson)
         assert(!(response.utf8String.await(99.s) contains " ")) // Compact JSON
       }
-    }
-
-    "Accept: text/plain returns pretty YAML" in {
-      Get("/agent/api") ~> Accept(`text/plain`) ~> route ~> check {
-        assert(response.utf8String.await(99.s) contains " ") // YAML
-      }
-    }
-  }
+    }}
 }

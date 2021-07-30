@@ -7,8 +7,8 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.configutils.Configs._
 import js7.base.problem.Problem
+import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.akkahttp.ExceptionHandlingTest._
-import js7.common.http.CirceJsonSupport._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace

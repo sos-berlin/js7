@@ -1,20 +1,43 @@
-package js7.common.http
+package js7.common.akkahttp
 
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshaller}
 import akka.util.ByteString
+import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, Printer, jawn}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils.syntax._
+import scala.util.control.NonFatal
 
 object CirceJsonSupport
 {
-  implicit final def jsonMarshaller[A: Encoder](implicit printer: Printer = CompactPrinter): ToEntityMarshaller[A] =
-    jsonJsonMarshaller(printer) compose implicitly[Encoder[A]].apply
+  private val logger = Logger(getClass)
+
+  implicit def jsonUnmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
+    unmarshaller[A]
+
+  implicit def jsonMarshaller[A](implicit encoder: Encoder[A], printer: Printer = CompactPrinter): ToEntityMarshaller[A] =
+    Marshaller.withFixedContentType(`application/json`) { value =>
+      val string = logException(s"jsonMarhaller(${encoder.getClass.getName})") {
+        printer.print(value.asJson)
+      }
+      HttpEntity.Strict(`application/json`, ByteString(string))
+    }
+
+  private def logException[A](what: => String)(body: => A): A =
+    try body
+    catch { case NonFatal(t) =>
+      logger.warn(s"jsonMarhaller($what: ${t.toStringWithCauses}", t)
+      throw t
+    }
+
+  //implicit final def jsonMarshaller[A: Encoder](implicit printer: Printer = CompactPrinter): ToEntityMarshaller[A] =
+  //  jsonJsonMarshaller(printer) compose implicitly[Encoder[A]].apply
 
   implicit final def jsonJsonMarshaller(implicit printer: Printer = CompactPrinter): ToEntityMarshaller[Json] =
     Marshaller.withFixedContentType(`application/json`) { json =>
@@ -22,13 +45,13 @@ object CirceJsonSupport
     }
 
   implicit final def unmarshaller[A: Decoder]: FromEntityUnmarshaller[A] =
-    jsonUnmarshaller.map(json =>
+    jsonJsonUnmarshaller.map(json =>
       implicitly[Decoder[A]]
         .decodeJson(json)
         .toChecked/*renders message*/
         .orThrowWithoutStacktrace)
 
-  implicit final val jsonUnmarshaller: FromEntityUnmarshaller[Json] =
+  implicit final val jsonJsonUnmarshaller: FromEntityUnmarshaller[Json] =
     Unmarshaller.byteStringUnmarshaller
       .forContentTypes(`application/json`)
       .map {

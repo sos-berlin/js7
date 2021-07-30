@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import js7.common.http.CirceJsonSupport._
+import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.node.NodeId

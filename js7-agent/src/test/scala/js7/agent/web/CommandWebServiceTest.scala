@@ -15,7 +15,7 @@ import js7.base.circeutils.CirceUtils.implicits._
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.http.CirceJsonSupport._
+import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.core.command.CommandMeta
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import monix.eval.Task

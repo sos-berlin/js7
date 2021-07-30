@@ -13,10 +13,6 @@ object SourceType {
     override def toString = "JSON"
   }
 
-  case object Yaml extends JsonLike {
-    override def toString = "YAML"
-  }
-
   case object Txt extends SourceType {
     override def toString = "txt"
   }

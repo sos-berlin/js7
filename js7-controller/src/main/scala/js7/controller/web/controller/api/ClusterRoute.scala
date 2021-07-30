@@ -4,7 +4,7 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives._
 import js7.base.auth.ValidUserPermission
 import js7.base.problem.Checked
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonSupport._
 import js7.common.akkahttp.StandardMarshallers._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.data.cluster.{ClusterNodeState, ClusterState}

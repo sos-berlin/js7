@@ -13,7 +13,6 @@ object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]
 {
   val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".workflow.json",
-    SourceType.Yaml -> ".workflow.yaml",
     SourceType.Txt -> ".workflow.txt",
     SourceType.Xml -> ".job_chain.xml")
 

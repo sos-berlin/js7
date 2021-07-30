@@ -8,7 +8,7 @@ import js7.base.problem.Checked
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonSupport._
 import js7.common.akkahttp.StandardDirectives.remainingPath
 import js7.common.akkahttp.StandardMarshallers.checkedToResponseMarshaller
 import js7.controller.web.common.ControllerRouteProvider

@@ -2,6 +2,7 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
+import io.circe.syntax.EncoderOps
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -13,6 +14,7 @@ import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.JobRegister.JobEntry
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -27,7 +29,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
-import js7.common.http.CirceToYaml.ToYamlString
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.event.JournalEvent.JournalEventsReleased
@@ -319,7 +320,7 @@ with Stash
             val workflow = origWorkflow.reduceForAgent(ownAgentPath)
             workflowRegister.get(workflow.id) match {
               case None =>
-                logger.trace("Reduced workflow: ⏎\n" + workflow.toYamlString)
+                logger.trace("Reduced workflow: " + workflow.asJson.compactPrint)
                 persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
                   workflowRegister.handleEvent(stampedEvent.value)
                   startJobActors(workflow)

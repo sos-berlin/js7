@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
 import js7.base.problem.Checked
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
 import js7.controller.web.common.ControllerRouteProvider
 import js7.core.command.CommandMeta

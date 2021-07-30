@@ -359,7 +359,6 @@ lazy val `js7-common` = project
       akkaHttpTestkit % "test" ++
       javaxInject ++
       guice ++
-      snakeYaml ++
       findbugs ++
       scalaTest % "test" ++
       log4j % "test" ++
@@ -384,7 +383,6 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
     import Dependencies._
     libraryDependencies ++=
       akkaHttp ++
-      snakeYaml ++
       scalaLogging ++
       log4j % "test" ++
       lmaxDisruptor % "test"

@@ -17,7 +17,6 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkautils.Akkas
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
-import js7.common.http.CirceJsonSupport._
 import monix.eval.Task
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.{BeforeAndAfterAll, Suite}

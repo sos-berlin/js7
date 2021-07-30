@@ -20,7 +20,6 @@ import js7.common.akkahttp.StandardDirectives.lazyRoute
 import js7.common.akkahttp.web.session.SessionRouteTest._
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
-import js7.common.http.CirceJsonSupport._
 import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
 import monix.eval.Task

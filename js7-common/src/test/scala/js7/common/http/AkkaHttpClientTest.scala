@@ -20,7 +20,7 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.HasCloser
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.Uri
-import js7.common.akkahttp.CirceJsonOrYamlSupport
+import js7.common.akkahttp.CirceJsonSupport
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
@@ -95,9 +95,9 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
     lazy val webServer = {
       val server = AkkaWebServer.forTest() {
         decodeRequest {
-        import CirceJsonOrYamlSupport.jsonOrYamlMarshaller
+          import CirceJsonSupport.jsonMarshaller
           post {
-            import CirceJsonOrYamlSupport.jsonUnmarshaller
+            import CirceJsonSupport.jsonUnmarshaller
             entity(as[A]) { a =>
               path("OK") {
                 complete(OK -> A(a.int + 1))

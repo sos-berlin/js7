@@ -7,7 +7,7 @@ import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import js7.common.http.CirceJsonSupport._
+import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}

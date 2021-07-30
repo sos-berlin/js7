@@ -73,7 +73,6 @@ object Dependencies
   val fastparse           = "com.lihaoyi" %% "fastparse" % fastparseVersion
 
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
-  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.28"
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
   //val guava               = "com.google.guava" % "guava" % "30.1.1-jre"

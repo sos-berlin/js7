@@ -28,7 +28,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
 import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
-import js7.common.akkahttp.CirceJsonOrYamlSupport.jsonOrYamlMarshaller
+import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
 import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import js7.common.akkahttp.HttpStatusCodeException
 import js7.common.akkahttp.StandardDirectives.routeTask
@@ -125,7 +125,7 @@ trait GenericEventRoute extends RouteProvider
 
     private def oneShot(eventWatch: EventWatch): Route =
       eventDirective(eventWatch.lastAddedEventId) { request =>
-        intelliJuseImport(jsonOrYamlMarshaller)
+        intelliJuseImport(jsonMarshaller)
         completeTask(
           eventWatch.when[Event](request, predicate = isRelevantEvent).map {
             case o: TearableEventSeq.Torn =>

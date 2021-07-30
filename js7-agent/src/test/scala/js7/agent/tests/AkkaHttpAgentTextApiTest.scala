@@ -11,6 +11,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.tests.AkkaHttpAgentTextApiTest._
 import js7.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
 import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
+import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString}
 import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal.SIGTERM
@@ -77,7 +78,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
   "Unauthorized when credentials are missing" in {
     autoClosing(newTextAgentClient(None)(_ => ())) { client =>
       interceptUnauthorized {
-        client.executeCommand("""{ TYPE: ShutDown, processSignal: SIGTERM }""")
+        client.executeCommand("""{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }""")
       }
     }
   }
@@ -96,14 +97,11 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
     val output = mutable.Buffer.empty[String]
     autoClosing(newTextAgentClient(Some(TestUserId -> Password))(output += _)) { client =>
       client.login() await 99.s
-      client.executeCommand("""{ TYPE: ShutDown, processSignal: SIGTERM }""")
+      client.executeCommand("""{ "TYPE": "ShutDown", "processSignal": "SIGTERM" }""")
       client.getApi("")
     }
-    assert(output.size == 3)
-    assert(output(0) == "TYPE: Accepted")
-    assert(output(1) == "---")
-    assert(output(2) contains "startedAt: ")
-    assert(output(2) contains "isTerminating: false")
+    assert(output.size == 2)
+    assert(output(0).parseJsonOrThrow == json"""{ "TYPE": "Accepted" }""")
   }
 
   "requireIsResponding" in {

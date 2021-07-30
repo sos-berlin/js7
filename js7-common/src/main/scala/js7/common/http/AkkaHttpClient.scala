@@ -40,10 +40,10 @@ import js7.base.utils.MonixAntiBlocking.executeOn
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
+import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.AkkaHttpClient._
 import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decompressResponse, encodeGzip}
-import js7.common.http.CirceJsonSupport._
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.StreamingSupport._
 import monix.eval.Task

@@ -6,7 +6,6 @@ import js7.base.data.ByteArray
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.common.http.CirceToYaml.yamlToJson
 import js7.core.item.VersionedItemReader._
 import js7.data.item.{SourceType, VersionedItem, VersionedItemId, VersionedItemId_, VersionedItemPath}
 
@@ -37,9 +36,6 @@ trait VersionedItemReader
     sourceType match {
       case SourceType.Json =>
         readJsonString(source.utf8String)
-
-      case SourceType.Yaml =>
-        yamlToJson(source.utf8String) flatMap convertFromJson
     }
 
   private[item] def itemPathCompanion: VersionedItemPath.Companion[ThisItemPath] = companion.Path

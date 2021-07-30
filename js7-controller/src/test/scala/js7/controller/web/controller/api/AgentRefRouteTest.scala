@@ -8,7 +8,7 @@ import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.http.CirceJsonSupport._
+import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.controller.web.controller.api.AgentRefRouteTest._
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}

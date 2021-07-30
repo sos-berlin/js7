@@ -20,7 +20,7 @@ import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonOrYamlSupport.{jsonOrYamlMarshaller, jsonUnmarshaller}
+import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`

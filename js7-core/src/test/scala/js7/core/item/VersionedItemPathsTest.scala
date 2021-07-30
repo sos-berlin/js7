@@ -22,8 +22,6 @@ final class VersionedItemPathsTest extends AnyFreeSpec {
       Right(WorkflowPath("folder/test") -> SourceType.Json))
     //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentPath), dir, dir / "folder/test.workflow.json") ==
     //  Right(WorkflowPath("folder/test") -> SourceType.Json))
-    //assert(fileToItemPathAndSourceType(Set(WorkflowPath, AgentPath), dir, dir / "folder/test.workflow.yaml") ==
-    //  Right(WorkflowPath("folder/test") -> SourceType.Yaml))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.txt") ==
       Right(WorkflowPath("folder/test") -> SourceType.Txt))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.job_chain.xml") ==

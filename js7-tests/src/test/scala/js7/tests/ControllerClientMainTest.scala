@@ -1,5 +1,6 @@
 package js7.tests
 
+import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -45,9 +46,8 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
           "?" :: "/order" :: Nil,
         output += _)
     }
-    assert(output(0) contains "version:")
-    assert(output(1) == "---")
-    assert(output(2) contains "count: 0")
+    assert(output(0) contains "\"version\":")
+    assert(output(1) contains "\"count\": 0")
   }
 
   "main with Controller URI only checks wether Controller is responding (it is not)" in {
@@ -67,14 +67,14 @@ final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentFor
   "ShutDown responds with Accepted" in {
     // May fail on slow computer if web server terminates before responding !!!
     val output = mutable.Buffer[String]()
-    val commandYaml = """{ TYPE: ShutDown }"""
+    val commandJson = json"""{ "TYPE": "ShutDown" }"""
     try {
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" ::
-          commandYaml :: Nil,
+          commandJson.compactPrint :: Nil,
         output += _)
-      assert(output == List("TYPE: Accepted"))
+      assert(output.map(_.parseJsonOrThrow) == List(json"""{ "TYPE": "Accepted" }"""))
     } catch {
       case t: akka.stream.StreamTcpException if t.getMessage contains "Connection reset by peer" =>
     }

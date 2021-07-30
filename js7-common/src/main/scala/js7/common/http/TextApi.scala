@@ -2,12 +2,11 @@ package js7.common.http
 
 import io.circe.Json
 import js7.base.auth.SessionToken
-import js7.base.problem.Checked.Ops
+import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
-import js7.common.http.CirceToYaml._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.Await
@@ -29,8 +28,8 @@ trait TextApi
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(
-      httpClient.post[Json, Json](uri = commandUri, yamlToJson(command).orThrow))
-    printer.doPrint(response.toYamlString)
+      httpClient.post[Json, Json](uri = commandUri, command.parseJsonOrThrow))
+    printer.doPrint(response.toPrettyString)
   }
 
   def getApi(uri: String): Unit = {
@@ -68,14 +67,14 @@ trait TextApi
     }
 
   protected object printer {
-    private var needYamlDocumentSeparator = false
+    //private var needYamlDocumentSeparator = false
 
     def doPrint(json: Json): Unit =
-      printer.doPrint(json.toYamlString)
+      printer.doPrint(json.toPrettyString)
 
     def doPrint(string: String): Unit = {
-      if (needYamlDocumentSeparator) print("---")
-      needYamlDocumentSeparator = true
+      //if (needYamlDocumentSeparator) print("---")
+      //needYamlDocumentSeparator = true
       print(string.trim)
     }
   }

@@ -10,7 +10,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionCommand
 import js7.base.session.SessionCommand.{Login, Logout}
-import js7.common.akkahttp.CirceJsonOrYamlSupport._
+import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.session.SessionRoute._
 import js7.data.problems.InvalidLoginProblem
