@@ -7,7 +7,7 @@ import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.workflow.Instruction
-import js7.data.workflow.instructions.{End, Execute, ExpectNotice, Fail, Finish, Fork, Gap, If, LockInstruction, PostNotice, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, Execute, ExpectNotice, Fail, Finish, Fork, ForkList, Gap, If, LockInstruction, PostNotice, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 
 final class InstructionExecutorService(val clock: WallClock)
@@ -16,7 +16,8 @@ final class InstructionExecutorService(val clock: WallClock)
   private val executeExecutor = new ExecuteExecutor(this)
   private val failExecutor = new FailExecutor(this)
   private val finishExecutor = new FinishExecutor(this)
-  private[workflow] val forkExecutor = new ForkExecutor(this)
+  private val forkExecutor = new ForkExecutor(this)
+  private val forkListExecutor = new ForkListExecutor(this)
   private val gapExecutor = new GapExecutor(this)
   private val ifExecutor = new IfExecutor(this)
   private val tryExecutor = new TryExecutor(this)
@@ -33,6 +34,7 @@ final class InstructionExecutorService(val clock: WallClock)
       case _: Fail => failExecutor
       case _: Finish => finishExecutor
       case _: Fork => forkExecutor
+      case _: ForkList => forkListExecutor
       case _: Gap => gapExecutor
       case _: If => ifExecutor
       case _: TryInstruction => tryExecutor

@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved}
-import js7.data.workflow.instructions.{End, Finish, Fork}
+import js7.data.workflow.instructions.{End, Finish, ForkInstruction}
 import js7.data.workflow.position.{BranchPath, InstructionNr}
 
 private[instructions] final class FinishExecutor(protected val service: InstructionExecutorService)
@@ -30,7 +30,7 @@ extends EventInstructionExecutor
                   // In a fork
                   val forkPosition = reverseInit.reverse % nr
                   for {
-                    fork <- state.instruction_[Fork](order.workflowId /: forkPosition)
+                    fork <- state.instruction_[ForkInstruction](order.workflowId /: forkPosition)
                     branchWorkflow <- fork.workflow(branchId)
                     endPos <- branchWorkflow.instructions.iterator.zipWithIndex
                       .collectFirst { case (_: End, index) => forkPosition / branchId % InstructionNr(index) }

@@ -28,7 +28,8 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
     parent
 
   def parent: Option[Position] =
-    splitBranchAndNr.map(_._1)
+    for (last <- branchPath.lastOption) yield
+      Position(branchPath.init, last.nr)
 
   def splitBranchAndNr: Option[(Position, BranchId, InstructionNr)] =
     for (last <- branchPath.lastOption) yield

@@ -15,6 +15,7 @@ object Instructions
     Subtype[Finish],
     Subtype[Fail],
     Subtype[Fork],
+    Subtype[ForkList],
     Subtype[If],
     Subtype[IfFailedGoto],
     Subtype[Prompt],

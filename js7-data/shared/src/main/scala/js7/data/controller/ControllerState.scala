@@ -279,8 +279,10 @@ with JournaledState[ControllerState]
             updatedControllerState <- event match {
               case event: OrderForked =>
                 Right(copy(
-                  idToOrder = updatedIdToOrder
-                    ++ previousOrder.newForkedOrders(event).map(childOrder => childOrder.id -> childOrder)))
+                  idToOrder = updatedIdToOrder ++
+                    previousOrder
+                      .newForkedOrders(event)
+                      .map(childOrder => childOrder.id -> childOrder)))
 
               case event: OrderJoined =>
                 previousOrder.state match {
@@ -289,7 +291,7 @@ with JournaledState[ControllerState]
                       idToOrder = updatedIdToOrder -- forked.childOrderIds))
 
                   case state =>
-                    Left(Problem(s"For event $event, $orderId must be in state Forked or Awaiting, not: $state"))
+                    Left(Problem(s"For event $event, $orderId must be in state Forked or Forked, not: $state"))
                 }
 
               case event: OrderLockEvent =>

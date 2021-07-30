@@ -28,7 +28,7 @@ final class FailExecutorTest extends AnyFreeSpec
       Carrot.id -> Carrot,
       Lemon.id -> Lemon)
 
-    override def childOrderEnded(order: Order[Order.State]) =
+    override def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]) =
       Set(Carrot.id, Lemon.id)(order.id)
 
     override def instruction(position: WorkflowPosition) =

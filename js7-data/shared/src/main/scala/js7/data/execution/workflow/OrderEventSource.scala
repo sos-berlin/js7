@@ -10,7 +10,7 @@ import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
-import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.execution.workflow.instructions.{ForkInstructionExecutor, InstructionExecutorService}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
@@ -176,7 +176,7 @@ final class OrderEventSource(state: StateView)
       order.forkPosition.flatMap(forkPosition =>
         state.instruction(order.workflowId /: forkPosition) match {
           case fork: Fork =>
-            Right(executorService.forkExecutor.tryJoinChildOrder(state, order, fork))
+            Right(ForkInstructionExecutor.tryJoinChildOrder(state, order, fork))
           case _ =>
             // Self-test
             Left(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))

@@ -107,10 +107,16 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
       asScala.children.map(JOrderForked.ForkedChild.fromScala).asJava
   }
   object JOrderForked {
-    final case class ForkedChild(branchId: ForkBranchId, orderId: OrderId)
+    final case class ForkedChild(
+      orderId: OrderId,
+      branchId: Optional[ForkBranchId],
+      arguments: java.util.Map[String, Value])
     object ForkedChild {
       def fromScala(child: OrderForked.Child) =
-        ForkedChild(ForkBranchId(child.branchId.string), child.orderId)
+        ForkedChild(
+          child.orderId,
+          child.branchId.map(o => ForkBranchId(o.string)).toJava,
+          child.arguments.asJava)
     }
   }
 

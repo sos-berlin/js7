@@ -15,7 +15,7 @@ import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
-import js7.data.value.{NamedValues, StringValue}
+import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.BranchId.Then
@@ -160,19 +160,38 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
-      "Forked" in {
+      "Forked (distinct branches)" in {
         testJson[State](Forked(List(
-          Forked.Child(Fork.Branch.Id("A"), OrderId("A/1")),
-          Forked.Child(Fork.Branch.Id("B"), OrderId("B/1")))),
+          Forked.Child(Fork.Branch.Id("A"), OrderId("A") | "1"),
+          Forked.Child(Fork.Branch.Id("B"), OrderId("B") | "2"))),
           json"""{
             "TYPE": "Forked",
               "children": [
                 {
-                  "branchId": "A",
-                  "orderId": "A/1"
+                  "orderId": "A|1",
+                  "branchId": "A"
                 }, {
-                  "branchId": "B",
-                  "orderId": "B/1"
+                  "orderId": "B|2",
+                  "branchId": "B"
+                }
+              ]
+            }""")
+      }
+
+      "Forked (ForkList) " in {
+        testJson[State](Forked(List(
+          Forked.Child(OrderId("A") | "1", Map("x" -> NumberValue(1))),
+          Forked.Child(OrderId("B") | "2", Map.empty[String, Value]))),
+          json"""{
+            "TYPE": "Forked",
+              "children": [
+                {
+                  "orderId": "A|1",
+                  "arguments": {
+                    "x": 1
+                  }
+                }, {
+                  "orderId": "B|2"
                 }
               ]
             }""")

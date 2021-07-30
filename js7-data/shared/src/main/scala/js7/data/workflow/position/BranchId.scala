@@ -24,6 +24,7 @@ object BranchId
   val Else = BranchId("else")
   val Try_ = BranchId("try")
   val Catch_ = BranchId("catch")
+  val ForkList = BranchId("fork")
   val ForkPrefix = "fork+"
   val Lock = BranchId("lock")
 

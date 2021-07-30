@@ -52,7 +52,8 @@ final case class OrderId private(string: String) extends GenericString
 
 object OrderId extends GenericString.NonEmpty[OrderId]
 {
-  val ChildSeparator = "|"
+  val ChildSeparatorChar = '|'
+  val ChildSeparator = ChildSeparatorChar.toString
   private val ChildSeparatorRegex = Regex.quote(ChildSeparator)
   private val ReservedCharacters = Set('|')
 
@@ -66,6 +67,13 @@ object OrderId extends GenericString.NonEmpty[OrderId]
   object ChildId extends GenericString.NonEmpty[ChildId] {
     override val name = "OrderId.Child"
 
-    protected def unchecked(string: String) = new ChildId(string)
+    protected def unchecked(string: String) =
+      new ChildId(string)
+
+    override def checked(string: String) =
+      if (string contains ChildSeparator)
+        Left(Problem.pure(s"Order ChildId must not contain '$ChildSeparator'"))
+      else
+        super.checked(string)
   }
 }

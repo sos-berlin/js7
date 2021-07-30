@@ -20,7 +20,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class Fork private(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None)
-extends Instruction
+extends ForkInstruction
 {
   // TODO Fork.checked(..): Checked[Fork]
   for (dups <- branches.duplicateKeys(_.id))
@@ -59,7 +59,7 @@ extends Instruction
   //def startAgents: Set[AgentPath] =
   //  branches.flatMap(_.workflow.determinedExecutingAgent).toSet
 
-  override def workflow(branchId: BranchId) = {
+  override def workflow(branchId: BranchId) =
     branchId match {
       case BranchId.Named(name) if name startsWith BranchId.ForkPrefix =>
         val id = Branch.Id(name drop BranchId.ForkPrefix.length)
@@ -68,7 +68,6 @@ extends Instruction
       case _ =>
         super.workflow(branchId)
     }
-  }
 
   override def branchWorkflows = branches.map(b => b.id.toBranchId -> b.workflow)
 
@@ -87,7 +86,10 @@ object Fork
     Right(new Fork(branches, sourcePos))
 
   def of(idAndWorkflows: (String, Workflow)*) =
-    new Fork(idAndWorkflows.map { case (id, workflow) => Branch(Branch.Id(id), workflow) } .toVector)
+    new Fork(
+      idAndWorkflows
+        .map { case (id, workflow) => Branch(Branch.Id(id), workflow) }
+        .toVector)
 
   private def validateBranch(branch: Branch): Checked[Branch] =
     if (branch.workflow.instructions.exists(o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))

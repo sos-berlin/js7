@@ -23,7 +23,8 @@ final class OrderEventHandler(
     } yield followUps
   }
 
-  private def handleEvent(previousOrder: Order[Order.State], orderId: OrderId, event: OrderEvent): Checked[Seq[FollowUp]] =
+  private def handleEvent(previousOrder: Order[Order.State], orderId: OrderId, event: OrderEvent)
+  : Checked[Seq[FollowUp]] =
     event match {
       case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome =>
         for {
@@ -33,16 +34,21 @@ final class OrderEventHandler(
           FollowUp.Processed(jobKey) :: Nil
 
       case event: OrderForked =>
-        Right(previousOrder.newForkedOrders(event) map FollowUp.AddChild.apply)
+        Right(previousOrder
+          .newForkedOrders(event)
+          .map(FollowUp.AddChild(_))
+          .toVector)
 
       case joined: OrderJoined =>
         previousOrder.state match {
           case o: Order.Forked =>
-            Right(o.childOrderIds map FollowUp.Delete.apply)
+            Right(o.children
+              .map(o => FollowUp.Delete(o.orderId)))
 
           case state =>
             Left(Problem(s"Event $joined, but Order is in state $state"))
         }
+
       case _: OrderDeleted =>
         Right(FollowUp.Delete(orderId) :: Nil)
 

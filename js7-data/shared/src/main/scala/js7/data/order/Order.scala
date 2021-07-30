@@ -20,7 +20,7 @@ import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId}
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 import scala.reflect.ClassTag
 
 /**
@@ -43,13 +43,14 @@ final case class Order[+S <: Order.State](
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode = id.hashCode
 
-  def newForkedOrders(event: OrderForked): Seq[Order[Ready]] =
-    for (child <- event.children) yield
+  def newForkedOrders(event: OrderForked): View[Order[Ready]] =
+    for (child <- event.children.view) yield
       Order(
         child.orderId,
-        workflowPosition.copy(position = workflowPosition.position / child.branchId.toBranchId % InstructionNr.First),
+        workflowPosition.copy(position = workflowPosition.position /
+          child.branchId.fold(BranchId.ForkList)(_.toBranchId) % InstructionNr.First),
         Ready,
-        arguments,
+        arguments ++ child.arguments,
         scheduledFor = scheduledFor,
         historicOutcomes = historicOutcomes,
         attachedState = attachedState,

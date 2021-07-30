@@ -160,7 +160,7 @@ extends HasCloser
     httpsPort: Option[Int] = None,
     items: Seq[InventoryItem] = items,
     name: String = controllerName,
-    scheduler: Option[Scheduler] = None)
+    scheduler: Option[Scheduler] = scheduler)
   : Task[RunningController]
   =
     Task.deferFuture(
@@ -195,7 +195,7 @@ extends HasCloser
 
   def runAgents[A](
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths,
-    scheduler: Option[Scheduler] = None)(
+    scheduler: Option[Scheduler] = scheduler)(
     body: IndexedSeq[RunningAgent] => A)
   : A =
     multipleAutoClosing(agents

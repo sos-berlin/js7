@@ -125,9 +125,27 @@ object OrderEvent
 
   final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
-    final case class Child(branchId: Fork.Branch.Id, orderId: OrderId)
+    final case class Child(
+      orderId: OrderId,
+      arguments: Map[String, Value],
+      branchId: Option[Fork.Branch.Id] = None)
+
     object Child {
-      implicit val jsonCodec = deriveCodec[Child]
+      def apply(branchId: Fork.Branch.Id, orderId: OrderId) =
+        new Child(orderId, Map.empty, Some(branchId))
+
+      implicit val jsonEncoder: Encoder.AsObject[Child] =
+        o => JsonObject(
+          "orderId" -> o.orderId.asJson,
+          "arguments" -> o.arguments.??.asJson,
+          "branchId" -> o.branchId.asJson)
+
+      implicit val jsonDecoder: Decoder[Child] =
+        c => for {
+          orderId <- c.get[OrderId]("orderId")
+          arguments <- c.getOrElse[Map[String, Value]]("arguments")(Map.empty)
+          branchId <- c.get[Option[Fork.Branch.Id]]("branchId")
+        } yield Child(orderId, arguments, branchId)
     }
   }
 
