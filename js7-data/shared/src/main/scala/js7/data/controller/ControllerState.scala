@@ -28,7 +28,8 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
+import js7.data.order.Order.ExpectingNotice
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.value.Value
@@ -316,7 +317,7 @@ with JournaledState[ControllerState]
 
                       case OrderNoticeExpected(noticeId) =>
                         boardState
-                          .addExpectingOrder(orderId, noticeId)
+                          .addExpectation(orderId, noticeId)
                           .map(boardState => copy(
                             idToOrder = updatedIdToOrder,
                             pathToBoardState = pathToBoardState + (boardPath -> boardState)))
@@ -326,6 +327,20 @@ with JournaledState[ControllerState]
                           idToOrder = updatedIdToOrder))
                     }
                   }
+
+              case _: OrderCancelled =>
+                previousOrder
+                  .ifState[ExpectingNotice].map(order =>
+                    for {
+                      boardState <- orderIdToBoardState(orderId)
+                      updatedBoardState <- boardState.removeExpectation(orderId, order.state.noticeId)
+                    } yield
+                      copy(
+                        idToOrder = updatedIdToOrder,
+                        pathToBoardState = pathToBoardState + (boardState.path -> updatedBoardState)))
+                  .getOrElse(
+                    Right(copy(
+                      idToOrder = updatedIdToOrder)))
 
               case OrderDeletionMarked =>
                 previousOrder.externalOrderKey match {

@@ -389,7 +389,7 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderLockAcquired     , _                 , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderLockQueued       , _                 , IsDetached             ) => _.isInstanceOf[WaitingForLock]
           case (_: OrderNoticePosted     , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Ready]
-          case (_: OrderNoticeExpected  , IsSuspended(false), IsDetached             ) => _.isInstanceOf[ExpectingNotice]
+          case (_: OrderNoticeExpected   , IsSuspended(false), IsDetached             ) => _.isInstanceOf[ExpectingNotice]
           case (_: OrderNoticeRead       , IsSuspended(false), IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderPrompted         , _                 , IsDetached             ) => _.isInstanceOf[Prompting]
           case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
@@ -414,6 +414,7 @@ final class OrderTest extends AnyFreeSpec
         cancelMarkedAllowed[ExpectingNotice] orElse
         suspendMarkedAllowed[ExpectingNotice] orElse {
           case (_: OrderNoticeRead, IsSuspended(false), IsDetached) => _.isInstanceOf[Ready]
+          case (_: OrderCancelled , _                 , IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken    , _                 , _         ) => _.isInstanceOf[Broken]
         })
     }

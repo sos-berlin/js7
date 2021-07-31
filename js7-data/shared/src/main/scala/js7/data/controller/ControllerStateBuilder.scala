@@ -20,7 +20,8 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
+import js7.data.order.Order.ExpectingNotice
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -87,7 +88,7 @@ with StateView
       order.state match {
         case Order.ExpectingNotice(noticeId) =>
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
-          _pathToBoardState += boardState.path -> boardState.addExpectingOrder(order.id, noticeId).orThrow
+          _pathToBoardState += boardState.path -> boardState.addExpectation(order.id, noticeId).orThrow
         case _ =>
       }
 
@@ -281,7 +282,7 @@ with StateView
 
             case OrderNoticeExpected(noticeId) =>
               pathToBoardState +=
-                boardPath -> boardState.addExpectingOrder(orderId, noticeId).orThrow
+                boardPath -> boardState.addExpectation(orderId, noticeId).orThrow
 
             case OrderNoticeRead =>
               //pathToBoardState += boardPath ->
@@ -292,8 +293,25 @@ with StateView
           _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
 
         case event: OrderCoreEvent =>
-          handleForkJoinEvent(orderId, event)
           val order = _idToOrder(orderId)
+          handleForkJoinEvent(order, event)
+
+          event match {
+            case _: OrderDeletionMarked | _: OrderDeleted =>
+
+            case _: OrderCancelled =>
+              for (order <- order.ifState[ExpectingNotice]) {
+                for {
+                  boardState <- orderIdToBoardState(orderId)
+                  updatedBoardState <- boardState.removeExpectation(orderId, order.state.noticeId)
+                } {
+                  _pathToBoardState(boardState.path) = updatedBoardState
+                }
+              }
+
+            case _ =>
+          }
+
           _idToOrder(orderId) = order.applyEvent(event).orThrow
 
           for (externalOrderKey <- order.externalOrderKey) {
@@ -331,20 +349,20 @@ with StateView
         pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, added.signedString))
     }
 
-  private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
+  private def handleForkJoinEvent(order: Order[Order.State], event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
     event match {
       case event: OrderForked =>
-        for (childOrder <- _idToOrder(orderId).newForkedOrders(event)) {
+        for (childOrder <- order.newForkedOrders(event)) {
           _idToOrder += childOrder.id -> childOrder
         }
 
       case event: OrderJoined =>
-        _idToOrder(orderId).state match {
+        order.state match {
           case forked: Order.Forked =>
             _idToOrder --= forked.childOrderIds
 
           case state =>
-            sys.error(s"Event $event recovered, but $orderId is in state $state")
+            sys.error(s"Event $event recovered, but ${order.id} is in state $state")
         }
 
       case _ =>

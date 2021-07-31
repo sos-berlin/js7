@@ -4,9 +4,8 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Big
-import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.order.OrderId
-import js7.data.value.{ObjectValue, StringValue, Value}
+import js7.data.value.{StringValue, Value}
 
 sealed trait NoticePlace
 {
@@ -52,6 +51,9 @@ object Notice
 
 final case class NoticeExpectation(id: NoticeId, orderIds: Seq[OrderId])
 extends NoticePlace with Big
+{
+  def isEmpty = orderIds.isEmpty
+}
 
 object NoticeExpectation
 {

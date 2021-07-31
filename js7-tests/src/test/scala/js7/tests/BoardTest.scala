@@ -218,6 +218,39 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     eventWatch.await[OrderFinished](_.key == expectingOrderId)
   }
 
+  "Order.ExpectingNotice is suspendible" in {
+    val qualifier = "2222-10-10"
+    val postingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-POSTING")
+    val expectingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-EXPECTING")
+    controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
+      .await(99.s).orThrow
+    eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
+
+    controllerApi.executeCommand(SuspendOrders(Seq(expectingOrderId))).await(99.s).orThrow
+    eventWatch.await[OrderSuspensionMarked](_.key == expectingOrderId)
+
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.addOrder(FreshOrder(postingOrderId, postingWorkflow.path))
+      .await(99.s).orThrow
+    eventWatch.await[OrderNoticeRead](_.key == expectingOrderId)
+    eventWatch.await[OrderMoved](_.key == expectingOrderId, after = eventId)
+    eventWatch.await[OrderSuspended](_.key == expectingOrderId, after = eventId)
+
+    controllerApi.executeCommand(ResumeOrder(expectingOrderId)).await(99.s).orThrow
+    eventWatch.await[OrderFinished](_.key == expectingOrderId)
+  }
+
+  "Order.ExpectingNotice is cancelable" in {
+    val qualifier = "2222-11-11"
+    val expectingOrderId = OrderId(s"#$qualifier#CANCELABLE-EXPECTING")
+    controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
+      .await(99.s).orThrow
+    eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
+
+    controllerApi.executeCommand(CancelOrders(Seq(expectingOrderId))).await(99.s).orThrow
+    eventWatch.await[OrderCancelled](_.key == expectingOrderId)
+  }
+
   "Update Board" in {
     val boardState = controller.controllerState.await(99.s).pathToBoardState(board.path)
 

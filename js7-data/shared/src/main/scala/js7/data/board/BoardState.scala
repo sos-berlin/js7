@@ -20,7 +20,7 @@ final case class BoardState(
     copy(
       idToNotice = idToNotice + (notice.id -> notice))
 
-  def addExpectingOrder(orderId: OrderId, noticeId: NoticeId): Checked[BoardState] =
+  def addExpectation(orderId: OrderId, noticeId: NoticeId): Checked[BoardState] =
     idToNotice.get(noticeId) match {
       case None =>
         Right(copy(
@@ -34,8 +34,26 @@ final case class BoardState(
               orderIds = expectation.orderIds.view.appended(orderId).toVector))))
 
       case Some(_: Notice) =>
-        Left(Problem("BoardState.addExpectingOrder despite notice has been posted"))
+        Left(Problem("BoardState.addExpectation despite notice has been posted"))
     }
+
+  def removeExpectation(orderId: OrderId, noticeId: NoticeId): Checked[BoardState] =
+    Right(
+      idToNotice.get(noticeId) match {
+        case Some(expectation: NoticeExpectation) =>
+          val updatedExpectation = expectation.orderIds.filterNot(_ == orderId)
+          if (updatedExpectation.isEmpty)
+            copy(
+              idToNotice = idToNotice - noticeId)
+          else
+            copy(
+              idToNotice = idToNotice +
+                (noticeId -> expectation.copy(
+                  orderIds = expectation.orderIds.filterNot(_ == orderId))))
+
+        case _ =>
+          this
+      })
 
   def expectingOrders(noticeId: NoticeId): Seq[OrderId] =
     idToNotice.get(noticeId) match {

@@ -479,6 +479,7 @@ final case class Order[+S <: Order.State](
       (isState[IsFreshOrReady] ||
        isState[ProcessingKilled] ||
        isState[Prompting] ||
+       isState[ExpectingNotice] ||
        isState[FailedWhileFresh] ||
        isState[DelayedAfterError] ||
        isState[Failed] ||
