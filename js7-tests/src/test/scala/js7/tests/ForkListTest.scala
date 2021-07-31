@@ -325,7 +325,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val freshOrder = FreshOrder(
       orderId,
       workflowId.path,
-      Map("children" -> ListValue(children.map(StringValue(_)))),
+      Map("myChildren" -> ListValue(children.map(StringValue(_)))),
       deleteWhenTerminated = true)
     controllerApi.addOrder(freshOrder).await(99.s).orThrow
 
@@ -439,7 +439,7 @@ object ForkListTest
     WorkflowPath("EXAMPLE") ~ "INITIAL",
     Vector(
       ForkList(
-          expr("$children"),
+          expr("$myChildren"),
           exprFunction("(x) => { childId: $x }"),
           Workflow.of(
             Execute(WorkflowJob(
