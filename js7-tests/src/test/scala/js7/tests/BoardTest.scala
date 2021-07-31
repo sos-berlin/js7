@@ -11,12 +11,12 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
-import js7.data.board.{Board, BoardPath, Notice, NoticeId}
-import js7.data.controller.ControllerCommand.DeleteNotice
+import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
+import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, ResumeOrder, SuspendOrders}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
-import js7.data.item.VersionId
+import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotice, PostNotice}
@@ -53,7 +53,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     @Provides @Singleton def provideAlarmClock(): AlarmClock = alarmClock
   }
 
-  "Post a notice, then read it" in {
+  "Post a notice, then expect it" in {
     val qualifier = nextQualifier()
     val notice = Notice(NoticeId(qualifier), endOfLife)
 
@@ -65,6 +65,11 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
+    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+      BoardState(
+        board.withRevision(Some(ItemRevision(0))),
+        Map(notice.id -> notice)))
+
     val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#EXPECTING"), expectingWorkflow.path))
     assert(readerEvents.map(_.value) == Seq(
       OrderAdded(expectingWorkflow.id),
@@ -72,6 +77,11 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderNoticeRead,
       OrderMoved(Position(1)),
       OrderFinished))
+
+    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+      BoardState(
+        board.withRevision(Some(ItemRevision(0))),
+        Map(notice.id -> notice)))
   }
 
   "Expect a notice, then post it" in {
@@ -92,6 +102,13 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
+    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+      BoardState(
+        board.withRevision(Some(ItemRevision(0))),
+        Map(
+          NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
+          notice.id -> notice)))
+
     controller.eventWatch.await[OrderFinished](_.key == expectingOrderId)
     val expectingEvents = controller.eventWatch.keyedEvents[OrderCoreEvent](expectingOrderId)
     assert(expectingEvents == Seq(
@@ -101,6 +118,13 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderNoticeRead,
       OrderMoved(Position(1)),
       OrderFinished))
+
+    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+      BoardState(
+        board.withRevision(Some(ItemRevision(0))),
+        Map(
+          NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
+          notice.id -> notice)))
   }
 
   "Detach order when at Agent" in {
@@ -195,8 +219,14 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Update Board" in {
+    val boardState = controller.controllerState.await(99.s).pathToBoardState(board.path)
+
     val updatedBoard = board.copy(postOrderToNoticeId = expr("$jsOrderId"))
     controllerApi.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
+
+    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+      boardState.copy(
+        board = updatedBoard.withRevision(Some(ItemRevision(1)))))
   }
 
   "Delete Board" in {
@@ -221,6 +251,8 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
         RemoveVersioned(postingAgentWorkflow.path),
         RemoveVersioned(expectingAgentWorkflow.path)))
       .await(99.s).orThrow
+
+    assert(!controller.controllerState.await(99.s).pathToBoardState.contains(board.path))
   }
 }
 
