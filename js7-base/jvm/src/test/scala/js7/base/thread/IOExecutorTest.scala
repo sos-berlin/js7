@@ -1,8 +1,8 @@
 package js7.base.thread
 
 import js7.base.thread.Futures.implicits._
+import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
-import js7.base.time.ScalaTime._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -12,8 +12,6 @@ import scala.concurrent.duration._
   */
 final class IOExecutorTest extends AnyFreeSpec
 {
-  private implicit val iox = new IOExecutor(name = "IOExecutorTest", 1.s)
-
   "Success" in {
     assert(ioFuture(7).await(10.seconds) == 7)
   }
@@ -25,7 +23,7 @@ final class IOExecutorTest extends AnyFreeSpec
 
   "Thread name" in {
     ioFuture {
-      assert(Thread.currentThread.getName startsWith "IOExecutorTest ")
+      assert(Thread.currentThread.getName startsWith "JS7 global I/O ")
     } await 10.seconds
   }
 }

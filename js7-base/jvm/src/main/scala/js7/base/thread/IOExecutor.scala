@@ -11,7 +11,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import monix.eval.Task
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.{Scheduler, UncaughtExceptionReporter}
-import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -22,9 +21,6 @@ import scala.util.control.NonFatal
   */
 final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
 {
-  def this(name: String, keepAlive: FiniteDuration = 10.s) =
-    this(newUnlimitedThreadPool(name = name, keepAlive = keepAlive))
-
   private val myExecutionContext = ExecutionContext.fromExecutor(
     threadPool,
     t => logger.error(t.toStringWithCauses, t))
@@ -33,16 +29,13 @@ final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
 
   def execute(runnable: Runnable) = myExecutionContext.execute(runnable)
 
-  def shutdown(): Unit =
-    threadPool.shutdown()
-
   implicit def executionContext: ExecutionContext = myExecutionContext
 }
 
 object IOExecutor
 {
   private val logger = Logger[this.type]
-  val globalIOX = new IOExecutor(name = "JS7 global I/O")
+  val globalIOX = new IOExecutor(newUnlimitedThreadPool(name = "JS7 global I/O", keepAlive = 10.s))
 
   object Implicits {
     implicit val globalIOX = IOExecutor.globalIOX

@@ -52,9 +52,9 @@ extends AbstractModule
 
   @Provides @Singleton
   def ioExecutor(closer: Closer, conf: AgentConfiguration, config: Config): IOExecutor = {
-    val result = new IOExecutor(newUnlimitedThreadPool(config, name = conf.name + " I/O"))
-    closer.onClose { result.shutdown() }
-    result
+    val threadPool = newUnlimitedThreadPool(config, name = conf.name + " I/O")
+    closer.onClose { threadPool.shutdown() }
+    new IOExecutor(threadPool)
   }
 
   @Provides @Singleton
