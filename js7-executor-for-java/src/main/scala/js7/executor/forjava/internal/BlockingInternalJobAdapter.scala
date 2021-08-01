@@ -1,6 +1,7 @@
 package js7.executor.forjava.internal
 
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.JobContext
@@ -43,6 +44,9 @@ extends InternalJob
           orderProcessTask.flatMap(orderProcess =>
             Task(orderProcess.cancel(immediately))
               .executeOn(jobContext.blockingJobScheduler))
+
+        override def toString =
+          s"BlockingINternalJob(${jobContext.implementationClass.scalaName}) OrderProcess"
       }
     }
   }

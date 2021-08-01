@@ -136,6 +136,8 @@ extends PathExecutable
   assert(PathExecutable.isAbsolute(path))
 
   def isAbsolute = true
+
+  override def toString = s"AbsolutePathExecutable($path)"
 }
 object AbsolutePathExecutable {
   def checked(
@@ -166,6 +168,8 @@ extends PathExecutable
 
   def toFile(directory: Path): Path =
     directory resolve path.stripPrefix("/")
+
+  override def toString = s"RelativePathExecutable($path)"
 }
 object RelativePathExecutable {
   def checked(
@@ -191,6 +195,8 @@ final case class CommandLineExecutable(
   returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default)
 extends ProcessExecutable {
   def v1Compatible = false
+
+  override def toString = s"CommandLineExecutable($commandLineExpression)"
 }
 object CommandLineExecutable
 {
@@ -239,6 +245,8 @@ object ShellScriptExecutable
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
     } yield ShellScriptExecutable(script, env, login, returnCodeMeaning, v1Compatible)
+
+  override def toString = "ShellScriptExecutable"
 }
 
 final case class InternalExecutable(
@@ -248,6 +256,9 @@ final case class InternalExecutable(
   /** Argument expressions evaluated for each `processOrder`. */
   arguments: Map[String, Expression] = Map.empty)
 extends Executable
+{
+  override def toString = s"InternalExecutable($className)"
+}
 
 object Executable
 {
