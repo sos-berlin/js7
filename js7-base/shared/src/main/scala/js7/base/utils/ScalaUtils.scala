@@ -47,7 +47,7 @@ object ScalaUtils
       def rightAs(unit: Unit)(implicit F: Functor[F]): F[Either[L, Unit]] =
         F.map(underlying) {
           case Right(_) => RightUnit
-          case _ => underlying.asInstanceOf[Either[L, Unit]]
+          case o => o.asInstanceOf[Either[L, Unit]]
         }
 
       def mapt[R1](f: R => R1)(implicit F: Functor[F]): F[Either[L, R1]] =

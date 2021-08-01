@@ -27,6 +27,7 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert((None: O).rightAs(true) == None)
       assert((Some(Left("A")): O).rightAs(true) == Some(Left("A")))
       assert((Some(Right(7)): O).rightAs(true) == Some(Right(true)))
+      assert((Some(Left("X")): O).rightAs(()) == Some(Left("X")))  // Optimized
       assert((Some(Right(7)): O).rightAs(()).get eq RightUnit)  // Optimized
     }
 
