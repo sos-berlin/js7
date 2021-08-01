@@ -54,8 +54,7 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
             WorkflowJob(AgentPath("AGENT"), executable),
             workflow,
             ControllerId("CONTROLLER"),
-            sigkillDelay = 0.s,
-            timeout = None),
+            sigkillDelay = 0.s),
           JobExecutorConf(u, u, u, None, scriptInjectionAllowed = true, globalIOX, blockingJobScheduler),
           _ => Left(Problem("No JobResource here"))
         ).orThrow.asInstanceOf[InternalJobExecutor]

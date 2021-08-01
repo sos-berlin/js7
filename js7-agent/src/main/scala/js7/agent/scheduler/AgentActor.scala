@@ -13,7 +13,6 @@ import js7.agent.data.event.AgentEvent.AgentCreated
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.{AgentState, AgentTermination}
 import js7.agent.scheduler.AgentActor._
-import js7.agent.scheduler.job.JobActor
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.auth.UserId
 import js7.base.generic.Completed
@@ -130,11 +129,6 @@ extends Actor with Stash with SimpleStateActor
         sender() ! Left(AgentNotCreatedProblem)
       } else {
         eventWatch.whenStarted.map(Right.apply) pipeTo sender()
-      }
-
-    case msg: JobActor.Output.ReadyForOrder =>
-      for (actor <- agentOrderKeeperActor) {
-        actor.forward(msg)
       }
 
     case Terminated(a) if agentOrderKeeperActor contains a =>

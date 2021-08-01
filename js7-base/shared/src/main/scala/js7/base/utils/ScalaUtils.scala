@@ -414,6 +414,12 @@ object ScalaUtils
           case _ => either.asInstanceOf[Either[L, Unit]]
         }
 
+      //def flatMapLeft[L1](f: L => Either[L1, R]): Either[L1, R] =
+      //  either match {
+      //    case Left(o) => f(o)
+      //    case o => o.asInstanceOf[Either[L1, R]]
+      //  }
+
       /** Useful for `Checked` to combine both `Problem`s. */
       def combineLeft[R1](other: Either[L, R1])(implicit L: Semigroup[L]): Either[L, (R, R1)] =
         (either, other) match {

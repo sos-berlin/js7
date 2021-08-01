@@ -38,13 +38,15 @@ trait OrderProcess
 
 object OrderProcess
 {
-  def apply(run: Task[Outcome.Completed]) =
+  def apply(run: Task[Outcome.Completed]): OrderProcess =
     new Simple(run)
 
-  final class Simple(task: Task[Outcome.Completed])
+  private final class Simple(task: Task[Outcome.Completed])
   extends OrderProcess
   {
     def run = task.start
+
+    override def toString = "OrderProcess.Simple"
   }
 
   private object CanceledException extends NoStackTrace

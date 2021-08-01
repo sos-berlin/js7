@@ -63,7 +63,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
 
-    // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobActorStarvationTest)
+    // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobDriverStarvationTest)
     aFile := ""
     controller.eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("A"))
     controller.eventWatch.await[OrderStarted](_.key == aOrderId)

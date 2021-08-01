@@ -1,11 +1,10 @@
 package js7.agent.scheduler.order
 
-import akka.actor.ActorRef.noSender
-import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status, Terminated}
+import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
 import com.typesafe.config.Config
 import js7.agent.data.AgentState
-import js7.agent.scheduler.job.JobActor
+import js7.agent.scheduler.job.JobDriver
 import js7.agent.scheduler.order.OrderActor._
 import js7.base.configutils.Configs.RichConfig
 import js7.base.generic.{Accepted, Completed}
@@ -14,7 +13,6 @@ import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.Ops
-import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
@@ -108,7 +106,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def startable: Receive =
     receiveEvent() orElse {
-      case Input.StartProcessing(jobActor, workflowJob, defaultArguments) =>
+      case Input.StartProcessing(jobDriver, workflowJob, defaultArguments) =>
         if (order.isProcessable) {
           val out, err = PublishSubject[String]()
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
@@ -128,19 +126,23 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           val stdObservers = new StdObservers(out, err, charBufferSize = charBufferSize,
             keepLastErrLine = workflowJob.failOnErrWritten)
           become("processing")(
-            processing(jobActor, stdObservers, outErrCompleted,
+            processing(jobDriver, stdObservers, outErrCompleted,
               () => (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) ?
                 s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
-          context.watch(jobActor)
           // OrderStarted automatically with first OrderProcessingStarted
           val orderStarted = order.isState[Order.Fresh] thenList OrderStarted
           persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
             update(events, updatedState)
-            jobActor ! JobActor.Input.ProcessOrder(
-              order.castState[Order.Processing],
-              defaultArguments,
-              stdObservers)
-            maybeKillOrder(jobActor)
+            jobDriver
+              .processOrder(
+                order.castState[Order.Processing],
+                defaultArguments,
+                stdObservers)
+              .tapEval(outcome => Task {
+                self ! Internal.OrderProcessed(orderId, outcome)
+              })
+              .runAsyncAndForget
+            maybeKillOrder(Some(jobDriver))
           }
         }
 
@@ -151,13 +153,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def failedOrBroken: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-  private def processing(jobActor: ActorRef, stdObservers: StdObservers, outerrCompleted: Future[Unit],
+  private def processing(jobDriver: JobDriver, stdObservers: StdObservers, outerrCompleted: Future[Unit],
     stdoutStderrStatistics: () => Option[String])
   : Receive =
-    receiveCommand orElse receiveEvent(jobActor) orElse {
-      case JobActor.Response.OrderProcessed(`orderId`, outcome) =>
-        context.unwatch(jobActor)
-        stdObservers.stop/*may already be stopped by OrderProcess/JobActor*/
+    receiveCommand orElse receiveEvent(Some(jobDriver)) orElse {
+      case Internal.OrderProcessed(`orderId`, outcome) =>
+        stdObservers.stop/*may already be stopped by OrderProcess/JobDriver*/
           .flatMap(_ => Task.fromFuture(outerrCompleted))
           .runToFuture
           .onComplete { _ =>
@@ -167,19 +168,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       case Internal.OutErrCompleted(outcome) =>
         finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)
 
-      case Terminated(`jobActor`) =>
-        // May occur when JobActor is terminated while receiving JobActor.Command.ProcessOrder
-        if (!terminating) {
-          val problem = Problem.pure(s"Job Actor '${jobActor.path}' terminated unexpectedly")
-          logger.error(problem.toString)
-          finishProcessing(OrderProcessed(Outcome.Disrupted(problem)), stdoutStderrStatistics)
-        } else {
-          context.stop(self)
-        }
-
       case Input.Terminate(signal) =>
         terminating = true
-        jobActor ! JobActor.Input.KillProcess(orderId, signal)
+        for (signal <- signal) {
+          jobDriver.killOrder(orderId, signal)
+            .runAsyncAndForget
+        }
     }
 
   private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () => Option[String]): Unit = {
@@ -193,11 +187,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def forked: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-  private def receiveEvent(jobActor: ActorRef = noSender): Receive = {
-    case Command.HandleEvent(event) => handleEvent(event, jobActor) pipeTo sender()
+  private def receiveEvent(jobDriver: Option[JobDriver] = None): Receive = {
+    case Command.HandleEvent(event) => handleEvent(event, jobDriver) pipeTo sender()
   }
 
-  private def handleEvent(event: OrderCoreEvent, jobActor: ActorRef = noSender): Future[Completed] =
+  private def handleEvent(event: OrderCoreEvent, jobDriver: Option[JobDriver] = None)
+  : Future[Completed] =
     order.applyEvent(event) match {
       case Left(problem) =>
         logger.error(problem.toString)
@@ -214,29 +209,33 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               context.stop(self)
             } else
               event match {
-                case OrderKillingMarked(Some(kill)) => maybeKillOrder(kill, jobActor)
+                case OrderKillingMarked(Some(kill)) => maybeKillOrder(kill, jobDriver)
                 case _ =>
               }
             Completed
           }
     }
 
-  private def maybeKillOrder(jobActor: ActorRef): Unit =
+  private def maybeKillOrder(jobDriver: Option[JobDriver]): Unit =
     order.mark match {
       case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
-        maybeKillOrder(kill, jobActor)
+        maybeKillOrder(kill, jobDriver)
 
       case Some(OrderMark.Suspending(SuspensionMode(Some(kill)))) =>
-        maybeKillOrder(kill, jobActor)
+        maybeKillOrder(kill, jobDriver)
 
       case _ =>
     }
 
-  private def maybeKillOrder(kill: CancellationMode.Kill, jobActor: ActorRef): Unit =
-    if (jobActor != noSender && kill.workflowPosition.forall(_ == order.workflowPosition)) {
-      jobActor ! JobActor.Input.KillProcess(
-        order.id,
-        Some(if (kill.immediately) SIGKILL else SIGTERM))
+  private def maybeKillOrder(kill: CancellationMode.Kill, jobDriver: Option[JobDriver]): Unit =
+    for (jobDriver <- jobDriver) {
+      if (kill.workflowPosition.forall(_ == order.workflowPosition)) {
+        jobDriver
+          .killOrder(
+            order.id,
+            if (kill.immediately) SIGKILL else SIGTERM)
+          .runAsyncAndForget
+      }
     }
 
   private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit = {
@@ -258,7 +257,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case _: Order.Broken     => become("broken")(failedOrBroken)
         case Order.WaitingForLock | _: Order.ExpectingNotice | _: Order.Prompting |
              Order.Finished | Order.Cancelled | Order.Deleted =>
-          sys.error(s"Order is expected to be at the Controller, not on Agent: ${order.state}")   // A Finished order must be at Controller
+          sys.error(s"Order is expected to be at the Controller, not at Agent: ${order.state}")   // A Finished order must be at Controller
       }
     }
   }
@@ -342,6 +341,7 @@ private[order] object OrderActor
     Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf, controllerId) }
 
   private object Internal {
+    final case class OrderProcessed(orderId: OrderId, outcome: Outcome)
     final case class OutErrCompleted(outcome: Outcome)
   }
 
@@ -357,7 +357,7 @@ private[order] object OrderActor
     final case class AddChild(order: Order[Order.Ready]) extends Input
 
     final case class StartProcessing(
-      jobActor: ActorRef,
+      jobDriver: JobDriver,
       workflowJob: WorkflowJob,
       defaultArguments: Map[String, Expression])
     extends Input

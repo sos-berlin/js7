@@ -10,8 +10,7 @@ final case class JobConf(
   workflowJob: WorkflowJob,
   workflow: Workflow,
   controllerId: ControllerId,
-  sigkillDelay: FiniteDuration,
-  timeout: Option[FiniteDuration])
+  sigkillDelay: FiniteDuration)
 {
   val jobResourcePaths: Seq[JobResourcePath] =
     (workflowJob.referencedJobResourcePaths ++ workflow.jobResourcePaths)

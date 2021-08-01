@@ -10,13 +10,13 @@ import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.AgentReady
-import js7.agent.scheduler.job.JobActor
+import js7.agent.scheduler.job.JobDriver
 import js7.agent.scheduler.order.AgentOrderKeeper._
-import js7.agent.scheduler.order.JobRegister.JobEntry
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.ops._
 import js7.base.problem.Checked.Ops
@@ -25,8 +25,9 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
+import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.SetOnce
+import js7.base.utils.{DuplicateKeyException, SetOnce}
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.utils.Exceptions.wrapException
@@ -34,22 +35,26 @@ import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
+import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.SignableItem
-import js7.data.job.{JobConf, JobResource, JobResourcePath}
-import js7.data.order.OrderEvent.{OrderBroken, OrderDetached}
+import js7.data.job.{JobConf, JobKey, JobResource, JobResourcePath}
+import js7.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
+import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
+import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
@@ -86,7 +91,7 @@ with Stash
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty
-  private val jobRegister = new JobRegister
+  private val jobRegister = mutable.Map.empty[JobKey, JobEntry]
   private val workflowRegister = new WorkflowRegister
   private val fileWatchManager = new FileWatchManager(ownAgentPath, persistence, conf.config)
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
@@ -149,7 +154,12 @@ with Stash
           if (orderRegister.isEmpty) {
             if (!terminatingJobs) {
               terminatingJobs = true
-              for (a <- jobRegister.values) a.actor ! JobActor.Input.Terminate()
+              Task
+                .parTraverseUnordered(jobRegister.values)(jobEntry =>
+                  jobEntry.jobDriver.stop(SIGKILL)
+                    .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
+                    .map(_ => self ! Internal.JobDriverStopped(jobEntry)))
+                .runAsyncAndForget
             }
             if (jobRegister.isEmpty && !terminatingJournal) {
               terminatingJournal = true
@@ -221,7 +231,7 @@ with Stash
         for (workflow <- state.idToWorkflow.values)
           wrapException(s"Error while recovering ${workflow.path}") {
             workflowRegister.recover(workflow)
-            startJobActors(workflow)
+            createJobDrivers(workflow)
           }
 
         for (recoveredOrder <- state.idToOrder.values)
@@ -259,14 +269,24 @@ with Stash
 
     case OrderActor.Output.OrderChanged(order, events) if orderRegister contains order.id =>
       if (!shuttingDown) {
-        for (event <- events) handleOrderEvent(order, event)
+        var _jobEntry: JobEntry = null
+        for (event <- events) {
+          event match {
+            case _: OrderProcessed =>
+              orderRegister.get(order.id)
+                .flatMap(orderEntry =>
+                  orderEntry.workflow.positionToJobKey(orderEntry.order.position).toOption)
+                .flatMap(jobRegister.get)
+                .foreach { jobEntry =>
+                  jobEntry.taskCount -= 1
+                  _jobEntry = jobEntry
+                }
+            case _ =>
+          }
+          handleOrderEvent(order, event)
+        }
+        if (_jobEntry != null) tryStartProcessing(_jobEntry)
         proceedWithOrder(order.id)
-      }
-
-    case JobActor.Output.ReadyForOrder(n) if jobRegister contains sender() =>
-      if (!shuttingDown) {
-        jobRegister(sender()).waitingForOrders = n
-        tryStartProcessing(jobRegister(sender()))
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId =>
@@ -323,7 +343,7 @@ with Stash
                 logger.trace("Reduced workflow: " + workflow.asJson.compactPrint)
                 persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
                   workflowRegister.handleEvent(stampedEvent.value)
-                  startJobActors(workflow)
+                  createJobDrivers(workflow)
                   Right(AgentCommand.Response.Accepted)
                 }
 
@@ -454,17 +474,16 @@ with Stash
         }
   }
 
-  private def startJobActors(workflow: Workflow): Unit =
+  private def createJobDrivers(workflow: Workflow): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
       if (job.agentPath == ownAgentPath) {
-        val jobConf = JobConf(
-          jobKey, job, workflow, controllerId,
-          sigkillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay,
-          timeout = job.timeout)
-        val jobActor = watch(actorOf(
-          JobActor.props(jobConf, executorConf, id => persistence.currentState.pathToJobResource.checked(id)),
-          uniqueActorName(encodeAsActorName("Job:" + jobKey.name))))
-        jobRegister.insert(jobKey, job, jobActor)
+        val jobDriver = new JobDriver(
+          JobConf(
+            jobKey, job, workflow, controllerId,
+            sigkillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay),
+          executorConf,
+          id => persistence.currentState.pathToJobResource.checked(id))
+        jobRegister.insert(jobKey -> new JobEntry(jobKey, job, jobDriver))
       }
     }
 
@@ -564,15 +583,11 @@ with Stash
     // TODO Make this more functional!
     if (!jobEntry.queue.isKnown(orderId)) {
       jobEntry.queue += orderId
-      if (jobEntry.waitingForOrders > 0) {
-        tryStartProcessing(jobEntry)
-      } else {
-        jobEntry.actor ! JobActor.Input.OrderAvailable
-      }
+      tryStartProcessing(jobEntry)
     }
 
   private def tryStartProcessing(jobEntry: JobEntry): Unit =
-    while (jobEntry.waitingForOrders > 0 && jobEntry.queue.nonEmpty) {
+    while (jobEntry.acceptsOrder && jobEntry.queue.nonEmpty) {
       for (orderId <- jobEntry.queue.dequeue()) {
         orderRegister.get(orderId) match {
           case None =>
@@ -580,7 +595,6 @@ with Stash
 
           case Some(orderEntry) =>
             startProcessing(orderEntry, jobEntry)
-            jobEntry.waitingForOrders -= 1
         }
       }
     }
@@ -590,8 +604,9 @@ with Stash
       case o: Execute.Named => o.defaultArguments
       case _ => Map.empty[String, Expression]
     }
+    jobEntry.taskCount += 1
     orderEntry.actor !
-      OrderActor.Input.StartProcessing(jobEntry.actor, jobEntry.workflowJob, defaultArguments)
+      OrderActor.Input.StartProcessing(jobEntry.jobDriver, jobEntry.workflowJob, defaultArguments)
   }
 
   private def deleteOrder(orderId: OrderId): Unit =
@@ -602,14 +617,10 @@ with Stash
 
   override def unhandled(message: Any) =
     message match {
-      case Terminated(actorRef) if jobRegister contains actorRef =>
-        val jobKey = jobRegister.actorToKey(actorRef)
-        if (shuttingDown) {
-          logger.trace(s"Actor '$jobKey' stopped")
-        } else {
-          logger.error(s"Actor '$jobKey' stopped unexpectedly")
-        }
-        jobRegister.onActorTerminated(actorRef)
+      case Internal.JobDriverStopped(jobEntry) =>
+        import jobEntry.jobKey
+        logger.trace(s"JobDriver '$jobKey' stopped")
+        jobRegister -= jobKey
         shutdown.continue()
 
       case Terminated(actorRef) if orderRegister contains actorRef =>
@@ -648,6 +659,55 @@ object AgentOrderKeeper {
     final case class Recover(recovered: Recovered[AgentState])
     final case class JournalIsReady(agentState: AgentState)
     final case class Due(orderId: OrderId)
+    final case class JobDriverStopped(jobEntry: JobEntry)
     object StillTerminating extends DeadLetterSuppression
+  }
+
+  private final class JobEntry(
+    val jobKey: JobKey,
+    val workflowJob: WorkflowJob,
+    val jobDriver: JobDriver)
+  {
+    val queue = new OrderQueue
+    var taskCount = 0
+
+    def acceptsOrder = taskCount < workflowJob.parallelism
+  }
+
+  final class OrderQueue private[order] {
+    private val queue = mutable.ListBuffer.empty[OrderId]
+    private val queueSet = mutable.Set.empty[OrderId]
+    private val inProcess = mutable.Set.empty[OrderId]
+
+    def isEmpty = queue.isEmpty
+    def nonEmpty = !isEmpty
+
+    def isKnown(orderId: OrderId) =
+      queueSet.contains(orderId) || inProcess.contains(orderId)
+
+    def dequeue(): Option[OrderId] =
+      queue.nonEmpty option {
+        val orderId = queue.remove(0)
+        queueSet -= orderId
+        inProcess += orderId
+        orderId
+      }
+
+    def +=(orderId: OrderId) = {
+      if (inProcess(orderId)) throw new DuplicateKeyException(s"Duplicate $orderId")
+      if (queueSet contains orderId) throw new DuplicateKeyException(s"Duplicate $orderId")
+      queue += orderId
+      queueSet += orderId
+    }
+
+    def -=(orderId: OrderId) =
+      if (!inProcess.remove(orderId)) {
+        val s = queue.size
+        queue -= orderId
+        if (queue.size == s) {
+          logger.warn(s"JobRegister.OrderQueue: unknown $orderId")
+        }
+        queueSet -= orderId
+      }
   }
 }

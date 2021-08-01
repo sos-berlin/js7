@@ -27,11 +27,14 @@ trait JobExecutor
 
   def precheckAndWarn = Task.unit
 
-  def start: Task[Checked[Unit]]
+  protected def start: Task[Checked[Unit]]
 
   def stop: Task[Unit]
 
   def prepareOrderProcess(processOrder: ProcessOrder): Task[Checked[OrderProcess]]
+
+  final lazy val startIfNeeded: Task[Checked[Unit]] =
+    start.memoize
 
   override def toString = s"${getClass.simpleScalaName}(${jobConf.jobKey})"
 }

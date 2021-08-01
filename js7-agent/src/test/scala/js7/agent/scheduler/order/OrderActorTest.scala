@@ -10,7 +10,7 @@ import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
-import js7.agent.scheduler.job.JobActor
+import js7.agent.scheduler.job.JobDriver
 import js7.agent.scheduler.order.OrderActorTest._
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.generic.Completed
@@ -177,12 +177,11 @@ private object OrderActorTest {
       JournalActor.props[AgentState](journalMeta, JournalConf.fromConfig(config), new StampedKeyedEventBus, Scheduler.global, new EventIdGenerator),
       "Journal"))
     private val eventWatch = new JournalEventWatch(journalMeta, config)
-    private val jobActor = actorOf(
-      JobActor.props(
+    private val jobDriver = new JobDriver(
         JobConf(jobKey, workflowJob, Workflow.empty, ControllerId("CONTROLLER"),
-          sigkillDelay = 5.s, timeout = None),
+          sigkillDelay = 5.s),
         executorConf,
-        _ => Left(Problem("No JobResource here"))))
+        _ => Left(Problem("No JobResource here")))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
         journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config)),
@@ -207,12 +206,6 @@ private object OrderActorTest {
 
     def receive = {
       case JournalActor.Output.Ready(_) =>
-        become(jobActorReady)
-        jobActor ! JobActor.Input.OrderAvailable
-    }
-
-    private def jobActorReady: Receive = {
-      case JobActor.Output.ReadyForOrder(1) =>  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder.copy(
           attachedState = Some(Order.Attached(TestAgentPath))))
         become(attaching)
@@ -220,13 +213,11 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed =>
-        orderActor ! OrderActor.Input.StartProcessing(jobActor, workflowJob, Map.empty)
+        orderActor ! OrderActor.Input.StartProcessing(jobDriver, workflowJob, Map.empty)
         become(processing)
     }
 
-    private def processing: Receive = receiveOrderEvent orElse {
-      case JobActor.Output.ReadyForOrder(1) =>  // Ready for next order
-    }
+    private def processing: Receive = receiveOrderEvent
 
     private def detachable: Receive = receiveOrderEvent
 
@@ -238,8 +229,6 @@ private object OrderActorTest {
       case Terminated(`orderActor`) =>
         orderActorTerminated = true
         checkTermination()
-
-      case JobActor.Output.ReadyForOrder(1) =>  // Ready for next order
     }
 
     private def terminating: Receive = receiveOrderEvent orElse {
