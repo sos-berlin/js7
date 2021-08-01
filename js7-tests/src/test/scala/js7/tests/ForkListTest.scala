@@ -181,6 +181,11 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     runOrder(atAgentWorkflow.path, OrderId("EMPTY"), n = 0)
   }
 
+  "Fork with single element" in {
+    runOrder(atControllerWorkflow.path, OrderId("EMPTY"), n = 1)
+    runOrder(atAgentWorkflow.path, OrderId("EMPTY"), n = 1)
+  }
+
   "Fork with a small array" in {
     // Use same OrderId twice to test the ForkInstructionExecutor.Cache.
     val orderId = OrderId("SMALL")

@@ -70,7 +70,8 @@ trait StateView
     lazy val endReached = order.state == Order.Ready &&
       order.position.parent.contains(parent.position) &&
       instruction(order.workflowPosition).isInstanceOf[End]
-    order.attachedState == parent.attachedState &&
+    (order.isAttached || order.isDetached) &&
+      order.attachedState == parent.attachedState &&
       (order.state.eq(Order.FailedInFork) || endReached)
   }
 

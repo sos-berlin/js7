@@ -19,7 +19,7 @@ trait InstructionExecutor {
 
 trait EventInstructionExecutor extends InstructionExecutor
 {
-  protected def service: InstructionExecutorService
+  protected val service: InstructionExecutorService
 
   final def clock: WallClock =
     service.clock

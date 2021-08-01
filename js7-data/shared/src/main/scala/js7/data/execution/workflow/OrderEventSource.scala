@@ -177,7 +177,7 @@ final class OrderEventSource(state: StateView)
       order.forkPosition.flatMap(forkPosition =>
         state.instruction(order.workflowId /: forkPosition) match {
           case fork: Fork =>
-            Right(executorService.forkExecutor.tryJoinChildOrder(state, order, fork))
+            Right(executorService.forkExecutor.tryJoinChildOrder(order, fork, state))
           case _ =>
             // Self-test
             Left(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))
