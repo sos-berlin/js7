@@ -4,14 +4,14 @@ import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, KeyedEvent}
+import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
@@ -315,9 +315,4 @@ object ControllerStateExecutor
     (implicit ies: InstructionExecutorService)
   : ControllerStateExecutor =
     apply(controllerState)
-
-  def toLiveOrderEventHandler(controllerState: () => ControllerState) =
-    new OrderEventHandler(
-      id => controllerState().repo.idTo[Workflow](id),
-      id => controllerState().idToOrder.checked(id))
 }

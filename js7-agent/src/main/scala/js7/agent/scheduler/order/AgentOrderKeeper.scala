@@ -642,7 +642,21 @@ with Stash
     }
 
   private def orderEventSource =
-    new OrderEventSource(persistence.currentState)
+    //new OrderEventSource(persistence.currentState)
+    new OrderEventSource(new StateView {
+      def isAgent = true
+
+      def controllerId = AgentOrderKeeper.this.controllerId
+
+      // Not persistence.currentState.idToOrder due to different update times (TODO fix this!)
+      def idToOrder = orderRegister.idToOrder
+
+      def idToWorkflow = persistence.currentState.idToWorkflow
+
+      def pathToLockState = persistence.currentState.pathToLockState
+
+      def pathToBoardState = persistence.currentState.pathToBoardState
+    })
 
   override def toString = "AgentOrderKeeper"
 }

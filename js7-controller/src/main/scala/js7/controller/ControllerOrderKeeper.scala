@@ -47,14 +47,14 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.{BoardPath, Notice, NoticeId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerStateExecutor.{convertImplicitly, toLiveOrderEventHandler}
+import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -104,7 +104,6 @@ with MainJournalingActor[ControllerState, Event]
   private implicit val instructionExecutorService = new InstructionExecutorService(alarmClock)
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
-  private val orderEventHandler = toLiveOrderEventHandler(() => _controllerState)
 
   private val agentRegister = new AgentRegister
   private val orderRegister = mutable.HashMap.empty[OrderId, OrderEntry]
@@ -1051,6 +1050,9 @@ with MainJournalingActor[ControllerState, Event]
             Nil
 
           case Some(order) =>
+            val orderEventHandler = new OrderEventHandler(
+              _controllerState.repo.idTo[Workflow],
+              _controllerState.idToOrder.checked)
             val checkedFollowUps = orderEventHandler.handleEvent(keyedEvent)
             val dependentOrderIds = mutable.Buffer.empty[OrderId]
             for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
