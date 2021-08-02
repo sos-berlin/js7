@@ -253,7 +253,7 @@ extends VersionedItem
       case _ => Right(this)
     }
 
-  private[workflow] def flattenedInstructions: View[(Position, Instruction.Labeled)] =
+  def flattenedInstructions: View[(Position, Instruction.Labeled)] =
     flattenedInstructions(Nil)
 
   private[workflow] def flattenedInstructions(branchPath: BranchPath)
