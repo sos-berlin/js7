@@ -99,7 +99,7 @@ object Value
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
     case NullValue => Json.Null
-    case v: MissingValue => sys.error(s"MissingValue cannot be JSON encoded: $v")
+    case v: IsErrorValue => sys.error(s"IsErrorValue cannot be JSON encoded: $v")
   }
 
   implicit val jsonDecoder: Decoder[Value] = {
