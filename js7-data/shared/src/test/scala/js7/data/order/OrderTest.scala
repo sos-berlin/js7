@@ -14,7 +14,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -306,6 +306,7 @@ final class OrderTest extends AnyFreeSpec
 
       OrderLockAcquired(LockPath("LOCK")),
       OrderLockQueued(LockPath("LOCK"), None),
+      OrderLockDequeued(LockPath("LOCK")),
       OrderLockReleased(LockPath("LOCK")),
 
       OrderNoticePosted(Notice(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
@@ -403,6 +404,8 @@ final class OrderTest extends AnyFreeSpec
         cancelMarkedAllowed[WaitingForLock] orElse
         suspendMarkedAllowed[WaitingForLock] orElse {
           case (_: OrderLockAcquired     , _                 , IsDetached             ) => _.isInstanceOf[Ready]
+          case (_: OrderLockDequeued     , _                 , IsDetached             ) => _.isInstanceOf[Ready]
+          case (_: OrderCancelled        , _                 , IsDetached             ) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken           , _                 , _                      ) => _.isInstanceOf[Broken]
         })
     }

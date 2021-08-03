@@ -12,9 +12,8 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.context.StateView
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.lock.LockPath
 import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedEvent, OrderFailedInFork, OrderFailedIntermediate_, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLockDequeued, OrderLockReleased, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
@@ -39,33 +38,35 @@ final class OrderEventSource(state: StateView)
       checkedNextEvents(order) |> (invalidToEvent(order, _))
   }
 
-  private def checkedNextEvents(order: Order[Order.State]): Checked[Seq[KeyedEvent[OrderActorEvent]]] = {
-    def ifDefinedElse(o: Option[OrderActorEvent], orElse: Checked[Seq[KeyedEvent[OrderActorEvent]]]) =
-      o.fold(orElse)(e => Right((order.id <-: e) :: Nil))
+  private def checkedNextEvents(order: Order[Order.State])
+  : Checked[Seq[KeyedEvent[OrderActorEvent]]] = {
+    def ifDefinedElse(o: Option[List[OrderActorEvent]], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
+      o.fold(orElse)(events => Right(events.map(order.id <-: _)))
     ifDefinedElse(orderMarkEvent(order),
       if (!weHave(order) || order.isSuspended)
         Right(Nil)
       else
-        ifDefinedElse(awokeEvent(order),
+        ifDefinedElse(awokeEvent(order).map(_ :: Nil),
           joinedEvent(order) match {
             case Left(problem) => Left(problem)
             case Right(Some(event)) => Right(event :: Nil)
             case Right(None) =>
               executorService.toEvents(instruction(order.workflowPosition), order, state)
-                // Multiple returned events are expected to be independent and are applied to same idToOrder
+                // Multiple returned events are expected to be independent
+                // and are applied to the same idToOrder !!!
                 .flatMap(_
-                  .traverse {
+                  .flatTraverse {
                     case orderId <-: (moved: OrderMoved) =>
                       applyMoveInstructions(order, moved)
-                        .map(orderId <-: _)
+                        .map(event => (orderId <-: event) :: Nil)
 
                     case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
                       // OrderFailedIntermediate_ is used internally only
                       assertThat(orderId == order.id)
                       failOrDetach(order, outcome, uncatchable)
-                        .map(orderId <-: _)
+                        .map(_.map(orderId <-: _))
 
-                    case o => Right(o)
+                    case o => Right(o :: Nil)
                   })
           }))
       .flatMap(checkEvents)
@@ -100,21 +101,21 @@ final class OrderEventSource(state: StateView)
   : Seq[KeyedEvent[OrderActorEvent]] =
     checkedEvents match {
       case Left(problem) =>
-        val event =
+        val events =
           if (order.isOrderFailedApplicable)
             failOrDetach(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
               case Left(prblm) =>
                 scribe.debug(s"WARN ${order.id}: $prblm")
-                OrderBroken(problem)
-              case Right(event) => event
+                OrderBroken(problem) :: Nil
+              case Right(events) => events
             }
           else if (order.isAttached && order.isInDetachableState && order.copy(attachedState = None).isOrderFailedApplicable) {
             scribe.debug(s"Detaching ${order.id} after failure: $problem")
             // Controller is expected to repeat this call and to reproduce the problem.
-            OrderDetachable
+            OrderDetachable :: Nil
           } else
-            OrderBroken(problem)
-        (order.id <-: event) :: Nil
+            OrderBroken(problem) :: Nil
+        events.map(order.id <-: _)
 
       case Right(o) => o
     }
@@ -123,53 +124,82 @@ final class OrderEventSource(state: StateView)
     order: Order[Order.State],
     outcome: Option[Outcome.NotSucceeded],
     uncatchable: Boolean)
-  : Checked[OrderActorEvent] =
-    fail(order, outcome, uncatchable).map {
-      case _: OrderFailed if order.isAttached =>
-        scribe.debug(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
-        // Controller is expected to reproduce the problem !!!
-        OrderDetachable
-      case o => o
-    }
+  : Checked[List[OrderActorEvent]] =
+    fail(order, outcome, uncatchable)
+      .map(events =>
+        if (events.view.collectFirst { case _: OrderFailed if order.isAttached => }.nonEmpty) {
+          scribe.debug(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
+          // Controller is expected to reproduce the problem !!!
+          OrderDetachable :: Nil
+        } else
+          events)
 
   private def fail(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
-  : Checked[OrderFailedEvent] =
+  : Checked[List[OrderActorEvent]] =
     idToWorkflow
       .checked(order.workflowId)
-      .flatMap(workflow => failToPosition(workflow, order.position, outcome, uncatchable = uncatchable))
+      .flatMap(workflow => failToPosition(workflow, order, outcome, uncatchable = uncatchable))
 
   private[workflow] def failToPosition(
     workflow: Workflow,
-    position: Position,
+    order: Order[Order.State],
     outcome: Option[Outcome.NotSucceeded],
     uncatchable: Boolean)
-  : Checked[OrderFailedEvent] = {
-    def loop(reverseBranchPath: List[Segment], failPosition: Position, lockPaths: Vector[LockPath] = Vector.empty)
-    : Checked[OrderFailedEvent] =
+  : Checked[List[OrderActorEvent]] =
+    leaveBlocks(workflow, order, catchable = !uncatchable) {
+      case (None, failPosition) => OrderFailed(failPosition, outcome)
+      case (Some(ForkBranchId(_)), failPosition) => OrderFailedInFork(failPosition, outcome)
+      case (Some(TryBranchId(_)), catchPos) => OrderCatched(catchPos, outcome)
+    }
+
+  private def leaveBlocks(
+    workflow: Workflow,
+    order: Order[Order.State],
+    catchable: Boolean = false)
+    (toEvent: PartialFunction[(Option[BranchId], Position), OrderActorEvent])
+  : Checked[List[OrderActorEvent]] =
+  {
+    def callToEvent(branchId: Option[BranchId], pos: Position) =
+      toEvent.lift(branchId, pos)
+        .map(event => Right(event :: Nil))
+        .getOrElse(Left(Problem(
+          s"Unexpected Branchid '$branchId' while leaving instruction blocks")))
+
+    def loop(reverseBranchPath: List[Segment], failPosition: Position)
+    : Checked[List[OrderActorEvent]] =
       reverseBranchPath match {
         case Nil =>
-          Right(OrderFailed(failPosition, outcome, lockPaths))
+          callToEvent(None, failPosition)
 
-        case Segment(_, ForkBranchId(_)) :: _ =>
-          Right(OrderFailedInFork(failPosition, outcome, lockPaths))
+        case Segment(_, branchId @ ForkBranchId(_)) :: _ =>
+          callToEvent(Some(branchId), failPosition)
 
         case Segment(_, BranchId.Lock) :: prefix =>
           val pos = prefix.reverse % 0
-          checkedCast[LockInstruction](workflow.instruction(pos))
-            .flatMap(lockInstr => loop(prefix, pos, lockPaths :+ lockInstr.lockPath))
+          for {
+            lock <- checkedCast[LockInstruction](workflow.instruction(pos))
+            events <- loop(prefix, pos)
+          } yield OrderLockReleased(lock.lockPath) :: events
 
-        case Segment(nr, TryBranchId(retry)) :: prefix if !uncatchable =>
+        case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
           val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
           if (isMaxRetriesReached(workflow.id, catchPos))
-            loop(prefix, failPosition, lockPaths)
+            loop(prefix, failPosition)
           else
-            Right(OrderCatched(catchPos, outcome, lockPaths))
+            callToEvent(Some(branchId), catchPos)
 
         case Segment(_, _) :: prefix =>
-          loop(prefix, failPosition, lockPaths)
+          loop(prefix, failPosition)
       }
 
-    loop(position.branchPath.reverse, position, Vector.empty)
+    order
+      .ifState[Order.WaitingForLock]
+      .traverse(order =>
+        for (lock <- workflow.instruction_[LockInstruction](order.position)) yield
+          OrderLockDequeued(lock.lockPath))
+      .flatMap(maybeEvent =>
+        loop(order.position.branchPath.reverse, order.position)
+          .map(maybeEvent.toList ::: _))
   }
 
   private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
@@ -188,19 +218,27 @@ final class OrderEventSource(state: StateView)
     ((order.isDetached || order.isAttached) && order.isState[Order.DelayedAfterError]) ?
       OrderAwoke  // AgentOrderKeeper has already checked time
 
-  private def orderMarkEvent(order: Order[Order.State]): Option[OrderActorEvent] =
+  private def orderMarkEvent(order: Order[Order.State]): Option[List[OrderActorEvent]] =
     if (order.deleteWhenTerminated && order.isState[IsTerminated] && order.parent.isEmpty)
-      Some(OrderDeleted)
+      Some(OrderDeleted :: Nil)
     else
       order.mark.flatMap(mark =>
         mark match {
-          case OrderMark.Cancelling(mode) => tryCancel(order, mode)
-          case OrderMark.Suspending(_) => trySuspend(order)
-          case OrderMark.Resuming(position, historyOperations) => tryResume(order, position, historyOperations)
+          case OrderMark.Cancelling(mode) =>
+            tryCancel(order, mode)
+
+          case OrderMark.Suspending(_) =>
+            trySuspend(order)
+              .map(_ :: Nil)
+
+          case OrderMark.Resuming(position, historyOperations) =>
+            tryResume(order, position, historyOperations)
+              .map(_ :: Nil)
+
           case _ => None
         })
 
-  def markOrder(orderId: OrderId, mark: OrderMark): Checked[Option[OrderActorEvent]] = {
+  def markOrder(orderId: OrderId, mark: OrderMark): Checked[Option[List[OrderActorEvent]]] = {
     assertThat(isAgent)
     mark match {
       case OrderMark.Cancelling(mode) =>
@@ -211,11 +249,12 @@ final class OrderEventSource(state: StateView)
 
       case OrderMark.Resuming(position, historicOutcomes) =>
         resume(orderId, position, historicOutcomes)
+
     }
   }
 
   /** Returns `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelling. */
-  def cancel(orderId: OrderId, mode: CancellationMode): Checked[Option[OrderActorEvent]] =
+  def cancel(orderId: OrderId, mode: CancellationMode): Checked[Option[List[OrderActorEvent]]] =
     withOrder(orderId)(order =>
       if (order.parent.isDefined)
         Left(CancelChildOrderProblem(orderId))
@@ -227,14 +266,21 @@ final class OrderEventSource(state: StateView)
           ( !order.isState[IsTerminated] &&
             !order.isState[ProcessingKilled] &&
             !order.mark.contains(OrderMark.Cancelling(mode))
-          ) ? OrderCancellationMarked(mode))))
+          ) ? (OrderCancellationMarked(mode) :: Nil))))
 
-  private def tryCancel(order: Order[Order.State], mode: CancellationMode): Option[OrderActorEvent] =
-    if (isOrderCancelable(order, mode))
-      if (order.isAttached && isAgent) Some(OrderDetachable)
-      else if (order.isDetached && !isAgent) Some(OrderCancelled)
-      else None
-    else None
+  private def tryCancel(order: Order[Order.State], mode: CancellationMode): Option[List[OrderActorEvent]] =
+    if (!isOrderCancelable(order, mode))
+      None
+    else if (order.isAttached && isAgent)
+      Some(OrderDetachable :: Nil)
+    else if (order.isDetached && !isAgent)
+      Some(
+        leaveBlocks(idToWorkflow(order.workflowId), order) {
+          case (None, _) => OrderCancelled
+          //TODO case (Some(ForkBranchId(_)), _) => OrderCancelledInFork
+        }.orThrow/*???*/)
+    else
+      None
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancellationMode): Boolean =
     (mode != CancellationMode.FreshOnly || order.isState[Order.Fresh]) &&
@@ -243,10 +289,10 @@ final class OrderEventSource(state: StateView)
       !instruction(order.workflowPosition).isInstanceOf[End]  // TODO Correct? Or should we check only the end of the main/forked workflow?
 
   /** Returns a `Right(Some(OrderSuspended | OrderSuspensionMarked))` iff order is not already marked as suspending. */
-  def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[OrderActorEvent]] =
+  def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[List[OrderActorEvent]]] =
     withOrder(orderId)(order =>
       if (order.isSuspended)
-        Right(trySuspend(order))
+        Right(trySuspend(order).map(_ :: Nil))
       else
         order.mark match {
           case Some(_: OrderMark.Cancelling) =>
@@ -257,8 +303,10 @@ final class OrderEventSource(state: StateView)
             if (order.isState[Failed] || order.isState[IsTerminated])
               Left(CannotSuspendOrderProblem)
             else
-              Right((!order.isSuspended || order.isResuming) ?
-                trySuspend(order).getOrElse(OrderSuspensionMarked(mode)))
+              Right(
+                (!order.isSuspended || order.isResuming) ?
+                  (trySuspend(order).getOrElse(OrderSuspensionMarked(mode))
+                    :: Nil))
         })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
@@ -280,7 +328,7 @@ final class OrderEventSource(state: StateView)
     orderId: OrderId,
     position: Option[Position],
     historyOperations: Seq[OrderResumed.HistoryOperation])
-  : Checked[Option[OrderActorEvent]] =
+  : Checked[Option[List[OrderActorEvent]]] =
     withOrder(orderId) { order =>
       lazy val checkedWorkflow = idToWorkflow.checked(order.workflowId)
 
@@ -302,7 +350,8 @@ final class OrderEventSource(state: StateView)
               Left(CannotResumeOrderProblem)
 
             case Some(OrderMark.Resuming(`position`, `historyOperations`)) =>
-              Right(order.isDetached ? OrderResumed(position, historyOperations)/*should already have happened*/)
+              Right(order.isDetached ? (
+                OrderResumed(position, historyOperations)/*should already have happened*/ :: Nil))
 
             case Some(OrderMark.Resuming(_, _)) =>
                Left(CannotResumeOrderProblem)
@@ -319,20 +368,22 @@ final class OrderEventSource(state: StateView)
               else
                 Right(Some(
                   tryResume(order, position, historyOperations)
-                    .getOrElse(OrderResumptionMarked(position, historyOperations))))
+                    .getOrElse(OrderResumptionMarked(position, historyOperations))
+                    :: Nil))
           })
     }
 
   /** Retrieve the Order, check if calculated event is applicable. */
-  private def withOrder[E <: OrderCoreEvent](orderId: OrderId)(body: Order[Order.State] => Checked[Option[E]])
-  : Checked[Option[E]] =
+  private def withOrder[E <: OrderCoreEvent](orderId: OrderId)
+    (body: Order[Order.State] => Checked[Option[List[E]]])
+  : Checked[Option[List[E]]] =
     idToOrder
       .checked(orderId)
       .flatMap(order => body(order)
-        .flatMapT(event =>
+        .flatMapT(events =>
           order
-            .applyEvent(event)
-            .map(_ => Some(event))))
+            .applyEvents(events)
+            .map(_ => Some(events))))
 
   private def tryResume(
     order: Order[Order.State],

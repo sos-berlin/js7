@@ -70,6 +70,21 @@ final case class Order[+S <: Order.State](
       Right(reversed.tail.reverse % reversed.head.nr)
   }
 
+  def applyEvents(events: Iterable[OrderEvent.OrderCoreEvent]): Checked[Order[State]] = {
+    // TODO Generalize this in ScalaUtils!
+    var problem: Problem = null
+    var order: Order[Order.State] = this
+    val it = events.iterator
+    while (it.hasNext && problem == null) {
+      val event = it.next()
+      order.applyEvent(event) match {
+        case Right(o) => order = o
+        case Left(prblm) => problem = prblm
+      }
+    }
+    if (problem != null) Left(problem) else Right(order)
+  }
+
   def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] =
     applyEvent2(event, force = false)
 
@@ -331,7 +346,7 @@ final case class Order[+S <: Order.State](
 
       case _: OrderLockReleased =>
         // LockState handles this event, too
-        if (force || isDetached && isState[Ready])
+        if (force || isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/)
           position.dropChild
             .toChecked(Problem(s"OrderLockReleased event but position=$workflowPosition"))
             .map(pos => withPosition(pos.increment))
@@ -342,6 +357,11 @@ final case class Order[+S <: Order.State](
         check(isDetached && isState[Ready],
           copy(
             state = WaitingForLock))
+
+      case _: OrderLockDequeued =>
+        check(isDetached && isState[WaitingForLock],
+          copy(
+            state = Ready))
 
       case _: OrderNoticePosted =>
         check(isDetached && isState[Ready] && !isSuspended,
@@ -478,6 +498,7 @@ final case class Order[+S <: Order.State](
     parent.isEmpty &&
       (isState[IsFreshOrReady] ||
        isState[ProcessingKilled] ||
+       isState[WaitingForLock] ||
        isState[Prompting] ||
        isState[ExpectingNotice] ||
        isState[FailedWhileFresh] ||
@@ -643,6 +664,9 @@ object Order
   case object Finished extends IsStarted with IsTerminated
 
   type Cancelled = Cancelled.type
+  // Position may be in a lock, but the lock has been released.
+  // Just in case, Cancelled is being made resumable: Do not resume from within a lock instruction
+  // or add position to Cancelled like in Failed!
   case object Cancelled extends IsTerminated
 
   type Deleted = Deleted.type

@@ -19,7 +19,10 @@ import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
+import js7.data.value.expression.Expression.StringConstant
+import js7.data.workflow.instructions.{LockInstruction, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest._
@@ -37,7 +40,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val items = Seq(
     Lock(lockPath),
     Lock(lock2Path),
-    Lock(limit2LockPath, limit = 2))
+    Lock(limit2LockPath, limit = 2),
+    promptInLockWorkflow)
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -82,7 +86,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       assert(controller.eventWatch.await[OrderTerminated](_.key == a).map(_.value) == Seq(a <-: OrderFinished))
       controller.eventWatch.await[OrderDeleted](_.key == a)
-      assert(controller.eventWatch.keyedEvents[OrderEvent](a).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
+      assert(controller.eventWatch.keyedEvents[OrderEvent](a) == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderLockAcquired(lockPath, None),
@@ -108,7 +112,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       for (orderId <- queuedOrderIds) {
         assert(controller.eventWatch.await[OrderTerminated](_.key == orderId).map(_.value) == Seq(orderId <-: OrderFinished))
         controller.eventWatch.await[OrderDeleted](_.key == orderId)
-        assert(controller.eventWatch.keyedEvents[OrderEvent](orderId).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
+        assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
           OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderStarted,
           OrderLockQueued(lockPath, None),
@@ -231,12 +235,14 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
 
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
       OrderLockAcquired(lock2Path, None),
-      OrderFailed(Position(0), Some(Outcome.failed), lockPaths = Seq(lock2Path, lockPath)),
+      OrderLockReleased(lock2Path),
+      OrderLockReleased(lockPath),
+      OrderFailed(Position(0), Some(Outcome.failed)),
       OrderCancelled,
       OrderDeleted))
 
@@ -263,13 +269,14 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLockAcquired(lock2Path, None),
-      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed), lockPaths = Seq(lock2Path)),
+      OrderLockReleased(lock2Path),
+      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted,
@@ -307,7 +314,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderFailed](_.key == orderId)
     controllerApi.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
@@ -318,7 +325,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
       OrderLockAcquired(lockPath, None),
-      OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed), lockPaths = Seq(lockPath))))
+      OrderLockReleased(lockPath),
+      OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed))))
 
     assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
       LockState(
@@ -344,13 +352,14 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
       OrderJoined(Outcome.failed),
-      OrderFailed(Position(0), lockPaths = Seq(lockPath)),
+      OrderLockReleased(lockPath),
+      OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
 
@@ -376,10 +385,88 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId).filterNot(_.isInstanceOf[OrderDeletionMarked]) == Seq(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1")))),
+      OrderCancelled,
+      OrderDeleted))
+
+    assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
+      LockState(
+        Lock(lockPath, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
+  }
+
+  "Cancel while waiting for lock" in {
+    val lockingOrderId = OrderId("CANCEL-WHILE-QUEUING-IN-LOCK")
+    controllerApi
+      .addOrder(FreshOrder(lockingOrderId, promptInLockWorkflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderPrompted](_.key == lockingOrderId)
+
+    val queueingWorkflow = addWorkflow(Workflow(
+      WorkflowPath("CANCEL-WHILE-QUEUING-FOR-LOCKING"),
+      Seq(
+        LockInstruction(lockPath,
+          count = None,
+          lockedWorkflow = Workflow.empty))))
+    val orderId = OrderId("CANCEL-WHILE-QUEUING-FOR-LOCK")
+    controllerApi.addOrder(FreshOrder(orderId, queueingWorkflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderLockQueued](_.key == orderId)
+
+    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.eventWatch.await[OrderCancelled](_.key == orderId)
+
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+      OrderAdded(queueingWorkflow.id, deleteWhenTerminated = true),
+      OrderStarted,
+      OrderLockQueued(lockPath, count = None),
+      OrderLockDequeued(lockPath),
+      OrderCancelled,
+      OrderDeleted))
+
+    controllerApi.executeCommand(AnswerOrderPrompt(lockingOrderId)).await(99.s).orThrow
+    controller.eventWatch.await[OrderDeleted](_.key == lockingOrderId)
+    assert(controller.eventWatch.keyedEvents[OrderEvent](lockingOrderId) == Seq(
+      OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
+      OrderStarted,
+      OrderLockAcquired(lockPath),
+      OrderPrompted(StringValue("PROMPT")),
+      OrderPromptAnswered(),
+      OrderMoved(Position(0) / "lock" % 1),
+      OrderLockReleased(lockPath),
+      OrderFinished,
+      OrderDeleted))
+
+    assert(controller.controllerState.await(99.s).pathToLockState(lockPath) ==
+      LockState(
+        Lock(lockPath, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
+
+    controllerApi.updateItems(Observable(
+      AddVersion(versionIdIterator.next()),
+      RemoveVersioned(queueingWorkflow.path)
+    )).await(99.s).orThrow
+  }
+
+  "Cancel while using a lock" in {
+    val orderId = OrderId("CANCEL-WHILE-IN-LOCK")
+    controllerApi
+      .addOrder(FreshOrder(orderId, promptInLockWorkflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderPrompted](_.key == orderId)
+
+    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+      OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
+      OrderStarted,
+      OrderLockAcquired(lockPath),
+      OrderPrompted(StringValue("PROMPT")),
+      OrderLockReleased(lockPath),
       OrderCancelled,
       OrderDeleted))
 
@@ -399,7 +486,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controllerApi.updateItems(Observable(
       AddVersion(v),
       DeleteSimple(lockPath)
-    )).await(99.s) == Left(ItemIsStillReferencedProblem(lockPath, workflow.id)))
+    )).await(99.s) == Left(Problem.Combined(Set(
+      ItemIsStillReferencedProblem(lockPath, promptInLockWorkflow.id),
+      ItemIsStillReferencedProblem(lockPath, workflow.id)))))
   }
 
   "Lock is not deletable while in use by a deleted Workflow with a still running order" in {
@@ -419,7 +508,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .updateItems(Observable(
         DeleteSimple(lockPath),
         AddVersion(v),
-        RemoveVersioned(workflow.path)))
+        RemoveVersioned(workflow.path),
+        RemoveVersioned(promptInLockWorkflow.path)))
       .await(99.s)
     // Lock cannot be deleted due to orders in the deleted (but still versioned) Workflow
     assert(removeWorkflowAndLock() == Left(ItemIsStillReferencedProblem(lockPath, workflow.id)))
@@ -458,8 +548,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val controllerState = controller.controllerState.await(99.s)
     assert(controllerState.idToOrder.isEmpty)
     assert(controllerState.repo == Repo.empty
-      .applyEvents(for (i <- (1 to 12) ++ Seq("DELETE-WHILE-ORDER", "DELETE")) yield
-        VersionAdded(VersionId(i.toString)))
+      .applyEvents(controllerState.repo.versions.reverse.map(VersionAdded(_)))
       .orThrow)
     assert(controllerState.pathToLockState.isEmpty)
     assert(controllerState.itemToAgentToAttachedState.isEmpty)
@@ -474,6 +563,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
     workflow
   }
+
+  private def addWorkflow(workflow: Workflow): Workflow = {
+    val v = versionIdIterator.next()
+    val w = workflow.withVersion(v)
+    directoryProvider.updateVersionedItems(controller, v, Seq(workflow))
+    w
+  }
 }
 
 object LockTest {
@@ -485,4 +581,13 @@ object LockTest {
   private val lockPath = LockPath("LOCK")
   private val lock2Path = LockPath("LOCK-2")
   private val limit2LockPath = LockPath("LOCK-LIMIT-2")
+
+  private val promptInLockWorkflow = Workflow(
+    WorkflowPath("PROMPT-IN-LOCK") ~ "INITIAL",
+    Seq(
+      LockInstruction(lockPath,
+        count = None,
+        lockedWorkflow = Workflow.of(
+          Prompt(StringConstant("PROMPT"))))))
+
 }

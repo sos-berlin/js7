@@ -404,7 +404,7 @@ with Stash
               case Right(_) =>
                 val promise = Promise[Unit]()
                 orderEntry.detachResponses ::= promise
-                (orderEntry.actor ? OrderActor.Command.HandleEvent(OrderDetached))
+                (orderEntry.actor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil))
                   .mapTo[Completed]
                   .onComplete {
                     case Failure(t) => promise.tryFailure(t)
@@ -432,12 +432,12 @@ with Stash
             orderEventSource.markOrder(orderId, mark) match {
               case Left(problem) => Future.failed(problem.throwable)
               case Right(None) => Future.successful(Right(AgentCommand.Response.Accepted))
-              case Right(Some(event)) =>
+              case Right(Some(events)) =>
                 // Several MarkOrder in sequence are not properly handled
                 // one after the other because execution is asynchronous.
                 // A second command may may see the same not yet updated order.
                 // TODO Queue for each order? And no more OrderActor?
-                (orderEntry.actor ? OrderActor.Command.HandleEvent(event))
+                (orderEntry.actor ? OrderActor.Command.HandleEvents(events))
                   .mapTo[Completed]
                   .map(_ => Right(AgentCommand.Response.Accepted))
             }
@@ -549,7 +549,7 @@ with Stash
               logger.error(s"Order ${orderId.string} is broken: $problem")
 
             case KeyedEvent(orderId_, event) =>
-              orderRegister(orderId_).actor ? OrderActor.Command.HandleEvent(event)  // Ignore response ???
+              orderRegister(orderId_).actor ? OrderActor.Command.HandleEvents(event :: Nil)  // Ignore response ???
               // TODO Not awaiting the response may lead to duplicate events
               //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
               //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.

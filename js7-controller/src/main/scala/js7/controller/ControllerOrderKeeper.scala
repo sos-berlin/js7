@@ -824,7 +824,7 @@ with MainJournalingActor[ControllerState, Event]
         OrderDeletionMarked)
 
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])
-    (toEvent: OrderId => Checked[Option[OrderActorEvent]])
+    (toEvents: OrderId => Checked[Option[List[OrderActorEvent]]])
   : Future[Checked[ControllerCommand.Response]] =
     if (orderIds.distinct.sizeIs < orderIds.size)
       Future.successful(Left(Problem.pure("OrderIds must be unique")))
@@ -835,8 +835,8 @@ with MainJournalingActor[ControllerState, Event]
 
         case Right(orders) =>
           orders
-            .traverse(order => toEvent(order.id).map(_.map(order.id <-: _)))
-            .map(_.flatten)
+            .flatTraverse(order => toEvents(order.id)
+              .map(_.toVector.flatten.map(order.id <-: _)))
             .traverse(keyedEvents =>
               // Event may be inserted between events coming from Agent
               persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents))

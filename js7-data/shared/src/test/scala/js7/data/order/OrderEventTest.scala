@@ -186,6 +186,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched complete" in {
+    // lockPaths are for compatibility only !!!
     check(OrderCatched(Position(1), Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderCatched",
@@ -217,6 +218,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailed(Failed) complete" in {
+    // lockPaths are for compatibility only !!!
     check(OrderFailed(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderFailed",
@@ -251,6 +253,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailedInFork" in {
+    // lockPaths are for compatibility only !!!
     check(OrderFailedInFork(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailedInFork",
@@ -266,6 +269,7 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderFailedInFork complete" in {
+    // lockPaths are for compatibility only !!!
     check(OrderFailedInFork(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderFailedInFork",
@@ -487,6 +491,14 @@ final class OrderEventTest extends AnyFreeSpec
         "TYPE": "OrderLockQueued",
         "lockPath": "LOCK",
         "count": 1
+      }""")
+  }
+
+  "OrderLockDequeued" in {
+    check(OrderLockDequeued(LockPath("LOCK")), json"""
+      {
+        "TYPE": "OrderLockDequeued",
+        "lockPath": "LOCK"
       }""")
   }
 

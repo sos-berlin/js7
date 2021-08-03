@@ -250,16 +250,16 @@ private object OrderActorTest {
 
           case _: OrderProcessed =>
             events += event
-            orderActor ? OrderActor.Command.HandleEvent(OrderMoved(TestPosition)) await 99.s
+            orderActor ? OrderActor.Command.HandleEvents(OrderMoved(TestPosition) :: Nil) await 99.s
 
           case _: OrderMoved =>
             events += event
-            orderActor ? OrderActor.Command.HandleEvent(OrderDetachable) await 99.s
+            orderActor ? OrderActor.Command.HandleEvents(OrderDetachable :: Nil) await 99.s
             become(detachable)
 
           case OrderDetachable =>
             events += event
-            (orderActor ? OrderActor.Command.HandleEvent(OrderDetached)).mapTo[Completed].map(_ => self ! "DETACHED")
+            (orderActor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil)).mapTo[Completed].map(_ => self ! "DETACHED")
             become(detaching)
 
           case OrderDetached =>

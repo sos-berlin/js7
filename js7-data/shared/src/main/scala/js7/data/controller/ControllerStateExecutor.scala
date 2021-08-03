@@ -92,11 +92,12 @@ final case class ControllerStateExecutor private(
           case _ => Vector.empty
         }
         val detached = stateEvents :+ (order.id <-: OrderDetached)
-        val detachedState = controllerState.applyEvents(detached).orThrow
+        val detachedState = controllerState.applyEvents(detached)
+          .orThrow
         val fail = new OrderEventSource(detachedState)
           .failOrDetach(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
           .orThrow
-        detached :+ (order.id <-: fail)
+        detached ++ fail.view.map(order.id <-: _)
 
       case _ => Nil
     }
@@ -157,7 +158,8 @@ final case class ControllerStateExecutor private(
       // Slow ???
       val controllerStateBeforeSubsequentEvents = controllerState
       val itemEvents = ControllerStateExecutor(controllerState).nextItemEvents(itemKeys).toVector
-      controllerState = controllerState.applyEvents(itemEvents).orThrow
+      controllerState = controllerState.applyEvents(itemEvents)
+        .orThrow
 
       val makeWorkflowsDetachable = detachWorkflowCandidates.view
         .filter(controllerState.keyToItem.keySet.contains)
@@ -185,14 +187,16 @@ final case class ControllerStateExecutor private(
         }
         .map(itemKey => NoKey <-: ItemDeleted(itemKey))
         .toVector
-      controllerState = controllerState.applyEvents(makeWorkflowsDetachable.view ++ deleteItems).orThrow
+      controllerState = controllerState.applyEvents(makeWorkflowsDetachable.view ++ deleteItems)
+        .orThrow
 
       val eventsAndState = controllerState.nextOrderEvents(orderIds)
       controllerState = eventsAndState.controllerState
       val orderEvents = eventsAndState.keyedEvents
 
       val orderWatchEvents = controllerState.nextOrderWatchOrderEvents
-      controllerState = controllerState.applyEvents(orderWatchEvents).orThrow
+      controllerState = controllerState.applyEvents(orderWatchEvents)
+        .orThrow
 
       val subsequentKeyedEvents = Vector.concat(
         itemEvents.view,

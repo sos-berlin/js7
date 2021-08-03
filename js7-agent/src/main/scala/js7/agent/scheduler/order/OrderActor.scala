@@ -188,27 +188,31 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
   private def receiveEvent(jobDriver: Option[JobDriver] = None): Receive = {
-    case Command.HandleEvent(event) => handleEvent(event, jobDriver) pipeTo sender()
+    case Command.HandleEvents(events) => handleEvents(events, jobDriver) pipeTo sender()
   }
 
   private def handleEvent(event: OrderCoreEvent, jobDriver: Option[JobDriver] = None)
   : Future[Completed] =
-    order.applyEvent(event) match {
+    handleEvents(event :: Nil, jobDriver)
+
+  private def handleEvents(events: Seq[OrderCoreEvent], jobDriver: Option[JobDriver] = None)
+  : Future[Completed] =
+    order.applyEvents(events) match {
       case Left(problem) =>
         logger.error(problem.toString)
         Future.successful(Completed)
 
       case Right(updated) =>
         becomeAsStateOf(updated)
-        if (event.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancellationMode?
+        if (events.size == 1 && events.head.isInstanceOf[OrderCancellationMarked] && updated == order)  // Duplicate, already cancelling with same CancellationMode?
           Future.successful(Completed)
         else
-          persist(event) { (event, updatedState) =>
-            update(event :: Nil, updatedState)
+          persistTransaction(events) { (event, updatedState) =>
+            update(events, updatedState)
             if (terminating) {
               context.stop(self)
             } else
-              event match {
+              event foreach {
                 case OrderKillingMarked(Some(kill)) => maybeKillOrder(kill, jobDriver)
                 case _ =>
               }
@@ -348,7 +352,7 @@ private[order] object OrderActor
   sealed trait Command
   object Command {
     final case class Attach(order: Order[Order.IsFreshOrReady]) extends Command
-    final case class HandleEvent(event: OrderCoreEvent) extends Input
+    final case class HandleEvents(event: Seq[OrderCoreEvent]) extends Input
   }
 
   sealed trait Input

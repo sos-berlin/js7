@@ -3,7 +3,6 @@ package js7.data.execution.workflow.context
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.NotImplementedMap
-import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.board.{Board, BoardPath, BoardState}
 import js7.data.controller.ControllerId
@@ -12,7 +11,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.OrderScopes
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BoardInstruction, End, Instructions}
+import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.reflect.ClassTag
@@ -52,13 +51,10 @@ trait StateView
 
   final def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition)
   : Checked[A] =
-    instruction(workflowPosition) match {
-      case o if implicitClass[A] isAssignableFrom o.getClass =>
-        Right(o.asInstanceOf[A])
-      case o =>
-        Left(Problem(s"An Instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
-          s"is expected at position $workflowPosition, not: ${Instructions.jsonCodec.typeName(o)}"))
-    }
+    idToWorkflow
+      .checked(workflowPosition.workflowId)
+      .map(_.instruction_[A](workflowPosition.position))
+      .orThrow
 
   final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
     for {

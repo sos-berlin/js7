@@ -66,10 +66,10 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderProcessingStarted,
       OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderDetached,
+      OrderLockReleased(lock.path),
       OrderFailed(
         Position(0) / "try+0" % 0,
-        Some(Outcome.Disrupted(AgentResetProblem(agentPath))),
-        lockPaths = Seq(lock.path))))
+        Some(Outcome.Disrupted(AgentResetProblem(agentPath))))))
 
       barrier.flatMap(_.tryPut(())).runSyncUnsafe()
   }

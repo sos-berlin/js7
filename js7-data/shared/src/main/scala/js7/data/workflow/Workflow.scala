@@ -9,8 +9,8 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
-import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.{implicitClass, reuseIfEqual}
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
@@ -27,6 +27,7 @@ import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
 import scala.collection.View
+import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
@@ -421,6 +422,16 @@ extends VersionedItem
       instructions(nr.number)
     else
       Gap.empty
+
+  def instruction_[A <: Instruction: ClassTag](position: Position)
+  : Checked[A] =
+    instruction(position) match {
+      case o if implicitClass[A] isAssignableFrom o.getClass =>
+        Right(o.asInstanceOf[A])
+      case o =>
+        Left(Problem(s"An Instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
+          s"is expected at position ${id /: position}, not: ${Instructions.jsonCodec.typeName(o)}"))
+    }
 
   def checkedPosition(position: Position): Checked[Position] =
     labeledInstruction(position).map(_ => position)

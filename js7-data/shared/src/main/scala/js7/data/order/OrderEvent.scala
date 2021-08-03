@@ -184,19 +184,34 @@ object OrderEvent
     def movedTo: Position
   }
 
-  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockPaths: Seq[LockPath] = Nil)
+  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded],
+    @deprecated("only for compatibility", ">2.0.0-alpha.20210730") lockPaths: Seq[LockPath])
   extends OrderFailedEvent with OrderTerminated {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
+  object OrderFailed {
+    def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None) =
+      new OrderFailed(movedTo, outcome, Nil)
+  }
 
-  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockPaths: Seq[LockPath] = Nil)
+  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded],
+    @deprecated("only for compatibility", ">2.0.0-alpha.20210730") lockPaths: Seq[LockPath])
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
+  object OrderFailedInFork {
+    def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None) =
+      new OrderFailedInFork(movedTo, outcome, Nil)
+  }
 
-  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None, lockPaths: Seq[LockPath] = Nil)
+  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded],
+    @deprecated("only for compatibility", ">2.0.0-alpha.20210730") lockPaths: Seq[LockPath])
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
+  object OrderCatched {
+    def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None) =
+      new OrderCatched(movedTo, outcome, Nil)
   }
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCatched`. */
@@ -341,6 +356,11 @@ object OrderEvent
     def lockPaths = lockPath :: Nil
   }
 
+  final case class OrderLockDequeued(lockPath: LockPath)
+  extends OrderLockEvent {
+    def lockPaths = lockPath :: Nil
+  }
+
   final case class OrderLockReleased(lockPath: LockPath)
   extends OrderLockEvent {
     def lockPaths = lockPath :: Nil
@@ -387,6 +407,7 @@ object OrderEvent
     Subtype(deriveCodec[OrderBroken]),
     Subtype(deriveCodec[OrderLockAcquired]),
     Subtype(deriveCodec[OrderLockQueued]),
+    Subtype(deriveCodec[OrderLockDequeued]),
     Subtype(deriveCodec[OrderLockReleased]),
     Subtype(deriveCodec[OrderNoticePosted]),
     Subtype(deriveCodec[OrderNoticeExpected]),
