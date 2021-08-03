@@ -27,7 +27,7 @@ object Dependencies
   val scribeVersion = "3.5.5"
   val scalaJsDomVersion = "1.1.0"
   val shapelessVersion = "2.3.3"
-  val diffxVersion = "0.5.1"
+  val diffxVersion = "0.5.5"
   val reactorVersion = "3.4.8"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.8.0"
@@ -53,7 +53,7 @@ object Dependencies
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val shapeless           = "com.chuusai" %% "shapeless" % shapelessVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
-  val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.3.29"
+  val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.5.5"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = ("com.google.inject" % "guice" % "4.2.3" classifier "no_aop") :: javaxInject :: Nil
