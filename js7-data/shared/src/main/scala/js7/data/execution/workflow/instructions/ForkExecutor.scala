@@ -16,11 +16,14 @@ extends EventInstructionExecutor with ForkInstructionExecutor
     start(order)
       .getOrElse(order
         .ifState[Order.Ready].map { order =>
-          val orderForked = OrderForked(
-            for (branch <- fork.branches.toVector) yield
-              OrderForked.Child(branch.id, order.id | branch.id.string))
-          for (_ <- postprocessOrderForked(order, orderForked, state)) yield
-            order.id <-: orderForked
+          for {
+            children <- fork.branches.toVector
+              .traverse(branch =>
+                order.id.withChild(branch.id.string)
+                  .map(childOrderId => OrderForked.Child(branch.id, childOrderId)))
+            orderForked = OrderForked(children)
+            event/*TODO*/ <- postprocessOrderForked(order, orderForked, state)
+          } yield order.id <-: orderForked
         }
         .orElse(
           for {

@@ -8,9 +8,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
+import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderForked, OrderMoved}
-import js7.data.order.{Order, OrderId}
-import js7.data.value.{ListValue, StringValue}
+import js7.data.value.ListValue
 import js7.data.workflow.instructions.ForkList
 
 private[instructions] final class ForkListExecutor(protected val service: InstructionExecutorService)
@@ -41,17 +41,23 @@ extends EventInstructionExecutor with ForkInstructionExecutor
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     for {
       scope <- state.toScope(order)
-      values <- fork.children.evalAsVector(scope)
-      childStrings <- values.traverse(_.toStringValueString)
-      childIds <- childStrings.traverse(OrderId.ChildId.checked)
+      elements <- fork.children.evalAsVector(scope)
+      childIds <- elements
+        .traverse(element => fork.childToId
+          .eval(ListValue(Seq(element)))(scope)
+          .flatMap(_.toStringValue)
+          .map(_.string))
       _ <- childIds.checkUniqueness
         .mapProblem(Problem(s"Duplicate fork values in ${fork.children}: ") |+| _)
-      children <- childIds
-        .traverse(childId =>
-          fork.childToArguments
-            .eval(ListValue(Seq(StringValue(childId.string))))(scope)
-            .flatMap(_.asObjectValue)
-          .map(args => OrderForked.Child(order.id | childId, args.nameToValue)))
+      argsOfChildren <- elements
+        .traverse(element => fork.childToArguments
+          .eval(ListValue(Seq(element)))(scope)
+          .flatMap(_.asObjectValue))
+      children <- childIds.zip(argsOfChildren)
+        .traverse { case (childId, args) =>
+          order.id.withChild(childId)
+            .map(childOrderId => OrderForked.Child(childOrderId, args.nameToValue))
+        }
       orderForked = OrderForked(children)
       event <- postprocessOrderForked(order, orderForked, state)
     } yield (order.id <-: event) :: Nil

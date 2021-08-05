@@ -11,8 +11,10 @@ import js7.data.value.expression.{ExprFunction, Expression}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
+/** Fork a list. */
 final case class ForkList private(
   children: Expression,
+  childToId: ExprFunction,
   childToArguments: ExprFunction,
   workflow: Workflow,
   sourcePos: Option[SourcePos] = None)
@@ -55,15 +57,17 @@ object ForkList
 {
   def apply(
     children: Expression,
+    childToId: ExprFunction,
     childToArguments: ExprFunction,
     workflow: Workflow,
     sourcePos: Option[SourcePos] = None)
   : ForkList =
-    checked(children, childToArguments, workflow, sourcePos)
+    checked(children, childToId, childToArguments, workflow, sourcePos)
       .orThrow
 
   def checked(
     children: Expression,
+    childToId: ExprFunction,
     childToArguments: ExprFunction,
     workflow: Workflow,
     sourcePos: Option[SourcePos] = None)
@@ -71,7 +75,7 @@ object ForkList
     if (workflow.instructions.exists(o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
       Left(Problem(s"ForkList cannot contain a jump instruction like 'goto'"))
     else
-      Right(new ForkList(children, childToArguments, workflow, sourcePos))
+      Right(new ForkList(children, childToId, childToArguments, workflow, sourcePos))
 
   implicit val jsonCodec: Codec.AsObject[ForkList] = deriveCodec[ForkList]
 }

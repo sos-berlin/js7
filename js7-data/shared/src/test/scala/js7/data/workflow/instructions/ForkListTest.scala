@@ -16,7 +16,11 @@ final class ForkListTest extends AnyFreeSpec
 {
   private val fork = ForkList(
     expr("$children"),
-    exprFunction("(id) => { id: $id }"),
+    exprFunction("(listElement) => $listElement.number"),
+    exprFunction("""(listElement) => {
+        myId: $listElement.number,
+        myString: $child.string
+      }"""),
     Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("A"))))
   ).copy(sourcePos = Some(SourcePos(1, 2)))
 
@@ -26,7 +30,8 @@ final class ForkListTest extends AnyFreeSpec
       json"""{
         "TYPE": "ForkList",
         "children": "$$children",
-        "childToArguments": "(id)=>{id:$$id}",
+        "childToId": "(listElement)=>$$listElement.number",
+        "childToArguments": "(listElement)=>{myId:$$listElement.number, myString:$$child.string}",
         "workflow": {
           "instructions": [
             {

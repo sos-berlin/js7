@@ -2,7 +2,9 @@ package js7.data.order
 
 import js7.base.annotation.javaApi
 import js7.base.generic.GenericString
+import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import scala.util.matching.Regex
 
 final case class OrderId private(string: String) extends GenericString
@@ -16,10 +18,16 @@ final case class OrderId private(string: String) extends GenericString
   def pretty = s"Order $string"
 
   def |(childId: String): OrderId =
-    this | ChildId(childId)
+    withChild(childId).orThrow
 
-  def |(childId: ChildId): OrderId =
-    OrderId(string + ChildSeparator + childId.string)
+  def withChild(childId: String): Checked[OrderId] =
+    if (childId.isEmpty)
+      Left(EmptyStringProblem("OrderId.withChild"))
+    else if (childId.exists(ReservedCharacters))
+      Left(Problem("OrderId must not contain reserved characters: " +
+        ReservedCharacters.mkString(", ")))
+    else
+      Right(new OrderId(string + ChildSeparator + childId))
 
   def allParents: Seq[OrderId] =
     string.split(ChildSeparatorRegex)
@@ -42,7 +50,7 @@ final case class OrderId private(string: String) extends GenericString
 
   def checkedNameSyntax: Checked[this.type] =
     if (string.isEmpty)
-      Left(Problem("OrderId must not be empty"))
+      Left(EmptyStringProblem("OrderId"))
     else if (string.exists(ReservedCharacters))
       Left(Problem("OrderId must not contain reserved characters: " +
         ReservedCharacters.mkString(", ")))

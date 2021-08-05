@@ -61,7 +61,7 @@ sealed trait Value
   def asListValue: Checked[ListValue] =
     Left(UnexpectedValueTypeProblem(ListValue, this))
 
-  def asObject: Checked[Map[String, Value]] =
+  final def asObject: Checked[Map[String, Value]] =
     asObjectValue.map(_.nameToValue)
 
   def asObjectValue: Checked[ObjectValue] =
