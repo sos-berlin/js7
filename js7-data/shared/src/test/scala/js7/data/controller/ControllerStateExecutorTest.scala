@@ -23,7 +23,7 @@ import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
-import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, WrongOrderArgumentTypeProblem}
+import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, WrongValueTypeProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.Position
@@ -205,7 +205,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
       assert(
         executor.execute(_.addOrders(Seq(
           FreshOrder(bOrderId, bWorkflow.path, Map("required" -> StringValue("STRING")))
-        ))) == Left(WrongOrderArgumentTypeProblem(requiredParameter, StringValue)))
+        ))) == Left(WrongValueTypeProblem("required", StringValue, requiredParameter.valueType)))
     }
 
     "addOrder resolved default argument and provides variables" in {

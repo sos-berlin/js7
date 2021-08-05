@@ -20,13 +20,13 @@ final case class ExprFunction private(
     }
 
   private def evalAllowMissing(arguments: ListValue)(implicit scope: Scope): Checked[Value] =
-    if (arguments.list.length != parameters.size)
+    if (arguments.elements.length != parameters.size)
       Left(Problem("Number of arguments does not match number of function parameters"))
     else {
       val argScope = NamedValueScope(
         parameters
           .view
-          .zip(arguments.list)
+          .zip(arguments.elements)
           .map { case (p, a) => p.name -> a }
           .toMap)
       expression.eval(argScope |+| scope)

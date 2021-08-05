@@ -58,7 +58,7 @@ sealed trait Expression extends Expression.Precedence
     eval.flatMap(_.asStringValue).map(_.string)
 
   final def evalAsVector(implicit scope: Scope): Checked[Vector[Value]] =
-    eval.flatMap(_.asListValue).map(_.list.toVector)
+    eval.flatMap(_.asListValue).map(_.elements.toVector)
 }
 
 object Expression
@@ -211,7 +211,7 @@ object Expression
         b <- b.eval
         result <- (a, b) match {
           case (a: ListValue, b: ListValue) =>
-            Right(ListValue(a.list ++ b.list))
+            Right(ListValue(a.elements ++ b.elements))
           case (a, b) =>
             for (a <- a.toStringValue; b <- b.toStringValue) yield StringValue(a.string + b.string)
         }

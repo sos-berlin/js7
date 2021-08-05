@@ -4,67 +4,126 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.expression.Expression.{BooleanConstant, NumericConstant, StringConstant}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.Scope
-import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue}
-import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
+import js7.data.value.{BooleanValue, ListType, ListValue, NamedValues, NumberValue, ObjectType, ObjectValue, StringValue}
+import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongValueTypeProblem}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 final class OrderParametersTest extends AnyFreeSpec
 {
-  private val stringParameter = OrderParameter.Required("string", StringValue)
-  private val booleanParameter = OrderParameter.Required("boolean", BooleanValue)
-  private val numberParameter = OrderParameter.Optional("number", NumberValue, NumericConstant(7))
-  private val workflowDefined = OrderParameter.Final("workflowDefined", StringConstant("EXPRESSION"))
+  private val myStringParameter = OrderParameter.Required("myString", StringValue)
+  private val myBooleanParameter = OrderParameter.Required("myBoolean", BooleanValue)
+  private val myNumberParameter = OrderParameter.Optional("myNumber", NumberValue, NumericConstant(7))
+
+  private val myNumberListParameter =
+    OrderParameter.Required("myNumberList", ListType(NumberValue))
+
+  private val myObjectParameter =
+    OrderParameter.Required("myObject", ObjectType(Map(
+      "a" -> StringValue,
+      "b" -> NumberValue)))
+
+  private val myObjectListParameter =
+    OrderParameter.Optional(
+      "myObjectList",
+      ListType(ObjectType(Map(
+        "a" -> NumberValue,
+        "strings" -> ListType(StringValue)))),
+      expr("[]"))
+
+  private val myFinalVariable = OrderParameter.Final("myFinalVariable", StringConstant("EXPRESSION"))
 
   "JSON" in {
     testJson(
       OrderParameters(
-        stringParameter,
-        numberParameter,
-        booleanParameter,
-        workflowDefined),
+        myStringParameter,
+        myNumberParameter,
+        myBooleanParameter,
+        myNumberListParameter,
+        myObjectParameter,
+        myObjectListParameter,
+        myFinalVariable),
       json"""{
-        "boolean": {
+        "myBoolean": {
           "type": "Boolean"
         },
-        "number": {
+        "myNumber": {
           "type": "Number",
           "default": "7"
         },
-        "string": {
+        "myString": {
           "type": "String"
         },
-        "workflowDefined": {
+        "myNumberList": {
+          "type": {
+            "TYPE": "List",
+            "elementType": "Number"
+          }
+        },
+        "myObject": {
+          "type": {
+            "TYPE": "Object",
+            "a": "String",
+            "b": "Number"
+          }
+        },
+        "myObjectList": {
+          "default": "[]",
+          "type": {
+            "TYPE": "List",
+            "elementType": {
+              "TYPE": "Object",
+              "a": "Number",
+              "strings": {
+                "TYPE": "List",
+                "elementType": "String"
+              }
+            }
+          }
+        },
+        "myFinalVariable": {
           "final": "'EXPRESSION'"
         }
       }""")
   }
 
   private val parameters = OrderParameters.checked(Seq(
-    stringParameter,
-    OrderParameter("number", NumberValue),
-    booleanParameter,
+    myStringParameter,
+    OrderParameter("myNumber", NumberValue),
+    myBooleanParameter,
     OrderParameter("string-default", StringConstant("DEFAULT")),
     OrderParameter("boolean-default", BooleanConstant(false)),
     OrderParameter("number-default", NumericConstant(-1)),
-    OrderParameter.Final("workflowDefined", StringConstant("EXPRESSION"))
+    //OrderParameter("numberList", xxx),
+    myNumberListParameter,
+    myObjectParameter,
+    myObjectListParameter,
+    OrderParameter.Final("myFinalVariable", StringConstant("EXPRESSION"))
   )).orThrow
 
   private val validArguments = NamedValues(
-    "string" -> StringValue("STRING"),
-    "number" -> NumberValue(1),
-    "boolean" -> BooleanValue(true))
+    "myString" -> StringValue("STRING"),
+    "myNumber" -> NumberValue(1),
+    "myBoolean" -> BooleanValue(true),
+    "myNumberList" -> ListValue(Seq(NumberValue(1), NumberValue(2))),
+    "myObject" -> ObjectValue(Map(
+      "a" -> StringValue("STRING"),
+      "b" -> NumberValue(2))),
+    "myObjectList" -> ListValue.empty)
 
   "prepareOrderArguments" - {
     implicit val scope = Scope.empty
-    val numberParameter = OrderParameter.Required("number", NumberValue)
+    val myNumberParameter = OrderParameter.Required("myNumber", NumberValue)
 
     "Missing names" in {
       assert(parameters.prepareOrderArguments(NamedValues.empty) == Left(Problem.Combined(Set(
-        MissingOrderArgumentProblem(stringParameter),
-        MissingOrderArgumentProblem(booleanParameter),
-        MissingOrderArgumentProblem(numberParameter)))))
+        MissingOrderArgumentProblem(myStringParameter),
+        MissingOrderArgumentProblem(myBooleanParameter),
+        MissingOrderArgumentProblem(myNumberParameter),
+        MissingOrderArgumentProblem(myObjectParameter),
+        MissingOrderArgumentProblem(myNumberListParameter)))))
     }
 
     "Undefined names" in {
@@ -76,24 +135,48 @@ final class OrderParametersTest extends AnyFreeSpec
 
     "Wrong type" in {
       val args = NamedValues(
-        "string" -> BooleanValue(true),
-        "number" -> StringValue("1"),
-        "boolean" -> NumberValue(1))
+        "myString" -> BooleanValue(true),
+        "myNumber" -> StringValue("1"),
+        "myBoolean" -> NumberValue(1),
+        "myNumberList" -> ListValue(Seq(StringValue("WRONG TYPE"))),
+        "myObject" -> ObjectValue(Map(
+          "a" -> StringValue("WRONG TYPE"),
+          "b" -> BooleanValue(true))))
       assert(parameters.prepareOrderArguments(args) == Left(Problem.Combined(Set(
-        WrongOrderArgumentTypeProblem(stringParameter, BooleanValue),
-        WrongOrderArgumentTypeProblem(booleanParameter, NumberValue),
-        WrongOrderArgumentTypeProblem(numberParameter, StringValue)))))
+        WrongValueTypeProblem("myString", BooleanValue, StringValue),
+        WrongValueTypeProblem("myNumber", StringValue, NumberValue),
+        WrongValueTypeProblem("myBoolean", NumberValue, BooleanValue),
+        WrongValueTypeProblem("myNumberList[0]", StringValue, NumberValue),
+        WrongValueTypeProblem("myObject.b", BooleanValue, NumberValue)))))
+    }
+
+    "Undeclared object field" in {
+      val args = validArguments ++ Map(
+        "myObject" -> ObjectValue(Map(
+          "a" -> StringValue("STRING"),
+          "b" -> NumberValue(2),
+          "UNDECLARED" -> StringValue("UNDECLARED VALUE"))))
+      assert(parameters.prepareOrderArguments(args) ==
+        Left(Problem("Undeclared object fields in myObject: UNDECLARED")))
+    }
+
+    "Missing object fields" in {
+      val args = validArguments + ("myObject" -> ObjectValue(Map.empty))
+      assert(parameters.prepareOrderArguments(args) ==
+        Left(Problem("Missing object fields in myObject: a, b")))
     }
 
     "Multiple errors" in {
       val args = NamedValues(
         "UNEXPECTED" -> NumberValue(1),
-        "string" -> BooleanValue(true))
+        "myString" -> BooleanValue(true))
       assert(parameters.prepareOrderArguments(args) == Left(Problem.Combined(Set(
         UndeclaredOrderArgumentProblem("UNEXPECTED"),
-        MissingOrderArgumentProblem(booleanParameter),
-        MissingOrderArgumentProblem(numberParameter),
-        WrongOrderArgumentTypeProblem(stringParameter, BooleanValue)))))
+        MissingOrderArgumentProblem(myNumberParameter),
+        MissingOrderArgumentProblem(myBooleanParameter),
+        MissingOrderArgumentProblem(myNumberListParameter),
+        MissingOrderArgumentProblem(myObjectParameter),
+        WrongValueTypeProblem("myString", BooleanValue, StringValue)))))
     }
 
     "Valid arguments" in {

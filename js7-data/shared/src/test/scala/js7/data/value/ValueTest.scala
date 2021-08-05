@@ -9,22 +9,76 @@ final class ValueTest extends AnyFreeSpec
 {
   private val bigNumber = "111222333444555666777888999.9998887776665555444333222111e99"
 
-  "JSON" in {
-    testJson[Value](StringValue("X"),
-      json""" "X" """)
-    testJson[Value](NumberValue(BigDecimal(bigNumber)),
-      json"""$bigNumber""")
-    assert((NumberValue(BigDecimal(bigNumber)): Value).asJson.toString ==
-      "1.112223334445556667778889999998887776665555444333222111E+125")
-    testJson[Value](BooleanValue(false),
-      json"""false""")
-    testJson[Value](ListValue.empty,
-      json"""[]""")
-    testJson[Value](ListValue(List(
-      StringValue("STRING"), NumberValue(1), BooleanValue.True, ListValue(List(BooleanValue.False)))),
-      json"""[ "STRING", 1, true, [ false ]] """)
-    testJson[Value](ObjectValue(Map("A" -> StringValue("STRING"))),
-      json"""{ "A": "STRING" }""")
+  "JSON" - {
+    "Values" in {
+      testJson[Value](StringValue("X"),
+        json""" "X" """)
+      testJson[Value](NumberValue(BigDecimal(bigNumber)),
+        json"""$bigNumber""")
+      assert((NumberValue(BigDecimal(bigNumber)): Value).asJson.toString ==
+        "1.112223334445556667778889999998887776665555444333222111E+125")
+      testJson[Value](BooleanValue(false),
+        json"""false""")
+      testJson[Value](ListValue.empty,
+        json"""[]""")
+      testJson[Value](ListValue(List(
+        StringValue("STRING"), NumberValue(1), BooleanValue.True, ListValue(List(BooleanValue.False)))),
+        json"""[ "STRING", 1, true, [ false ]] """)
+      testJson[Value](ObjectValue(Map("A" -> StringValue("STRING"))),
+        json"""{ "A": "STRING" }""")
+    }
+
+    "ValueType" - {
+      "String" in {
+        testJson[ValueType](StringValue, json""" "String" """)
+      }
+
+      "Number" in {
+        testJson[ValueType](NumberValue, json""" "Number" """)
+      }
+
+      "Boolean" in {
+        testJson[ValueType](BooleanValue, json""" "Boolean" """)
+      }
+
+      "List" in {
+        testJson[ValueType](
+          ListType(StringValue),
+          json"""
+            {
+              "TYPE": "List",
+              "elementType": "String"
+            }""")
+      }
+
+      "Object" in {
+        testJson[ValueType](
+          ObjectType(Map("a" -> StringValue, "b" -> NumberValue)),
+          json"""
+            {
+              "TYPE": "Object",
+              "a": "String",
+              "b": "Number"
+            }""")
+      }
+
+      "Nested" in {
+        testJson[ValueType](
+          ListType(ObjectType(Map("a" -> NumberValue, "stringList" -> ListType(StringValue)))),
+          json"""
+            {
+              "TYPE": "List",
+              "elementType": {
+                "TYPE": "Object",
+                "a": "Number",
+                "stringList": {
+                  "TYPE": "List",
+                  "elementType": "String"
+                }
+              }
+            }""")
+      }
+    }
   }
 
   "StringValue" - {

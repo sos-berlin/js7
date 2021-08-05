@@ -6,7 +6,7 @@ import js7.base.problem.Problem
 import js7.data.value.expression.Expression.{BooleanConstant, StringConstant}
 import js7.data.value.expression.Scope
 import js7.data.value.{BooleanValue, NamedValues, NumberValue, StringValue}
-import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongOrderArgumentTypeProblem}
+import js7.data.workflow.OrderParameters.{MissingOrderArgumentProblem, UndeclaredOrderArgumentProblem, WrongValueTypeProblem}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -51,26 +51,28 @@ final class OrderPreparationTest extends AnyFreeSpec
   }
 
   "prepareOrderArguments" - {
+    implicit val scope = Scope.empty
+
     "No arguments" in {
-      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues.empty)(Scope.empty) == Left(
+      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues.empty) == Left(
         MissingOrderArgumentProblem(stringParameter).toSerialized))
     }
 
     "Undeclared argument" in {
-      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues("UNEXPECTED" -> BooleanValue.True))(Scope.empty) ==
+      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues("UNEXPECTED" -> BooleanValue.True)) ==
         Left(Problem.Combined(Set(
           UndeclaredOrderArgumentProblem("UNEXPECTED").toSerialized,
           MissingOrderArgumentProblem(stringParameter).toSerialized))))
     }
 
     "Wrong type" in {
-      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues("string" -> BooleanValue.True))(Scope.empty) == Left(
-        WrongOrderArgumentTypeProblem(stringParameter, BooleanValue).toSerialized))
+      assert(orderPreparation.parameters.prepareOrderArguments(NamedValues("string" -> BooleanValue.True)) ==
+        Left(WrongValueTypeProblem("string", BooleanValue, StringValue).toSerialized))
     }
 
     "Valid arguments" in {
       val args = NamedValues("string" -> StringValue("STRING"))
-      assert(orderPreparation.parameters.prepareOrderArguments(args)(Scope.empty) == Right(args))
+      assert(orderPreparation.parameters.prepareOrderArguments(args) == Right(args))
     }
   }
 

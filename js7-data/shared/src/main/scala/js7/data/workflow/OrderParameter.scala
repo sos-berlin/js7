@@ -11,10 +11,20 @@ sealed trait OrderParameter {
 
 object OrderParameter
 {
+  def apply(name: String, valueType: ValueType): OrderParameter =
+    Required(name, valueType)
+
+  def apply(name: String, valueType: ValueType, expression: Expression): OrderParameter =
+    Optional(name, valueType, expression)
+
+  def apply(name: String, expression: Expression.Constant): OrderParameter =
+    Optional(name, expression.toValue.valueType, expression)
+
   sealed trait HasType extends OrderParameter {
     def valueType: ValueType
   }
 
+  /** A required order argument. */
   final case class Required(name: String, valueType: ValueType)
   extends HasType {
     def referencedJobResourcePaths = Nil
@@ -39,22 +49,15 @@ object OrderParameter
       }
   }
 
+  /** An optional value may be overridden by an order argument. */
   final case class Optional(name: String, valueType: ValueType, expression: Expression)
   extends HasType with HasExpression {
     def referencedJobResourcePaths = expression.referencedJobResourcePaths
   }
 
+  /** A final value may not be overriden. */
   final case class Final(name: String, expression: Expression)
   extends HasExpression {
     def referencedJobResourcePaths = expression.referencedJobResourcePaths
   }
-
-  def apply(name: String, valueType: ValueType): OrderParameter =
-    Required(name, valueType)
-
-  def apply(name: String, valueType: ValueType, expression: Expression): OrderParameter =
-    Optional(name, valueType, expression)
-
-  def apply(name: String, expression: Expression.Constant): OrderParameter =
-    Optional(name, expression.toValue.valueType, expression)
 }

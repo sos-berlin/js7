@@ -12,7 +12,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.JobResourcePath
 import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{NamedValues, Value, ValueType}
+import js7.data.value.{ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
 import js7.data.workflow.OrderParameters._
 import scala.collection.View
@@ -49,11 +49,9 @@ final case class OrderParameters private(
             case (Some(_), _: OrderParameter.Final) =>
               Left(FixedOrderArgumentProblem(param.name))
 
-            case (Some(value), p: OrderParameter.HasType) =>
-              if (value.valueType != p.valueType)
-                Left(WrongOrderArgumentTypeProblem(p, value.valueType))
-              else
-                Right(Some(param.name -> value))
+            case (Some(v), p: OrderParameter.HasType) =>
+              for (_ <- checkType(v, p.valueType, p.name)) yield
+                Some(param.name -> v)
           })
         .reduceLeftEither
         .map(_.flatten)
@@ -63,6 +61,38 @@ final case class OrderParameters private(
       .pipeIf(allowUndeclared)(_.map(arguments.view ++ _))
       .map(_.toMap)
   }
+
+  private def checkType(v: Value, typ: ValueType, prefix: => String): Checked[Unit] =
+    (v, typ) match {
+      case (v: ListValue, typ: ListType) =>
+        v.elements
+          .view
+          .zipWithIndex
+          .map { case (v, i) => checkType(v, typ.elementType, s"$prefix[$i]") }
+          .collectFirst { case Left(problem) => problem }
+          .fold(Checked.unit)(Left(_))
+
+      case (v: ObjectValue, typ: ObjectType) =>
+        val missingNames = typ.nameToType.keySet -- v.nameToValue.keySet
+        if (missingNames.nonEmpty)
+          Left(Problem(s"Missing object fields in $prefix: ${missingNames.mkString(", ")}"))
+        else {
+          val undeclaredNames = v.nameToValue.keySet -- typ.nameToType.keySet
+          if (undeclaredNames.nonEmpty)
+            Left(Problem(s"Undeclared object fields in $prefix: ${undeclaredNames.mkString(", ")}"))
+          else
+            v.nameToValue
+              .toVector
+              .traverse { case (k, v) => checkType(v, typ.nameToType(k), s"$prefix.$k") }
+              .rightAs(())
+        }
+
+      case _ =>
+        if (v.valueType != typ)
+          Left(WrongValueTypeProblem(prefix, v.valueType, typ))
+        else
+          Checked.unit
+    }
 
   def defaultArgument(name: String): Option[Value] =
     nameToParameter.get(name)
@@ -97,7 +127,7 @@ object OrderParameters
   // allowUndeclared serialized or deserialized separately (for compatibility)
   implicit val jsonEncoder: Encoder.AsObject[OrderParameters] =
     o => JsonObject.fromIterable(
-      o.nameToParameter.values.map(param =>
+      for (param <- o.nameToParameter.values) yield
         param.name -> Json.fromJsonObject(
           param match {
             case Required(_, valueType) =>
@@ -112,7 +142,7 @@ object OrderParameters
             case Final(_, expression) =>
               JsonObject(
                 "final" -> expression.asJson)
-          })))
+          }))
 
   implicit val jsonDecoder: Decoder[OrderParameters] =
     cursor =>
@@ -158,14 +188,15 @@ object OrderParameters
       "name" -> name)
   }
 
-  final case class WrongOrderArgumentTypeProblem(
-    parameter: OrderParameter.HasType,
-    argumentType: ValueType)
+  final case class WrongValueTypeProblem(
+    name: String,
+    argumentType: ValueType,
+    expectedType: ValueType)
   extends Problem.Coded {
     def arguments = Map(
-      "name" -> parameter.name,
-      "expectedType" -> parameter.valueType.name,
-      "type" -> argumentType.name)
+      "name" -> name,
+      "type" -> argumentType.name,
+      "expectedType" -> expectedType.name)
   }
 
   final case class FixedOrderArgumentProblem(name: String)

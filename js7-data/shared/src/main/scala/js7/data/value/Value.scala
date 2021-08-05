@@ -13,6 +13,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
+import scala.collection.View
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
@@ -55,7 +56,7 @@ sealed trait Value
     Left(UnexpectedValueTypeProblem(BooleanValue, this))
 
   def asList: Checked[Seq[Value]] =
-    asListValue.map(_.list)
+    asListValue.map(_.elements)
 
   def asListValue: Checked[ListValue] =
     Left(UnexpectedValueTypeProblem(ListValue, this))
@@ -167,7 +168,7 @@ final case class StringValue(string: String) extends Value
   override def toString = ValuePrinter.quoteString(string)
 }
 
-object StringValue extends ValueType
+object StringValue extends ValueType.Simple
 {
   val name = "String"
 
@@ -202,7 +203,7 @@ final case class NumberValue(number: BigDecimal) extends Value
   override def toString = convertToString
 }
 
-object NumberValue extends ValueType
+object NumberValue extends ValueType.Simple
 {
   val name = "Number"
   val Zero = NumberValue(0)
@@ -238,7 +239,7 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
   override def toString = convertToString
 }
 
-object BooleanValue extends ValueType
+object BooleanValue extends ValueType.Simple
 {
   val name = "Boolean"
   val True = BooleanValue(true)
@@ -247,20 +248,21 @@ object BooleanValue extends ValueType
   @javaApi def of(value: Boolean) = BooleanValue(value)
 }
 
-final case class ListValue(list: Vector[Value]) extends Value
+final case class ListValue(elements: Vector[Value]) extends Value
 {
   def valueType = ListValue
 
   override def asListValue = Right(this)
 
-  def toJava = list.asJava
+  def toJava = elements.asJava
 
-  def convertToString = list.mkString("[", ", ", "]")
+  def convertToString = elements.mkString("[", ", ", "]")
 
   override def toString = convertToString
 }
 
-object ListValue extends ValueType
+/** A list of values of undeclared type. */
+object ListValue extends ValueType.Compound
 {
   val name = "List"
   val empty = ListValue(Vector.empty)
@@ -272,6 +274,13 @@ object ListValue extends ValueType
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
 }
 
+final case class ListType(elementType: ValueType)
+extends ValueType.Compound
+{
+  def name = "List"
+}
+
+/** An object with fields of undeclared type. */
 final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
 {
   def valueType = ObjectValue
@@ -287,13 +296,19 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
   override def toString = convertToString
 }
 
-object ObjectValue extends ValueType
+object ObjectValue extends ValueType.Compound
 {
   val name = "Object"
   val empty = ObjectValue(Map.empty)
 
   @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
   @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
+}
+
+final case class ObjectType(nameToType: Map[String, ValueType])
+extends ValueType.Compound
+{
+  def name = "Object"
 }
 
 /** Just a reminder that MissingValue could be an instance of a future IsErrorValue.
@@ -334,7 +349,7 @@ object MissingValue extends ValueType {
 }
 
 /** The inapplicable value. */
-case object NullValue extends Value with ValueType {
+case object NullValue extends Value with ValueType.Simple {
   def valueType = NullValue
 
   val name = "Null"
@@ -355,17 +370,59 @@ sealed trait ValueType
 
 object ValueType
 {
-  val values = Seq(StringValue, BooleanValue, NumberValue, ListValue, ObjectValue)
-  private val nameToType = values.toKeyedMap(_.name)
+  sealed trait Simple extends ValueType
+  sealed trait Compound extends ValueType
 
-  implicit val jsonEncoder: Encoder[ValueType] =
-    o => Json.fromString(o.name)
+  private val nameToSimpleType = View(StringValue, BooleanValue, NumberValue)
+    .toKeyedMap(_.name)
+
+  implicit val jsonEncoder: Encoder[ValueType] = {
+    case ListType(elementType) => Json.obj(
+      "TYPE" -> Json.fromString("List"),
+      "elementType" -> elementType.asJson(jsonEncoder))
+
+    case ObjectType(fields) =>
+      Json.fromFields(
+        new View.Single("TYPE" -> Json.fromString("Object")) ++
+          fields.view.map { case (k, v) => k -> jsonEncoder(v) })
+
+    case o: ValueType =>
+      Json.fromString(o.name)
+  }
 
   implicit val jsonDecoder: Decoder[ValueType] =
-    cursor => (cursor.value.asString match {
-      case None => Left(Problem("ValueType expected"))
-      case Some(string) => nameToType.checked(string)
-    }).toDecoderResult(cursor.history)
+    c => {
+      val json = c.value
+      if (json.isString)
+        nameToSimpleType.checked(c.value.asString.get)
+          .toDecoderResult(c.history)
+      else if (json.isObject)
+        for {
+          typ <- c.get[String]("TYPE")
+          valueType <- typ match {
+            case "List" =>
+              c.get[ValueType]("elementType")(jsonDecoder)
+                .map(ListType(_))
+
+            case "Object" =>
+              c.value.asObject.get
+                .toIterable
+                .view
+                .filter(_._1 != "TYPE")
+                .toVector
+                .traverse { case (k, v) => jsonDecoder
+                  .decodeJson(v)
+                  .map(k -> _)
+                }
+                .map(fields => ObjectType(fields.toMap))
+
+            case typeName =>
+              Left(DecodingFailure(s"Unknown ValueType: $typeName", c.history))
+          }
+        } yield valueType
+      else
+        Left(DecodingFailure("ValueType expected", c.history))
+    }
 
   final case object MissingValueProblem extends Problem.ArgumentlessCoded
 
