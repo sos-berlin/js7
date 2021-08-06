@@ -68,50 +68,77 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
     }
 
   protected[instructions] final def postprocessOrderForked(
+    fork: ForkInstruction,
     order: Order[Order.Ready],
     orderForked: OrderForked,
     state: StateView)
   : Checked[OrderActorEvent] =
     for (_ <- checkOrderIdCollisions(orderForked, state)) yield
-      predictAttachOrDetach(order, orderForked, state)
+      predictAttachOrDetach(fork, order, orderForked, state)
         .getOrElse(orderForked)
 
   // Forking many children at Controller and then attached all to their first agent is inefficient.
   // Here we decide where to attach the forking order before generating child orders.
   protected[instructions] final def predictAttachOrDetach(
+    fork: ForkInstruction,
     order: Order[Order.Ready],
     orderForked: OrderForked,
     state: StateView)
   : Option[OrderActorEvent] = {
+    def x(agentPath: AgentPath) =
+      fork.agentPath.exists(_ != agentPath) ||
+        (orderForked.children.sizeIs >= minimumChildCountForParentAttachment)
     val eventSource = new OrderEventSource(state)
     order
       .newForkedOrders(orderForked)
       .toVector
       .traverse(eventSource.nextAgent)
+      .map(_.toSet)
     match {
       case Left(problem) =>
         Some(OrderFailedIntermediate_(Some(Outcome.Failed.fromProblem(problem))))
 
-      case Right(agentPathSeq: Vector[Option[AgentPath]]) =>
-        // None means Controller (or unknown?)
-        val agentPaths = agentPathSeq.toSet
-        if (agentPaths.sizeIs == 0)
+      case Right(agentPaths: Set[Option[AgentPath]]) =>
+        // None means Controller or the location is irrelevant (not distinguishable for now)
+        if (orderForked.children.sizeIs == 0)
           None  // no children
-        else if (agentPaths.sizeIs == 1)
+        else if (agentPaths.sizeIs == 1) {
+          // All children start at the same agent
+          val enoughChildren = orderForked.children.sizeIs >= minimumChildCountForParentAttachment
           (order.attachedState, agentPaths.head) match {
-            case (Some(Order.Attached(attached)), maybeAgentPath) =>
-              !maybeAgentPath.contains(attached) ? OrderDetachable
+            case (Some(Order.Attached(parentsAgentPath)), Some(childrensAgentPath)) =>
+              // If parent order's attachment and the orders first agent differs,
+              // detach the parent order!
+              (parentsAgentPath != childrensAgentPath) ?
+                OrderDetachable
 
-            case (None, Some(agentPath)) =>
-              // All children on the same agent? We attach the forking order.
-              (agentPathSeq.sizeIs >= minimumChildCountForParentAttachment) ?
-                OrderAttachable(agentPath)
+            case (Some(Order.Attached(parentsAgentPath)), None) =>
+              // If the orders first location is the Controller or irrelevant,
+              // then we prefer to detach the parent order.
+              (fork.agentPath.exists(_ != parentsAgentPath) || enoughChildren) ?
+                OrderDetachable
+
+            case (None, Some(childrensAgentPath)) =>
+              // Attach the forking order to the children's agent
+              (fork.agentPath.contains(childrensAgentPath) || enoughChildren) ?
+                OrderAttachable(childrensAgentPath)
 
             case _ =>
               None
           }
-        else
-          order.isAttached ? OrderDetachable
+        } else {
+          // Child orders may start at different agents
+          order.attachedState match {
+            case Some(Order.Attached(parentsAgentPath)) =>
+              // We prefer to detach
+              // Inefficient if only one of many children change the agent !!!
+              !fork.agentPath.contains(parentsAgentPath) ?
+                OrderDetachable
+
+            case None =>
+              fork.agentPath.map(OrderAttachable(_))
+          }
+        }
     }
   }
 }

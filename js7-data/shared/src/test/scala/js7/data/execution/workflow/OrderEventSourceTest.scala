@@ -108,13 +108,15 @@ final class OrderEventSourceTest extends AnyFreeSpec
     process.update(orderId <-: OrderAttached(TestAgentPath))
     assert(process.run(orderId) == List(
       orderId <-: OrderStarted,
+      orderId <-: OrderDetachable,
+      orderId <-: OrderDetached,
       orderId <-: OrderForked(Vector(
         OrderForked.Child("🥕", orderId | "🥕"),
-        OrderForked.Child("🍋", orderId | "🍋"))),
-      orderId <-: OrderDetachable,
-      orderId <-: OrderDetached))
+        OrderForked.Child("🍋", orderId | "🍋")))))
 
     assert(process.run(orderId | "🥕") == List(
+      (orderId | "🥕") <-: OrderAttachable(TestAgentPath),
+      (orderId | "🥕") <-: OrderAttached(TestAgentPath),
       (orderId | "🥕") <-: OrderProcessingStarted,
       (orderId | "🥕") <-: OrderProcessed(Outcome.succeededRC0),
       (orderId | "🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
@@ -124,6 +126,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
     assert(process.run(orderId | "🍋") == List(
+      (orderId | "🍋") <-: OrderAttachable(TestAgentPath),
+      (orderId | "🍋") <-: OrderAttached(TestAgentPath),
       (orderId | "🍋") <-: OrderProcessingStarted,
       (orderId | "🍋") <-: OrderProcessed(Outcome.succeededRC0),
       (orderId | "🍋") <-: OrderMoved(Position(0) / "fork+🍋" % 1),
@@ -314,7 +318,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         "Attached" in {
           testEventSource(readyOrder, attached) { (order, controller, agent) =>
             assert(controller.nextEvents(order.id) == Nil)
-            assert(agent     .nextEvents(order.id) == Seq(order.id <-: orderForked))
+            assert(agent     .nextEvents(order.id) == Seq(order.id <-: OrderDetachable))
             assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))
@@ -406,7 +410,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         "Attached" in {
           testEventSource(readyOrder, attached) { (order, controller, agent) =>
             assert(controller.nextEvents(order.id) == Nil)
-            assert(agent     .nextEvents(order.id) == Seq(order.id <-: orderForked))
+            assert(agent     .nextEvents(order.id) == Seq(order.id <-: OrderDetachable))
             assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Left(CancelStartedOrderProblem(order.id)))
             assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(FreshOrStarted(None))))))

@@ -133,14 +133,12 @@ object ForkTest {
     TestOrder.id <-: OrderProcessed(Outcome.succeededRC0),
     TestOrder.id <-: OrderMoved(Position(3)),
 
-    TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderDetached,
-                                                              YOrderId <-: OrderDetachable,
-                                                              YOrderId <-: OrderDetached,
-                                                              YOrderId <-: OrderAttachable(AAgentPath),
-                                                              YOrderId <-: OrderAttached(AAgentPath),
+    TestOrder.id <-: OrderForked(Vector(
+      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
+      XOrderId <-: OrderAttachable(BAgentPath),               YOrderId <-: OrderAttachable(AAgentPath),
+      XOrderId <-: OrderAttached(BAgentPath),                 YOrderId <-: OrderAttached(AAgentPath),
 
       XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),

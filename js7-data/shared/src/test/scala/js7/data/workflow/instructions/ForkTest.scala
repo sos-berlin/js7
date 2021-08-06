@@ -66,6 +66,23 @@ final class ForkTest extends AnyFreeSpec {
         ],
         "sourcePos": [ 1, 2 ]
       }""")
+
+    testJson[Instruction.Labeled](
+      Fork(Vector(
+        Fork.Branch("A", Workflow.empty)),
+        Some(AgentPath("AGENT"))),
+      json"""{
+        "TYPE": "Fork",
+        "branches": [
+          {
+            "id": "A",
+            "workflow": {
+              "instructions": []
+            }
+          }
+        ],
+        "agentPath": "AGENT"
+      }""")
   }
 
   "Duplicate branch ids are rejected" in {  // TODO

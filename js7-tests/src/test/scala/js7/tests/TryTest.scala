@@ -125,10 +125,14 @@ final class TryTest extends AnyFreeSpec
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / "try+0" % 0),
           OrderStarted,
+          OrderAttachable(TestAgentPath),
+          OrderAttached(TestAgentPath),
           OrderForked(Vector(
             OrderForked.Child("🥕", OrderId("🔴|🥕")),
             OrderForked.Child("🍋", OrderId("🔴|🍋")),
             OrderForked.Child("🌶", OrderId("🔴|🌶")))),
+          OrderDetachable,
+          OrderDetached,
           OrderJoined(Outcome.Failed()),
           OrderCatched(Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentPath),
@@ -140,8 +144,6 @@ final class TryTest extends AnyFreeSpec
           OrderDetached,
           OrderFinished))
         checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.all[OrderEvent], Vector(
-          OrderAttachable(TestAgentPath),
-          OrderAttached(TestAgentPath),
           OrderProcessingStarted,
           OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
           OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0),

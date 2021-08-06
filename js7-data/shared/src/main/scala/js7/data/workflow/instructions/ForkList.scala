@@ -17,6 +17,7 @@ final case class ForkList private(
   childToId: ExprFunction,
   childToArguments: ExprFunction,
   workflow: Workflow,
+  agentPath: Option[AgentPath] = None,
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction
 {
@@ -60,9 +61,10 @@ object ForkList
     childToId: ExprFunction,
     childToArguments: ExprFunction,
     workflow: Workflow,
+    agentPath: Option[AgentPath] = None,
     sourcePos: Option[SourcePos] = None)
   : ForkList =
-    checked(children, childToId, childToArguments, workflow, sourcePos)
+    checked(children, childToId, childToArguments, workflow, agentPath, sourcePos)
       .orThrow
 
   def checked(
@@ -70,12 +72,13 @@ object ForkList
     childToId: ExprFunction,
     childToArguments: ExprFunction,
     workflow: Workflow,
+    agentPath: Option[AgentPath] = None,
     sourcePos: Option[SourcePos] = None)
   : Checked[ForkList] =
     if (workflow.instructions.exists(o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
       Left(Problem(s"ForkList cannot contain a jump instruction like 'goto'"))
     else
-      Right(new ForkList(children, childToId, childToArguments, workflow, sourcePos))
+      Right(new ForkList(children, childToId, childToArguments, workflow, agentPath, sourcePos))
 
   implicit val jsonCodec: Codec.AsObject[ForkList] = deriveCodec[ForkList]
 }

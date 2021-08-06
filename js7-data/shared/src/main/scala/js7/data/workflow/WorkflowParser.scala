@@ -191,7 +191,9 @@ object WorkflowParser
         (branchId ~ w ~ ":" ~ w ~ curlyWorkflowOrInstruction)
           map Fork.Branch.fromPair)
       (Index ~ keyword("fork") ~ Index ~ w ~ curly(w ~ forkBranch ~ (comma ~ forkBranch).rep) ~ w ~ instructionTerminator.?)
-        .flatMap { case (start, end, (branch, more)) => checkedToP(Fork.checked(Vector(branch) ++ more, sourcePos(start, end))) }
+        .flatMap { case (start, end, (branch, more)) =>
+          checkedToP(Fork.checked(Vector(branch) ++ more, agentPath = None, sourcePos(start, end)))
+        }
     }
 
     private def ifInstruction[_: P] = P[If](

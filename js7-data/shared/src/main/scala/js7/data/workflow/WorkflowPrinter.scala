@@ -184,7 +184,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case Finish(_) =>
         sb ++= "finish;\n"
 
-      case Fork(branches, _) =>
+      case Fork(branches, agentPath, _) =>
         def appendBranch(branch: Fork.Branch) = {
           indent(nesting + 1)
           appendQuoted(branch.id.string)

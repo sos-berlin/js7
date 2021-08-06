@@ -58,7 +58,7 @@ sealed trait Expression extends Expression.Precedence
     eval.flatMap(_.asStringValue).map(_.string)
 
   final def evalAsVector(implicit scope: Scope): Checked[Vector[Value]] =
-    eval.flatMap(_.asListValue).map(_.elements.toVector)
+    eval.flatMap(_.asListValue).map(_.elements)
 }
 
 object Expression

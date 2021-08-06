@@ -49,6 +49,24 @@ final class ForkListTest extends AnyFreeSpec
         },
         "sourcePos": [ 1, 2 ]
       }""")
+
+    testJson[Instruction.Labeled](
+      ForkList(
+        expr("$children"),
+        exprFunction("(listElement) => $listElement"),
+        exprFunction("(listElement) => { myId: $listElement }"),
+        Workflow.empty,
+        Some(AgentPath("AGENT"))),
+      json"""{
+        "TYPE": "ForkList",
+        "children": "$$children",
+        "childToId": "(listElement)=>$$listElement",
+        "childToArguments": "(listElement)=>{myId:$$listElement}",
+        "workflow": {
+          "instructions": []
+        },
+        "agentPath": "AGENT"
+      }""")
   }
 
   "workflow" in {

@@ -44,9 +44,8 @@ extends EventInstructionExecutor with ForkInstructionExecutor
       elements <- fork.children.evalAsVector(scope)
       childIds <- elements
         .traverse(element => fork.childToId
-          .eval(ListValue(Seq(element)))(scope)
-          .flatMap(_.toStringValue)
-          .map(_.string))
+          .eval(ListValue(Vector(element)))(scope)
+          .flatMap(_.toStringValueString))
       _ <- childIds.checkUniqueness
         .mapProblem(Problem(s"Duplicate fork values in ${fork.children}: ") |+| _)
       argsOfChildren <- elements
@@ -56,9 +55,9 @@ extends EventInstructionExecutor with ForkInstructionExecutor
       children <- childIds.zip(argsOfChildren)
         .traverse { case (childId, args) =>
           order.id.withChild(childId)
-            .map(childOrderId => OrderForked.Child(childOrderId, args.nameToValue))
+            .map(OrderForked.Child(_, args.nameToValue))
         }
       orderForked = OrderForked(children)
-      event <- postprocessOrderForked(order, orderForked, state)
+      event <- postprocessOrderForked(fork, order, orderForked, state)
     } yield (order.id <-: event) :: Nil
 }

@@ -19,7 +19,10 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class Fork private(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None)
+final case class Fork private(
+  branches: IndexedSeq[Fork.Branch],
+  agentPath: Option[AgentPath] = None,
+  sourcePos: Option[SourcePos] = None)
 extends ForkInstruction
 {
   // TODO Fork.checked(..): Checked[Fork]
@@ -80,10 +83,14 @@ object Fork
     throw new NotImplementedError
 
   def forTest(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None): Fork =
-    checked(branches, sourcePos).orThrow
+    checked(branches, sourcePos = sourcePos).orThrow
 
-  def checked(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None): Checked[Fork] =
-    Right(new Fork(branches, sourcePos))
+  def checked(
+    branches: IndexedSeq[Fork.Branch],
+    agentPath: Option[AgentPath] = None,
+    sourcePos: Option[SourcePos] = None)
+  : Checked[Fork] =
+    Right(new Fork(branches, agentPath, sourcePos))
 
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(
@@ -118,13 +125,15 @@ object Fork
   implicit val jsonEncoder: Encoder.AsObject[Fork] =
     o => JsonObject(
       "branches" -> o.branches.asJson,
-      "sourcePos" -> o.sourcePos.asJson)
+      "sourcePos" -> o.sourcePos.asJson,
+      "agentPath" -> o.agentPath.asJson)
 
   implicit val jsonDecoder: Decoder[Fork] =
     c => for {
       branches <- c.get[IndexedSeq[Fork.Branch]]("branches")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
-      fork <- checked(branches, sourcePos).toDecoderResult(c.history)
+      agentPath <- c.get[Option[AgentPath]]("agentPath")
+      fork <- checked(branches, agentPath, sourcePos).toDecoderResult(c.history)
     } yield fork
 
   private case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {

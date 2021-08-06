@@ -22,8 +22,8 @@ extends EventInstructionExecutor with ForkInstructionExecutor
                 order.id.withChild(branch.id.string)
                   .map(childOrderId => OrderForked.Child(branch.id, childOrderId)))
             orderForked = OrderForked(children)
-            event/*TODO*/ <- postprocessOrderForked(order, orderForked, state)
-          } yield order.id <-: orderForked
+            event <- postprocessOrderForked(fork, order, orderForked, state)
+          } yield order.id <-: event
         }
         .orElse(
           for {
