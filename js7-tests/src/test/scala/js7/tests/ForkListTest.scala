@@ -61,21 +61,21 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
               workflowId /: Position(0),
               Order.Forked(Vector(
                 Order.Forked.Child(
-                  orderId | "CHILD-1",
+                  orderId | "ELEMENT-1",
                   Map(
-                    "id" -> StringValue("CHILD-1"))),
+                    "element" -> StringValue("ELEMENT-1"))),
                 Order.Forked.Child(
-                  orderId | "CHILD-2",
+                  orderId | "ELEMENT-2",
                   Map(
-                    "id" -> StringValue("CHILD-2"))),
+                    "element" -> StringValue("ELEMENT-2"))),
                 Order.Forked.Child(
-                  orderId | "CHILD-3",
+                  orderId | "ELEMENT-3",
                   Map(
-                    "id" -> StringValue("CHILD-3"))))),
-              Map("children" -> ListValue(Seq(
-                StringValue("CHILD-1"),
-                StringValue("CHILD-2"),
-                StringValue("CHILD-3")))),
+                    "element" -> StringValue("ELEMENT-3"))))),
+              Map("myList" -> ListValue(Seq(
+                StringValue("ELEMENT-1"),
+                StringValue("ELEMENT-2"),
+                StringValue("ELEMENT-3")))),
               attachedState = Some(Order.Attached(agentPath)),
               deleteWhenTerminated = true))
       }
@@ -91,27 +91,27 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(
         workflowId,
-        Map("children" -> ListValue(Seq(
-          StringValue("CHILD-1"),
-          StringValue("CHILD-2"),
-          StringValue("CHILD-3")))),
+        Map("myList" -> ListValue(Seq(
+          StringValue("ELEMENT-1"),
+          StringValue("ELEMENT-2"),
+          StringValue("ELEMENT-3")))),
         deleteWhenTerminated = true),
       OrderStarted,
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderForked(Vector(
         Order.Forked.Child(
-          orderId | "CHILD-1",
+          orderId | "ELEMENT-1",
           Map(
-            "id" -> StringValue("CHILD-1"))),
+            "element" -> StringValue("ELEMENT-1"))),
         Order.Forked.Child(
-          orderId | "CHILD-2",
+          orderId | "ELEMENT-2",
           Map(
-            "id" -> StringValue("CHILD-2"))),
+            "element" -> StringValue("ELEMENT-2"))),
         Order.Forked.Child(
-          orderId | "CHILD-3",
+          orderId | "ELEMENT-3",
           Map(
-            "id" -> StringValue("CHILD-3"))))),
+            "element" -> StringValue("ELEMENT-3"))))),
       OrderDetachable,
       OrderDetached,
       OrderJoined(Outcome.succeeded),
@@ -130,7 +130,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val freshOrder = FreshOrder(
       orderId,
       workflowId.path,
-      Map("children" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
+      Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
       deleteWhenTerminated = true)
 
     controllerApi.addOrder(freshOrder).await(99.s).orThrow
@@ -139,12 +139,12 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(
         workflowId,
-        Map("children" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
+        Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
         deleteWhenTerminated = true),
       OrderStarted,
       OrderFailed(
         Position(0),
-        Some(Outcome.Disrupted(Problem("Duplicate fork values in $children: Unexpected duplicates: 2×DUPLICATE"))))))
+        Some(Outcome.Disrupted(Problem("Duplicate fork values in $myList: Unexpected duplicates: 2×DUPLICATE"))))))
   }
 
   "Fork with invalid value" in {
@@ -159,7 +159,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val freshOrder = FreshOrder(
         orderId,
         workflowId.path,
-        Map("children" -> ListValue(Seq(StringValue(childId)))),
+        Map("myList" -> ListValue(Seq(StringValue(childId)))),
         deleteWhenTerminated = true)
 
       controllerApi.addOrder(freshOrder).await(99.s).orThrow
@@ -168,7 +168,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
         OrderAdded(
           workflowId,
-          Map("children" -> ListValue(Seq(StringValue(childId)))),
+          Map("myList" -> ListValue(Seq(StringValue(childId)))),
           deleteWhenTerminated = true),
         OrderStarted,
         OrderFailed(
@@ -202,14 +202,13 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int): Unit = {
-    val childIds = for (i <- 1 to n) yield s"CHILD-$i"
-    val childOrderIds = for (id <- childIds) yield orderId | id
+    val expectedChildOrderIds = for (i <- 1 to n) yield orderId | s"ELEMENT-$i"
     val eventId = eventWatch.lastAddedEventId
 
     val childOrdersProcessed = proxy.observable
       .map(_.stampedEvent.value)
       .collect { case KeyedEvent(orderId: OrderId, _: OrderProcessed) => orderId }
-      .scan0(childOrderIds.toSet)(_ - _)
+      .scan0(expectedChildOrderIds.toSet)(_ - _)
       .takeWhile(_.nonEmpty)
       .completedL
       .runToFuture
@@ -225,14 +224,14 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Mixed agents" in {
     val workflowId = mixedAgentsWorkflow.id
-    val orderId = OrderId(s"MIXED")
-    val children = for (i <- 1 to 3) yield s"CHILD-$i"
+    val orderId = OrderId("MIXED")
+    val myList = for (i <- 1 to 3) yield s"ELEMENT-$i"
 
     val eventId = eventWatch.lastAddedEventId
     val freshOrder = FreshOrder(
       orderId,
       workflowId.path,
-      Map("children" -> ListValue(children.map(StringValue(_)))),
+      Map("myList" -> ListValue(myList.map(StringValue(_)))),
       deleteWhenTerminated = true)
     controllerApi.addOrder(freshOrder).await(99.s).orThrow
 
@@ -241,13 +240,13 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
 
     val orderForked = OrderForked(
-      children
-        .map(child => Order.Forked.Child(orderId | child, Map("id" -> StringValue(child))))
+      myList
+        .map(child => Order.Forked.Child(orderId | child, Map("element" -> StringValue(child))))
         .toVector)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(
         workflowId,
-        Map("children" -> ListValue(children.map(StringValue(_)))),
+        Map("myList" -> ListValue(myList.map(StringValue(_)))),
         deleteWhenTerminated = true),
 
       // Each child order starts at bAgentPath. So attach forking order to bAgentPath.
@@ -299,6 +298,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "ForkList containing a first failing If statement failed before forking" in {
+    // This is due to the prediction, at which agent the child orders will starts
     val workflowId = errorWorkflow.id
     val orderId = OrderId(s"ERROR")
 
@@ -306,7 +306,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val freshOrder = FreshOrder(
       orderId,
       workflowId.path,
-      Map("children" -> ListValue(Seq(StringValue("CHILD")))),
+      Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
       deleteWhenTerminated = true)
     controllerApi.addOrder(freshOrder).await(99.s).orThrow
 
@@ -315,7 +315,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(
         workflowId,
-        Map("children" -> ListValue(Seq(StringValue("CHILD")))),
+        Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
         deleteWhenTerminated = true),
       OrderStarted,
       OrderFailed(Position(0), Some(Outcome.Failed(Some("No such named value: UNKNOWN"))))))
@@ -327,13 +327,13 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderId = OrderId(s"EXAMPLE")
     val myList = ListValue(Seq(
       ObjectValue(Map(
-        "number" -> NumberValue(1),
+        "id" -> NumberValue(1),
         "content" -> StringValue("EINS"))),
       ObjectValue(Map(
-        "number" -> NumberValue(2),
+        "id" -> NumberValue(2),
         "content" -> StringValue("ZWEI"))),
       ObjectValue(Map(
-        "number" -> NumberValue(3),
+        "id" -> NumberValue(3),
         "content" -> StringValue("DREI")))))
 
     val eventId = eventWatch.lastAddedEventId
@@ -346,10 +346,10 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished)
-    for (childId <- View("1", "2", "3")) {
-      assert(eventWatch.keyedEvents[OrderEvent](orderId | childId) == Seq(
+    for (elementId <- View("1", "2", "3")) {
+      assert(eventWatch.keyedEvents[OrderEvent](orderId | elementId) == Seq(
         OrderProcessingStarted,
-        OrderStdoutWritten(s"CHILD_ID=$childId\n"),
+        OrderStdoutWritten(s"ELEMENT_ID=$elementId\n"),
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
@@ -365,9 +365,9 @@ object ForkListTest
   private val bAgentPath = AgentPath("B-AGENT")
 
   private val forkList = ForkList(
-    expr("$children"),
-    exprFunction("(id) => $id"),
-    exprFunction("(id) => { id: $id }"),
+    expr("$myList"),
+    exprFunction("(element) => $element"),
+    exprFunction("(element) => { element: $element }"),
     Workflow.of(Execute(WorkflowJob(
       agentPath,
       InternalExecutable(classOf[TestJob].getName),
@@ -388,9 +388,9 @@ object ForkListTest
   {
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
-        assert(step.order.arguments.keySet == Set("id", "children"))
-        assert(step.order.arguments("id").toStringValueString.orThrow.startsWith("CHILD-"))
-        step.order.arguments("children").asListValue.orThrow
+        assert(step.order.arguments.keySet == Set("element", "myList"))
+        assert(step.order.arguments("element").toStringValueString.orThrow.startsWith("ELEMENT-"))
+        step.order.arguments("myList").asListValue.orThrow
         Outcome.succeeded
       })
   }
@@ -400,47 +400,47 @@ object ForkListTest
     Vector(
       // Each child order starts at bAgentPath. So attach forking order to bAgentPath.
       ForkList(
-        expr("$children"),
-        exprFunction("(id) => $id"),
-        exprFunction("(id) => { id: $id }"),
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
         Workflow.of(
           If(
-            expr("$id == 'CHILD-X'"),
+            expr("$element == 'ELEMENT-X'"),
             Workflow.of(EmptyJob.execute(agentPath)),
             Some(Workflow.of(EmptyJob.execute(bAgentPath)))))),
 
       // Each child order starts at a different Agent. So let forking order detached.
       ForkList(
-        expr("$children"),
-        exprFunction("(id) => $id"),
-        exprFunction("(id) => { id: $id }"),
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
         Workflow.of(
           If(
-            expr("$id == 'CHILD-1'"),
+            expr("$element == 'ELEMENT-1'"),
             Workflow.of(EmptyJob.execute(agentPath)),
             Some(Workflow.of(EmptyJob.execute(bAgentPath)))))),
 
       EmptyJob.execute(agentPath),
       // Each child order starts at a different Agent. So detach forking order.
       ForkList(
-        expr("$children"),
-        exprFunction("(id) => $id"),
-        exprFunction("(id) => { id: $id }"),
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
         Workflow.of(
           If(
-            expr("$id == 'CHILD-1'"),
+            expr("$element == 'ELEMENT-1'"),
             Workflow.of(EmptyJob.execute(agentPath)),
             Some(Workflow.of(EmptyJob.execute(bAgentPath)))))),
 
       EmptyJob.execute(agentPath),
       // Each child order starts at bAgentPath. So detach and then attach forking order to bAgentPath.
       ForkList(
-        expr("$children"),
-        exprFunction("(id) => $id"),
-        exprFunction("(id) => { id: $id }"),
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
         Workflow.of(
           If(
-            expr("$id == 'CHILD-X'"),
+            expr("$element == 'ELEMENT-X'"),
             Workflow.of(EmptyJob.execute(agentPath)),
             Some(Workflow.of(EmptyJob.execute(bAgentPath))))))))
 
@@ -448,9 +448,9 @@ object ForkListTest
     WorkflowPath("ERROR-WORKFLOW") ~ "INITIAL",
     Vector(
       ForkList(
-        expr("$children"),
-        exprFunction("(id) => $id"),
-        exprFunction("(id) => { id: $id }"),
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
         Workflow.of(
           If(
             expr("$UNKNOWN == 'UNKNOWN'"),
@@ -461,23 +461,23 @@ object ForkListTest
     Vector(
       ForkList(
           expr("$myList"),
-          childToId = exprFunction("(listElement) => $listElement.number"),
-          childToArguments = exprFunction("(listElement) => { childId: $listElement.number }"),
+          childToId = exprFunction("(element) => $element.id"),
+          childToArguments = exprFunction("(element) => { elementId: $element.id }"),
           Workflow.of(
             Execute(WorkflowJob(
               agentPath,
               ShellScriptExecutable(
                """#!/usr/bin/env bash
                  |set -euo pipefail
-                 |echo CHILD_ID=$CHILD_ID
+                 |echo ELEMENT_ID=$ELEMENT_ID
                  |""".stripMargin,
                 env = Map(
-                  "CHILD_ID" -> expr("$childId")))))))))
+                  "ELEMENT_ID" -> expr("$elementId")))))))))
 
   private def newOrder(orderId: OrderId, workflowPath: WorkflowPath, n: Int) =
     FreshOrder(
       orderId,
       workflowPath,
-      Map("children" -> ListValue(for (i <- 1 to n) yield StringValue(s"CHILD-$i"))),
+      Map("myList" -> ListValue(for (i <- 1 to n) yield StringValue(s"ELEMENT-$i"))),
       deleteWhenTerminated = true)
 }

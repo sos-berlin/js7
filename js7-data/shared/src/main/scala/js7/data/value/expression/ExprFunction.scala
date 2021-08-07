@@ -5,6 +5,7 @@ import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{ListValue, MissingValue, Value}
 import scala.language.implicitConversions
@@ -21,7 +22,7 @@ final case class ExprFunction private(
 
   private def evalAllowMissing(arguments: ListValue)(implicit scope: Scope): Checked[Value] =
     if (arguments.elements.length != parameters.size)
-      Left(Problem("Number of arguments does not match number of function parameters"))
+      Left(Problem(s"Number of arguments does not match number of function parameters in: ${toString.truncateWithEllipsis(50)}"))
     else {
       val argScope = NamedValueScope(
         parameters
@@ -32,7 +33,7 @@ final case class ExprFunction private(
       expression.eval(argScope |+| scope)
     }
 
-  override def toString = parameters.mkString("(", ", ", ")") + "=>" + expression
+  override def toString = parameters.mkString("(", ",", ")") + "=>" + expression
 }
 
 object ExprFunction
