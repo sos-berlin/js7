@@ -19,7 +19,7 @@ import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ForkList, If}
+import js7.data.workflow.instructions.{Execute, Fail, ForkList, If}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.OrderProcess
@@ -44,7 +44,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(atControllerWorkflow, atAgentWorkflow, mixedAgentsWorkflow,
-    errorWorkflow, exampleWorkflow)
+    errorWorkflow, indexWorkflow, exampleWorkflow)
   private lazy val proxy = controllerApi.startProxy().await(99.s)
 
   "Events and Order.Forked snapshot" in {
@@ -144,7 +144,8 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderFailed(
         Position(0),
-        Some(Outcome.Disrupted(Problem("Duplicate fork values in $myList: Unexpected duplicates: 2×DUPLICATE"))))))
+        Some(Outcome.Disrupted(Problem(
+          "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))))))
   }
 
   "Fork with invalid value" in {
@@ -174,6 +175,31 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderFailed(
           Position(0),
           Some(Outcome.Disrupted(problem)))))
+    }
+  }
+
+  "Fork with index" in {
+    val workflowId = indexWorkflow.id
+    val orderId = OrderId(s"INDEX")
+
+    val myList = ListValue(for (i <- Seq("A", "B", "C")) yield StringValue(i))
+    val freshOrder = FreshOrder(orderId, workflowId.path, Map("myList" -> myList),
+      deleteWhenTerminated = true)
+
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.addOrder(freshOrder).await(99.s).orThrow
+
+    assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+      .head.value.event == OrderFinished)
+    eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+    for (i <- myList.elements.indices) {
+      assert(eventWatch.keyedEvents[OrderEvent](orderId | i.toString) == Seq(
+        OrderMoved(Position(0) / "fork" % 1),
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(0) / "fork" % 2),
+        OrderDetachable,
+        OrderDetached))
     }
   }
 
@@ -455,6 +481,18 @@ object ForkListTest
           If(
             expr("$UNKNOWN == 'UNKNOWN'"),
             Workflow.of(EmptyJob.execute(agentPath)))))))
+
+  private val indexWorkflow = Workflow(
+    WorkflowPath("INDEX-WORKFLOW") ~ "INITIAL",
+    Vector(
+      ForkList(
+          expr("$myList"),
+          exprFunction("(element, i) => $i"),
+          exprFunction("(element, i) => { element: $element, index: $i }"),
+        Workflow.of(
+          If(expr("$index < 0 || $index > 9999"),
+            Workflow.of(Fail())),
+          EmptyJob.execute(agentPath)))))
 
   private val exampleWorkflow = Workflow(
     WorkflowPath("EXAMPLE") ~ "INITIAL",

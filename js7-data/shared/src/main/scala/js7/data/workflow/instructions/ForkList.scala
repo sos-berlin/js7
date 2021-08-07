@@ -1,10 +1,9 @@
 package js7.data.workflow.instructions
 
 import io.circe._
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.reuseIfEqual
-import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.{ExprFunction, Expression}
@@ -21,6 +20,19 @@ final case class ForkList private(
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction
 {
+  def checked: Checked[ForkList] =
+    for {
+      childToId <- childToId.restrict("childToId", minimum = 1, maximum = 2)
+      childToArguments <- childToArguments.restrict("childToArguments", minimum = 0, maximum = 2)
+      _ <-
+        if (workflow.instructions.exists(o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
+          Left(Problem.pure("ForkList cannot contain a jump instruction like 'goto'"))
+        else
+          Checked.unit
+    } yield copy(
+      childToId = childToId,
+      childToArguments = childToArguments)
+
   def withoutSourcePos = copy(
     sourcePos = None,
     workflow = workflow.withoutSourcePos)
@@ -56,17 +68,6 @@ extends ForkInstruction
 
 object ForkList
 {
-  def apply(
-    children: Expression,
-    childToId: ExprFunction,
-    childToArguments: ExprFunction,
-    workflow: Workflow,
-    agentPath: Option[AgentPath] = None,
-    sourcePos: Option[SourcePos] = None)
-  : ForkList =
-    checked(children, childToId, childToArguments, workflow, agentPath, sourcePos)
-      .orThrow
-
   def checked(
     children: Expression,
     childToId: ExprFunction,
@@ -75,10 +76,10 @@ object ForkList
     agentPath: Option[AgentPath] = None,
     sourcePos: Option[SourcePos] = None)
   : Checked[ForkList] =
-    if (workflow.instructions.exists(o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
-      Left(Problem(s"ForkList cannot contain a jump instruction like 'goto'"))
-    else
-      Right(new ForkList(children, childToId, childToArguments, workflow, agentPath, sourcePos))
+    new ForkList(children, childToId, childToArguments, workflow, agentPath, sourcePos)
+      .checked
 
-  implicit val jsonCodec: Codec.AsObject[ForkList] = deriveCodec[ForkList]
+  implicit val jsonEncoder: Encoder.AsObject[ForkList] = deriveEncoder[ForkList]
+  implicit val jsonDecoder: Decoder[ForkList] = deriveDecoder[ForkList]
+    .emap(_.checked.left.map(_.toString))
 }

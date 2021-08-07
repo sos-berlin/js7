@@ -10,8 +10,9 @@ import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderForked, OrderMoved}
-import js7.data.value.ListValue
+import js7.data.value.NumberValue
 import js7.data.workflow.instructions.ForkList
+import scala.collection.View
 
 private[instructions] final class ForkListExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with ForkInstructionExecutor
@@ -43,15 +44,19 @@ extends EventInstructionExecutor with ForkInstructionExecutor
       scope <- state.toScope(order)
       elements <- fork.children.evalAsVector(scope)
       childIds <- elements
-        .traverse(element => fork.childToId
-          .eval(ListValue(Vector(element)))(scope)
-          .flatMap(_.toStringValueString))
+        .traverseWithIndexM { case (element, i) =>
+          fork.childToId
+            .eval(View(element, NumberValue(i)))(scope)
+            .flatMap(_.toStringValueString)
+        }
       _ <- childIds.checkUniqueness
-        .mapProblem(Problem(s"Duplicate fork values in ${fork.children}: ") |+| _)
+        .mapProblem(Problem(s"Duplicate child IDs in ${fork.children}: ") |+| _)
       argsOfChildren <- elements
-        .traverse(element => fork.childToArguments
-          .eval(ListValue(Seq(element)))(scope)
-          .flatMap(_.asObjectValue))
+        .traverseWithIndexM { case (element, i) =>
+          fork.childToArguments
+            .eval(View(element, NumberValue(i)))(scope)
+            .flatMap(_.asObjectValue)
+        }
       children <- childIds.zip(argsOfChildren)
         .traverse { case (childId, args) =>
           order.id.withChild(childId)

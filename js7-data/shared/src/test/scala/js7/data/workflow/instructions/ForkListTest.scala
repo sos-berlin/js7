@@ -1,6 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Problem
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
@@ -67,6 +68,32 @@ final class ForkListTest extends AnyFreeSpec
         },
         "agentPath": "AGENT"
       }""")
+
+    assert(
+      json"""{
+        "TYPE": "ForkList",
+        "children": "$$children",
+        "childToId": "() => 1",
+        "childToArguments": "(listElement) => { myId: $$listElement }",
+        "workflow": {
+          "instructions": []
+        },
+        "agentPath": "AGENT"
+      }""".as[ForkList].toChecked == Left(Problem(
+        "JSON DecodingFailure at : The 'childToId' function is expected to accept between 1 and 2 parameters")))
+
+    assert(
+      json"""{
+        "TYPE": "ForkList",
+        "children": "$$children",
+        "childToId": "(listElement) => $$listElement",
+        "childToArguments": "(element, i, x) => {}",
+        "workflow": {
+          "instructions": []
+        },
+        "agentPath": "AGENT"
+      }""".as[ForkList].toChecked == Left(Problem(
+        "JSON DecodingFailure at : The 'childToArguments' function is expected to accept between 0 and 2 parameters")))
   }
 
   "workflow" in {
