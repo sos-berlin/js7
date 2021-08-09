@@ -42,7 +42,7 @@ import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefState.{Reset, Resetting}
-import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset}
+import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.{BoardPath, Notice, NoticeId}
@@ -488,6 +488,12 @@ with MainJournalingActor[ControllerState, Event]
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _)) =>
                         Timestamped(agentEntry.agentPath <-: AgentReady(timezone), Some(timestampMillis)) :: Nil
+
+                      case KeyedEvent(_: NoKey, AgentEvent.AgentShutDown) =>
+                        Timestamped(
+                          agentEntry.agentPath <-: AgentShutDown,
+                          Some(timestampMillis)
+                        ) :: Nil
 
                       case KeyedEvent(_: NoKey, ItemAttachedToAgent(item)) =>
                         // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.

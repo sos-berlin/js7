@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState, _}
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted}
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
 
@@ -36,6 +36,10 @@ extends UnsignedSimpleItemState
           couplingState = Coupled,
           timezone = Some(timezone)))
 
+      case AgentShutDown =>
+        Right(copy(
+          couplingState = ShutDown))
+
       case AgentCouplingFailed(problem) =>
         Right(copy(
           couplingState = CouplingFailed(problem)))
@@ -43,7 +47,8 @@ extends UnsignedSimpleItemState
       case AgentEventsObserved(eventId_) =>
         if (eventId_ < eventId)
           Left(Problem(
-            s"Invalid AgentEventsObserved(${EventId.toString(eventId_)}) event; expected eventId >= ${EventId.toString(eventId)}"))
+            s"Invalid AgentEventsObserved(${EventId.toString(eventId_)}) event;" +
+              s" expected eventId >= ${EventId.toString(eventId)}"))
         else
           Right(copy(
             eventId = eventId_))
@@ -72,6 +77,7 @@ object AgentRefState
   case object Reset extends CouplingState
   case object Coupled extends CouplingState
   case class CouplingFailed(problem: Problem) extends CouplingState
+  case object ShutDown extends CouplingState
   case object Resetting extends CouplingState
 
   object CouplingState {
@@ -79,6 +85,7 @@ object AgentRefState
       Subtype(Reset),
       Subtype(Coupled),
       Subtype(deriveCodec[CouplingFailed]),
+      Subtype(ShutDown),
       Subtype(Resetting))
   }
 }

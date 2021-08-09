@@ -5,9 +5,10 @@ import java.nio.file.Paths
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady, AgentShutDown}
+import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
@@ -57,8 +58,15 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       directoryProvider.runAgents() { _ =>
         val order = orderGenerator.next()
         controller.addOrderBlocking(order)
-        lastEventId = lastEventIdOf(controller.eventWatch.await[OrderFinished](after = lastEventId, predicate = _.key == order.id))
+        lastEventId = lastEventIdOf(controller.eventWatch.await[OrderFinished](
+          after = lastEventId,
+          predicate = _.key == order.id))
       }
+
+      controller.eventWatch.await[AgentShutDown](after = lastEventId)
+      sleep(100.ms)
+      assert(controller.controllerState.await(99.s).pathToAgentRefState(agentPath).couplingState ==
+        AgentRefState.ShutDown)
 
       // DELETE OLD AGENTS'S EVENTS THE CONTROLLER HAS NOT READ => UnknownEventIdProblem
       move(firstJournalFile, Paths.get(s"$firstJournalFile-MOVED"))

@@ -57,6 +57,7 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
         primaryController.executeCommandAsSystemUser(ControllerCommand.ClusterSwitchOver).await(99.s).orThrow
         primaryController.terminated await 99.s
         primaryController.close()
+
         backupController.eventWatch.await[ControllerReady](after = eventId)
         runOrder(OrderId("ORDER-ON-BACKUP-1"))
 

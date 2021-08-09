@@ -9,7 +9,7 @@ import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
-import js7.agent.data.event.AgentEvent.AgentReady
+import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.scheduler.job.JobDriver
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
@@ -143,7 +143,8 @@ with Stash
 
     def continue() =
       for (terminate <- shutDownCommand) {
-        logger.trace(s"termination.continue: ${orderRegister.size} orders, ${jobRegister.size} jobs ${if (snapshotFinished) ", snapshot taken" else ""}")
+        logger.trace(s"termination.continue: ${orderRegister.size} orders, " +
+          s"${jobRegister.size} jobs ${if (snapshotFinished) ", snapshot taken" else ""}")
         if (snapshotFinished) {
           if (!terminatingOrders) {
             terminatingOrders = true
@@ -162,8 +163,10 @@ with Stash
                 .runAsyncAndForget
             }
             if (jobRegister.isEmpty && !terminatingJournal) {
-              terminatingJournal = true
-              persistence.stop.runAsyncAndForget
+              persist(AgentShutDown) { (_, _) =>
+                terminatingJournal = true
+                persistence.stop.runAsyncAndForget
+              }
             }
           }
         }

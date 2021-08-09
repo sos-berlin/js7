@@ -87,6 +87,9 @@ with JournaledState[AgentState]
       case KeyedEvent(_, _: AgentEvent.AgentReady) =>
         Right(this)
 
+      case KeyedEvent(_, AgentEvent.AgentShutDown) =>
+        Right(this)
+
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
         allFileWatchesState.applyEvent(orderWatchPath <-: event)
           .map(o => copy(allFileWatchesState = o))

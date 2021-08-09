@@ -29,7 +29,10 @@ object AgentEvent
     totalRunningTime: FiniteDuration)
   extends AgentEvent
 
+  case object AgentShutDown extends AgentEvent
+
   implicit val jsonCodec = TypedJsonCodec[AgentEvent](
     Subtype(deriveCodec[AgentCreated]),
-    Subtype(deriveCodec[AgentReady]))
+    Subtype(deriveCodec[AgentReady]),
+    Subtype(AgentShutDown))
 }
