@@ -17,8 +17,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.cluster.Cluster._
 import js7.cluster.ClusterCommon.truncateFile
-import js7.cluster.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.core.license.LicenseChecker
+import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}

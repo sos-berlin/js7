@@ -19,9 +19,9 @@ import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode._
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.ObservablePauseDetector._
-import js7.cluster.Problems.{ClusterCommandInapplicableProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.common.http.RecouplingStreamReader
 import js7.common.system.startup.Halt.haltJava
+import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}

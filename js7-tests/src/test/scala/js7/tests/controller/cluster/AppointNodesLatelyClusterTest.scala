@@ -13,9 +13,9 @@ import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.ClusterWatchAgreedToActivation
-import js7.cluster.Problems.{BackupClusterNodeNotAppointed, ClusterSettingNotUpdatable}
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterSettingNotUpdatable}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSettingUpdated}
 import js7.data.cluster.ClusterSetting
 import js7.data.cluster.ClusterState.Coupled

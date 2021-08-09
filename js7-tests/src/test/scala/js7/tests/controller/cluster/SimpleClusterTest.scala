@@ -7,7 +7,7 @@ import js7.base.problem.{Problem, ProblemException}
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.cluster.Problems.ClusterNodeIsNotActiveProblem
+import js7.data.Problems.ClusterNodeIsNotActiveProblem
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand
 import js7.data.event.EventRequest

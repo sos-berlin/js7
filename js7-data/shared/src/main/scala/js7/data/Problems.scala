@@ -1,12 +1,16 @@
 package js7.data
 
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime.RichDuration
 import js7.data.agent.AgentPath
+import js7.data.cluster.{ClusterCommand, ClusterState}
 import js7.data.event.EventId
 import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
 import js7.data.item.{InventoryItemKey, InventoryItemPath, VersionId, VersionedItemId, VersionedItemPath}
+import js7.data.node.NodeId
 import js7.data.order.OrderId
 import js7.data.value.expression.Expression.FunctionCall
+import scala.concurrent.duration.FiniteDuration
 
 object Problems
 {
@@ -92,4 +96,41 @@ object Problems
   final case class UnknownSignatureTypeProblem(typeName: String) extends Problem.Coded {
     def arguments = Map("typeName" -> typeName)
   }
+
+  final case object ClusterNodeIsNotYetReadyProblem extends Problem.ArgumentlessCoded {
+    override val httpStatusCode = 503  // ServiceUnavailable
+  }
+
+  final case object ClusterNodeIsNotActiveProblem extends Problem.ArgumentlessCoded {
+    override val httpStatusCode = 503  // ServiceUnavailable
+  }
+
+  final case object BackupClusterNodeNotAppointed extends Problem.ArgumentlessCoded {
+    override val httpStatusCode = 503  // ServiceUnavailable
+  }
+
+  final case class MissingPassiveClusterNodeHeartbeatProblem(
+    passiveId: NodeId,
+    duration: FiniteDuration)
+  extends Problem.Coded {
+    override def arguments = Map(
+      "passiveId" -> passiveId.toString,
+      "duration" -> duration.pretty,
+    )
+  }
+
+  final case class ClusterCommandInapplicableProblem(command: ClusterCommand, clusterState: ClusterState)
+  extends Problem.Coded {
+    override def arguments = Map(
+      "command" -> command.toString,
+      "clusterState" -> clusterState.toString)
+  }
+
+  object ClusterNodeIsNotBackupProblem extends Problem.ArgumentlessCoded
+
+  object PrimaryClusterNodeMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
+
+  final case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
+
+  final case object ClusterSettingNotUpdatable extends Problem.ArgumentlessCoded
 }

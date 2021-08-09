@@ -12,8 +12,8 @@ import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichThrowable}
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.ClusterConf.ClusterProductName
-import js7.cluster.Problems.ClusterNodesAlreadyAppointed
 import js7.cluster.WorkingClusterNode._
+import js7.data.Problems.ClusterNodesAlreadyAppointed
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}

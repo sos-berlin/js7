@@ -5,7 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.problem.ProblemException
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.cluster.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
+import js7.data.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

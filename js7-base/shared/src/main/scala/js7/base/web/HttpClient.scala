@@ -8,7 +8,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -49,7 +49,12 @@ object HttpClient
 
   /** Lifts a Failure(HttpException#problem) to Success(Left(problem)). */
   def liftProblem[A](task: Task[A]): Task[Checked[A]] =
-    task.materialize.map {
+    task.materialize
+      .map(failureToChecked)
+      .dematerialize
+
+  def failureToChecked[A](tried: Try[A]): Try[Checked[A]] =
+    tried match {
       case Failure(HttpException.HasProblem(problem)) =>
         Success(Left(problem))
       case Failure(t: HttpException) if t.getMessage != null =>
@@ -60,7 +65,6 @@ object HttpClient
       case Success(a) =>
         Success(Right(a))
     }
-    .dematerialize
 
   abstract class HttpException(message: String = null) extends RuntimeException(message) {
     def statusInt: Int

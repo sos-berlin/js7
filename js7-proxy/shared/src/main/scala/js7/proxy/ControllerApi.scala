@@ -33,6 +33,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.immutable
 import scala.concurrent.duration.Deadline.now
+import scala.util.Failure
 
 final class ControllerApi(
   apiResources: Seq[Resource[Task, HttpControllerApi]],
@@ -157,33 +158,44 @@ extends ControllerApiWithHttp
     // TODO Similar to SessionApi.retryUntilReachable
     val delays = SessionApi.defaultLoginDelays()
     var warned = now - 1.h
-    apiResource
-      .use(api =>
-        HttpClient.liftProblem(
-          api.login(onlyIfNotLoggedIn = true) >>
-            body(api).onErrorRestartLoop(()) {
-              case (HttpException.HasProblem(problem), _, retry)
-                if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
-                scribe.info(s"Login again due to: $problem")
-                scribe.debug(problem.toString)
-                Task.sleep(delays.next()) >>
-                  api.loginUntilReachable() >>
-                  retry(())
-              case (t, _, _) =>
-                Task.raiseError(t)
-            }))
-      .onErrorRestartLoop(()) {
-        case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
-          if (warned.elapsed >= 60.s) {
-            scribe.warn(t.toStringWithCauses)
-            warned = now
-          } else scribe.debug(t.toStringWithCauses)
-          apiCache.clear >>
-            Task.sleep(delays.next()) >>
-            retry(())
-        case (t, _, _) =>
-          Task.raiseError(t)
-      }
+    /*HttpClient.liftProblem*/(
+      apiResource
+        .use(api =>
+          api.login(onlyIfNotLoggedIn = true)
+            .flatMap(_ =>
+              body(api)
+                .onErrorRestartLoop(()) {
+                  case (HttpException.HasProblem(problem), _, retry)
+                    if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                    // Race condition with a parallel operation,
+                    // which after the same error has already logged-in again successfully.
+                    // Should be okay if login in delayed
+                    api.clearSession()
+                    scribe.info(s"Login again due to: $problem")
+                    Task.sleep(delays.next() max 100.ms) >>
+                      api.login(onlyIfNotLoggedIn = true/*in case of parallel login*/) >>
+                      retry(())
+                  case (t, _, _) =>
+                    Task.raiseError(t)
+                })
+            .materialize.map {
+              case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
+                Failure(t)  // Trigger onErrorRestartLoop
+              case o => HttpClient.failureToChecked(o)
+            }
+            .dematerialize)
+        .onErrorRestartLoop(()) {
+          case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
+            if (warned.elapsed >= 60.s) {
+              scribe.warn(t.toStringWithCauses)
+              warned = now
+            } else scribe.debug(t.toStringWithCauses)
+            apiCache.clear >>
+              Task.sleep(delays.next()) >>
+              retry(())
+          case (t, _, _) =>
+            Task.raiseError(t)
+        })
   }
 }
 
