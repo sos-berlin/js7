@@ -290,7 +290,7 @@ object JournaledProxy
     apiResources: Seq[Resource[Task, Api]],
     onCouplingError: EventApi => Throwable => Task[Unit])
   : Resource[Task, Api] =
-    apiResources.toVector.sequence.flatMap(apis =>
+    apiResources.sequence.flatMap(apis =>
       Resource.eval(
         selectActiveNodeApiOnly(
           apis,

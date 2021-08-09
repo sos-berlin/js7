@@ -39,6 +39,8 @@ final class ControllerApi(
   proxyConf: ProxyConf = ProxyConf.default)
 extends ControllerApiWithHttp
 {
+  if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
+
   private val apiCache = new RefCountedResource(
     JournaledProxy.selectActiveNodeApi(
       apiResources,
@@ -59,9 +61,9 @@ extends ControllerApiWithHttp
   /** Read events and state from Controller. */
   def eventAndStateObservable(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
-    eventId: Option[EventId] = None)
+    fromEventId: Option[EventId] = None)
   : Observable[EventAndState[Event, ControllerState]] =
-    JournaledProxy.observable(apiResources, eventId, proxyEventBus.publish, proxyConf)
+    JournaledProxy.observable(apiResources, fromEventId, proxyEventBus.publish, proxyConf)
 
   def startProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,

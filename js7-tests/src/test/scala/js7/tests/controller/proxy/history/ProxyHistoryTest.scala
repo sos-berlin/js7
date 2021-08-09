@@ -30,10 +30,8 @@ import js7.data.workflow.WorkflowParser
 import js7.data.workflow.position.Position
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext
-import js7.proxy.{ControllerApi, JournaledProxy}
 import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
 import js7.tests.controller.proxy.history.ProxyHistoryTest._
@@ -73,17 +71,15 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
       val keyedEvents = mutable.Buffer[KeyedEvent[OrderEvent]]()
 
       runControllers(primary, backup) { (primaryController, _) =>
-        val api = new ControllerApi(apiResources)
-        api.executeCommand(TakeSnapshot).await(99.s).orThrow
+        controllerApi.executeCommand(TakeSnapshot).await(99.s).orThrow
         assertJournalFileCount(2)
 
-        api.addOrder(TestOrder).await(99.s).orThrow
+        controllerApi.addOrder(TestOrder).await(99.s).orThrow
         val finishedEventId = primaryController.eventWatch.await[OrderFinished](_.key == TestOrder.id).head.eventId
 
         var releaseEventsEventId = EventId.BeforeFirst
         var lastAddedEventId = EventId.BeforeFirst
         primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
-        val controllerApi = new ControllerApi(apiResources)
         @volatile var lastState = ControllerState.empty
         @volatile var finished = false
         var rounds = 0
@@ -135,7 +131,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
 
         assertJournalFileCount(2)
         assert(listJournalFilenames.contains("controller--0.journal"))
-        api.releaseEvents(finishedEventId).await(99.s).orThrow
+        controllerApi.releaseEvents(finishedEventId).await(99.s).orThrow
         assertJournalFileCount(1)
         assert(!listJournalFilenames.contains("controller--0.journal"))  // First file deleted
 
@@ -196,11 +192,11 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderDetached)))
 
         // TORN EVENT STREAM
-        val problem = JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(EventId.BeforeFirst), _ => (), ProxyConf.default)
+        val problem = controllerApi.eventAndStateObservable(fromEventId = Some(EventId.BeforeFirst))
           .take(1).completedL.materialize.await(99.s).failed.get.asInstanceOf[ProblemException].problem
         assert(problem == SnapshotForUnknownEventIdProblem(EventId.BeforeFirst))
 
-        val eventId = JournaledProxy.observable[ControllerState](apiResources, fromEventId = Some(finishedEventId), _ => (), ProxyConf.default)
+        val eventId = controllerApi.eventAndStateObservable(fromEventId = Some(finishedEventId))
           .headL.await(99.s).state.eventId
         assert(eventId == finishedEventId)
         controllerApi.stop.await(99.s)
