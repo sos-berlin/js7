@@ -301,8 +301,8 @@ object ObjectValue extends ValueType.Compound
   val name = "Object"
   val empty = ObjectValue(Map.empty)
 
-  @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
-  @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
+  @javaApi @Nonnull def of(@Nonnull nameToValue: java.util.Map[String, Value]) =
+    ObjectValue(nameToValue.asScala.toMap)
 }
 
 final case class ObjectType(nameToType: Map[String, ValueType])
