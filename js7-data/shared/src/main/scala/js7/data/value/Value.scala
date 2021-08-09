@@ -162,7 +162,9 @@ final case class StringValue(string: String) extends Value
     case _ => super.toBooleanValue
   }
 
-  def toJava = string
+  @javaApi @Nonnull def toJava: String =
+    string
+
   def convertToString = string
 
   override def toString = ValuePrinter.quoteString(string)
@@ -230,7 +232,8 @@ final case class BooleanValue(booleanValue: Boolean) extends Value
 
   override def asBooleanValue = Right(this)
 
-  def toJava = java.lang.Boolean.valueOf(booleanValue)
+  @javaApi @Nonnull def toJava: java.lang.Boolean =
+    java.lang.Boolean.valueOf(booleanValue)
 
   override def toStringValue = Right(StringValue(convertToString))
 
@@ -254,7 +257,8 @@ final case class ListValue(elements: Vector[Value]) extends Value
 
   override def asListValue = Right(this)
 
-  def toJava = elements.asJava
+  @javaApi @Nonnull def toJava: java.util.List[Value] =
+    elements.asJava
 
   def convertToString = elements.mkString("[", ", ", "]")
 
@@ -267,11 +271,14 @@ object ListValue extends ValueType.Compound
   val name = "List"
   val empty = ListValue(Vector.empty)
 
-  def apply(list: Seq[Value]): ListValue =
-    new ListValue(list.toVector)
+  def apply(elements: Iterable[Value]): ListValue =
+    new ListValue(elements.toVector)
 
-  @javaApi def of(values: java.util.List[Value]) = ListValue(values.asScala.toVector)
-  @javaApi def of(values: Array[Value]) = ListValue(values.toVector)
+  @javaApi @Nonnull def of(@Nonnull values: java.util.List[Value]) =
+    ListValue(values.asScala.toVector)
+
+  @javaApi @Nonnull def of(@Nonnull values: Array[Value]) =
+    ListValue(values.toVector)
 }
 
 final case class ListType(elementType: ValueType)
@@ -287,7 +294,8 @@ final case class ObjectValue(nameToValue: Map[String, Value]) extends Value
 
   override def asObjectValue = Right(this)
 
-  def toJava = ???
+  @javaApi @Nonnull def toJava: java.util.Map[String, Value] =
+    nameToValue.asJava
 
   def convertToString = nameToValue
     .map { case (k, v) => quoteString(k) + ":" + v }
@@ -321,7 +329,8 @@ sealed trait IsErrorValue extends Value {
 final case class ErrorValue(problem: Problem) extends IsErrorValue {
   def valueType = ErrorValue
 
-  def toJava = problem // ???
+  @javaApi @Nonnull def toJava: Problem =
+    problem
 
   override def convertToString = s"[Problem: $problem]"
 
@@ -335,7 +344,8 @@ object ErrorValue extends ValueType {
 final case class MissingValue(problem: Problem = MissingValueProblem) extends IsErrorValue {
   def valueType = MissingValue
 
-  def toJava = problem // ???
+  @javaApi @Nonnull def toJava: Problem =
+    problem
 
   override def convertToString = {
     if (problem == MissingValueProblem) "[MissingValue]"
@@ -354,7 +364,8 @@ case object NullValue extends Value with ValueType.Simple {
 
   val name = "Null"
 
-  def toJava = null // ???
+  @javaApi @Nullable def toJava: Null =
+    null
 
   override def convertToString = ""
 
@@ -376,14 +387,18 @@ object ValueType
   private val nameToSimpleType = View(StringValue, BooleanValue, NumberValue)
     .toKeyedMap(_.name)
 
+  private val listTypeField = "TYPE" -> Json.fromString("List")
+  private val objectTypeField = "TYPE" -> Json.fromString("Object")
+
   implicit val jsonEncoder: Encoder[ValueType] = {
-    case ListType(elementType) => Json.obj(
-      "TYPE" -> Json.fromString("List"),
-      "elementType" -> elementType.asJson(jsonEncoder))
+    case ListType(elementType) =>
+      Json.obj(
+        listTypeField,
+        "elementType" -> jsonEncoder(elementType))
 
     case ObjectType(fields) =>
       Json.fromFields(
-        new View.Single("TYPE" -> Json.fromString("Object")) ++
+        new View.Single(objectTypeField) ++
           fields.view.map { case (k, v) => k -> jsonEncoder(v) })
 
     case o: ValueType =>
@@ -426,7 +441,8 @@ object ValueType
 
   final case object MissingValueProblem extends Problem.ArgumentlessCoded
 
-  final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value) extends Problem.Coded {
+  final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value)
+  extends Problem.Coded {
     def arguments = Map(
       "type" -> valueType.name,
       "value" -> value.toString.truncateWithEllipsis(30))
