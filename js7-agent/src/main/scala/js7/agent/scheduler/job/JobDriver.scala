@@ -84,59 +84,53 @@ private[agent] final class JobDriver(
   : Task[Outcome] =
     Task.defer {
       val entry = new Entry(order.id)
-      orderToProcess
-        .insert(order.id, entry)
-        .flatMapT(_ => Task.pure(checkedJobExecutor))
-        .flatMapT(jobExecutor =>
+      Task.pure(checkedJobExecutor)
+        .flatMapT(jobExecutor => orderToProcess.insert(order.id, entry)
           // Read JobResources each time because they may change at any time
-          Task.pure(jobConf.jobResourcePaths.traverse(pathToJobResource))
-            .flatMapT(jobResources =>
-              jobExecutor.startIfNeeded
-                .flatMapT { _ =>
-                  val processOrder = ProcessOrder(
-                    order, workflow, jobKey, jobResources,
-                    defaultArgumentExpressions = workflowJob.defaultArguments ++ defaultArguments,
-                    jobConf.controllerId, stdObservers)
-                  jobExecutor
-                    .prepareOrderProcess(processOrder)
-                    .flatMapT { orderProcess =>
-                      entry.orderProcess = Some(orderProcess)
-                      // Start the orderProcess. The future completes the out/err observers
-                      orderProcess.start(processOrder.stdObservers)
-                        .flatMap { runningProcessFuture =>
-                          entry.runningSince = scheduler.now
-                          // Schedule timeout handle now, after start (not after termination!)
-                          scheduleTimeoutHandler(entry)
-                          Task
-                            .fromFuture(runningProcessFuture)
-                            .map(entry.modifyOutcome)
-                            .map {
-                              case outcome: Succeeded =>
-                                readErrorLine(processOrder).getOrElse(outcome)
-                              case o => o
-                            }
-                        }
-                        .tapEval(_ =>
-                          entry.killSignal.traverse(signal =>
-                            // Input.KillProcess may have arrived after Internal.Process
-                            // but before Internal.ProcessStarted, so we kill now.
-                            killOrder(entry, signal)))
-                        .onErrorHandle { t =>
-                          logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                          Outcome.Failed.fromThrowable(t)
-                        }
-                        .map(Right(_))
-                    }
-                }))
-        .materializeIntoChecked
-        .map {
-          case Left(problem) => Outcome.Disrupted(problem)
-          case Right(outcome) => outcome
-        }
-        .guarantee(removeEntry(entry))
+          .flatMapT(_ => Task.pure(jobConf.jobResourcePaths.traverse(pathToJobResource)))
+          .map(_.map(jobResources => ProcessOrder(
+            order, workflow, jobKey, jobResources,
+            workflowJob.defaultArguments ++ defaultArguments,
+            jobConf.controllerId, stdObservers)))
+          .flatMapT(processOrder =>
+            jobExecutor.startIfNeeded
+              .flatMapT(_ => jobExecutor.prepareOrderProcess(processOrder))
+              .flatMapT { orderProcess =>
+                entry.orderProcess = Some(orderProcess)
+                // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
+                orderProcess.start(processOrder.stdObservers)
+                  .flatMap { runningProcessFuture =>
+                    entry.runningSince = scheduler.now
+                    scheduleTimeout(entry)
+                    Task
+                      .fromFuture(runningProcessFuture)
+                      .map(entry.modifyOutcome)
+                      .map {
+                        case outcome: Succeeded =>
+                          readErrorLine(processOrder).getOrElse(outcome)
+                        case outcome => outcome
+                      }
+                  }
+                  .tapEval(_ =>
+                    entry.killSignal.traverse(signal =>
+                      // killOrder may be called after processOrder
+                      // but before process has been started, so we kill now.
+                      killOrder(entry, signal)))
+                  .onErrorHandle { t =>
+                    logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                    Outcome.Failed.fromThrowable(t)
+                  }
+                  .map(Right(_))
+              }))
+      .materializeIntoChecked
+      .map {
+        case Left(problem) => Outcome.Disrupted(problem)
+        case Right(outcome) => outcome
+      }
+      .guarantee(removeEntry(entry))
     }
 
-  private def scheduleTimeoutHandler(entry: Entry): Unit = {
+  private def scheduleTimeout(entry: Entry): Unit = {
     requireNonNull(entry.runningSince)
     for (t <- workflowJob.timeout) {
       entry.timeoutSchedule := scheduler.scheduleOnce(t) {
@@ -162,11 +156,10 @@ private[agent] final class JobDriver(
       orderToProcess
         .remove(orderId)
         .flatMap(_ => orderToProcess.isEmpty)
-        .map {
-          case true if lastProcessTerminated != null =>
+        .map(isEmpty =>
+          if (isEmpty && lastProcessTerminated != null) {
             lastProcessTerminated.trySuccess(())
-          case _ =>
-        }
+          })
     }
 
   private def killOrderAndForget(entry: Entry, signal: ProcessSignal): Unit =
