@@ -12,7 +12,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
-import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -292,7 +292,8 @@ with JournaledState[ControllerState]
                       idToOrder = updatedIdToOrder -- forked.childOrderIds))
 
                   case state =>
-                    Left(Problem(s"For event $event, $orderId must be in state Forked or Forked, not: $state"))
+                    Left(Problem(
+                      s"For event $event, $orderId must be in state Forked or Forked, not: $state"))
                 }
 
               case event: OrderLockEvent =>
@@ -302,7 +303,7 @@ with JournaledState[ControllerState]
                   .map(lockStates =>
                     copy(
                       idToOrder = updatedIdToOrder,
-                      pathToLockState = pathToLockState ++ (lockStates.map(o => o.lock.path -> o))))
+                      pathToLockState = pathToLockState ++ lockStates.map(o => o.lock.path -> o)))
 
               case event: OrderNoticeEvent =>
                 orderIdToBoardState(orderId)
@@ -310,10 +311,11 @@ with JournaledState[ControllerState]
                     val boardPath = boardState.path
                     event match {
                       case OrderNoticePosted(notice) =>
-                        Right(copy(
-                          idToOrder = updatedIdToOrder,
-                          pathToBoardState = pathToBoardState +
-                            (boardPath -> boardState.addNotice(notice))))
+                        for (updatedBoardState <- boardState.addNotice(notice)) yield
+                          copy(
+                            idToOrder = updatedIdToOrder,
+                            pathToBoardState = pathToBoardState +
+                              (boardPath -> updatedBoardState))
 
                       case OrderNoticeExpected(noticeId) =>
                         boardState
@@ -372,6 +374,13 @@ with JournaledState[ControllerState]
         case _: OrderStdWritten =>
           Right(this)
       }
+
+    case KeyedEvent(boardPath: BoardPath, NoticePosted(noticeId)) =>
+      for {
+        boardState <- pathToBoardState.checked(boardPath)
+        o <- boardState.addNotice(noticeId)
+      } yield copy(
+        pathToBoardState = pathToBoardState + (o.path -> o))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
       for {

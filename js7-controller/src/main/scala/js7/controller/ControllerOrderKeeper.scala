@@ -44,7 +44,7 @@ import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrd
 import js7.data.agent.AgentRefState.{Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
-import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, Notice, NoticeId}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
@@ -61,10 +61,11 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticeRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
+import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
 import js7.journal.recover.Recovered
@@ -682,17 +683,40 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ResumeOrders(orderIds) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
 
-      case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
+      case ControllerCommand.PostNotice(boardPath, noticeId, endOfLife) =>
+        val scope = NowScope(alarmClock.now)
         val checked = for {
-          boardState <-_controllerState.pathToBoardState.checked(boardPath)
-          _ <- boardState.deleteNotice(noticeId)
-        } yield ()
+          boardState <- _controllerState.pathToBoardState.checked(boardPath)
+          notice <- boardState.board.toNotice(noticeId, endOfLife)(scope)
+          _ <- boardState.addNotice(notice)
+          expectingOrders <- boardState
+            .expectingOrders(noticeId)
+            .traverse(_controllerState.idToOrder.checked): Checked[Seq[Order[Order.State]]]
+        } yield (notice, expectingOrders)
         checked match {
           case Left(problem) => Future.successful(Left(problem))
-          case Right(()) =>
-           persistTransactionAndSubsequentEvents(Seq(boardPath <-: NoticeDeleted(noticeId)))(
+          case Right((notice, expectingOrders)) =>
+            val events = View(boardPath <-: NoticePosted(notice)) ++
+              expectingOrders.view
+                .flatMap(o => View(
+                  o.id <-: OrderNoticeRead,
+                  o.id <-: OrderMoved(o.position.increment)))
+           persistTransactionAndSubsequentEvents(events.toVector)(
              handleEvents
            ).map(_ => Right(ControllerCommand.Response.Accepted))
+        }
+
+      case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
+        (for {
+          boardState <- _controllerState.pathToBoardState.checked(boardPath)
+          _ <- boardState.deleteNotice(noticeId)
+        } yield ())
+        match {
+          case Left(problem) => Future.successful(Left(problem))
+          case Right(()) =>
+            val events = Seq(boardPath <-: NoticeDeleted(noticeId))
+            persistTransactionAndSubsequentEvents(events)(handleEvents)
+             .map(_ => Right(ControllerCommand.Response.Accepted))
         }
 
       case ControllerCommand.DeleteOrdersWhenTerminated(orderIds) =>

@@ -1,6 +1,7 @@
 package js7.proxy.javaapi
 
 import io.vavr.control.{Either => VEither}
+import java.time.Instant
 import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import java.util.{Optional, OptionalLong}
@@ -8,6 +9,7 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.base.web.Uri
+import js7.data.board.{BoardPath, NoticeId}
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
@@ -226,6 +228,16 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
       .map(_.toVoidVavr)
       .runToFuture
       .asJava
+
+  @Nonnull
+  def postNotice(
+    @Nonnull boardPath: BoardPath,
+    @Nonnull noticeId: NoticeId,
+    @Nonnull endOfLife: Optional[Instant])
+  : CompletableFuture[VEither[Problem, Void]] =
+    execute(JControllerCommand
+      .postNotice(boardPath, noticeId, endOfLife)
+      .asScala)
 
   @Nonnull
   def releaseEvents(until: EventId): CompletableFuture[VEither[Problem, Void]] =

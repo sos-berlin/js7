@@ -12,6 +12,7 @@ import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
+import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, ResumeOrder, SuspendOrders}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
@@ -166,21 +167,49 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
-  "Delete notice after endOfLife" in {
-    alarmClock := endOfLife - 1.s
+  "PostNotice command with expecting order" in {
+    val qualifier = "2222-08-08"
+    val noticeId = NoticeId(qualifier)
+
+    val orderId = OrderId(s"#$qualifier#EXPECTING")
+    controller.addOrder(FreshOrder(orderId, expectingAgentWorkflow.path))
+      .await(99.s).orThrow
+    eventWatch.await[OrderNoticeExpected](_.key == orderId)
+
+    controllerApi.executeCommand(
+      ControllerCommand.PostNotice(board.path, noticeId)
+    ).await(99.s).orThrow
+    eventWatch.await[OrderNoticeRead](_.key == orderId)
+
+    val notice2 = Notice(NoticeId("2222-08-09"), endOfLife)
+    controllerApi.executeCommand(
+      ControllerCommand.PostNotice(board.path, notice2.id)
+    ).await(99.s).orThrow
     sleep(100.ms)
-    val eventId = eventWatch.lastAddedEventId
-    // NoticeDeleted do not occur before endOfLife
-    alarmClock := endOfLife
-    // Spare noticeIds.head for DeleteNotice test
-    for (noticeId <- noticeIds) {
-      eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
-    }
+    assert(controllerState.pathToBoardState(board.path).idToNotice(notice2.id) == notice2)
+  }
+
+  "PostNotice command without expecting order" in {
+    val notice = Notice(NoticeId("2222-08-09"), endOfLife)
+    controllerApi.executeCommand(
+      ControllerCommand.PostNotice(board.path, notice.id)
+    ).await(99.s).orThrow
+
+    // With explicit endOfLife
+    val notice2 = Notice(NoticeId("2222-08-10"), Timestamp("2222-08-09T12:00:00Z"))
+    controllerApi.executeCommand(
+      ControllerCommand.PostNotice(board.path, notice2.id,
+        endOfLife = Some(notice2.endOfLife))
+    ).await(99.s).orThrow
+
+    sleep(100.ms)
+    assert(controllerState.pathToBoardState(board.path).idToNotice(notice.id) == notice)
+    assert(controllerState.pathToBoardState(board.path).idToNotice(notice2.id) == notice2)
   }
 
   "DeleteNotice command" in {
-    val qualifier = "2222-08-08"
-    val notice = Notice(NoticeId(qualifier), endOfLife + lifeTime)
+    val qualifier = "2222-09-09"
+    val notice = Notice(NoticeId(qualifier), endOfLife)
 
     val posterEvents = controller.runOrder(
       FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
@@ -195,11 +224,22 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.executeCommand(DeleteNotice(board.path, notice.id)).await(99.s).orThrow
     assert(eventWatch.await[NoticeDeleted](_.key == board.path, after = eventId).head.value.event ==
       NoticeDeleted(notice.id))
+  }
+
+  "Delete notice after endOfLife" in {
+    alarmClock := endOfLife - 1.s
     sleep(100.ms)
+    val eventId = eventWatch.lastAddedEventId
+    // NoticeDeleted do not occur before endOfLife
+    alarmClock := endOfLife
+    // Spare noticeIds.head for DeleteNotice test
+    for (noticeId <- noticeIds) {
+      eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
+    }
   }
 
   "PostNotice and ExpectNotice respect Order.scheduledFor" in {
-    val qualifier = "2222-09-09"
+    val qualifier = "2222-10-10"
     val posterOrderId = OrderId(s"#$qualifier#POSTER")
     val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
     val startAt = startTimestamp + 10.days
@@ -219,7 +259,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Order.ExpectingNotice is suspendible" in {
-    val qualifier = "2222-10-10"
+    val qualifier = "2222-11-11"
     val postingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-POSTING")
     val expectingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-EXPECTING")
     controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
@@ -241,7 +281,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Order.ExpectingNotice is cancelable" in {
-    val qualifier = "2222-11-11"
+    val qualifier = "2222-12-12"
     val expectingOrderId = OrderId(s"#$qualifier#CANCELABLE-EXPECTING")
     controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
       .await(99.s).orThrow

@@ -10,9 +10,14 @@ sealed trait BoardEvent extends Event {
 
 object BoardEvent
 {
+  /** Notice posts via a PostNotice command (not workflow instruction). */
+  final case class NoticePosted(notice: Notice)
+  extends BoardEvent
+
   final case class NoticeDeleted(noticeId: NoticeId)
   extends BoardEvent
 
   implicit val jsonCodec = TypedJsonCodec[BoardEvent](
+    Subtype(deriveCodec[NoticePosted]),
     Subtype(deriveCodec[NoticeDeleted]))
 }

@@ -3,6 +3,7 @@ package js7.data.controller
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
@@ -128,6 +129,27 @@ final class ControllerCommandTest extends AnyFreeSpec
           }
         }""")
     }
+  }
+
+  "PostNotice" in {
+    testJson[ControllerCommand](PostNotice(
+        BoardPath("BOARD"),
+        NoticeId("NOTICE")),
+      json"""{
+        "TYPE": "PostNotice",
+        "boardPath": "BOARD",
+        "noticeId": "NOTICE"
+      }""")
+
+    testJson[ControllerCommand](PostNotice(
+        BoardPath("BOARD"),
+        NoticeId("NOTICE"), Some(Timestamp("1970-01-01T01:00:00Z"))),
+      json"""{
+        "TYPE": "PostNotice",
+        "boardPath": "BOARD",
+        "noticeId": "NOTICE",
+        "endOfLife": 3600000
+      }""")
   }
 
   "DeleteNotice" in {

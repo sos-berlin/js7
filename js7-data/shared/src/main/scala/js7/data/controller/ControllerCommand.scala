@@ -7,6 +7,7 @@ import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDur
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
+import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
@@ -90,6 +91,15 @@ object ControllerCommand extends CommonCommand.Companion
         orderIds <- c.get[Vector[OrderId]]("orderIds")
         mode <- c.getOrElse[CancellationMode]("mode")(CancellationMode.Default)
       } yield CancelOrders(orderIds, mode)
+  }
+
+  final case class PostNotice(
+    boardPath: BoardPath,
+    noticeId: NoticeId,
+    endOfLife: Option[Timestamp] = None)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+    override def toShortString = s"PostNotice($boardPath, $noticeId})"
   }
 
   final case class DeleteNotice(boardPath: BoardPath, noticeId: NoticeId)
@@ -245,6 +255,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveCodec[AddOrder]),
     Subtype(deriveCodec[AddOrders]),
     Subtype[CancelOrders],
+    Subtype(deriveCodec[PostNotice]),
     Subtype(deriveCodec[DeleteNotice]),
     Subtype(deriveCodec[DeleteOrdersWhenTerminated]),
     Subtype(deriveCodec[AnswerOrderPrompt]),

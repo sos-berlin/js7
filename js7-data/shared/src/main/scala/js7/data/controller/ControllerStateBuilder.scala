@@ -5,7 +5,7 @@ import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
-import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardPath, BoardState, Notice}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -106,7 +106,7 @@ with StateView
 
     case noticeSnapshot: Notice.Snapshot =>
       _pathToBoardState(noticeSnapshot.boardPath) = _pathToBoardState(noticeSnapshot.boardPath)
-        .addNotice(noticeSnapshot.notice)
+        .addNotice(noticeSnapshot.notice).orThrow
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
@@ -278,16 +278,13 @@ with StateView
           event match {
             case OrderNoticePosted(notice) =>
               _pathToBoardState += boardPath ->
-                boardState.addNotice(notice)
+                boardState.addNotice(notice).orThrow
 
             case OrderNoticeExpected(noticeId) =>
               pathToBoardState +=
                 boardPath -> boardState.addExpectation(orderId, noticeId).orThrow
 
             case OrderNoticeRead =>
-              //pathToBoardState += boardPath ->
-              //  pathToBoardState.getOrElse(boardPath, BoardState.empty)
-              //    .addNotice(notice)
           }
 
           _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
@@ -325,6 +322,11 @@ with StateView
 
     case Stamped(_, _, KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent)) =>
       allOrderWatchesState = allOrderWatchesState.onOrderWatchEvent(orderWatchPath <-: event).orThrow
+
+    case Stamped(_, _, KeyedEvent(boardPath: BoardPath, NoticePosted(notice))) =>
+      for (boardState <- _pathToBoardState.get(boardPath)) {
+        _pathToBoardState(boardState.path) = boardState.addNotice(notice).orThrow
+      }
 
     case Stamped(_, _, KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId))) =>
       for (boardState <- _pathToBoardState.get(boardPath)) {

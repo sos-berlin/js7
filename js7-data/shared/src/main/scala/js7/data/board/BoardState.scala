@@ -16,9 +16,9 @@ final case class BoardState(
     // NoticeExpectation are recovered from Order[Order.ExpectingNotice]
   }
 
-  def addNotice(notice: Notice): BoardState =
-    copy(
-      idToNotice = idToNotice + (notice.id -> notice))
+  def addNotice(notice: Notice): Checked[BoardState] =
+    Right(copy(
+      idToNotice = idToNotice + (notice.id -> notice)))
 
   def addExpectation(orderId: OrderId, noticeId: NoticeId): Checked[BoardState] =
     idToNotice.get(noticeId) match {

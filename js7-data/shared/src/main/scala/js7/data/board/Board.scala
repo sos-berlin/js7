@@ -26,15 +26,21 @@ extends UnsignedSimpleItem
   def postingOrderToNotice(scope: Scope): Checked[Notice] = {
     //val args = ListValue(Vector(StringValue(order.id.string)))
     for {
-      endOfLife <- endOfLife
-        .eval(scope)
-        .flatMap(_.asLong)
-        .map(Timestamp.ofEpochMilli)
-      notice <- postOrderToNoticeId
-        .eval/*(args)*/(scope)
-        .flatMap(Notice.fromValue(_, endOfLife))
-    } yield notice
+      endOfLife <- evalEndOfLife(scope)
+      value <- postOrderToNoticeId.eval/*(args)*/(scope)
+      noticeId <- value.asString
+    } yield Notice(NoticeId(noticeId), endOfLife)
   }
+
+  def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp])(scope: Scope): Checked[Notice] =
+    endOfLife.fold(evalEndOfLife(scope))(Checked(_))
+      .map(Notice(noticeId, _))
+
+  private def evalEndOfLife(scope: Scope): Checked[Timestamp] =
+    endOfLife
+      .eval(scope)
+      .flatMap(_.asLong)
+      .map(Timestamp.ofEpochMilli)
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
     expectOrderToNoticeId
