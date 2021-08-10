@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.ProblemTest._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.tester.CirceJsonTester.testJson
+import org.scalatest.exceptions.TestFailedException
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
 
@@ -179,21 +180,39 @@ final class ProblemTest extends AnyFreeSpec
 
   "equals" in {
     assert(TestCodeProblem(Map.empty) == TestCodeProblem(Map.empty))
-    assert((TestCodeProblem(Map.empty): Problem) != TestProblem(Map.empty))
+    assert((TestCodeProblem(Map("a" -> "A")): Problem) != TestProblem(a = "A"))
     assert(TestCodeProblem(Map("a" -> "A")) == TestCodeProblem(Map("a" -> "A")))
     assert(TestCodeProblem(Map("a" -> "A")) != TestCodeProblem(Map("a" -> "X")))
+    assert(Problem("TEST") == Problem("TEST"))
+    assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
+    assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
+    assert(Problem("TEST").wrapProblemWith("WRAP") == Problem("WRAP [TEST]"))
+    assert(Problem("X") != Problem("Y"))
+  }
+
+  "equals after serialization" in {
     locally {
       val a: Problem = Problem.HasCodeAndMessage(TestCodeProblem.code, Map("a" -> "A"), "MSG")
       val b = TestCodeProblem(Map("a" -> "A"))
       assert(a == b)
       assert(b == a)
     }
-    assert((Problem.HasCodeAndMessage(TestCodeProblem.code, Map("a" -> "A"), "MSG"): Problem) == TestCodeProblem(Map("a" -> "A")))
-    assert(Problem("TEST") == Problem("TEST"))
-    assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
-    assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
-    assert(Problem("TEST").wrapProblemWith("WRAP") == Problem("WRAP [TEST]"))
-    assert(Problem("X") != Problem("Y"))
+    locally {
+      val a: Problem = Problem.HasCodeAndMessage(TestProblem.code, Map("a" -> "A"), "MSG")
+      val b = TestProblem(a = "A")
+      assert(a == b)
+      assert(b == a)
+    }
+  }
+
+  "unapply after serialization does not work" in {
+    intercept[TestFailedException] {
+      val a: Problem = Problem.HasCodeAndMessage(TestProblem.code, Map("a" -> "A"), "MSG")
+      a match {
+        case TestProblem(a) => assert(a == "A")
+        case _: Problem.HasCodeAndMessage => fail("unapply after serialization fails")
+      }
+    }
   }
 
   "is" in {
@@ -236,5 +255,8 @@ final class ProblemTest extends AnyFreeSpec
 }
 
 object ProblemTest {
-  private final case class TestProblem(arguments: Map[String, String]) extends Problem.Coded
+  final case class TestProblem(a: String) extends Problem.Coded {
+    def arguments = Map("a" -> a)
+  }
+  object TestProblem extends Problem.Coded.Companion
 }
