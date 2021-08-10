@@ -11,7 +11,7 @@ import js7.data.order.OrderId
 object Problems
 {
   case object AgentIsShuttingDown extends Problem.ArgumentlessCoded {
-    override def httpStatusCode = 503  // Service unavailable
+    override val httpStatusCode = 503  // Service unavailable
   }
 
   final case class AgentRunIdMismatchProblem(agentPath: AgentPath)

@@ -97,15 +97,15 @@ object Problems
     def arguments = Map("typeName" -> typeName)
   }
 
-  final case object ClusterNodeIsNotYetReadyProblem extends Problem.ArgumentlessCoded {
+  case object ClusterNodeIsNotYetReadyProblem extends Problem.ArgumentlessCoded {
     override val httpStatusCode = 503  // ServiceUnavailable
   }
 
-  final case object ClusterNodeIsNotActiveProblem extends Problem.ArgumentlessCoded {
+  case object ClusterNodeIsNotActiveProblem extends Problem.ArgumentlessCoded {
     override val httpStatusCode = 503  // ServiceUnavailable
   }
 
-  final case object BackupClusterNodeNotAppointed extends Problem.ArgumentlessCoded {
+  case object BackupClusterNodeNotAppointed extends Problem.ArgumentlessCoded {
     override val httpStatusCode = 503  // ServiceUnavailable
   }
 
@@ -130,7 +130,7 @@ object Problems
 
   object PrimaryClusterNodeMayNotBecomeBackupProblem extends Problem.ArgumentlessCoded
 
-  final case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
+  case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
 
-  final case object ClusterSettingNotUpdatable extends Problem.ArgumentlessCoded
+  case object ClusterSettingNotUpdatable extends Problem.ArgumentlessCoded
 }

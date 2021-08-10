@@ -17,7 +17,7 @@ package object problems
   case object UserIsNotEnabledToReleaseEventsProblem extends Problem.ArgumentlessCoded
 
   case object InvalidLoginProblem extends Problem.ArgumentlessCoded {
-    override def httpStatusCode = 401/*Unauthorized*/
+    override val httpStatusCode = 401/*Unauthorized*/
   }
 
   final object UnreachableOrderPositionProblem extends Problem.ArgumentlessCoded
