@@ -55,8 +55,8 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
     val file = sourceDirectory / "1"
     val orderId = fileToOrderId("1")
     file := ""
-    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
-    controller.eventWatch.await[OrderDeleted](_.key == orderId)
+    eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
+    eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
   }
 
@@ -68,8 +68,8 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
   "Delete FileWatch" in {
     assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
-    controller.eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
-    assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
+    eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
+    assert(controllerState.allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }
 

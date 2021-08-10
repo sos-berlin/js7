@@ -61,35 +61,35 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
   "Add two files" in {
     createDirectory(sourceDirectory)
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
+    eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobDriverStarvationTest)
     aFile := ""
-    controller.eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("A"))
-    controller.eventWatch.await[OrderStarted](_.key == aOrderId)
+    eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("A"))
+    eventWatch.await[OrderStarted](_.key == aOrderId)
 
     bFile := ""
-    controller.eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("NARROW-B"))
-    controller.eventWatch.await[OrderStarted](_.key == bOrderId)
+    eventWatch.await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("NARROW-B"))
+    eventWatch.await[OrderStarted](_.key == bOrderId)
   }
 
   "Narrow the pattern" in {
-    val eventId = controller.eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(pattern = Some(SimplePattern("NARROW-.+")))
     controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path, after = eventId)
+    eventWatch.await[ItemAttached](_.event.key == fileWatch.path, after = eventId)
 
     // Now, the A file is not match and out of scope, and a ExternalOrderVanished is emitted.
 
-    controller.eventWatch.await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("A"))
+    eventWatch.await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("A"))
     // This must be the only ExternalOrderVanished event
     sleep(100.ms)
-    assert(controller.eventWatch.keyedEvents[ExternalOrderVanished](after = EventId.BeforeFirst) ==
+    assert(eventWatch.keyedEvents[ExternalOrderVanished](after = EventId.BeforeFirst) ==
       Seq(fileWatch.path <-: ExternalOrderVanished(ExternalOrderName("A"))))
 
     semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
-    controller.eventWatch.await[OrderDeleted](_.key == aOrderId)
-    controller.eventWatch.await[OrderDeleted](_.key == bOrderId)
+    eventWatch.await[OrderDeleted](_.key == aOrderId)
+    eventWatch.await[OrderDeleted](_.key == bOrderId)
   }
 }
 

@@ -47,7 +47,7 @@ final class WorkflowDefinedOrderVariablesTest extends AnyFreeSpec with Controlle
     val (deOrderId, deEvents) = runOrder("de", "Acer", "Ahorn")
     val (_        , svEvents) = runOrder("sv", "Acer", "lönn")
 
-    assert(controller.controllerState.await(99.s).idToOrder(deOrderId).arguments == Map(
+    assert(controllerState.idToOrder(deOrderId).arguments == Map(
       "jobResource" -> StringValue("de"),
       "variableName" -> StringValue("Acer"),
       "expected" -> StringValue("Ahorn"),

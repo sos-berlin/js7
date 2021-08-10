@@ -27,7 +27,7 @@ final class PromptTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderPrompted = eventWatch.await[OrderPrompted](_.key == orderId).head.value.event
     assert(orderPrompted == OrderPrompted(StringValue("MY QUESTION")))
     sleep(100.ms)  // Wait until controllerState has been updated
-    assert(controller.controllerState.await(99.s).idToOrder(orderId).state ==
+    assert(controllerState.idToOrder(orderId).state ==
       Order.Prompting(StringValue("MY QUESTION")))
 
     controllerApi.executeCommand(

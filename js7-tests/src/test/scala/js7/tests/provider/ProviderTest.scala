@@ -229,28 +229,28 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     var lastEventId = EventId.BeforeFirst
 
     "Initial observation with a workflow and an agentRef added" in {
-      lastEventId = controller.eventWatch.lastAddedEventId
+      lastEventId = eventWatch.lastAddedEventId
       writeWorkflowFile(BWorkflowPath)
       //live / (s"$agentPath.json") := AgentRef(agentPath, uri = agent.localUri)
 
       whenObserved
-      val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
-      val events = controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value)
+      val versionId = eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
+      val events = eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value)
       assert(events == Vector(BWorkflowPath)
         .map(path => NoKey <-: VersionedItemAdded(sign(TestWorkflow withId path ~ versionId))))
     }
 
     "Delete a workflow" in {
       whenObserved
-      lastEventId = controller.eventWatch.lastAddedEventId
+      lastEventId = eventWatch.lastAddedEventId
       delete(live resolve CWorkflowPath.toFile(SourceType.Json))
-      assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
+      assert(eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: VersionedItemRemoved(CWorkflowPath)))
     }
 
     "Add a workflow" in {
       assert(!whenObserved.isCompleted)
-      lastEventId = controller.eventWatch.lastAddedEventId
+      lastEventId = eventWatch.lastAddedEventId
       writeWorkflowFile(CWorkflowPath)
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==

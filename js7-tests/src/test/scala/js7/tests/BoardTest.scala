@@ -65,7 +65,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board.path) ==
       BoardState(
         board.withRevision(Some(ItemRevision(0))),
         Map(notice.id -> notice)))
@@ -78,7 +78,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board.path) ==
       BoardState(
         board.withRevision(Some(ItemRevision(0))),
         Map(notice.id -> notice)))
@@ -91,7 +91,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
     controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
       .await(99.s).orThrow
-    controller.eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
+    eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
 
     val posterEvents = controller.runOrder(
       FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
@@ -102,15 +102,15 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board.path) ==
       BoardState(
         board.withRevision(Some(ItemRevision(0))),
         Map(
           NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
           notice.id -> notice)))
 
-    controller.eventWatch.await[OrderFinished](_.key == expectingOrderId)
-    val expectingEvents = controller.eventWatch.keyedEvents[OrderCoreEvent](expectingOrderId)
+    eventWatch.await[OrderFinished](_.key == expectingOrderId)
+    val expectingEvents = eventWatch.keyedEvents[OrderCoreEvent](expectingOrderId)
     assert(expectingEvents == Seq(
       OrderAdded(expectingWorkflow.id),
       OrderStarted,
@@ -119,7 +119,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board.path) ==
       BoardState(
         board.withRevision(Some(ItemRevision(0))),
         Map(
@@ -169,12 +169,12 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Delete notice after endOfLife" in {
     alarmClock := endOfLife - 1.s
     sleep(100.ms)
-    val eventId = controller.eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     // NoticeDeleted do not occur before endOfLife
     alarmClock := endOfLife
     // Spare noticeIds.head for DeleteNotice test
     for (noticeId <- noticeIds) {
-      controller.eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
+      eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
     }
   }
 
@@ -252,12 +252,12 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Update Board" in {
-    val boardState = controller.controllerState.await(99.s).pathToBoardState(board.path)
+    val boardState = controllerState.pathToBoardState(board.path)
 
     val updatedBoard = board.copy(postOrderToNoticeId = expr("$jsOrderId"))
     controllerApi.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
 
-    assert(controller.controllerState.await(99.s).pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board.path) ==
       boardState.copy(
         board = updatedBoard.withRevision(Some(ItemRevision(1)))))
   }
@@ -273,7 +273,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controllerApi
       .deleteOrdersWhenTerminated(Observable.fromIterable(
-        controller.controllerState.await(99.s).idToOrder.keys))
+        controllerState.idToOrder.keys))
       .await(99.s).orThrow
     controllerApi
       .updateItems(Observable(
@@ -285,7 +285,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
         RemoveVersioned(expectingAgentWorkflow.path)))
       .await(99.s).orThrow
 
-    assert(!controller.controllerState.await(99.s).pathToBoardState.contains(board.path))
+    assert(!controllerState.pathToBoardState.contains(board.path))
   }
 }
 

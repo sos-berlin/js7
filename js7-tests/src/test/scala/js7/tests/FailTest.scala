@@ -155,10 +155,10 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
   : Unit = {
     directoryProvider.updateVersionedItems(controller, workflow.id.versionId, Seq(workflow))
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-    controller.eventWatch.await[E](_.key == orderId)
-    checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], expectedEvents)
+    eventWatch.await[E](_.key == orderId)
+    checkEventSeq(orderId, eventWatch.all[OrderEvent], expectedEvents)
     for ((oId, expected) <- moreExpectedEvents) {
-      checkEventSeq(oId, controller.eventWatch.all[OrderEvent], expected)
+      checkEventSeq(oId, eventWatch.all[OrderEvent], expected)
     }
   }
 

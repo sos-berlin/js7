@@ -32,7 +32,7 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
   "Terminate Controller while AgentDriver is trying to send a command to a non-existent Agent" in {
     controller.addOrderBlocking(FreshOrder(OrderId("TEST"), workflow.path))
     socket.close()
-    controller.eventWatch.await[AgentCouplingFailed]()
+    eventWatch.await[AgentCouplingFailed]()
     controller.terminate() await 99.s
   }
 }

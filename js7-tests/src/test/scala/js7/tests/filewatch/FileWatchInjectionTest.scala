@@ -34,7 +34,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     // TODO SimpleItemAttachmentFailed
     intercept[TimeoutException] {
-      controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path, timeout = 1.s)
+      eventWatch.await[ItemAttached](_.event.key == fileWatch.path, timeout = 1.s)
     }
   }
 }

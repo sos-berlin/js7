@@ -10,6 +10,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Lazy
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
+import js7.data.controller.ControllerState
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.proxy.ControllerApi
 import monix.eval.Task
@@ -47,6 +48,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected def controllerHttpsMutual = false
 
   protected def waitUntilReady = true
+
+  protected final def controllerState: ControllerState =
+    controller.controllerState.await(99.s)
 
   override def beforeAll() = {
     super.beforeAll()

@@ -47,7 +47,7 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderFinished))
     controller.executeCommandForTest(DeleteOrdersWhenTerminated(Seq(orderId))).orThrow
-    controller.eventWatch.await[OrderDeleted](_.key == orderId)
+    eventWatch.await[OrderDeleted](_.key == orderId)
   }
 
   "An unknown argument detected at Agent lets the order fail" in {

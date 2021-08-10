@@ -34,10 +34,10 @@ final class DeleteOrderWhenTerminatedDelayedTest extends AnyFreeSpec with Contro
   "OrderDeleted is delayed" in {
     val order = FreshOrder(OrderId("🔴"), workflow.id.path)
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderStarted](_.key == order.id)
+    eventWatch.await[OrderStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
-    val finished = controller.eventWatch.await[OrderFinished](_.key == order.id).head
-    val removed = controller.eventWatch.await[OrderDeleted](_.key == order.id).head
+    val finished = eventWatch.await[OrderFinished](_.key == order.id).head
+    val removed = eventWatch.await[OrderDeleted](_.key == order.id).head
     assert(removed.timestamp - finished.timestamp > 500.ms)
   }
 }

@@ -36,10 +36,10 @@ final class DeleteOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
   "Delete a fresh order" in {
     val order = FreshOrder(OrderId("🔵"), quickWorkflow.id.path, scheduledFor = Some(Timestamp.now + 1.s))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
-    controller.eventWatch.await[OrderDeleted](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
+    eventWatch.await[OrderDeleted](_.key == order.id)
+    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(quickWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -57,9 +57,9 @@ final class DeleteOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
   "Delete a finished order" in {
     val order = FreshOrder(OrderId("🔴"), slowWorkflow.id.path)
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
-    controller.eventWatch.await[OrderDeleted](_.key == order.id)
+    eventWatch.await[OrderDeleted](_.key == order.id)
     assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(slowWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),

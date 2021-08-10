@@ -41,9 +41,9 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Events" in {
     controller.addOrderBlocking(TestOrder)
-    controller.eventWatch.await[OrderFinished](_.key == TestOrder.id)
+    eventWatch.await[OrderFinished](_.key == TestOrder.id)
     controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(TestOrder.id))).await(99.s).orThrow
-    controller.eventWatch.all[OrderEvent] match {
+    eventWatch.all[OrderEvent] match {
       case EventSeq.NonEmpty(stampeds) =>
         val keyedEvents = stampeds.map(_.value).toVector
         for (orderId <- Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
@@ -59,18 +59,18 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
     // Existing child orders are thought only. This should not be possible.
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
     controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE|🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
-    controller.eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE|🥕"))
+    eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE|🥕"))
 
     controller.addOrderBlocking(order)
     val expectedFailed = OrderFailed(
       Position(0),
       Some(Outcome.Disrupted(Problem(
       "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing,Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false)"))))
-    assert(controller.eventWatch.await[OrderFailed](_.key == order.id).head.value.event == expectedFailed)
+    assert(eventWatch.await[OrderFailed](_.key == order.id).head.value.event == expectedFailed)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
-    controller.eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
+    eventWatch.await[OrderCancelled](_.key == order.id)
+    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
       OrderAdded(TestWorkflow.id, order.arguments),
       OrderStarted,
       expectedFailed,

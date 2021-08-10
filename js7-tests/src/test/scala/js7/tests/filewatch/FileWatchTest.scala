@@ -87,9 +87,9 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderId = fileToOrderId("1")
     file := ""
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch, waitingFileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
-    controller.eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
-    controller.eventWatch.await[OrderDeleted](_.key == orderId)
+    eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
+    eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
+    eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
   }
 
@@ -97,7 +97,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val file = watchDirectory / "2"
     val orderId = fileToOrderId("2")
     file := ""
-    controller.eventWatch.await[OrderDeleted](_.key == orderId)
+    eventWatch.await[OrderDeleted](_.key == orderId)
     assert(!exists(file))
   }
 
@@ -105,9 +105,9 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val since = now
     val filenames = (1 to 1).map(_.toString).toVector
     val orderIds = filenames.map(fileToOrderId).toSet
-    val whenAllRemoved = controller.eventWatch
+    val whenAllRemoved = eventWatch
       .observe(EventRequest.singleClass[OrderDeleted](
-        after = controller.eventWatch.lastAddedEventId,
+        after = eventWatch.lastAddedEventId,
         timeout = Some(88.s)))
       .scan(orderIds)((set, stamped) => set - stamped.value.key)
       .dropWhile(_.nonEmpty)
@@ -126,20 +126,20 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val file = waitingWatchDirectory / "REMOVE"
     val orderId = watchedFileToOrderId("REMOVE")
     file := ""
-    controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
     assert(controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     semaphore.flatMap(_.release).runSyncUnsafe()
-    controller.eventWatch.await[OrderFinished](_.key == orderId)
+    eventWatch.await[OrderFinished](_.key == orderId)
     intercept[TimeoutException] {
-      controller.eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
+      eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
     }
 
     delete(file)
-    val vanished = controller.eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-    val removed = controller.eventWatch.await[OrderDeleted](_.key == orderId).head
+    val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
+    val removed = eventWatch.await[OrderDeleted](_.key == orderId).head
     assert(vanished.timestamp <= removed.timestamp)
   }
 
@@ -147,23 +147,23 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val file = waitingWatchDirectory / "CANCEL"
     val orderId = watchedFileToOrderId("CANCEL")
     file := ""
-    controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
     controllerApi.executeCommand(CancelOrders(orderId :: Nil)).await(99.s).orThrow
-    controller.eventWatch.await[OrderCancellationMarkedOnAgent](_.key == orderId)
+    eventWatch.await[OrderCancellationMarkedOnAgent](_.key == orderId)
 
     semaphore.flatMap(_.release).runSyncUnsafe()
-    controller.eventWatch.await[OrderFinished](_.key == orderId)
+    eventWatch.await[OrderFinished](_.key == orderId)
     intercept[TimeoutException] {
-      controller.eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
+      eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
     }
 
     assert(controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     delete(file)
-    val vanished = controller.eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
-    val removed = controller.eventWatch.await[OrderDeleted](_.key == orderId).head
+    val vanished = eventWatch.await[ExternalOrderVanished](_.key == waitingFileWatch.path).head
+    val removed = eventWatch.await[OrderDeleted](_.key == orderId).head
     assert(vanished.timestamp < removed.timestamp)
   }
 
@@ -172,10 +172,10 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Add same FileWatch again" in {
     for (i <- 1 to 10) withClue(s"#$i") {
       itemRevision = itemRevision.next
-      val eventId = controller.eventWatch.lastAddedEventId
+      val eventId = eventWatch.lastAddedEventId
       controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
-      controller.eventWatch.await[ItemAttached](after = eventId)
-      assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
+      eventWatch.await[ItemAttached](after = eventId)
+      assert(eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
         Seq(
           NoKey <-: UnsignedSimpleItemChanged(fileWatch.copy(itemRevision = Some(itemRevision))),
           NoKey <-: ItemAttachable(fileWatch.path, aAgentPath),
@@ -185,11 +185,11 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Change Agent" in {
     itemRevision = itemRevision.next
-    val eventId = controller.eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(agentPath = bAgentPath)
     controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
-    controller.eventWatch.await[ItemAttached](after = eventId)
-    assert(controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
+    eventWatch.await[ItemAttached](after = eventId)
+    assert(eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(
         NoKey <-: UnsignedSimpleItemChanged(changedFileWatch.copy(itemRevision = Some(itemRevision))),
         NoKey <-: ItemDetachable(fileWatch.path, aAgentPath),
@@ -207,13 +207,13 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Delete a FileWatch" in {
-    val eventId = controller.eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     assert(controllerApi.updateItems(Observable(
       DeleteSimple(fileWatch.path),
       DeleteSimple(waitingFileWatch.path)
     )).await(99.s) == Right(Completed))
-    controller.eventWatch.await[ItemDeleted](_.event.key == fileWatch.path, after = eventId)
-    val events = controller.eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
+    eventWatch.await[ItemDeleted](_.event.key == fileWatch.path, after = eventId)
+    val events = eventWatch.keyedEvents[InventoryItemEvent](after = eventId)
       .filter(_.event.key == fileWatch.path)
     assert(events == Seq(
       NoKey <-: ItemDeletionMarked(fileWatch.path),
@@ -221,7 +221,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
       NoKey <-: ItemDeleted(fileWatch.path)))
     sleep(100.ms)   // Wait until controllerState has been updated
-    assert(controller.controllerState.await(99.s).allOrderWatchesState.pathToOrderWatchState.isEmpty)
+    assert(controllerState.allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }
 

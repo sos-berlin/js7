@@ -145,9 +145,9 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     journalFile := "Would crash but will be deleted"
     touchFile(garbageFile)
 
-    val eventId = controller.eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
-    controller.eventWatch.await[AgentCreated](after = eventId)
+    eventWatch.await[AgentCreated](after = eventId)
 
     // The restarted Agent has deleted the files (due to markerFile)
     assert(!exists(markerFile) && !exists(garbageFile))

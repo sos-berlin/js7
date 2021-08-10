@@ -41,7 +41,7 @@ final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgen
 
     def testInjectionNotAllowed(orderId: OrderId, workflowPath: WorkflowPath): Unit = {
       controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
-      val orderProcessed = controller.eventWatch.await[OrderProcessed](_.key == orderId).head
+      val orderProcessed = eventWatch.await[OrderProcessed](_.key == orderId).head
       assert(orderProcessed.value.event.outcome.asInstanceOf[Outcome.Disrupted].reason.problem ==
         SignedInjectionNotAllowed)
     }
