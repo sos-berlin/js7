@@ -492,6 +492,7 @@ private[controller] object AgentDriver
   private val EventClasses = Set[Class[_ <: Event]](
     classOf[OrderEvent],
     classOf[AgentEvent.AgentReady],
+    classOf[AgentEvent.AgentShutDown],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")

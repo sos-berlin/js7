@@ -131,6 +131,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
   "CoupleController succeeds again if Agent's journal files are restored" in {
     directoryProvider.runAgents() { _ =>
       directoryProvider.runController() { controller =>
+        controller.eventWatch.await[AgentShutDown](after = controller.recoveredEventId)
         controller.eventWatch.await[AgentReady](after = controller.recoveredEventId)
       }
     }
