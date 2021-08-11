@@ -83,11 +83,19 @@ object ExpressionParser
 
   private def interpolatedStringContent[_: P] = P[StringExpression] {
     def simpleConstant = P(CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$').!)
-    def constant = P(((simpleConstant | escapedCharInString).rep.map(_.mkString)).map(StringConstant(_)))
+    def constant = P(
+      (simpleConstant | escapedCharInString).rep
+        .map(_.mkString)
+        .map(StringConstant(_)))
 
-    def curlyName = P("{" ~~/ identifier ~~/ "}")
-    def namedValue = (identifier | digits/*regex group*/ | curlyName).map(NamedValue(_))
-    def expr = P("$" ~~/ (namedValue | ("(" ~~/ expression ~~/ ")")))
+    def curlyName = P(
+      P("{" ~~/ identifier ~~/ ("." ~~/ identifier).rep ~~ "}")
+        .map { case (identifier, fields) => fields
+          .scanLeft[Expression](NamedValue(identifier))(DotExpression(_, _))
+          .last
+        })
+    def namedValue = P((identifier | digits/*regex group*/).map(NamedValue(_)))
+    def expr = P("$" ~~/ (namedValue | curlyName | ("(" ~~/ expression ~~/ ")")))
 
     (constant ~~/ (expr ~~/ constant).rep)
       .map {
@@ -100,7 +108,12 @@ object ExpressionParser
       }
   }
 
-  private def objectConstant[_: P] = P[ObjectExpression] {
+  private def listExpr[_: P] = P[ListExpression](
+    ("[" ~~/ w ~~ commaSequence(expression) ~~ w ~~ "]")
+      .map(elements =>
+        ListExpression(elements.toList)))
+
+  private def objectExpr[_: P] = P[ObjectExpression] {
     ("{" ~~/ w ~~ commaSequence(identifier ~~ w ~~ ":" ~~/ w ~~ expression) ~~ w ~~ "}")
       .flatMap(pairs =>
         checkedToP(pairs.checkUniqueness(_._1)
@@ -198,25 +211,25 @@ object ExpressionParser
 
   private def factorOnly[_: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant |
-      singleQuotedStringConstant | interpolatedString | objectConstant | dollarNamedValue |
+      singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
       catchCount | argumentFunctionCall | variableFunctionCall |
       missing | nullConstant |
       jobResourceVariable |
       functionCall)
 
   private def factor[_: P] = P(
-    factorOnly ~/ (w ~ "." ~ w ~/ identifier).? flatMap {
-      case (o, None) => valid(o)
+    (factorOnly ~/ (w ~ ("." ~ w ~/ identifier)).rep).flatMap {
+      case (o, Seq()) => valid(o)
       // TODO Don't use these legacy names:
-      case (o, Some("toNumber")) => valid(ToNumber(o))
-      case (o, Some("toBoolean")) => valid(ToBoolean(o))
-      case (o, Some("stripMargin")) => valid(StripMargin(o))
-      case (o, Some("mkString")) => valid(MkString(o))
-      case (o, Some(identifier)) => valid(DotExpression(o, identifier))
+      case (o, Seq("toNumber")) => valid(ToNumber(o))
+      case (o, Seq("toBoolean")) => valid(ToBoolean(o))
+      case (o, Seq("stripMargin")) => valid(StripMargin(o))
+      case (o, Seq("mkString")) => valid(MkString(o))
+      case (o, fields) => valid(fields.scanLeft[Expression](o)(DotExpression(_, _)).last)
     })
 
   private def not[_: P]: P[Expression] = P(
-    ("!" ~ w ~/ bFactor) flatMap {
+    ("!" ~ w ~/ bFactor).flatMap {
       case o: BooleanExpression => valid(Not(o))
       case _ => invalid("Operator '!' expects Boolean expression")
     })

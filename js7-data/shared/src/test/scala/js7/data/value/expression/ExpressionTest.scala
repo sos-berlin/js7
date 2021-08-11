@@ -7,7 +7,7 @@ import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.expressionOnly
-import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -35,7 +35,10 @@ final class ExpressionTest extends AnyFreeSpec
                 "ASTRING" -> StringValue("AA"),
                 "ANUMBER" -> NumberValue(7),
                 "ABOOLEAN" -> BooleanValue(true),
-                "returnCode" -> NumberValue(1)
+                "returnCode" -> NumberValue(1),
+                "myObject" -> ObjectValue(Map(
+                  "myField" -> ObjectValue(Map(
+                    "a" -> NumberValue(1)))))
               ).get(name)
 
             case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
@@ -221,6 +224,31 @@ final class ExpressionTest extends AnyFreeSpec
       result = 7,
       Right(NamedValue.last("ANUMBER")))
 
+    testEval("""$myObject""",
+      result = Right(ObjectValue(Map("myField" -> ObjectValue(Map("a" -> NumberValue(1)))))),
+      Right(NamedValue.last("myObject")))
+
+    testEval("""$myObject.myField.a""",
+      result = 1,
+      Right(DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))
+
+    testEval(""""$($myObject.myField.a)"""",
+      result = "1",
+      Right(InterpolatedString(List(
+        DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))))
+
+    testEval(""""$ANUMBER-$($myObject.myField.a)"""",
+      result = "7-1",
+      Right(InterpolatedString(List(
+        NamedValue.last("ANUMBER"),
+        StringConstant("-"),
+        DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))))
+
+    testEval(""""${myObject.myField.a}"""",
+      result = "1",
+      Right(InterpolatedString(List(
+        DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))))
+
     testEval("""toBoolean('true')""",
       result = true,
       Right(ToBoolean(StringConstant("true"))))
@@ -229,9 +257,16 @@ final class ExpressionTest extends AnyFreeSpec
       result = false,
       Right(ToBoolean(StringConstant("false"))))
 
-    testEval("""123.mkString""",
+    testEval("""mkString(123)""",
       result = "123",
       Right(MkString(NumericConstant(123))))
+
+    testEval("""mkString([$ANUMBER, "-", true])""",
+      result = "7-true",
+      Right(MkString(ListExpression(List(
+        NamedValue("ANUMBER"),
+        StringConstant("-"),
+        BooleanConstant(true))))))
 
     testEval("stripMargin('  |ONE\n  |TWO')",
       result = "ONE\nTWO",
