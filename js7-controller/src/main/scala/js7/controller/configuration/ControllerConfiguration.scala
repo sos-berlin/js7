@@ -77,9 +77,9 @@ object ControllerConfiguration
           .toList)
   }
 
-  lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("js7/controller/configuration/controller.conf")
-  ).withFallback(JobSchedulerConfiguration.defaultConfig)
+  lazy val DefaultConfig = Configs
+    .loadResource(JavaResource("js7/controller/configuration/controller.conf"))
+    .withFallback(JobSchedulerConfiguration.defaultConfig)
 
   def fromCommandLine(commandLineArguments: CommandLineArguments, config: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)

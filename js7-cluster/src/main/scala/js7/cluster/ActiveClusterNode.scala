@@ -17,7 +17,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.TaskLock
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode._
-import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.ObservablePauseDetector._
 import js7.common.http.RecouplingStreamReader
 import js7.common.system.startup.Halt.haltJava
@@ -498,7 +497,6 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
       }
     } .flatMapT { case (stampedEvents, journaledState) =>
         val clusterState = journaledState.clusterState
-        logPersisted(stampedEvents, clusterState)
         clusterState match {
           case Empty | _: NodesAppointed =>
           case _: HasNodes => sendingClusterStartBackupNode.cancel()
@@ -517,11 +515,6 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
               .map(_.map((_: Completed) => stampedEvents -> clusterState))
         }
       }
-
-  private def logPersisted(stampedEvents: Seq[Stamped[KeyedEvent[ClusterEvent]]], clusterState: ClusterState) =
-    for (stamped <- stampedEvents) {
-      logger.info(clusterEventAndStateToString(stamped.value.event, clusterState))
-    }
 
   private def stopHeartbeatingTemporarily[A](task: Task[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)

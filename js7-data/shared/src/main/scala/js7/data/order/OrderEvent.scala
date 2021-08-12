@@ -43,6 +43,7 @@ object OrderEvent
     deleteWhenTerminated: Boolean = false)
   extends OrderCoreEvent {
     workflowId.requireNonAnonymous()
+    override def toShortString = s"OrderAdded(${workflowId.path})"
   }
   object OrderAdded {
     private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderAdded] =

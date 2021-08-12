@@ -23,7 +23,8 @@ final case class JournalConf(
   persistWarnDurations: Seq[FiniteDuration],
   deleteObsoleteFiles: Boolean,
   releaseEventsUserIds: Set[UserId] = Set.empty,
-  slowCheckState: Boolean = false)
+  slowCheckState: Boolean = false,
+  infoLogEvents: Set[String] = Set.empty)
 
 object JournalConf
 {
@@ -51,6 +52,7 @@ object JournalConf
         .asScala.toSeq.map(_.toFiniteDuration),
       deleteObsoleteFiles = config.getBoolean("js7.journal.remove-obsolete-files"),
       releaseEventsUserIds = config.seqAs[UserId]("js7.journal.users-allowed-to-release-events").toSet,
-      slowCheckState = slowCheckState)
+      slowCheckState = slowCheckState,
+      infoLogEvents = config.seqAs[String]("js7.journal.log.info-events").toSet)
   }
 }

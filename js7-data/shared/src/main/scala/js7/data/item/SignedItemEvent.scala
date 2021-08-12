@@ -17,7 +17,7 @@ object SignedItemEvent
     def signed: Signed[SignableItem]
     def item: SignableItem = signed.value
     def key: SignableItemKey = signed.value.key
-    def toShortString = s"$productPrefix($key)"
+    override def toShortString = s"$productPrefix($key)"
   }
 
   final case class SignedItemAdded(signed: Signed[SignableItem])

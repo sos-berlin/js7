@@ -352,6 +352,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                                   s"'${file.getFileName}' file at position $lastProperEventPosition")
                                 out.truncate(lastProperEventPosition)
                               }
+                              // TODO Use JournalLogging
                               out.write(ByteBuffer.wrap(
                                 (failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8)))
                               //out.force(true)  // sync()
@@ -387,6 +388,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                               s"at position $lastProperEventPosition")
                             out.truncate(lastProperEventPosition)
                           }
+                          // TODO Use JournalLogging
                           out.write(ByteBuffer.wrap((failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8)))
                           //out.force(true)  // sync
                           val fileSize = out.size
@@ -493,6 +495,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
                       Observable.pure(Right(()))
 
                     case clusterEvent: ClusterEvent =>
+                      // TODO Use JournalLogging
                       logger.info(clusterEventAndStateToString(clusterEvent, builder.clusterState))
                       clusterEvent match {
                         case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>

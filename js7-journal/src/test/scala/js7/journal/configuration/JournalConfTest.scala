@@ -59,6 +59,7 @@ object JournalConfTest
        persist-warn-durations = [ 20s, 30s ]
        remove-obsolete-files = true
        users-allowed-to-release-events = []
+       log.info-events = ["MyEvent"]
      }"""
 
   private val journalConf = JournalConf(
@@ -73,5 +74,6 @@ object JournalConfTest
     ackWarnDurations = List(10.s, 15.s),
     persistWarnDurations = List(20.s, 30.s),
     deleteObsoleteFiles = true,
-    slowCheckState = true/*set by build.sbt*/)
+    slowCheckState = true/*set by build.sbt*/,
+    infoLogEvents = Set("MyEvent"))
 }

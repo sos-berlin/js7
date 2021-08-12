@@ -40,7 +40,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private var stashingCount = 0
   private val persistStatistics = new PersistStatistics
   private var _persistedEventId = EventId.BeforeFirst
-  private var journalingTimer = SerialCancelable()
+  private val journalingTimer = SerialCancelable()
 
   become("receive")(receive)
 

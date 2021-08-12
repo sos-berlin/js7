@@ -46,7 +46,7 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
       webServerPorts = Nil,
       ZoneId.systemDefault,
       akkaAskTimeout = 1.h,
-      journalConf = JournalConf.fromConfig(DefaultConfig)
+      journalConf = JournalConf.fromConfig(configuration.config)
         .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
       clusterConf = ClusterConf(NodeId("Primary"), isBackup = false, None, None,
         RecouplingStreamReaderConf(

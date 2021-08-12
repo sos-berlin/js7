@@ -34,7 +34,7 @@ object VersionedEvent {
     def signed: Signed[VersionedItem]
     def item: VersionedItem = signed.value
     def path: VersionedItemPath = item.path
-    def toShortString = s"$productPrefix($path)"
+    override def toShortString = s"$productPrefix($path)"
   }
   object VersionedItemAddedOrChanged
   {

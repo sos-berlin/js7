@@ -13,5 +13,7 @@ trait Event {
     */
   type Key
 
+  def toShortString = toString
+
   final def <-:(key: Key) = new KeyedEvent[this.type](key, this)
 }
