@@ -501,13 +501,19 @@ object ScalaUtils
     implicit final class RichString(private val underlying: String) extends AnyVal
     {
       /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
-      def truncateWithEllipsis(n: Int, showLength: Boolean = false): String = {
+      def truncateWithEllipsis(n: Int, showLength: Boolean = false, firstLineOnly: Boolean = false)
+      : String = {
         val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
         val nn = max(suffix.length, n)
-        if (underlying.lengthIs <= nn)
-          underlying
+        val firstLine = if (firstLineOnly) underlying.firstLineLengthN(nn) else underlying.length
+        val result = underlying
+          .pipeIf((nn min firstLine) < underlying.lengthIs)(_
+            .take(nn - suffix.length min firstLineLength) + suffix)
+
+        if (result.exists(_.isControl))
+          result.map(c => if (c.isControl) '·' else c)
         else
-          underlying.take(nn - suffix.length) + suffix
+          result
       }
 
       def replaceChar(from: Char, to: Char): String =
@@ -523,6 +529,20 @@ object ScalaUtils
         var i = underlying.length
         while (i > 0 && predicate(underlying(i - 1))) i = i -1
         underlying.substring(0, i)
+      }
+
+      def firstLineLength = firstLineLengthN(Int.MaxValue)
+
+      def firstLineLengthN(until: Int): Int = {
+        val n = until min underlying.length
+        var i = 0
+        while (i < n) {
+          if(underlying.charAt(i) == '\n') {
+            return if (i > 0 && underlying.charAt(i - 1) == '\r') i - 1 else i
+          }
+          i += 1
+        }
+        n
       }
     }
 

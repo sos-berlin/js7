@@ -495,63 +495,90 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(in.read() == -1)
   }
 
-  "truncateWithEllipsis" in {
-    assert("".truncateWithEllipsis(0) == "")
-    assert("".truncateWithEllipsis(1) == "")
-    assert("".truncateWithEllipsis(4) == "")
-    assert("A".truncateWithEllipsis(0) == "A")
-    assert("AB".truncateWithEllipsis(0) == "AB")
-    assert("ABC".truncateWithEllipsis(0) == "ABC")
-    assert("ABCD".truncateWithEllipsis(0) == "...")
-    assert("ABCDE".truncateWithEllipsis(0) == "...")
-    assert("A".truncateWithEllipsis(1) == "A")
-    assert("AB".truncateWithEllipsis(1) == "AB")
-    assert("ABC".truncateWithEllipsis(1) == "ABC")
-    assert("ABCD".truncateWithEllipsis(1) == "...")
-    assert("ABCDE".truncateWithEllipsis(1) == "...")
-    assert("A".truncateWithEllipsis(2) == "A")
-    assert("AB".truncateWithEllipsis(2) == "AB")
-    assert("ABC".truncateWithEllipsis(2) == "ABC")
-    assert("ABCD".truncateWithEllipsis(2) == "...")
-    assert("ABCDE".truncateWithEllipsis(2) == "...")
-    assert("A".truncateWithEllipsis(3) == "A")
-    assert("AB".truncateWithEllipsis(3) == "AB")
-    assert("ABC".truncateWithEllipsis(3) == "ABC")
-    assert("ABCD".truncateWithEllipsis(3) == "...")
-    assert("ABCDE".truncateWithEllipsis(3) == "...")
-    assert("A".truncateWithEllipsis(4) == "A")
-    assert("AB".truncateWithEllipsis(4) == "AB")
-    assert("ABC".truncateWithEllipsis(4) == "ABC")
-    assert("ABCD".truncateWithEllipsis(4) == "ABCD")
-    assert("ABCDE".truncateWithEllipsis(4) == "A...")
-    assert("A".truncateWithEllipsis(5) == "A")
-    assert("AB".truncateWithEllipsis(5) == "AB")
-    assert("ABC".truncateWithEllipsis(5) == "ABC")
-    assert("ABCD".truncateWithEllipsis(5) == "ABCD")
-    assert("ABCDE".truncateWithEllipsis(5) == "ABCDE")
-    assert("ABCDE".truncateWithEllipsis(6) == "ABCDE")
-    assert("ABCDEF".truncateWithEllipsis(6) == "ABCDEF")
-    assert("ABCDEFG".truncateWithEllipsis(6) == "ABC...")
-    assert("ABCDEFGHIJKLMNOPQRSTUVWXYZ".truncateWithEllipsis(6) == "ABC...")
-    val expected = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...(length 100)"
-    assert(("x" * 100).truncateWithEllipsis(50, showLength = true) == expected)
-    assert(expected.length == 50)
-  }
+  "String" - {
+    "truncateWithEllipsis" in {
+      assert("".truncateWithEllipsis(0) == "")
+      assert("".truncateWithEllipsis(1) == "")
+      assert("".truncateWithEllipsis(4) == "")
+      assert("A".truncateWithEllipsis(0) == "A")
+      assert("AB".truncateWithEllipsis(0) == "AB")
+      assert("ABC".truncateWithEllipsis(0) == "ABC")
+      assert("ABCD".truncateWithEllipsis(0) == "...")
+      assert("ABCDE".truncateWithEllipsis(0) == "...")
+      assert("A".truncateWithEllipsis(1) == "A")
+      assert("AB".truncateWithEllipsis(1) == "AB")
+      assert("ABC".truncateWithEllipsis(1) == "ABC")
+      assert("ABCD".truncateWithEllipsis(1) == "...")
+      assert("ABCDE".truncateWithEllipsis(1) == "...")
+      assert("A".truncateWithEllipsis(2) == "A")
+      assert("AB".truncateWithEllipsis(2) == "AB")
+      assert("ABC".truncateWithEllipsis(2) == "ABC")
+      assert("ABCD".truncateWithEllipsis(2) == "...")
+      assert("ABCDE".truncateWithEllipsis(2) == "...")
+      assert("A".truncateWithEllipsis(3) == "A")
+      assert("AB".truncateWithEllipsis(3) == "AB")
+      assert("ABC".truncateWithEllipsis(3) == "ABC")
+      assert("ABCD".truncateWithEllipsis(3) == "...")
+      assert("ABCDE".truncateWithEllipsis(3) == "...")
+      assert("A".truncateWithEllipsis(4) == "A")
+      assert("AB".truncateWithEllipsis(4) == "AB")
+      assert("ABC".truncateWithEllipsis(4) == "ABC")
+      assert("ABCD".truncateWithEllipsis(4) == "ABCD")
+      assert("ABCDE".truncateWithEllipsis(4) == "A...")
+      assert("A".truncateWithEllipsis(5) == "A")
+      assert("AB".truncateWithEllipsis(5) == "AB")
+      assert("ABC".truncateWithEllipsis(5) == "ABC")
+      assert("ABCD".truncateWithEllipsis(5) == "ABCD")
+      assert("ABCDE".truncateWithEllipsis(5) == "ABCDE")
+      assert("ABCDE".truncateWithEllipsis(6) == "ABCDE")
+      assert("ABCDEF".truncateWithEllipsis(6) == "ABCDEF")
+      assert("ABCDEFG".truncateWithEllipsis(6) == "ABC...")
+      assert("ABCDEFGHIJKLMNOPQRSTUVWXYZ".truncateWithEllipsis(6) == "ABC...")
+      val expected = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...(length 100)"
+      assert(("x" * 100).truncateWithEllipsis(50, showLength = true) == expected)
+      assert(expected.length == 50)
 
-  "replaceChar" in {
-    val empty = ""
-    assert(empty.replaceChar('-', '+') eq empty)
-    val a = "abc"
-    assert(a.replaceChar('-', '+') eq a)
-    assert(("a-b--c---").replaceChar('-', '+') == "a+b++c+++")
-  }
+      assert("ABCDEFGH\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "ABC...")
+      assert("A\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "A...")
+      assert("\nXYZ".truncateWithEllipsis(6, firstLineOnly = true) == "...")
 
-  "dropLastWhile" in {
-    assert("".dropLastWhile(_ == '/') == "")
-    assert("/".dropLastWhile(_ == '/') == "")
-    assert("//".dropLastWhile(_ == '/') == "")
-    assert("/abc".dropLastWhile(_ == '/') == "/abc")
-    assert("/abc//".dropLastWhile(_ == '/') == "/abc")
+      assert("\n\t\u0000\u0080".truncateWithEllipsis(99) == "····")
+    }
+
+    "replaceChar" in {
+      val empty = ""
+      assert(empty.replaceChar('-', '+') eq empty)
+      val a = "abc"
+      assert(a.replaceChar('-', '+') eq a)
+      assert(("a-b--c---").replaceChar('-', '+') == "a+b++c+++")
+    }
+
+    "dropLastWhile" in {
+      assert("".dropLastWhile(_ == '/') == "")
+      assert("/".dropLastWhile(_ == '/') == "")
+      assert("//".dropLastWhile(_ == '/') == "")
+      assert("/abc".dropLastWhile(_ == '/') == "/abc")
+      assert("/abc//".dropLastWhile(_ == '/') == "/abc")
+    }
+
+    "firstLineLength" in {
+      assert("".firstLineLength == 0)
+      assert("\n".firstLineLength == 0)
+      assert("\n\n".firstLineLength == 0)
+      assert("123\n".firstLineLength == 3)
+      assert("123\r\n456".firstLineLength == 3)
+      assert("123\n456".firstLineLength == 3)
+      assert("123\n456\n".firstLineLength == 3)
+    }
+
+    "firstLineLengthN" in {
+      assert("".firstLineLengthN(2) == 0)
+      assert("\n".firstLineLengthN(2) == 0)
+      assert("\n\n".firstLineLengthN(2) == 0)
+      assert("123\n".firstLineLengthN(2) == 2)
+      assert("123\n456".firstLineLengthN(2) == 2)
+      assert("123\n456\n".firstLineLengthN(2) == 2)
+    }
   }
 
   "StringBuilder" - {
