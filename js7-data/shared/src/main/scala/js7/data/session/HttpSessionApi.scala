@@ -44,13 +44,16 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
       sessionTokenRef.get() match {
         case None => Task.completed
         case sometoken @ Some(sessionToken) =>
-          val cmd = Logout(sessionToken)
-          Task { scribe.debug(s"$toString: $cmd ${userAndPassword.fold("")(_.userId.string)}") } >>
-          executeSessionCommand(cmd, suppressSessionToken = true)
-            .doOnFinish(_ => Task {
-              sessionTokenRef.compareAndSet(sometoken, None)   // Changes nothing in case of a concurrent successful Logout or Login
-            })
-            .map((_: SessionCommand.Response.Accepted) => Completed)
+          Task.defer {
+            val cmd = Logout(sessionToken)
+            scribe.debug(s"$toString: $cmd ${userAndPassword.fold("")(_.userId.string)}")
+            executeSessionCommand(cmd, suppressSessionToken = true)
+              .doOnFinish(_ => Task {
+                sessionTokenRef.compareAndSet(sometoken, None)   // Changes nothing in case of a concurrent successful Logout or Login
+              })
+              .map((_: SessionCommand.Response.Accepted) => Completed)
+              .logWhenItTakesLonger(s"logout $httpClient")
+          }
       }
     }
 

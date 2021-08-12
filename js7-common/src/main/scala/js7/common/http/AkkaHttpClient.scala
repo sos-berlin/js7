@@ -357,7 +357,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     if (!request.entity.isKnownEmpty) {
       for (o <- logData) {
         b.append(' ')
-        b.append(o.truncateWithEllipsis(200, showLength = true))
+        b.append(o.truncateWithEllipsis(200, showLength = true, firstLineOnly = true))
       }
     }
     b.toString

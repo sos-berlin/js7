@@ -52,6 +52,7 @@ extends HasCloser
   private lazy val actorSystem = actorSystemLazy()
 
   onClose {
+    logger.debug("close JS7 JProxyContext")
     for (a <- actorSystemLazy) Akkas.terminateAndWait(a)
     for (s <- ownScheduler) s.shutdown()
   }
