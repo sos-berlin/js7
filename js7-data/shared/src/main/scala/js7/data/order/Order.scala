@@ -177,15 +177,10 @@ final case class Order[+S <: Order.State](
             state = if (isState[Fresh]) state else Ready))
 
       case OrderFinished =>
-        check(isState[Ready] && !isSuspended && isDetached,
-          position.dropChild match {
-            case Some(position) =>
-              copy(workflowPosition = workflowPosition.copy(position = position))
-            case None =>
-              copy(
-                state = Finished,
-                mark = None)
-          })
+        check(isState[Ready] && isDetached && !isSuspended,
+          copy(
+            state = Finished,
+            mark = None))
 
       case OrderDeletionMarked =>
         check(parent.isEmpty,

@@ -43,6 +43,33 @@ final class FinishTest extends AnyFreeSpec
         OrderDeleted))
   }
 
+  "finish with if" in {
+    checkEvents[OrderFinished]("""
+      |define workflow {
+      |  execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
+      |  if (true) {
+      |    execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
+      |    finish;
+      |  }
+      |  fail;
+      |}""".stripMargin,
+      Vector(
+        OrderAdded(TestWorkflowId, deleteWhenTerminated = true),
+        OrderAttachable(TestAgentPath),
+        OrderAttached(TestAgentPath),
+        OrderStarted,
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
+        OrderMoved(Position(1) / "then" % 0),
+        OrderProcessingStarted,
+        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
+        OrderMoved(Position(1) / "then" % 1),
+        OrderDetachable,
+        OrderDetached,
+        OrderFinished,
+        OrderDeleted))
+  }
+
   "finish in fork, finish first" in {
     val events = runUntil[OrderFinished]("""
      |define workflow {
