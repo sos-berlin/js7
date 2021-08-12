@@ -4,7 +4,6 @@ import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.session.SessionApi._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient
@@ -18,14 +17,22 @@ import scala.concurrent.duration._
   */
 trait SessionApi
 {
-  def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false): Task[Completed]
+  def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false)
+  : Task[Completed]
 
   def logout(): Task[Completed]
 
   def clearSession(): Unit
 
   // overrideable
-  def retryUntilReachable[A](onError: Throwable => Task[Boolean] = onErrorDoNothing)(body: => Task[A]): Task[A] =
+  def retryIfSessionLost[A](onError: Throwable => Task[Unit] = onErrorDefault)(body: Task[A])
+  : Task[A] =
+    body
+
+  // overrideable
+  def retryUntilReachable[A](onError: Throwable => Task[Boolean] = t => onErrorDefault(t).as(true))
+    (body: => Task[A])
+  : Task[A] =
     body
 
   final def tryLogout: Task[Completed] =
@@ -41,6 +48,11 @@ trait SessionApi
           scribe.trace(s"$toString: tryLogout => $exitCase")
         })
   }
+
+  protected[SessionApi] final def onErrorDefault(throwable: Throwable): Task[Unit] =
+    Task {
+      scribe.debug(toString + ": " + throwable.toStringWithCauses)
+    }
 }
 
 object SessionApi
@@ -107,6 +119,30 @@ object SessionApi
     protected val loginDelays: () => Iterator[FiniteDuration] =
       () => defaultLoginDelays()
 
+    override def retryIfSessionLost[A](onError: Throwable => Task[Unit] = onErrorDefault)
+      (body: Task[A])
+    : Task[A] =
+      Task.defer {
+        val delays = loginDelays()
+        login(onlyIfNotLoggedIn = true) >>
+          body
+            .onErrorRestartLoop(()) {
+              case (HttpException.HasProblem(problem), _, retry)
+                if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                clearSession()
+                // Race condition with a parallel operation,
+                // which after the same error has already logged-in again successfully.
+                // Should be okay if login is delayed like here
+                scribe.info(s"Login again due to: $problem")
+                Task.sleep(delays.next()) >>
+                  login() >>
+                  retry(())
+
+              case (throwable, _, _) =>
+                Task.raiseError(throwable)
+            }
+      }
+
     override final def retryUntilReachable[A](onError: Throwable => Task[Boolean] = logError)
       (body: => Task[A])
     : Task[A] =
@@ -155,6 +191,4 @@ object SessionApi
 
   def defaultLoginDelays(): Iterator[FiniteDuration] =
     initialLoginDelays.iterator ++ Iterator.continually(10.s)
-
-  private def onErrorDoNothing(throwable: Throwable) = Task.pure(false)
 }

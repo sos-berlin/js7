@@ -8,7 +8,6 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
-import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichThrowable}
@@ -163,21 +162,8 @@ extends ControllerApiWithHttp
         .use(api =>
           api.login(onlyIfNotLoggedIn = true)
             .flatMap(_ =>
-              body(api)
-                .onErrorRestartLoop(()) {
-                  case (HttpException.HasProblem(problem), _, retry)
-                    if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
-                    // Race condition with a parallel operation,
-                    // which after the same error has already logged-in again successfully.
-                    // Should be okay if login in delayed
-                    api.clearSession()
-                    scribe.info(s"Login again due to: $problem")
-                    Task.sleep(delays.next() max 100.ms) >>
-                      api.login(onlyIfNotLoggedIn = true/*in case of parallel login*/) >>
-                      retry(())
-                  case (t, _, _) =>
-                    Task.raiseError(t)
-                })
+              api.retryIfSessionLost()(
+                body(api)))
             .materialize.map {
               case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
                 Failure(t)  // Trigger onErrorRestartLoop

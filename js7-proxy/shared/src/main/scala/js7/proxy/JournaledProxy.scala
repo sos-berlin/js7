@@ -1,7 +1,6 @@
 package js7.proxy
 
 import cats.effect.{ExitCase, Resource}
-import cats.instances.vector._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import js7.base.generic.Completed
@@ -295,26 +294,28 @@ object JournaledProxy
         selectActiveNodeApiOnly(
           apis,
           (api: EventApi) =>
-            throwable => onCouplingError(api)(throwable).map(_ => true/*continue*/))))
+            throwable => onCouplingError(api)(throwable))))
 
   private def selectActiveNodeApiOnly[Api <: EventApi](
     apis: Seq[Api],
-    onCouplingErrorThenContinue: Api => Throwable => Task[Boolean])
+    onCouplingError: Api => Throwable => Task[Unit])
   : Task[Api] = {
     apis match {
       case Seq(api) =>
-        api.loginUntilReachable(onError = onCouplingErrorThenContinue(api), onlyIfNotLoggedIn = true)
+        api
+          .loginUntilReachable(
+            onError = t => onCouplingError(api)(t).as(true),
+            onlyIfNotLoggedIn = true)
           .map((_: Completed) => api)
 
       case _ =>
         Task.tailRecM(())(_ =>
           apis
-            .map(api =>
-              fetchClusterNodeState(api, onCouplingErrorThenContinue(api))
+            .traverse(api =>
+              fetchClusterNodeState(api, onCouplingError(api))
                 .materializeIntoChecked  /*don't let the whole operation fail*/
                 .start
                 .map(ApiWithFiber(api, _)))
-            .toVector.sequence
             .flatMap(apisWithClusterNodeStateFibers =>
               Observable.fromIterable(apisWithClusterNodeStateFibers)
                 .map(o => Observable.fromTask(o.fiber.join).map(ApiWithNodeState(o.api, _)))
@@ -366,13 +367,11 @@ object JournaledProxy
     api: Api,
     clusterNodeState: Checked[ClusterNodeState])
 
-  private def fetchClusterNodeState[Api <: EventApi](
-    api: Api,
-    onError: Throwable => Task[Boolean])
+  private def fetchClusterNodeState[Api <: EventApi](api: Api, onError: Throwable => Task[Unit])
   : Task[Checked[ClusterNodeState]] =
     HttpClient
       .liftProblem(
-        api.retryUntilReachable(onError)(
+        api.retryIfSessionLost(onError)(
           api.clusterNodeState))
 
   private def logProblems[Api <: EventApi](

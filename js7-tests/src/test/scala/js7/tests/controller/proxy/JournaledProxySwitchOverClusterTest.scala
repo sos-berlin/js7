@@ -7,7 +7,9 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.controller.ControllerCommand
+import js7.data.cluster.ClusterEvent.ClusterFailedOver
+import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
+import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderFinished
@@ -21,6 +23,8 @@ import scala.jdk.CollectionConverters._
 
 final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with ClusterProxyTest
 {
+  override protected val removeObsoleteJournalFiles = false
+
   "JournaledProxy accesses a switching Cluster" in {
     withControllerAndBackup() { (primary, backup, _) =>
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
@@ -55,16 +59,19 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
             // SWITCH-OVER
 
             lastEventId = primaryController.eventWatch.lastAddedEventId
-            primaryController.executeCommandAsSystemUser(ControllerCommand.ClusterSwitchOver).await(99.s).orThrow
+            primaryController.executeCommandAsSystemUser(ClusterSwitchOver).await(99.s).orThrow
             primaryController.terminated await 99.s
           }
           // Try to confuse controllerApi about the active controller and start primary controller again
-          primary.runController(httpPort = Some(primaryControllerPort), dontWaitUntilReady = true) { _ =>
+          primary.runController(
+            httpPort = Some(primaryControllerPort),
+            dontWaitUntilReady = true
+          ) { primaryController =>
             backupController.eventWatch.await[ControllerReady](after = lastEventId)
             runOrder(OrderId("ORDER-ON-BACKUP-1"))
-
             // RESTART BACKUP
 
+            lastEventId = backupController.eventWatch.lastAddedEventId
             backupController.terminate().await(99.s)
             backupController.close()
             val backupController2 = backup
@@ -72,7 +79,11 @@ final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with Cluster
               .await(99.s)
             backupController2.waitUntilReady()
             runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
-            backupController2.terminate(suppressSnapshot = true).await(99.s)
+            backupController2.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
+              .await(99.s).orThrow
+
+            primaryController.eventWatch.await[ClusterFailedOver](after = lastEventId)
+            runOrder(OrderId("ORDER-AFTER-FAILOVER"))
           }
         } finally
           proxy.stop.runToFuture await 99.s
