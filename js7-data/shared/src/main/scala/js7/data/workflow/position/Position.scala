@@ -67,7 +67,7 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
 
   /** BranchPath of fork instruction in reverse order. */
   def forkBranchReversed: BranchPath =
-    branchPath.reverse.dropWhile(o => !o.branchId.isFork)
+    branchPath.view.reverse.dropWhile(o => !o.branchId.isFork).toList
 
   def toSeq: IndexedSeq[Any] =
     branchPath.view.flatMap(p => Seq(p.nr.number, p.branchId.toSimpleType)).toVector :+ nr.number

@@ -684,7 +684,7 @@ with MainJournalingActor[ControllerState, Event]
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
 
       case ControllerCommand.PostNotice(boardPath, noticeId, endOfLife) =>
-        val scope = NowScope(alarmClock.now)
+        val scope = NowScope(alarmClock.now())
         val checked = for {
           boardState <- _controllerState.pathToBoardState.checked(boardPath)
           notice <- boardState.board.toNotice(noticeId, endOfLife)(scope)

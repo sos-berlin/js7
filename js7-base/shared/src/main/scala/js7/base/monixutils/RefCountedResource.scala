@@ -14,7 +14,7 @@ final class RefCountedResource[A](base: Resource[Task, A])
       .make(acquire)(releaseCached)
       .map(_.a)
 
-  private def acquire =
+  private def acquire: Task[Cached] =
     lock.lock(Task.defer(
       maybeCached match {
         case None =>
@@ -29,7 +29,7 @@ final class RefCountedResource[A](base: Resource[Task, A])
           Task.pure(cached)
       }))
 
-  private def releaseCached(cached: Cached) =
+  private def releaseCached(cached: Cached): Task[Unit] =
     lock.lock(Task.defer {
       cached.refCount -= 1
       if (cached.releaseOnZero && cached.refCount == 0)
