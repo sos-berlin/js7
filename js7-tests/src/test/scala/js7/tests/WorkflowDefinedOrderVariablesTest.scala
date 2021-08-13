@@ -10,10 +10,10 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
-import js7.data.workflow.OrderParameters.FixedOrderArgumentProblem
+import js7.data.workflow.OrderParameterList.FinalOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.WorkflowDefinedOrderVariablesTest._
@@ -62,7 +62,7 @@ final class WorkflowDefinedOrderVariablesTest extends AnyFreeSpec with Controlle
         "variableName" -> StringValue("Acer"),
         "PLANT" -> StringValue("THE DUPLICATE"))
       ))).await(99.s)
-    assert(checked == Left(FixedOrderArgumentProblem("PLANT")))
+    assert(checked == Left(FinalOrderArgumentProblem("PLANT")))
   }
 
   "JobResource.variables as an object" in {
@@ -100,7 +100,7 @@ object WorkflowDefinedOrderVariablesTest
               "myONE" -> NamedValue("ONE"),
               "myPLANT" -> NamedValue("PLANT"),
               "myExpected" -> NamedValue("expected")))))),
-      orderPreparation = OrderPreparation(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameterList(
         Seq(
           OrderParameter.Final("ONE", NumericConstant(1)),
             OrderParameter.Final("PLANT", FunctionCall("jobResourceVariable", Seq(
@@ -120,7 +120,7 @@ object WorkflowDefinedOrderVariablesTest
               "myONE" -> expr("1"),
               "myPLANT" -> expr("$de.Acer"),
               "myExpected" -> expr("'Ahorn'")))))),
-      orderPreparation = OrderPreparation(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameterList(
         OrderParameter.Final("de", expr("JobResource:de")),
         OrderParameter.Final("sv", expr("JobResource:sv")))))
 

@@ -14,10 +14,10 @@ import js7.data.job.JobResourcePath
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
-import js7.data.workflow.OrderParameters._
+import js7.data.workflow.OrderParameterList._
 import scala.collection.View
 
-final case class OrderParameters private(
+final case class OrderParameterList private(
   nameToParameter: Map[String, OrderParameter],
   allowUndeclared: Boolean)
 {
@@ -47,7 +47,7 @@ final case class OrderParameters private(
                 .sequence
 
             case (Some(_), _: OrderParameter.Final) =>
-              Left(FixedOrderArgumentProblem(param.name))
+              Left(FinalOrderArgumentProblem(param.name))
 
             case (Some(v), p: OrderParameter.HasType) =>
               for (_ <- checkType(v, p.valueType, p.name)) yield
@@ -75,11 +75,11 @@ final case class OrderParameters private(
       case (v: ObjectValue, typ: ObjectType) =>
         val missingNames = typ.nameToType.keySet -- v.nameToValue.keySet
         if (missingNames.nonEmpty)
-          Left(Problem(s"Missing object fields in $prefix: ${missingNames.mkString(", ")}"))
+          Left(MissingObjectFieldsProblem(prefix, missingNames))
         else {
           val undeclaredNames = v.nameToValue.keySet -- typ.nameToType.keySet
           if (undeclaredNames.nonEmpty)
-            Left(Problem(s"Undeclared object fields in $prefix: ${undeclaredNames.mkString(", ")}"))
+            Left(UndeclaredObjectFieldsProblem(prefix, undeclaredNames))
           else
             v.nameToValue
               .toVector
@@ -108,24 +108,24 @@ final case class OrderParameters private(
       .toMap
 }
 
-object OrderParameters
+object OrderParameterList
 {
-  val default = new OrderParameters(Map.empty, allowUndeclared = true)
+  val default = new OrderParameterList(Map.empty, allowUndeclared = true)
 
-  def apply(parameters: OrderParameter*): OrderParameters =
+  def apply(parameters: OrderParameter*): OrderParameterList =
     apply(parameters)
 
   def apply(parameters: Iterable[OrderParameter] = Nil, allowUndeclared: Boolean = false)
-  : OrderParameters =
+  : OrderParameterList =
     checked(parameters, allowUndeclared).orThrow
 
   def checked(parameters: Iterable[OrderParameter] = Nil, allowUndeclared: Boolean = false)
-  : Checked[OrderParameters] =
+  : Checked[OrderParameterList] =
     parameters.toCheckedKeyedMap(_.name)
-      .map(new OrderParameters(_, allowUndeclared))
+      .map(new OrderParameterList(_, allowUndeclared))
 
   // allowUndeclared serialized or deserialized separately (for compatibility)
-  implicit val jsonEncoder: Encoder.AsObject[OrderParameters] =
+  implicit val jsonEncoder: Encoder.AsObject[OrderParameterList] =
     o => JsonObject.fromIterable(
       for (param <- o.nameToParameter.values) yield
         param.name -> Json.fromJsonObject(
@@ -144,10 +144,10 @@ object OrderParameters
                 "final" -> expression.asJson)
           }))
 
-  implicit val jsonDecoder: Decoder[OrderParameters] =
+  implicit val jsonDecoder: Decoder[OrderParameterList] =
     cursor =>
       (cursor.value.asObject match {
-        case None => Left(Problem("OrderParameters expected")).toDecoderResult(cursor.history)
+        case None => Left(Problem("OrderParameterList expected")).toDecoderResult(cursor.history)
         case Some(obj) => obj
           .toVector
           .traverse { case (name, json) =>
@@ -173,7 +173,7 @@ object OrderParameters
               }
             } yield p
           }
-          .flatMap(p => OrderParameters.checked(p).toDecoderResult(cursor.history))
+          .flatMap(p => OrderParameterList.checked(p).toDecoderResult(cursor.history))
       })
 
   final case class MissingOrderArgumentProblem(parameter: OrderParameter.Required)
@@ -199,8 +199,22 @@ object OrderParameters
       "expectedType" -> expectedType.name)
   }
 
-  final case class FixedOrderArgumentProblem(name: String)
+  final case class FinalOrderArgumentProblem(name: String)
   extends Problem.Coded {
     def arguments = Map("name" -> name)
+  }
+
+  final case class MissingObjectFieldsProblem(path: String, name: Iterable[String])
+  extends Problem.Coded {
+    def arguments = Map(
+      "path" -> path,
+      "names" -> name.mkString(", "))
+  }
+
+  final case class UndeclaredObjectFieldsProblem(path: String, name: Iterable[String])
+  extends Problem.Coded {
+    def arguments = Map(
+      "path" -> path,
+      "names" -> name.mkString(", "))
   }
 }

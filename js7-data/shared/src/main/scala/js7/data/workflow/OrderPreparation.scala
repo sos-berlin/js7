@@ -7,7 +7,7 @@ import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.workflow.OrderPreparation._
 
-final case class OrderPreparation(parameters: OrderParameters)
+final case class OrderPreparation(parameters: OrderParameterList)
 {
   def isEmpty = this == default
 
@@ -17,7 +17,7 @@ final case class OrderPreparation(parameters: OrderParameters)
 
 object OrderPreparation
 {
-  val default = OrderPreparation(OrderParameters.default)
+  val default = OrderPreparation(OrderParameterList.default)
   implicit val orderPreparationIsEmpty = IsEmpty[OrderPreparation](_.isEmpty)
 
   implicit val jsonEncoder: Encoder.AsObject[OrderPreparation] =
@@ -27,7 +27,7 @@ object OrderPreparation
 
   implicit val jsonDecoder: Decoder[OrderPreparation] =
     c => for {
-      parameters <- c.getOrElse[OrderParameters]("parameters")(OrderParameters.default)
+      parameters <- c.getOrElse[OrderParameterList]("parameters")(OrderParameterList.default)
       allowUndeclared <- c.getOrElse[Boolean]("allowUndeclared")(false)
     } yield OrderPreparation(parameters.copy(allowUndeclared = allowUndeclared))
 }

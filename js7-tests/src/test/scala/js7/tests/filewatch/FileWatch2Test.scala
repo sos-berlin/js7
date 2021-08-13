@@ -26,7 +26,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{MkString, StringConstant}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.filewatch.FileWatch2Test._
@@ -385,7 +385,7 @@ object FileWatch2Test
       Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[DeleteFileJob].getName))),
       Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName)))),
     orderPreparation = OrderPreparation(
-      OrderParameters(
+      OrderParameterList(
         Seq(
           OrderParameter.Final("var",
             MkString/*force non-constant early evaluation*/(StringConstant("VAR")))),

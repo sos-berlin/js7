@@ -21,7 +21,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.ExecuteTest._
@@ -224,7 +224,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
                 "REQUIRED" -> expr("$required"),
                 "OPTIONAL" -> expr("$optional"),
                 "FINAL" -> expr("$final")))))),
-      orderPreparation = OrderPreparation(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameterList(
         OrderParameter.Required("required", NumberValue),
         OrderParameter.Optional("optional", StringValue, StringConstant("DEFAULT VALUE")),
         OrderParameter.Final("final", StringConstant("FINAL VALUE"))))),
@@ -251,7 +251,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
                 |echo "C=$SCHEDULER_PARAM_C" >>"$SCHEDULER_RETURN_VALUES"
                 |""".stripMargin,
               v1Compatible = true)))),
-      orderPreparation = OrderPreparation(OrderParameters(
+      orderPreparation = OrderPreparation(OrderParameterList(
         OrderParameter("A", NumberValue),
         OrderParameter("B", StringConstant("WORKFLOW PARAMETER DEFAULT VALUE"))))),
       orderArguments = Map(

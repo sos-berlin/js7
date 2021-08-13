@@ -17,11 +17,11 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
-import js7.data.workflow.OrderParameters.MissingOrderArgumentProblem
+import js7.data.workflow.OrderParameterList.MissingOrderArgumentProblem
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
-import js7.data.workflow.{OrderParameter, OrderParameters, OrderPreparation, Workflow, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.controller.commands.AddOrderTest._
@@ -122,7 +122,7 @@ object AddOrderTest
             "STRING" -> NamedValue.last("myString"),
             "NUMBER" -> NamedValue.last("myNumber")))))
     ),
-    orderPreparation = OrderPreparation(OrderParameters(
+    orderPreparation = OrderPreparation(OrderParameterList(
       stringParameter,
       numberParameter)))
 }
