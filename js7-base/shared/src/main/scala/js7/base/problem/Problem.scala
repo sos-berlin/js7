@@ -274,7 +274,7 @@ object Problem extends Semigroup[Problem]
     else if (prefix.trim.isEmpty && prefix.endsWith(" "))
       prefix
     else
-      prefix + "\n & "
+      prefix + ";\n"
 
   implicit val jsonEncoder: Encoder.AsObject[Problem] = problem =>
     JsonObject.fromIterable(

@@ -91,19 +91,19 @@ final class ProblemTest extends AnyFreeSpec
   }
 
   "combine" in {
-    assert((Problem("A") |+| Problem("B")) == Problem("A\n & B"))
+    assert((Problem("A") |+| Problem("B")) == Problem("A;\nB"))
     assert((Problem("A:") |+| Problem("B")) == Problem("A: B"))
     assert((Problem("A: ") |+| Problem("B")) == Problem("A: B"))
     assert((Problem("A -") |+| Problem("B")) == Problem("A - B"))
     assert((Problem("A - ") |+| Problem("B")) == Problem("A - B"))
-    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A\n & B")
-    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A\n & B")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A\n & B")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A\n & B")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A\n & B")
-    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A\n & B")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A;\nB")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A;\nB")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A;\nB")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A;\nB")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A;\nB")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A;\nB")
 
-    assert(catch_(Problem("A") |+| Problem("B")) == "A\n & B")
+    assert(catch_(Problem("A") |+| Problem("B")) == "A;\nB")
   }
 
   "Combined" in {
@@ -141,7 +141,7 @@ final class ProblemTest extends AnyFreeSpec
     val c = Problem("C-PROBLEM")
     val d = Problem.fromThrowable(Try(throwD()).failed.get: Throwable)
     val combinedThrowable = (a |+| b |+| c |+| d).throwable
-    assert(combinedThrowable.toString == "ProblemException: A-PROBLEM\n & B-EXCEPTION\n & C-PROBLEM\n & D-EXCEPTION")
+    assert(combinedThrowable.toString == "ProblemException: A-PROBLEM;\nB-EXCEPTION;\nC-PROBLEM;\nD-EXCEPTION")
     assert(combinedThrowable.getStackTrace.exists(_.getMethodName contains "throwB"))
     assert(combinedThrowable.getStackTrace.exists(_.getMethodName contains "throwD"))
   }
@@ -188,7 +188,7 @@ final class ProblemTest extends AnyFreeSpec
     assert(TestCodeProblem(Map("a" -> "A")) == TestCodeProblem(Map("a" -> "A")))
     assert(TestCodeProblem(Map("a" -> "A")) != TestCodeProblem(Map("a" -> "X")))
     assert(Problem("TEST") == Problem("TEST"))
-    assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX\n & TEST"))
+    assert(Problem("TEST").withPrefix("PREFIX") == Problem("PREFIX;\nTEST"))
     assert(Problem("TEST").withPrefix("PREFIX:") == Problem("PREFIX: TEST"))
     assert(Problem("TEST").wrapProblemWith("WRAP") == Problem("WRAP [TEST]"))
     assert(Problem("X") != Problem("Y"))
