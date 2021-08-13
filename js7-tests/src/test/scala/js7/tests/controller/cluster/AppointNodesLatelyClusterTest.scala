@@ -144,6 +144,7 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         whenClusterWatchAgrees await 99.s
 
         primaryController.terminated await 99.s
+        sleep(200.ms) // TODO Early ShutDown seems do be ignored
         backupController.terminate() await 99.s
         bAgent.terminate() await 90.s
       }
