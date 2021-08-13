@@ -105,11 +105,13 @@ object Problem extends Semigroup[Problem]
       Combined(Vector(a, b))
   }
 
-  private def combineMessages(a: String, b: String) =
-    if (b.trim.isEmpty)
+  private def combineMessages(a: String, b: String) = {
+    val b1 = b.trim
+    if (b1.isEmpty || a.trim == b1)
       a
     else
       normalizePrefix(a) + b
+  }
 
   private[Problem] trait Simple extends Problem {
     protected def rawMessage: String
@@ -203,7 +205,7 @@ object Problem extends Semigroup[Problem]
   def combined(problems: immutable.Iterable[String]): Combined =
     Combined(problems.map(o => new Lazy(o)))
 
-  final case class Combined private[problem](problems: immutable.Iterable[Problem]) extends Problem {
+  final case class Combined(problems: immutable.Iterable[Problem]) extends Problem {
     require(problems.nonEmpty)
 
     def throwable = throwableOption getOrElse new ProblemException.NoStackTrace(this)

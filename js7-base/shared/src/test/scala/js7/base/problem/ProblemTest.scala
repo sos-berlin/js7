@@ -113,6 +113,10 @@ final class ProblemTest extends AnyFreeSpec
     }
   }
 
+  "Combined shows only distinct problems" in {
+    assert((Problem("X") |+| Problem("X")).toString == "X")
+  }
+
   "Combined is flat" in {
     Problem("A") |+| Problem("B") |+| Problem("C") match {
       case Problem.Combined(problems) => assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
