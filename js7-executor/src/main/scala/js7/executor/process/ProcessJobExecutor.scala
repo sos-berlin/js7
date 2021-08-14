@@ -7,7 +7,7 @@ import js7.base.problem.Checked
 import js7.data.job.{CommandLine, JobResource, ProcessExecutable}
 import js7.data.order.Outcome
 import js7.data.value.expression.Scope.evalExpressionMap
-import js7.data.value.expression.scopes.LazyNamedValueScope
+import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NullValue, StringValue}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
@@ -33,7 +33,8 @@ trait ProcessJobExecutor extends JobExecutor
     def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] =
       evalEnv(
         jobResource.env,
-        scopeForJobResourceEnv |+| LazyNamedValueScope(evalLazilyJobResourceVariables(jobResource)))
+        scopeForJobResourceEnv |+|
+          NamedValueScope.fromChecked(evalLazilyJobResourceVariables(jobResource)))
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =
       processOrder.jobResources

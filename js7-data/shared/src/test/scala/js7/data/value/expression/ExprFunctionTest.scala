@@ -6,7 +6,7 @@ import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression.{Add, Multiply, NamedValue, NumericConstant}
 import js7.data.value.expression.ExpressionParser.functionOnly
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
+import js7.data.value.{NumberValue, StringValue, Value}
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -36,7 +36,7 @@ final class ExprFunctionTest extends AnyFreeSpec
           NamedValue("b"))))))
 
   testEval("() => $nameFromContext",
-    scope = NamedValueScope(NamedValues("nameFromContext" -> NumberValue(7))),
+    scope = NamedValueScope { case "nameFromContext" => NumberValue(7) },
     args = Nil,
     result = Right(NumberValue(7)),
     Right(ExprFunction(Nil, NamedValue("nameFromContext"))))

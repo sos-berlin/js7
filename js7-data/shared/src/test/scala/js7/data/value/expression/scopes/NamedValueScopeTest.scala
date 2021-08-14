@@ -6,11 +6,11 @@ import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
 
-final class LazyNamedValueScopeTest extends AnyFreeSpec
+final class NamedValueScopeTest extends AnyFreeSpec
 {
   private var a = 0
   private var failed = 0
-  private implicit lazy val scope = new LazyNamedValueScope(
+  private implicit lazy val scope = NamedValueScope.fromLazy(
     Map(
       "A" -> Lazy {
         a += 1
@@ -20,8 +20,7 @@ final class LazyNamedValueScopeTest extends AnyFreeSpec
       "FAIL" -> Lazy {
         failed += 1
         Left(Problem("FAILED"))
-      }
-    ).view.mapValues(_.apply()))
+      }))
 
   "eval" in {
     assert(NamedValue("B").eval == Right(StringValue("BBB")))

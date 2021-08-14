@@ -36,9 +36,10 @@ trait Scope
     ExpressionParser.parse(expression)
       .flatMap(_.eval(this))
 
-  def evalLazilyExpressionMap(nameToExpr: Map[String, Expression]): MapView[String, Checked[Value]] =
-    nameToExpr.view
-      .mapValues(expr => Lazy(expr.eval(this)))
+  def evalLazilyExpressionMap(nameToExpr: Map[String, Expression])
+  : MapView[String, Checked[Value]] =
+    nameToExpr
+      .view.mapValues(expr => Lazy(expr.eval(this)))
       .toMap
       .view
       .mapValues(_.apply())
