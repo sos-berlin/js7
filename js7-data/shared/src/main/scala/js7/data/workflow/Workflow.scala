@@ -443,11 +443,14 @@ extends VersionedItem
         .toRight(Problem(s"Unknown position $position in workflow '$id'"))
     } yield instr
 
+  def orderParameterList: OrderParameterList =
+    orderPreparation.parameterList
+
   def defaultArguments: NamedValues =
-    orderPreparation.parameters.defaultArguments
+    orderParameterList.defaultArguments
 
   def defaultArgument(name: String): Option[Value] =
-    orderPreparation.parameters.defaultArgument(name)
+    orderParameterList.defaultArgument(name)
 
   def withoutSource: Workflow =
     copy(source = None).withoutSourcePos
