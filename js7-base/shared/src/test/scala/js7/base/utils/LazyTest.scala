@@ -14,7 +14,7 @@ final class LazyTest extends AnyFreeSpec
     for (_ <- a) fail()
     //assert(a.map(_ * 3 ) == None)
     assert(a.toOption == None)
-    assert((a: Int) == 7)
+    assert(a.value == 7)
     assert(counter == 1)
     assert(a.toOption == Some(7))
     assert(a.isDefined)
@@ -22,8 +22,25 @@ final class LazyTest extends AnyFreeSpec
     for (x <- a) foreachCalled += x
     assert(foreachCalled == 7)
     //assert(a.map(_ * 3 ) == Some(21))
+    assert(a.value == 7)
+    assert(a.value == 7)
+    assert(a.recursionCheckedValue == Some(7))
     assert(a() == 7)
     assert(a() == 7)
     assert(counter == 1)
+  }
+
+  "Recursion" in {
+    lazy val a: Lazy[Nothing] = Lazy(a.value)
+    intercept[a.RecursiveLazyValueException] {
+      a.value
+    }
+    assert(a.recursionCheckedValue == None)
+
+    val b = Lazy(a.value)
+    intercept[a.RecursiveLazyValueException] {
+      b.value
+    }
+    assert(b.recursionCheckedValue == None)
   }
 }

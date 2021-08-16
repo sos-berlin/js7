@@ -2,50 +2,73 @@ package js7.base.utils
 
 /**
   * Like Scala lazy but synchronization moved to own object.
+  * `Lazy` is queryable about its state and detects recursive evaluation.
   *
   * @author Joacim Zschimmer
   */
-import scala.language.implicitConversions
+import js7.base.problem.Problem
 
 final class Lazy[A] private(eval: => A)
 {
   @volatile
-  private var cache: Option[A] = None
+  private var state: State = NotEvaluated
 
-  def apply(): A =
-    cache match {
-      case Some(a) => a
-      case None =>
+  def apply(): A = value
+
+  def value: A =
+    state match {
+      case Evaluated(a) => a
+      case _ =>
+        recursionCheckedValue
+          .getOrElse(throw new RecursiveLazyValueException(this))
+    }
+
+  def recursionCheckedValue: Option[A] =
+    state match {
+      case Evaluated(a) => Some(a)
+      case _ =>
         synchronized {
-          cache match {
-            case Some(a) => a
-            case None =>
+          state match {
+            case Evaluated(a) => Some(a)
+            case Evaluating => None
+            case NotEvaluated =>
+              state = Evaluating
               val a = eval
-              cache = Some(a)
-              a
+              state = Evaluated(a)
+              Some(a)
           }
         }
     }
 
-  def toOption: Option[A] = cache
+  def toOption: Option[A] =
+    state match {
+      case Evaluated(a) => Some(a)
+      case _ => None
+    }
 
-  def isDefined = cache.isDefined
+  def isDefined = state.isInstanceOf[Evaluated]
 
-  def isEmpty = cache.isEmpty
+  def isEmpty = !isDefined
 
   def foreach(f: A => Unit): Unit =
-    cache foreach f
+    state match {
+      case Evaluated(a) => f(a)
+      case _ =>
+    }
 
-  /** To allow `for (x <- myLazy if predicate(x)) {...}` .*/
-  def withFilter(predicate: A => Boolean): Option[A]#WithFilter =
-    toOption withFilter predicate
+  private sealed trait State
+  private case object NotEvaluated extends State
+  private case object Evaluating extends State
+  private final case class Evaluated(a: A @unchecked) extends State
+
+  final class RecursiveLazyValueException(val origin: this.type)
+  extends Exception("Recursive evaluation of Lazy")
 }
 
 object Lazy
 {
-  def apply[A](f: => A): Lazy[A] =
-    new Lazy(f)
+  def apply[A](eval: => A): Lazy[A] =
+    new Lazy(eval)
 
-  implicit def evalLazy[A](o: Lazy[A]): A =
-    o()
+  case object RecursiveLazyEvaluationProblem extends Problem.ArgumentlessCoded
 }

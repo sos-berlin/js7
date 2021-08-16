@@ -44,7 +44,7 @@ extends JobExecutor
 
   val stop: Task[Unit] =
     Task.defer {
-      internalJobLazy.fold(_ => Task.unit, _.stop)
+      internalJobLazy.value.fold(_ => Task.unit, _.stop)
     }.memoize
 
   def prepareOrderProcess(processOrder: ProcessOrder) =
