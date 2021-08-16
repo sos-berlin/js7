@@ -79,6 +79,8 @@ object Expression
   }
 
   sealed trait Constant extends Pure {
+    final def precedence = Precedence.Factor
+    final def subexpressions = Nil
     def toValue: Value
 
     final def evalAllowError(implicit scope: Scope) =
@@ -350,8 +352,6 @@ object Expression
     override def toString = subexpressions.mkString("[", ", ", "]")
   }
 
-  // TODO Rename this. Das ist normaler Ausdruck, sondern eine Sammlung von Ausdrücken
-  // Brauchen wir dafür eine Klasse?
   final case class ObjectExpression(nameToExpr: Map[String, Expression])
   extends PurityDependsOnSubexpressions {
     def subexpressions = nameToExpr.values
@@ -402,9 +402,6 @@ object Expression
 
   final case class BooleanConstant(booleanValue: Boolean)
   extends BooleanExpression with Constant {
-    def precedence = Precedence.Factor
-    def subexpressions = Nil
-
     val toValue = BooleanValue(booleanValue)
 
     override def toString = booleanValue.toString
@@ -412,9 +409,6 @@ object Expression
 
   final case class NumericConstant(number: BigDecimal)
   extends NumericExpression with Constant {
-    def precedence = Precedence.Factor
-    def subexpressions = Nil
-
     val toValue = NumberValue(number)
 
     override def toString = number.toString
@@ -422,9 +416,6 @@ object Expression
 
   final case class StringConstant(string: String)
   extends StringExpression with Constant {
-    def precedence = Precedence.Factor
-    def subexpressions = Nil
-
     val toValue = StringValue(string)
 
     override def toString = StringConstant.quote(string)
@@ -703,9 +694,6 @@ object Expression
 
   type NullConstant = NullConstant.type
   case object NullConstant extends Constant {
-    def precedence = Precedence.Factor
-    def subexpressions = Nil
-
     def toValue = NullValue
 
     override def toString = "null"
