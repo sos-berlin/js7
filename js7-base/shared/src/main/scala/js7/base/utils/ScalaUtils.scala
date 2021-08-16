@@ -13,7 +13,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.{Factory, mutable}
+import scala.collection.{Factory, MapView, mutable}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Left
@@ -272,6 +272,25 @@ object ScalaUtils
         underlying.get(key) match {
           case None => Left(notFound)
           case Some(a) => Right(a)
+        }
+    }
+
+    implicit final class RichMapView[K, V](private val mapView: MapView[K, V])
+    extends AnyVal
+    {
+      def collectValues[V1](pf: PartialFunction[V, V1]): MapView[K, V1] =
+        mapView
+          .mapValues(pf.lift)
+          .filter(_._2.isDefined)
+          .mapValues(_.get)
+
+      /** concat reversly, left side has overrides right side. */
+      def orElseMapView[V1 >: V](other: MapView[K, V1]): MapView[K, V1] =
+        new MapView[K, V1] {
+          def get(key: K) = mapView.get(key) orElse other.get(key)
+
+          def iterator =
+            mapView.iterator ++ other.filterKeys(k => !mapView.contains(k))
         }
     }
 

@@ -13,6 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import monix.eval.Coeval
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
+import scala.collection.MapView
 import scala.reflect.ClassTag
 import scala.util.control.NoStackTrace
 
@@ -269,7 +270,7 @@ final class ScalaUtilsTest extends AnyFreeSpec
     assert(x == 3)
   }
 
-  "RichMap" - {
+  "Map" - {
     val map = Map(1 -> "ONE")
 
     "Map.checked" in {
@@ -284,7 +285,25 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
   }
 
-  "RichPartialFunction" - {
+  "MapView" - {
+    val a = MapView(1 -> "ONE", 2 -> "TWO")
+    val b = MapView(2 -> "dwa", 3 -> "tri")
+
+    "collectValues" in {
+      assert(a.collectValues { case "ONE" => "eins" }.toMap == Map(1 -> "eins"))
+    }
+
+    "orElseMapView" in {
+      val c = a.orElseMapView(b)
+      assert(c(1) == "ONE")
+      assert(c(2) == "TWO")
+      assert(c(3) == "tri")
+      assert(c.toSeq == Seq(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
+      assert(c.toMap == Map(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
+    }
+  }
+
+  "PartialFunction" - {
     val pf: PartialFunction[Int, String] = {
       case 1 => "ONE"
     }
