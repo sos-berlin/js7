@@ -448,6 +448,18 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(((A1(): A).narrow[A2]: Checked[A2]).isLeft)
       assert(((A2(): A).narrow[A2]: Checked[A]) == Right(A2()))
     }
+
+    "match_" in {
+      val x = 1.match_ { case 1 => "EINS" }
+      assert(x == "EINS")
+      intercept[MatchError](2.match_ { case 1 => "EINS" })
+    }
+
+    "match, as reference" in {
+      val x = 1 match { case 1 => "EINS" }
+      assert(x == "EINS")
+      intercept[MatchError](2 match { case 1 => "EINS" })
+    }
   }
 
   "Boolean ? value" in {

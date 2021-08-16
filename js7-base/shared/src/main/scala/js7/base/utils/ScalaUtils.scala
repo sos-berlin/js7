@@ -249,6 +249,10 @@ object ScalaUtils
       def narrow[B <: A: ClassTag]: Checked[B] =
         checkedCast[B](delegate)
 
+      /** match operator as method (like in Scala 3?). */
+      def match_[B](f: A => B): B =
+        delegate.pipe(f)
+
       @inline def substitute(when: A, _then: => A): A =
         if (delegate == when) _then else delegate
     }
