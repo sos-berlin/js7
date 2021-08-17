@@ -12,6 +12,8 @@ import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
+import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.Deadline.now
 
 /**
   * JS7 Controller.
@@ -23,10 +25,8 @@ final class ControllerMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ControllerTermination.Terminate = {
-    logger.info("")
-    logger.info("━" * 100)  // In case, the previous file is appended
-    logger.info("")
-    logger.info(s"JS7 Controller ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info("JS7 Controller " + BuildInfo.longVersion +  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+      "\n" + "━" * 80)  // In case, the previous file is appended
     logger.info(startUpLine())
     logger.debug(arguments.toString)
     val conf = ControllerConfiguration.fromCommandLine(arguments)
@@ -79,9 +79,14 @@ final class ControllerMain
 object ControllerMain
 {
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
+  var _runningSince: Option[Deadline] = None
+
+  def runningSince =
+    _runningSince
 
   def main(args: Array[String]): Unit = {
     printlnWithClock(s"JS7 Controller ${BuildInfo.longVersion}")
+    _runningSince = Some(now)
     var terminate = ControllerTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminate = new ControllerMain().run(commandLineArguments)

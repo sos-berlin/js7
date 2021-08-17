@@ -9,7 +9,6 @@ import js7.base.configutils.Configs.logConfig
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.Timestamp
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
@@ -17,6 +16,8 @@ import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.printlnWithClock
+import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.Deadline.now
 
 /**
  * JS7 Agent.
@@ -28,10 +29,8 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
-    logger.info("")
-    logger.info("━" * 100)  // In case, the previous file is appended
-    logger.info("")
-    logger.info(s"JS7 JobScheduler Agent ${BuildInfo.longVersion}")  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info("JS7 JobScheduler Agent " + BuildInfo.longVersion + // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+      "\n" + "━" * 80)  // In case, the previous file is appended
     logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
     val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
@@ -68,9 +67,15 @@ final class AgentMain
 object AgentMain
 {
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
+  // Don't use a Logger here to avoid overwriting a concurrently used logfile
+  var _runningSince: Option[Deadline] = None
+
+  def runningSince =
+    _runningSince
 
   def main(args: Array[String]): Unit = {
     printlnWithClock(s"JS7 Agent ${BuildInfo.longVersion}")
+    _runningSince = Some(now)
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)

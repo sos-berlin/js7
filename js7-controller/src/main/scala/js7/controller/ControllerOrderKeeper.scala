@@ -425,7 +425,9 @@ with MainJournalingActor[ControllerState, Event]
       throw problem.throwable.appendCurrentStackTrace
 
     case Internal.Ready(Right(Completed)) =>
-      logger.info("Ready")
+      logger.info("Ready" +
+        ControllerMain.runningSince.fold("")(o => " after " + o.elapsed.pretty) +
+        "\n" + "─" * 80)
       testEventPublisher.publish(ControllerReadyTestIncident)
       clusterNode.onTerminatedUnexpectedly.runToFuture onComplete { tried =>
         self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)

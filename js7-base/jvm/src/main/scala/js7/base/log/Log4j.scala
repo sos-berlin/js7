@@ -1,7 +1,6 @@
 package js7.base.log
 
 import java.lang.reflect.Method
-import java.time.LocalDateTime
 import monix.execution.atomic.AtomicBoolean
 import scala.util.{Failure, Success, Try}
 
@@ -38,7 +37,7 @@ object Log4j
     if (!isShutdown.getAndSet(true)) {
       for (shutdown <- shutdownMethod) {
         // Log complete timestamp in case of short log timestamp
-        logger.debug(s"log4j.LogManager.shutdown at ${LocalDateTime.now.toString.replace('T', ' ')}")
+        logger.info("shutdown\n" + "┄" * 80 + "\n")
         shutdown.invoke(null, false, false)
       }
     }

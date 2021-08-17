@@ -10,6 +10,7 @@ import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
+import js7.agent.main.AgentMain
 import js7.agent.scheduler.job.JobDriver
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
@@ -216,6 +217,9 @@ with Stash
           become("ready")(ready)
           unstashAll()
           logger.info(s"Agent '${ownAgentPath.string}' is ready")
+          logger.info("Ready" +
+            AgentMain.runningSince.fold("")(o => " after " + o.elapsed.pretty) +
+            "\n" + "─" * 80)
         }
         fileWatchManager.start()
           .runAsyncAndForget
