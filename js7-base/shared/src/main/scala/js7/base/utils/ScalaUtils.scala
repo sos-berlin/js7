@@ -1,6 +1,5 @@
 package js7.base.utils
 
-import cats.data.NonEmptyList
 import cats.syntax.foldable._
 import cats.syntax.option._
 import cats.{Functor, Monad, Monoid, Semigroup}
@@ -71,11 +70,13 @@ object ScalaUtils
     extends AnyVal
     {
       /** Combines left sides of any, otherwise return right sides.*/
-      def reduceLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] =
-        NonEmptyList.fromList(iterable.view.collect { case Left(l) => l }.toList) match {
-          case Some(ls) => Left(ls.reduce)
-          case None => Right(iterable.collect { case Right(r) => r }.to(F))
-        }
+      def reduceLeftEither(implicit F: Factory[R, F[R]], L: Semigroup[L]): Either[L, F[R]] = {
+        L.combineAllOption(iterable.view.collect { case Left(l) => l })
+          .match_ {
+            case Some(problem) => Left(problem)
+            case None => Right(iterable.view.collect { case Right(r) => r }.to(F))
+          }
+      }
     }
 
     implicit final class RichLeftProjection[L, R](private val leftProjection: Either.LeftProjection[L, R])
