@@ -45,12 +45,12 @@ public class JBoardTester
     private static final WorkflowPath expectingBoardWorkflowPath =
         (WorkflowPath)JControllerProxyTest.expectingBoardWorkflow().path();
     private static final JBoard board = JBoard.of(JControllerProxyTest.boardPath(),
-            getOrThrow(JExpression.parse(
-                "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
-            getOrThrow(JExpression.parse(
-                "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
-            getOrThrow(JExpression.parse(
-                "$epochMilli + 24 * 3600 * 1000")));
+        getOrThrow(JExpression.parse(
+            "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+        getOrThrow(JExpression.parse(
+            "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
+        getOrThrow(JExpression.parse(
+            "$epochMilli + 24 * 3600 * 1000")));
 
     private final JControllerProxy proxy;
     private final JControllerApi api;

@@ -13,6 +13,7 @@ import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.scopes.OrderScopes.workflowOrderVariablesScope
 import js7.data.value.expression.scopes.OrderScopesTest._
 import js7.data.value.{NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.Execute
@@ -20,7 +21,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Label, OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.collection.View
+import scala.collection.{MapView, View}
 
 final class OrderScopesTest extends AnyFreeSpec
 {
@@ -105,7 +106,7 @@ final class OrderScopesTest extends AnyFreeSpec
     }
 
     "scopeForJobDefaultArguments, for (WorkflowJob + Execute).defaultArguments" in {
-      val defaultArguments = orderScopes.evalLazilyJobDefaultArguments(Map(
+      val defaultArguments = orderScopes.evalLazilyJobDefaultArguments(MapView(
         "defaultJobName" -> NamedValue("js7JobName"),
         "defaultOrderId" -> NamedValue("js7OrderId"),
         "defaultWorkflowPosition" -> expr("$js7WorkflowPosition"),
@@ -134,6 +135,7 @@ final class OrderScopesTest extends AnyFreeSpec
             "a" -> StringValue("a from order"),
             "b" -> StringValue("b from order"),
             "c" -> StringValue("c from workflow defaults"),
+            "c1" -> StringValue("c from workflow defaults"),
             "d" -> StringValue("d from position 0"),
             "e" -> StringValue("e from position 1"),
             "f" -> StringValue("f from order"),
@@ -148,6 +150,7 @@ final class OrderScopesTest extends AnyFreeSpec
             "a" -> StringValue("a from order"),
             "b" -> StringValue("b from order"),
             "c" -> StringValue("c from workflow defaults"),
+            "c1" -> StringValue("c from workflow defaults"),
             "d" -> StringValue("d from position 0"),
             "e" -> StringValue("e from position 1"),
             "f" -> StringValue("f from position 1"),  // <-- Different to current version
@@ -171,6 +174,10 @@ final class OrderScopesTest extends AnyFreeSpec
 
         "Name defined as only as order default" in {
           check("c" ,"c from workflow defaults")
+        }
+
+        "Name defined as only as order default, referencing another order argument" in {
+          check("c1" ,"c from workflow defaults")
         }
 
         "Name defined only as order step result at position 0" in {
@@ -225,8 +232,9 @@ final class OrderScopesTest extends AnyFreeSpec
     "Workflow.orderVariables" in {
       import OrderScopes.workflowOrderVariablesScope
       val scope = workflowOrderVariablesScope(freshOrder,
+        controllerId,
         Seq(jobResource, simpleJobResource, dotJobResource).toKeyedMap(_.path),
-        controllerId, nowScope = NowScope(Timestamp("2021-06-21T12:33:44Z")))
+        nowScope = NowScope(Timestamp("2021-06-21T12:33:44Z")))
 
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
       assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
@@ -364,7 +372,10 @@ object OrderScopesTest
   private val expectedSchedule = StringValue("2021-06-17 14:00")
 
   private val order = Order(freshOrder.id, workflow.id /: Position(2), Order.Ready,
-    freshOrder.arguments,
+    workflow.orderParameterList
+      .prepareOrderArguments(freshOrder.arguments)(
+        workflowOrderVariablesScope(freshOrder, controllerId, PartialFunction.empty, NowScope()))
+      .orThrow,
     scheduledFor = freshOrder.scheduledFor,
     historicOutcomes = Seq(
       HistoricOutcome(Position(0), Outcome.Succeeded(Map(

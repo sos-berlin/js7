@@ -243,7 +243,11 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       Workflow(WorkflowPath.Anonymous,
         Vector(
           Execute.Anonymous(WorkflowJob(agentPath,
-            ShellScriptExecutable("""echo "C=FROM JOB" >>"$JS7_RETURN_VALUES" """))),
+            ShellScriptExecutable(
+              """echo "C=FROM FIRST JOB" >>"$JS7_RETURN_VALUES" """))),
+          Execute.Anonymous(WorkflowJob(agentPath,
+            ShellScriptExecutable(
+              """echo "C=FROM SECOND JOB" >>"$JS7_RETURN_VALUES" """))),
           Execute.Anonymous(WorkflowJob(agentPath,
             ShellScriptExecutable(
               """echo "A=$SCHEDULER_PARAM_A" >>"$SCHEDULER_RETURN_VALUES"
@@ -259,12 +263,15 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       expectedOutcomes = Seq(
         Outcome.Succeeded(NamedValues(
           "returnCode" -> NumberValue(0),
-          "C" ->  StringValue("FROM JOB"))),
+          "C" ->  StringValue("FROM FIRST JOB"))),
+        Outcome.Succeeded(NamedValues(
+          "returnCode" -> NumberValue(0),
+          "C" ->  StringValue("FROM SECOND JOB"))),
         Outcome.Succeeded(NamedValues(
           "returnCode" -> NumberValue(0),
           "A" -> StringValue("4711"),
           "B" -> StringValue("WORKFLOW PARAMETER DEFAULT VALUE"),
-          "C" -> StringValue("FROM JOB")/*Results from jobs are unknown*/))))
+          "C" -> StringValue("FROM SECOND JOB")))))
   }
 
   addExecuteTest(

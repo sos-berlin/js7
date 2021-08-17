@@ -1,11 +1,13 @@
 package js7.data.value.expression
 
 import cats.Monoid
-import cats.syntax.traverse._
 import js7.base.problem.Checked
+import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}
 import js7.base.utils.Lazy
+import js7.data.Problems.RecursiveEvaluationProblem
 import js7.data.value.Value
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
+import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.CombinedScope
 import scala.collection.MapView
 
@@ -44,17 +46,11 @@ trait Scope
     ExpressionParser.parse(expression)
       .flatMap(_.eval(this))
 
-  def evalLazilyExpressionMap(nameToExpr: Map[String, Expression])
-  : MapView[String, Checked[Value]] =
-    nameToExpr
-      .view.mapValues(expr => Lazy(expr.eval(this)))
-      .toMap
-      .view
-      .mapValues(_.apply())
-
-  def evalExpressionMap(nameToExpr: Map[String, Expression]): Checked[Map[String, Value]] =
-    nameToExpr.toVector
-      .traverse { case (k, v) => v.eval(this).map(k -> _) }
+  final def evalExpressionMap(nameToExpr: Map[String, Expression]): Checked[Map[String, Value]] =
+    evalLazilyExpressions(nameToExpr.view)(this)
+      .toVector
+      .map { case (k, checked) => checked.map(k -> _) }
+      .combineProblems
       .map(_.toMap)
 }
 
@@ -79,6 +75,23 @@ object Scope extends Monoid[Scope]
     else
       scope.evalExpressionMap(nameToExpr)
 
+  /** Evaluates expressions lazily and memoizes the results.
+    * Recursive evaluation is detected and returned as `Left`.
+    * `scope` may recursively contain the resulting `MapView`.
+    */
+  def evalLazilyExpressions(nameToExpr: MapView[String, Expression])(scope: => Scope)
+  : MapView[String, Checked[Value]] =
+    nameToExpr
+      .map { case (name, expr) =>
+        name -> Lazy(expr.eval(scope))
+      }
+      .toMap // memoize Lazy
+      .view
+      // Evaluate lazily (Lazy evaluates only once)
+      .mapValues(_
+        .recursionCheckedValue
+        .toChecked(RecursiveEvaluationProblem)
+        .flatten)
 
   private object Empty extends Scope {
     override def toString = "EmptyScope"

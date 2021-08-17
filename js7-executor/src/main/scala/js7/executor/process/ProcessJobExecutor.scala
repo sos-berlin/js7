@@ -75,16 +75,17 @@ trait ProcessJobExecutor extends JobExecutor
   private def v1Env(processOrder: ProcessOrder): Checked[Map[String, String]] =
     if (!v1Compatible)
       Right(Map.empty)
-    else
+    else {
+      import processOrder.{order, workflow}
       for (defaultArguments <- processOrder.checkedDefaultArguments) yield
-        (defaultArguments.view ++
-          processOrder.order.v1CompatibleNamedValues(processOrder.workflow)
-        ) .map { case (k, v) => k -> v.toStringValue }
+        (defaultArguments.view ++ order.v1CompatibleNamedValues(workflow))
+          .map { case (k, v) => k -> v.toStringValue }
           .collect {
             case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)
           }
           .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
           .toMap
+    }
 
   protected final def evalEnv(nameToExpr: Map[String, Expression], scope: => Scope)
   : Checked[Map[String, String]] =

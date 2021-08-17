@@ -43,7 +43,7 @@ extends Scope
     }
 
   private lazy val orderArguments: MapView[String, Value] =
-    workflow.orderParameterList.orderArguments(order)
+    workflow.orderParameterList.addDefaults(order.arguments)
 
   override def toString = s"OrderVariablesScope(${order.id})"
 }

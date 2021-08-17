@@ -699,6 +699,13 @@ object Expression
     override def toString = "null"
   }
 
+  final class ImpureTest(eval: () => Checked[Value]) extends Expression {
+    def isPure = false
+    def precedence = Precedence.Highest
+    def subexpressions = Nil
+    protected def evalAllowError(implicit scope: Scope) = eval()
+  }
+
   sealed trait Precedence {
     protected def precedence: Int
 
@@ -719,6 +726,7 @@ object Expression
     val Addition = next()
     val Multiplication = next()
     val Factor = next()
+    val Highest = next()
 
     def toString(a: Expression, op: String, opPrecedence: Int, b: Expression): String =
       inParentheses(a, opPrecedence) + " " + op + " " + inParentheses(b, opPrecedence + 1)

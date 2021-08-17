@@ -21,8 +21,12 @@ final class OrderPreparationTest extends AnyFreeSpec
         "allowUndeclared": true,
         "parameters": {
           "myOptional": {
-            "type": "Boolean",
-            "default": "false"
+            "default": "'DEFAULT'",
+            "type": "String"
+          },
+          "myOptional2": {
+            "type": "String",
+            "default": "$$myOptional"
           },
           "myRequired": {
             "type": "Number"

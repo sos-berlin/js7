@@ -9,6 +9,7 @@ import js7.data.item.VersionedEvent.VersionedItemAddedOrChanged
 import js7.data.item.{InventoryItemKey, InventoryItemPath, VersionId, VersionedItemId, VersionedItemPath}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
+import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.FunctionCall
 import scala.concurrent.duration.FiniteDuration
 
@@ -21,6 +22,16 @@ object Problems
       "function" -> call.name,
       "arguments" -> call.arguments.mkString(", "))
   }
+
+  final case class EvaluationFailedProblem(name: String, expression: Expression, problem: Problem)
+  extends Problem.Coded {
+    def arguments = Map(
+      "name" -> name,
+      "expression" -> expression.toString,
+      "problem" -> problem.toString)
+  }
+
+  case object RecursiveEvaluationProblem extends Problem.ArgumentlessCoded
 
   final case class CancelChildOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" -> orderId.string)

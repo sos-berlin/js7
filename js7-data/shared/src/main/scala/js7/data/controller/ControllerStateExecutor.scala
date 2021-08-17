@@ -65,7 +65,7 @@ final case class ControllerStateExecutor private(
       for {
         workflow <- controllerState.repo.pathTo[Workflow](order.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(order.arguments)(
-          workflowOrderVariablesScope(order, pathToJobResource, controllerId, nowScope))
+          workflowOrderVariablesScope(order, controllerId, pathToJobResource, nowScope))
       } yield Some(
         order.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
 

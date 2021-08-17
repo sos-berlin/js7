@@ -61,10 +61,12 @@ import shapeless.tag
 final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfterAll
 {
   private lazy val directoryProvider = TestAgentDirectoryProvider()
-  private lazy val config = AgentConfiguration.forTest(
-    directoryProvider.agentDirectory,
-    name = "OrderActorTest"
-  ).finishAndProvideFiles.config
+  private lazy val config = AgentConfiguration
+    .forTest(
+      directoryProvider.agentDirectory,
+      name = "OrderActorTest")
+    .finishAndProvideFiles
+    .config
     .withValue("js7.journal.simulate-sync", ConfigValueFactory.fromAnyRef("20ms"))
   private lazy val actorSystem = newAgentActorSystem("OrderActorTest")
 
@@ -116,7 +118,6 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     val result: Result = terminated await 99.s  // Continues when the nested actor has terminated. CatchingActor may still run for some microseconds.
     (testActor, result)
   }
-
 }
 
 private object OrderActorTest {

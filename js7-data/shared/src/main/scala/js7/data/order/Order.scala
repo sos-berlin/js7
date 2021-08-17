@@ -407,7 +407,7 @@ final case class Order[+S <: Order.State](
   // Test in OrderScopesTest
   /** The named values as seen at the current workflow position. */
   def namedValues(workflow: Workflow): MapView[String, Value] =
-    workflow.orderParameterList.orderArguments(this)
+    workflow.orderParameterList.addDefaults(arguments)
       .orElseMapView(historicOutcomeView)
 
   def historicOutcomeView: MapView[String, Value] =
@@ -435,7 +435,7 @@ final case class Order[+S <: Order.State](
   /** In JobScheduler 1, job results overwrote order arguments. */
   def v1CompatibleNamedValues(workflow: Workflow): NamedValues =
     historicOutcomeView
-      .orElseMapView(workflow.orderParameterList.orderArguments(this))
+      .orElseMapView(workflow.orderParameterList.addDefaults(arguments))
       .toVector
       .toMap
 

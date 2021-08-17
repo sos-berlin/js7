@@ -183,7 +183,7 @@ extends JJournaledState[JControllerState, ControllerState]
   @Nonnull
   def orderNamedValues(@Nonnull orderId: OrderId): VEither[Problem, JMap[String, Value]] =
     asScala.orderNamedValues(orderId)
-      .map(_.asJava)
+      .map(_.toMap.asJava)
       .toVavr
 
   @Nonnull

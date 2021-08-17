@@ -8,6 +8,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes._
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NumberValue, StringValue, Value}
@@ -64,8 +65,8 @@ object OrderScopes
   /** For calculating Workflow.orderVariables. */
   def workflowOrderVariablesScope(
     freshOrder: FreshOrder,
-    pathToJobResource: PartialFunction[JobResourcePath, JobResource],
     controllerId: ControllerId,
+    pathToJobResource: PartialFunction[JobResourcePath, JobResource],
     nowScope: Scope)
   : Scope = {
     val nestedScope = combine(
@@ -131,10 +132,11 @@ trait ProcessingOrderScopes extends OrderScopes
   private lazy val scopeForOrderDefaultArguments =
     js7JobVariablesScope |+| variablelessOrderScope |+| jobResourceScope
 
-  final def evalLazilyJobResourceVariables(jobResource: JobResource): MapView[String, Checked[Value]] =
-    scopeForJobResources.evalLazilyExpressionMap(jobResource.variables)
-
-  protected[scopes] final def evalLazilyJobDefaultArguments(expressionMap: Map[String, Expression])
+  final def evalLazilyJobResourceVariables(jobResource: JobResource)
   : MapView[String, Checked[Value]] =
-    scopeForOrderDefaultArguments.evalLazilyExpressionMap(expressionMap)
+    evalLazilyExpressions(jobResource.variables.view)(scopeForJobResources)
+
+  protected[scopes] final def evalLazilyJobDefaultArguments(expressionMap: MapView[String, Expression])
+  : MapView[String, Checked[Value]] =
+    evalLazilyExpressions(expressionMap.view)(scopeForOrderDefaultArguments)
 }

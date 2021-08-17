@@ -404,11 +404,11 @@ with JournaledState[ControllerState]
   }
 
   /** The named values as seen at the current workflow position. */
-  def orderNamedValues(orderId: OrderId): Checked[Map[String, Value]] =
+  def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
     for {
       order <- idToOrder.checked(orderId)
       workflow <- repo.idTo[Workflow](order.workflowId)
-    } yield order.namedValues(workflow).toMap
+    } yield order.namedValues(workflow)
 
   private[controller] def checkAddedOrChangedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
     itemKeys

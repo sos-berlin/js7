@@ -24,7 +24,7 @@ extends ProcessingOrderScopes
 {
   /** Lazily evaluated defaultArguments. */
   private lazy val nameToLazyDefaultArgument: MapView[String, Checked[Value]] =
-    evalLazilyJobDefaultArguments(defaultArgumentExpressions)
+    evalLazilyJobDefaultArguments(defaultArgumentExpressions.view)
 
   /** Eagerly evaluated defaultArguments. */
   lazy val checkedDefaultArguments: Checked[Map[String, Value]] =

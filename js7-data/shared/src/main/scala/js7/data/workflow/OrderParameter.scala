@@ -1,8 +1,8 @@
 package js7.data.workflow
 
 import js7.data.job.JobResourcePath
+import js7.data.value.ValueType
 import js7.data.value.expression.Expression
-import js7.data.value.{Value, ValueType}
 
 sealed trait OrderParameter {
   val name: String
@@ -28,14 +28,6 @@ object OrderParameter
   final case class Required(name: String, valueType: ValueType)
   extends HasType {
     def referencedJobResourcePaths = Nil
-  }
-
-  object HasValue {
-    def unapply(p: OrderParameter): Option[Value] =
-      PartialFunction.condOpt(p) {
-        case OrderParameter.Optional(_, _, expr: Expression.Constant) => expr.toValue
-        case OrderParameter.Final(_, expr: Expression.Constant) => expr.toValue
-      }
   }
 
   sealed trait HasExpression extends OrderParameter {

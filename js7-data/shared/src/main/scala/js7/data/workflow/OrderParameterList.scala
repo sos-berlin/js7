@@ -10,8 +10,10 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.Problems.EvaluationFailedProblem
 import js7.data.job.JobResourcePath
-import js7.data.order.Order
+import js7.data.value.expression.Scope.evalLazilyExpressions
+import js7.data.value.expression.scopes.{NameToCheckedValueScope, NamedValueScope}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
@@ -26,7 +28,16 @@ final case class OrderParameterList private(
     nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
 
   def prepareOrderArguments(arguments: NamedValues)(implicit scope: Scope): Checked[NamedValues] =
+    prepareOrderArguments2(arguments, scope)
+
+  private def prepareOrderArguments2(arguments: NamedValues, outerScope: Scope)
+  : Checked[NamedValues] =
   {
+    lazy val recursiveScope: Scope = outerScope |+|
+      NameToCheckedValueScope(
+        evalLazilyExpressions(nameToExpression)(
+          NamedValueScope(arguments) |+| recursiveScope))
+
     val checkedAllDeclared =
       if (allowUndeclared)
         Checked.unit
@@ -44,8 +55,9 @@ final case class OrderParameterList private(
               Left(MissingOrderArgumentProblem(required): Problem)
 
             case (None, p: OrderParameter.HasExpression) =>
-              (!p.expression.isConstant ? p.expression.eval.map(p.name -> _))
+              (!p.expression.isConstant ? p.expression.eval(recursiveScope).map(p.name -> _))
                 .sequence
+                .left.map(EvaluationFailedProblem(p.name, p.expression, _))
 
             case (Some(_), _: OrderParameter.Final) =>
               Left(FinalOrderArgumentProblem(param.name))
@@ -95,34 +107,21 @@ final case class OrderParameterList private(
           Checked.unit
     }
 
-  def defaultArgumentExpression(name: String): Option[Expression] =
-    nameToParameter.get(name)
-      .collect {
-        case OrderParameter.HasExpression(expr) => expr
-      }
-
-  lazy val nameToExpression: MapView[String, Expression] =
-    nameToParameter.view
-      .collectValues {
-        case OrderParameter.HasExpression(expr) => expr
-      }
-
-  def orderArguments(order: Order[Order.State]): MapView[String, Value] =
-    order.arguments.view
-      .orElseMapView(nameToValue(order))
-
-  private def nameToValue(order: Order[Order.State]): MapView[String, Value] =
-    orderArgumentNameToValue(order.arguments)
-
-  private[workflow] def orderArgumentNameToValue(orderArguments: Map[String, Value])
-  : MapView[String, Value] =
-    orderArguments
+  /** Add missing default and final values defined in OrderParameterList. */
+  def addDefaults(arguments: Map[String, Value]): MapView[String, Value] =
+    arguments
       .view
       .orElseMapView(nameToExpression.collectValues {
         case const: Expression.Constant => const.toValue
         // Expressions must have been evaluated with OrderAdded event.
         // The resulting values are expected to be in Order.arguments.
       })
+
+  private[workflow] lazy val nameToExpression: MapView[String, Expression] =
+    nameToParameter.view
+      .collectValues {
+        case OrderParameter.HasExpression(expr) => expr
+      }
 }
 
 object OrderParameterList
