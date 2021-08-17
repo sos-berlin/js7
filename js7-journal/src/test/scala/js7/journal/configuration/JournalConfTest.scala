@@ -50,15 +50,12 @@ object JournalConfTest
        coalesce-event-limit = 6
        slow-check-state = true  // Set by build.sbt, anyway
        snapshot.log-period = 4s
-       snapshot.log-actor-limit = 5
        snapshot.period = 7h
        snapshot.when-bigger-than = 8G
-       snapshot.log-period = 9ms
-       snapshot.log-actor-limit = 11
-       ack-warn-durations = [ 10s, 15s ]
        persist-warn-durations = [ 20s, 30s ]
        remove-obsolete-files = true
        users-allowed-to-release-events = []
+       log.ack-warn-durations = [ 10s, 15s ]
        log.info-events = ["MyEvent"]
      }"""
 
@@ -69,8 +66,6 @@ object JournalConfTest
     coalesceEventLimit = 6,
     snapshotPeriod = 7.h,
     snapshotSizeLimit = 8*1000*1000*1000L,
-    snapshotLogProgressPeriod = 9.ms,
-    snapshotLogProgressActorLimit = 11,
     ackWarnDurations = List(10.s, 15.s),
     persistWarnDurations = List(20.s, 30.s),
     deleteObsoleteFiles = true,
