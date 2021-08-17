@@ -57,7 +57,7 @@ final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with Te
         OrderId("TEST"),
         WorkflowPath("JOBCHAIN") ~ "VERSION",
         Order.Processing,
-        historicOutcomes = Seq(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
+        historicOutcomes = Vector(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
       val taskRunner = new ProcessDriver(taskConfiguration, injector.instance[JobExecutorConf])
       val out, err = PublishSubject[String]()
       val stdObservers = new StdObservers(out, err, charBufferSize = 7, keepLastErrLine = false)

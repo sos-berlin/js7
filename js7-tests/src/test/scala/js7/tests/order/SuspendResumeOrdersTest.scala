@@ -503,7 +503,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(controller.orderApi.order(order.id).await(99.s) == Right(Some(Order(
       order.id, order.workflowPath ~ "INITIAL" /: (Position(2) / try_(1) % 0),
       Order.Failed,
-      historicOutcomes = Seq(
+      historicOutcomes = Vector(
         HistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> BooleanValue(true)))),
         HistoricOutcome(Position(1), Outcome.failed),
         HistoricOutcome(Position(2) / Try_ % 0, Outcome.failed),

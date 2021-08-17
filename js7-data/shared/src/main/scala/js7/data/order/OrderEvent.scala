@@ -72,7 +72,7 @@ object OrderEvent
     arguments: NamedValues,
     scheduledFor: Option[Timestamp],
     externalOrderKey: Option[ExternalOrderKey],
-    historicOutcomes: Seq[HistoricOutcome],
+    historicOutcomes: Vector[HistoricOutcome],
     agentPath: AgentPath,
     parent: Option[OrderId],
     mark: Option[OrderMark],

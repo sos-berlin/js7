@@ -52,7 +52,7 @@ object RetryExecutorTest
 
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) = {
     val order = Order(orderId, workflowId /: position, Order.Ready,
-      historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
+      historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1)))))
     val stateView = new StateView.ForTest {
       def isAgent = false
 

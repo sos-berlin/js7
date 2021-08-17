@@ -869,7 +869,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     "Processed failed in inner try-block -> OrderCatched" in {
       val pos = Position(0) / try_(0) % 0 / try_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
-        historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
+        historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderCatched(Position(0) / try_(0) % 0 / catch_(0) % 0)))
     }
@@ -877,7 +877,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     "Processed failed in inner catch-block -> OrderCatched" in {
       val pos = Position(0) / try_(0) % 0 / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
-        historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
+        historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderCatched(Position(0) / catch_(0) % 0)))
     }
@@ -885,14 +885,14 @@ final class OrderEventSourceTest extends AnyFreeSpec
     "Processed failed in outer catch-block -> OrderFailed" in {
       val pos = Position(0) / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
-        historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
+        historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-: OrderFailed(pos)))
     }
 
     "Processed failed in try in catch -> OrderCatched" in {
       val pos = Position(0) / catch_(0) % 1 / try_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
-        historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
+        historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderCatched(Position(0) / catch_(0) % 1 / catch_(0) % 0)))
     }
@@ -900,14 +900,14 @@ final class OrderEventSourceTest extends AnyFreeSpec
     "Processed failed in catch in catch -> OrderFailed" in {
       val pos = Position(0) / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
-        historicOutcomes = HistoricOutcome(Position(0), failed7) :: Nil)
+        historicOutcomes = Vector(HistoricOutcome(Position(0), failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-: OrderFailed(pos)))
     }
 
     "Processed failed not in try/catch -> OrderFailed" in {
       val pos = Position(1)
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
-        historicOutcomes = HistoricOutcome(pos, failed7) :: Nil)
+        historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-: OrderFailed(pos)))
     }
 
@@ -931,13 +931,13 @@ final class OrderEventSourceTest extends AnyFreeSpec
       var aChild: Order[Order.State] = {
         val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0   // Execute
         Order(OrderId("ORDER|🥕"), workflow.id /: pos, Order.Processed,
-          historicOutcomes = HistoricOutcome(pos, failed7) :: Nil,
+          historicOutcomes = Vector(HistoricOutcome(pos, failed7)),
           parent = Some(OrderId("ORDER")))
       }
       val bChild = {
         val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 1   // End
         Order(OrderId("ORDER|🍋"), workflow.id /: pos, Order.Ready,
-          historicOutcomes = HistoricOutcome(pos, failed7) :: Nil,
+          historicOutcomes = Vector(HistoricOutcome(pos, failed7)),
           parent = Some(OrderId("ORDER")))
       }
       val forkingOrder = Order(OrderId("ORDER"), workflow.id /: (Position(0) / BranchId.try_(0) % 0),  // Fork
@@ -988,13 +988,13 @@ final class OrderEventSourceTest extends AnyFreeSpec
       var aChild: Order[Order.State] = {
         val pos = Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0   // Execute
         Order(OrderId("ORDER|🥕"), workflow.id /: pos, Order.Processed,
-          historicOutcomes = HistoricOutcome(pos, failed7) :: Nil,
+          historicOutcomes = Vector(HistoricOutcome(pos, failed7)),
           parent = Some(OrderId("ORDER")))
       }
       val bChild = {
         val pos = Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0 / BranchId.Lock % 0 / BranchId.Lock % 0
         Order(OrderId("ORDER|🍋"), workflow.id /: pos, Order.Processed,
-          historicOutcomes = HistoricOutcome(pos, failed7) :: Nil,
+          historicOutcomes = Vector(HistoricOutcome(pos, failed7)),
           parent = Some(OrderId("ORDER")))
       }
       val forkingOrder = Order(OrderId("ORDER"), workflow.id /: (Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0),  // Fork
@@ -1034,11 +1034,11 @@ object OrderEventSourceTest
   private val TestAgentPath = AgentPath("AGENT")
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed,
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil)
+    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0)))))
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed,
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil)
+    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1)))))
   private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId /: Position(2), Order.Processed,
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) :: Nil)
+    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))))
   private val orderForked = OrderForked(Vector(
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))

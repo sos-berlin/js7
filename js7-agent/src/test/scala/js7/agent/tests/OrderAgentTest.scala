@@ -173,7 +173,11 @@ private object OrderAgentTest
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
       attachedState = Some(Order.Detaching(TestAgentPath)),
       arguments = Map("x" -> StringValue("X")),
-      historicOutcomes =
-        HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-")))) ::
-        HistoricOutcome(Position(1), Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-B-VALUE")))) :: Nil)
+      historicOutcomes = Vector(
+        HistoricOutcome(Position(0), Outcome.Succeeded(Map(
+          "returnCode" -> NumberValue(0),
+          "result" -> StringValue("TEST-RESULT-")))),
+        HistoricOutcome(Position(1), Outcome.Succeeded(Map(
+          "returnCode" -> NumberValue(0),
+          "result" -> StringValue("TEST-RESULT-B-VALUE"))))))
 }

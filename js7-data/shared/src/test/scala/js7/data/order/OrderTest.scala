@@ -39,7 +39,7 @@ final class OrderTest extends AnyFreeSpec
     arguments = Map(
       "key1" -> StringValue("value1"),
       "key2" -> StringValue("value2")),
-    historicOutcomes = Seq(
+    historicOutcomes = Vector(
       HistoricOutcome(Position(123), Outcome.Succeeded(NamedValues.rc(0)))))
 
   "JSON" - {
@@ -274,7 +274,7 @@ final class OrderTest extends AnyFreeSpec
       OrderDeleted,
 
       OrderAttachable(agentPath),
-      OrderAttachedToAgent(workflowId /: Position(0), Fresh, Map.empty, None, None, Nil,
+      OrderAttachedToAgent(workflowId /: Position(0), Fresh, Map.empty, None, None, Vector.empty,
         agentPath, None, None, false, false),
       OrderAttached(agentPath),
 
@@ -435,7 +435,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Processed" in {
       checkAllEvents(Order(orderId, workflowId, Processed,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Processed] orElse
         markable[Processed] orElse
         cancelMarkedAllowed[Processed] orElse
@@ -452,7 +452,7 @@ final class OrderTest extends AnyFreeSpec
 
     "ProcessingKilled" in {
       checkAllEvents(Order(orderId, workflowId, ProcessingKilled,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[ProcessingKilled] orElse
         markable[ProcessingKilled] orElse
         detachingAllowed[ProcessingKilled] orElse {
@@ -465,7 +465,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Prompting" in {
       checkAllEvents(Order(orderId, workflowId, Prompting(StringValue("QUESTION")),
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))) :: Nil),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Prompting] orElse
         markable[Prompting] orElse
         cancelMarkedAllowed[Prompting] orElse
@@ -478,7 +478,7 @@ final class OrderTest extends AnyFreeSpec
 
     "FailedWhileFresh" in {
       checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))))),
         deletionMarkable[FailedWhileFresh] orElse
         markable[FailedWhileFresh] orElse
         detachingAllowed[FailedWhileFresh] orElse
@@ -491,7 +491,7 @@ final class OrderTest extends AnyFreeSpec
 
     "Failed" in {
       checkAllEvents(Order(orderId, workflowId, Failed,
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.failed) :: Nil),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.failed))),
         deletionMarkable[Failed] orElse
         markable[Failed] orElse
         detachingAllowed[Failed] orElse
@@ -504,7 +504,7 @@ final class OrderTest extends AnyFreeSpec
 
     "FailedInFork" in {
       checkAllEvents(Order(orderId, workflowId, FailedInFork, parent = Some(OrderId("PARENT")),
-          historicOutcomes = HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))) :: Nil),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))))),
         detachingAllowed[FailedInFork] orElse {
           case (_: OrderSuspensionMarked, IsSuspended(_), _) => _.isInstanceOf[FailedInFork]
           case (_: OrderResumptionMarked, IsSuspended(_), _) => _.isInstanceOf[FailedInFork]
@@ -713,7 +713,7 @@ final class OrderTest extends AnyFreeSpec
       import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, HistoryOperation, InsertHistoricOutcome, ReplaceHistoricOutcome}
 
       lazy val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Ready,
-        historicOutcomes = Seq(
+        historicOutcomes = Vector(
           HistoricOutcome(Position(0), Outcome.succeeded),
           HistoricOutcome(Position(1), Outcome.succeeded),
           HistoricOutcome(Position(2), Outcome.succeeded)),
@@ -805,7 +805,7 @@ final class OrderTest extends AnyFreeSpec
       nameToJob = Map(
         jobName ->
           WorkflowJob(AgentPath("AGENT"), InternalExecutable(classOf[OrderTest].getName))))
-    val order = testOrder.copy(historicOutcomes = Seq(
+    val order = testOrder.copy(historicOutcomes = Vector(
       HistoricOutcome(Position(0), Outcome.succeeded),
       HistoricOutcome(Position(1), Outcome.succeeded),
       HistoricOutcome(Position(0), Outcome.succeeded),

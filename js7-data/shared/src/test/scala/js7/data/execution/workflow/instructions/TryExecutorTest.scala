@@ -56,7 +56,7 @@ final class TryExecutorTest extends AnyFreeSpec
 object TryExecutorTest {
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val AOrder = Order(OrderId("ORDER-A"), TestWorkflowId /: Position(7), Order.Fresh,
-    historicOutcomes = HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1))) :: Nil)
+    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1)))))
   private val TryJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("THEN")))
   private val CatchJob = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("ELSE")))
   private val tryInstruction = TryInstruction(Workflow.of(TryJob), Workflow.of(CatchJob))

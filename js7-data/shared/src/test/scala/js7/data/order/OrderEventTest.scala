@@ -69,7 +69,7 @@ final class OrderEventTest extends AnyFreeSpec
         Map("KEY" -> StringValue("VALUE")),
         Some(Timestamp("2017-11-15T12:33:44.789Z")),
         Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
-        HistoricOutcome(Position(123), Outcome.succeeded) :: Nil,
+        Vector(HistoricOutcome(Position(123), Outcome.succeeded)),
         AgentPath("AGENT"),
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending()),

@@ -33,7 +33,7 @@ final case class Order[+S <: Order.State](
   arguments: NamedValues = Map.empty,
   scheduledFor: Option[Timestamp] = None,
   externalOrderKey: Option[ExternalOrderKey] = None,
-  historicOutcomes: Seq[HistoricOutcome] = Vector.empty,
+  historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
   attachedState: Option[AttachedState] = None,
   parent: Option[OrderId] = None,
   mark: Option[OrderMark] = None,

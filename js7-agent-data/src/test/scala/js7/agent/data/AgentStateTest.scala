@@ -215,7 +215,7 @@ final class AgentStateTest extends AsyncFreeSpec
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToAgent(workflow)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
-        workflowId, Order.Ready, Map.empty, None, None, Nil, agentPath, None, None, false, false))
+        workflowId, Order.Ready, Map.empty, None, None, Vector.empty, agentPath, None, None, false, false))
       .orThrow
     agentState = agentState.applyEvent(orderId <-: OrderForked(Vector(OrderForked.Child("BRANCH", childOrderId))))
       .orThrow

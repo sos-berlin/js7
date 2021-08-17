@@ -377,7 +377,7 @@ object OrderScopesTest
         workflowOrderVariablesScope(freshOrder, controllerId, PartialFunction.empty, NowScope()))
       .orThrow,
     scheduledFor = freshOrder.scheduledFor,
-    historicOutcomes = Seq(
+    historicOutcomes = Vector(
       HistoricOutcome(Position(0), Outcome.Succeeded(Map(
         "d" -> StringValue("d from position 0"),
         "e" -> StringValue("e from position 0")))),
