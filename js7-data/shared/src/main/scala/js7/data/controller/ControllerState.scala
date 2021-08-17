@@ -408,7 +408,7 @@ with JournaledState[ControllerState]
     for {
       order <- idToOrder.checked(orderId)
       workflow <- repo.idTo[Workflow](order.workflowId)
-    } yield order.namedValues(workflow.defaultArguments)
+    } yield order.namedValues(workflow).toMap
 
   private[controller] def checkAddedOrChangedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
     itemKeys

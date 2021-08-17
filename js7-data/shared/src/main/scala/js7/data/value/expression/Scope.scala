@@ -17,11 +17,19 @@ import scala.collection.MapView
   * (while `this` is the own specicialized `Scope`). */
 trait Scope
 {
-  def symbolToValue(symbol: String)(implicit fullScope: Scope): Option[Checked[Value]] =
+  def symbolToValue(symbol: String): Option[Checked[Value]] =
     None
 
-  def findValue(valueSearch: ValueSearch)(implicit fullScope: Scope): Checked[Option[Value]] =
-    Checked(None)
+  def nameToCheckedValue: MapView[String, Checked[Value]] =
+    MapView.empty
+
+  def findValue(valueSearch: ValueSearch): Option[Checked[Value]] =
+    valueSearch match {
+      case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)) =>
+        nameToCheckedValue.get(name)
+      case _ =>
+        None
+    }
 
   def evalFunctionCall(functionCall: FunctionCall)(implicit fullScope: Scope): Option[Checked[Value]] =
     None
@@ -29,8 +37,8 @@ trait Scope
   def evalJobResourceVariable(v: JobResourceVariable)(implicit fullScope: Scope): Option[Checked[Value]] =
     None
 
-  final def namedValue(name: String): Checked[Option[Value]] =
-    findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))(this)
+  final def namedValue(name: String): Option[Checked[Value]] =
+    findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
 
   def parseAndEval(expression: String): Checked[Value] =
     ExpressionParser.parse(expression)

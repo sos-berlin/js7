@@ -2,11 +2,12 @@ package js7.data.value.expression.scopes
 
 import js7.base.problem.Problem
 import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.ValueSearch
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.MapView
 
-final class NamedValueScopeTest extends AnyFreeSpec
+final class NameToCheckedValueScopeTest extends AnyFreeSpec
 {
   private var a = 0
   private implicit lazy val scope =
@@ -27,8 +28,11 @@ final class NamedValueScopeTest extends AnyFreeSpec
     assert(NamedValue("FAIL").eval == Left(Problem("FAILED")))
   }
 
-  "namedValue" in {
-    assert(scope.nameToCheckedValue.get("A") == Some(Right(NumberValue(1))))
-    assert(scope.nameToCheckedValue.get("X") == None)
+  "findValue" in {
+    import ValueSearch.{Argument, LastOccurred, Name}
+
+    assert(scope.findValue(ValueSearch(LastOccurred, Name("A"))) == Some(Right(NumberValue(1))))
+    assert(scope.findValue(ValueSearch(LastOccurred, Name("X"))) == None)
+    assert(scope.findValue(ValueSearch(Argument, Name("A"))) == None)
   }
 }

@@ -1,17 +1,20 @@
 package js7.data.value.expression.scopes
 
+import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
 import js7.data.value.expression.{Scope, ValueSearch}
 
 private[expression] class CombinedScope(first: Scope, second: Scope)
 extends Scope
 {
-  override def symbolToValue(symbol: String)(implicit scope: Scope) =
+  override def symbolToValue(symbol: String) =
     first.symbolToValue(symbol) orElse second.symbolToValue(symbol)
 
-  override def findValue(search: ValueSearch)(implicit scope: Scope) =
-    first.findValue(search)
-      .flatMap(_.fold(second.findValue(search))(o => Right(Some(o))))
+  override lazy val nameToCheckedValue =
+    first.nameToCheckedValue.orElseMapView(second.nameToCheckedValue)
+
+  override def findValue(search: ValueSearch) =
+    first.findValue(search) orElse second.findValue(search)
 
   override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
     first.evalFunctionCall(functionCall) orElse second.evalFunctionCall(functionCall)

@@ -97,8 +97,11 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
                 // like $ORDER_ARG in the expression language.
                 // Returns a declared Order default value, too.
                 // STEP_ARG is not accessible here.
-                assertThat(step.namedValue("ORDER_ARG"), equalTo(right(Optional.ofNullable(argOrNull))));
-                assertThat(step.namedValue("UNKNOWN"), equalTo(right(Optional.empty())));
+                assertThat(step.namedValueDeprecated("ORDER_ARG"), equalTo(right(Optional.ofNullable(argOrNull))));
+                assertThat(step.namedValue("ORDER_ARG"), equalTo(Optional
+                    .ofNullable(argOrNull)
+                    .map(o -> right(o))));
+                assertThat(step.namedValue("UNKNOWN"), equalTo(Optional.empty()));
             }
 
             // 💥 May throw NullPointerException or ArithmeticException 💥

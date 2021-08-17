@@ -1,26 +1,26 @@
 package js7.data.value.expression.scopes
 
+import js7.base.problem.Checked
 import js7.base.time.Timestamp
-import js7.data.value.NumberValue
-import js7.data.value.expression.ValueSearch.{LastOccurred, Name}
-import js7.data.value.expression.{Expression, Scope, ValueSearch}
+import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.{NumberValue, Value}
+import scala.collection.MapView
 
 final class NowScope(val now: Timestamp = Timestamp.now) extends Scope
 {
   private lazy val timestampScope = TimestampScope("now", Some(now))
 
-  override def findValue(search: ValueSearch)(implicit scope: Scope) =
-    search match {
-      // $epochMilli
-      case ValueSearch(LastOccurred, Name("epochMilli")) =>
-        Right(Some(NumberValue(now.toEpochMilli)))
+  override lazy val nameToCheckedValue =
+    new MapView[String, Checked[Value]] {
+      def get(key: String) = key match {
+        case "epochMilli" => Some(Right(NumberValue(now.toEpochMilli)))
+        case "epochSecond" => Some(Right(NumberValue(now.toEpochMilli / 1000)))
+        case _ => None
+      }
 
-      // $epochSecond
-      case ValueSearch(LastOccurred, Name("epochSecond")) =>
-        Right(Some(NumberValue(now.toEpochMilli / 1000)))
-
-      case _ =>
-        super.findValue(search)
+      def iterator =
+        Iterator("epochMilli", "epochSecond")
+          .flatMap(k => get(k).map(k -> _))
     }
 
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =

@@ -3,13 +3,14 @@ package js7.data.value.expression.scopes
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
 import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class NowScopeTest extends AnyFreeSpec
 {
-  private lazy val nowScope = new NowScope
+  private lazy val nowScope = new NowScope(Timestamp("2021-08-16T12:00:00Z"))
 
   "Example with now() and $epochSecond" in {
     val checkedValue = nowScope.parseAndEval(
@@ -37,5 +38,11 @@ final class NowScopeTest extends AnyFreeSpec
     assert(checkedValue == Right(NumberValue(epochMilli)))
     val n = checkedValue.flatMap(_.asNumber).orThrow.toLongExact
     assert(n == epochMilli)
+  }
+
+  "nameToCheckedValue" in {
+    assert(nowScope.nameToCheckedValue.toMap == Map(
+      "epochMilli" -> Right(NumberValue(1629115200000L)),
+      "epochSecond" -> Right(NumberValue(1629115200))))
   }
 }

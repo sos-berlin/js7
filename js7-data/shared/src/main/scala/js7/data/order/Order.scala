@@ -20,7 +20,7 @@ import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId}
-import scala.collection.{View, mutable}
+import scala.collection.{MapView, View, mutable}
 import scala.reflect.ClassTag
 
 /**
@@ -406,22 +406,37 @@ final case class Order[+S <: Order.State](
 
   // Test in OrderScopesTest
   /** The named values as seen at the current workflow position. */
-  def namedValues(defaultArguments: Map[String, Value]): NamedValues =
-    historicOutcomes.view
-      .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues }
-      .flatten
-      .concat(defaultArguments)
-      .concat(arguments)
-      .toMap
+  def namedValues(workflow: Workflow): MapView[String, Value] =
+    workflow.orderParameterList.orderArguments(this)
+      .orElseMapView(historicOutcomeView)
+
+  def historicOutcomeView: MapView[String, Value] =
+    new MapView[String, Value] {
+      def get(key: String) =
+        historicOutcomes.view
+          .reverse
+          .collect {
+            case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues.get(key)
+          }
+          .flatten
+          .headOption
+
+      private lazy val nameToValue =
+        historicOutcomes.view
+          .collect {
+            case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues
+          }
+          .flatten
+          .toMap
+
+      def iterator = nameToValue.iterator
+    }
 
   /** In JobScheduler 1, job results overwrote order arguments. */
-  def v1CompatibleNamedValues(defaultArguments: Map[String, Value]): NamedValues =
-    defaultArguments.view
-      .concat(arguments)
-      .concat(
-        historicOutcomes.view
-          .collect { case HistoricOutcome(_, o: Outcome.Completed) => o.namedValues }
-          .flatten)
+  def v1CompatibleNamedValues(workflow: Workflow): NamedValues =
+    historicOutcomeView
+      .orElseMapView(workflow.orderParameterList.orderArguments(this))
+      .toVector
       .toMap
 
   def isStarted = isState[IsStarted]

@@ -36,7 +36,7 @@ final class ExprFunctionTest extends AnyFreeSpec
           NamedValue("b"))))))
 
   testEval("() => $nameFromContext",
-    scope = NamedValueScope { case "nameFromContext" => NumberValue(7) },
+    scope = NamedValueScope("nameFromContext" -> NumberValue(7)),
     args = Nil,
     result = Right(NumberValue(7)),
     Right(ExprFunction(Nil, NamedValue("nameFromContext"))))

@@ -2,9 +2,10 @@ package js7.data.job
 
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.data.value.expression.{Scope, ValueSearch}
+import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.MapView
 
 final class CommandLineEvaluatorTest extends AnyFreeSpec
 {
@@ -55,16 +56,10 @@ final class CommandLineEvaluatorTest extends AnyFreeSpec
   private val commandLineEvaluator =
     new CommandLineEvaluator()(
       new Scope {
-        override def findValue(search: ValueSearch)(implicit scope: Scope) =
-          Right(search match {
-            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NAME")) =>
-              Some(StringValue("MY NAME"))
-
-            case ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name("NUMERIC")) =>
-              Some(NumberValue(7))
-
-            case _ => None
-          })
+        override val nameToCheckedValue =
+          MapView(
+            "NAME" -> Right(StringValue("MY NAME")),
+            "NUMERIC" -> Right(NumberValue(7)))
       })
 
   private def eval(commandLine: String): Checked[CommandLine] =

@@ -17,26 +17,37 @@ final class FileWatchScopeTest extends AnyFreeSpec
   private val pattern = """file-(.*((A)|(B)))\.csv""".r.pattern
   private val filename = "file-100B.csv"
 
-  private implicit lazy val scope = {
+  private lazy val fileWatchScope = {
     val matcher = pattern.matcher(filename)
     val matches = matcher.matches()  // required !!!
     assert(matches)
-    FileWatchScope(orderWatchPath, matcher) |+| NowScope()
+    FileWatchScope(orderWatchPath, matcher)
   }
 
   "$0...$n" in {
-    assert(scope.parseAndEval("$0") == Right(StringValue("file-100B.csv")))
-    assert(scope.parseAndEval("\"$0\"") == Right(StringValue("file-100B.csv")))
-    assert(scope.parseAndEval("$1") == Right(StringValue("100B")))
-    assert(scope.parseAndEval("$2") == Right(StringValue("B")))
-    assert(scope.parseAndEval("$3") == Left(Problem("No such named value: 3")))
-    assert(scope.parseAndEval("$4") == Right(StringValue("B")))
-    assert(scope.parseAndEval("$5") == Left(Problem("No such named value: 5")))
+    assert(fileWatchScope.parseAndEval("$0") == Right(StringValue("file-100B.csv")))
+    assert(fileWatchScope.parseAndEval("\"$0\"") == Right(StringValue("file-100B.csv")))
+    assert(fileWatchScope.parseAndEval("$1") == Right(StringValue("100B")))
+    assert(fileWatchScope.parseAndEval("$2") == Right(StringValue("B")))
+    assert(fileWatchScope.parseAndEval("$3") == Left(Problem("No such named value: 3")))
+    assert(fileWatchScope.parseAndEval("$4") == Right(StringValue("B")))
+    assert(fileWatchScope.parseAndEval("$5") == Left(Problem("No such named value: 5")))
+  }
+
+  "nameToCheckedValue" in {
+    assert(fileWatchScope.nameToCheckedValue.toMap == Map(
+      "0" -> Right(StringValue("file-100B.csv")),
+      "1" -> Right(StringValue("100B")),
+      "2" -> Right(StringValue("B")),
+      "4" -> Right(StringValue("B")),
+      "orderWatchPath" -> Right(StringValue("FILE-WATCH"))))
   }
 
   "Complete" in {
+    implicit val scope = fileWatchScope |+| NowScope()
     val checkedValue = scope.parseAndEval(
-      "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchPath:$1\"")
+      "'#' ++ now(format='yyyy-MM-dd', " +
+        "timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchPath:$1\"")
     val now = Instant.ofEpochSecond(NamedValue("epochSecond").evalAsNumber.orThrow.toLong)
     val yyyymmdd = LocalDateTime.ofInstant(now, ZoneId.of("Antarctica/Troll"))
       .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))

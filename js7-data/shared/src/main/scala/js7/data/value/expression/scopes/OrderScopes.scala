@@ -26,10 +26,9 @@ trait OrderScopes
 
   private def js7VariablesScope =
     minimalJs7VariablesScope(order.id, order.workflowId.path, controllerId) |+|
-      NamedValueScope {
-        case "js7Label" => StringValue(instructionLabel.fold("")(_.string))
-        case "js7WorkflowPosition" => StringValue(order.workflowPosition.toString)
-      }
+      NamedValueScope(Map(
+        "js7Label" -> StringValue(instructionLabel.fold("")(_.string)),
+        "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString)))
 
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */
@@ -84,11 +83,10 @@ object OrderScopes
     orderId: OrderId,
     workflowPath: WorkflowPath,
     controllerId: ControllerId)
-  = NamedValueScope {
-    case "js7OrderId" => StringValue(orderId.string)
-    case "js7WorkflowPath" => StringValue(workflowPath.string)
-    case "js7ControllerId" => StringValue(controllerId.string)
-  }
+  = NamedValueScope(Map(
+     "js7OrderId" -> StringValue(orderId.string),
+     "js7WorkflowPath" -> StringValue(workflowPath.string),
+     "js7ControllerId" -> StringValue(controllerId.string)))
 
   private def scheduledScope(scheduledFor: Option[Timestamp]) =
     TimestampScope("scheduledOrEmpty", scheduledFor)
@@ -111,12 +109,11 @@ trait ProcessingOrderScopes extends OrderScopes
   final lazy val jobExecutionCount: Int =
     1 + order.historicJobExecutionCount(jobKey, workflow)
 
-  private def js7JobVariablesScope = NamedValueScope {
-    case "js7JobName" => StringValue(simpleJobName)
-    case "js7JobExecutionCount" => NumberValue(jobExecutionCount)
-  }
+  private def js7JobVariablesScope = NamedValueScope(Map(
+    "js7JobName" -> StringValue(simpleJobName),
+    "js7JobExecutionCount" -> NumberValue(jobExecutionCount)))
 
-  /** To avoid name clash, are JobResources not allowed to access order variables. */
+  /** To avoid name clash, JobResources are not allowed to access order variables. */
   private lazy val scopeForJobResources =
     js7JobVariablesScope |+| variablelessOrderScope |+| nowScope
 
@@ -125,7 +122,7 @@ trait ProcessingOrderScopes extends OrderScopes
     useScope = scopeForJobResources)
 
   final lazy val scopeForJobResourceEnv =
-    js7JobVariablesScope |+| nowScope |+| variablelessOrderScope
+    js7JobVariablesScope |+| variablelessOrderScope |+| nowScope
 
   final lazy val processingOrderScope =
     js7JobVariablesScope |+| orderScope |+| nowScope |+| jobResourceScope

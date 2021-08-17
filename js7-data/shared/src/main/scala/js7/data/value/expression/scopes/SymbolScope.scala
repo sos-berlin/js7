@@ -3,11 +3,11 @@ package js7.data.value.expression.scopes
 import js7.data.value.Value
 import js7.data.value.expression.Scope
 
-final class SymbolScope(nameToValue: PartialFunction[String, Value])
+final class SymbolScope(nameToSymbolValue: PartialFunction[String, Value])
 extends Scope
 {
-  override def symbolToValue(symbol: String)(implicit scope: Scope) =
-    nameToValue.lift(symbol)
+  override def symbolToValue(symbol: String) =
+    nameToSymbolValue.lift(symbol)
       .map(Right(_))
       .orElse(super.symbolToValue(symbol))
 

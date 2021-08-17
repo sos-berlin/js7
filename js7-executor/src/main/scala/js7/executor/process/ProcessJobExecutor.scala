@@ -7,7 +7,7 @@ import js7.base.problem.Checked
 import js7.data.job.{CommandLine, JobResource, ProcessExecutable}
 import js7.data.order.Outcome
 import js7.data.value.expression.Scope.evalExpressionMap
-import js7.data.value.expression.scopes.NamedValueScope
+import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NullValue, StringValue}
 import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
@@ -34,7 +34,7 @@ trait ProcessJobExecutor extends JobExecutor
       evalEnv(
         jobResource.env,
         scopeForJobResourceEnv |+|
-          NamedValueScope.fromChecked(evalLazilyJobResourceVariables(jobResource)))
+          NameToCheckedValueScope(evalLazilyJobResourceVariables(jobResource)))
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =
       processOrder.jobResources
@@ -78,8 +78,7 @@ trait ProcessJobExecutor extends JobExecutor
     else
       for (defaultArguments <- processOrder.checkedDefaultArguments) yield
         (defaultArguments.view ++
-          processOrder.order.v1CompatibleNamedValues(
-            processOrder.workflow.defaultArguments)
+          processOrder.order.v1CompatibleNamedValues(processOrder.workflow)
         ) .map { case (k, v) => k -> v.toStringValue }
           .collect {
             case (name, Right(v)) => name -> v // ignore toStringValue errors (like ListValue)

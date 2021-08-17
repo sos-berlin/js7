@@ -123,14 +123,14 @@ final class OrderScopesTest extends AnyFreeSpec
       assert(defaultArguments("defaultScheduled") == Right(StringValue("2021-06-17")))
     }
 
-    "Exeutable.arguments, Exeutable.env" - {
+    "Executable.arguments, Executable.env" - {
       lazy val scope = orderScopes.processingOrderScope
 
       "Named values precedence" - {
-        val namedValues = order.namedValues(workflow.defaultArguments)
+        val nameToValue = order.namedValues(workflow).toMap
 
-        "Order.namedValues" in {
-          assert(namedValues == Map(
+        "Order.nameToValue" in {
+          assert(nameToValue == Map(
             "a" -> StringValue("a from order"),
             "b" -> StringValue("b from order"),
             "c" -> StringValue("c from workflow defaults"),
@@ -143,8 +143,7 @@ final class OrderScopesTest extends AnyFreeSpec
         }
 
         "Order.v1CompatibleNamedValues" in {
-          val v1NamedValues = order.v1CompatibleNamedValues(
-            workflow.defaultArguments)
+          val v1NamedValues = order.v1CompatibleNamedValues(workflow)
           assert(v1NamedValues == Map(
             "a" -> StringValue("a from order"),
             "b" -> StringValue("b from order"),
@@ -158,7 +157,7 @@ final class OrderScopesTest extends AnyFreeSpec
         }
 
         def check(name: String, expectedValue: String) = {
-          assert(namedValues(name) == StringValue(expectedValue))
+          assert(nameToValue(name) == StringValue(expectedValue))
           assert(scope.parseAndEval("$" + name) == Right(StringValue(expectedValue)))
         }
 
@@ -187,7 +186,7 @@ final class OrderScopesTest extends AnyFreeSpec
         }
       }
 
-      "Exeutable.arguments, Exeutable.env" in {
+      "Executable.arguments, Executable.env" in {
         // Also for BlockingInternalJob.evalExpression and BlockingInternalJob.namedValue
 
 
@@ -340,8 +339,14 @@ object OrderScopesTest
       jobName -> WorkflowJob(agentPath, ShellScriptExecutable(":"))),
     orderPreparation = OrderPreparation(OrderParameterList(
       // Order parameters are not checked in this test, but defaults are used.
+      OrderParameter("a", StringValue),
       OrderParameter("b", StringConstant("b from workflow defaults")),
-      OrderParameter("c", StringConstant("c from workflow defaults")))))
+      OrderParameter("c", StringConstant("c from workflow defaults")),
+      OrderParameter.Optional("c1", StringValue, NamedValue("c")),
+      OrderParameter("f", StringValue),
+      OrderParameter("orderArgument", StringValue),
+      OrderParameter("timezone", StringValue),
+      OrderParameter("dateTimeFormat", StringValue))))
 
   private val freshOrder = FreshOrder(OrderId("ORDER"), workflow.path,
     Map(

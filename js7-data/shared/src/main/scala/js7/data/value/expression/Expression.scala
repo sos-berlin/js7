@@ -446,7 +446,7 @@ object Expression
         case NamedValue.KeyValue(stringExpr) =>
           for {
             name <- stringExpr.evalToString
-            maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name)))
+            maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name))).sequence
             value <- maybeValue
               .map(Right(_))
               .getOrElse(

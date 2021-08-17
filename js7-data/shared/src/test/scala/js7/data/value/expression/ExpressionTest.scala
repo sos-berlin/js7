@@ -13,6 +13,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
+import scala.collection.MapView
 
 final class ExpressionTest extends AnyFreeSpec
 {
@@ -22,46 +23,52 @@ final class ExpressionTest extends AnyFreeSpec
         import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
         import ValueSearch.{LastExecuted, Name}
 
-        override def symbolToValue(symbol: String)(implicit scope: Scope) =
+        override def symbolToValue(symbol: String) =
           symbol match {
             case "catchCount" => Some(Right(NumberValue(3)))
             case _ => None
           }
 
-        override def findValue(search: ValueSearch)(implicit scope: Scope) =
-          Right(search match {
+        override lazy val nameToCheckedValue =
+          MapView(
+            "ASTRING" -> Right(StringValue("AA")),
+            "ANUMBER" -> Right(NumberValue(7)),
+            "ABOOLEAN" -> Right(BooleanValue(true)),
+            "returnCode" -> Right(NumberValue(1)),
+            "myObject" -> Right(ObjectValue(Map(
+                "myField" -> ObjectValue(Map(
+                  "a" -> NumberValue(1)))))))
+
+        override def findValue(search: ValueSearch) =
+          search match {
             case ValueSearch(ValueSearch.LastOccurred, Name(name)) =>
-              Map(
-                "ASTRING" -> StringValue("AA"),
-                "ANUMBER" -> NumberValue(7),
-                "ABOOLEAN" -> BooleanValue(true),
-                "returnCode" -> NumberValue(1),
-                "myObject" -> ObjectValue(Map(
-                  "myField" -> ObjectValue(Map(
-                    "a" -> NumberValue(1)))))
-              ).get(name)
+              nameToCheckedValue.get(name)
 
             case ValueSearch(LastExecuted(ByPrefix("PREFIX")), Name(name)) =>
-              Map("KEY" -> "LABEL-VALUE").get(name) map StringValue.apply
+              Map("KEY" -> "LABEL-VALUE")
+                .get(name)
+                .map(o => Right(StringValue(o)))
 
             case ValueSearch(LastExecuted(ByLabel(Label("LABEL"))), Name(name)) =>
               Map(
                 "KEY" -> StringValue("LABEL-VALUE"),
                 "returnCode" -> NumberValue(2)
-              ).get(name)
+              ).get(name).map(Right(_))
 
             case ValueSearch(LastExecuted(ByWorkflowJob(WorkflowJob.Name("JOB"))), Name(name)) =>
               Map(
                 "KEY" -> StringValue("JOB-VALUE"),
                 "returnCode" -> NumberValue(3)
-              ).get(name)
+              ).get(name).map(Right(_))
 
             case ValueSearch(ValueSearch.Argument, Name(name)) =>
-              Map("ARG" -> "ARG-VALUE").get(name) map StringValue.apply
+              Map("ARG" -> "ARG-VALUE")
+                .get(name)
+                .map(o => Right(StringValue(o)))
 
             case o =>
               None
-          })
+          }
 
         override def evalFunctionCall(functionCall: FunctionCall)(implicit scope: Scope) =
           functionCall match {

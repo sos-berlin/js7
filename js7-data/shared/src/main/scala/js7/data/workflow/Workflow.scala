@@ -18,7 +18,6 @@ import js7.data.item.{VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.lock.LockPath
 import js7.data.value.expression.PositionSearch
-import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -445,12 +444,6 @@ extends VersionedItem
 
   def orderParameterList: OrderParameterList =
     orderPreparation.parameterList
-
-  def defaultArguments: NamedValues =
-    orderParameterList.defaultArguments
-
-  def defaultArgument(name: String): Option[Value] =
-    orderParameterList.defaultArgument(name)
 
   def withoutSource: Workflow =
     copy(source = None).withoutSourcePos

@@ -1,43 +1,35 @@
 package js7.data.value.expression.scopes
 
-import cats.syntax.traverse._
-import js7.base.problem.Checked
-import js7.base.utils.Lazy
 import js7.data.value.Value
-import js7.data.value.expression.ValueSearch.{LastOccurred, Name}
-import js7.data.value.expression.{Scope, ValueSearch}
+import js7.data.value.expression.Scope
+import js7.data.value.expression.scopes.NamedValueScope.namesToString
+import scala.collection.MapView
 
-final class NamedValueScope(nameToValue: PartialFunction[String, Checked[Value]])
+final class NamedValueScope(nameToValue: MapView[String, Value])
 extends Scope
 {
-  override def findValue(search: ValueSearch)(implicit scope: Scope) =
-    search match {
-      case ValueSearch(LastOccurred, Name(name)) =>
-        nameToValue.lift(name).sequence
+  override def nameToCheckedValue =
+    nameToValue.mapValues(Right(_))
 
-      case _ =>
-        super.findValue(search)
-    }
-
-  override def toString = {
-    val x = nameToValue match {
-      case nameToValue: Map[String, Checked[Value]] =>
-        nameToValue.keys.toVector.sorted.mkString(", ")
-
-      case _ => "?"
-    }
-    s"NamedValueScope($x)"
-  }
+  override def toString = s"NamedValueScope(${namesToString(nameToCheckedValue)})"
 }
 
 object NamedValueScope
 {
-  def apply(nameToValue: PartialFunction[String, Value]): Scope =
-    new NamedValueScope(nameToValue.andThen(Right(_)))
+  def apply(namedValue: (String, Value)*): Scope =
+    apply(namedValue.toMap)
 
-  def fromChecked(nameToValue: PartialFunction[String, Checked[Value]]): Scope =
+  def apply(nameToValue: Map[String, Value]): Scope =
+    apply(nameToValue.view)
+
+  def apply(nameToValue: MapView[String, Value]): Scope =
     new NamedValueScope(nameToValue)
 
-  def fromLazy(nameToValue: Map[String, Lazy[Checked[Value]]]): Scope =
-    new NamedValueScope(nameToValue.andThen(_.apply()))
+  private[scopes] def namesToString[V](nameToV: MapView[String, V]) =
+    nameToV match {
+      case nameToValue: Map[String, V] =>
+        nameToValue.keys.toVector.sorted.mkString(", ")
+
+      case _ => "?"
+    }
 }

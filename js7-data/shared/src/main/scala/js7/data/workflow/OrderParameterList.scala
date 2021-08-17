@@ -11,11 +11,12 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.JobResourcePath
+import js7.data.order.Order
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
 import js7.data.workflow.OrderParameterList._
-import scala.collection.View
+import scala.collection.{MapView, View}
 
 final case class OrderParameterList private(
   nameToParameter: Map[String, OrderParameter],
@@ -94,18 +95,34 @@ final case class OrderParameterList private(
           Checked.unit
     }
 
-  def defaultArgument(name: String): Option[Value] =
+  def defaultArgumentExpression(name: String): Option[Expression] =
     nameToParameter.get(name)
       .collect {
-        case OrderParameter.HasValue(value) => value
+        case OrderParameter.HasExpression(expr) => expr
       }
 
-  lazy val defaultArguments: NamedValues =
+  lazy val nameToExpression: MapView[String, Expression] =
     nameToParameter.view
-      .collect {
-        case (name, OrderParameter.HasValue(value)) => name -> value
+      .collectValues {
+        case OrderParameter.HasExpression(expr) => expr
       }
-      .toMap
+
+  def orderArguments(order: Order[Order.State]): MapView[String, Value] =
+    order.arguments.view
+      .orElseMapView(nameToValue(order))
+
+  private def nameToValue(order: Order[Order.State]): MapView[String, Value] =
+    orderArgumentNameToValue(order.arguments)
+
+  private[workflow] def orderArgumentNameToValue(orderArguments: Map[String, Value])
+  : MapView[String, Value] =
+    orderArguments
+      .view
+      .orElseMapView(nameToExpression.collectValues {
+        case const: Expression.Constant => const.toValue
+        // Expressions must have been evaluated with OrderAdded event.
+        // The resulting values are expected to be in Order.arguments.
+      })
 }
 
 object OrderParameterList

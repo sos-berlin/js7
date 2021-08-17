@@ -7,7 +7,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order
 import js7.data.value.Value
-import js7.data.value.expression.scopes.{NamedValueScope, ProcessingOrderScopes}
+import js7.data.value.expression.scopes.{NameToCheckedValueScope, ProcessingOrderScopes}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.workflow.Workflow
 import scala.collection.MapView
@@ -35,5 +35,5 @@ extends ProcessingOrderScopes
 
   lazy val scope: Scope =
     processingOrderScope |+|
-      NamedValueScope.fromChecked(nameToLazyDefaultArgument)
+      NameToCheckedValueScope(nameToLazyDefaultArgument)
 }
