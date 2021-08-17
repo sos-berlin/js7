@@ -13,7 +13,6 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters._
-import js7.common.akkahttp.web.session.SessionRegister._
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -34,7 +33,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
       deleteIfExists(file)
       createFile(file, operatingSystem.secretFileAttributes: _*)
       file := sessionToken.secret.string
-      logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
+      //logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
       systemSessionPromise.completeWith(sessionFuture(sessionToken, Right(user)))
       sessionToken
     }

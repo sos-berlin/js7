@@ -41,7 +41,7 @@ final class ProcessDriver(
     startProcess(orderId, env, stdObservers)
       .flatMap {
         case Left(problem) => Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
-        case Right(richProcess) => outcomeOf(richProcess).start
+        case Right(richProcess) => outcomeOf(orderId, richProcess).start
       }
 
   private def startProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
@@ -70,18 +70,18 @@ final class ProcessDriver(
             .lock(
               startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
             .map(_.map { richProcess =>
-              logger.info(s"Process $richProcess started for $orderId, ${conf.jobKey}: ${conf.commandLine}")
+              logger.info(s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
               terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
               richProcessOnce := richProcess
             }))
     }
 
-  private def outcomeOf(richProcess: RichProcess): Task[Outcome.Completed] =
+  private def outcomeOf(orderId: OrderId, richProcess: RichProcess): Task[Outcome.Completed] =
     richProcess
       .terminated
       .materialize.flatMap { tried =>
         val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
-        logger.info(s"Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
+        logger.info(s"$orderId: Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
         Task.fromTry(tried)
       }
       .map { returnCode =>
