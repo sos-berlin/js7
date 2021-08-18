@@ -62,7 +62,7 @@ final class IfExecutorTest extends AnyFreeSpec {
   }
 
   "Naned value comparison" in {
-    val expr = Equal(NamedValue.last("A"), StringConstant("AA"))
+    val expr = Equal(NamedValue("A"), StringConstant("AA"))
     assert(executorService.nextPosition(ifThenElse(expr), AOrder, stateView) == Right(Some(Position(7) / Then % 0)))
     assert(executorService.nextPosition(ifThenElse(expr), BOrder, stateView) == Right(Some(Position(7) / Else % 0)))
   }

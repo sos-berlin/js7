@@ -119,8 +119,8 @@ object AddOrderTest
     labeledInstructions = Vector(
       Execute.Anonymous(WorkflowJob(agentPath,
         InternalExecutable(classOf[EchoJob].getName, arguments = Map(
-            "STRING" -> NamedValue.last("myString"),
-            "NUMBER" -> NamedValue.last("myNumber")))))
+            "STRING" -> NamedValue("myString"),
+            "NUMBER" -> NamedValue("myNumber")))))
     ),
     orderPreparation = OrderPreparation(OrderParameterList(
       stringParameter,

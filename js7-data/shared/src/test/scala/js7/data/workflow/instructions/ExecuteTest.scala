@@ -65,7 +65,7 @@ final class ExecuteTest extends AnyFreeSpec
             AgentPath("AGENT"),
             ShellScriptExecutable("SCRIPT",
               Map(
-                "ENV-VAR" -> NamedValue.last("VAR"),
+                "ENV-VAR" -> NamedValue("VAR"),
                 "NUMBER" -> NumericConstant(7))),
             Map("ARG" -> StringConstant("VALUE"))),
           Map("ARG" -> NumericConstant(1)),

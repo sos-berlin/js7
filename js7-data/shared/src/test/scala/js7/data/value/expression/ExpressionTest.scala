@@ -145,11 +145,11 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval("$ASTRING",
       result = "AA",
-      Right(NamedValue.last("ASTRING")))
+      Right(NamedValue("ASTRING")))
 
     testEval("${ASTRING}",
       result = "AA",
-      Right(NamedValue.last("ASTRING")))
+      Right(NamedValue("ASTRING")))
 
     testEval("JobResource:myJobResource:VARIABLE",
       result = "myJobResource,VARIABLE,value",
@@ -169,23 +169,23 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval("$UNKNOWN",
       result = Left(Problem("No such named value: UNKNOWN")),
-      Right(NamedValue.last("UNKNOWN")))
+      Right(NamedValue("UNKNOWN")))
 
     testEval("""variable("ASTRING")""",
       result = "AA",
-      Right(NamedValue.last("ASTRING")))
+      Right(NamedValue("ASTRING")))
 
     testEval("""variable(key="ASTRING")""",
       result = "AA",
-      Right(NamedValue.last("ASTRING")))
+      Right(NamedValue("ASTRING")))
 
     testEval("""variable("UNKNOWN")""",
       result = Left(Problem("No such named value: UNKNOWN")),
-      Right(NamedValue.last("UNKNOWN")))
+      Right(NamedValue("UNKNOWN")))
 
     testEval("""variable("UNKNOWN", default="DEFAULT")""",
       result = "DEFAULT",
-      Right(NamedValue.last("UNKNOWN", StringConstant("DEFAULT"))))
+      Right(NamedValue("UNKNOWN", StringConstant("DEFAULT"))))
 
     testEval("""variable(job=JOB, key="UNKNOWN", default="DEFAULT")""",
       result = "DEFAULT",
@@ -217,7 +217,7 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval("""toNumber($ASTRING)""",
       result = Left(Problem("Not a valid number: AA")),
-      Right(ToNumber(NamedValue.last("ASTRING"))))
+      Right(ToNumber(NamedValue("ASTRING"))))
 
     testEval("""toNumber('123')""",
       result = 123,
@@ -225,36 +225,36 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval("""$ASTRING.toNumber""",
       result = Left(Problem("Not a valid number: AA")),
-      Right(ToNumber(NamedValue.last("ASTRING"))))
+      Right(ToNumber(NamedValue("ASTRING"))))
 
     testEval("""$ANUMBER""",
       result = 7,
-      Right(NamedValue.last("ANUMBER")))
+      Right(NamedValue("ANUMBER")))
 
     testEval("""$myObject""",
       result = Right(ObjectValue(Map("myField" -> ObjectValue(Map("a" -> NumberValue(1)))))),
-      Right(NamedValue.last("myObject")))
+      Right(NamedValue("myObject")))
 
     testEval("""$myObject.myField.a""",
       result = 1,
-      Right(DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))
+      Right(DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))
 
     testEval(""""$($myObject.myField.a)"""",
       result = "1",
       Right(InterpolatedString(List(
-        DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))))
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))))
 
     testEval(""""$ANUMBER-$($myObject.myField.a)"""",
       result = "7-1",
       Right(InterpolatedString(List(
-        NamedValue.last("ANUMBER"),
+        NamedValue("ANUMBER"),
         StringConstant("-"),
-        DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))))
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))))
 
     testEval(""""${myObject.myField.a}"""",
       result = "1",
       Right(InterpolatedString(List(
-        DotExpression(DotExpression(NamedValue.last("myObject"), "myField"), "a")))))
+        DotExpression(DotExpression(NamedValue("myObject"), "myField"), "a")))))
 
     testEval("""toBoolean('true')""",
       result = true,
@@ -289,7 +289,7 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval(""" variable("ABOOLEAN")""",
       result = true,
-      Right(NamedValue.last("ABOOLEAN")))
+      Right(NamedValue("ABOOLEAN")))
 
     locally {
       val longString =
@@ -405,7 +405,7 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval(""" variable("ASTRING") matches "A+" """,
       result = true,
-      Right(Matches(NamedValue.last("ASTRING"), StringConstant("A+"))))
+      Right(Matches(NamedValue("ASTRING"), StringConstant("A+"))))
 
     testEval("!false",
       result = true,
@@ -533,7 +533,7 @@ final class ExpressionTest extends AnyFreeSpec
     }
 
     "mkString" in {
-      assert(MkString(ListExpression(StringConstant("»") :: NamedValue.last("ASTRING") :: NumericConstant(7) :: Nil)).eval
+      assert(MkString(ListExpression(StringConstant("»") :: NamedValue("ASTRING") :: NumericConstant(7) :: Nil)).eval
         == Right(StringValue("»AA7")))
     }
   }
@@ -671,7 +671,7 @@ final class ExpressionTest extends AnyFreeSpec
       Right(Equal(NumericConstant(1), NumericConstant(2))))
 
     "Variables cannot be used" in {
-      assert((NamedValue.last("VARIABLE")).eval == Left(Problem("No such named value: VARIABLE")))
+      assert((NamedValue("VARIABLE")).eval == Left(Problem("No such named value: VARIABLE")))
     }
   }
 

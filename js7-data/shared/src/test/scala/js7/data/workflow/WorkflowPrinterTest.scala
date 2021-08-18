@@ -147,7 +147,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
           If(
             Or(
               In(LastReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(NamedValue.last("KEY"), StringConstant("VALUE"))),
+              Equal(NamedValue("KEY"), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE"))))))),
       """define workflow {

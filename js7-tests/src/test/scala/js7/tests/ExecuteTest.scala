@@ -100,7 +100,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue.last("orderValue"))))),
+        env = Map("myExitCode" -> NamedValue("orderValue"))))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
@@ -109,7 +109,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue.last("defaultArg"))),
+        env = Map("myExitCode" -> NamedValue("defaultArg"))),
       defaultArguments = Map("defaultArg" -> NumericConstant(44)))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
@@ -118,7 +118,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue.last("NAME"))),
+        env = Map("myExitCode" -> NamedValue("NAME"))),
       defaultArguments = Map("NAME" -> NumericConstant(99)))),  // ignored
     orderArguments = Map("NAME" -> NumberValue(44)),  // has priority
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
@@ -151,7 +151,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       CommandLineExecutable(
         CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
-        env = Map("myExitCode" -> NamedValue.last("orderValue"))))),
+        env = Map("myExitCode" -> NamedValue("orderValue"))))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
@@ -169,7 +169,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       agentPath,
       ShellScriptExecutable(
         returnCodeScript("myExitCode"),
-        env = Map("myExitCode" -> NamedValue.last("UNKNOWN"))))),
+        env = Map("myExitCode" -> NamedValue("UNKNOWN"))))),
     expectedOutcome = Outcome.Disrupted(Problem("No such named value: UNKNOWN")))
 
   addExecuteTest(
@@ -178,7 +178,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         agentPath,
         ShellScriptExecutable(
           returnCodeScript("myExitCode"),
-          env = Map("myExitCode" -> NamedValue.last("myExitCode")),
+          env = Map("myExitCode" -> NamedValue("myExitCode")),
           returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1)))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
     expectedOutcome = Outcome.Succeeded.rc(1))
@@ -186,7 +186,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Argument precedence" in {
     val executable = ShellScriptExecutable(
       returnCodeScript("myExitCode"),
-      env = Map("myExitCode" -> NamedValue.last("myExitCode")))
+      env = Map("myExitCode" -> NamedValue("myExitCode")))
     testWithWorkflow(
       Workflow(WorkflowPath.Anonymous,
         Vector(
@@ -280,7 +280,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         agentPath,
         InternalExecutable(
           classOf[TestInternalJob].getName,
-          arguments = Map("ARG" -> NamedValue.last("ARG"))))),
+          arguments = Map("ARG" -> NamedValue("ARG"))))),
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 

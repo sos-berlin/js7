@@ -285,7 +285,7 @@ object CancelOrdersTest
        |  done
        |done
        |""".stripMargin,
-    Map("SLEEP" -> NamedValue.last("sleep")))
+    Map("SLEEP" -> NamedValue("sleep")))
   private val agentPath = AgentPath("AGENT")
   private val versionId = VersionId("INITIAL")
 

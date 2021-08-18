@@ -132,9 +132,9 @@ object ExpressionParser
     //def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
     def curlyName = P[Expression](
       ("{" ~~/ identifier ~~ "}"./)
-        .map(NamedValue.last(_)))
+        .map(NamedValue(_)))
 
-    "$" ~~ ((identifier | digits/*regex group*/).map(NamedValue.last(_)) | curlyName)
+    "$" ~~ ((identifier | digits/*regex group*/).map(NamedValue(_)) | curlyName)
   }
 
   private def jobResourceVariable[_: P] = P[JobResourceVariable](

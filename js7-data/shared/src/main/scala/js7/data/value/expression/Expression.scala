@@ -514,11 +514,13 @@ object Expression
   }
   object NamedValue {
     def apply(name: String): NamedValue =
-      last(name)
+      NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name))
 
-    def last(name: String) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name))
-    def last(name: String, default: Expression) = NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name), Some(default))
-    def argument(name: String) = NamedValue(NamedValue.Argument, NamedValue.KeyValue(name))
+    def apply(name: String, default: Expression): NamedValue =
+      NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name), Some(default))
+
+    def argument(name: String) =
+      NamedValue(NamedValue.Argument, NamedValue.KeyValue(name))
 
     private[Expression] def isSimpleName(name: String) = name.nonEmpty && isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
     private[expression] def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
@@ -579,7 +581,7 @@ object Expression
     }
   }
 
-  val LastReturnCode: NamedValue = NamedValue.last("returnCode")
+  val LastReturnCode: NamedValue = NamedValue("returnCode")
 
   final case object OrderCatchCount extends NumericExpression {
     def precedence = Precedence.Factor

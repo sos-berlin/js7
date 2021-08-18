@@ -28,7 +28,7 @@ final class ExecutableTest extends AnyFreeSpec
         RelativePathExecutable(
           "EXECUTABLE",
           env = Map(
-            "ENV-VAR" -> NamedValue.last("VAR"),
+            "ENV-VAR" -> NamedValue("VAR"),
             "NUMBER" -> Add(NumericConstant(1), NumericConstant(2))),
           v1Compatible = true),
         json"""
@@ -58,7 +58,7 @@ final class ExecutableTest extends AnyFreeSpec
         AbsolutePathExecutable(
           "/EXECUTABLE",
           env = Map(
-            "ENV-VAR" -> NamedValue.last("VAR"),
+            "ENV-VAR" -> NamedValue("VAR"),
             "NUMBER" -> NumericConstant(7)),
           v1Compatible = true),
         json"""
@@ -84,10 +84,10 @@ final class ExecutableTest extends AnyFreeSpec
               StringConstant("ARG-1"),
               StringConstant("ARG 2"),
               StringConstant("ARG 3"),
-              NamedValue.last("ARG4"),
-              NamedValue.last("ARG5"))),
+              NamedValue("ARG4"),
+              NamedValue("ARG5"))),
           env = Map(
-            "ENV-VAR" -> NamedValue.last("VAR"),
+            "ENV-VAR" -> NamedValue("VAR"),
             "NUMBER" -> Add(NumericConstant(1), NumericConstant(2)))),
         json"""
         {
@@ -115,7 +115,7 @@ final class ExecutableTest extends AnyFreeSpec
         ShellScriptExecutable(
           "SCRIPT",
           env = Map(
-            "ENV-VAR" -> NamedValue.last("VAR"),
+            "ENV-VAR" -> NamedValue("VAR"),
             "NUMBER" -> NumericConstant(7)),
           login = Some(KeyLogin("CREDENTIAL-KEY", withUserProfile = true)),
           v1Compatible = true),
@@ -144,7 +144,7 @@ final class ExecutableTest extends AnyFreeSpec
             "ARG" -> StringConstant("An Argument for the instantiated class"),
             "NUMBER" -> NumericConstant(3)),
           arguments = Map(
-            "MY-ARG" -> NamedValue.last("ARG"),
+            "MY-ARG" -> NamedValue("ARG"),
             "NUMBER" -> NumericConstant(7))),
       json"""
         {

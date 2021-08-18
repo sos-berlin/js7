@@ -20,20 +20,20 @@ final class ExpressionParserTest extends AnyFreeSpec
   "NamedValue" - {
     "$ with impossible names" in {
       assert(parse("$var/1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue.last("var"), 4))
+        Parsed.Success(NamedValue("var"), 4))
       assert(parse("$var.1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue.last("var"), 4))
+        Parsed.Success(NamedValue("var"), 4))
       assert(parse("$var-1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue.last("var"), 4))
+        Parsed.Success(NamedValue("var"), 4))
       assert(parse("$var_1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue.last("var_1"), 6))
+        Parsed.Success(NamedValue("var_1"), 6))
     }
 
-    testExpression("""$key""", NamedValue.last("key"))
-    testExpression("""$under_line""", NamedValue.last("under_line"))
-    testExpression("""$Schlüssel""", NamedValue.last("Schlüssel"))
-    testExpression("""$clé""", NamedValue.last("clé"))
-    testExpression("""$A""", NamedValue.last("A"))
+    testExpression("""$key""", NamedValue("key"))
+    testExpression("""$under_line""", NamedValue("under_line"))
+    testExpression("""$Schlüssel""", NamedValue("Schlüssel"))
+    testExpression("""$clé""", NamedValue("clé"))
+    testExpression("""$A""", NamedValue("A"))
     testExpression("""${SOME_KEY}""", NamedValue("SOME_KEY"))
     testExpression("""$`weird name, with dot., and comma`""", NamedValue("weird name, with dot., and comma"))
     testExpression("""${`weird name, with dot., and comma`}""", NamedValue("weird name, with dot., and comma"))
@@ -45,9 +45,9 @@ final class ExpressionParserTest extends AnyFreeSpec
 
     "variable()" in {
       assert(checkedParse("""variable("clé")""", expression(_)) ==
-        Right(NamedValue.last("clé")))
+        Right(NamedValue("clé")))
       assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression(_)) ==
-        Right(NamedValue.last("clé", StringConstant("DEFAULT"))))
+        Right(NamedValue("clé", StringConstant("DEFAULT"))))
       assert(checkedParse("""variable(key="clé", label=LABEL)""", expression(_)) ==
         Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("clé"))))
       assert(checkedParse("""variable(key="clé", job=JOB)""", expression(_)) ==
@@ -198,9 +198,9 @@ final class ExpressionParserTest extends AnyFreeSpec
     testBooleanExpression("$returnCode > 7",
       GreaterThan(LastReturnCode, NumericConstant(7)))
     testBooleanExpression("""variable("A") == "X"""",
-      Equal(NamedValue.last("A"), StringConstant("X")))
+      Equal(NamedValue("A"), StringConstant("X")))
     testBooleanExpression("""$A == "X"""",
-      Equal(NamedValue.last("A"), StringConstant("X")))
+      Equal(NamedValue("A"), StringConstant("X")))
 
     testBooleanExpression("$returnCode > 0 && $returnCode < 9",
       And(
@@ -224,7 +224,7 @@ final class ExpressionParserTest extends AnyFreeSpec
         And(
           GreaterOrEqual(LastReturnCode, NumericConstant(0)),
           LessOrEqual(LastReturnCode, NumericConstant(9))),
-        Equal(NamedValue.last("result"), StringConstant("OK"))))
+        Equal(NamedValue("result"), StringConstant("OK"))))
 
     testBooleanExpression("""$returnCode in [0, 3, 50]""",
       In(
@@ -240,7 +240,7 @@ final class ExpressionParserTest extends AnyFreeSpec
           LastReturnCode,
           ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))),
         Equal(
-          NamedValue.last("result"),
+          NamedValue("result"),
           StringConstant("1"))))
 
     testBooleanExpression("""$returnCode==$expected.toNumber||!($result=="1")||true&&$returnCode>0""",
@@ -248,9 +248,9 @@ final class ExpressionParserTest extends AnyFreeSpec
         Or(
           Equal(
             LastReturnCode,
-            ToNumber(NamedValue.last("expected"))),
+            ToNumber(NamedValue("expected"))),
           Not(Equal(
-              NamedValue.last("result"),
+              NamedValue("result"),
               StringConstant("1")))),
         And(
           BooleanConstant(true),
@@ -259,7 +259,7 @@ final class ExpressionParserTest extends AnyFreeSpec
             NumericConstant(0)))))
 
     testExpression("""["STRING", $NAME, 7].mkString""",
-      MkString(ListExpression(StringConstant("STRING") :: NamedValue.last("NAME") :: NumericConstant(7) :: Nil)))
+      MkString(ListExpression(StringConstant("STRING") :: NamedValue("NAME") :: NumericConstant(7) :: Nil)))
   }
 
   testExpression("1 + 2+3",
@@ -273,7 +273,7 @@ final class ExpressionParserTest extends AnyFreeSpec
 
   testBooleanExpression("""$result matches 'A.*'""",
     Matches(
-      NamedValue.last("result"),
+      NamedValue("result"),
       StringConstant("A.*")))
 
   "FunctionCall" - {

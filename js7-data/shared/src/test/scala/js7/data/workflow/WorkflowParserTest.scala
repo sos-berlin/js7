@@ -173,7 +173,7 @@ final class WorkflowParserTest extends AnyFreeSpec
                 "my/executable",
                 env = Map(
                   "A" -> NumericConstant(1),
-                  "B" -> NamedValue.last("b")),
+                  "B" -> NamedValue("b")),
                 returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))))))
   }
 
@@ -254,7 +254,7 @@ final class WorkflowParserTest extends AnyFreeSpec
           If(
             Or(
               In(LastReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
-              Equal(NamedValue.last("KEY"), StringConstant("VALUE"))),
+              Equal(NamedValue("KEY"), StringConstant("VALUE"))),
             Workflow.of(
               Execute.Anonymous(
                 WorkflowJob(AgentPath("AGENT"), PathExecutable("/THEN")),
