@@ -438,7 +438,6 @@ object Expression
       val w = where match {
         case NamedValue.Argument => ValueSearch.Argument
         case NamedValue.LastOccurred => ValueSearch.LastOccurred
-        case NamedValue.LastOccurredByPrefix(prefix) => ValueSearch.LastExecuted(PositionSearch.ByPrefix(prefix))
         case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
         case NamedValue.LastExecutedJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
       }
@@ -457,8 +456,6 @@ object Expression
                         Problem(s"No such order argument: $name")
                       case NamedValue.LastOccurred =>
                         Problem(s"No such named value: $name")
-                      case NamedValue.LastOccurredByPrefix(prefix) =>
-                        Problem(s"Order has not passed a position '$prefix'")
                       case NamedValue.ByLabel(Label(label)) =>
                         Problem(s"Workflow instruction at label $label did not return a named value '$name'")
                       case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) =>
@@ -492,8 +489,6 @@ object Expression
         where match {
           case NamedValue.Argument =>
           case NamedValue.LastOccurred =>
-          case NamedValue.LastOccurredByPrefix(prefix) =>
-            args += "prefix=" + prefix   // Not used
 
           case NamedValue.LastExecutedJob(jobName) =>
             sb.clear()
@@ -531,7 +526,6 @@ object Expression
 
     sealed trait Where
     case object LastOccurred extends Where
-    final case class LastOccurredByPrefix(string: String) extends Where
     final case class LastExecutedJob(jobName: WorkflowJob.Name) extends Where
     final case class ByLabel(label: Label) extends Where
     case object Argument extends Where
