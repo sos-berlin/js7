@@ -161,11 +161,11 @@ final class ExpressionTest extends AnyFreeSpec
 
     //testEval("${label::LABEL.KEY}",
     //  result = "LABEL-VALUE",
-    //  Right(NamedValue(NamedValue.ByLabel(Label("LABEL")), NamedValue.KeyValue(StringConstant("KEY")))))
+    //  Right(NamedValue(NamedValue.ByLabel(Label("LABEL")), StringConstant("KEY"))))
     //
     //testEval("${job::JOB.KEY}",
     //  result = "JOB-VALUE",
-    //  Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue(StringConstant("KEY")))))
+    //  Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("KEY"))))
 
     testEval("$UNKNOWN",
       result = Left(Problem("No such named value: UNKNOWN")),
@@ -189,31 +189,31 @@ final class ExpressionTest extends AnyFreeSpec
 
     testEval("""variable(job=JOB, key="UNKNOWN", default="DEFAULT")""",
       result = "DEFAULT",
-      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
 
     testEval("""variable(label=LABEL, key="UNKNOWN", default="DEFAULT")""",
       result = "DEFAULT",
-      Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
 
     testEval("""argument("ARG")""",
       result = "ARG-VALUE",
-      Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("ARG"))))
+      Right(NamedValue(NamedValue.Argument, StringConstant("ARG"))))
 
     testEval("""argument(key="ARG")""",
       result = "ARG-VALUE",
-      Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("ARG"))))
+      Right(NamedValue(NamedValue.Argument, StringConstant("ARG"))))
 
     testEval("""argument("UNKNOWN", default="DEFAULT")""",
       result = "DEFAULT",
-      Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("UNKNOWN"), Some(StringConstant("DEFAULT")))))
+      Right(NamedValue(NamedValue.Argument, StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
 
     testEval("""variable(key="returnCode", label=LABEL)""",
       result = 2,
-      Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("returnCode"))))
+      Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("returnCode"))))
 
     testEval("""variable(key="returnCode", job=JOB)""",
       result = 3,
-      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("returnCode"))))
+      Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("returnCode"))))
 
     testEval("""toNumber($ASTRING)""",
       result = Left(Problem("Not a valid number: AA")),

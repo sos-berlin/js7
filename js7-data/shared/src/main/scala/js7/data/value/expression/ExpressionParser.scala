@@ -122,13 +122,13 @@ object ExpressionParser
 
   def dollarNamedValue[_: P] = P[Expression] {
     //def arg = P[NamedValue](("arg::" ~~/ identifier)
-    //  .map(key => NamedValue(NamedValue.Argument, NamedValue.KeyValue(StringConstant(key)))))
+    //  .map(key => NamedValue(NamedValue.Argument, StringConstant(key))))
     //def byLabel = P[NamedValue](("label::" ~~/ identifier ~~ "." ~~/ identifier)
-    //  .map { case (jobName, key) => NamedValue(NamedValue.ByLabel(Label(jobName)), NamedValue.KeyValue(StringConstant(key))) })
+    //  .map { case (jobName, key) => NamedValue(NamedValue.ByLabel(Label(jobName)), StringConstant(key)) })
     //def byJob = P[NamedValue](("job::" ~~/ identifier ~~ "." ~~/ identifier)
-    //  .map { case (jobName, key) => NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)), NamedValue.KeyValue(StringConstant(key))) })
+    //  .map { case (jobName, key) => NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)), StringConstant(key)) })
     //def byPrefix = P[NamedValue]((identifier ~~ "." ~~/ identifier)
-    //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), NamedValue.KeyValue(StringConstant(key))) })
+    //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), StringConstant(key)) })
     //def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
     def curlyName = P[Expression](
       ("{" ~~/ identifier ~~ "}"./)
@@ -152,7 +152,7 @@ object ExpressionParser
           kv <- keyValues(keyValue("default", expression) | keyValue("key", expression) | keyValue("", expression))
           key <- kv.oneOf[Expression]("key", "").map(_._2)
           default <- kv.get[Expression]("default")
-        } yield NamedValue(NamedValue.Argument, NamedValue.KeyValue(key), default)))
+        } yield NamedValue(NamedValue.Argument, key, default)))
 
   private def variableFunctionCall[_: P] = P[NamedValue](
     keyword("variable") ~ w ~ inParentheses(
@@ -161,7 +161,7 @@ object ExpressionParser
         where <- kv.oneOfOr[NamedValue.Where](Set("label", "job"), NamedValue.LastOccurred)
         key <- kv.oneOf[Expression]("key", "").map(_._2)
         default <- kv.get[Expression]("default")
-      } yield NamedValue(where, NamedValue.KeyValue(key), default)))
+      } yield NamedValue(where, key, default)))
 
   private def functionCall[_: P] = P[Expression](
     (identifier ~/ w ~/ inParentheses(commaSequence((identifier ~ w ~ "=").? ~ w ~ expression)))

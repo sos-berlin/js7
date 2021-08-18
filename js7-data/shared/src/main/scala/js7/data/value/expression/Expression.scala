@@ -427,7 +427,7 @@ object Expression
       ValuePrinter.quoteString(string)
   }
 
-  final case class NamedValue(where: NamedValue.Where, what: NamedValue.What, default: Option[Expression] = None)
+  final case class NamedValue(where: NamedValue.Where, nameExpr: Expression, default: Option[Expression] = None)
   extends Expression {
     import NamedValue._
     def precedence = Precedence.Factor
@@ -441,39 +441,36 @@ object Expression
         case NamedValue.ByLabel(label) => ValueSearch.LastExecuted(PositionSearch.ByLabel(label))
         case NamedValue.LastExecutedJob(jobName) => ValueSearch.LastExecuted(PositionSearch.ByWorkflowJob(jobName))
       }
-      what match {
-        case NamedValue.KeyValue(stringExpr) =>
-          for {
-            name <- stringExpr.evalToString
-            maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name))).sequence
-            value <- maybeValue
-              .map(Right(_))
-              .getOrElse(
-                default.map(_.eval.flatMap(_.toStringValue))
-                  .toChecked(
-                    where match {
-                      case NamedValue.Argument =>
-                        Problem(s"No such order argument: $name")
-                      case NamedValue.LastOccurred =>
-                        Problem(s"No such named value: $name")
-                      case NamedValue.ByLabel(Label(label)) =>
-                        Problem(s"Workflow instruction at label $label did not return a named value '$name'")
-                      case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) =>
-                        Problem(s"Last execution of job '$jobName' did not return a named value '$name'")
-                    })
-                  .flatten)
-          } yield value
-      }
+      for {
+        name <- nameExpr.evalToString
+        maybeValue <- scope.findValue(ValueSearch(w, ValueSearch.Name(name))).sequence
+        value <- maybeValue
+          .map(Right(_))
+          .getOrElse(
+            default.map(_.eval.flatMap(_.toStringValue))
+              .toChecked(
+                where match {
+                  case NamedValue.Argument =>
+                    Problem(s"No such order argument: $name")
+                  case NamedValue.LastOccurred =>
+                    Problem(s"No such named value: $name")
+                  case NamedValue.ByLabel(Label(label)) =>
+                    Problem(s"Workflow instruction at label $label did not return a named value '$name'")
+                  case NamedValue.LastExecutedJob(WorkflowJob.Name(jobName)) =>
+                    Problem(s"Last execution of job '$jobName' did not return a named value '$name'")
+                })
+              .flatten)
+      } yield value
     }
 
-    override def toString = (where, what, default) match {
-      case (LastOccurred, KeyValue(StringConstant(key)), None) if !key.contains('`') =>
+    override def toString = (where, nameExpr, default) match {
+      case (LastOccurred, StringConstant(key), None) if !key.contains('`') =>
         if (isSimpleName(key) || key.forall(c => c >= '0' && c <= '9'))
           s"$$$key"
         else
           s"$$`$key`"
 
-      case (LastOccurred, KeyValue(expression), None) => s"variable($expression)"
+      case (LastOccurred, nameExpr, None) => s"variable($nameExpr)"
 
       //case (Argument, NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${arg::$key}"
       //case (LastOccurredByPrefix(prefix), NamedValue(StringConstant(key)), None) if isIdentifier(key) => s"$${$prefix.$key}"
@@ -482,10 +479,7 @@ object Expression
       case _ =>
         val args = mutable.Buffer.empty[String]
         lazy val sb = new StringBuilder
-        what match {
-          case NamedValue.KeyValue(expr) => args += s"key=$expr"
-          case _ =>
-        }
+        args += s"key=$nameExpr"
         where match {
           case NamedValue.Argument =>
           case NamedValue.LastOccurred =>
@@ -503,24 +497,24 @@ object Expression
             args += sb.toString
         }
         for (d <- default) args += "default=" + d.toString
-        (where, what) match {
-          case (NamedValue.Argument, NamedValue.KeyValue(_)) =>
+        (where, nameExpr) match {
+          case (NamedValue.Argument, _) =>
             s"argument(${args mkString ", "})"
 
-          case (_, NamedValue.KeyValue(_)) =>
+          case _ =>
             s"variable(${args mkString ", "})"
         }
     }
   }
   object NamedValue {
     def apply(name: String): NamedValue =
-      NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name))
+      NamedValue(NamedValue.LastOccurred, StringConstant(name))
 
     def apply(name: String, default: Expression): NamedValue =
-      NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(name), Some(default))
+      NamedValue(NamedValue.LastOccurred, StringConstant(name), Some(default))
 
     def argument(name: String) =
-      NamedValue(NamedValue.Argument, NamedValue.KeyValue(name))
+      NamedValue(NamedValue.Argument, StringConstant(name))
 
     private[Expression] def isSimpleName(name: String) = name.nonEmpty && isSimpleNameStart(name.head) && name.tail.forall(isSimpleNamePart)
     private[expression] def isSimpleNameStart(c: Char) = isUnicodeIdentifierStart(c)
@@ -531,12 +525,6 @@ object Expression
     final case class LastExecutedJob(jobName: WorkflowJob.Name) extends Where
     final case class ByLabel(label: Label) extends Where
     case object Argument extends Where
-
-    sealed trait What
-    final case class KeyValue(key: Expression) extends What
-    object KeyValue {
-      def apply(key: String) = new KeyValue(StringConstant(key))
-    }
   }
 
   final case class FunctionCall(name: String, arguments: Seq[Argument] = Nil)
@@ -639,7 +627,7 @@ object Expression
           case StringConstant(string) :: _ =>
             appendQuotedContent(sb, string)
 
-          case NamedValue(NamedValue.LastOccurred, NamedValue.KeyValue(StringConstant(name)), None) :: next =>
+          case NamedValue(NamedValue.LastOccurred, StringConstant(name), None) :: next =>
             sb.append('$')
             next match {
               case StringConstant(next) :: Nil if next.headOption.forall(isIdentifierPart) =>

@@ -38,10 +38,10 @@ final class ExpressionParserTest extends AnyFreeSpec
     testExpression("""$`weird name, with dot., and comma`""", NamedValue("weird name, with dot., and comma"))
     testExpression("""${`weird name, with dot., and comma`}""", NamedValue("weird name, with dot., and comma"))
     testExpression(""""${`weird name, with dot., and comma`}"""", InterpolatedString(List(NamedValue("weird name, with dot., and comma"))))
-    //testExpression("""${arg::SOME-KEY}""", NamedValue(NamedValue.Argument, NamedValue.KeyValue("SOME-KEY")))
-    //testExpression("""${label::LABEL.SOME-KEY}""", NamedValue(NamedValue.ByLabel(Label("LABEL")), NamedValue.KeyValue("SOME-KEY")))
-    //testExpression("""${job::JOB.SOME-KEY}""", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("SOME-KEY")))
-    //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), NamedValue.KeyValue("SOME-KEY")))
+    //testExpression("""${arg::SOME-KEY}""", NamedValue(NamedValue.Argument, StringConstant("SOME-KEY")))
+    //testExpression("""${label::LABEL.SOME-KEY}""", NamedValue(NamedValue.ByLabel(Label("LABEL")), StringConstant("SOME-KEY")))
+    //testExpression("""${job::JOB.SOME-KEY}""", NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("SOME-KEY")))
+    //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), StringConstant("SOME-KEY")))
 
     "variable()" in {
       assert(checkedParse("""variable("clé")""", expression(_)) ==
@@ -49,16 +49,16 @@ final class ExpressionParserTest extends AnyFreeSpec
       assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression(_)) ==
         Right(NamedValue("clé", StringConstant("DEFAULT"))))
       assert(checkedParse("""variable(key="clé", label=LABEL)""", expression(_)) ==
-        Right(NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("clé"))))
+        Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("clé"))))
       assert(checkedParse("""variable(key="clé", job=JOB)""", expression(_)) ==
-        Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("clé"))))
+        Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("clé"))))
     }
 
     "argument()" in {
       assert(checkedParse("""argument("clé")""", expression(_)) ==
-        Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"))))
+        Right(NamedValue(NamedValue.Argument, StringConstant("clé"))))
       assert(checkedParse("""argument ( "clé", default = "DEFAULT" )""", expression(_)) ==
-        Right(NamedValue(NamedValue.Argument, NamedValue.KeyValue("clé"), Some(StringConstant("DEFAULT")))))
+        Right(NamedValue(NamedValue.Argument, StringConstant("clé"), Some(StringConstant("DEFAULT")))))
     }
   }
 
@@ -66,9 +66,9 @@ final class ExpressionParserTest extends AnyFreeSpec
     testExpression("$returnCode",
       LastReturnCode)
     testExpression("""variable("returnCode", label=LABEL)""",
-      NamedValue(NamedValue.ByLabel("LABEL"), NamedValue.KeyValue("returnCode")))
+      NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("returnCode")))
     testExpression("""variable("returnCode", job=JOB)""",
-      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), NamedValue.KeyValue("returnCode")))
+      NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("returnCode")))
   }
 
   testExpression("catchCount", OrderCatchCount)
