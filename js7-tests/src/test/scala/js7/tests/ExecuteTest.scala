@@ -12,12 +12,11 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, InternalExecutable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser
-import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -209,35 +208,6 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Outcome.Succeeded.rc(33)))
   }
 
-  "Different types of OrderParameter" in {
-    testWithWorkflow(
-      Workflow(WorkflowPath.Anonymous,
-        Vector(
-          Execute.Anonymous(WorkflowJob(agentPath,
-            ShellScriptExecutable(
-              """set -euo pipefail
-                |echo "REQUIRED=$REQUIRED" >>"$JS7_RETURN_VALUES"
-                |echo "OPTIONAL=$OPTIONAL" >>"$JS7_RETURN_VALUES"
-                |echo "FINAL=$FINAL" >>"$JS7_RETURN_VALUES"
-                |""".stripMargin,
-              env = Map(
-                "REQUIRED" -> expr("$required"),
-                "OPTIONAL" -> expr("$optional"),
-                "FINAL" -> expr("$final")))))),
-      orderPreparation = OrderPreparation(OrderParameterList(
-        OrderParameter.Required("required", NumberValue),
-        OrderParameter.Optional("optional", StringValue, StringConstant("DEFAULT VALUE")),
-        OrderParameter.Final("final", StringConstant("FINAL VALUE"))))),
-      orderArguments = Map(
-        "required" -> NumberValue(123)),
-      expectedOutcomes = Seq(
-        Outcome.Succeeded(NamedValues(
-          "returnCode" -> NumberValue(0),
-          "REQUIRED" -> StringValue("123"),
-          "OPTIONAL" -> StringValue("DEFAULT VALUE"),
-          "FINAL" -> StringValue("FINAL VALUE")))))
-  }
-
   "Arguments when v1Compatible include workflow defaults" in {
     testWithWorkflow(
       Workflow(WorkflowPath.Anonymous,
@@ -278,9 +248,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     Execute(
       WorkflowJob(
         agentPath,
-        InternalExecutable(
-          classOf[TestInternalJob].getName,
-          arguments = Map("ARG" -> NamedValue("ARG"))))),
+        TestInternalJob.executable(arguments = Map("ARG" -> NamedValue("ARG"))))),
     orderArguments = Map("ARG" -> NumberValue(100)),
     expectedOutcome = Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(101))))
 
@@ -299,9 +267,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     "Special variables in InternalExecutable arguments" in {
       testWithSpecialVariables(
-        InternalExecutable(
-          classOf[ReturnArgumentsInternalJob].getName,
-          arguments = nameToExpression))
+        ReturnArgumentsInternalJob.executable(arguments = nameToExpression))
     }
 
     "Special variables in env expressions" in {
@@ -535,6 +501,7 @@ object ExecuteTest
               Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
         })
   }
+  private object TestInternalJob extends InternalJob.Companion[TestInternalJob]
 
   private final class ReturnArgumentsInternalJob extends InternalJob
   {
@@ -542,4 +509,6 @@ object ExecuteTest
       OrderProcess(
         Task.pure(Outcome.Succeeded(step.arguments)))
   }
+  private object ReturnArgumentsInternalJob
+  extends InternalJob.Companion[ReturnArgumentsInternalJob]
 }
