@@ -56,6 +56,8 @@ final class Lazy[A] private(eval: => A)
       case _ =>
     }
 
+  override def toString = s"Lazy($state)"
+
   private sealed trait State
   private case object NotEvaluated extends State
   private case object Evaluating extends State
