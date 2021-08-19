@@ -5,15 +5,21 @@ import js7.base.monixutils.TaskObserver
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.IOExecutor
-import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
+import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobConf, JobResourcePath}
+import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, Value}
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observer
 import scala.collection.MapView
 import scala.collection.immutable.ListMap
+import scala.reflect.ClassTag
 
 trait InternalJob
 {
@@ -74,5 +80,24 @@ object InternalJob
         .rightOr(jobResourcePath, UnknownKeyProblem("JobResource", jobResourcePath.string))
         .flatMap(_.rightOr(variableName, UnknownKeyProblem("JobResource variable", variableName)))
         .flatten
+  }
+
+  abstract class Companion[I <: InternalJob](implicit classTag: ClassTag[I])
+  {
+    final def executable(
+      jobArguments: Map[String, Expression] = Map.empty,
+      arguments: Map[String, Expression] = Map.empty
+    ): InternalExecutable =
+      InternalExecutable(
+        implicitClass[I].scalaName,
+        jobArguments = jobArguments,
+        arguments = arguments)
+
+    final def execute(
+      agentPath: AgentPath,
+      arguments: Map[String, Expression] = Map.empty
+    ): Execute.Anonymous =
+      Execute(
+        WorkflowJob(agentPath, executable(arguments = arguments)))
   }
 }
