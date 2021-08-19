@@ -646,7 +646,12 @@ def isExcludedJar(path: String) =
 //--------------------------------------------------------------------------------------------------
 // RELEASE
 
-val isStandardRelease = false
+val js7Version = sys.props.get("js7.version")
+val js7NextVersion = sys.props.get("js7.nextVersion")
+val isStandardRelease = {
+  if (js7Version.isDefined != js7NextVersion.isDefined) throw new RuntimeException("Please set both js7.version and js7.nextVersion")
+  js7Version.isDefined
+}
 
 releaseTagComment        := s"Version ${version.value}"
 releaseCommitMessage     := s"Version ${version.value}"
@@ -654,7 +659,7 @@ releaseNextCommitMessage := s"Version ${version.value}"
 
 releaseVersion := (
   if (isStandardRelease)
-    releaseVersion.value
+    _ => js7Version.get
   else v =>
     Version(v).fold(versionFormatError(v)) { currentVersion =>
       val prelease = {
@@ -678,15 +683,15 @@ releaseVersion := (
 
 releaseNextVersion := (
   if (isStandardRelease)
-    releaseNextVersion.value
+    _ => js7NextVersion.get
   else v =>
     Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT"))
 
 releaseProcess := {
   import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, runTest, setNextVersion, setReleaseVersion, tagRelease}
-  if (isStandardRelease)
-    releaseProcess.value
-  else
+  //if (isStandardRelease)
+  //  releaseProcess.value
+  //else
     // See https://github.com/sbt/sbt-release#can-we-finally-customize-that-release-process-please
     Seq[ReleaseStep](
       checkSnapshotDependencies,
