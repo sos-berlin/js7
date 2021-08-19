@@ -139,13 +139,9 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case ExplicitEnd(_) =>
         sb ++= "end;\n"
 
-      case Execute.Anonymous(workflowExecutable, defaultArguments, _) =>
+      case Execute.Anonymous(workflowExecutable, _) =>
         sb ++= "execute "
         appendWorkflowExecutable(workflowExecutable)
-        if (defaultArguments.nonEmpty) {
-          sb ++= ", defaultArguments="
-          appendNameToExpression(defaultArguments)
-        }
         sb ++= ";\n"
 
       case Execute.Named(name, defaultArguments, _) =>

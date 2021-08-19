@@ -68,13 +68,9 @@ final class ExecuteTest extends AnyFreeSpec
                 "ENV-VAR" -> NamedValue("VAR"),
                 "NUMBER" -> NumericConstant(7))),
             Map("ARG" -> StringConstant("VALUE"))),
-          Map("ARG" -> NumericConstant(1)),
           Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Execute.Anonymous",
-          "defaultArguments": {
-            "ARG": "1"
-          },
           "job": {
             "agentPath": "AGENT",
             "executable": {

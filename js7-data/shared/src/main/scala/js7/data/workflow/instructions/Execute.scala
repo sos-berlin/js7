@@ -16,8 +16,6 @@ import js7.data.workflow.{Instruction, Workflow}
   */
 sealed trait Execute extends Instruction
 {
-  def defaultArguments: Map[String, Expression]
-
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
     if (isVisibleForAgent(agentPath, workflow))
       this
@@ -35,9 +33,6 @@ object Execute
 
   def apply(workflowJob: WorkflowJob) =
     Anonymous(workflowJob)
-
-  def apply(workflowJob: WorkflowJob, defaultArguments: Map[String, Expression]) =
-    Anonymous(workflowJob, defaultArguments)
 
   final case class Named(
     name: WorkflowJob.Name,
@@ -69,7 +64,6 @@ object Execute
 
   final case class Anonymous(
     job: WorkflowJob,
-    defaultArguments: Map[String, Expression] = Map.empty,
     sourcePos: Option[SourcePos] = None)
   extends Execute
   {
@@ -78,21 +72,19 @@ object Execute
     override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =
       job isExecutableOnAgent agentPath
 
-    override def toString = s"execute(defaultArguments=$defaultArguments, $job)$sourcePosToString"
+    override def toString = s"execute($job)$sourcePosToString"
   }
   object Anonymous {
     // TODO Implement automatic removal of empty collections in JSON serialization/deserialization
     implicit val jsonEncoder: Encoder.AsObject[Anonymous] = o =>
       JsonObject(
         "job" -> o.job.asJson,
-        "defaultArguments" -> o.defaultArguments.??.asJson,
         "sourcePos" -> o.sourcePos.asJson)
     implicit val jsonDecoder: Decoder[Anonymous] = cursor =>
       for {
         job <- cursor.get[WorkflowJob]("job")
-        arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
         sourcePos <- cursor.get[Option[SourcePos]]("sourcePos")
-      } yield Anonymous(job, arguments, sourcePos)
+      } yield Anonymous(job, sourcePos)
   }
 
   implicit val jsonCodec = TypedJsonCodec[Execute](
