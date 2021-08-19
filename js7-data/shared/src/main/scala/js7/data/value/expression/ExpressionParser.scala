@@ -81,6 +81,14 @@ object ExpressionParser
     interpolatedStringContent ~~/
     "\"")
 
+  private def curlyName[_: P]: P[Expression] = P(
+    P("{" ~~/ identifier ~~/ ("." ~~/ identifier).rep ~~ "}")
+      .map { case (name, fields) =>
+        fields
+          .scanLeft[Expression](NamedValue(name))(DotExpression(_, _))
+          .last
+      })
+
   private def interpolatedStringContent[_: P] = P[StringExpression] {
     def simpleConstant = P(CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$').!)
     def constant = P(
@@ -88,12 +96,6 @@ object ExpressionParser
         .map(_.mkString)
         .map(StringConstant(_)))
 
-    def curlyName = P(
-      P("{" ~~/ identifier ~~/ ("." ~~/ identifier).rep ~~ "}")
-        .map { case (identifier, fields) => fields
-          .scanLeft[Expression](NamedValue(identifier))(DotExpression(_, _))
-          .last
-        })
     def namedValue = P((identifier | digits/*regex group*/).map(NamedValue(_)))
     def expr = P("$" ~~/ (namedValue | curlyName | ("(" ~~/ expression ~~/ ")")))
 
@@ -130,10 +132,6 @@ object ExpressionParser
     //def byPrefix = P[NamedValue]((identifier ~~ "." ~~/ identifier)
     //  .map { case (prefix, key) => NamedValue(NamedValue.LastOccurredByPrefix(prefix), StringConstant(key)) })
     //def curlyName = P[NamedValue]("{" ~~/ (/*arg | byLabel | byJob | byPrefix |*/ nameOnly(identifier)) ~~ "}"./)
-    def curlyName = P[Expression](
-      ("{" ~~/ identifier ~~ "}"./)
-        .map(NamedValue(_)))
-
     "$" ~~ ((identifier | digits/*regex group*/).map(NamedValue(_)) | curlyName)
   }
 
