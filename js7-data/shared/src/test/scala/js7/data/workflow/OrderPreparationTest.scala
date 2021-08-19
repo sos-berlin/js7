@@ -20,19 +20,22 @@ final class OrderPreparationTest extends AnyFreeSpec
       json"""{
         "allowUndeclared": true,
         "parameters": {
+          "myRequired": {
+            "type": "Number"
+          },
           "myOptional": {
-            "default": "'DEFAULT'",
-            "type": "String"
+            "type": "String",
+            "default": "'DEFAULT VALUE'"
           },
           "myOptional2": {
             "type": "String",
             "default": "$$myOptional"
           },
-          "myRequired": {
-            "type": "Number"
-          },
           "myFinal": {
-            "final": "'FINAL-VALUE'"
+            "final": "'FINAL VALUE'"
+          },
+          "myFinal2": {
+            "final": "$$myRequired"
           },
           "myObject": {
             "type": {
@@ -56,6 +59,15 @@ final class OrderPreparationTest extends AnyFreeSpec
                 }
               }
             }
+          },
+          "myControllerId": {
+            "final": "$$js7ControllerId"
+          },
+          "myScheduledFor": {
+            "final": "scheduledOrEmpty('yyyy-MM-dd', 'Antarctica/Troll')"
+          },
+          "myResource": {
+            "final": "jobResourceVariable('myJobResource', 'fromRequired')"
           }
         }
       }""")

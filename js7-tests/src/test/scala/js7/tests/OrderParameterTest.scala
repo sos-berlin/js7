@@ -42,7 +42,8 @@ final class OrderParameterTest extends AnyFreeSpec with ControllerAgentForScalaT
           "myRequired" -> NumberValue(123),
           "myOptional" -> StringValue("DEFAULT VALUE"),
           "myOptional2" -> StringValue("DEFAULT VALUE"),
-          "myFinal" -> StringValue("FINAL VALUE")))))
+          "myFinal" -> StringValue("FINAL VALUE"),
+          "myFinal2" -> NumberValue(123)))))
   }
 
   "b" in {
@@ -56,7 +57,8 @@ final class OrderParameterTest extends AnyFreeSpec with ControllerAgentForScalaT
           "myRequired" -> NumberValue(123),
           "myOptional" -> StringValue("myOptional from order"),
           "myOptional2" -> StringValue("myOptional from order"),
-          "myFinal" -> StringValue("FINAL VALUE")))))
+          "myFinal" -> StringValue("FINAL VALUE"),
+          "myFinal2" -> NumberValue(123)))))
   }
 
   private def runWithWorkflowPath(
@@ -89,13 +91,15 @@ object OrderParameterTest
         "myRequired" -> expr("$myRequired"),
         "myOptional" -> expr("$myOptional"),
         "myOptional2" -> expr("$myOptional2"),
-        "myFinal" -> expr("$myFinal")))),
+        "myFinal" -> expr("$myFinal"),
+        "myFinal2" -> expr("$myFinal2")))),
     orderPreparation = OrderPreparation(
       OrderParameterList(Seq(
+        myRequiredParameter,
         OrderParameter.Optional("myOptional", StringValue, expr("'DEFAULT VALUE'")),
         OrderParameter.Optional("myOptional2", StringValue, expr("$myOptional")),
-        myRequiredParameter,
-        OrderParameter.Final("myFinal", expr("'FINAL VALUE'"))))))
+        OrderParameter.Final("myFinal", expr("'FINAL VALUE'")),
+        OrderParameter.Final("myFinal2", expr("$myRequired"))))))
 
   private final class TestInternalJob extends InternalJob
   {

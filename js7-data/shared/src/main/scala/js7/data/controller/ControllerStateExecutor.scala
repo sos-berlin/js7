@@ -21,7 +21,6 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, Order
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
-import js7.data.value.expression.scopes.OrderScopes.workflowOrderVariablesScope
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
@@ -64,8 +63,8 @@ final case class ControllerStateExecutor private(
     else
       for {
         workflow <- controllerState.repo.pathTo[Workflow](order.workflowPath)
-        preparedArguments <- workflow.orderParameterList.prepareOrderArguments(order.arguments)(
-          workflowOrderVariablesScope(order, controllerId, pathToJobResource, nowScope))
+        preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
+          order, controllerId, pathToJobResource, nowScope)
       } yield Some(
         order.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
 

@@ -8,12 +8,16 @@ import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.EvaluationFailedProblem
-import js7.data.job.JobResourcePath
+import js7.data.controller.ControllerId
+import js7.data.job.{JobResource, JobResourcePath}
+import js7.data.order.FreshOrder
 import js7.data.value.expression.Scope.evalLazilyExpressions
-import js7.data.value.expression.scopes.{NameToCheckedValueScope, NamedValueScope}
+import js7.data.value.expression.scopes.OrderScopes.{minimalJs7VariablesScope, scheduledScope}
+import js7.data.value.expression.scopes.{EnvScope, JobResourceScope, NameToCheckedValueScope, NamedValueScope}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
@@ -27,16 +31,50 @@ final case class OrderParameterList private(
   def referencedJobResourcePaths: Iterable[JobResourcePath] =
     nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
 
-  def prepareOrderArguments(arguments: NamedValues)(implicit scope: Scope): Checked[NamedValues] =
-    prepareOrderArguments2(arguments, scope)
+  def workflowOrderVariablesScope(
+    freshOrder: FreshOrder,
+    controllerId: ControllerId,
+    pathToJobResource: PartialFunction[JobResourcePath, JobResource],
+    nowScope: Scope)
+  : Scope = {
+    val nestedScope = combine(
+      scheduledScope(freshOrder.scheduledFor),
+      minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
+      EnvScope,
+      nowScope)
+    combine(
+      nestedScope,
+      NamedValueScope(freshOrder.arguments),
+      JobResourceScope(pathToJobResource, useScope = nestedScope))
+  }
 
-  private def prepareOrderArguments2(arguments: NamedValues, outerScope: Scope)
+  def prepareOrderArguments(
+    freshOrder: FreshOrder,
+    controllerId: ControllerId,
+    pathToJobResource: PartialFunction[JobResourcePath, JobResource],
+    nowScope: Scope)
+  : Checked[NamedValues] = {
+    val nestedScope = combine(
+      scheduledScope(freshOrder.scheduledFor),
+      minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
+      EnvScope,
+      nowScope)
+    prepareOrderArguments2(
+      freshOrder.arguments,
+      scope = combine(
+        nestedScope,
+        NamedValueScope(freshOrder.arguments),
+        JobResourceScope(pathToJobResource, useScope = nestedScope))
+    )
+  }
+
+  private def prepareOrderArguments2(arguments: NamedValues, scope: Scope)
   : Checked[NamedValues] =
   {
-    lazy val recursiveScope: Scope = outerScope |+|
-      NameToCheckedValueScope(
-        evalLazilyExpressions(nameToExpression)(
-          NamedValueScope(arguments) |+| recursiveScope))
+    lazy val recursiveScope: Scope = combine(
+      scope,
+      NameToCheckedValueScope(evalLazilyExpressions(nameToExpression)(
+        recursiveScope)))
 
     val checkedAllDeclared =
       if (allowUndeclared)

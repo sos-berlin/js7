@@ -13,7 +13,6 @@ import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser
-import js7.data.value.expression.scopes.OrderScopes.workflowOrderVariablesScope
 import js7.data.value.expression.scopes.OrderScopesTest._
 import js7.data.value.{NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.Execute
@@ -373,8 +372,7 @@ object OrderScopesTest
 
   private val order = Order(freshOrder.id, workflow.id /: Position(2), Order.Ready,
     workflow.orderParameterList
-      .prepareOrderArguments(freshOrder.arguments)(
-        workflowOrderVariablesScope(freshOrder, controllerId, PartialFunction.empty, NowScope()))
+      .prepareOrderArguments(freshOrder, controllerId, PartialFunction.empty, NowScope())
       .orThrow,
     scheduledFor = freshOrder.scheduledFor,
     historicOutcomes = Vector(

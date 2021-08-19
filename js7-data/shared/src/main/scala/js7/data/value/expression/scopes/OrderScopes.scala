@@ -80,7 +80,7 @@ object OrderScopes
       JobResourceScope(pathToJobResource, useScope = nestedScope))
   }
 
-  private def minimalJs7VariablesScope(
+  def minimalJs7VariablesScope(
     orderId: OrderId,
     workflowPath: WorkflowPath,
     controllerId: ControllerId)
@@ -89,7 +89,7 @@ object OrderScopes
      "js7WorkflowPath" -> StringValue(workflowPath.string),
      "js7ControllerId" -> StringValue(controllerId.string)))
 
-  private def scheduledScope(scheduledFor: Option[Timestamp]) =
+  def scheduledScope(scheduledFor: Option[Timestamp]) =
     TimestampScope("scheduledOrEmpty", scheduledFor)
 }
 
