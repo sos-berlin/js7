@@ -85,14 +85,15 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Map(notice.id -> notice)))
   }
 
-  "Expect a notice, then post it" in {
+  "Two orders expect a notice, then post the notice" in {
     val qualifier = nextQualifier()
     val notice = Notice(NoticeId(qualifier), endOfLife)
 
-    val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
-    controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
-      .await(99.s).orThrow
-    eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
+    val expectingOrderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
+    controllerApi.addOrders(
+      Observable.fromIterable(expectingOrderIds).map(FreshOrder(_, expectingWorkflow.path))
+    ).await(99.s).orThrow
+    for (orderId <- expectingOrderIds) eventWatch.await[OrderNoticeExpected](_.key == orderId)
 
     val posterEvents = controller.runOrder(
       FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
@@ -110,15 +111,17 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
           NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
           notice.id -> notice)))
 
-    eventWatch.await[OrderFinished](_.key == expectingOrderId)
-    val expectingEvents = eventWatch.keyedEvents[OrderCoreEvent](expectingOrderId)
-    assert(expectingEvents == Seq(
-      OrderAdded(expectingWorkflow.id),
-      OrderStarted,
-      OrderNoticeExpected(notice.id),
-      OrderNoticeRead,
-      OrderMoved(Position(1)),
-      OrderFinished))
+    for (orderId <- expectingOrderIds) {
+      eventWatch.await[OrderFinished](_.key == orderId)
+      val expectingEvents = eventWatch.keyedEvents[OrderCoreEvent](orderId)
+      assert(expectingEvents == Seq(
+        OrderAdded(expectingWorkflow.id),
+        OrderStarted,
+        OrderNoticeExpected(notice.id),
+        OrderNoticeRead,
+        OrderMoved(Position(1)),
+        OrderFinished))
+    }
 
     assert(controllerState.pathToBoardState(board.path) ==
       BoardState(
@@ -167,19 +170,19 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
-  "PostNotice command with expecting order" in {
+  "PostNotice command with expecting orders" in {
     val qualifier = "2222-08-08"
     val noticeId = NoticeId(qualifier)
 
-    val orderId = OrderId(s"#$qualifier#EXPECTING")
-    controller.addOrder(FreshOrder(orderId, expectingAgentWorkflow.path))
-      .await(99.s).orThrow
-    eventWatch.await[OrderNoticeExpected](_.key == orderId)
-
+    val orderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
+    controllerApi.addOrders(
+      Observable.fromIterable(orderIds).map(FreshOrder(_, expectingAgentWorkflow.path))
+    ).await(99.s).orThrow
+    for (orderId <- orderIds) eventWatch.await[OrderNoticeExpected](_.key == orderId)
     controllerApi.executeCommand(
       ControllerCommand.PostNotice(board.path, noticeId)
     ).await(99.s).orThrow
-    eventWatch.await[OrderNoticeRead](_.key == orderId)
+    for (orderId <- orderIds) eventWatch.await[OrderNoticeRead](_.key == orderId)
 
     val notice2 = Notice(NoticeId("2222-08-09"), endOfLife)
     controllerApi.executeCommand(

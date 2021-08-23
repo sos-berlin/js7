@@ -1,10 +1,11 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.board.{BoardState, Notice, NoticeId}
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderNoticeExpected, OrderNoticeRead, OrderStarted}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderNoticeExpected, OrderNoticeRead}
 import js7.data.workflow.instructions.ExpectNotice
 import js7.data.workflow.position.Position
 
@@ -24,22 +25,18 @@ extends EventInstructionExecutor
           .checked(boardPath)
           .flatMap(boardState =>
             order.state match {
-              case _: Order.Fresh =>
-                Right(OrderStarted :: Nil)
-
               case _: Order.Ready =>
                 for {
                   scope <- state.toScope(order)
                   noticeId <- boardState.board.expectingOrderToNoticeId(scope)
                 } yield
                   tryRead(boardState, noticeId, order.position)
+                    .emptyToNone
                     .getOrElse(OrderNoticeExpected(noticeId) :: Nil)
 
               case Order.ExpectingNotice(noticeId) =>
                 Right(
-                  tryRead(boardState, noticeId, order.position)
-                    .toList
-                    .flatten)
+                  tryRead(boardState, noticeId, order.position))
 
               case _ => Right(Nil)
             })
@@ -47,8 +44,8 @@ extends EventInstructionExecutor
   }
 
   private def tryRead(boardState: BoardState, noticeId: NoticeId, position: Position)
-  : Option[List[OrderActorEvent]] =
-    boardState.idToNotice.get(noticeId).map {
+  : List[OrderActorEvent] =
+    boardState.idToNotice.get(noticeId).toList.flatMap {
       case _: Notice => OrderNoticeRead :: OrderMoved(position.increment) :: Nil
       case _ => Nil
     }

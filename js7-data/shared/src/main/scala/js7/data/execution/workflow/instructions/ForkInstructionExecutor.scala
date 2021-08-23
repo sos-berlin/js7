@@ -85,9 +85,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
     orderForked: OrderForked,
     state: StateView)
   : Option[OrderActorEvent] = {
-    def x(agentPath: AgentPath) =
-      fork.agentPath.exists(_ != agentPath) ||
-        (orderForked.children.sizeIs >= minimumChildCountForParentAttachment)
     val eventSource = new OrderEventSource(state)
     order
       .newForkedOrders(orderForked)
