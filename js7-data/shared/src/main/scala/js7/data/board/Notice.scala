@@ -29,7 +29,7 @@ object Notice
 }
 
 
-final case class NoticeExpectation(id: NoticeId, orderIds: Seq[OrderId])
+final case class NoticeExpectation(id: NoticeId, orderIds: Set[OrderId])
 extends NoticePlace with Big
 {
   def isEmpty = orderIds.isEmpty

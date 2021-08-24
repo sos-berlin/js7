@@ -693,7 +693,8 @@ with MainJournalingActor[ControllerState, Event]
           _ <- boardState.addNotice(notice)
           expectingOrders <- boardState
             .expectingOrders(noticeId)
-            .traverse(_controllerState.idToOrder.checked): Checked[Seq[Order[Order.State]]]
+            .toVector
+            .traverse(_controllerState.idToOrder.checked)
         } yield (notice, expectingOrders)
         checked match {
           case Left(problem) => Future.successful(Left(problem))

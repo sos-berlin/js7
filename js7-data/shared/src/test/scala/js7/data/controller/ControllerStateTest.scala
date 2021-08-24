@@ -342,7 +342,7 @@ object ControllerStateTest
   private val agentRef = AgentRef(AgentPath("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0)))
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
   private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
-  private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Seq(expectingNoticeOrderId))
+  private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Set(expectingNoticeOrderId))
   private val board = Board(
     BoardPath("BOARD"),
     postOrderToNoticeId = expr("$orderId"),

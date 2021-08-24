@@ -25,13 +25,13 @@ final case class BoardState(
       case None =>
         Right(copy(
           idToNotice = idToNotice +
-            (noticeId -> NoticeExpectation(noticeId, orderId :: Nil))))
+            (noticeId -> NoticeExpectation(noticeId, Set(orderId)))))
 
       case Some(expectation: NoticeExpectation) =>
         Right(copy(
           idToNotice = idToNotice +
             (noticeId -> expectation.copy(
-              orderIds = expectation.orderIds.view.appended(orderId).toVector))))
+              orderIds = expectation.orderIds + orderId))))
 
       case Some(_: Notice) =>
         Left(Problem("BoardState.addExpectation despite notice has been posted"))
@@ -49,16 +49,16 @@ final case class BoardState(
             copy(
               idToNotice = idToNotice +
                 (noticeId -> expectation.copy(
-                  orderIds = expectation.orderIds.filterNot(_ == orderId))))
+                  orderIds = expectation.orderIds - orderId)))
 
         case _ =>
           this
       })
 
-  def expectingOrders(noticeId: NoticeId): Seq[OrderId] =
+  def expectingOrders(noticeId: NoticeId): Set[OrderId] =
     idToNotice.get(noticeId) match {
       case Some(NoticeExpectation(_, orderIds)) => orderIds
-      case _ => Nil
+      case _ => Set.empty
     }
 
   def notices: Iterable[Notice] =

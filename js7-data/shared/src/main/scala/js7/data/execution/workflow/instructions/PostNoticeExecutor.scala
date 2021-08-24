@@ -2,7 +2,6 @@ package js7.data.execution.workflow.instructions
 
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
-import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
@@ -30,15 +29,15 @@ extends EventInstructionExecutor
             boardState <- state.pathToBoardState.checked(boardPath)
             expectingOrders <- boardState
               .expectingOrders(notice.id)
-              .traverse(state.idToOrder.checked): Checked[Seq[Order[Order.State]]]
+              .toList
+              .traverse(state.idToOrder.checked)
           } yield
             (order.id <-: OrderNoticePosted(notice)) ::
               (order.id <-: OrderMoved(order.position.increment)) ::
-              expectingOrders.view
+              expectingOrders
                 .flatMap(o => View(
                   o.id <-: OrderNoticeRead,
                   o.id <-: OrderMoved(o.position.increment)))
-                .toList
         } else
           Right(Nil))
 }

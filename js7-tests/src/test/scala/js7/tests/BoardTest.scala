@@ -7,6 +7,7 @@ import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.{AlarmClock, Timestamp}
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
@@ -29,6 +30,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.View
 import scala.concurrent.duration._
 
 final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
@@ -126,9 +128,10 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controllerState.pathToBoardState(board.path) ==
       BoardState(
         board.withRevision(Some(ItemRevision(0))),
-        Map(
-          NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
-          notice.id -> notice)))
+        View(
+          Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
+          notice
+        ).toKeyedMap(_.id)))
   }
 
   "Detach order when at Agent" in {

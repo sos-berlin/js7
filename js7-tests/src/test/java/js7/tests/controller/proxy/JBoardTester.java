@@ -1,6 +1,7 @@
 package js7.tests.controller.proxy;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -134,7 +135,7 @@ public class JBoardTester
         assert noticeExpectation instanceof JNoticeExpectation;
         assertThat(noticeExpectation.id(), equalTo(expectedNoticeId));
         assertThat(((JNoticeExpectation)noticeExpectation).orderIds(),
-            equalTo(asList(expectingOrderId)));
+            equalTo(new HashSet<>(asList(expectingOrderId))));
     }
 
     private static boolean isItemAdded(KeyedEvent<Event> keyedEvent, InventoryItemPath path) {
