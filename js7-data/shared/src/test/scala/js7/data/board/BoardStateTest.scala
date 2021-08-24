@@ -20,7 +20,7 @@ final class BoardStateTest extends AnyFreeSpec
       board,
       Notice.Snapshot(board.path, notice)))
 
-    // Order of addExpection is irrelevant
+    // Order of addExpectation is irrelevant
     var recovered = BoardState(board)
     recovered = recovered.addNotice(notice).orThrow
     recovered = recovered.addExpectation(aOrderId, NoticeId("B")).orThrow
