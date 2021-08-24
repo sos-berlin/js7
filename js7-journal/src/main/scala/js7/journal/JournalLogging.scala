@@ -37,7 +37,7 @@ trait JournalLogging
     lazy val committedAt = now
     logger.whenTraceEnabled {
       logPersists(loggablePersists, committedAt)(
-        logPersist(ack))
+        traceLogPersist(ack))
     }
     if (conf.infoLogEvents.nonEmpty) {
       logger.whenInfoEnabled {
@@ -69,22 +69,24 @@ trait JournalLogging
   : Unit = {
     var index = 0
     for (persist <- loggablePersists) {
-      val frame = Frame(persist, index, loggablePersists.length, committedAt)
-      val stampedIterator = persist.stampedSeq.iterator
-      while (stampedIterator.hasNext) {
+      val stampedSeq = persist.stampedSeq
+        .filter(o => isLoggable(o.value.event.getClass))
+      val frame = Frame(persist, stampedSeq.length, index, loggablePersists.length, committedAt)
+      val stampedIterator = stampedSeq.iterator
+      var hasNext = stampedIterator.hasNext
+      while (hasNext) {
         val stamped = stampedIterator.next()
-        if (isLoggable(stamped.value.event.getClass)) {
-          frame.isLast = !stampedIterator.hasNext
-          body(frame, stamped)
-          frame.nr += 1
-          frame.isFirst = false
-        }
+        hasNext = stampedIterator.hasNext
+        frame.isLast = !hasNext
+        body(frame, stamped)
+        frame.nr += 1
+        frame.isFirst = false
       }
       index += 1
     }
   }
 
-  private def logPersist(ack: Boolean)(frame: Frame, stamped: Stamped[AnyKeyedEvent]): Unit = {
+  private def traceLogPersist(ack: Boolean)(frame: Frame, stamped: Stamped[AnyKeyedEvent]): Unit = {
     import frame._
     sb.clear()
     sb.append(':')  // Something simple to grep
@@ -158,10 +160,10 @@ object JournalLogging
     override def toString = s"SubclassCache($superclassNames)"
   }
 
-  private final case class Frame(persist: LoggablePersist, persistIndex: Int, persistCount: Int,
+  private final case class Frame(persist: LoggablePersist,
+    persistEventCount: Int, persistIndex: Int, persistCount: Int,
     committedAt: Deadline)
   {
-    val persistEventCount = persist.stampedSeq.length
     val nextToLastEventNr = persist.eventNumber + persistEventCount - 2
     val duration = committedAt - persist.since
     var nr = persist.eventNumber
