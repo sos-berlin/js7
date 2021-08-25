@@ -14,7 +14,7 @@ final class ByteSequenceToLinesObservable[ByteSeq](
 extends (ByteSeq => Observable[ByteArray])
 {
   private val lines = mutable.Buffer.empty[ByteArray]
-  private lazy val startedLine = mutable.ArrayBuffer.empty[ByteArray]
+  private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
 
   def apply(byteSeq: ByteSeq): Observable[ByteArray] =
     if (byteSeq.isEmpty)
@@ -26,13 +26,13 @@ extends (ByteSeq => Observable[ByteArray])
       while (p < length) {
         byteSeq.indexOf('\n'.toByte, p) match {
           case -1 =>
-            startedLine += byteSeq.slice(p, length).toByteArray
+            startedLine += byteSeq.slice(p, length)
             p = length
 
           case i =>
             val slice = byteSeq.slice(p, i + 1)  /*For p == 0 && i + 1 == bytes.length, no copy is needed*/
-            startedLine += slice.toByteArray
-            lines += ByteArray.combineAll(startedLine)
+            startedLine += slice
+            lines += ByteArray.combineByteSequences(startedLine)
             startedLine.clear()
             p = i + 1
         }

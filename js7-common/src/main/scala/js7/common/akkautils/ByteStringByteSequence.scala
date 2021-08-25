@@ -55,6 +55,12 @@ object ByteStringByteSequence extends ByteSequence[ByteString]
   override def unsafeArray(byteString: ByteString): Array[Byte] =
     byteString.toArrayUnsafe()
 
+  override def copyToArray(byteString: ByteString, array: Array[Byte]): Int =
+    byteString.copyToArray(array)
+
+  override def copyToArray(byteString: ByteString, array: Array[Byte], start: Int, len: Int): Int =
+    byteString.copyToArray(array, start, len)
+
   //def copyToArray(byteString: ByteString, array: Array[Byte], start: Int, length: Int) =
   //  byteString.copyToArray(array, start, length)
 

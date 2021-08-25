@@ -201,17 +201,17 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
   def unsafeArray(byteSeq: ByteSeq): Array[Byte] =
     toArray(byteSeq)
 
-  //def copyToArray(byteSeq: ByteSeq, array: Array[Byte]): Int =
-  //  copyToArray(byteSeq, array, 0, Int.MaxValue)
-  //
-  ///**
-  //  * Fills the given `array` starting at index `start` with at most `len` bytes of this ByteSeq.
-  //  *
-  //  * Copying will stop once either all the elements of this ByteSeq have been copied,
-  //  * or the end of the array is reached, or `len` elements have been copied.
-  //  */
-  //def copyToArray(byteSeq: ByteSeq, array: Array[Byte], start: Int, len: Int): Int =
-  //  iterator(byteSeq).copyToArray(array, start, len)
+  def copyToArray(byteSeq: ByteSeq, array: Array[Byte]): Int =
+    copyToArray(byteSeq, array, 0, Int.MaxValue)
+
+  /**
+    * Fills the given `array` starting at index `start` with at most `len` bytes of this ByteSeq.
+    *
+    * Copying will stop once either all the elements of this ByteSeq have been copied,
+    * or the end of the array is reached, or `len` elements have been copied.
+    */
+  def copyToArray(byteSeq: ByteSeq, array: Array[Byte], start: Int, len: Int): Int =
+    iterator(byteSeq).copyToArray(array, start, len)
 
   def toByteArray(byteSeq: ByteSeq): ByteArray =
     toByteSequence(byteSeq)(ByteArray)

@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import java.util.Objects.requireNonNull
 import js7.base.circeutils.CirceUtils._
+import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Checked
 import scala.collection.mutable
 
@@ -130,11 +131,11 @@ object ByteArray extends ByteSequence[ByteArray]
   override def unsafeArray(byteArray: ByteArray) =
     byteArray.unsafeArray
 
-  //def copyToArray(byteArray: ByteArray, array: Array[Byte]) =
-  //  byteArray.copyToArray(array)
-  //
-  //def copyToArray(byteArray: ByteArray, array: Array[Byte], start: Int, len: Int) =
-  //  byteArray.copyToArray(array, start, len)
+  override def copyToArray(byteArray: ByteArray, array: Array[Byte]) =
+    byteArray.copyToArray(array)
+
+  override def copyToArray(byteArray: ByteArray, array: Array[Byte], start: Int, len: Int) =
+    byteArray.copyToArray(array, start, len)
 
   override def slice(byteArray: ByteArray, from: Int, until: Int) =
     byteArray.slice(from, until)
@@ -143,15 +144,20 @@ object ByteArray extends ByteSequence[ByteArray]
     a ++ b
 
   override def combineAll(byteArraysOnce: IterableOnce[ByteArray]): ByteArray =
-    byteArraysOnce.knownSize match {
+    combineByteSequences(byteArraysOnce)
+
+  def combineByteSequences[ByteSeq](byteSeqsOnce: IterableOnce[ByteSeq])
+    (implicit ByteSeq: ByteSequence[ByteSeq])
+  : ByteArray =
+    byteSeqsOnce.knownSize match {
       case 0 => ByteArray.empty
-      case 1 => byteArraysOnce.iterator.next()
+      case 1 => byteSeqsOnce.iterator.next().toByteArray
       case _ =>
-        val byteArrays = mutable.ArrayBuffer.from(byteArraysOnce)
+        val byteArrays = mutable.ArrayBuffer.from(byteSeqsOnce)
         val result = new Array[Byte](byteArrays.view.map(_.length).sum)
         var pos = 0
         for (byteArray <- byteArrays) {
-          arraycopy(byteArray.unsafeArray, 0, result, pos, byteArray.length)
+          byteArray.copyToArray(result, pos, byteArray.length)
           pos += byteArray.length
         }
         ByteArray.unsafeWrap(result)
