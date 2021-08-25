@@ -214,7 +214,13 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
   //  iterator(byteSeq).copyToArray(array, start, len)
 
   def toByteArray(byteSeq: ByteSeq): ByteArray =
-    ByteArray.unsafeWrap(unsafeArray(byteSeq))
+    toByteSequence(byteSeq)(ByteArray)
+
+  def toByteSequence[A](byteSeq: ByteSeq)(implicit A: ByteSequence[A]): A =
+    if (A.asInstanceOf[ByteSequence[ByteSeq]] eq this)
+      byteSeq.asInstanceOf[A]
+    else
+      A.unsafeWrap(unsafeArray(byteSeq))
 
   def toByteBuffer(byteSeq: ByteSeq): ByteBuffer =
     ByteBuffer.wrap(unsafeArray(byteSeq)).asReadOnlyBuffer

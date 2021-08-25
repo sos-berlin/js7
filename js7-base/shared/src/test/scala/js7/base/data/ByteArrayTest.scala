@@ -29,6 +29,11 @@ final class ByteArrayTest extends ByteSequenceTester[ByteArray]
     assert(a.toByteArray eq a)
   }
 
+  "toByteSequence[ByteArray]" in {
+    val byteArray = ByteArray(1.toByte, 2.toByte)
+    assert(byteArray.toByteSequence[ByteArray] eq byteArray)
+  }
+
   "toMimeBase64" in {
     assert(ByteArray(ByteSequenceTester.mimeByte64Bytes).toMimeBase64 == ByteSequenceTester.mimeBase64string)
   }

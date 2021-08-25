@@ -8,7 +8,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked
 
-final class ByteStringByteSequence extends ByteSequence[ByteString]
+object ByteStringByteSequence extends ByteSequence[ByteString]
 {
   val clazz = classOf[ByteString]
   val empty = ByteString.empty

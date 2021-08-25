@@ -85,13 +85,12 @@ object FileUtils
       def write(bytes: Array[Byte]): Unit =
         Files.write(delegate, bytes)
 
-      def :=(byteSeq: ByteArray) = write(byteSeq)
-
-      def write(byteSeq: ByteArray): Unit =
-        autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
-          byteSeq.writeToStream(_))
 
       def :=[W: Writable](w: W) = write(w)
+
+      def write[W: Writable](byteSeq: W): Unit =
+        autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
+          byteSeq.writeToStream(_))
 
       /** Appends `string` encoded with UTF-8 to file. */
       def ++=(string: String): Unit =
@@ -99,10 +98,6 @@ object FileUtils
 
       def append(string: String, encoding: Charset = UTF_8): Unit =
         write(string, encoding, append = true)
-
-      def write[W: Writable](w: W): Unit =
-        autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
-          w.writeToStream(_))
 
       def write(bytes: collection.Seq[Byte]): Unit =
         write(bytes.toArray)

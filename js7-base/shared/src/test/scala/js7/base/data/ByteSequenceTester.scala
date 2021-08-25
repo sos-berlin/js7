@@ -80,6 +80,10 @@ extends AnyFreeSpec
     assert(ByteSeq(1.toByte, 2.toByte).toByteArray == ByteArray(1.toByte, 2.toByte))
   }
 
+  "toByteSequence" in {
+    assert(ByteSeq(1.toByte, 2.toByte).toByteSequence[ByteArray] == ByteArray(1.toByte, 2.toByte))
+  }
+
   "random" in {
     assert(ByteSeq.random(3).length == 3)
   }
