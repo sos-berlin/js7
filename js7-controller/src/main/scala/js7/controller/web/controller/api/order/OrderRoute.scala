@@ -63,7 +63,6 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   httpEntity
                     .dataBytes
                     .toObservable
-                    .map(_.toByteArray)
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                     .flatMap(new ByteSequenceToLinesObservable)
                     .mapParallelOrderedBatch()(_
@@ -147,7 +146,6 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
             httpEntity
               .dataBytes
               .toObservable
-              .map(_.toByteArray)
               .flatMap(new ByteSequenceToLinesObservable)
               .mapParallelOrderedBatch()(_
                 .parseJsonAs[OrderId].orThrow)

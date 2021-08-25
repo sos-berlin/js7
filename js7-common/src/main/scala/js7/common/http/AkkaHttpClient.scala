@@ -113,7 +113,6 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         if (d >= 1.s && s > 10_000_000)
           logger.debug(s"$toString: get $uri: ${bytesPerSecondString(d, s)}")))
       .map(_
-        .map(_.toByteArray)
         .flatMap(new ByteSequenceToLinesObservable))
       .map(_.onErrorRecoverWith(ignoreIdleTimeout orElse endStreamOnNoMoreElementNeeded))
       .onErrorRecover(ignoreIdleTimeout)

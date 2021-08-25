@@ -1,8 +1,8 @@
 package js7.base.utils
 
 import cats.syntax.monoid._
-import js7.base.data.ByteSequence
 import js7.base.data.ByteSequence.ops._
+import js7.base.data.{ByteArray, ByteSequence}
 import monix.reactive.Observable
 import scala.collection.mutable
 
@@ -11,12 +11,12 @@ import scala.collection.mutable
   */
 final class ByteSequenceToLinesObservable[ByteSeq](
   implicit ByteSeq: ByteSequence[ByteSeq])
-extends (ByteSeq => Observable[ByteSeq])
+extends (ByteSeq => Observable[ByteArray])
 {
-  private val lines = mutable.Buffer.empty[ByteSeq]
-  private lazy val startedLine = mutable.ArrayBuffer.empty[ByteSeq]
+  private val lines = mutable.Buffer.empty[ByteArray]
+  private lazy val startedLine = mutable.ArrayBuffer.empty[ByteArray]
 
-  def apply(byteSeq: ByteSeq): Observable[ByteSeq] =
+  def apply(byteSeq: ByteSeq): Observable[ByteArray] =
     if (byteSeq.isEmpty)
       Observable.empty
     else {
@@ -26,13 +26,13 @@ extends (ByteSeq => Observable[ByteSeq])
       while (p < length) {
         byteSeq.indexOf('\n'.toByte, p) match {
           case -1 =>
-            startedLine += byteSeq.slice(p, length)
+            startedLine += byteSeq.slice(p, length).toByteArray
             p = length
 
           case i =>
             val slice = byteSeq.slice(p, i + 1)  /*For p == 0 && i + 1 == bytes.length, no copy is needed*/
-            startedLine += slice
-            lines += ByteSeq.combineAll(startedLine)
+            startedLine += slice.toByteArray
+            lines += ByteArray.combineAll(startedLine)
             startedLine.clear()
             p = i + 1
         }
@@ -42,7 +42,7 @@ extends (ByteSeq => Observable[ByteSeq])
         if (lines.lengthIs == 1)
           Observable.pure(lines.head)
         else
-          Observable.fromIterable(lines.toArray(ByteSeq.classTag))
+          Observable.fromIterable(lines.toVector)
       lines.clear()
       result
   }

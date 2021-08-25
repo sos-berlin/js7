@@ -57,7 +57,6 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                 val operations = httpEntity
                   .dataBytes
                   .toObservable
-                  .map(_.toByteArray)
                   .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                   .flatMap(new ByteSequenceToLinesObservable)
                   .mapParallelUnorderedBatch()(_
