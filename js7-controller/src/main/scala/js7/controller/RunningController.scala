@@ -110,21 +110,25 @@ extends AutoCloseable
     }
 
   def terminate(suppressSnapshot: Boolean = false): Task[ControllerTermination] =
-    if (terminated.isCompleted)  // Works only if previous termination has been completed
-      Task.fromFuture(terminated)
-    else
-      injector.instance[ActorSystem].whenTerminated.value match {
-        case Some(Failure(t)) => Task.raiseError(t)
-        case Some(Success(_)) =>
-          logger.warn("Controller terminate: Akka has already been terminated")
-          Task.pure(ControllerTermination.Terminate(restart = false))
-        case None =>
-          logger.debug("terminate")
-          for {
-            _ <- executeCommandAsSystemUser(ControllerCommand.ShutDown(suppressSnapshot = suppressSnapshot)).map(_.orThrow)
-            t <- Task.fromFuture(terminated)
-          } yield t
-      }
+    Task.defer {
+      if (terminated.isCompleted)  // Works only if previous termination has been completed
+        Task.fromFuture(terminated)
+      else
+        injector.instance[ActorSystem].whenTerminated.value match {
+          case Some(Failure(t)) => Task.raiseError(t)
+          case Some(Success(_)) =>
+            logger.warn("Controller terminate: Akka has already been terminated")
+            Task.pure(ControllerTermination.Terminate(restart = false))
+          case None =>
+            logger.debug("terminate")
+            for {
+              _ <- _httpApi.toOption.fold(Task.unit)(_
+                .tryLogout.void.onErrorHandle(t => logger.warn(t.toString)))
+              _ <- executeCommandAsSystemUser(ControllerCommand.ShutDown(suppressSnapshot = suppressSnapshot)).map(_.orThrow)
+              t <- Task.fromFuture(terminated)
+            } yield t
+        }
+    }
 
   def executeCommandForTest(command: ControllerCommand): Checked[command.Response] =
     executeCommandAsSystemUser(command) await 99.s
