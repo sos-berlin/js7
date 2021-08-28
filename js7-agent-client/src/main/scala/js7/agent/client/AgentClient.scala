@@ -82,6 +82,11 @@ object AgentClient
     def k = keyStoreRef    // lazy, to avoid reference when not needed (needed only for http)
     def t = trustStoreRefs  // lazy, to avoid reference when not needed (needed only for http)
     new AgentClient {
+      override def close(): Unit = {
+        logOpenSession()
+        super.close()
+      }
+
       protected val actorSystem = a
       val baseUri = agentUri
       protected val name = label

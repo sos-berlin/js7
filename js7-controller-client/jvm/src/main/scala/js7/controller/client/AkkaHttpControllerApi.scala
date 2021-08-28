@@ -28,7 +28,10 @@ extends HttpControllerApi with AutoCloseable
   final val httpClient = new AkkaHttpClient.Standard(
     baseUri, HttpControllerApi.UriPrefixPath, actorSystem, keyStoreRef, trustStoreRefs, name = name)
 
-  def close() = httpClient.close()
+  def close() = {
+    logOpenSession()
+    httpClient.close()
+  }
 }
 
 object AkkaHttpControllerApi

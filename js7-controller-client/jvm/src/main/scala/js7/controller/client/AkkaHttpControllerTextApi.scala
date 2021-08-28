@@ -52,7 +52,10 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   closer.onClose { super.close() }
 
-  override def close() = closer.close()
+  override def close() = {
+    logOpenSession()
+    closer.close()
+  }
 }
 
 object AkkaHttpControllerTextApi

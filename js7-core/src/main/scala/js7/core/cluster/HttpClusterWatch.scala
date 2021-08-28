@@ -27,6 +27,11 @@ final class HttpClusterWatch(
   protected val actorSystem: ActorSystem)
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 {
+  override def close(): Unit = {
+    logOpenSession()
+    super.close()
+  }
+
   protected def httpClient = this
 
   protected def uriPrefixPath = "/agent"

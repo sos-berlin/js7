@@ -30,5 +30,8 @@ extends HasCloser with AgentClient
 
   onClose { super[AgentClient].close() }
 
-  override def close() = super[HasCloser].close()
+  override def close() = {
+    logOpenSession()
+    super[HasCloser].close()
+  }
 }
