@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Route}
 import cats.syntax.flatMap._
+import cats.syntax.traverse._
 import io.circe.Json
 import js7.base.auth.{SimpleUser, ValidUserPermission}
 import js7.base.circeutils.CirceUtils._
@@ -18,7 +19,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ByteSequenceToLinesObservable
-import js7.base.utils.ScalaUtils.syntax.RichAny
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
@@ -66,15 +67,17 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                     .flatMap(new ByteSequenceToLinesObservable)
                     .mapParallelOrderedBatch()(_
-                      .parseJsonAs[FreshOrder].orThrow)
+                      .parseJsonAs[FreshOrder])
                     .toL(Vector)
-                    .flatTap(orders => Task {
-                      val d = startedAt.elapsed
-                      if (d > 1.s) logger.debug(s"post controller/api/order received - " +
-                        itemsPerSecondString(d, orders.size, "orders") + " · " +
-                        bytesPerSecondString(d, byteCount))
-                    })
-                    .flatMap(orders => executeCommand(AddOrders(orders), CommandMeta(user)))
+                    .map(_.sequence)
+                    .flatTap(checkedOrders => Task(
+                      for (orders <- checkedOrders) {
+                        val d = startedAt.elapsed
+                        if (d > 1.s) logger.debug(s"post controller/api/order received - " +
+                          itemsPerSecondString(d, orders.size, "orders") + " · " +
+                          bytesPerSecondString(d, byteCount))
+                       }))
+                    .flatMapT(orders => executeCommand(AddOrders(orders), CommandMeta(user)))
                     .map(_.map(o => o: ControllerCommand.Response))
                 }
               else
