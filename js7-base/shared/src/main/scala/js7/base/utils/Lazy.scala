@@ -61,7 +61,7 @@ final class Lazy[A] private(eval: => A)
   private sealed trait State
   private case object NotEvaluated extends State
   private case object Evaluating extends State
-  private final case class Evaluated(a: A @unchecked) extends State
+  private sealed case class Evaluated(a: A @unchecked) extends State
 
   final class RecursiveLazyValueException(val origin: this.type)
   extends Exception("Recursive evaluation of Lazy")

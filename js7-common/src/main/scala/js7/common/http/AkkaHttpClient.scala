@@ -232,7 +232,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   : Task[HttpResponse] =
     withCheckedAgentUri(request)(request =>
       sessionTokenTask.flatMap { sessionToken =>
-        if (closed) logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
+        if (closed) {
+          logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
+        }
         val number = requestCounter.incrementAndGet()
         val req = request
           .withHeaders(

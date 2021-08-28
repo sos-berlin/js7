@@ -96,16 +96,16 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                       case Right(order) =>
                         extractUri { uri =>
                           onSuccess(executeCommand(AddOrder(order), CommandMeta(user)).runToFuture) {
-                              case Left(problem) => complete(problem)
-                              case Right(response) =>
-                                respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
-                                  complete(
-                                    if (response.ignoredBecauseDuplicate)
-                                      Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added")
-                                    else
-                                      Created -> emptyJsonObject)
-                                }
-                            }
+                            case Left(problem) => complete(problem)
+                            case Right(response) =>
+                              respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
+                                complete(
+                                  if (response.ignoredBecauseDuplicate)
+                                    Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added")
+                                  else
+                                    Created -> emptyJsonObject)
+                              }
+                          }
                         }
                     }
                 }))

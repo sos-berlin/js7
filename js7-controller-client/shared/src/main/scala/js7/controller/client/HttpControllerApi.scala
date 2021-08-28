@@ -109,7 +109,9 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
       uris.events(request),
       responsive = true)
 
-  final def eventIdObservable[E <: Event: ClassTag](timeout: Option[FiniteDuration] = None, heartbeat: Option[FiniteDuration] = None)
+  final def eventIdObservable[E <: Event: ClassTag](
+    timeout: Option[FiniteDuration] = None,
+    heartbeat: Option[FiniteDuration] = None)
   : Task[Observable[EventId]] =
     httpClient.getDecodedLinesObservable[EventId](
       uris.eventIds(timeout, heartbeat = heartbeat),
@@ -173,7 +175,7 @@ object HttpControllerApi
       acquire = Task(new HttpControllerApi.Standard(uri, userAndPassword, httpClient, loginDelays))
     )(release = api =>
       api.logout()
-        .map(_ => ())
+        .void
         .onErrorHandle { t =>
           scribe.debug(s"logout() => ${t.toStringWithCauses}")
           ()

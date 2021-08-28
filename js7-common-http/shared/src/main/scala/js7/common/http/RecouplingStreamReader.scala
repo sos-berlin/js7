@@ -76,9 +76,10 @@ abstract class RecouplingStreamReader[
 
   /** Observes endlessly, recoupling and repeating when needed. */
   final def observe(api: Api, after: I): Observable[V] = {
-    scribe.debug(s"$api: observe(after=$after)")
     Observable.fromTask(
-      waitUntilNotInUse(api) >> decouple
+      Task(scribe.debug(s"$api: observe(after=$after)")) >>
+        waitUntilNotInUse(api) >>
+        decouple
     ) >>
       new ForApi(api, after)
         .observeAgainAndAgain

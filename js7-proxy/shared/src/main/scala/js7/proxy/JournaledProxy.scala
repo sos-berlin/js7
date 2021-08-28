@@ -49,7 +49,7 @@ trait JournaledProxy[S <: JournaledState[S]]
   private val currentStateFilled = Promise[Unit]()
   @volatile private var _currentState = S.empty
 
-  private val connectableObservable: ConnectableObservable[EventAndState[Event, S]] = {
+  private val connectableObservable: ConnectableObservable[EventAndState[Event, S]] =
     baseObservable
       .map { eventAndState =>
         _currentState = eventAndState.state
@@ -61,7 +61,6 @@ trait JournaledProxy[S <: JournaledState[S]]
       .doOnSubscriptionCancel(Task(
         scribe.debug("connectableObservable: cancelling")))
       .publish(scheduler)
-  }
 
   final def observable: Observable[EventAndState[Event, S]] =
     connectableObservable

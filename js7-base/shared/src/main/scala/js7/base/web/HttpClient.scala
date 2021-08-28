@@ -15,20 +15,26 @@ import scala.util.{Failure, Success, Try}
   */
 trait HttpClient
 {
-  def getDecodedLinesObservable[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[A]]
+  def getDecodedLinesObservable[A: Decoder](uri: Uri, responsive: Boolean = false)
+    (implicit s: Task[Option[SessionToken]])
+  : Task[Observable[A]]
 
-  def getDecodedLinesObservableBatch[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[A]]
-
-  def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[Observable[ByteArray]]
+  def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]])
+  : Task[Observable[ByteArray]]
 
   def get[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]): Task[A]
 
-  def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B]
+  def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]])
+  : Task[B]
 
-  def postObservable[A: Encoder, B: Decoder](uri: Uri, data: Observable[A])(implicit s: Task[Option[SessionToken]]): Task[B]
+  def postObservable[A: Encoder, B: Decoder](uri: Uri, data: Observable[A])
+    (implicit s: Task[Option[SessionToken]])
+  : Task[B]
 
   @TestOnly
-  def postObservableJsonString(uri: Uri, data: Observable[String])(implicit s: Task[Option[SessionToken]]): Task[Json]
+  def postObservableJsonString(uri: Uri, data: Observable[String])
+    (implicit s: Task[Option[SessionToken]])
+  : Task[Json]
 
   /** Returns the HTTP status code, discarding the response data. */
   def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)

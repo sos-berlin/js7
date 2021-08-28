@@ -55,9 +55,12 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
     liftProblem(
       get[Seq[Order[Order.State]]](agentUris.order.orders))
 
-  final def eventObservable(request: EventRequest[Event]): Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =
+  final def eventObservable(request: EventRequest[Event])
+  : Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =
     liftProblem(
-      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](agentUris.controllersEvents(request)))
+      getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
+        agentUris.controllersEvents(request),
+        responsive = true))
 
   final def events(request: EventRequest[Event]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()

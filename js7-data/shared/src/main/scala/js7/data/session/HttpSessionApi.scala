@@ -68,8 +68,11 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
         }
       })
 
-  private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false): Task[command.Response] = {
-    implicit def implicitSessionToken = if (suppressSessionToken) Task.pure(None) else Task { sessionToken }
+  private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false)
+  : Task[command.Response] = {
+    implicit val implicitSessionToken =
+      if (suppressSessionToken) Task.pure(None)
+      else Task { sessionToken }
     httpClient.post[SessionCommand, SessionCommand.Response](sessionUri, command)
       .map(_.asInstanceOf[command.Response])
   }
@@ -83,7 +86,8 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
   final def sessionToken: Option[SessionToken] =
     sessionTokenRef.get()
 
-  protected final def snapshotAs[S <: JournaledState[S]](uri: Uri)(implicit S: JournaledState.Companion[S])
+  protected final def snapshotAs[S <: JournaledState[S]](uri: Uri)
+    (implicit S: JournaledState.Companion[S])
   : Task[S] =
     Task.defer {
       val startedAt = now

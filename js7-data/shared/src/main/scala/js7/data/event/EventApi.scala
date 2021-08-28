@@ -20,7 +20,8 @@ with HasIsIgnorableStackTrace
 
   def clusterNodeState: Task[ClusterNodeState]
 
-  def eventObservable[E <: Event: ClassTag](request: EventRequest[E])(implicit kd: Decoder[KeyedEvent[E]])
+  def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
+    (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]]
 
   def checkedSnapshot(eventId: Option[EventId] = None): Task[Checked[State]] =
