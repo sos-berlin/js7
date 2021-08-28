@@ -1,6 +1,7 @@
 package js7.cluster
 
 import com.softwaremill.diffx
+import com.typesafe.config.Config
 import io.circe.syntax._
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -13,6 +14,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -57,11 +59,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   otherFailed: Boolean,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
+  config: Config,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
   (implicit S: JournaledState.Companion[S])
 {
   import setting.{activeId, idToUri}
+  private val jsonReadAhead = config.getInt("js7.web.client.json-read-ahead")
 
   assertThat(activeId != ownId && setting.passiveId == ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
@@ -303,22 +307,13 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
         })
         // detectPauses here ???
-        .bufferIntrospective(1024
-          /*Need not to be more than default backpressure size (of active and passive node)*/)
-        .flatMap { list =>
-          def f(positionAndLine: PositionAnd[ByteArray]) =
+        .mapParallelOrderedBatch(
+          batchSize = jsonReadAhead / sys.runtime.availableProcessors,
+          responsive = true)(
+          positionAndLine =>
             (positionAndLine.position,
               positionAndLine.value,
-              positionAndLine.value.parseJson.flatMap(journalMeta.decodeJson).orThrow)
-          val n = 128/*!!!*/
-          if (list.sizeIs <= n + n / 2)
-            Observable.fromIterable(list) map f
-          else
-            Observable.fromIteratorUnsafe(list grouped n)
-              .mapParallelOrdered(sys.runtime.availableProcessors)(list => Task(
-                list map f))
-              .flatMap(Observable.fromIterable)
-        }
+              positionAndLine.value.parseJson.flatMap(journalMeta.decodeJson).orThrow))
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(setting.timing.longHeartbeatTimeout)
         .flatMap[Checked[Unit]] {
