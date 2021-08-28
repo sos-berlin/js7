@@ -51,7 +51,8 @@ final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterA
       clusterConf = ClusterConf(NodeId("Primary"), isBackup = false, None, None,
         RecouplingStreamReaderConf(
           timeout = 6500.ms,  // Between 3s and 10s
-          delay = 1.s),
+          delay = 1.s,
+          failureDelay = 5.s),
         ClusterTiming(3.s, 10.s)),
       name = ControllerConfiguration.DefaultName,
       config = DefaultConfig))

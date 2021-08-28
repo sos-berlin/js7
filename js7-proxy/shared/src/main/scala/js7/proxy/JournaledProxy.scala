@@ -135,7 +135,6 @@ object JournaledProxy
 {
   private type Api[S <: JournaledState[S]] = EventApi { type State = S }
 
-  private val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 55.s, delay = 1.s)
   private val scribe = _root_.scribe.Logger(getClass.scalaName)
 
   def observable[S <: JournaledState[S]](
@@ -150,7 +149,7 @@ object JournaledProxy
 
     def observable2: Observable[EventAndState[Event, S]] =
       Observable.tailRecM(none[S])(maybeState =>
-        Observable.fromResource(selectActiveNodeApi(apiResources, _ => onCouplingError))
+        Observable.fromResource(selectActiveNodeApi(apiResources, _ => onCouplingError, proxyConf))
           .flatMap(api =>
             Observable
               .fromTask(
@@ -194,7 +193,8 @@ object JournaledProxy
     : Observable[EventAndState[Event, S]] = {
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
-        tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten)
+        tornOlder = (fromEventId.isEmpty ? proxyConf.tornOlder).flatten,
+        proxyConf.recouplingStreamReaderConf)
       recouplingStreamReader.observe(api, after = state.eventId)
         .guarantee(recouplingStreamReader.decouple.map(_ => ()))
         .scan0(seed)((s, stampedEvent) =>
@@ -237,7 +237,8 @@ object JournaledProxy
   private class MyRecouplingStreamReader[S <: JournaledState[S]](
     onProxyEvent: ProxyEvent => Unit,
     stateFetchDuration: FiniteDuration,
-    tornOlder: Option[FiniteDuration])
+    tornOlder: Option[FiniteDuration],
+    recouplingStreamReaderConf: RecouplingStreamReaderConf)
     (implicit S: JournaledState.Companion[S])
   extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], Api[S]](
     _.eventId, recouplingStreamReaderConf)
@@ -250,7 +251,7 @@ object JournaledProxy
         .eventObservable(
           EventRequest.singleClass[Event](after = after, delay = 1.s,
             tornOlder = tornOlder.map(o => (o + addToTornOlder).roundUpToNext(100.ms)),
-            timeout = Some(55.s/*TODO*/)))
+            timeout = Some(recouplingStreamReaderConf.timeout)))
         .doOnFinish {
           case None => Task { addToTornOlder = ZeroDuration }
           case _ => Task.unit
@@ -287,19 +288,21 @@ object JournaledProxy
     */
   final def selectActiveNodeApi[Api <: EventApi](
     apiResources: Seq[Resource[Task, Api]],
-    onCouplingError: EventApi => Throwable => Task[Unit])
+    onCouplingError: EventApi => Throwable => Task[Unit],
+    proxyConf: ProxyConf)
   : Resource[Task, Api] =
     apiResources.sequence.flatMap(apis =>
       Resource.eval(
         selectActiveNodeApiOnly(
           apis,
-          (api: EventApi) =>
-            throwable => onCouplingError(api)(throwable))))
+          (api: EventApi) => throwable => onCouplingError(api)(throwable),
+          proxyConf)))
 
   private def selectActiveNodeApiOnly[Api <: EventApi](
     apis: Seq[Api],
-    onCouplingError: Api => Throwable => Task[Unit])
-  : Task[Api] = {
+    onCouplingError: Api => Throwable => Task[Unit],
+    proxyConf: ProxyConf)
+  : Task[Api] =
     apis match {
       case Seq(api) =>
         api
@@ -309,6 +312,7 @@ object JournaledProxy
           .map((_: Completed) => api)
 
       case _ =>
+        import proxyConf.recouplingStreamReaderConf.failureDelay
         Task.tailRecM(())(_ =>
           apis
             .traverse(api =>
@@ -334,7 +338,10 @@ object JournaledProxy
                       o.fiber.cancel
                     }
                     .sequence
-                    .map(_ => maybeActive.toRight(()/*Left: repeat tailRecM loop*/))
+                    .flatMap(_ => maybeActive match {
+                      case None => Task.sleep(failureDelay).as(Left(()))
+                      case Some(x) => Task.pure(Right(x))
+                    })
                 }
                 .guaranteeCase {
                   case ExitCase.Completed => Task.unit
@@ -349,7 +356,7 @@ object JournaledProxy
         .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
           scribe.warn(throwable.toStringWithCauses)
           if (throwable.getStackTrace.nonEmpty) scribe.debug(throwable.toString, throwable)
-          tryAgain(()).delayExecution(5.s/*TODO*/)
+          tryAgain(()).delayExecution(failureDelay)
       }
       .map { case (api, clusterNodeState) =>
         val x = if (clusterNodeState.isActive) "active" else "maybe passive"
@@ -357,7 +364,6 @@ object JournaledProxy
         api
       }
     }
-  }
 
   private case class ApiWithFiber[Api <: EventApi](
     api: Api,

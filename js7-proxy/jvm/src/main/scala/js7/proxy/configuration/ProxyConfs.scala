@@ -4,7 +4,9 @@ import com.typesafe.config.Config
 import js7.base.configutils.Configs
 import js7.base.io.JavaResource
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.http.configuration.RecouplingStreamReaderConfs
 
 object ProxyConfs
 {
@@ -16,6 +18,7 @@ object ProxyConfs
     val c = config withFallback defaultConfig
     ProxyConf(
       tornOlder = Some(c.getDuration("js7.proxy.torn-older").toFiniteDuration),
-      syncPolling = c.getDuration("js7.proxy.sync-polling").toFiniteDuration)
+      syncPolling = c.getDuration("js7.proxy.sync-polling").toFiniteDuration,
+      RecouplingStreamReaderConfs.fromConfig(config).orThrow)
   }
 }

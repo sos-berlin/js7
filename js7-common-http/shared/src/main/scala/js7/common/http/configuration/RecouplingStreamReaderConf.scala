@@ -4,4 +4,5 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class RecouplingStreamReaderConf(
   timeout: FiniteDuration,
-  delay: FiniteDuration)
+  delay: FiniteDuration,
+  failureDelay: FiniteDuration)

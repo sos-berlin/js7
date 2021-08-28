@@ -20,7 +20,8 @@ final class RecouplingStreamReaderTest extends AsyncFreeSpec
   "RecouplingStreamReader" in {
     val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))
     val api = new TestSessionApi(Some(userAndPassword))
-    val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 5.s, delay = 1.s)
+    val recouplingStreamReaderConf = RecouplingStreamReaderConf(timeout = 5.s, delay = 1.s,
+      failureDelay = 5.s)
 
     val observable = Observable.defer {
       @volatile var lastErrorAt = -2

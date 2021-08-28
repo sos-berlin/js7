@@ -26,7 +26,8 @@ final class ClusterConfTest extends AnyFreeSpec
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.journal.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
         js7.web.client.idle-get-timeout = 50s
-        js7.web.client.delay-between-polling-gets = 1s"""
+        js7.web.client.polling-delay = 1s
+        js7.web.client.failure-delay = 5s"""
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
@@ -36,7 +37,8 @@ final class ClusterConfTest extends AnyFreeSpec
           None,
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
-            delay = 1.s),
+            delay = 1.s,
+            failureDelay = 5.s),
           ClusterTiming(7.s, 5.s))))
     }
 
@@ -53,7 +55,8 @@ final class ClusterConfTest extends AnyFreeSpec
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.auth.cluster.password = "PASSWORD"
         js7.web.client.idle-get-timeout = 50s
-        js7.web.client.delay-between-polling-gets = 1s"""
+        js7.web.client.polling-delay = 1s
+        js7.web.client.failure-delay = 5s"""
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
@@ -69,7 +72,8 @@ final class ClusterConfTest extends AnyFreeSpec
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
-            delay = 1.s),
+            delay = 1.s,
+            failureDelay = 5.s),
           ClusterTiming(7.s, 5.s))))
     }
   }

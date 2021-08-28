@@ -235,7 +235,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   : PassiveClusterNode[S] = {
     assertThat(!_passiveOrWorkingNode.exists(_.isLeft))
     val node = new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
-      otherFailedOver, journalConf, clusterConf, eventIdGenerator, common)
+      otherFailedOver, journalConf, clusterConf, config, eventIdGenerator, common)
     _passiveOrWorkingNode = Some(Left(node))
     node
   }

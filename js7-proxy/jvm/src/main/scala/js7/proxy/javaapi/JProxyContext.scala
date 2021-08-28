@@ -39,7 +39,7 @@ extends HasCloser
     .withFallback(ConfigFactory.systemProperties)
     .withFallback(ProxyConfs.defaultConfig)
 
-  private val proxyConf = ProxyConfs.fromConfig(config)
+  private val proxyConf = ProxyConfs.fromConfig(config_)
 
   private val useJavaThreadPool = config_.getBoolean("js7.thread-pools.use-java-thread-pool")
   private val ownScheduler = !useJavaThreadPool ?

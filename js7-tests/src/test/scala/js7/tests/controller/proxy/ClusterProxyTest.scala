@@ -22,7 +22,9 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
   this: TestSuite =>
 
   protected val items = Seq(workflow)
-  protected def config = ProxyConfs.defaultConfig
+  protected def config = config"""
+    js7.web.client.failure-delay = 0.1
+    """.withFallback(ProxyConfs.defaultConfig)
 
   protected val admissions = List(
     Admission(Uri(s"http://127.0.0.1:$primaryControllerPort"), Some(primaryUserAndPassword)),
@@ -34,7 +36,8 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
         a.uri,
         a.userAndPassword,
         name = s"${getClass.simpleScalaName}-Controller-$i")(
-        actorSystem))
+        actorSystem),
+    ProxyConfs.fromConfig(config))
 
   override def afterAll() = {
     close()
