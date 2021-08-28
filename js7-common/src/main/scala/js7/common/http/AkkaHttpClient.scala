@@ -71,6 +71,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   private lazy val http = Http(actorSystem)
   private lazy val baseAkkaUri = AkkaUri(baseUri.string)
   private lazy val useCompression = http.system.settings.config.getBoolean("js7.web.client.compression")
+  private lazy val jsonReadAhead = http.system.settings.config.getInt("js7.web.client.json-read-ahead")
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
   @volatile private var closed = false
 
@@ -92,18 +93,15 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     closed = true
   }
 
-  def isClosed = closed
-
-  final def getDecodedLinesObservable[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]]) =
-    getRawLinesObservable(uri)
-      .map(_.map(_.parseJsonAs[A].orThrow))
-
-  final def getDecodedLinesObservableBatch[A: Decoder](uri: Uri)(implicit s: Task[Option[SessionToken]])
+  final def getDecodedLinesObservable[A: Decoder](uri: Uri, responsive: Boolean = false)
+    (implicit s: Task[Option[SessionToken]])
   : Task[Observable[A]] =
     getRawLinesObservable(uri)
       .map(_
-        .mapParallelOrderedBatch()(_
-          .parseJsonAs[A].orThrow))
+        .mapParallelOrderedBatch(
+          batchSize = jsonReadAhead / sys.runtime.availableProcessors,
+          responsive = responsive)(
+          _.parseJsonAs[A].orThrow))
 
   final def getRawLinesObservable(uri: Uri)(implicit s: Task[Option[SessionToken]])
   : Task[Observable[ByteArray]] =

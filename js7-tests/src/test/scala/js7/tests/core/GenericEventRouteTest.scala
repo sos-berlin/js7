@@ -285,15 +285,15 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
   private def getEvents(eventRequest: EventRequest[Event]): Task[Observable[Stamped[KeyedEvent[Event]]]] = {
     import ControllerState.keyedEventJsonCodec
     api.getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
-      Uri("/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters))
-    )
+      Uri("/" + encodePath("event") + encodeQuery(eventRequest.toQueryParameters)),
+      responsive = true)
   }
 
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getDecodedLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)
 
   private def getDecodedLinesObservable[A: Decoder: TypeTag](uri: Uri): Seq[A] =
-    Observable.fromTask(api.getDecodedLinesObservable[A](uri))
+    Observable.fromTask(api.getDecodedLinesObservable[A](uri, responsive = true))
       .flatten
       .toListL
       .await(99.s)

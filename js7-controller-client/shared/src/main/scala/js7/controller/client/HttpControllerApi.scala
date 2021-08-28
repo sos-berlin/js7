@@ -105,11 +105,15 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
   final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]] =
-    httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](uris.events(request))
+    httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](
+      uris.events(request),
+      responsive = true)
 
   final def eventIdObservable[E <: Event: ClassTag](timeout: Option[FiniteDuration] = None, heartbeat: Option[FiniteDuration] = None)
   : Task[Observable[EventId]] =
-    httpClient.getDecodedLinesObservable[EventId](uris.eventIds(timeout, heartbeat = heartbeat))
+    httpClient.getDecodedLinesObservable[EventId](
+      uris.eventIds(timeout, heartbeat = heartbeat),
+      responsive = true)
 
   /** Observable for a journal file.
     * @param journalPosition start of observation

@@ -14,14 +14,15 @@ import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.SerialCancelable
+import monix.execution.internal.Platform
 import monix.execution.{Ack, Cancelable, Scheduler, UncaughtExceptionReporter}
-import monix.reactive.{Observable, OverflowStrategy}
+import monix.reactive.Observable
+import monix.reactive.OverflowStrategy.BackPressure
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.{IterableFactory, IterableOps}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise, TimeoutException}
-import scala.util.chaining.scalaUtilChainingOps
 
 object MonixBase
 {
@@ -153,42 +154,32 @@ object MonixBase
 
       def mapParallelOrderedBatch[B](
         batchSize: Int = DefaultBatchSize,
-        delay: FiniteDuration = FiniteDuration.MaxValue,
+        responsive: Boolean = false,
         parallelism: Int = sys.runtime.availableProcessors)
         (f: A => B)
-        (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
-      : Observable[B] =
-        if (!delay.isPositive || parallelism == 1)
+      : Observable[B] = {
+        val minimumBackPressure = BackPressure(parallelism max 2)
+        if (batchSize <= 0 || parallelism <= 1)
           underlying.map(f)
+        else if (batchSize == 1)
+          underlying.mapParallelOrdered(parallelism)(a => Task(f(a)))(
+            minimumBackPressure)
+        else if (responsive)
+          underlying
+            .mapParallelOrdered(parallelism)(a => Task(f(a)))(
+              BackPressure(parallelism * batchSize max 2))
         else
           underlying
-            .pipe(obs =>
-              if (delay < FiniteDuration.MaxValue)
-                obs.buffer(Some(delay), batchSize)
-              else
-                obs.bufferTumbling(batchSize))
-            .mapParallelOrdered(parallelism)(seq => Task(seq map f))
+            .bufferTumbling(batchSize)
+            .mapParallelOrdered(parallelism)(seq => Task(seq.map(f)))(
+              minimumBackPressure)
             .flatMap(Observable.fromIterable)
-
-      //def mapParallelOrderedTimedBatch[B](
-      //  maxDelay: FiniteDuration,
-      //  batchSize: Int = DefaultBatchSize,
-      //  parallelism: Int = sys.runtime.availableProcessors)
-      //  (f: A => B)
-      //  (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
-      //: Observable[Seq[B]] =
-      //  if (maxDelay <= ZeroDuration)
-      //    underlying.map(f)
-      //  else
-      //    underlying
-      //      .bufferTimedAndCounted(maxDelay, batchSize)
-      //      .mapParallelOrdered(parallelism)(seq => Task(seq map f))
+      }
 
       def mapParallelUnorderedBatch[B](
         batchSize: Int = DefaultBatchSize,
         parallelism: Int = sys.runtime.availableProcessors)
         (f: A => B)
-        (implicit os: OverflowStrategy[B] = OverflowStrategy.Default)
       : Observable[B] =
         if (parallelism == 1)
           underlying.map(f)

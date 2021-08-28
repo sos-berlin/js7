@@ -48,8 +48,12 @@ import scala.language.implicitConversions
 
 final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
-  override protected val items = Seq(TestWorkflow)
-  override protected val agentPaths = AAgentPath :: BAgentPath :: Nil
+  private val maxRounds = 100
+
+  override protected def config = config"""
+    akka.http.host-connection-pool.max-connections = ${4 + maxRounds}
+    """.withFallback(super.config)
+
   private val controllerConfig = config"""
     js7.proxy.torn-older = 0s  # Should be irrelevant
     js7.journal.users-allowed-to-release-events = [ "Proxy" ]
@@ -57,6 +61,8 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
     """
   override protected def primaryControllerConfig = controllerConfig withFallback super.primaryControllerConfig
   override protected def backupControllerConfig = controllerConfig withFallback super.backupControllerConfig
+  override protected val items = Seq(TestWorkflow)
+  override protected val agentPaths = AAgentPath :: BAgentPath :: Nil
 
   "Read event stream in small parts and write history" in {
     withControllerAndBackup() { (primary, backup, _) =>
@@ -83,7 +89,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
         @volatile var lastState = ControllerState.empty
         @volatile var finished = false
         var rounds = 0
-        while (!finished && rounds <= 100) {
+        while (!finished && rounds <= maxRounds) {
           logger.info(s"Round $rounds")
           var proxyStartedReceived = false
           try {

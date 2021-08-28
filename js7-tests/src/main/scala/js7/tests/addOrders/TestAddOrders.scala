@@ -1,6 +1,7 @@
 package js7.tests.addOrders
 
 import cats.syntax.flatMap._
+import com.typesafe.config.ConfigFactory
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -10,6 +11,7 @@ import js7.common.akkautils.Akkas
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.ControllerApi
+import js7.proxy.configuration.ProxyConfs
 import js7.tests.addOrders.TestAddOrders._
 import monix.catnap.MVar
 import monix.eval.Task
@@ -84,11 +86,13 @@ object TestAddOrders
     settings: Settings,
     onStatisticsUpdate: Statistics => Unit,
     onOrdersAdded: FiniteDuration => Unit)
-  : Task[Checked[Statistics]] =
-    Akkas.actorSystemResource("TestAddOrders")
+  : Task[Checked[Statistics]] = {
+    val config = ConfigFactory.systemProperties.withFallback(ProxyConfs.defaultConfig)
+    Akkas.actorSystemResource("TestAddOrders", config)
       .flatMap(actorSystem =>
         ControllerApi.resource(
-          settings.admissions.map(admissionToApiResource(_)(actorSystem))))
+          settings.admissions.map(admissionToApiResource(_)(actorSystem)),
+          ProxyConfs.fromConfig(config)))
       .use { controllerApi =>
         val testAddOrders = new TestAddOrders(controllerApi, settings)
         val (allOrdersAddedObservable, statisticsObservable, runOrdersTask) = testAddOrders.run()
@@ -96,6 +100,7 @@ object TestAddOrders
         statisticsObservable foreach onStatisticsUpdate
         runOrdersTask
       }
+  }
 
   private def toOrderId(i: Int) = OrderId(s"TestAddOrders-$i")
 }
