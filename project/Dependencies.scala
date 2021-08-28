@@ -6,16 +6,16 @@ object Dependencies
 {
   val scalaVersion = "2.13.6"
 
-  val akkaVersion = "2.6.15"
-  val akkaHttpVersion = "10.2.4"
-  val slf4jVersion = "1.7.31"  // See also plugins.sbt
+  val akkaVersion = "2.6.16"
+  val akkaHttpVersion = "10.2.6"
+  val slf4jVersion = "1.7.32"  // See also plugins.sbt
   val log4jVersion = "2.14.1"  // See also plugins.sbt
   val catsVersion = "2.6.1"
-  val catsEffectVersion = "2.5.1"
+  val catsEffectVersion = "2.5.3"
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.1"
-  val scalaJava8Version = "0.9.0"
+  val scalaJava8Version = "1.0.0"
   val scalaTestVersion = "3.2.9"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
@@ -25,10 +25,10 @@ object Dependencies
   val monixVersion = "3.4.0"
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.5.5"
-  val scalaJsDomVersion = "1.1.0"
-  val shapelessVersion = "2.3.3"
-  val diffxVersion = "0.5.5"
-  val reactorVersion = "3.4.8"
+  val scalaJsDomVersion = "1.2.0"
+  val shapelessVersion = "2.3.7"
+  val diffxVersion = "0.5.6"
+  val reactorVersion = "3.4.9"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.8.0"
 
@@ -76,7 +76,7 @@ object Dependencies
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
   //val guava               = "com.google.guava" % "guava" % "30.1.1-jre"
-  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.68"
+  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.69"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
                             "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::
