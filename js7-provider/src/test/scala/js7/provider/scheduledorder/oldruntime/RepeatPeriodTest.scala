@@ -1,7 +1,6 @@
 package js7.provider.scheduledorder.oldruntime
 
-import java.time.LocalTime
-import js7.base.time.JavaTime._
+import java.time.{Duration, LocalTime}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -11,7 +10,7 @@ final class RepeatPeriodTest extends AnyFreeSpec {
 
   "nextLocalTime" - {
     "Easy case" in {
-      val period = RepeatPeriod(LocalTime.of(9, 0), ExtendedLocalTime.of(10, 0), 20*60.s)
+      val period = RepeatPeriod(LocalTime.of(9, 0), ExtendedLocalTime.of(10, 0), Duration.ofMinutes(20))
       assert(period.nextLocalTime(LocalTime.of(0, 0)) == Some(LocalTime.of(9, 0)))
       assert(period.nextLocalTime(LocalTime.of(9, 0)) == Some(LocalTime.of(9, 20)))
       assert(period.nextLocalTime(LocalTime.of(9, 0, 0, 1)) == Some(LocalTime.of(9, 20)))
@@ -21,18 +20,18 @@ final class RepeatPeriodTest extends AnyFreeSpec {
     }
 
     "An instant would be at midnight" in {
-      val period = RepeatPeriod(LocalTime.of(23, 0), ExtendedLocalTime.of(24, 0), 20*60.s)
+      val period = RepeatPeriod(LocalTime.of(23, 0), ExtendedLocalTime.of(24, 0), Duration.ofMinutes(20))
       assert(period.nextLocalTime(LocalTime.of(23, 0)) == Some(LocalTime.of(23, 20)))
       assert(period.nextLocalTime(LocalTime.of(23, 40)) == None)
     }
 
     "An instant would be after midnight" in {
-      val period = RepeatPeriod(LocalTime.of(23, 0), ExtendedLocalTime.of(24, 0), 23.h)
+      val period = RepeatPeriod(LocalTime.of(23, 0), ExtendedLocalTime.of(24, 0), Duration.ofHours(23))
       assert(period.nextLocalTime(LocalTime.of(23, 30)) == None)
     }
 
     "Empty period" in {
-      val period = RepeatPeriod(LocalTime.of(1, 0), ExtendedLocalTime.of(1, 0), 1.s)
+      val period = RepeatPeriod(LocalTime.of(1, 0), ExtendedLocalTime.of(1, 0), Duration.ofSeconds(1))
       assert(period.nextLocalTime(LocalTime.of(1, 0)) == None)
     }
   }

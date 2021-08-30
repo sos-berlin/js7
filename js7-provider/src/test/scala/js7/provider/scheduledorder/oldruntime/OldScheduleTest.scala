@@ -1,7 +1,6 @@
 package js7.provider.scheduledorder.oldruntime
 
-import java.time.{DayOfWeek, LocalTime, ZoneId, ZonedDateTime}
-import js7.base.time.JavaTime._
+import java.time.{DayOfWeek, Duration, LocalTime, ZoneId, ZonedDateTime}
 import js7.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -13,7 +12,7 @@ final class OldScheduleTest extends AnyFreeSpec {
   private val timeZone = ZoneId.of("Europe/Helsinki")
 
   "Every hour" in {
-    val instants = OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(1.h)).instants(
+    val instants = OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(Duration.ofHours(1))).instants(
       instant("2017-03-10T12:00:00+02:00") -> instant("2017-03-10T15:00:00+02:00")).toList
     assert(instants == List(
       instant("2017-03-10T12:00:00+02:00"),
@@ -23,9 +22,9 @@ final class OldScheduleTest extends AnyFreeSpec {
 
   "Daily, firstInstant" - {
     val dailySchedule = OldSchedule.daily(timeZone, PeriodSeq(List(
-      RepeatPeriod(LocalTime.of(9, 0), ExtendedLocalTime.of(10, 0), 20*60.s),
+      RepeatPeriod(LocalTime.of(9, 0), ExtendedLocalTime.of(10, 0), Duration.ofMinutes(20)),
       SingleStartPeriod(LocalTime.of(10, 37)),
-      RepeatPeriod(LocalTime.of(12, 0), ExtendedLocalTime.of(12, 31), 30*60.s)))/*, startOnce = false*/)
+      RepeatPeriod(LocalTime.of(12, 0), ExtendedLocalTime.of(12, 31), Duration.ofMinutes(30))))/*, startOnce = false*/)
     for ((from, next) <- Array(
       "2017-01-06T06:00:00+02:00" -> "2017-01-06T09:00:00+02:00",
       "2017-01-06T09:00:00+02:00" -> "2017-01-06T09:00:00+02:00",
@@ -39,7 +38,7 @@ final class OldScheduleTest extends AnyFreeSpec {
 
   "Weekdays, instants" in {
     val schedule = OldSchedule(timeZone, Map(
-      DayOfWeek.MONDAY  -> RepeatPeriod(LocalTime.of(1, 0), LocalTime.of(2, 0), 30*60.s),
+      DayOfWeek.MONDAY  -> RepeatPeriod(LocalTime.of(1, 0), LocalTime.of(2, 0), Duration.ofMinutes(30)),
       DayOfWeek.TUESDAY -> SingleStartPeriod(LocalTime.of(2, 2))))
     val interval = instant("2017-01-01T00:00:00+02:00") -> instant("2017-01-12T00:00:00+02:00")
     assert(schedule.instants(interval, 100).toList ==

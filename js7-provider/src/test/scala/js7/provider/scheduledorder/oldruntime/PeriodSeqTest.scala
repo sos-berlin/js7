@@ -1,7 +1,6 @@
 package js7.provider.scheduledorder.oldruntime
 
-import java.time.LocalTime
-import js7.base.time.JavaTime._
+import java.time.{Duration, LocalTime}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -10,9 +9,9 @@ import org.scalatest.freespec.AnyFreeSpec
 final class PeriodSeqTest extends AnyFreeSpec {
 
   private val periodSeq = PeriodSeq(List(
-    RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(10,  0), absoluteRepeat = 20*60.s),
+    RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(10,  0), absoluteRepeat = Duration.ofMinutes(20)),
     SingleStartPeriod(LocalTime.of(11, 0)),
-    RepeatPeriod(LocalTime.of(12, 0), ExtendedLocalTime.of(12, 31), absoluteRepeat = 30*60.s)))
+    RepeatPeriod(LocalTime.of(12, 0), ExtendedLocalTime.of(12, 31), absoluteRepeat = Duration.ofMinutes(30))))
 
   "nextLocalTime" in {
     assert(periodSeq.nextLocalTime(LocalTime.of(0, 0)) == Some(LocalTime.of(9, 0)))

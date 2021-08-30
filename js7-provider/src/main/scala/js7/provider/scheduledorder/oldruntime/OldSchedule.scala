@@ -64,7 +64,7 @@ extends Schedule {
 }
 
 object OldSchedule {
-  private val PredictionLimit = 366*24.h
+  private val PredictionLimit = Duration.ofDays(366)
 
   def empty(timeZone: ZoneId): OldSchedule =
     OldSchedule(timeZone, Map())

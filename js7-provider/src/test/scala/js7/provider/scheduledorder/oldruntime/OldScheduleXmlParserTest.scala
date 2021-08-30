@@ -1,8 +1,7 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.DayOfWeek._
-import java.time.{LocalTime, ZoneId}
-import js7.base.time.JavaTime._
+import java.time.{Duration, LocalTime, ZoneId}
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 import js7.common.scalautil.xmls.XmlSources._
 import org.scalatest.freespec.AnyFreeSpec
@@ -24,7 +23,7 @@ final class OldScheduleXmlParserTest extends AnyFreeSpec {
       <run_time>
         <period absolute_repeat="10"/>
       </run_time>
-    assert(parse(x) == OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(10.s)))
+    assert(parse(x) == OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(Duration.ofSeconds(10))))
   }
 
   "RepeatPeriod" in {
@@ -35,9 +34,9 @@ final class OldScheduleXmlParserTest extends AnyFreeSpec {
         <period begin="09:00" end="17:00" absolute_repeat="2"/>
       </run_time>
     val periodSeq = PeriodSeq(List(
-      RepeatPeriod(LocalTime.of( 2, 0), ExtendedLocalTime.of( 7, 0), 1.s),
-      RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(17, 0), 2.s),
-      RepeatPeriod(LocalTime.of(19, 0), ExtendedLocalTime.of(22, 0), 3.s)))
+      RepeatPeriod(LocalTime.of( 2, 0), ExtendedLocalTime.of( 7, 0), Duration.ofSeconds(1)),
+      RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(17, 0), Duration.ofSeconds(2)),
+      RepeatPeriod(LocalTime.of(19, 0), ExtendedLocalTime.of(22, 0), Duration.ofSeconds(3))))
     assert(parse(x) == OldSchedule.daily(timeZone, periodSeq))
   }
 
@@ -73,10 +72,10 @@ final class OldScheduleXmlParserTest extends AnyFreeSpec {
     assert(parse(x) == OldSchedule(timeZone, Map(
       MONDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(1, 1)),
-        RepeatPeriod(LocalTime.of(1, 1), LocalTime.of(1, 1), 1.s))),
+        RepeatPeriod(LocalTime.of(1, 1), LocalTime.of(1, 1), Duration.ofSeconds(1)))),
       TUESDAY -> PeriodSeq(List(
-        RepeatPeriod(LocalTime.of( 2, 2), LocalTime.of( 2, 22),  2.s),
-        RepeatPeriod(LocalTime.of(22, 2), LocalTime.of(22, 22), 22.s))),
+        RepeatPeriod(LocalTime.of( 2, 2), LocalTime.of( 2, 22),  Duration.ofSeconds(2)),
+        RepeatPeriod(LocalTime.of(22, 2), LocalTime.of(22, 22), Duration.ofSeconds(22)))),
       WEDNESDAY -> PeriodSeq(List(
         SingleStartPeriod(LocalTime.of(3, 3)))),
       THURSDAY -> PeriodSeq(List(

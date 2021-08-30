@@ -280,6 +280,8 @@ object ScalaTime
 
     def toDecimalString: String =
       duration.toBigDecimalSeconds.bigDecimal.toPlainString
+
+    def pretty: String = (duration: Duration).pretty
   }
 
   implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type) extends AnyVal
