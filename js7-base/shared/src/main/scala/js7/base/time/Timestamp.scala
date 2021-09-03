@@ -29,13 +29,13 @@ trait Timestamp extends Ordered[Timestamp] {
   def compare(o: Timestamp) = toEpochMilli compare o.toEpochMilli
 
   def +(o: FiniteDuration): Timestamp =
-    copy(epochMilli = toEpochMilli + o.toMillis)
+    copy(epochMilli = addSaturating(toEpochMilli, o.toMillis))
 
   def -(o: FiniteDuration): Timestamp =
-    copy(epochMilli = toEpochMilli - o.toMillis)
+    copy(epochMilli = subtractSaturating(toEpochMilli, o.toMillis))
 
   def -(o: Timestamp): FiniteDuration =
-    new FiniteDuration(toEpochMilli - o.toEpochMilli, MILLISECONDS)
+    new FiniteDuration(subtractSaturating(toEpochMilli, o.toEpochMilli), MILLISECONDS)
 
   final def min(o: Timestamp) = if (this < o) this else o
 

@@ -39,6 +39,7 @@ final class TimestampTest extends AnyFreeSpec
 
   "plus" in {
     assert(timestamp + (1.hour + 111.milliseconds) == Timestamp("2017-12-04T12:22:33.567Z"))
+    assert(timestamp + Long.MaxValue.nanoseconds == Timestamp("2310-03-16T11:09:50.310Z"))
   }
 
   "minus" in {
