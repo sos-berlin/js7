@@ -73,6 +73,7 @@ final class AgentOrderKeeper(
   signatureVerifier: SignatureVerifier,
   executorConf: JobExecutorConf,
   persistence: JournaledStatePersistence[AgentState],
+  private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
 extends MainJournalingActor[AgentState, Event]
@@ -81,10 +82,9 @@ with Stash
   import conf.akkaAskTimeout
   import context.{actorOf, watch}
 
-  private val alarmClock = AlarmClock(
-    conf.config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration)
   private val ownAgentPath = persistence.currentState.meta.agentPath
   private val controllerId = persistence.currentState.meta.controllerId
+  private implicit val instructionExecutorService = new InstructionExecutorService(clock)
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 

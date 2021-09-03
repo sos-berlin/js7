@@ -185,7 +185,7 @@ object AlarmClock
     def epochMilli() = clock()
 
     def :=(timestamp: Timestamp): Unit = {
-      logger.debug(s"TestAlarmClock := ${now()}")
+      logger.debug(s"TestAlarmClock := $timestamp")
       clock := timestamp.toEpochMilli
     }
 

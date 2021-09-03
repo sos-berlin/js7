@@ -11,6 +11,7 @@ import js7.data.controller.ControllerStateExecutorTest._
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
+import js7.data.execution.workflow.instructions.InstructionExecutorService.implicits.defaultInstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded

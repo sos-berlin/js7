@@ -3,6 +3,8 @@ package js7.agent
 import akka.actor.{ActorRef, ActorSystem, Props}
 import cats.syntax.traverse._
 import com.google.inject.Stage.PRODUCTION
+import com.google.inject.util.Modules
+import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.typesafe.config.Config
 import java.nio.file.Files.deleteIfExists
@@ -128,10 +130,13 @@ object RunningAgent {
     }
 
   def startForTest(conf: AgentConfiguration,
-    scheduler: Option[Scheduler] = None)(
+    scheduler: Option[Scheduler] = None,
+    module: Module = EMPTY_MODULE)(
     implicit ec: ExecutionContext)
   : Future[RunningAgent] =
-    startForTest(new AgentModule(conf, scheduler))
+    startForTest(
+      Modules.`override`(new AgentModule(conf, scheduler))
+        .`with`(module))
 
   def startForTest(module: Module)(implicit ec: ExecutionContext): Future[RunningAgent] = {
     val whenAgent = apply(module)

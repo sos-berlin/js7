@@ -13,6 +13,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.OrderEventSourceTest._
 import js7.data.execution.workflow.context.StateView
+import js7.data.execution.workflow.instructions.InstructionExecutorService.implicits.defaultInstructionExecutorService
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderResumed.ReplaceHistoricOutcome

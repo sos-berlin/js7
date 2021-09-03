@@ -23,7 +23,8 @@ import scala.collection.mutable
 trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   this: org.scalatest.Suite =>
 
-  protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
+  protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentModule)
+    .await(99.s)
   protected final lazy val agent: RunningAgent = agents.head
 
   protected final lazy val controller: RunningController =

@@ -10,6 +10,8 @@ import js7.agent.web.AgentWebServer
 import js7.base.auth.SimpleUser
 import js7.base.thread.IOExecutor
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
+import js7.base.time.AlarmClock
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -60,6 +62,12 @@ extends AbstractModule
   @Provides @Singleton
   def executionContext(scheduler: Scheduler): ExecutionContext =
     scheduler
+
+  @Provides @Singleton
+  def alarmClock(config: Config, scheduler: Scheduler): AlarmClock =
+    AlarmClock(
+      config.getDuration("js7.time.clock-setting-check-interval").toFiniteDuration)(
+      scheduler)
 
   @Provides @Singleton
   def scheduler(configuration: AgentConfiguration, closer: Closer): Scheduler =

@@ -21,6 +21,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.thread.IOExecutor
+import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, SetOnce}
@@ -46,6 +47,7 @@ import scala.util.{Failure, Success, Try}
   */
 private[agent] final class AgentActor private(
   terminatePromise: Promise[AgentTermination.Terminate],
+  clock: AlarmClock,
   agentConf: AgentConfiguration,
   executorConf: JobExecutorConf,
   eventIdGenerator: EventIdGenerator,
@@ -270,6 +272,7 @@ extends Actor with Stash with SimpleStateActor
           signatureVerifier,
           executorConf,
           persistence,
+          clock,
           agentConf)
         },
       "AgentOrderKeeper")
@@ -304,6 +307,7 @@ object AgentActor
 
   @Singleton
   final class Factory @Inject private(
+    clock: AlarmClock,
     agentConfiguration: AgentConfiguration,
     executorConf: JobExecutorConf,
     eventIdGenerator: EventIdGenerator,
@@ -311,6 +315,7 @@ object AgentActor
     (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
-      new AgentActor(terminatePromise, agentConfiguration, executorConf, eventIdGenerator, keyedEventBus)
+      new AgentActor(terminatePromise, clock, agentConfiguration, executorConf,
+        eventIdGenerator, keyedEventBus)
   }
 }

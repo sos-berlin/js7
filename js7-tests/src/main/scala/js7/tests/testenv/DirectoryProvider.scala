@@ -216,12 +216,13 @@ extends HasCloser
       result
     }
 
-  def startAgents(): Future[Seq[RunningAgent]] =
-    Future.sequence(agents.map(_.agentPath) map startAgent)
+  def startAgents(module: Module = EMPTY_MODULE): Future[Seq[RunningAgent]] =
+    Future.sequence(agents.map(_.agentPath).map(startAgent(_, module)))
 
-  def startAgent(agentPath: AgentPath): Future[RunningAgent] =
+  def startAgent(agentPath: AgentPath, module: Module = EMPTY_MODULE): Future[RunningAgent] =
     RunningAgent.startForTest(
       agentToTree(agentPath).agentConfiguration,
+      module = module,
       scheduler = scheduler)
 
   def updateVersionedItems(

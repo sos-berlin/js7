@@ -15,6 +15,9 @@ import scala.collection.mutable
 
 trait ForkInstructionExecutor extends EventInstructionExecutor
 {
+  protected val service: InstructionExecutorService
+  private implicit val implicitService = service
+
   private[workflow] final def tryJoinChildOrder(
     childOrder: Order[Order.State],
     evidence: ForkInstruction,

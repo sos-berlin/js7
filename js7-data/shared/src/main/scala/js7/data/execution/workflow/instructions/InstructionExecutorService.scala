@@ -69,5 +69,7 @@ object InstructionExecutorService
 {
   val default = new InstructionExecutorService(WallClock)
 
-  implicit val defaultInstructionExecutorService = default
+  object implicits {
+    implicit val defaultInstructionExecutorService = default
+  }
 }
