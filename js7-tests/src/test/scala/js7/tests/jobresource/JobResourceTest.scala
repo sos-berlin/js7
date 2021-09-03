@@ -2,8 +2,8 @@ package js7.tests.jobresource
 
 import cats.implicits._
 import io.circe.syntax.EncoderOps
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.{OffsetDateTime, ZoneId}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
@@ -153,7 +153,8 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
       scribe.info(stdouterr.trim)
-      val dateTime = OffsetDateTime.ofInstant(scheduledFor.toInstant, ZoneId.systemDefault())
+      val dateTime = scheduledFor
+        .toOffsetDateTime(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssZ"))
       assert(stdouterr contains s"JS7_SCHEDULED_DATE=/$dateTime/\n")
       assert(stdouterr contains "JS7_SCHEDULED_YEAR=/2021/\n")

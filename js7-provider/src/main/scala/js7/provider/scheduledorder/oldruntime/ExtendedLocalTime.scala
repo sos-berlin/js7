@@ -24,9 +24,9 @@ extends Ordered[ExtendedLocalTime]
   def compare(o: ExtendedLocalTime) =
     toNanoOfDay compareTo o.toNanoOfDay
 
-  def toInstant(localDate: LocalDate, zoneId: ZoneId) = {
+  def toInstant(localDate: LocalDate, zone: ZoneId) = {
     val local = toLocalDateTime(localDate)
-    local.toInstant(zoneId.getRules.getOffset(local))
+    local.toInstant(zone.getRules.getOffset(local))
   }
 
   def toLocalDateTime(localDate: LocalDate) =

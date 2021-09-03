@@ -15,7 +15,7 @@ final class NowScopeTest extends AnyFreeSpec
   "Example with now() and $epochSecond" in {
     val checkedValue = nowScope.parseAndEval(
       "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \", $epochSecond\"")
-    val yyyymmdd = LocalDateTime.ofInstant(nowScope.now.toInstant, ZoneId.of("Antarctica/Troll"))
+    val yyyymmdd = nowScope.now.toLocalDateTime(ZoneId.of("Antarctica/Troll"))
       .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val epochSecond = nowScope.now.toEpochMilli / 1000
 
@@ -26,7 +26,7 @@ final class NowScopeTest extends AnyFreeSpec
   format in {
     val now = nowScope.now
     val checkedValue = nowScope.parseAndEval(s"now(format='$format')")
-    val expected = OffsetDateTime.ofInstant(now.toInstant, ZoneId.systemDefault())
+    val expected = now.toOffsetDateTime(ZoneId.systemDefault())
       .format(DateTimeFormatter.ofPattern(format))
     assert(checkedValue == Right(StringValue((expected))))
   }

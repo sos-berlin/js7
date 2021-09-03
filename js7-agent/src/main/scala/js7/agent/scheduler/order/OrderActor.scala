@@ -110,6 +110,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         if (order.isProcessable) {
           val out, err = PublishSubject[String]()
           val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
+
           def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
             observable
               .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
@@ -119,16 +120,21 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
                   chunk.length,
                   persistStdouterr(outerr, chunk))))
               .completedL
-          val outErrCompleted = Task.parZip2(
-            writeObservableAsEvents(Stdout, out),
-            writeObservableAsEvents(Stderr, err)
-          ).void.runToFuture
+
+          val outErrCompleted = Task
+            .parZip2(
+              writeObservableAsEvents(Stdout, out),
+              writeObservableAsEvents(Stderr, err))
+            .void.runToFuture
+
           val stdObservers = new StdObservers(out, err, charBufferSize = charBufferSize,
             keepLastErrLine = workflowJob.failOnErrWritten)
+
           become("processing")(
             processing(jobDriver, stdObservers, outErrCompleted,
               () => (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) ?
                 s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
+
           // OrderStarted automatically with first OrderProcessingStarted
           val orderStarted = order.isState[Order.Fresh] thenList OrderStarted
           persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
