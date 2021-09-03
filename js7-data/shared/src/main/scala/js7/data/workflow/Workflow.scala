@@ -7,6 +7,7 @@ import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.TimeZone
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import js7.base.utils.ScalaUtils.syntax._
@@ -36,6 +37,7 @@ final case class Workflow private(
   rawLabeledInstructions: IndexedSeq[Instruction.Labeled],
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   orderPreparation: OrderPreparation,
+  timeZone: TimeZone,
   jobResourcePaths: Seq[JobResourcePath],
   source: Option[String],
   outer: Option[Workflow])
@@ -475,7 +477,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     outer: Option[Workflow] = None)
   : Workflow =
     apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderPreparation.default,
-      source = source, outer = outer)
+      TimeZone.utc, source = source, outer = outer)
 
   /** Test only. */
   def apply(
@@ -483,12 +485,13 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderPreparation: OrderPreparation = OrderPreparation.default,
+    timeZone: TimeZone = TimeZone.utc,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
     checkedSub(id, labeledInstructions.toIndexedSeq, nameToJob, orderPreparation,
-      jobResourcePaths, source, outer).orThrow
+      timeZone, jobResourcePaths, source, outer).orThrow
 
   /** Checks a subworkflow.
     * Use `completelyChecked` to check a whole workflow incldung subworkfows. */
@@ -497,6 +500,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderPreparation: OrderPreparation = OrderPreparation.default,
+    timeZone: TimeZone = TimeZone.utc,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
@@ -506,6 +510,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
       orderPreparation,
+      timeZone,
       jobResourcePaths ,
       source,
       outer
@@ -517,6 +522,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderPreparation: OrderPreparation = OrderPreparation.default,
+    timeZone: TimeZone = TimeZone.utc,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
@@ -526,6 +532,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
       orderPreparation,
+      timeZone,
       jobResourcePaths,
       source,
       outer
@@ -551,18 +558,19 @@ object Workflow extends VersionedItem.Companion[Workflow]
   implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 
   private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
-    case Workflow(id, instructions, namedJobs, orderPreparation, jobResourcePaths, source, _) =>
+    case Workflow(id, instructions, namedJobs, orderPreparation, tz, jobResourcePaths, src, _) =>
       implicit val x: Encoder.AsObject[Instruction] = Instructions.jsonCodec
       id.asJsonObject ++
         JsonObject(
           "orderPreparation" -> orderPreparation.??.asJson,
+          "timeZone" -> ((tz != TimeZone.utc) ? tz).asJson,
           "jobResourcePaths" -> jobResourcePaths.??.asJson,
           "instructions" -> instructions
             .dropLastWhile(labeled =>
               labeled.instruction == ImplicitEnd.empty && labeled.maybePosition.isEmpty)
             .asJson,
           "jobs" -> namedJobs.??.asJson,
-          "source" -> source.asJson)
+          "source" -> src.asJson)
   }
 
   private val jsonDecoder_ : Decoder[Workflow] =
@@ -572,11 +580,12 @@ object Workflow extends VersionedItem.Companion[Workflow]
       for {
         id <- cursor.value.as[WorkflowId]
         orderPreparation <- cursor.getOrElse[OrderPreparation]("orderPreparation")(OrderPreparation.default)
+        tz <- cursor.getOrElse[TimeZone]("timeZone")(TimeZone.utc)
         jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
         instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
         namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
         source <- cursor.get[Option[String]]("source")
-        workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderPreparation,
+        workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderPreparation, tz,
           jobResourcePaths = jobResourcePaths, source)
           .toDecoderResult(cursor.history)
       } yield workflow

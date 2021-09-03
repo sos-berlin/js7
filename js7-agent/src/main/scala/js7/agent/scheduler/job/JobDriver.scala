@@ -11,7 +11,7 @@ import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.monixutils.{AsyncMap, MonixDeadline}
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
-import js7.base.time.ScalaTime.{RichDuration, RichFiniteDuration}
+import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{JobConf, JobResource, JobResourcePath}

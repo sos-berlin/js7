@@ -14,6 +14,8 @@ sealed trait JobKey
 {
   def name: String
 
+  def workflowId: WorkflowId
+
   override def toString = s"Job:$name"
 }
 
@@ -32,11 +34,15 @@ object JobKey
 
   final case class Anonymous(workflowPosition: WorkflowPosition) extends JobKey {
     def name = workflowPosition.toString
+
+    def workflowId = workflowPosition.workflowId
   }
 
   final case class Named(workflowBranchPath: WorkflowBranchPath, jobName: WorkflowJob.Name)
   extends JobKey {
     def name = s"$workflowBranchPath:${jobName.string}"
+
+    def workflowId = workflowBranchPath.workflowId
   }
 
   implicit val jsonEncoder: Encoder.AsObject[JobKey] = {

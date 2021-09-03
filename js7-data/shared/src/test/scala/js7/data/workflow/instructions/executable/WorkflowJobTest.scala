@@ -1,10 +1,13 @@
 package js7.data.workflow.instructions.executable
 
+import java.time.DayOfWeek.{MONDAY, TUESDAY}
+import java.time.LocalTime
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.{KeyLogin, ReturnCode}
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.time.ScalaTime._
+import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
@@ -47,7 +50,10 @@ final class WorkflowJobTest extends AnyFreeSpec
           Some(10.s),
           Some(60.s),
           Some(KeyLogin("CREDENTIALS KEY", withUserProfile = true)),
-          failOnErrWritten = true),
+          failOnErrWritten = true,
+          Some(AdmissionTimeScheme(Seq(
+            WeekdayPeriod(MONDAY, LocalTime.of(1, 0), 1.h),
+            WeekdayPeriod(TUESDAY, LocalTime.of(9, 0), 8.h))))),
         json"""{
           "agentPath": "AGENT",
           "executable": {
@@ -67,7 +73,20 @@ final class WorkflowJobTest extends AnyFreeSpec
           "parallelism": 3,
           "sigkillDelay": 10,
           "timeout": 60,
-          "failOnErrWritten": true
+          "failOnErrWritten": true,
+          "admissionTimeScheme": {
+            "periods": [
+              {
+                "TYPE": "WeekdayPeriod",
+                "secondOfWeek": 3600,
+                "duration": 3600
+              }, {
+                "TYPE": "WeekdayPeriod",
+                "secondOfWeek": 118800,
+                "duration": 28800
+              }
+            ]
+          }
         }""")
     }
   }

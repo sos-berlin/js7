@@ -2,6 +2,7 @@ package js7.base.time
 
 import cats.Show
 import io.circe.{Decoder, Encoder, Json}
+import js7.base.number.Numbers.{addSaturating, subtractSaturating}
 import js7.base.problem.Checked
 import js7.base.time.Timestamp._
 import scala.concurrent.duration._

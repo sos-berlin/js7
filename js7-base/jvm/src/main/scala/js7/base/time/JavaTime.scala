@@ -2,6 +2,7 @@ package js7.base.time
 
 import cats.Show
 import java.time._
+import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.RichFiniteDuration
 import org.jetbrains.annotations.TestOnly
@@ -89,9 +90,14 @@ object JavaTime
     def min(o: LocalDateTime): LocalDateTime = if (this <= o) localDateTime else o
     def max(o: LocalDateTime): LocalDateTime = if (this > o) localDateTime else o
     def compare(o: RichLocalDateTime) = localDateTime compareTo o.localDateTime
-    def toInstant(zone: ZoneId) = localDateTime.toInstant(zone.getRules.getOffset(localDateTime))
+    def toInstant(zone: ZoneId) = ZonedDateTime.of(localDateTime, zone).toInstant
   }
 
+  implicit final class JavaTimeZone(private val timeZone: TimeZone) extends AnyVal
+  {
+    def toZoneId: Checked[ZoneId] =
+      Checked.catchNonFatal(ZoneId.of(timeZone.string))
+  }
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 

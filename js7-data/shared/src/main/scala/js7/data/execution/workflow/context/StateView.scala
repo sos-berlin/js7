@@ -1,11 +1,12 @@
 package js7.data.execution.workflow.context
 
+import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.base.problem.{Checked, Problem}
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.board.{Board, BoardPath, BoardState}
 import js7.data.controller.ControllerId
+import js7.data.job.JobKey
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
@@ -55,6 +56,10 @@ trait StateView
       .checked(workflowPosition.workflowId)
       .map(_.instruction_[A](workflowPosition.position))
       .orThrow
+
+  private def keyToJob(jobKey: JobKey): Checked[WorkflowJob] =
+    idToWorkflow.checked(jobKey.workflowId)
+      .flatMap(_.keyToJob.checked(jobKey))
 
   final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
     for {

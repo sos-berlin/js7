@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
+import js7.base.time.TimeZone
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
 import js7.data.item.VersionId
@@ -59,6 +60,7 @@ final class WorkflowTest extends AnyFreeSpec
             },
             "allowUndeclared": true
           },
+          "timeZone": "Europe/Berlin",
           "instructions": [
             {
               "TYPE": "Execute.Anonymous",
@@ -217,6 +219,7 @@ final class WorkflowTest extends AnyFreeSpec
             },
             "allowUndeclared": true
           },
+          "timeZone": "Europe/Berlin",
           "instructions": [
             {
               "position": [ 0 ],
@@ -1203,6 +1206,7 @@ private object WorkflowTest
           OrderParameter("myOptional", StringConstant("DEFAULT")),
           OrderParameter.Final("myFinal", StringConstant("FINAL"))),
         allowUndeclared = true)),
+    TimeZone("Europe/Berlin"),
     jobResourcePaths = Seq(
       JobResourcePath("JOB-RESOURCE")))
 }

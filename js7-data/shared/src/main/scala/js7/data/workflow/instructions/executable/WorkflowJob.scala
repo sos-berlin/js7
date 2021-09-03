@@ -8,6 +8,7 @@ import js7.base.generic.GenericString
 import js7.base.io.process.KeyLogin
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
+import js7.base.time.AdmissionTimeScheme
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
@@ -28,7 +29,8 @@ final case class WorkflowJob private(
   parallelism: Int,
   sigkillDelay: Option[FiniteDuration],
   timeout: Option[FiniteDuration],
-  failOnErrWritten: Boolean)
+  failOnErrWritten: Boolean,
+  admissionTimeScheme: Option[AdmissionTimeScheme])
 {
   def referencedJobResourcePaths =
     jobResourcePaths.view ++ executable.referencedJobResourcePaths
@@ -61,10 +63,11 @@ object WorkflowJob
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
     login: Option[KeyLogin] = None,
-    failOnErrWritten: Boolean = false)
+    failOnErrWritten: Boolean = false,
+    admissionTimeScheme: Option[AdmissionTimeScheme] = None)
   : WorkflowJob =
     checked(agentPath, executable, defaultArguments, jobResourcePaths, parallelism,
-      sigkillDelay, timeout, failOnErrWritten = failOnErrWritten
+      sigkillDelay, timeout, failOnErrWritten = failOnErrWritten, admissionTimeScheme
     ).orThrow
 
   def checked(
@@ -75,12 +78,13 @@ object WorkflowJob
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
-    failOnErrWritten: Boolean = false)
+    failOnErrWritten: Boolean = false,
+    admissionTimeScheme: Option[AdmissionTimeScheme] = None)
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, jobResourcePaths,
-        parallelism, sigkillDelay, timeout, failOnErrWritten)
+        parallelism, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -100,7 +104,8 @@ object WorkflowJob
       "parallelism" -> workflowJob.parallelism.asJson,
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
       "timeout" -> workflowJob.timeout.asJson,
-      "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson)
+      "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson,
+      "admissionTimeScheme" -> workflowJob.admissionTimeScheme.asJson)
 
   implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
     for {
@@ -112,8 +117,9 @@ object WorkflowJob
       sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
       timeout <- cursor.get[Option[FiniteDuration]]("timeout")
       failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
+      admissionTimeScheme <- cursor.get[Option[AdmissionTimeScheme]]("admissionTimeScheme")
       job <- checked(agentPath, executable, arguments, jobResourcePaths, parallelism,
-        sigkillDelay, timeout, failOnErrWritten
+        sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme
       ).toDecoderResult(cursor.history)
     } yield job
 }

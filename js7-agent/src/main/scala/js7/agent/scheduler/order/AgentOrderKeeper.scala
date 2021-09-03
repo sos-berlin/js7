@@ -23,9 +23,9 @@ import js7.base.log.Logger.ops._
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
-import js7.base.time.AlarmClock
-import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.JavaTime._
 import js7.base.time.ScalaTime._
+import js7.base.time.{AdmissionTimeIntervalSwitch, AlarmClock, Timestamp}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{DuplicateKeyException, SetOnce}
@@ -37,6 +37,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventHandler.FollowUp
 import js7.data.execution.workflow.context.StateView
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.SignableItem
@@ -238,7 +239,8 @@ with Stash
         for (workflow <- state.idToWorkflow.values)
           wrapException(s"Error while recovering ${workflow.path}") {
             workflowRegister.recover(workflow)
-            createJobDrivers(workflow)
+            val timeZone = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
+            createJobDrivers(workflow, timeZone)
           }
 
         for (recoveredOrder <- state.idToOrder.values)
@@ -298,6 +300,11 @@ with Stash
 
     case Internal.Due(orderId) if orderRegister contains orderId =>
       proceedWithOrder(orderId)
+
+    case Internal.JobDue(jobKey) =>
+      for (jobEntry <- jobRegister.get(jobKey)) {
+        tryStartProcessing(jobEntry)
+      }
   }
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
@@ -347,11 +354,15 @@ with Stash
             val workflow = origWorkflow.reduceForAgent(ownAgentPath)
             workflowRegister.get(workflow.id) match {
               case None =>
-                logger.trace("Reduced workflow: " + workflow.asJson.compactPrint)
-                persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
-                  workflowRegister.handleEvent(stampedEvent.value)
-                  createJobDrivers(workflow)
-                  Right(AgentCommand.Response.Accepted)
+                workflow.timeZone.toZoneId match {
+                  case Left(problem) => Future.successful(Left(problem))
+                  case Right(zoneId) =>
+                    logger.trace("Reduced workflow: " + workflow.asJson.compactPrint)
+                    persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
+                      workflowRegister.handleEvent(stampedEvent.value)
+                      createJobDrivers(workflow, zoneId)
+                      Right(AgentCommand.Response.Accepted)
+                    }
                 }
 
               case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
@@ -481,7 +492,7 @@ with Stash
         }
   }
 
-  private def createJobDrivers(workflow: Workflow): Unit =
+  private def createJobDrivers(workflow: Workflow, zone: ZoneId): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
       if (job.agentPath == ownAgentPath) {
         val jobDriver = new JobDriver(
@@ -490,7 +501,7 @@ with Stash
             sigkillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay),
           executorConf,
           id => persistence.currentState.pathToJobResource.checked(id))
-        jobRegister.insert(jobKey -> new JobEntry(jobKey, job, jobDriver))
+        jobRegister.insert(jobKey -> new JobEntry(jobKey, job, zone, jobDriver))
       }
     }
 
@@ -543,9 +554,9 @@ with Stash
     val order = orderEntry.order
     if (order.isAttached) {
       order.maybeDelayedUntil match {
-        case Some(until) if alarmClock.now() < until =>
+        case Some(until) if clock.now() < until =>
           // TODO Schedule only the next order ?
-          orderEntry.timer := alarmClock.scheduleAt(until) {
+          orderEntry.timer := clock.scheduleAt(until) {
             self ! Internal.Due(orderId)
           }
 
@@ -593,18 +604,25 @@ with Stash
       tryStartProcessing(jobEntry)
     }
 
-  private def tryStartProcessing(jobEntry: JobEntry): Unit =
-    while (jobEntry.acceptsOrder && jobEntry.queue.nonEmpty) {
-      for (orderId <- jobEntry.queue.dequeue()) {
-        orderRegister.get(orderId) match {
-          case None =>
-            logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
+  private def tryStartProcessing(jobEntry: JobEntry): Unit = {
+    val now = clock.now()
+    val isEnterable = jobEntry.updateAdmissionTimeInterval(now) {
+      self ! Internal.JobDue(jobEntry.jobKey)
+    }
+    if (isEnterable) {
+      while (jobEntry.isBelowParallelismLimit && jobEntry.queue.nonEmpty) {
+        for (orderId <- jobEntry.queue.dequeue()) {
+          orderRegister.get(orderId) match {
+            case None =>
+              logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobKey}. Order has been removed?")
 
-          case Some(orderEntry) =>
-            startProcessing(orderEntry, jobEntry)
+            case Some(orderEntry) =>
+              startProcessing(orderEntry, jobEntry)
+          }
         }
       }
     }
+  }
 
   private def startProcessing(orderEntry: OrderEntry, jobEntry: JobEntry): Unit = {
     val defaultArguments = orderEntry.instruction match {
@@ -627,7 +645,9 @@ with Stash
       case Internal.JobDriverStopped(jobEntry) =>
         import jobEntry.jobKey
         logger.trace(s"JobDriver '$jobKey' stopped")
-        jobRegister -= jobKey
+        for (jobEntry <- jobRegister.remove(jobKey)) {
+          jobEntry.close()
+        }
         shutdown.continue()
 
       case Terminated(actorRef) if orderRegister contains actorRef =>
@@ -680,6 +700,7 @@ object AgentOrderKeeper {
     final case class Recover(recovered: Recovered[AgentState])
     final case class JournalIsReady(agentState: AgentState)
     final case class Due(orderId: OrderId)
+    final case class JobDue(jobKey: JobKey)
     final case class JobDriverStopped(jobEntry: JobEntry)
     object StillTerminating extends DeadLetterSuppression
   }
@@ -687,12 +708,26 @@ object AgentOrderKeeper {
   private final class JobEntry(
     val jobKey: JobKey,
     val workflowJob: WorkflowJob,
+    zone: ZoneId,
     val jobDriver: JobDriver)
   {
     val queue = new OrderQueue
+    private val admissionTimeIntervalSwitch = new AdmissionTimeIntervalSwitch(
+      workflowJob.admissionTimeScheme,
+      onSwitch = (from, to) => logger.debug(s"$jobKey: Next admission: " +
+        from.fold("")(_.toString + " -> ") + to.getOrElse("None") + " " + zone))
     var taskCount = 0
 
-    def acceptsOrder = taskCount < workflowJob.parallelism
+    def close(): Unit =
+      admissionTimeIntervalSwitch.cancel()
+
+    def updateAdmissionTimeInterval(now: Timestamp)(onPermissionGranted: => Unit)
+      (implicit a: AlarmClock)
+    : Boolean =
+      admissionTimeIntervalSwitch.update(now, zone)(onPermissionGranted)
+
+    def isBelowParallelismLimit =
+      taskCount < workflowJob.parallelism
   }
 
   final class OrderQueue private[order] {

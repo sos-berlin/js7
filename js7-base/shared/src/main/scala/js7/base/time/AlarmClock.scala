@@ -28,6 +28,9 @@ trait TestAlarmClock extends AlarmClock
     this += -duration
 
   def tick(duration: FiniteDuration = ZeroDuration): Unit
+
+  final def tickUntil(timestamp: Timestamp): Unit =
+    tick(timestamp - now())
 }
 
 object AlarmClock
@@ -60,7 +63,7 @@ object AlarmClock
     @volatile private var nextMilli = Long.MaxValue
     private val timer = SerialCancelable()
 
-    // We tick to check if clock time has been changed, as long we have an alarm
+    // We tick to check if clock time has been changed, as long as we have an alarm
     private lazy val tickInterval = clockCheckInterval.toMillis
     private val ticker = SerialCancelable()
     @volatile private var ticking = false
