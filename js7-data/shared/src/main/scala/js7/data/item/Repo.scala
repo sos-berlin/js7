@@ -298,11 +298,11 @@ final case class Repo private(
         .toChecked(VersionedItemRemovedProblem(path))
         .map(_.value.asInstanceOf[A]))
 
-  def pathToId(path: VersionedItemPath): Option[VersionedItemId_] =
+  def pathToId[P <: VersionedItemPath](path: P): Option[VersionedItemId[P]] =
     for {
       entries <- pathToVersionToSignedItems.get(path)
       signed <- entries.head.maybeSignedItem
-    } yield signed.value.id
+    } yield signed.value.id.asInstanceOf[VersionedItemId[P]]
 
   def pathToItem(path: VersionedItemPath): Checked[VersionedItem] =
     pathToSigned(path)

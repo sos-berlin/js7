@@ -7,7 +7,7 @@ import js7.data.execution.workflow.context.StateView
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.workflow.Instruction
-import js7.data.workflow.instructions.{End, Execute, ExpectNotice, Fail, Finish, Fork, ForkList, Gap, If, LockInstruction, PostNotice, Prompt, Retry, TryInstruction}
+import js7.data.workflow.instructions.{AddOrder, End, Execute, ExpectNotice, Fail, Finish, Fork, ForkList, Gap, If, LockInstruction, PostNotice, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 
 final class InstructionExecutorService(val clock: WallClock)
@@ -26,6 +26,7 @@ final class InstructionExecutorService(val clock: WallClock)
   private val expectNoticeExecutor = new ExpectNoticeExecutor(this)
   private val promptExecutor = new PromptExecutor(this)
   private val retryExecutor = new RetryExecutor(this)
+  private val addOrderExecutor = new AddOrderExecutor(this)
 
   private[instructions] val forkCache = new ForkInstructionExecutor.Cache
 
@@ -45,6 +46,7 @@ final class InstructionExecutorService(val clock: WallClock)
       case _: ExpectNotice => expectNoticeExecutor
       case _: Prompt => promptExecutor
       case _: Retry => retryExecutor
+      case _: AddOrder => addOrderExecutor
     }
 
   def nextPosition(instruction: Instruction, order: Order[Order.State], stateView: StateView)

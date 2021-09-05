@@ -17,14 +17,14 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.AdmissionPeriodTest._
+import js7.tests.AdmissionTimeTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
-final class AdmissionPeriodTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -38,7 +38,7 @@ final class AdmissionPeriodTest extends AnyFreeSpec with ControllerAgentForScala
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
-  private implicit val timeZone = AdmissionPeriodTest.timeZone
+  private implicit val timeZone = AdmissionTimeTest.timeZone
   private val clock = AlarmClock.forTest(
     ts("2021-03-20T00:00"),
     clockCheckInterval = 100.ms)
@@ -60,7 +60,6 @@ final class AdmissionPeriodTest extends AnyFreeSpec with ControllerAgentForScala
       assert(controllerState.idToOrder(orderId).isState[Fresh])
 
       clock := ts("2021-03-21T03:00")
-      //clock := ts("2021-03-23T03:00")
       eventWatch.await[OrderFinished](_.key == orderId)
     }
 
@@ -149,7 +148,7 @@ final class AdmissionPeriodTest extends AnyFreeSpec with ControllerAgentForScala
   }
 }
 
-object AdmissionPeriodTest
+object AdmissionTimeTest
 {
   private val agentPath = AgentPath("AGENT")
   private val timeZone = ZoneId.of("Europe/Mariehamn")

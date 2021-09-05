@@ -7,6 +7,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
@@ -29,11 +30,11 @@ import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, Invento
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.value.Value
-import js7.data.workflow.{Workflow, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
@@ -266,11 +267,7 @@ with JournaledState[ControllerState]
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       event match {
         case orderAdded: OrderAdded =>
-          idToOrder.checkNoDuplicate(orderId) >>
-            allOrderWatchesState.onOrderAdded(orderId <-: orderAdded)
-              .map(updated => copy(
-                idToOrder = idToOrder + (orderId -> Order.fromOrderAdded(orderId, orderAdded)),
-          allOrderWatchesState = updated))
+          addOrder(orderId, orderAdded)
 
         case event: OrderCoreEvent =>
           for {
@@ -344,6 +341,10 @@ with JournaledState[ControllerState]
                     Right(copy(
                       idToOrder = updatedIdToOrder)))
 
+              case orderAdded: OrderOrderAdded =>
+                for (updated <- addOrder(orderAdded.orderId, orderAdded)) yield
+                  updated.copy(idToOrder = updated.idToOrder ++ updatedIdToOrder)
+
               case OrderDeletionMarked =>
                 previousOrder.externalOrderKey match {
                   case None =>
@@ -402,6 +403,14 @@ with JournaledState[ControllerState]
 
     case _ => applyStandardEvent(keyedEvent)
   }
+
+  private def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX): Checked[ControllerState] =
+    idToOrder.checkNoDuplicate(addedOrderId) >>
+      allOrderWatchesState.onOrderAdded(addedOrderId <-: orderAdded)
+        .map(updated => copy(
+          idToOrder = idToOrder +
+            (addedOrderId -> Order.fromOrderAdded(addedOrderId, orderAdded)),
+          allOrderWatchesState = updated))
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -566,6 +575,10 @@ with JournaledState[ControllerState]
         repo.idToSigned[Workflow](workflowId)
           .fold(_ => default(workflowId), _.value)
     }
+
+  def workflowPathToId(workflowPath: WorkflowPath) =
+    repo.pathToId(workflowPath)
+      .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
   def keyTo[I <: SignableSimpleItem](I: SignableSimpleItem.Companion[I]): MapView[I.Key, I] =
     new MapView[I.Key, I] {

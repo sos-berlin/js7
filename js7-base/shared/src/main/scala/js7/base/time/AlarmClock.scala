@@ -111,8 +111,7 @@ object AlarmClock
     private def startTicking() =
       if (!ticking) {
         ticking = true
-        ticker := scheduler.scheduleAtFixedRate(
-          tickInterval, tickInterval, MILLISECONDS, this)
+        ticker := scheduler.scheduleAtFixedRate(tickInterval, tickInterval, MILLISECONDS, this)
         logger.trace(s"Ticking ${tickInterval.ms.pretty}")
       }
 

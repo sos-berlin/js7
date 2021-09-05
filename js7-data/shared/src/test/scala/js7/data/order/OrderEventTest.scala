@@ -52,6 +52,28 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
+  "OrderOrderAdded" in {
+    check(
+      OrderOrderAdded(
+        OrderId("ORDER-ID"),
+        WorkflowPath("WORKFLOW") ~ "VERSION",
+        Map("VAR" -> StringValue("VALUE")),
+        deleteWhenTerminated = true),
+      json"""
+      {
+        "TYPE": "OrderOrderAdded",
+        "orderId": "ORDER-ID",
+        "workflowId": {
+          "path": "WORKFLOW",
+          "versionId": "VERSION"
+        },
+        "arguments": {
+          "VAR": "VALUE"
+        },
+        "deleteWhenTerminated": true
+      }""")
+  }
+
   "OrderAttachable" in {
     check(
       OrderAttachable(AgentPath("AGENT")),

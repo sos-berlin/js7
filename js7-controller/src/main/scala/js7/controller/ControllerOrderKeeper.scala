@@ -967,11 +967,11 @@ with MainJournalingActor[ControllerState, Event]
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =
     delayOrderDeletion(
-      _controllerState.nextOrderEvents(orderIds).keyedEvents.toVector)
+      _controllerState.nextOrderEvents(orderIds).keyedEvents)
 
   private def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[Event]]], updatedState: ControllerState): Unit = {
-    val itemKeys = mutable.Buffer.empty[InventoryItemKey]
-    val orderIds = mutable.Buffer.empty[OrderId]
+    val itemKeys = mutable.Set.empty[InventoryItemKey]
+    val orderIds = mutable.Set.empty[OrderId]
     for (stamped <- stampedEvents) {
       val keyedEvent = stamped.value
       keyedEvent match {
@@ -993,8 +993,8 @@ with MainJournalingActor[ControllerState, Event]
       }
     }
     _controllerState = updatedState  // Reduce memory usage (they are equal)
-    itemKeys.distinct foreach proceedWithItem
-    proceedWithOrders(orderIds.distinct)
+    itemKeys foreach proceedWithItem
+    proceedWithOrders(orderIds)
   }
 
   private def handleItemEvent(event: InventoryItemEvent): Unit = {
@@ -1067,27 +1067,27 @@ with MainJournalingActor[ControllerState, Event]
       case _ =>
     }
 
-  private def handleOrderEvent(keyedEvent: KeyedEvent[OrderEvent]): Seq[OrderId] = {
+  private def handleOrderEvent(keyedEvent: KeyedEvent[OrderEvent]): Set[OrderId] = {
     val KeyedEvent(orderId, event) = keyedEvent
 
     updateOrderEntry(orderId, event)
 
     event match {
       case _: OrderAdded =>
-        orderId :: Nil
+        Set.empty
 
       case _ =>
         _controllerState.idToOrder.get(orderId) match {
           case None =>
             logger.error(s"Unknown OrderId in event $keyedEvent")
-            Nil
+            Set.empty
 
           case Some(order) =>
             val orderEventHandler = new OrderEventHandler(
               _controllerState.repo.idTo[Workflow],
               _controllerState.idToOrder.checked)
             val checkedFollowUps = orderEventHandler.handleEvent(keyedEvent)
-            val dependentOrderIds = mutable.Buffer.empty[OrderId]
+            val dependentOrderIds = mutable.Set.empty[OrderId]
             for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
               followUps foreach {
                 case _: FollowUp.Processed if order.isAttached =>
@@ -1113,8 +1113,9 @@ with MainJournalingActor[ControllerState, Event]
               case _ =>
             }
 
-            dependentOrderIds.toSeq ++
+            (dependentOrderIds.view ++
               (_controllerState.idToOrder.contains(orderId) ? order.id)
+            ).toSet
         }
     }
   }
@@ -1167,16 +1168,16 @@ with MainJournalingActor[ControllerState, Event]
       }
 
       order.attachedState match {
-        case None |
-             Some(_: Order.Attaching) => proceedWithOrderOnController(order)
-        case Some(_: Order.Attached)  =>
-        case Some(_: Order.Detaching) => detachOrderFromAgent(order.id)
-      }
-    }
+        case Some(_: Order.Attaching) =>
+          for (order <- order.ifState[Order.IsFreshOrReady]) {
+            tryAttachOrderToAgent(order)
+          }
 
-  private def proceedWithOrderOnController(order: Order[Order.State]): Unit =
-    for (order <- order.ifState[Order.IsFreshOrReady]) {
-      tryAttachOrderToAgent(order)
+        case Some(_: Order.Detaching) =>
+          detachOrderFromAgent(order.id)
+
+        case _ =>
+      }
     }
 
   private def delayOrderDeletion[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] =

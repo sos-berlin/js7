@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.context
 
-import js7.base.problem.Checked
 import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.board.{Board, BoardPath, BoardState}
@@ -14,7 +14,7 @@ import js7.data.value.expression.scopes.OrderScopes
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
-import js7.data.workflow.{Instruction, Workflow, WorkflowId}
+import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
 import scala.reflect.ClassTag
 
 trait StateView
@@ -26,6 +26,8 @@ trait StateView
   def idToOrder: PartialFunction[OrderId, Order[Order.State]]
 
   def idToWorkflow: PartialFunction[WorkflowId, Workflow]
+
+  def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
 
   def pathToLockState: PartialFunction[LockPath, LockState]
 
@@ -110,6 +112,10 @@ object StateView
       val isAgent = isAgent_
       val idToOrder = idToOrder_
       val idToWorkflow = idToWorkflow_
+
+      def workflowPathToId(workflowPath: WorkflowPath) =
+        Left(Problem("workflowPathToId is not implemented"))
+
       val pathToLockState = pathToLockState_
       val pathToBoardState = pathToBoardState_
       val controllerId = controllerId_
@@ -123,6 +129,9 @@ object StateView
 
     def idToWorkflow: PartialFunction[WorkflowId, Workflow] =
       new NotImplementedMap[WorkflowId, Workflow]
+
+    def workflowPathToId(workflowPath: WorkflowPath) =
+      Left(Problem("workflowPathToId is not implemented"))
 
     def pathToLockState: PartialFunction[LockPath, LockState] =
       new NotImplementedMap[LockPath, LockState]

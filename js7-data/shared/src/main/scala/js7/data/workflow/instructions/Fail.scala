@@ -12,7 +12,7 @@ import js7.data.workflow.Instruction
 /**
   * @author Joacim Zschimmer
   */
-sealed case class Fail(
+final case class Fail(
   message: Option[Expression] = None,
   namedValues: NamedValues = NamedValues.empty,
   uncatchable: Boolean = false,

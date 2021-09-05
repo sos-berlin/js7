@@ -22,7 +22,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.workflow.{Workflow, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
 
@@ -206,6 +206,9 @@ with JournaledState[AgentState]
           allFileWatchesState.pathToFileWatchState.view.mapValues(_.fileWatch).iterator ++
           idToWorkflow.iterator
     }
+
+  def workflowPathToId(workflowPath: WorkflowPath) =
+    Left(Problem.pure("workflowPathToId is not available at Agent"))
 
   def pathToLockState = Map.empty
   def pathToBoardState = Map.empty

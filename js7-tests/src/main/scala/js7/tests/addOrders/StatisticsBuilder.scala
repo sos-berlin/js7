@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent, Stamped}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderDeleted, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.OrderId
 import monix.execution.Ack
 import monix.reactive.Observer
@@ -63,7 +63,7 @@ private final class StatisticsBuilder(
           case event: OrderStdWritten =>
             stdWritten += event.chunk.getBytes(UTF_8).size
 
-          case _: OrderAdded =>
+          case _: OrderAddedX =>
             orderAddedCount += 1
             obs.tryPublish()
 

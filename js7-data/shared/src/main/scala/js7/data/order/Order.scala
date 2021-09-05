@@ -360,7 +360,7 @@ final case class Order[+S <: Order.State](
 
       case _: OrderNoticePosted =>
         check(isDetached && isState[Ready] && !isSuspended,
-          this)
+          this)  // TODO Recoverable ?
 
       case OrderNoticeExpected(noticeId) =>
         check(isDetached && isState[Ready] && !isSuspended,
@@ -381,6 +381,11 @@ final case class Order[+S <: Order.State](
           copy(
             state = Ready))
             //historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
+
+      case _: OrderOrderAdded =>
+        // See also ControllerState, ControllerStateBuilder
+        check(isDetached && isState[Ready],
+          this)
     }
   }
 
@@ -565,7 +570,7 @@ final case class Order[+S <: Order.State](
 
 object Order
 {
-  def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Fresh] =
+  def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
     Order(id, event.workflowId, Fresh, event.arguments,
       event.scheduledFor, event.externalOrderKey,
       deleteWhenTerminated = event.deleteWhenTerminated)

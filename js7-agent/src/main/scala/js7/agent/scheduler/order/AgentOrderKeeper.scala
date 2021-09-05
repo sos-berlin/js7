@@ -48,7 +48,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.journal.recover.Recovered
@@ -679,6 +679,9 @@ with Stash
       def idToOrder = orderRegister.idToOrder
 
       def idToWorkflow = persistence.currentState.idToWorkflow
+
+      def workflowPathToId(workflowPath: WorkflowPath) =
+        persistence.currentState.workflowPathToId(workflowPath)
 
       def pathToLockState = persistence.currentState.pathToLockState
 

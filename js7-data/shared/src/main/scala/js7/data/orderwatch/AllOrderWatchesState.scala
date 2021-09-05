@@ -6,7 +6,7 @@ import js7.base.problem.Checked
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent}
+import js7.data.order.OrderEvent.{OrderAddedX, OrderCoreEvent}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import monix.reactive.Observable
@@ -37,7 +37,7 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
       .map(updated => copy(
         pathToOrderWatchState = pathToOrderWatchState + (updated.id -> updated)))
 
-  def onOrderAdded(keyedEvent: KeyedEvent[OrderAdded]): Checked[AllOrderWatchesState] =
+  def onOrderAdded(keyedEvent: KeyedEvent[OrderAddedX]): Checked[AllOrderWatchesState] =
     keyedEvent.event.externalOrderKey match {
       case None => Right(this)
       case Some(externalOrderKey) => onOrderAdded(externalOrderKey, keyedEvent.key)

@@ -24,6 +24,7 @@ object Instructions
     Subtype[Retry],
     Subtype.named[TryInstruction]("Try"),
     Subtype.named[LockInstruction]("Lock"),
+    Subtype[AddOrder],
     Subtype[Goto],
     Subtype[Gap])
 }

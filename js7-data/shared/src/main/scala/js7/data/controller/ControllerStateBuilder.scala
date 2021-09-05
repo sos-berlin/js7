@@ -2,6 +2,7 @@ package js7.data.controller
 
 import js7.base.crypt.Signed
 import js7.base.problem.Checked._
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
@@ -21,10 +22,10 @@ import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, Item
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
-import js7.data.workflow.{Workflow, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.mutable
 
 final class ControllerStateBuilder
@@ -60,6 +61,10 @@ with StateView
         repo.idToSigned[Workflow](workflowId)
           .fold(_ => default(workflowId), _.value)
     }
+
+  def workflowPathToId(workflowPath: WorkflowPath) =
+    repo.pathToId(workflowPath)
+      .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
   val pathToLockState = _pathToLockState
   val pathToBoardState = _pathToBoardState
@@ -255,8 +260,11 @@ with StateView
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
         case orderAdded: OrderAdded =>
-          _idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, orderAdded))
-          allOrderWatchesState = allOrderWatchesState.onOrderAdded(orderId <-: orderAdded).orThrow
+          addOrder(orderId, orderAdded)
+
+        case orderAdded: OrderOrderAdded =>
+          addOrder(orderAdded.orderId, orderAdded)
+          _idToOrder(orderId) = _idToOrder(orderId).applyEvent(orderAdded).orThrow
 
         case orderDeleted: OrderDeleted =>
           for (order <- _idToOrder.remove(orderId)) {
@@ -343,6 +351,12 @@ with StateView
     case Stamped(_, _, KeyedEvent(_: NoKey, event: ClusterEvent)) =>
       standards = standards.copy(
         clusterState = standards.clusterState.applyEvent(event).orThrow)
+  }
+
+  private def addOrder(orderId: OrderId, orderAdded: OrderAddedX): Unit = {
+    _idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, orderAdded))
+    allOrderWatchesState = allOrderWatchesState.onOrderAdded(orderId <-: orderAdded)
+      .orThrow
   }
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =

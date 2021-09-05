@@ -35,14 +35,24 @@ object OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
   sealed trait OrderTerminated extends OrderEvent
 
+  sealed trait OrderAddedX extends OrderCoreEvent {
+    def workflowId: WorkflowId
+    def arguments: NamedValues
+    def scheduledFor: Option[Timestamp]
+    def externalOrderKey: Option[ExternalOrderKey]
+    def deleteWhenTerminated: Boolean
+    def addedOrderId(orderId: OrderId): OrderId
+  }
+
   final case class OrderAdded(
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     externalOrderKey: Option[ExternalOrderKey] = None,
     deleteWhenTerminated: Boolean = false)
-  extends OrderCoreEvent {
+  extends OrderAddedX {
     workflowId.requireNonAnonymous()
+    def addedOrderId(orderId: OrderId) = orderId
     override def toShortString = s"OrderAdded(${workflowId.path})"
   }
   object OrderAdded {
@@ -63,6 +73,35 @@ object OrderEvent
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
       } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey, deleteWhenTerminated)
+  }
+
+  final case class OrderOrderAdded(
+    orderId: OrderId,
+    workflowId: WorkflowId,
+    arguments: NamedValues = Map.empty,
+    deleteWhenTerminated: Boolean = false)
+  extends OrderAddedX with OrderActorEvent {
+    workflowId.requireNonAnonymous()
+    def scheduledFor = None
+    def externalOrderKey = None
+    def addedOrderId(o: OrderId) = orderId
+    override def toShortString = s"OrderOrderAdded($orderId, ${workflowId.path})"
+  }
+  object OrderOrderAdded {
+    private[OrderEvent] implicit val jsonCodec: Encoder.AsObject[OrderOrderAdded] =
+      o => JsonObject(
+        "orderId" -> o.orderId.asJson,
+        "workflowId" -> o.workflowId.asJson,
+        "arguments" -> o.arguments.??.asJson,
+        "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson)
+
+    private[OrderEvent] implicit val jsonDecoder: Decoder[OrderOrderAdded] =
+      c => for {
+        orderId <- c.get[OrderId]("orderId")
+        workflowId <- c.get[WorkflowId]("workflowId")
+        arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
+        deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
+      } yield OrderOrderAdded(orderId, workflowId, arguments, deleteWhenTerminated)
   }
 
   /** Agent-only event. */
@@ -375,6 +414,7 @@ object OrderEvent
 
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
+    Subtype[OrderOrderAdded],
     Subtype(OrderDeletionMarked),
     Subtype(OrderDeleted),
     Subtype(OrderStarted),

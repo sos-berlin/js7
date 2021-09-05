@@ -17,7 +17,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
@@ -277,9 +277,10 @@ final case class ControllerStateExecutor private(
               scribe.error(s"Order '${orderId.string}' is broken: $problem") // ???
             }
             controllerState.applyEvents(keyedEvents) match {
-              case Left(problem) => scribe.error(s"$orderId: $problem")  // ???
-              case Right(o) =>
-                controllerState = o
+              case Left(problem) =>
+                scribe.error(s"$orderId: $problem")  // Should not happen
+              case Right(state) =>
+                controllerState = state
                 _keyedEvents ++= keyedEvents
                 queue ++= keyedEvents.view
                   .flatMap(ControllerStateExecutor(controllerState).keyedEventToOrderIds)
@@ -304,15 +305,18 @@ final case class ControllerStateExecutor private(
       case OrderForked(children) =>
         children.view.map(_.orderId)
 
+      case orderOrderAdded: OrderOrderAdded =>
+        new View.Single(orderOrderAdded.orderId)
+
       case _ => View.empty
     })
 }
 
 object ControllerStateExecutor
 {
-  def apply(controllerState: ControllerState)(implicit ies: InstructionExecutorService)
+  def apply(controllerState: ControllerState)(implicit service: InstructionExecutorService)
   : ControllerStateExecutor =
-    new ControllerStateExecutor(Nil, controllerState)(ies)
+    new ControllerStateExecutor(Nil, controllerState)(service)
 
   implicit def convertImplicitly(controllerState: ControllerState)
     (implicit ies: InstructionExecutorService)
