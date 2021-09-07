@@ -16,8 +16,7 @@ import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.printlnWithClock
-import scala.concurrent.duration.Deadline
-import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
 /**
  * JS7 Agent.
@@ -74,8 +73,10 @@ object AgentMain
     _runningSince
 
   def main(args: Array[String]): Unit = {
+    val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 Agent ${BuildInfo.longVersion}")
-    _runningSince = Some(now)
+    _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
+
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)

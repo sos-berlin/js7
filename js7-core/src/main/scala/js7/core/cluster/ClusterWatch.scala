@@ -128,7 +128,7 @@ extends ClusterWatchApi
 
   private def now = MonixDeadline.now(scheduler)
 
-  override def toString = s"ClusterWatch(controllerId=$controllerId)"
+  override def toString = s"ClusterWatch($controllerId)"
 }
 
 object ClusterWatch

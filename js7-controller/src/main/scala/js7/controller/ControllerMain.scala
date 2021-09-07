@@ -12,8 +12,7 @@ import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
-import scala.concurrent.duration.Deadline
-import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
 /**
   * JS7 Controller.
@@ -85,8 +84,10 @@ object ControllerMain
     _runningSince
 
   def main(args: Array[String]): Unit = {
+    val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 Controller ${BuildInfo.longVersion}")
-    _runningSince = Some(now)
+    _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
+
     var terminate = ControllerTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>
       terminate = new ControllerMain().run(commandLineArguments)

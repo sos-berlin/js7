@@ -217,9 +217,8 @@ with Stash
         persist(AgentReady(ZoneId.systemDefault.getId, totalRunningTime = totalRunningSince.elapsed)) { (_, _) =>
           become("ready")(ready)
           unstashAll()
-          logger.info(s"Agent '${ownAgentPath.string}' is ready")
-          logger.info("Ready" +
-            AgentMain.runningSince.fold("")(o => " after " + o.elapsed.pretty) +
+          logger.info(s"Agent '${ownAgentPath.string}' is ready" +
+            AgentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
             "\n" + "─" * 80)
         }
         fileWatchManager.start()

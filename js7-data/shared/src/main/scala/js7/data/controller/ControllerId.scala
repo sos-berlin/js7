@@ -9,6 +9,8 @@ import js7.base.generic.GenericString
 final case class ControllerId private(string: String) extends GenericString
 {
   def toUserId = UserId(string)
+
+  override def toString = s"ControllerId:$string"
 }
 
 object ControllerId extends GenericString.Checked_[ControllerId]

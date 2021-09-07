@@ -295,8 +295,8 @@ with MainJournalingActor[ControllerState, Event]
   private def recover(recovered: Recovered[ControllerState]): Unit = {
     for (controllerState <- recovered.recoveredState) {
       if (controllerState.controllerId != controllerConfiguration.controllerId)
-        throw Problem(s"Recovered controllerId='${controllerState.controllerId}' " +
-          s"differs from configured controllerId='${controllerConfiguration.controllerId}'"
+        throw Problem(s"Recovered '${controllerState.controllerId}' " +
+          s"differs from configured '${controllerConfiguration.controllerId}'"
         ).throwable
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
@@ -425,8 +425,8 @@ with MainJournalingActor[ControllerState, Event]
       throw problem.throwable.appendCurrentStackTrace
 
     case Internal.Ready(Right(Completed)) =>
-      logger.info("Ready" +
-        ControllerMain.runningSince.fold("")(o => " after " + o.elapsed.pretty) +
+      logger.info(s"Controller '${_controllerState.controllerId.string}' is ready " +
+        ControllerMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
         "\n" + "─" * 80)
       testEventPublisher.publish(ControllerReadyTestIncident)
       clusterNode.onTerminatedUnexpectedly.runToFuture onComplete { tried =>

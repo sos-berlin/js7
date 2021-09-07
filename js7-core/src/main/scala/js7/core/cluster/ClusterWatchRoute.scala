@@ -43,7 +43,7 @@ trait ClusterWatchRoute
           clusterWatchRegister.tryRead(controllerId)
             .flatMap[Checked[ClusterState]] {
               case None =>
-                Task.pure(Problem(s"No ClusterState registered for ControllerId '$controllerId'"))
+                Task.pure(Problem(s"No ClusterState registered for '$controllerId'"))
               case Some(clusterWatch) =>
                 clusterWatch.get
             }.runToFuture)

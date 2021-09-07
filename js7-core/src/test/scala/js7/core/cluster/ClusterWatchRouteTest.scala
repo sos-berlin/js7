@@ -38,7 +38,7 @@ final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest wi
   "Get for unknown ControllerId" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
       assert(status == BadRequest &&
-        entityAs[Problem] == Problem("No ClusterState registered for ControllerId 'CONTROLLER'"))
+        entityAs[Problem] == Problem("No ClusterState registered for 'ControllerId:CONTROLLER'"))
     }
   }
 
