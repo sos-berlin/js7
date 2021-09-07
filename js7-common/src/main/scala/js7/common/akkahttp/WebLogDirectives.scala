@@ -37,7 +37,7 @@ trait WebLogDirectives extends ExceptionHandling
   private lazy val internalServerErrorLevel = LogLevel(config.getString("js7.web.server.log.500-level"))
   private lazy val logRequest = actorSystem.settings.config.getBoolean("js7.web.server.log.request")
   private lazy val logResponse = actorSystem.settings.config.getBoolean("js7.web.server.log.response")
-  private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-attribute")
+  //private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-attribute")
 
   protected def webLog: Directive0 =
     mapInnerRoute { inner =>
@@ -54,14 +54,12 @@ trait WebLogDirectives extends ExceptionHandling
     else
       extractRequest flatMap { request =>
         if (logRequest || webLogger.underlying.isTraceEnabled) {
-          log(request, None, if (logRequest) logLevel else LogLevel.Trace,
-            nanos = 0, hasRemoteAddress = hasRemoteAddress)
+          log(request, None, if (logRequest) logLevel else LogLevel.Trace, nanos = 0)
         }
         if (logResponse) {
           val start = nanoTime
           mapResponse { response =>
-            log(request, Some(response), statusToLogLevel(response.status),
-              nanoTime - start, hasRemoteAddress = hasRemoteAddress)
+            log(request, Some(response), statusToLogLevel(response.status), nanoTime - start)
             meterTime(request, response, start)
           }
         } else
@@ -83,7 +81,6 @@ trait WebLogDirectives extends ExceptionHandling
             .watchTermination() { (mat, future) =>
               future.onComplete { tried =>
                 log(request, Some(response), logLevel, nanoTime - start,
-                  hasRemoteAddress = hasRemoteAddress,
                   streamSuffix = // Timing of the stream, after response header has been sent
                     chunkCount.toString + " chunks, " +
                     bytesPerSecondString(since.elapsed, byteCount) +
@@ -96,11 +93,11 @@ trait WebLogDirectives extends ExceptionHandling
   }
 
   private def log(request: HttpRequest, response: Option[HttpResponse], logLevel: LogLevel,
-    nanos: Long, hasRemoteAddress: Boolean, streamSuffix: String = ""): Unit
+    nanos: Long, streamSuffix: String = ""): Unit
   =
     webLogger.log(
       logLevel,
-      requestResponseToLine(request, response, nanos, hasRemoteAddress = hasRemoteAddress, streamSuffix))
+      requestResponseToLine(request, response, nanos, streamSuffix))
 
   private def statusToLogLevel(statusCode: StatusCode): LogLevel =
     statusCode match {
@@ -110,7 +107,7 @@ trait WebLogDirectives extends ExceptionHandling
     }
 
   private def requestResponseToLine(request: HttpRequest, maybeResponse: Option[HttpResponse],
-    nanos: Long, hasRemoteAddress: Boolean, streamSuffix: String)
+    nanos: Long, streamSuffix: String)
   = {
     val sb = new StringBuilder(256)
 
