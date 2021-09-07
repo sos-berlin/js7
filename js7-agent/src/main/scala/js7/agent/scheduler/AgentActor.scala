@@ -18,8 +18,8 @@ import js7.base.auth.UserId
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
-import js7.base.problem.Checked
 import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
@@ -30,6 +30,7 @@ import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.executor.configuration.JobExecutorConf
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -64,7 +65,7 @@ extends Actor with Stash with SimpleStateActor
   private var persistence: JournaledStatePersistence[AgentState] = null
   private var recovered: Recovered[AgentState] = null
   private var eventWatch: JournalEventWatch = null
-  private val agentOrderKeeperActor = SetOnce[ActorRef]
+  private val started = SetOnce[Started]
   private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
   private var isResetting = false
   private def terminating = shutDownCommand.isDefined
@@ -107,7 +108,7 @@ extends Actor with Stash with SimpleStateActor
     case Internal.JournalIsReady(Success(())) =>
       val state = recovered.state
       if (state.isCreated) {
-        addOrderKeeper()
+        addOrderKeeper(state.agentPath, state.controllerId).orThrow
       }
       become("startable")(startable)
       unstashAll()
@@ -133,7 +134,7 @@ extends Actor with Stash with SimpleStateActor
         eventWatch.whenStarted.map(Right.apply) pipeTo sender()
       }
 
-    case Terminated(a) if agentOrderKeeperActor contains a =>
+    case Terminated(a) if started.toOption.exists(_.actor == a) =>
       logger.debug("AgentOrderKeeper terminated")
       continueTermination()
 
@@ -175,21 +176,22 @@ extends Actor with Stash with SimpleStateActor
       case AgentCommand.CreateAgent(agentPath, controllerId) if !terminating =>
         // Command is idempotent until AgentState has been touched
         val agentRunId = AgentRunId(persistence.journalId)
-        persistence.persist(agentState =>
-          if (!agentState.isCreated)
-            Right((NoKey <-: AgentCreated(agentPath, agentRunId, controllerId)) :: Nil)
-          else if (agentPath != agentState.agentPath)
-            Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
-          else if (controllerId != agentState.meta.controllerId)
-            Left(AgentWrongControllerProblem(controllerId))
-          else if (!agentState.isFreshlyCreated)
-            Left(AgentAlreadyCreatedProblem)
-          else
-            Right(Nil)
-        ) .tapEval(checked => Task {
-            if (checked.isRight) {
-              addOrderKeeper()
-            }
+        persistence
+          .persist(agentState =>
+            if (!agentState.isCreated)
+              Right((NoKey <-: AgentCreated(agentPath, agentRunId, controllerId)) :: Nil)
+            else if (agentPath != agentState.agentPath)
+              Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
+            else if (controllerId != agentState.meta.controllerId)
+              Left(AgentWrongControllerProblem(controllerId))
+            else if (!agentState.isFreshlyCreated)
+              Left(AgentAlreadyCreatedProblem)
+            else
+              Right(Nil))
+          .flatMapT(eventAndState => Task {
+            logger.info(s"Creating Agent '${agentPath.string}' for '$controllerId'")
+            addOrderKeeper(agentPath, controllerId)
+              .rightAs(eventAndState._2.eventId)
           })
           .runToFuture
           .onComplete { tried =>
@@ -212,11 +214,11 @@ extends Actor with Stash with SimpleStateActor
                       _: AgentCommand.AttachSignedItem |
                       _: AgentCommand.DetachItem) =>
         // TODO Check AgentRunId ?
-        agentOrderKeeperActor.toOption match {
+        started.toOption match {
           case None =>
             response.success(Left(AgentNotCreatedProblem))
-          case Some(actor) =>
-            actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
+          case Some(started) =>
+            started.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
         }
 
       case command =>
@@ -240,7 +242,7 @@ extends Actor with Stash with SimpleStateActor
 
   private def continueTermination(): Unit =
     if (terminating) {
-      if (agentOrderKeeperActor.isEmpty) {
+      if (started.isEmpty) {
         // When no AgentOrderKeeper has been startet, we need to stop the journal ourselves
         //persistence.journalActor ! JournalActor.Input.Terminate
         persistence.stop.runAsyncAndForget
@@ -250,35 +252,46 @@ extends Actor with Stash with SimpleStateActor
   private def terminateOrderKeeper(shutDown: AgentCommand.ShutDown)
   : Future[Checked[AgentCommand.Response.Accepted]] = {
     shutDownCommand := shutDown
-    val future = agentOrderKeeperActor.toOption match {
-      case None => Future.successful(AgentCommand.Response.Accepted)
-      case Some(actor) => (actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
+    val future = started.toOption match {
+      case None =>
+        Future.successful(AgentCommand.Response.Accepted)
+      case Some(started) =>
+        (started.actor ? shutDown).mapTo[AgentCommand.Response.Accepted]
     }
-    future map { ordersTerminated =>
+    future.map { ordersTerminated =>
       terminateCompleted.success(Completed)  // Wait for child Actor termination
       continueTermination()
       Right(ordersTerminated)
     }
   }
 
-  private def addOrderKeeper(): ActorRef = {
-    val recovered = this.recovered
-    this.recovered = null  // release memory
-    val actor = actorOf(
-      Props {
-        new AgentOrderKeeper(
-          recovered.totalRunningSince,
-          requireNonNull(recovered),
-          signatureVerifier,
-          executorConf,
-          persistence,
-          clock,
-          agentConf)
-        },
-      "AgentOrderKeeper")
-    watch(actor)
-    agentOrderKeeperActor := actor
-  }
+  private def addOrderKeeper(agentPath: AgentPath, controllerId: ControllerId): Checked[Unit] =
+    synchronized {
+      started.toOption match {
+        case Some(started) =>
+          Left(Problem(
+            s"This Agent has already started as '${started.agentPath}' for '${started.controllerId}'"))
+
+        case None =>
+        val recovered = this.recovered
+        this.recovered = null  // release memory
+        val actor = actorOf(
+          Props {
+            new AgentOrderKeeper(
+              recovered.totalRunningSince,
+              requireNonNull(recovered),
+              signatureVerifier,
+              executorConf,
+              persistence,
+              clock,
+              agentConf)
+            },
+          "AgentOrderKeeper")
+        watch(actor)
+        started := Started(agentPath, controllerId, actor)
+        Checked.unit
+      }
+    }
 
   override def toString = "AgentActor"
 }
@@ -304,6 +317,11 @@ object AgentActor
   private object Internal {
     final case class JournalIsReady(tried: Try[Unit])
   }
+
+  private final case class Started(
+    agentPath: AgentPath,
+    controllerId: ControllerId,
+    actor: ActorRef)
 
   @Singleton
   final class Factory @Inject private(
