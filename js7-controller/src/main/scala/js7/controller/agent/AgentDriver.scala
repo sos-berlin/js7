@@ -22,7 +22,7 @@ import js7.base.thread.Futures.syntax.RichFuture
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax.{RichThrowable, _}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.common.akkautils.ReceiveLoggingActor
@@ -217,7 +217,8 @@ extends ReceiveLoggingActor.WithStash
 
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, agentUserAndPassword, label = agentPath.toString,
-      controllerConfiguration.keyStoreRefOption, controllerConfiguration.trustStoreRefs)(context.system)
+      controllerConfiguration.keyStoreRefOption, controllerConfiguration.trustStoreRefs)(
+      context.system)
 
   def receive = {
     case input: Input with Queueable if sender() == context.parent && !isTerminating =>
@@ -382,7 +383,9 @@ extends ReceiveLoggingActor.WithStash
       lastCouplingFailed = None
       val succeededInputs = commandQueue.handleBatchSucceeded(responses)
 
-      val markedOrders = succeededInputs.view.collect { case o: Input.MarkOrder => o.orderId -> o.mark }.toMap
+      val markedOrders = succeededInputs.view
+        .collect { case o: Input.MarkOrder => o.orderId -> o.mark }
+        .toMap
       if (markedOrders.nonEmpty) {
         context.parent ! Output.OrdersMarked(markedOrders)
       }
@@ -421,7 +424,7 @@ extends ReceiveLoggingActor.WithStash
           }
     }
 
-  protected def observeAndConsumeEvents: Task[Completed] =
+  private def observeAndConsumeEvents: Task[Completed] =
     Task.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.observe(client, after = lastFetchedEventId)

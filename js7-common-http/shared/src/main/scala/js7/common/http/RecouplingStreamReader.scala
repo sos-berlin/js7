@@ -168,9 +168,9 @@ abstract class RecouplingStreamReader[
     private def observe(after: I): Observable[V] =
       Observable.fromTask(tryEndlesslyToGetObservable(after))
         .flatten
-        .map { a =>
-          lastIndex = toIndex(a)
-          a
+        .map { v =>
+          lastIndex = toIndex(v)
+          v
         }
 
     /** Retries until web request returns an Observable. */

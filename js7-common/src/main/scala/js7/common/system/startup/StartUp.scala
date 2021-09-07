@@ -4,6 +4,7 @@ import java.io.File
 import java.time.LocalDateTime
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.Logger
+import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.system.ServerOperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
@@ -51,6 +52,9 @@ object StartUp
     try printlnWithClock(line)
     catch { case _: Throwable => }
 
-  def printlnWithClock(line: String) =
-    System.err.println(s"${LocalDateTime.now.toString.replace('T', ' ') take 23/*ms*/} $line")
+  def printlnWithClock(line: String): Unit =
+    printlnWithClock(Timestamp.now, line)
+
+  def printlnWithClock(ts: Timestamp, line: String): Unit =
+    System.err.println(s"${ts.toString.replace('T', ' ') take 23/*ms*/} $line")
 }
