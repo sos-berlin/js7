@@ -46,7 +46,7 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
   }
 
   "(CreateAgent)" in {
-    val CreateAgent.Response(agentRunId) = agentClient.commandExecute(CreateAgent(agentPath, controllerId))
+    val CreateAgent.Response(agentRunId, _) = agentClient.commandExecute(CreateAgent(agentPath, controllerId))
       .await(99.s).orThrow
     this.agentRunId = agentRunId
   }

@@ -24,12 +24,13 @@ extends UnsignedSimpleItemState
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match {
-      case AgentCreated(agentRunId_) =>
+      case AgentCreated(agentRunId_, eventId_) =>
         if (agentRunId.isDefined || eventId != EventId.BeforeFirst)
           Left(Problem("Duplicate AgentCreated event: " + event))
         else
           Right(copy(
-            agentRunId = Some(agentRunId_)))
+            agentRunId = Some(agentRunId_),
+            eventId = eventId_.getOrElse(EventId.BeforeFirst)))
 
       case AgentReady(timezone) =>
         Right(copy(

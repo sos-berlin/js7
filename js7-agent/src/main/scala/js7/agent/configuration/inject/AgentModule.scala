@@ -20,7 +20,7 @@ import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.cluster.ClusterWatchRegister
 import js7.executor.configuration.JobExecutorConf
-import js7.journal.EventIdGenerator
+import js7.journal.{EventIdClock, EventIdGenerator}
 import monix.execution.Scheduler
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.ExecutionContext
@@ -34,8 +34,12 @@ final class AgentModule(
 extends AbstractModule
 {
   @Provides @Singleton
-  def eventIdGenerator(): EventIdGenerator =
-    new EventIdGenerator()
+  def eventIdGenerator(eventIdClock: EventIdClock): EventIdGenerator =
+    new EventIdGenerator(eventIdClock)
+
+  @Provides @Singleton
+  def eventIdClock(): EventIdClock =
+    EventIdClock.Default
 
   @Provides @Singleton
   def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =

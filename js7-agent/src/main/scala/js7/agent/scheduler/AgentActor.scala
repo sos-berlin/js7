@@ -194,8 +194,9 @@ extends Actor with Stash with SimpleStateActor
               .rightAs(eventAndState._2.eventId)
           })
           .runToFuture
-          .onComplete { tried =>
-            response.complete(tried.map(_.map(_ => AgentCommand.CreateAgent.Response(agentRunId))))
+          .onComplete { triedEventId =>
+            response.complete(triedEventId.map(_.map(eventId =>
+              AgentCommand.CreateAgent.Response(agentRunId, eventId))))
           }
 
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>

@@ -29,8 +29,8 @@ abstract class RecouplingStreamReader[
 ](toIndex: V => I,
   conf: RecouplingStreamReaderConf)
 {
-  protected def couple(index: I): Task[Checked[Completed]] =
-    Task.pure(Checked.completed)
+  protected def couple(index: I): Task[Checked[I]] =
+    Task.pure(Right(index))
 
   protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
 
@@ -180,34 +180,35 @@ abstract class RecouplingStreamReader[
           Task.pure(Right(Observable.raiseError(
             new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
-          coupleIfNeeded(after = after) >>
-            getObservableX(after = after)
-              .materialize.map(Checked.flattenTryChecked)
-              .flatMap {
-                case Left(problem) =>
-                  if (isStopped)
-                    Task.pure(Left(()))  // Fail in next iteration
-                  else if (problem is EventSeqTornProblem)
-                    Task.raiseError(problem.throwable)
-                  else
-                    (problem match {
-                      case InvalidSessionTokenProblem =>
-                        Task {
-                          scribe.debug(s"$api: $InvalidSessionTokenProblem")
-                          true
-                        }
-                      case _ =>
-                        onCouplingFailed(api, problem)
-                    }).flatMap(continue =>
-                      decouple >>
-                        (if (continue)
-                          pauseBeforeRecoupling >> Task.pure(Left(()))
-                        else
-                          Task.pure(Right(Observable.empty))))
+          coupleIfNeeded(after = after)
+            .flatMap(after => /*`after` may have changed after initial AgentCreated.*/
+              getObservableX(after = after)
+                .materialize.map(Checked.flattenTryChecked)
+                .flatMap {
+                  case Left(problem) =>
+                    if (isStopped)
+                      Task.pure(Left(()))  // Fail in next iteration
+                    else if (problem is EventSeqTornProblem)
+                      Task.raiseError(problem.throwable)
+                    else
+                      (problem match {
+                        case InvalidSessionTokenProblem =>
+                          Task {
+                            scribe.debug(s"$api: $InvalidSessionTokenProblem")
+                            true
+                          }
+                        case _ =>
+                          onCouplingFailed(api, problem)
+                      }).flatMap(continue =>
+                        decouple >>
+                          (if (continue)
+                            pauseBeforeRecoupling >> Task.pure(Left(()))
+                          else
+                            Task.pure(Right(Observable.empty))))
 
-                case Right(observable) =>
-                  Task.pure(Right(observable))
-              })
+                  case Right(observable) =>
+                    Task.pure(Right(observable))
+                }))
 
     private def getObservableX(after: I): Task[Checked[Observable[V]]] =
       Task {
@@ -227,13 +228,13 @@ abstract class RecouplingStreamReader[
                 Observable.empty
               }))
 
-    private def coupleIfNeeded(after: I): Task[Completed] =
+    private def coupleIfNeeded(after: I): Task[I] =
       coupledApiVar.tryRead.flatMap {
-        case Some(_) => Task.completed
+        case Some(_) => Task.pure(after)
         case None => tryEndlesslyToCouple(after)
       }
 
-    private def tryEndlesslyToCouple(after: I): Task[Completed] =
+    private def tryEndlesslyToCouple(after: I): Task[I] =
       Task.tailRecM(())(_ => Task.defer(
         if (isStopped)
           Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
@@ -245,8 +246,8 @@ abstract class RecouplingStreamReader[
                 Task.raiseError(new IllegalStateException("Coupling while already coupled")))
               _ <- Task { recouplingPause.onCouple() }
               _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
-              checkedCompleted <- couple(index = lastIndex)
-            } yield checkedCompleted
+              updatedIndex <- couple(index = after) /*AgentCreated may return a different EventId*/
+            } yield updatedIndex
           ) .materializeIntoChecked
             .flatMap {
               case Left(problem) =>
@@ -264,12 +265,12 @@ abstract class RecouplingStreamReader[
                         Task.raiseError(problem.throwable)
                   } yield either
 
-              case Right(Completed) =>
+              case Right(updatedIndex) =>
                 for {
                   _ <- coupledApiVar.put(api)
                   _ <- Task { recouplingPause.onCouplingSucceeded() }
-                  completed <- onCoupled(api, after)
-                } yield Right(completed)
+                  _ <- onCoupled(api, after)
+                } yield Right(updatedIndex)
             }))
   }
 

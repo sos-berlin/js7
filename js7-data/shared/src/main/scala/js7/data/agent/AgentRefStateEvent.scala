@@ -15,7 +15,10 @@ sealed trait AgentRefStateEvent extends Event {
 object AgentRefStateEvent
 {
   /** A new Agent has been created and is running. */
-  final case class AgentCreated(agentRunId: AgentRunId) extends AgentRefStateEvent
+  final case class AgentCreated(
+    agentRunId: AgentRunId,
+    agentEventId: Option[EventId]/*optional for compatibility with v2.0.0-RC3*/)
+  extends AgentRefStateEvent
 
   final case class AgentCouplingFailed(problem: Problem) extends AgentRefStateEvent
 

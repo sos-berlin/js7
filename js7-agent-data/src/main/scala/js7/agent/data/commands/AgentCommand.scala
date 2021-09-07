@@ -100,7 +100,8 @@ object AgentCommand extends CommonCommand.Companion
   object CreateAgent {
     /**
       * @param agentRunId Use the value for `CoupleController`. */
-    final case class Response(agentRunId: AgentRunId) extends AgentCommand.Response
+    final case class Response(agentRunId: AgentRunId, agentEventId: EventId)
+    extends AgentCommand.Response
   }
 
   /** Couples the registered Controller identified by current User.

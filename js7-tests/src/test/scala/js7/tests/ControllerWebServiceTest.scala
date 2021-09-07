@@ -58,7 +58,8 @@ import scala.util.Try
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
+final class ControllerWebServiceTest
+extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
   override lazy val signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
   override lazy val verifier = signer.toVerifier
@@ -78,6 +79,10 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
 
   private implicit def implicitSessionToken = Task(Some(SessionToken(SecretString(sessionToken))))
 
+  override val agentModule = new AbstractModule {
+    @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(2000)
+  }
+
   override val controllerModule = new AbstractModule {
     @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(1000)
   }
@@ -87,8 +92,7 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
   override def beforeAll() = {
     directoryProvider.controller.configDir / "controller.conf" ++=
       """js7.journal.sync = off
-         js7.journal.delay = 0s
-        |""".stripMargin
+         js7.journal.delay = 0s"""
     writeControllerConfiguration(directoryProvider.controller)
     writeAgentConfiguration(directoryProvider.agents(0))
     super.beforeAll()
@@ -538,9 +542,10 @@ final class ControllerWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll 
           }
         }, {
           "eventId": 1006,
-          "Key": "AGENT",
           "TYPE": "AgentCreated",
-          "agentRunId": "${agentRunId.string}"
+          "Key": "AGENT",
+          "agentRunId": "${agentRunId.string}",
+          "agentEventId": 2000001
         }, {
           "eventId": 1007,
           "TYPE": "AgentReady",

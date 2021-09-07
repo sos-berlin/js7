@@ -54,7 +54,8 @@ import scala.util.{Failure, Success, Try}
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver private(agentPath: AgentPath,
+final class AgentDriver private(
+  agentPath: AgentPath,
   initialUri: Uri,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
@@ -107,13 +108,14 @@ extends ReceiveLoggingActor.WithStash
               Task.pure(Checked.unit)
           })
         .flatMapT(_ => createAgentIfNeeded)
-        .flatMapT(agentRunId =>
-          client.commandExecute(CoupleController(agentPath, agentRunId, eventId = eventId))
+        .flatMapT { case (agentRunId, agentEventId) =>
+          client.commandExecute(CoupleController(agentPath, agentRunId, eventId = agentEventId))
             .map(_.map { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds
-              Completed
-            })))
+              agentEventId
+            })
+        })
 
     protected def getObservable(api: AgentClient, after: EventId) =
       Task { logger.debug(s"getObservable(after=$after)") } >>
@@ -444,22 +446,25 @@ extends ReceiveLoggingActor.WithStash
         .map(_ => Completed)
     }
 
-  private def createAgentIfNeeded: Task[Checked[AgentRunId]] =
+  private def createAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]] =
     Task.defer {
       agentRunIdOnce.toOption match {
-        case Some(agentRunId) => Task.pure(Right(agentRunId))
+        case Some(agentRunId) => Task.pure(Right(agentRunId -> lastFetchedEventId))
         case None =>
-          client.commandExecute(CreateAgent(agentPath, controllerId)).map(_.map(_.agentRunId))
-            .flatMapT(agentRunId =>
-              if (noJournal)
-                Task.pure(Right(agentRunId))
+          client.commandExecute(CreateAgent(agentPath, controllerId))
+            .flatMapT { case CreateAgent.Response(agentRunId, agentEventId) =>
+              (if (noJournal)
+                Task.pure(Checked.unit)
               else
-                persistence.persistKeyedEvent(agentPath <-: AgentCreated(agentRunId))
-                  .map(_.map { case (_, _) =>
-                    // asynchronous
+                persistence
+                  .persistKeyedEvent(
+                    agentPath <-: AgentCreated(agentRunId, Some(agentEventId)))
+                  .map(_.map { _ =>
+                    // Asynchronous assignment
                     agentRunIdOnce := agentRunId
-                    agentRunId
                   }))
+              .rightAs(agentRunId -> agentEventId)
+            }
       }
     }
 

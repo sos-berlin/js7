@@ -33,7 +33,22 @@ final class AgentRefStateEventTest extends AnyFreeSpec
 
     "AgentCreated" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentPath("AGENT") <-: AgentCreated(AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")))),
+        AgentPath("AGENT") <-: AgentCreated(
+          AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
+          Some(1000L)),
+        json"""{
+          "TYPE": "AgentCreated",
+          "Key": "AGENT",
+          "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+          "agentEventId": 1000
+        }""")
+    }
+
+    "AgentCreated, compatible" in {
+      testJson[KeyedEvent[AgentRefStateEvent]](
+        AgentPath("AGENT") <-: AgentCreated(
+          AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
+          None),
         json"""{
           "TYPE": "AgentCreated",
           "Key": "AGENT",

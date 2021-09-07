@@ -116,10 +116,13 @@ final class AgentCommandTest extends AnyFreeSpec
 
   "CreateAgent.Response" in {
     testJson[AgentCommand.Response](
-      AgentCommand.CreateAgent.Response(AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555")))),
+      AgentCommand.CreateAgent.Response(
+        AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
+        1000L),
       json"""{
         "TYPE": "CreateAgent.Response",
-        "agentRunId": "ERERESIiMzNERFVVVVVVVQ"
+        "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
+        "agentEventId": 1000
       }""")
   }
 
