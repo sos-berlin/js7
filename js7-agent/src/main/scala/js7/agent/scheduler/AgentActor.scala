@@ -274,23 +274,23 @@ extends Actor with Stash with SimpleStateActor
             s"This Agent has already started as '${started.agentPath}' for '${started.controllerId}'"))
 
         case None =>
-        val recovered = this.recovered
-        this.recovered = null  // release memory
-        val actor = actorOf(
-          Props {
-            new AgentOrderKeeper(
-              recovered.totalRunningSince,
-              requireNonNull(recovered),
-              signatureVerifier,
-              executorConf,
-              persistence,
-              clock,
-              agentConf)
-            },
-          "AgentOrderKeeper")
-        watch(actor)
-        started := Started(agentPath, controllerId, actor)
-        Checked.unit
+          val recovered = this.recovered
+          this.recovered = null  // release memory
+          val actor = actorOf(
+            Props {
+              new AgentOrderKeeper(
+                recovered.totalRunningSince,
+                requireNonNull(recovered),
+                signatureVerifier,
+                executorConf,
+                persistence,
+                clock,
+                agentConf)
+              },
+            "AgentOrderKeeper")
+          watch(actor)
+          started := Started(agentPath, controllerId, actor)
+          Checked.unit
       }
     }
 

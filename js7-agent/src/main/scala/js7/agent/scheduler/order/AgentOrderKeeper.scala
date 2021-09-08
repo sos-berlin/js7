@@ -521,7 +521,7 @@ with Stash
 
   private def newOrderActor(order: Order[Order.State], workflow: Workflow) =
     watch(actorOf(
-      OrderActor.props(order.id, workflow, journalActor = journalActor, orderActorConf, controllerId),
+      OrderActor.props(order.id, journalActor = journalActor, orderActorConf),
       name = uniqueActorName(encodeAsActorName("Order:" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {

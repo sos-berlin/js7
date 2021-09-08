@@ -41,10 +41,8 @@ import shapeless.tag.@@
   */
 final class OrderActor private(
   orderId: OrderId,
-  workflow: Workflow,
   protected val journalActor: ActorRef @@ JournalActor.type,
-  conf: Conf,
-  controllerId: ControllerId)
+  conf: Conf)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
@@ -343,12 +341,10 @@ private[order] object OrderActor
 {
   private[order] def props(
     orderId: OrderId,
-    workflow: Workflow,
     journalActor: ActorRef @@ JournalActor.type,
-    conf: OrderActor.Conf,
-    controllerId: ControllerId)
+    conf: OrderActor.Conf)
     (implicit s: Scheduler) =
-    Props { new OrderActor(orderId, workflow, journalActor = journalActor, conf, controllerId) }
+    Props { new OrderActor(orderId, journalActor = journalActor, conf) }
 
   private object Internal {
     final case class OrderProcessed(orderId: OrderId, outcome: Outcome)

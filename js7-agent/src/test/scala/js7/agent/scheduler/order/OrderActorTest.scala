@@ -184,9 +184,8 @@ private object OrderActorTest {
         executorConf,
         _ => Left(Problem("No JobResource here")))
     private val orderActor = watch(actorOf(
-      OrderActor.props(TestOrder.id, Workflow.of(TestOrder.workflowId),
-        journalActor = journalActor, OrderActor.Conf(config, JournalConf.fromConfig(config)),
-        ControllerId("CONTROLLER")),
+      OrderActor.props(TestOrder.id, journalActor,
+        OrderActor.Conf(config, JournalConf.fromConfig(config))),
       s"Order-${TestOrder.id.string}"))
 
     private val orderChangeds = mutable.Buffer.empty[OrderActor.Output.OrderChanged]
