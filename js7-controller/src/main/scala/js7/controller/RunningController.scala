@@ -46,7 +46,7 @@ import js7.controller.item.ItemUpdater
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.license.LicenseChecker
-import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotYetReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
+import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.AddOrder
 import js7.data.controller.{ControllerCommand, ControllerState, VerifiedUpdateItems}
@@ -436,7 +436,7 @@ object RunningController
         if (persistence.isStarted)
           persistence.awaitCurrentState map Right.apply
         else
-          replicatedState.map(_.toChecked(ClusterNodeIsNotYetReadyProblem).flatten)
+          replicatedState.map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten)
       }
       (cluster, controllerState, clusterFollowUpTask)
     }

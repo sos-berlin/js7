@@ -297,7 +297,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
       // TODO Eine Zeile davor lesen und sicherstellen, dass sie gleich unserer letzten Zeile ist
       recouplingStreamReader.observe(activeNodeApi, after = continuation.fileLength)
-        // TODO Aktiver kann JournalFileIsNotYetReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
+        // TODO Aktiver kann JournalFileIsNotReady melden, sendet keinen Herzschlag, ist aber irgendwie am Leben.
         //  observe könnte selbst Ausfall des Aktiven anzeigen, gdw er nicht erreichbar ist
         //  (zB Login klappt nicht, isTemporaryUnreachable).
         //  observe überwacht selbst die Herzschläge, und verbindet sich bei Ausfall erneut.

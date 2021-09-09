@@ -108,7 +108,7 @@ object Problems
     def arguments = Map("typeName" -> typeName)
   }
 
-  case object ClusterNodeIsNotYetReadyProblem extends Problem.ArgumentlessCoded {
+  case object ClusterNodeIsNotReadyProblem extends Problem.ArgumentlessCoded {
     override val httpStatusCode = 503  // ServiceUnavailable
   }
 

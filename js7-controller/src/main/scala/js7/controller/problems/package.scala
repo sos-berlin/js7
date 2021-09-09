@@ -4,7 +4,7 @@ import js7.base.problem.Problem
 
 package object problems
 {
-  case object ControllerIsNotYetReadyProblem extends Problem.ArgumentlessCoded {
+  case object ControllerIsNotReadyProblem extends Problem.ArgumentlessCoded {
     override val httpStatusCode = 503  // Service Unavailable
   }
 }

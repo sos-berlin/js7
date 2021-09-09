@@ -406,14 +406,14 @@ with JournalingObserver
   }
 
   private def checkedCurrentEventReader: Checked[CurrentEventReader] =
-    currentEventReaderOption.toChecked(JournalFileIsNotYetReadyProblem(journalMeta.fileBase))
+    currentEventReaderOption.toChecked(JournalFileIsNotReadyProblem(journalMeta.fileBase))
 }
 
 object JournalEventWatch
 {
   private val logger = Logger(getClass)
 
-  private case class JournalFileIsNotYetReadyProblem(file: Path) extends Problem.Coded {
+  private case class JournalFileIsNotReadyProblem(file: Path) extends Problem.Coded {
     def arguments = Map("file" -> file.getFileName.toString)
   }
 

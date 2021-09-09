@@ -36,7 +36,7 @@ import js7.common.akkautils.SupervisorStrategies
 import js7.controller.ControllerOrderKeeper._
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.problems.ControllerIsNotYetReadyProblem
+import js7.controller.problems.ControllerIsNotReadyProblem
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
@@ -339,16 +339,16 @@ with MainJournalingActor[ControllerState, Event]
         stash()
 
       case Command.Execute(cmd, _) =>
-        logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-        sender() ! Left(ControllerIsNotYetReadyProblem)
+        logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+        sender() ! Left(ControllerIsNotReadyProblem)
 
       case Command.VerifiedUpdateItemsCmd(_) =>
-        logger.warn(s"$ControllerIsNotYetReadyProblem: VerifiedUpdateItemsCmd")
-        sender() ! Left(ControllerIsNotYetReadyProblem)
+        logger.warn(s"$ControllerIsNotReadyProblem: VerifiedUpdateItemsCmd")
+        sender() ! Left(ControllerIsNotReadyProblem)
 
       case cmd: Command =>
-        logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-        sender() ! Status.Failure(ControllerIsNotYetReadyProblem.throwable)
+        logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+        sender() ! Status.Failure(ControllerIsNotReadyProblem.throwable)
 
       case _ => stash()
     }
@@ -409,12 +409,12 @@ with MainJournalingActor[ControllerState, Event]
       stash()
 
     case Command.Execute(cmd, _) =>
-      logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-      sender() ! Left(ControllerIsNotYetReadyProblem)
+      logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+      sender() ! Left(ControllerIsNotReadyProblem)
 
     case cmd: Command =>
-      logger.warn(s"$ControllerIsNotYetReadyProblem: $cmd")
-      sender() ! Status.Failure(ControllerIsNotYetReadyProblem.throwable)
+      logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+      sender() ! Status.Failure(ControllerIsNotReadyProblem.throwable)
 
     case _ => stash()
   }
