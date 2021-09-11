@@ -53,7 +53,8 @@ final class WorkflowJobTest extends AnyFreeSpec
           failOnErrWritten = true,
           Some(AdmissionTimeScheme(Seq(
             WeekdayPeriod(MONDAY, LocalTime.of(1, 0), 1.h),
-            WeekdayPeriod(TUESDAY, LocalTime.of(9, 0), 8.h))))),
+            WeekdayPeriod(TUESDAY, LocalTime.of(9, 0), 8.h)))),
+          skipIfNoAdmissionForOrderDay = true),
         json"""{
           "agentPath": "AGENT",
           "executable": {
@@ -86,7 +87,8 @@ final class WorkflowJobTest extends AnyFreeSpec
                 "duration": 28800
               }
             ]
-          }
+          },
+          "skipIfNoAdmissionForOrderDay": true
         }""")
     }
   }

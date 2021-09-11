@@ -18,6 +18,7 @@ final class AdmissionTimeIntervalSwitch(
       TimeInterval.never/*will be changed on first `update`*/)
 
   private[time] def currentTimeInterval = _currentTimeInterval
+  @volatile private var timerActive = false
 
   /** Cancel the callback timer for admission start. */
   def cancel(): Unit =
@@ -27,20 +28,11 @@ final class AdmissionTimeIntervalSwitch(
   def update(now: Timestamp, zone: ZoneId)(onPermissionStart: => Unit)(implicit clock: AlarmClock)
   : Boolean = {
     val updated = updateAdmission(now, zone)
-    if (updated) {
+    if (updated || !timerActive/*also set timer if clock has been adjusted*/) {
       callbackOnIntervalStart(now, onPermissionStart, clock)
     }
     isEnterable(now)
   }
-
-  private def callbackOnIntervalStart(now: Timestamp, callback: => Unit, clock: AlarmClock) =
-    for (interval <- _currentTimeInterval) {
-      if (interval.start > now) {
-        admissionTimer := clock.scheduleAt(interval.start) {
-          callback
-        }
-      }
-    }
 
   private[time] def updateAdmission(now: Timestamp, zone: ZoneId): Boolean =
     admissionTimeScheme.fold(false)(admissionTimeScheme =>
@@ -48,9 +40,20 @@ final class AdmissionTimeIntervalSwitch(
         admissionInterval.endsBefore(now) && {
           val next = admissionTimeScheme.findTimeInterval(now, zone)
           onSwitch((admissionInterval != TimeInterval.never) ? admissionInterval, next)
-          this._currentTimeInterval = next
+          _currentTimeInterval = next
           true
         }))
+
+  private def callbackOnIntervalStart(now: Timestamp, callback: => Unit, clock: AlarmClock) =
+    for (interval <- _currentTimeInterval) {
+      if (interval.start > now) {
+        timerActive = true
+        admissionTimer := clock.scheduleAt(interval.start) {
+          timerActive = false
+          callback
+        }
+      }
+    }
 
   private def isEnterable(now: Timestamp) =
     _currentTimeInterval.exists(_.contains(now))

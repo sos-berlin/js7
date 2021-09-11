@@ -1,7 +1,8 @@
 package js7.base.time
 
+import java.time.LocalTime.MIDNIGHT
 import java.time.temporal.ChronoField.DAY_OF_WEEK
-import java.time.{LocalDateTime, LocalTime, ZoneOffset}
+import java.time.{LocalDate, LocalDateTime, ZoneOffset}
 import js7.base.time.JavaTime._
 import js7.base.time.ScalaTime._
 import scala.concurrent.duration._
@@ -12,6 +13,10 @@ object AdmissionPeriodForJavaTime
   implicit final class JavaAdmissionPeriod(private val admissionPeriod: AdmissionPeriod)
   extends AnyVal
   {
+    def hasPeriodForDay(localDate: LocalDate): Boolean =
+      toJava(admissionPeriod)
+        .hasPeriodForDay(localDate)
+
     def toInterval(local: LocalDateTime): Option[LocalInterval] =
       toJava(admissionPeriod)
         .toLocalInterval(local)
@@ -35,8 +40,10 @@ object AdmissionPeriodForJavaTime
 
   private val NoOffset = ZoneOffset.ofTotalSeconds(0)
 
-  private sealed trait AdmissionPeriodJava
+  private[time] sealed trait AdmissionPeriodJava
   {
+    def hasPeriodForDay(localDate: LocalDate): Boolean
+
     def toLocalInterval(local: LocalDateTime): Option[LocalInterval]
 
     def calendarStart(local: LocalDateTime): LocalDateTime
@@ -46,6 +53,9 @@ object AdmissionPeriodForJavaTime
 
   private case object JavaAlwaysPeriod extends AdmissionPeriodJava
   {
+    def hasPeriodForDay(localDate: LocalDate) =
+      true
+
     def toLocalInterval(local: LocalDateTime) =
       Some(LocalInterval(local, FiniteDuration.MaxValue))
 
@@ -56,39 +66,48 @@ object AdmissionPeriodForJavaTime
       local  // not used
   }
 
-  private final case class JavaWeekdayPeriod(weekdayPeriod: WeekdayPeriod)
+  private[time] final case class JavaWeekdayPeriod(weekdayPeriod: WeekdayPeriod)
   extends AdmissionPeriodJava
   {
     import weekdayPeriod.{duration, secondOfWeek}
 
-    def toLocalInterval(local: LocalDateTime) = {
-      val a = toInterval1(calendarStart(local) - 1.ns)  // Overlap from last week?
-      Some(
-        if (a.contains(local))
-          a
-        else
-          // TODO Caller should check overlap
-          toInterval1(local))
+    def hasPeriodForDay(localDate: LocalDate) = {
+      val startOfDay = LocalDateTime.of(localDate, MIDNIGHT)
+      val endOfDay = startOfDay.plusDays(1)
+      val a = toLocalInterval0(startOfDay)
+      a.end > startOfDay && a.start < endOfDay
     }
 
-    private def toInterval1(local: LocalDateTime) = {
-      val s = secondsSinceStartOfWeek(local.toEpochSecond(NoOffset))
-      LocalInterval(local.withNano(0).plusSeconds(s), duration)
+    def toLocalInterval(local: LocalDateTime) =
+      Some(toLocalInterval0(local))
+
+    def toLocalInterval0(local: LocalDateTime) = {
+      val a = toLocalInterval1(calendarStart(local) - FiniteDuration.Epsilon)  // Overlap from last week?
+      if (a.contains(local))
+        a
+      else
+        // TODO Caller should check overlap
+        toLocalInterval1(local)
     }
+
+    private def toLocalInterval1(local: LocalDateTime) =
+      LocalInterval(
+        local.withNano(0).minusSeconds(secondsSinceStart(local)),
+        duration)
 
     def calendarStart(local: LocalDateTime): LocalDateTime =
       LocalDateTime.of(
         local.toLocalDate.minusDays(local.toLocalDate.get(DAY_OF_WEEK) - 1),
-        LocalTime.MIDNIGHT)
+        MIDNIGHT)
 
     def nextCalendarStart(local: LocalDateTime): LocalDateTime =
       LocalDateTime.of(
         local.toLocalDate.plusDays(8 - local.toLocalDate.get(DAY_OF_WEEK)),
-        LocalTime.MIDNIGHT)
+        MIDNIGHT)
 
-    private def secondsSinceStartOfWeek(second: Long): Long =
-      secondOfWeek -
-        ((second + 3/*1970-01-01 was a thursday*/ * 24 * 3600) % (7*24*3600))
+    private[time] def secondsSinceStart(local: LocalDateTime): Long =
+      (local.toEpochSecond(NoOffset) + 3/*1970-01-01 was a thursday*/ * 24 * 3600) % (7*24*3600) -
+        secondOfWeek
 
     override def toString =
       weekdayPeriod.toString

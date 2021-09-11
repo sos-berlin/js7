@@ -30,7 +30,8 @@ final case class WorkflowJob private(
   sigkillDelay: Option[FiniteDuration],
   timeout: Option[FiniteDuration],
   failOnErrWritten: Boolean,
-  admissionTimeScheme: Option[AdmissionTimeScheme])
+  admissionTimeScheme: Option[AdmissionTimeScheme],
+  skipIfNoAdmissionForOrderDay: Boolean)
 {
   def referencedJobResourcePaths =
     jobResourcePaths.view ++ executable.referencedJobResourcePaths
@@ -64,10 +65,12 @@ object WorkflowJob
     timeout: Option[FiniteDuration] = None,
     login: Option[KeyLogin] = None,
     failOnErrWritten: Boolean = false,
-    admissionTimeScheme: Option[AdmissionTimeScheme] = None)
+    admissionTimeScheme: Option[AdmissionTimeScheme] = None,
+    skipIfNoAdmissionForOrderDay: Boolean = false)
   : WorkflowJob =
     checked(agentPath, executable, defaultArguments, jobResourcePaths, parallelism,
-      sigkillDelay, timeout, failOnErrWritten = failOnErrWritten, admissionTimeScheme
+      sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
+      admissionTimeScheme, skipIfNoAdmissionForOrderDay
     ).orThrow
 
   def checked(
@@ -79,12 +82,14 @@ object WorkflowJob
     sigkillDelay: Option[FiniteDuration] = None,
     timeout: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false,
-    admissionTimeScheme: Option[AdmissionTimeScheme] = None)
+    admissionTimeScheme: Option[AdmissionTimeScheme] = None,
+    skipIfNoAdmissionForOrderDay: Boolean = false)
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, jobResourcePaths,
-        parallelism, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme)
+        parallelism, sigkillDelay, timeout, failOnErrWritten,
+        admissionTimeScheme, skipIfNoAdmissionForOrderDay)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -105,21 +110,24 @@ object WorkflowJob
       "sigkillDelay" -> workflowJob.sigkillDelay.asJson,
       "timeout" -> workflowJob.timeout.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson,
-      "admissionTimeScheme" -> workflowJob.admissionTimeScheme.asJson)
+      "admissionTimeScheme" -> workflowJob.admissionTimeScheme.asJson,
+      "skipIfNoAdmissionForOrderDay" -> workflowJob.skipIfNoAdmissionForOrderDay.?.asJson)
 
-  implicit val jsonDecoder: Decoder[WorkflowJob] = cursor =>
+  implicit val jsonDecoder: Decoder[WorkflowJob] = c =>
     for {
-      executable <- cursor.get[Executable]("executable")
-      agentPath <- cursor.get[AgentPath]("agentPath")
-      arguments <- cursor.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
-      jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
-      parallelism <- cursor.getOrElse[Int]("parallelism")(DefaultParallelism)
-      sigkillDelay <- cursor.get[Option[FiniteDuration]]("sigkillDelay")
-      timeout <- cursor.get[Option[FiniteDuration]]("timeout")
-      failOnErrWritten <- cursor.getOrElse[Boolean]("failOnErrWritten")(false)
-      admissionTimeScheme <- cursor.get[Option[AdmissionTimeScheme]]("admissionTimeScheme")
+      executable <- c.get[Executable]("executable")
+      agentPath <- c.get[AgentPath]("agentPath")
+      arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
+      jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
+      parallelism <- c.getOrElse[Int]("parallelism")(DefaultParallelism)
+      sigkillDelay <- c.get[Option[FiniteDuration]]("sigkillDelay")
+      timeout <- c.get[Option[FiniteDuration]]("timeout")
+      failOnErrWritten <- c.getOrElse[Boolean]("failOnErrWritten")(false)
+      admissionTimeScheme <- c.get[Option[AdmissionTimeScheme]]("admissionTimeScheme")
+      skipIfNoAdmissionForOrderDay <- c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
       job <- checked(agentPath, executable, arguments, jobResourcePaths, parallelism,
-        sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme
-      ).toDecoderResult(cursor.history)
+        sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
+        skipIfNoAdmissionForOrderDay
+      ).toDecoderResult(c.history)
     } yield job
 }

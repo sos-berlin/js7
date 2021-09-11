@@ -1,6 +1,6 @@
 package js7.base.time
 
-import java.time.{ZoneId, ZonedDateTime}
+import java.time.{LocalDate, ZoneId, ZonedDateTime}
 import js7.base.time.AdmissionPeriodForJavaTime._
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 
@@ -10,6 +10,10 @@ object AdmissionTimeSchemeForJavaTime
   implicit final class JavaAdmissionTimeSchemeJava(private val admissionTimeScheme: AdmissionTimeScheme)
   extends AnyVal
   {
+    def hasPeriodForDay(localDate: LocalDate): Boolean =
+      admissionTimeScheme.periods
+        .exists(_.hasPeriodForDay(localDate))
+
     def isPermitted(timestamp: Timestamp, zone: ZoneId): Boolean =
       findTimeInterval(timestamp, zone).exists(_.contains(timestamp))
 

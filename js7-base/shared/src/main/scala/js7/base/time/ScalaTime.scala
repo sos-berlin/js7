@@ -284,10 +284,12 @@ object ScalaTime
     def pretty: String = (duration: Duration).pretty
   }
 
-  implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type) extends AnyVal
+  implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type)
+  extends AnyVal
   {
     def MaxValue: FiniteDuration = MaxDuration
     def MinValue: FiniteDuration = MinDuration
+    def Epsilon: FiniteDuration = 1.ns
   }
 
   implicit final class RichDeadline(private val underlying: Deadline) extends AnyVal
