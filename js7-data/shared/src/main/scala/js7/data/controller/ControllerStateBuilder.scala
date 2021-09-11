@@ -12,8 +12,6 @@ import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
-import js7.data.execution.workflow.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.execution.workflow.context.StateView
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -25,6 +23,8 @@ import js7.data.order.Order.ExpectingNotice
 import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
+import js7.data.state.StateView
+import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.mutable
 

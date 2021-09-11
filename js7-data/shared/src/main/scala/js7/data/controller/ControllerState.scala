@@ -21,7 +21,6 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
-import js7.data.execution.workflow.context.StateView
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -33,6 +32,7 @@ import js7.data.order.Order.ExpectingNotice
 import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
+import js7.data.state.StateView
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable

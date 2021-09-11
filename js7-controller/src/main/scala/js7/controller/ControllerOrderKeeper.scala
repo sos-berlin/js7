@@ -52,9 +52,7 @@ import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState,
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
-import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
+import js7.data.execution.workflow.OrderEventSource
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDeleted, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -65,6 +63,9 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, 
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
+import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.state.OrderEventHandler
+import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}

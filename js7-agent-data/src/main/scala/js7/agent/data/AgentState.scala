@@ -15,13 +15,13 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
-import js7.data.execution.workflow.context.StateView
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
+import js7.data.state.StateView
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView

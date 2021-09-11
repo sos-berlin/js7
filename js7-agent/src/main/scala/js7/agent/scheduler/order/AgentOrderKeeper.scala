@@ -35,16 +35,16 @@ import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
-import js7.data.execution.workflow.OrderEventHandler.FollowUp
-import js7.data.execution.workflow.context.StateView
+import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.execution.workflow.{OrderEventHandler, OrderEventSource}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.state.OrderEventHandler.FollowUp
+import js7.data.state.{OrderEventHandler, StateView}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
