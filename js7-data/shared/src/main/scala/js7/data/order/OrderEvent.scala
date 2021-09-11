@@ -218,40 +218,31 @@ object OrderEvent
     def unapply(event: OrderLockEvent) = Some(event.lockPaths)
   }
 
-  sealed trait OrderFailedEvent extends OrderActorEvent with OrderLockEvent {
+  sealed trait OrderFailedEvent extends OrderActorEvent {
     def moveTo(movedTo: Position): OrderFailedEvent
 
     def movedTo: Position
   }
 
-  final case class OrderFailed(movedTo: Position, outcome: Option[Outcome.NotSucceeded],
-    @deprecated("only for compatibility", ">2.0.0-alpha.20210730") lockPaths: Seq[LockPath])
+  final case class OrderFailed(
+    movedTo: Position,
+    outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderFailedEvent with OrderTerminated {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
-  object OrderFailed {
-    def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None) =
-      new OrderFailed(movedTo, outcome, Nil)
-  }
 
-  final case class OrderFailedInFork(movedTo: Position, outcome: Option[Outcome.NotSucceeded],
-    @deprecated("only for compatibility", ">2.0.0-alpha.20210730") lockPaths: Seq[LockPath])
+  final case class OrderFailedInFork(
+    movedTo: Position,
+    outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
-  object OrderFailedInFork {
-    def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None) =
-      new OrderFailedInFork(movedTo, outcome, Nil)
-  }
 
-  final case class OrderCatched(movedTo: Position, outcome: Option[Outcome.NotSucceeded],
-    @deprecated("only for compatibility", ">2.0.0-alpha.20210730") lockPaths: Seq[LockPath])
+  final case class OrderCatched(
+    movedTo: Position,
+    outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
-  }
-  object OrderCatched {
-    def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded] = None) =
-      new OrderCatched(movedTo, outcome, Nil)
   }
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCatched`. */

@@ -193,23 +193,18 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderCatched" in {
-    check(OrderCatched(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))), json"""
+    check(OrderCatched(Position(1)), json"""
       {
         "TYPE": "OrderCatched",
-        "movedTo": [ 1 ],
-        "outcome": {
-          "TYPE": "Failed",
-          "namedValues": {
-            "returnCode": 1
-          }
-        },
-        "lockPaths": []
+        "movedTo": [ 1 ]
       }""")
   }
 
   "OrderCatched complete" in {
-    // lockPaths are for compatibility only !!!
-    check(OrderCatched(Position(1), Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
+    check(OrderCatched(
+      Position(1),
+      Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))),
+      json"""
       {
         "TYPE": "OrderCatched",
         "outcome": {
@@ -219,29 +214,24 @@ final class OrderEventTest extends AnyFreeSpec
           },
           "message": "FAILED"
         },
-        "movedTo": [ 1 ],
-        "lockPaths": [ "LOCK" ]
+        "movedTo": [ 1 ]
       }""")
   }
 
   "OrderFailed" in {
-    check(OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))), json"""
+    check(OrderFailed(Position(1)),
+      json"""
       {
         "TYPE": "OrderFailed",
-        "movedTo": [ 1 ],
-        "outcome": {
-          "TYPE": "Failed",
-          "namedValues": {
-            "returnCode": 1
-          }
-        },
-        "lockPaths": []
+        "movedTo": [ 1 ]
       }""")
   }
 
   "OrderFailed(Failed) complete" in {
-    // lockPaths are for compatibility only !!!
-    check(OrderFailed(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
+    check(OrderFailed(
+      Position(1),
+      Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))),
+      json"""
       {
         "TYPE": "OrderFailed",
         "movedTo": [ 1 ],
@@ -251,8 +241,7 @@ final class OrderEventTest extends AnyFreeSpec
             "returnCode": 1
           },
           "message": "ERROR"
-        },
-        "lockPaths": [ "LOCK" ]
+        }
       }""")
   }
 
@@ -269,30 +258,22 @@ final class OrderEventTest extends AnyFreeSpec
               "message": "PROBLEM"
             }
           }
-        },
-        "lockPaths": []
+        }
       }""")
   }
 
   "OrderFailedInFork" in {
-    // lockPaths are for compatibility only !!!
-    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(NamedValues.rc(1)))), json"""
+    check(OrderFailedInFork(Position(1)), json"""
       {
         "TYPE": "OrderFailedInFork",
-        "movedTo": [ 1 ],
-        "outcome": {
-          "TYPE": "Failed",
-          "namedValues": {
-            "returnCode": 1
-          }
-        },
-        "lockPaths": []
+        "movedTo": [ 1 ]
       }""")
   }
 
   "OrderFailedInFork complete" in {
-    // lockPaths are for compatibility only !!!
-    check(OrderFailedInFork(Position(1), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1))), Seq(LockPath("LOCK"))), json"""
+    check(OrderFailedInFork(
+      Position(1),
+      Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))), json"""
       {
         "TYPE": "OrderFailedInFork",
         "movedTo": [ 1 ],
@@ -302,8 +283,7 @@ final class OrderEventTest extends AnyFreeSpec
             "returnCode": 1
           },
           "message": "ERROR"
-        },
-        "lockPaths": [ "LOCK" ]
+        }
       }""")
   }
 
