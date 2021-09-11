@@ -6,9 +6,9 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.ObjectExpression
 import js7.data.workflow.{Instruction, WorkflowPath}
 
-sealed case class AddOrder(
-  workflowPath: WorkflowPath,
+final case class AddOrder(
   orderId: Expression,
+  workflowPath: WorkflowPath,
   arguments: ObjectExpression = ObjectExpression.empty,
   deleteWhenTerminated: Boolean = false,
   sourcePos: Option[SourcePos] = None)

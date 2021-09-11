@@ -59,7 +59,7 @@ object AddOrderTest
 
   private lazy val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ "INITIAL",
     Seq(
-      AddOrder(bWorkflow.path, expr("'🟦'"), deleteWhenTerminated = true)))
+      AddOrder(expr("'🟦'"), bWorkflow.path, deleteWhenTerminated = true)))
 
   private val bWorkflow = Workflow(WorkflowPath("B-WORKFLOW") ~ "INITIAL",
     Seq(
