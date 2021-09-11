@@ -25,7 +25,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTime._
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeIntervalSwitch, AlarmClock, Timestamp}
+import js7.base.time.{AdmissionTimeIntervalSwitch, AlarmClock}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{DuplicateKeyException, SetOnce}
@@ -604,8 +604,7 @@ with Stash
     }
 
   private def tryStartProcessing(jobEntry: JobEntry): Unit = {
-    val now = clock.now()
-    val isEnterable = jobEntry.updateAdmissionTimeInterval(now) {
+    val isEnterable = jobEntry.updateAdmissionTimeInterval(clock) {
       self ! Internal.JobDue(jobEntry.jobKey)
     }
     if (isEnterable) {
@@ -723,10 +722,9 @@ object AgentOrderKeeper {
     def close(): Unit =
       admissionTimeIntervalSwitch.cancel()
 
-    def updateAdmissionTimeInterval(now: Timestamp)(onPermissionGranted: => Unit)
-      (implicit a: AlarmClock)
+    def updateAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit)
     : Boolean =
-      admissionTimeIntervalSwitch.update(now, zone)(onPermissionGranted)
+      admissionTimeIntervalSwitch.update(clock.now(), zone)(onPermissionGranted)(clock)
 
     def isBelowParallelismLimit =
       taskCount < workflowJob.parallelism

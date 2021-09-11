@@ -1,7 +1,5 @@
 package js7.data.board
 
-import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -9,30 +7,31 @@ import js7.data.board.BoardStateTest._
 import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.freespec.AsyncFreeSpec
 import scala.collection.View
 
-final class BoardStateTest extends AnyFreeSpec
+final class BoardStateTest extends AsyncFreeSpec
 {
   "BoardState snapshot" in {
-    val snapshot = boardState.toSnapshotObservable.toListL.await(99.s)
-    assert(snapshot == List(
-      board,
-      Notice.Snapshot(board.path, notice)))
+    (for (snapshot <- boardState.toSnapshotObservable.toListL) yield {
+      assert(snapshot == List(
+        board,
+        Notice.Snapshot(board.path, notice)))
 
-    // Order of addExpectation is irrelevant
-    var recovered = BoardState(board)
-    recovered = recovered.addNotice(notice).orThrow
-    recovered = recovered.addExpectation(aOrderId, NoticeId("B")).orThrow
-    recovered = recovered.addExpectation(bOrderId, NoticeId("B")).orThrow
-    assert(recovered == boardState)
+      // Order of addExpectation is irrelevant
+      var recovered = BoardState(board)
+      recovered = recovered.addNotice(notice).orThrow
+      recovered = recovered.addExpectation(aOrderId, NoticeId("B")).orThrow
+      recovered = recovered.addExpectation(bOrderId, NoticeId("B")).orThrow
+      assert(recovered == boardState)
 
-    // Now the other way round
-    recovered = BoardState(board)
-    recovered = recovered.addExpectation(bOrderId, NoticeId("B")).orThrow
-    recovered = recovered.addExpectation(aOrderId, NoticeId("B")).orThrow
-    recovered = recovered.addNotice(notice).orThrow
-    assert(recovered == boardState)
+      // Now the other way round
+      recovered = BoardState(board)
+      recovered = recovered.addExpectation(bOrderId, NoticeId("B")).orThrow
+      recovered = recovered.addExpectation(aOrderId, NoticeId("B")).orThrow
+      recovered = recovered.addNotice(notice).orThrow
+      assert(recovered == boardState)
+    }).runToFuture
   }
 }
 
