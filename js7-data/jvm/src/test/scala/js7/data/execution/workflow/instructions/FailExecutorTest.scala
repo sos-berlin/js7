@@ -70,12 +70,12 @@ object FailExecutorTest
 
   private val ForkedOrder = Order(OrderId("FORKED"), TestWorkflowId /: Position(1),
     Order.Forked(Vector(
-      Order.Forked.Child(Fork.Branch.Id("🥕"), OrderId("FORKED") | "🥕"),
-      Order.Forked.Child(Fork.Branch.Id("🍋"), OrderId("FORKED") | "🍋"))))
+      Order.Forked.Child(Fork.Branch.Id("🥕"), OrderId("FORKED") / "🥕"),
+      Order.Forked.Child(Fork.Branch.Id("🍋"), OrderId("FORKED") / "🍋"))))
 
-  private val Carrot = Order(ForkedOrder.id | "🥕", TestWorkflowId /: (Position(1) / "fork+🥕" % 2 / Then % 3),
+  private val Carrot = Order(ForkedOrder.id / "🥕", TestWorkflowId /: (Position(1) / "fork+🥕" % 2 / Then % 3),
     Order.FailedInFork, parent = Some(ForkedOrder.id))
 
-  private val Lemon  = Order(ForkedOrder.id | "🍋", TestWorkflowId /: (Position(1) / "fork+🍋" % 4),
+  private val Lemon  = Order(ForkedOrder.id / "🍋", TestWorkflowId /: (Position(1) / "fork+🍋" % 4),
     Order.Ready, parent = Some(ForkedOrder.id))
 }

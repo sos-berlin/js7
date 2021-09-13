@@ -101,7 +101,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "fork" in {
     val orderId = OrderId("FORKING")
-    val childOrderId = orderId | "FORK"
+    val childOrderId = orderId / "FORK"
     controllerApi.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == childOrderId)
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow

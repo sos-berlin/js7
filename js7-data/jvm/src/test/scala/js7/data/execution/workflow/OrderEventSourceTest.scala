@@ -112,54 +112,54 @@ final class OrderEventSourceTest extends AnyFreeSpec
       orderId <-: OrderDetachable,
       orderId <-: OrderDetached,
       orderId <-: OrderForked(Vector(
-        OrderForked.Child("🥕", orderId | "🥕"),
-        OrderForked.Child("🍋", orderId | "🍋")))))
+        OrderForked.Child("🥕", orderId / "🥕"),
+        OrderForked.Child("🍋", orderId / "🍋")))))
 
-    assert(process.run(orderId | "🥕") == List(
-      (orderId | "🥕") <-: OrderAttachable(TestAgentPath),
-      (orderId | "🥕") <-: OrderAttached(TestAgentPath),
-      (orderId | "🥕") <-: OrderProcessingStarted,
-      (orderId | "🥕") <-: OrderProcessed(Outcome.succeededRC0),
-      (orderId | "🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
-      (orderId | "🥕") <-: OrderDetachable,
-      (orderId | "🥕") <-: OrderDetached))
+    assert(process.run(orderId / "🥕") == List(
+      orderId / "🥕" <-: OrderAttachable(TestAgentPath),
+      orderId / "🥕" <-: OrderAttached(TestAgentPath),
+      orderId / "🥕" <-: OrderProcessingStarted,
+      orderId / "🥕" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🥕" <-: OrderMoved(Position(0) / "fork+🥕" % 1),
+      orderId / "🥕" <-: OrderDetachable,
+      orderId / "🥕" <-: OrderDetached))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
-    assert(process.run(orderId | "🍋") == List(
-      (orderId | "🍋") <-: OrderAttachable(TestAgentPath),
-      (orderId | "🍋") <-: OrderAttached(TestAgentPath),
-      (orderId | "🍋") <-: OrderProcessingStarted,
-      (orderId | "🍋") <-: OrderProcessed(Outcome.succeededRC0),
-      (orderId | "🍋") <-: OrderMoved(Position(0) / "fork+🍋" % 1),
-      (orderId | "🍋") <-: OrderDetachable,
-      (orderId | "🍋") <-: OrderDetached,
+    assert(process.run(orderId / "🍋") == List(
+      orderId / "🍋" <-: OrderAttachable(TestAgentPath),
+      orderId / "🍋" <-: OrderAttached(TestAgentPath),
+      orderId / "🍋" <-: OrderProcessingStarted,
+      orderId / "🍋" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🍋" <-: OrderMoved(Position(0) / "fork+🍋" % 1),
+      orderId / "🍋" <-: OrderDetachable,
+      orderId / "🍋" <-: OrderDetached,
       orderId <-: OrderJoined(Outcome.succeeded)))
     assert(process.step(orderId) == Seq(orderId <-: OrderMoved(Position(1))))
 
     assert(process.step(orderId) == Seq(orderId <-: OrderForked(Vector(
-      OrderForked.Child("🥕", orderId | "🥕"),
-      OrderForked.Child("🍋", orderId | "🍋")))))
+      OrderForked.Child("🥕", orderId / "🥕"),
+      OrderForked.Child("🍋", orderId / "🍋")))))
 
-    assert(process.run(orderId | "🥕") == List(
-      (orderId | "🥕") <-: OrderAttachable(TestAgentPath),
-      (orderId | "🥕") <-: OrderAttached(TestAgentPath),
-      (orderId | "🥕") <-: OrderProcessingStarted,
-      (orderId | "🥕") <-: OrderProcessed(Outcome.succeededRC0),
-      (orderId | "🥕") <-: OrderMoved(Position(1) / "fork+🥕" % 1),
-      (orderId | "🥕") <-: OrderDetachable,
-      (orderId | "🥕") <-: OrderDetached))
+    assert(process.run(orderId / "🥕") == List(
+      orderId / "🥕" <-: OrderAttachable(TestAgentPath),
+      orderId / "🥕" <-: OrderAttached(TestAgentPath),
+      orderId / "🥕" <-: OrderProcessingStarted,
+      orderId / "🥕" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🥕" <-: OrderMoved(Position(1) / "fork+🥕" % 1),
+      orderId / "🥕" <-: OrderDetachable,
+      orderId / "🥕" <-: OrderDetached))
 
     assert(process.step(orderId).isEmpty)  // Nothing to join
 
-    assert(process.run(orderId | "🍋") == List(
-      (orderId | "🍋") <-: OrderAttachable(TestAgentPath),
-      (orderId | "🍋") <-: OrderAttached(TestAgentPath),
-      (orderId | "🍋") <-: OrderProcessingStarted,
-      (orderId | "🍋") <-: OrderProcessed(Outcome.succeededRC0),
-      (orderId | "🍋") <-: OrderMoved(Position(1) / "fork+🍋" % 1),
-      (orderId | "🍋") <-: OrderDetachable,
-      (orderId | "🍋") <-: OrderDetached,
+    assert(process.run(orderId / "🍋") == List(
+      orderId / "🍋" <-: OrderAttachable(TestAgentPath),
+      orderId / "🍋" <-: OrderAttached(TestAgentPath),
+      orderId / "🍋" <-: OrderProcessingStarted,
+      orderId / "🍋" <-: OrderProcessed(Outcome.succeededRC0),
+      orderId / "🍋" <-: OrderMoved(Position(1) / "fork+🍋" % 1),
+      orderId / "🍋" <-: OrderDetachable,
+      orderId / "🍋" <-: OrderDetached,
       orderId <-: OrderJoined(Outcome.succeeded)))
 
     assert(process.step(orderId) == Seq(orderId <-: OrderMoved(Position(2))))

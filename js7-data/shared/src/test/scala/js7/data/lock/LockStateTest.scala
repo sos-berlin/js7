@@ -84,11 +84,11 @@ final class LockStateTest extends AnyFreeSpec
       }
 
       "Child order cannot lock if parent order has locked" in {
-        assert(applyEvent(Exclusive(a), (a | "CHILD") <-: OrderLockQueued(lock.path, None)) ==
+        assert(applyEvent(Exclusive(a), a / "CHILD" <-: OrderLockQueued(lock.path, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
-        assert(applyEvent(Exclusive(a), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.path, None)) ==
+        assert(applyEvent(Exclusive(a), a / "CHILD" / "GRANDCHILD" <-: OrderLockQueued(lock.path, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A")))
-        assert(applyEvent(Exclusive(a | "CHILD"), (a | "CHILD" | "GRANDCHILD") <-: OrderLockQueued(lock.path, None)) ==
+        assert(applyEvent(Exclusive(a / "CHILD"), a / "CHILD" / "GRANDCHILD" <-: OrderLockQueued(lock.path, None)) ==
           Left(Problem("Lock:LOCK has already been acquired by parent Order:A|CHILD")))
       }
 

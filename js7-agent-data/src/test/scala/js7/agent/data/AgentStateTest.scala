@@ -202,7 +202,7 @@ final class AgentStateTest extends AsyncFreeSpec
 
   "applyEvent" in {
     val orderId = OrderId("ORDER")
-    val childOrderId = OrderId("ORDER") | "BRANCH"
+    val childOrderId = OrderId("ORDER") / "BRANCH"
     val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"
     val workflow = Workflow.of(workflowId)
     val agentPath = AgentPath("AGENT")

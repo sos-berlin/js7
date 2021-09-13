@@ -102,7 +102,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 failed: TEST-ERROR"))),
         OrderFailed(Position(0))))
 
-    assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
@@ -113,7 +113,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderDetachable,
         OrderDetached))
 
-    assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
@@ -148,7 +148,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 failed: TEST-ERROR"))),
         OrderFailed(Position(0))))
 
-    assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
@@ -159,7 +159,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderDetachable,
         OrderDetached))
 
-    assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),

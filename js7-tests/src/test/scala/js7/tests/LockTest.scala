@@ -317,13 +317,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
-      OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
-      OrderJoined(Outcome.failed),
+      OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
+      OrderJoined(Outcome.Failed(Some("Order:🟩|BRANCH failed"))),
       OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
 
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId / "BRANCH") == Seq(
       OrderLockAcquired(lockPath, None),
       OrderLockReleased(lockPath),
       OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed))))

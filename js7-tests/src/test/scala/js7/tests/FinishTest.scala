@@ -99,7 +99,7 @@ final class FinishTest extends AnyFreeSpec
         OrderFinished,
         OrderDeleted))
 
-    assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
@@ -110,7 +110,7 @@ final class FinishTest extends AnyFreeSpec
         OrderDetached,
         OrderMoved(Position(0) / "fork+🥕" % 3)))    // Moved to end
 
-    assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
@@ -150,7 +150,7 @@ final class FinishTest extends AnyFreeSpec
         OrderFinished,
         OrderDeleted))
 
-    assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
@@ -161,7 +161,7 @@ final class FinishTest extends AnyFreeSpec
         OrderDetached,
         OrderMoved(Position(0) / "fork+🥕" % 3)))  // Moved to end
 
-    assert(events.filter(_.key == (orderId | "🍋")).map(_.event) ==
+    assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),

@@ -248,11 +248,11 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     deleteIfExists(triggerFile)
     val order = FreshOrder(OrderId("FORK"), forkWorkflow.path)
     addOrder(order).await(99.s).orThrow
-    eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
+    eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
 
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
     touchFile(triggerFile)
-    eventWatch.await[OrderProcessed](_.key == (order.id | "🥕"))
+    eventWatch.await[OrderProcessed](_.key == order.id / "🥕")
 
     //eventWatch.await[OrderProcessingStarted](_.key == (order.id | "🥕"))
     //touchFile(bTriggerFile)

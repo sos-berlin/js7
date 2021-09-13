@@ -107,7 +107,7 @@ object ForkListRecoveryTest
 {
   private val n = 3
   private val parentOrderId = OrderId("PARENT")
-  private val childOrderIds = for (i <- 1 to 3) yield parentOrderId | s"CHILD-$i"
+  private val childOrderIds = for (i <- 1 to 3) yield parentOrderId / s"CHILD-$i"
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(

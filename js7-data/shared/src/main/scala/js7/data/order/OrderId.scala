@@ -17,7 +17,11 @@ final case class OrderId private(string: String) extends GenericString
 
   def pretty = s"Order $string"
 
+  @deprecated
   def |(childId: String): OrderId =
+    withChild(childId).orThrow
+
+  def /(childId: String): OrderId =
     withChild(childId).orThrow
 
   def withChild(childId: String): Checked[OrderId] =

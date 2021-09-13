@@ -61,15 +61,15 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
               workflowId /: Position(0),
               Order.Forked(Vector(
                 Order.Forked.Child(
-                  orderId | "ELEMENT-1",
+                  orderId / "ELEMENT-1",
                   Map(
                     "element" -> StringValue("ELEMENT-1"))),
                 Order.Forked.Child(
-                  orderId | "ELEMENT-2",
+                  orderId / "ELEMENT-2",
                   Map(
                     "element" -> StringValue("ELEMENT-2"))),
                 Order.Forked.Child(
-                  orderId | "ELEMENT-3",
+                  orderId / "ELEMENT-3",
                   Map(
                     "element" -> StringValue("ELEMENT-3"))))),
               Map("myList" -> ListValue(Seq(
@@ -101,15 +101,15 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAttached(agentPath),
       OrderForked(Vector(
         Order.Forked.Child(
-          orderId | "ELEMENT-1",
+          orderId / "ELEMENT-1",
           Map(
             "element" -> StringValue("ELEMENT-1"))),
         Order.Forked.Child(
-          orderId | "ELEMENT-2",
+          orderId / "ELEMENT-2",
           Map(
             "element" -> StringValue("ELEMENT-2"))),
         Order.Forked.Child(
-          orderId | "ELEMENT-3",
+          orderId / "ELEMENT-3",
           Map(
             "element" -> StringValue("ELEMENT-3"))))),
       OrderDetachable,
@@ -193,7 +193,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .head.value.event == OrderFinished)
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
     for (i <- myList.elements.indices) {
-      assert(eventWatch.keyedEvents[OrderEvent](orderId | i.toString) == Seq(
+      assert(eventWatch.keyedEvents[OrderEvent](orderId / i.toString) == Seq(
         OrderMoved(Position(0) / "fork" % 1),
         OrderProcessingStarted,
         OrderProcessed(Outcome.succeeded),
@@ -228,7 +228,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int): Unit = {
-    val expectedChildOrderIds = for (i <- 1 to n) yield orderId | s"ELEMENT-$i"
+    val expectedChildOrderIds = for (i <- 1 to n) yield orderId / s"ELEMENT-$i"
     val eventId = eventWatch.lastAddedEventId
 
     val childOrdersProcessed = proxy.observable
@@ -267,7 +267,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val orderForked = OrderForked(
       myList
-        .map(child => Order.Forked.Child(orderId | child, Map("element" -> StringValue(child))))
+        .map(child => Order.Forked.Child(orderId / child, Map("element" -> StringValue(child))))
         .toVector)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(
@@ -373,7 +373,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished)
     for (elementId <- View("1", "2", "3")) {
-      assert(eventWatch.keyedEvents[OrderEvent](orderId | elementId) == Seq(
+      assert(eventWatch.keyedEvents[OrderEvent](orderId / elementId) == Seq(
         OrderProcessingStarted,
         OrderStdoutWritten(s"ELEMENT_ID=$elementId\n"),
         OrderProcessed(Outcome.succeededRC0),
