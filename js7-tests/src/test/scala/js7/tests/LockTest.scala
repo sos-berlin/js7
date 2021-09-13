@@ -357,15 +357,16 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderLockAcquired(lockPath, None),
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
-      OrderJoined(Outcome.failed),
+      OrderJoined(Outcome.Failed(Some("Order:🟪|BRANCH has been cancelled"))),
       OrderLockReleased(lockPath),
       OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
 
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId | "BRANCH") == Seq(
-      OrderFailedInFork(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
-        "Lock:LOCK has already been acquired by parent Order:🟪"))))))
+    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId / "BRANCH") == Seq(
+      OrderFailed(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
+        "Lock:LOCK has already been acquired by parent Order:🟪")))),
+      OrderCancelled))
 
     assert(controllerState.pathToLockState(lockPath) ==
       LockState(

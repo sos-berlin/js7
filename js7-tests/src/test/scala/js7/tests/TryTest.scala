@@ -133,7 +133,7 @@ final class TryTest extends AnyFreeSpec
             OrderForked.Child("🌶", OrderId("🔴|🌶")))),
           OrderDetachable,
           OrderDetached,
-          OrderJoined(Outcome.Failed()),
+          OrderJoined(Outcome.Failed(Some("Order:🔴|🍋 failed;\nOrder:🔴|🌶 failed"))),
           OrderCatched(Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentPath),
           OrderAttached(TestAgentPath),

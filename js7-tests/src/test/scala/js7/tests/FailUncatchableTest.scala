@@ -99,7 +99,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
-        OrderJoined(Outcome.failed),
+        OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 failed: TEST-ERROR"))),
         OrderFailed(Position(0))))
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==
@@ -145,7 +145,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
-        OrderJoined(Outcome.failed),
+        OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 failed: TEST-ERROR"))),
         OrderFailed(Position(0))))
 
     assert(events.filter(_.key == (orderId | "🥕")).map(_.event) ==

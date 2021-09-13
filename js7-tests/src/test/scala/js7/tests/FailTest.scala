@@ -105,7 +105,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderForked(Vector(
           OrderForked.Child("🥕", OrderId("🔺|🥕")),
           OrderForked.Child("🍋", OrderId("🔺|🍋")))),
-        OrderJoined(Outcome.failed),
+        OrderJoined(Outcome.Failed(Some("Order:🔺|🍋 failed"))),
         OrderFailed(Position(0))),
       OrderId("🔺|🍋") -> Vector(
         OrderFailedInFork(
@@ -129,7 +129,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderForked(Vector(
           OrderForked.Child("🥕", OrderId("🟥|🥕")),
           OrderForked.Child("🍋", OrderId("🟥|🍋")))),
-        OrderJoined(Outcome.failed),
+        OrderJoined(Outcome.Failed(Some("Order:🟥|🍋 failed"))),
         OrderFailed(Position(0))),
       OrderId("🟥|🍋") -> Vector(
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),

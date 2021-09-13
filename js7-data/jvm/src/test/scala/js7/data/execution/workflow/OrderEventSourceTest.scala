@@ -960,9 +960,11 @@ final class OrderEventSourceTest extends AnyFreeSpec
       assert(eventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
       aChild = aChild.applyEvent(orderFailedInFork).orThrow
 
-      assert(eventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
-      assert(eventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
-      assert(eventSource.nextEvents(forkingOrder.id) == Seq(forkingOrder.id <-: OrderJoined(Outcome.failed)))
+      val orderJoined = OrderJoined(Outcome.Failed(Some(
+        "Order:ORDER|🥕 failed;\nOrder:ORDER|🍋 failed")))
+      assert(eventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: orderJoined))
+      assert(eventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: orderJoined))
+      assert(eventSource.nextEvents(forkingOrder.id) == Seq(forkingOrder.id <-: orderJoined))
     }
 
     "Try catch, fork and lock" in {

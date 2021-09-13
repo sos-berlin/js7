@@ -3,10 +3,12 @@ package js7.data.execution.workflow.instructions
 import cats.syntax.traverse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.ForkInstructionExecutor._
+import js7.data.order.Order.Cancelled
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.StateView
@@ -53,9 +55,29 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
             if (allSucceeded)
               Outcome.succeeded
             else
-              Outcome.failed)
+              Outcome.Failed(toJoinFailedMessage(order, state)))
         }
       }
+
+  private def toJoinFailedMessage(order: Order[Order.Forked], state: StateView): Option[String] = {
+    order.state.children.view
+      .flatMap { child =>
+        val childOrder = state.idToOrder(child.orderId)
+        if (childOrder.isState[Cancelled])
+          Some(s"${child.orderId} has been cancelled")
+        else
+          state.idToOrder(child.orderId)
+            .lastOutcome
+            .match_ {
+              case Outcome.Failed(maybeErr, _) =>
+                Some(child.orderId.toString + " failed" + (maybeErr.fold("")(": " + _)))
+              case _ => None
+            }
+      }
+      .take(3)  // Avoid huge error message
+      .emptyToNone
+      .map(_.mkString(";\n"))
+  }
 
   private def withCacheAccess[A](order: Order[Order.Forked], state: StateView)
     (body: service.forkCache.Access => A)
