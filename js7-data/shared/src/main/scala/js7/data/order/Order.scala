@@ -137,7 +137,8 @@ final case class Order[+S <: Order.State](
           copy(
             state = FailedInFork,
             workflowPosition = workflowPosition.copy(position = movedTo),
-            historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
+            historicOutcomes =
+              outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
       case OrderFailedIntermediate_(_, _) =>
         inapplicable  // Intermediate event, internal only
@@ -147,11 +148,14 @@ final case class Order[+S <: Order.State](
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
-            historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
+            historicOutcomes =
+              outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
       case OrderRetrying(to, maybeDelayUntil) =>
         check(isState[Ready] && !isSuspended && (isDetached || isAttached),
-          maybeDelayUntil.fold[Order[State]](this/*Ready*/)(o => copy(state = DelayedAfterError(o)))
+          maybeDelayUntil
+            .fold[Order[State]](this/*Ready*/)(o => copy(
+              state = DelayedAfterError(o)))
             .withPosition(to))
 
       case OrderAwoke =>

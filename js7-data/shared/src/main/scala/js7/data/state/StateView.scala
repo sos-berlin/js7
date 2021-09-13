@@ -8,6 +8,7 @@ import js7.data.board.{Board, BoardPath, BoardState}
 import js7.data.controller.ControllerId
 import js7.data.job.JobKey
 import js7.data.lock.{LockPath, LockState}
+import js7.data.order.Order.FailedInFork
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.OrderScopes
@@ -75,7 +76,7 @@ trait StateView
       instruction(order.workflowPosition).isInstanceOf[End]
     (order.isAttached || order.isDetached) &&
       order.attachedState == parent.attachedState &&
-      (order.state.eq(Order.FailedInFork) || endReached)
+      (order.state.eq(FailedInFork) || endReached)
   }
 
   final def toScope(order: Order[Order.State]): Checked[Scope] =

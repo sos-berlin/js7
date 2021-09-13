@@ -360,16 +360,16 @@ final class WorkflowParserTest extends AnyFreeSpec
          }""",
       Workflow.of(
         Fork.forTest(Vector(
-            Fork.Branch("🥕", Workflow.of(
-              Execute.Anonymous(
-                WorkflowJob(AgentPath("agent-a"), PathExecutable("/a")),
-                sourcePos = sourcePos(71+1, 111+1)),
-              ImplicitEnd(sourcePos(126+1, 127+1)))),
-            Fork.Branch("🍋", Workflow.of(
-              Execute.Anonymous(
-                WorkflowJob(AgentPath("agent-b"), PathExecutable("/b")),
-                sourcePos = sourcePos(147+2, 187+2))))),
-            sourcePos(29, 33)),
+          Fork.Branch("🥕", Workflow.of(
+            Execute.Anonymous(
+              WorkflowJob(AgentPath("agent-a"), PathExecutable("/a")),
+              sourcePos = sourcePos(71+1, 111+1)),
+            ImplicitEnd(sourcePos(126+1, 127+1)))),
+          Fork.Branch("🍋", Workflow.of(
+            Execute.Anonymous(
+              WorkflowJob(AgentPath("agent-b"), PathExecutable("/b")),
+              sourcePos = sourcePos(147+2, 187+2))))),
+          sourcePos(29, 33)),
         ImplicitEnd(sourcePos(211+2, 212+2))))
   }
 

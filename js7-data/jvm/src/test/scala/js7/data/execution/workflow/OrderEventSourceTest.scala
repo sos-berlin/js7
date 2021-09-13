@@ -955,7 +955,8 @@ final class OrderEventSourceTest extends AnyFreeSpec
         idToWorkflow = Map(
           workflow.id -> workflow)))
 
-      val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
+      val orderFailedInFork = OrderFailedInFork(
+        Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
       assert(eventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
       aChild = aChild.applyEvent(orderFailedInFork).orThrow
 

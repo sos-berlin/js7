@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.Order
+import js7.data.order.Order.{Broken, Failed, FailedWhileFresh}
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.state.StateView
 import js7.data.workflow.instructions.If
@@ -13,7 +14,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   type Instr = If
 
   def toEvents(instruction: If, order: Order[Order.State], state: StateView) =
-    if (order.isState[Order.Broken] || order.isState[Order.FailedWhileFresh] || order.isState[Order.Failed])
+    if (order.isState[Broken] || order.isState[FailedWhileFresh] || order.isState[Failed] || order.isState[Failed])
       Right(Nil)
     else
       nextPosition(instruction, order, state)

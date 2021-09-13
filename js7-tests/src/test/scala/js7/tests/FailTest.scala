@@ -108,7 +108,9 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderJoined(Outcome.failed),
         OrderFailed(Position(0))),
       OrderId("🔺|🍋") -> Vector(
-        OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0, Some(Outcome.failed))))
+        OrderFailedInFork(
+          Position(0) / BranchId.fork("🍋") % 0,
+          Some(Outcome.failed))))
   }
 
   "Uncatchable fail in fork" in {
@@ -131,7 +133,9 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderFailed(Position(0))),
       OrderId("🟥|🍋") -> Vector(
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
-        OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0, Some(Outcome.failed))))
+        OrderFailedInFork(
+          Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0,
+          Some(Outcome.failed))))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](
