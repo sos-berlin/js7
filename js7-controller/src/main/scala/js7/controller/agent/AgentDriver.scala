@@ -269,7 +269,7 @@ extends ReceiveLoggingActor.WithStash
       val sender = this.sender()
       isReset = true
       commandQueue.reset()
-      (eventFetcher.coupledApi
+      eventFetcher.coupledApi
         .flatMap {
           case None => Task.pure(false)
           case Some(api) =>
@@ -281,12 +281,12 @@ extends ReceiveLoggingActor.WithStash
             Task { currentFetchedFuture.foreach(_.cancel()) } >>
             cancelObservationAndAwaitTermination >>
             eventFetcher.decouple
-              .as(agentHasBeenReset)
-          ) .runToFuture
-            .onComplete { tried =>
-              sender ! (tried: Try[Boolean])
-              context.stop(self)
-            })
+              .as(agentHasBeenReset))
+        .runToFuture
+        .onComplete { tried =>
+          sender ! (tried: Try[Boolean])
+          context.stop(self)
+        }
 
     case Input.StartFetchingEvents | Internal.FetchEvents =>
       if (changingUri.isEmpty && !isTerminating) {

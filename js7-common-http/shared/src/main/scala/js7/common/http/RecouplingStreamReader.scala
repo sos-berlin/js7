@@ -256,7 +256,7 @@ abstract class RecouplingStreamReader[
                 else
                   for {
                     _ <- api.tryLogout
-                    // FIXME akka.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Akka
+                    // TODO akka.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Akka
                     continue <- onCouplingFailed(api, problem)
                     either <-
                       if (continue)

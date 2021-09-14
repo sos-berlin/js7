@@ -11,6 +11,7 @@ import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
@@ -19,7 +20,6 @@ import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
-import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.annotation.tailrec
@@ -167,9 +167,9 @@ final case class ControllerStateExecutor private(
           controllerState.itemToAgentToAttachedState.get(workflowId)
             .view.flatMap(_.collect {
               // Workflows are never Attachable, only Attached or Detachable
-               case (agentPath, Attached(_)) =>
-                 detachedItems += workflowId
-                 NoKey <-: ItemDetachable(workflowId, agentPath)
+              case (agentPath, Attached(_)) =>
+                detachedItems += workflowId
+                NoKey <-: ItemDetachable(workflowId, agentPath)
             }))
         .toVector
 

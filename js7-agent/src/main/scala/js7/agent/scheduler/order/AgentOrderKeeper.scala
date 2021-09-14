@@ -214,7 +214,11 @@ with Stash
           }
         }
 
-        persist(AgentReady(ZoneId.systemDefault.getId, totalRunningTime = totalRunningSince.elapsed)) { (_, _) =>
+        persist(
+          AgentReady(
+            ZoneId.systemDefault.getId,
+            totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms))
+        ) { (_, _) =>
           become("ready")(ready)
           unstashAll()
           logger.info(s"Agent '${ownAgentPath.string}' is ready" +
