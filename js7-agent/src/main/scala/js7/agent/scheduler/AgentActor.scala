@@ -6,7 +6,7 @@ import com.softwaremill.diffx.generic.auto._
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
-import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentWrongControllerProblem}
+import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent.AgentCreated
@@ -162,7 +162,7 @@ extends Actor with Stash with SimpleStateActor
         }
 
       case AgentCommand.Reset(agentRunId) =>
-        persistence.currentState.checkAgentRunId(agentRunId) match {
+        checkAgentRunId(agentRunId) match {
           case Left(problem) => response.success(Left(problem))
           case Right(()) =>
             isResetting = true
@@ -204,7 +204,7 @@ extends Actor with Stash with SimpleStateActor
         response.success(
           for {
             _ <- checkAgentPath(agentPath)
-            _ <- persistence.currentState.checkAgentRunId(agentRunId)
+            _ <- checkAgentRunId(agentRunId)
             _ <- eventWatch.checkEventId(eventId)
           } yield
             CoupleController.Response(persistence.currentState.idToOrder.keySet))
@@ -239,6 +239,19 @@ extends Actor with Stash with SimpleStateActor
       Left(AgentPathMismatchProblem(requestedAgentPath, agentState.agentPath))
     else
       RightUnit
+  }
+
+  private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] = {
+    val agentState = persistence.currentState
+    if (!agentState.isCreated)
+      Left(AgentNotCreatedProblem)
+    else if (requestedAgentRunId != agentState.meta.agentRunId) {
+      val problem = AgentRunIdMismatchProblem(agentState.meta.agentPath)
+      logger.warn(
+        s"$problem, requestedAgentRunId=$requestedAgentRunId, agentRunId=${agentState.meta.agentRunId}")
+      Left(problem)
+    } else
+      Checked.unit
   }
 
   private def continueTermination(): Unit =

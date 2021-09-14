@@ -1,13 +1,12 @@
 package js7.agent.data
 
 import js7.agent.data.AgentState.AgentMetaState
-import js7.agent.data.Problems.{AgentNotCreatedProblem, AgentRunIdMismatchProblem}
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentCreated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Problem
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -181,14 +180,6 @@ with JournaledState[AgentState]
         // OrderStdWritten is not applied (but forwarded to Controller)
         Right(this)
     }
-
-  def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] =
-    if (!isCreated)
-      Left(AgentNotCreatedProblem)
-    else if (requestedAgentRunId != meta.agentRunId)
-      Left(AgentRunIdMismatchProblem(meta.agentPath))
-    else
-      Checked.unit
 
   def agentPath = meta.agentPath
 

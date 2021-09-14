@@ -582,10 +582,15 @@ with MainJournalingActor[ControllerState, Event]
       } else {
         agentRegister -= actor
         for (agentRefState <- persistence.currentState.pathToAgentRefState.checked(agentPath)) {
-          if (agentRefState.couplingState == Resetting || agentRefState.couplingState == Reset) {
-            agentEntry = registerAgent(agentRefState.agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
-            agentEntry.actor ! AgentDriver.Input.StartFetchingEvents
-            reattachToAgent(agentPath)
+          agentRefState.couplingState match {
+            case Resetting | Reset =>
+              agentEntry = registerAgent(agentRefState.agentRef,
+                agentRunId = None, eventId = EventId.BeforeFirst)
+              agentEntry.actor ! AgentDriver.Input.StartFetchingEvents
+            //??? reattachToAgent(agentPath)
+
+            case _ =>
+              logger.debug(s"AgentDriver for $agentPath terminated")
           }
         }
       }
@@ -813,25 +818,29 @@ with MainJournalingActor[ControllerState, Event]
                   Future.successful(Left(Problem.pure("ResetAgent in progress")))
                 else {
                   val events = persistence.currentState.resetAgent(agentPath)
-                  persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
-                    // ResetAgent command may return with error despite it has reset the orders
-                    agentEntry.isResetting = true
-                    val resettingAgent = agentEntry
-                      .actor.?(AgentDriver.Input.Reset)(controllerConfiguration.akkaAskTimeout)
-                      .mapTo[Try[Boolean]]
-                      .map { tried =>
-                        for (t <- tried.failed) logger.error("ResetAgent: " + t.toStringWithCauses, t)
-                        Checked.fromTry(tried)
-                      }
-                    handleEvents(stampedEvents, updatedState)
-                    Task.fromFuture(resettingAgent)
-                      .flatMapT {
-                        case true => persistence.persistKeyedEvent(agentPath <-: AgentReset)
-                        case false => Task.pure(Checked.unit)
-                      }
-                     .flatMapT(_ => Task.pure(Right(ControllerCommand.Response.Accepted)))
-                    .runToFuture
-                  }.flatten
+                  persistence.currentState.applyEvents(events) match {
+                    case Left(problem) => Future.successful(Left(problem))
+                    case Right(_) =>
+                      persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
+                        // ResetAgent command may return with error despite it has reset the orders
+                        agentEntry.isResetting = true
+                        val resettingAgent = agentEntry
+                          .actor.?(AgentDriver.Input.Reset)(controllerConfiguration.akkaAskTimeout)
+                          .mapTo[Try[Boolean]]
+                          .map { tried =>
+                            for (t <- tried.failed) logger.error("ResetAgent: " + t.toStringWithCauses, t)
+                            Checked.fromTry(tried)
+                          }
+                        handleEvents(stampedEvents, updatedState)
+                        Task.fromFuture(resettingAgent)
+                          .flatMapT {
+                            case true => persistence.persistKeyedEvent(agentPath <-: AgentReset)
+                            case false => Task.pure(Checked.unit)
+                          }
+                         .flatMapT(_ => Task.pure(Right(ControllerCommand.Response.Accepted)))
+                        .runToFuture
+                      }.flatten
+                  }
                 }
             }
         }
@@ -1143,7 +1152,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithOrder(orderId: OrderId): Unit =
     for (order <- _controllerState.idToOrder.get(orderId)) {
-      if (order.isDetached && order.isState[Fresh])  {
+      if (order.isDetached && order.isState[Fresh]) {
         for (until <- order.maybeDelayedUntil) {
           if (alarmClock.now() < until) {
             for (entry <- orderRegister.get(orderId)) {

@@ -5,13 +5,14 @@ import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.touchFile
+import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.AgentCreated
+import js7.data.agent.AgentRefStateEvent.{AgentCreated, AgentReset}
 import js7.data.controller.ControllerCommand.ResetAgent
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
@@ -35,7 +36,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 5ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms
     """
 
   override protected def agentConfig = config"""
@@ -104,6 +105,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val childOrderId = orderId / "FORK"
     controllerApi.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == childOrderId)
+
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.terminated.await(99.s)
 
@@ -132,7 +134,17 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
   }
 
+  "ResetAgent when Agent is reset" in {
+    assert(controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s) == Left(Problem(
+      "Event 'Agent:AGENT <-: AgentResetStarted' cannot be applied: Agent cannot be reset before it has been initialized (created)")))
+  }
+
   "Simulate journal deletion at restart" in {
+    var eventId = eventWatch.lastAddedEventId
+    myAgent = directoryProvider.startAgent(agentPath) await 99.s
+    eventWatch.await[AgentCreated](after = eventId)
+
+    eventId = eventWatch.lastAddedEventId
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.terminated.await(99.s)
 
@@ -145,12 +157,17 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     journalFile := "Would crash but will be deleted"
     touchFile(garbageFile)
 
-    val eventId = eventWatch.lastAddedEventId
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
+    eventWatch.await[AgentReset](after = eventId)
     eventWatch.await[AgentCreated](after = eventId)
 
     // The restarted Agent has deleted the files (due to markerFile)
     assert(!exists(markerFile) && !exists(garbageFile))
+  }
+
+  "One last order" in {
+    barrier.flatMap(_.tryPut(())).runSyncUnsafe()
+    controller.runOrder(FreshOrder(OrderId("🔷"), workflow.path))
   }
 }
 

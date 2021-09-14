@@ -34,6 +34,7 @@ object AgentRefStateEvent
   type AgentShutDown = AgentShutDown.type
   case object AgentShutDown extends AgentRefStateEvent
 
+  type AgentReset = AgentReset.type
   case object AgentReset extends AgentRefStateEvent
 
   implicit val jsonCodec = TypedJsonCodec[AgentRefStateEvent](

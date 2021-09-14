@@ -55,15 +55,18 @@ extends UnsignedSimpleItemState
             eventId = eventId_))
 
       case AgentResetStarted =>
-        Right(copy(
-          couplingState = Resetting,
-          agentRunId = None,
-          eventId = EventId.BeforeFirst,
-          timezone = None))
+        if (agentRunId.isEmpty)
+          Left(Problem.pure("Agent cannot be reset before it has been initialized (created)"))
+        else
+          Right(copy(
+            couplingState = Resetting,
+            eventId = EventId.BeforeFirst,
+            timezone = None))
 
       case AgentReset =>
         Right(copy(
-          couplingState = Reset))
+          couplingState = Reset,
+          agentRunId = None))
     }
 }
 
