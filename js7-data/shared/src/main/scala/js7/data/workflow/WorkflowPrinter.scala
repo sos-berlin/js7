@@ -180,7 +180,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case Finish(_) =>
         sb ++= "finish;\n"
 
-      case Fork(branches, agentPath, _) =>
+      case Fork(branches, agentPath, joinIfFailed, _) =>
         def appendBranch(branch: Fork.Branch) = {
           indent(nesting + 1)
           appendQuoted(branch.id.string)
@@ -190,7 +190,14 @@ final class WorkflowPrinter(sb: StringBuilder) {
           sb += '}'
         }
 
-        sb ++= "fork {\n"
+        sb ++= "fork"
+        if (joinIfFailed) {
+          sb.append(" (")
+          sb.append("joinIfFailed=")
+          sb.append(joinIfFailed)
+          sb.append(')')
+        }
+        sb ++= " {\n"
         for (b <- branches.take(branches.length - 1)) {
           appendBranch(b)
           sb.append(",\n")

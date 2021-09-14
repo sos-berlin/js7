@@ -6,12 +6,12 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.Problems.{CancelChildOrderProblem, CancelStartedOrderProblem}
+import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.order.Order.{Failed, IsTerminated, ProcessingKilled}
+import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLockDequeued, OrderLockReleased, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
@@ -21,6 +21,7 @@ import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, ForkBranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
+import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
@@ -109,7 +110,8 @@ final class OrderEventSource(state: StateView)
                 OrderBroken(problem) :: Nil
               case Right(events) => events
             }
-          else if (order.isAttached && order.isInDetachableState && order.copy(attachedState = None).isOrderFailedApplicable) {
+          else if (order.isAttached && order.isInDetachableState
+            && order.copy(attachedState = None).isOrderFailedApplicable) {
             scribe.debug(s"Detaching ${order.id} after failure: $problem")
             // Controller is expected to repeat this call and to reproduce the problem.
             OrderDetachable :: Nil
@@ -147,9 +149,19 @@ final class OrderEventSource(state: StateView)
     uncatchable: Boolean)
   : Checked[List[OrderActorEvent]] =
     leaveBlocks(workflow, order, catchable = !uncatchable) {
-      case (None, failPosition) => OrderFailed(failPosition, outcome)
-      case (Some(ForkBranchId(_)), failPosition) => OrderFailedInFork(failPosition, outcome)
-      case (Some(TryBranchId(_)), catchPos) => OrderCatched(catchPos, outcome)
+      case (None | Some(ForkBranchId(_)), failPosition) =>
+        // TODO Transfer parent order to Agent to access joinIfFailed there !
+        // For now, order will be moved to Controller, which joins the orders anyway.
+        val joinIfFailed = order.parent
+          .flatMap(forkOrder => instruction_[Fork](forkOrder).toOption)
+          .fold(false)(_.joinIfFailed)
+        if (joinIfFailed/*false at Agent*/)
+          OrderFailedInFork(failPosition, outcome)
+        else
+          OrderFailed(failPosition, outcome)
+
+      case (Some(TryBranchId(_)), catchPos) =>
+        OrderCatched(catchPos, outcome)
     }
 
   private def leaveBlocks(
@@ -202,17 +214,17 @@ final class OrderEventSource(state: StateView)
           .map(maybeEvent.toList ::: _))
   }
 
-  private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
-    if ((order.isDetached || order.isAttached) && order.isState[Order.FailedInFork])
-      order.forkPosition.flatMap(forkPosition =>
-        state.instruction(order.workflowId /: forkPosition) match {
-          case fork: Fork =>
-            Right(executorService.forkExecutor.tryJoinChildOrder(order, fork, state))
-          case _ =>
-            // Self-test
-            Left(Problem.pure(s"Order '${order.id}' is in state FailedInFork but forkPosition does not denote a fork instruction"))
-      })
-    else Right(None)
+  private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
+    if (order.parent.isDefined
+      && (order.isDetached || order.isAttached)
+      && (order.isState[FailedInFork] || order.isState[Cancelled]))
+      for {
+        forkPosition <- order.forkPosition
+        fork <- state.instruction_[Fork](order.workflowId /: forkPosition)
+      } yield executorService.forkExecutor.tryJoinChildOrder(order, fork, state)
+    else
+      Right(None)
+  }
 
   private def awokeEvent(order: Order[Order.State]): Option[OrderActorEvent] =
     ((order.isDetached || order.isAttached) && order.isState[Order.DelayedAfterError]) ?
@@ -249,16 +261,13 @@ final class OrderEventSource(state: StateView)
 
       case OrderMark.Resuming(position, historicOutcomes) =>
         resume(orderId, position, historicOutcomes)
-
     }
   }
 
   /** Returns `Right(Some(OrderCancelled | OrderCancellationMarked))` iff order is not already marked as cancelling. */
   def cancel(orderId: OrderId, mode: CancellationMode): Checked[Option[List[OrderActorEvent]]] =
     withOrder(orderId)(order =>
-      if (order.parent.isDefined)
-        Left(CancelChildOrderProblem(orderId))
-      else if (mode == CancellationMode.FreshOnly && order.isStarted)
+      if (mode == CancellationMode.FreshOnly && order.isStarted)
         // On Agent, the Order may already have been started without notice of the Controller
         Left(CancelStartedOrderProblem(orderId))
       else Right(
@@ -276,8 +285,7 @@ final class OrderEventSource(state: StateView)
     else if (order.isDetached && !isAgent)
       Some(
         leaveBlocks(idToWorkflow(order.workflowId), order) {
-          case (None, _) => OrderCancelled
-          //TODO case (Some(ForkBranchId(_)), _) => OrderCancelledInFork
+          case (None | Some(ForkBranchId(_)), _) => OrderCancelled
         }.orThrow/*???*/)
     else
       None
@@ -468,6 +476,21 @@ final class OrderEventSource(state: StateView)
         case _ => Right(None)
       }
   }
+
+  private def instruction_[A <: Instruction: ClassTag](orderId: OrderId)
+  : Checked[A] = {
+    for {
+      order <- idToOrder.checked(orderId)
+      instr <- instruction_[A](order.workflowPosition)
+    } yield instr
+  }
+
+  private def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition)
+  : Checked[A] =
+    for {
+      workflow <- idToWorkflow.checked(workflowPosition.workflowId)
+      instr <- workflow.instruction_[A](workflowPosition.position)
+    } yield instr
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow.checked(workflowPosition.workflowId) match {

@@ -8,6 +8,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.reuseIfEqual
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
@@ -22,6 +23,7 @@ import scala.language.implicitConversions
 final case class Fork private(
   branches: IndexedSeq[Fork.Branch],
   agentPath: Option[AgentPath] = None,
+  joinIfFailed: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction
 {
@@ -88,9 +90,10 @@ object Fork
   def checked(
     branches: IndexedSeq[Fork.Branch],
     agentPath: Option[AgentPath] = None,
+    joinIfFailed: Boolean = false,
     sourcePos: Option[SourcePos] = None)
   : Checked[Fork] =
-    Right(new Fork(branches, agentPath, sourcePos))
+    Right(new Fork(branches, agentPath, joinIfFailed = joinIfFailed, sourcePos))
 
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(
@@ -106,8 +109,8 @@ object Fork
 
   final case class Branch(id: Branch.Id, workflow: Workflow)
   object Branch {
-    implicit def fromPair(pair: (Id, Workflow)): Branch =
-      new Branch(pair._1, pair._2)
+    implicit def fromPair(pair: (String, Workflow)): Branch =
+      new Branch(Branch.Id(pair._1), pair._2)
 
     /** Branch.Id("x").string == BranchId("fork+x") */
     final case class Id(string: String) extends GenericString {
@@ -126,14 +129,17 @@ object Fork
     o => JsonObject(
       "branches" -> o.branches.asJson,
       "sourcePos" -> o.sourcePos.asJson,
-      "agentPath" -> o.agentPath.asJson)
+      "agentPath" -> o.agentPath.asJson,
+      "joinIfFailed" -> o.joinIfFailed.?.asJson)
 
   implicit val jsonDecoder: Decoder[Fork] =
     c => for {
       branches <- c.get[IndexedSeq[Fork.Branch]]("branches")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
       agentPath <- c.get[Option[AgentPath]]("agentPath")
-      fork <- checked(branches, agentPath, sourcePos).toDecoderResult(c.history)
+      joinIfFailed <- c.getOrElse[Boolean]("joinIfFailed")(false)
+      fork <- checked(branches, agentPath, joinIfFailed, sourcePos)
+        .toDecoderResult(c.history)
     } yield fork
 
   private case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {

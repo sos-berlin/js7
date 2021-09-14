@@ -45,7 +45,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 5ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -297,7 +297,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Failed forked order" in {
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
-        fork {
+        fork (joinIfFailed=true) {
           "BRANCH": {
             lock (lock = "LOCK") {
               fail;
@@ -350,13 +350,15 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
-    controller.eventWatch.await[OrderFailed](_.key == orderId)
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.eventWatch.await[OrderFailed](_.key == orderId / "BRANCH")
+    controllerApi.executeCommand(CancelOrders(Seq(orderId / "BRANCH", orderId)))
+      .await(99.s).orThrow
     assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
-      OrderForked(Vector(OrderForked.Child("BRANCH", orderId | "BRANCH"))),
+      OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
+      OrderCancellationMarked(),
       OrderJoined(Outcome.Failed(Some("Order:🟪|BRANCH has been cancelled"))),
       OrderLockReleased(lockPath),
       OrderFailed(Position(0)),

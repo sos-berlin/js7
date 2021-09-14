@@ -33,10 +33,6 @@ object Problems
 
   case object RecursiveEvaluationProblem extends Problem.ArgumentlessCoded
 
-  final case class CancelChildOrderProblem(orderId: OrderId) extends Problem.Coded {
-    def arguments = Map("orderId" -> orderId.string)
-  }
-
   final case class CancelStartedOrderProblem(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" -> orderId.string)
   }

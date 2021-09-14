@@ -81,7 +81,7 @@ final class FailUncatchableTest extends AnyFreeSpec
   "fail in fork, fail first" in {
     val events = runUntil[OrderFailed]("""
      |define workflow {
-     |  fork {
+     |  fork (joinIfFailed=true) {
      |    "🥕": {
      |      execute agent="AGENT", executable="test.cmd", successReturnCodes=[3];
      |      fail (uncatchable=true, message="TEST-ERROR");
@@ -109,9 +109,15 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderFailedInFork(Position(0) / BranchId.fork("🥕") % 1, Some(Outcome.Failed(Some("TEST-ERROR")))),
+        // TODO OrderDetached, because agent does not has parent order and
+        // cannot look at Fork.joinIfFailed. Okay because we join at Controller, anyway.
         OrderDetachable,
-        OrderDetached))
+        OrderDetached,
+        OrderFailedInFork(
+          Position(0) / BranchId.fork("🥕") % 1,
+          Some(Outcome.Failed(Some("TEST-ERROR"))))))
+        //OrderDetachable,
+        //OrderDetached))
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(
@@ -127,7 +133,7 @@ final class FailUncatchableTest extends AnyFreeSpec
   "fail in fork, succeed first" in {
     val events = runUntil[OrderFailed]("""
      |define workflow {
-     |  fork {
+     |  fork (joinIfFailed=true) {
      |    "🥕": {
      |      execute agent="AGENT", executable="sleep.cmd";
      |      fail (uncatchable=true, message="TEST-ERROR");
@@ -155,9 +161,15 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderProcessingStarted,
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
-        OrderFailedInFork(Position(0) / BranchId.fork("🥕") % 1, Some(Outcome.Failed(Some("TEST-ERROR")))),
+        // TODO OrderDetached, because agent does not has parent order and
+        // cannot look at Fork.joinIfFailed. Okay because we join at Controller, anyway.
         OrderDetachable,
-        OrderDetached))
+        OrderDetached,
+        OrderFailedInFork(
+          Position(0) / BranchId.fork("🥕") % 1,
+          Some(Outcome.Failed(Some("TEST-ERROR"))))))
+        //OrderDetachable,
+        //OrderDetached))
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(

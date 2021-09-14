@@ -9,18 +9,19 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.command.CancellationMode
-import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
+import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated, ResumeOrder}
 import js7.data.event.EventSeq
 import js7.data.job.{PathExecutable, RelativePathExecutable}
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
-import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, Fail, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.ForkTestSetting._
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ForkTest._
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
 import monix.execution.Scheduler.Implicits.global
@@ -28,10 +29,18 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentPaths = AAgentPath :: BAgentPath :: Nil
   override protected val controllerConfig = config"""
-    js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕" """
-  protected val items = Seq(TestWorkflow, DuplicateWorkflow)
+    js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕"
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms
+    """
+  override protected val agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
+    """
+
+  protected val agentPaths = AAgentPath :: BAgentPath :: Nil
+  protected val items = Seq(TestWorkflow, DuplicateWorkflow,
+    joinIfFailedForkWorkflow, failInForkWorkflow)
 
   override def beforeAll() = {
     directoryProvider.agents(0).writeExecutable(RelativePathExecutable("SLOW.cmd"), script(60.s))
@@ -53,6 +62,40 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
       case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
+  }
+
+  "joinIfFailed" in {
+    val orderId = OrderId("JOIN-IF-FAILED")
+    val childOrderId = orderId / "💥"
+    controllerApi.addOrder(FreshOrder(orderId, joinIfFailedForkWorkflow.path)).await(99.s).orThrow
+    controller.eventWatch.await[OrderFailedInFork](_.key == childOrderId)
+    controller.eventWatch.await[OrderFailed](_.key == orderId)
+  }
+
+  "Failed, resume failed child order" in {
+    val orderId = OrderId("FAIL-THEN-RESUME")
+    val childOrderId = orderId / "💥"
+    controllerApi.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
+    controller.eventWatch.await[OrderFailed](_.key == childOrderId)
+
+    controllerApi
+      .executeCommand(ResumeOrder(
+        childOrderId,
+        position = Some(Position(0) / "fork+💥" % 1)))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderResumed](_.key == childOrderId)
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+  }
+
+  "Failed, cancel failed child order" in {
+    val orderId = OrderId("FAIL-THEN-CANCEL")
+    val childOrderId = orderId / "💥"
+    controllerApi.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
+    controller.eventWatch.await[OrderFailed](_.key == childOrderId)
+
+    controllerApi.executeCommand(CancelOrders(Seq(childOrderId))).await(99.s).orThrow
+    controller.eventWatch.await[OrderCancelled](_.key == childOrderId)
+    controller.eventWatch.await[OrderFailed](_.key == orderId)
   }
 
   "Existing child OrderId" in {
@@ -176,4 +219,24 @@ object ForkTest {
     TestOrder.id <-: OrderMoved(Position(5)),
     TestOrder.id <-: OrderFinished,
     TestOrder.id <-: OrderDeleted)
+
+  private val joinIfFailedForkWorkflow = Workflow(
+    WorkflowPath("JOIN-IF-FAILED-FORK") ~ "INITIAL",
+    Seq(
+      Fork(
+        Vector(
+          "💥" -> Workflow.of(
+            Fail(),
+            EmptyJob.execute(AAgentPath)),
+          "🍋" -> Workflow.empty),
+        joinIfFailed = true)))
+
+  private val failInForkWorkflow = Workflow(
+    WorkflowPath("FAIL-IN-FORK") ~ "INITIAL",
+    Seq(
+      Fork(Vector(
+        "💥" -> Workflow.of(
+          Fail(),
+          EmptyJob.execute(AAgentPath)),
+        "🍋" -> Workflow.empty))))
 }

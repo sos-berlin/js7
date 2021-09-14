@@ -295,7 +295,8 @@ object OrderEvent
     * Controller will ignore the Agent's OrderCancellationMarked.
     * Controller should have emitted the event independendly.
     **/
-  final case class OrderCancellationMarked(mode: CancellationMode) extends OrderKillingMarked {
+  final case class OrderCancellationMarked(mode: CancellationMode = CancellationMode.Default)
+  extends OrderKillingMarked {
     def kill = mode match {
       case CancellationMode.FreshOrStarted(kill) => kill
       case _ => None

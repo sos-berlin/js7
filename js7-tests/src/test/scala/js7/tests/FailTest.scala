@@ -94,7 +94,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderId = OrderId("🔺")
     runUntil[OrderFailed](orderId, workflowId, """
       |define workflow {
-      |  fork {
+      |  fork (joinIfFailed=true) {
       |    "🥕": { execute agent="AGENT", executable="test.cmd", successReturnCodes=[3] },
       |    "🍋": { fail }
       |  }
@@ -118,7 +118,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val orderId = OrderId("🟥")
     runUntil[OrderFailed](orderId, workflowId, """
       |define workflow {
-      |  fork {
+      |  fork (joinIfFailed=true) {
       |    "🥕": { execute agent="AGENT", executable="test.cmd", successReturnCodes=[3] },
       |    "🍋": { try { fail(uncatchable=true) } catch {}; }
       |  }

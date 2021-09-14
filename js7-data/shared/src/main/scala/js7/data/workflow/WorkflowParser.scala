@@ -186,13 +186,24 @@ object WorkflowParser
         .map { case (start, end) => Finish(sourcePos(start, end)) })
 
     private def forkInstruction[_: P] = P[Fork]{
-      def branchId = P(quotedString.map(o => Fork.Branch.Id(o)))
       def forkBranch = P[Fork.Branch](
-        (branchId ~ w ~ ":" ~ w ~ curlyWorkflowOrInstruction)
-          map Fork.Branch.fromPair)
-      (Index ~ keyword("fork") ~ Index ~ w ~ curly(w ~ forkBranch ~ (comma ~ forkBranch).rep) ~ w ~ instructionTerminator.?)
-        .flatMap { case (start, end, (branch, more)) =>
-          checkedToP(Fork.checked(Vector(branch) ++ more, agentPath = None, sourcePos(start, end)))
+        (quotedString ~ w ~ ":" ~ w ~ curlyWorkflowOrInstruction)
+          .map(Fork.Branch.fromPair))
+      (Index ~
+        keyword("fork") ~
+        (w ~ inParentheses(keyValues(keyValue("joinIfFailed", booleanConstant)))).? ~
+        Index ~ w ~
+        curly(w ~ forkBranch ~ (comma ~ forkBranch).rep) ~ w ~ instructionTerminator.?
+      ) .flatMap { case (start, maybeKeyToValue, end, (branch, more)) =>
+          val keyToValue = maybeKeyToValue.getOrElse(KeyToValue.empty)
+          for {
+            joinIfFailed <- keyToValue("joinIfFailed", BooleanConstant(false))
+            fork <- checkedToP(Fork.checked(
+              Vector(branch) ++ more,
+              agentPath = None,
+              joinIfFailed = joinIfFailed.booleanValue,
+              sourcePos = sourcePos(start, end)))
+          } yield fork
         }
     }
 

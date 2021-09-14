@@ -100,7 +100,7 @@ final class TryTest extends AnyFreeSpec
     val workflow = WorkflowParser.parse(WorkflowPath("TRY-IF") ~ "INITIAL",
       s"""define workflow {
          |  try {
-         |    fork {
+         |    fork (joinIfFailed=true) {
          |      "🥕": { execute executable="OKAY$sh", agent="AGENT"; },
          |      "🍋": { execute executable="FAIL-1$sh", agent="AGENT"; },
          |      "🌶": { if (true) execute executable="FAIL-2$sh", agent="AGENT"; }

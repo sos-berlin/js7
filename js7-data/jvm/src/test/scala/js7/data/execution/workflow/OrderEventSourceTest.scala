@@ -916,7 +916,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       val workflow = WorkflowParser.parse(
          """define workflow {
            |  try
-           |    fork {
+           |    fork(joinIfFailed = true) {
            |      "🥕": {
            |        execute agent="a", executable="ex";   // 0/try:0/fork+🥕:0    // FAILS
            |      },
@@ -972,7 +972,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
          """define workflow {
            |  lock (lock="LOCK") {
            |    try
-           |      fork {
+           |      fork (joinIfFailed=true) {
            |        "🥕": {
            |          execute agent="a", executable="ex";   // 0/lock:0/try:0/fork+🥕:0
            |        },

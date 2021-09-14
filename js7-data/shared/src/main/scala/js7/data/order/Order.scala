@@ -133,7 +133,10 @@ final case class Order[+S <: Order.State](
             historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
       case OrderFailedInFork(movedTo, outcome_) =>
-        check((isState[Ready] || isState[Processed]) && !isSuspended && (isDetached || isAttached),
+        check(parent.nonEmpty
+          && (isState[Ready] || isState[Processed])
+          && !isSuspended
+          && (isDetached || isAttached),
           copy(
             state = FailedInFork,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -228,7 +231,7 @@ final case class Order[+S <: Order.State](
           copy(attachedState = None))
 
       case OrderCancellationMarked(mode) =>
-        check(parent.isEmpty && isMarkable,
+        check(isMarkable,
           copy(mark = Some(OrderMark.Cancelling(mode))))
 
       case OrderCancellationMarkedOnAgent =>
@@ -334,7 +337,7 @@ final case class Order[+S <: Order.State](
             copy(
               isSuspended = false,
               mark = None,
-              state = if (isState[Broken] || isState[Failed]) Ready else state,
+              state = if (isState[Broken] || isState[Failed] || isState[Failed]) Ready else state,
               historicOutcomes = historicOutcomes
             ).withPosition(maybePosition getOrElse position)))
 
@@ -506,25 +509,31 @@ final case class Order[+S <: Order.State](
     }
 
   def isInDetachableState =
-    isState[Fresh] || isState[Ready] || isState[Forked] || isState[Processed] || isState[ProcessingKilled] ||
-    isState[FailedWhileFresh] || isState[Failed] || isState[FailedInFork] || isState[Broken]
+    isState[Fresh] ||
+      isState[Ready] ||
+      isState[Forked] ||
+      isState[Processed] ||
+      isState[ProcessingKilled] ||
+      isState[FailedWhileFresh] ||
+      isState[Failed] ||
+      isState[FailedInFork] ||
+      isState[Broken]
 
   def isMarkable =
     !isState[IsTerminated] && !isState[Deleted] ||
       isState[FailedInFork]/*when asynchronously marked on Agent*/
 
   def isCancelable =
-    parent.isEmpty &&
-      (isState[IsFreshOrReady] ||
-       isState[ProcessingKilled] ||
-       isState[WaitingForLock] ||
-       isState[Prompting] ||
-       isState[ExpectingNotice] ||
-       isState[FailedWhileFresh] ||
-       isState[DelayedAfterError] ||
-       isState[Failed] ||
-       isState[Broken]) &&
-      (isDetached || isAttached)
+    (isState[IsFreshOrReady] ||
+     isState[ProcessingKilled] ||
+     isState[WaitingForLock] ||
+     isState[Prompting] ||
+     isState[ExpectingNotice] ||
+     isState[FailedWhileFresh] ||
+     isState[DelayedAfterError] ||
+     isState[Failed] ||
+     isState[Broken]) &&
+    (isDetached || isAttached)
 
   def isCancelling =
     mark.exists(_.isInstanceOf[OrderMark.Cancelling])
@@ -677,7 +686,7 @@ object Order
   final case object Failed extends IsStarted
 
   type FailedInFork = FailedInFork.type
-  final case object FailedInFork extends IsStarted with IsTerminated
+  final case object FailedInFork extends IsStarted //with IsTerminated
 
   type Finished = Finished.type
   case object Finished extends IsStarted with IsTerminated

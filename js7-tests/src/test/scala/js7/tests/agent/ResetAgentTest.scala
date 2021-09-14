@@ -174,12 +174,14 @@ object ResetAgentTest
     Vector(
       TryInstruction(
         Workflow.of(
-          Fork.of(
-            "FORK" -> Workflow.of(
-              Execute(WorkflowJob(
-                agentPath,
-                InternalExecutable(classOf[TestJob].getName),
-                jobResourcePaths = Seq(jobResource.path)))))),
+          Fork(
+            Vector(
+              "FORK" -> Workflow.of(
+                Execute(WorkflowJob(
+                  agentPath,
+                  InternalExecutable(classOf[TestJob].getName),
+                  jobResourcePaths = Seq(jobResource.path))))),
+            joinIfFailed = true)),
         Workflow.empty)))
 
   private val barrier = MVar.empty[Task, Unit]().memoize
