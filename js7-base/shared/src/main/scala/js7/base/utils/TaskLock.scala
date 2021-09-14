@@ -5,6 +5,7 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.time.ScalaTime._
 import monix.catnap.MVar
 import monix.eval.Task
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
 final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDuration])
@@ -23,10 +24,13 @@ final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDura
         .flatMap {
           case None =>
             scribe.debug(s"${src.value} is waiting for $toString")
+            val since = now
             mvar.take
               .whenItTakesLonger(warnTimeouts)(duration => Task {
                 scribe.info(s"${src.value} is still waiting for $toString for ${duration.pretty} ...")
               })
+              .tapEval(_ => Task(
+                scribe.debug(s"${src.value} acquired $toString after ${since.elapsed.pretty}")))
           case Some(()) =>
             scribe.trace(s"${src.value} acquired $toString")
             Task.unit
