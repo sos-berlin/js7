@@ -12,7 +12,7 @@ final case class AgentPath private(string: String) extends UnsignedSimpleItemPat
 
   val companion = AgentPath
 
-  override def toString = s"AgentPath:$string"  // instead of AgentRef:
+  override def toString = s"Agent:$string"  // instead of AgentRef:
 }
 
 object AgentPath extends UnsignedSimpleItemPath.Companion[AgentPath]
