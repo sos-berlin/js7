@@ -61,7 +61,7 @@ class RichProcess protected[process](
             Task.raiseError(new UnsupportedOperationException(
               "SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows"))
           else {
-            logger.info("destroy (SIGTERM)")
+            logger.debug("destroy (SIGTERM)")
             process.destroy()
             Task.unit
           }
@@ -102,7 +102,7 @@ class RichProcess protected[process](
       }
 
   private def kill = Task {
-    logger.info("destroyForcibly" + (!isWindows ?? " (SIGKILL)"))
+    logger.debug("destroyForcibly" + (!isWindows ?? " (SIGKILL)"))
     process.destroyForcibly()
   }
 

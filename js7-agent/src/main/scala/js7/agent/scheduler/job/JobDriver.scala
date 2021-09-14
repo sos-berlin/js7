@@ -41,7 +41,8 @@ private[agent] final class JobDriver(
   private val checkedJobExecutor: Checked[JobExecutor] =
     JobExecutor.checked(jobConf, jobExecutorConf, pathToJobResource)
       .map { jobExecutor =>
-        jobExecutor.precheckAndWarn.runAsyncAndForget
+        jobExecutor.precheckAndWarn
+          .runAsyncAndForget  // TODO JobDriver.start(): Task[Checked[JobDriver]]
         jobExecutor
       }
 
@@ -100,22 +101,22 @@ private[agent] final class JobDriver(
                 // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
                 orderProcess.start(processOrder.stdObservers)
                   .flatMap { runningProcessFuture =>
-                    entry.runningSince = scheduler.now
-                    scheduleTimeout(entry)
-                    Task
-                      .fromFuture(runningProcessFuture)
-                      .map(entry.modifyOutcome)
-                      .map {
-                        case outcome: Succeeded =>
-                          readErrorLine(processOrder).getOrElse(outcome)
-                        case outcome => outcome
-                      }
+                    entry.terminated.completeWith(runningProcessFuture)
+                    val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
+                    val awaitTermination = Task.defer {
+                      entry.runningSince = scheduler.now
+                      scheduleTimeout(entry)
+                      Task
+                        .fromFuture(runningProcessFuture)
+                        .map(entry.modifyOutcome)
+                        .map {
+                          case outcome: Succeeded =>
+                            readErrorLine(processOrder).getOrElse(outcome)
+                          case outcome => outcome
+                        }
+                    }
+                    Task.parMap2(maybeKillAfterStart, awaitTermination)((_, outcome) => outcome)
                   }
-                  .tapEval(_ =>
-                    entry.killSignal.traverse(signal =>
-                      // killOrder may be called after processOrder
-                      // but before process has been started, so we kill now.
-                      killOrder(entry, signal)))
                   .onErrorHandle { t =>
                     logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
                     Outcome.Failed.fromThrowable(t)
@@ -204,16 +205,20 @@ private[agent] final class JobDriver(
       if (signal == SIGKILL && entry.sigkilled)
         Task.unit
       else
-        entry.orderProcess.fold(Task.unit) { orderProcess =>
-          logger.info(s"Kill $signal ${entry.orderId}")
-          entry.isKilled = true
-          entry.sigkilled |= signal == SIGKILL
-          Task
-            .defer/*catch inside task*/ {
-              orderProcess.cancel(immediately = signal == SIGKILL)
-            }
-            .onErrorHandle(t => logger.error(
-              s"Kill ${entry.orderId}}: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+        entry.orderProcess match {
+          case None =>
+            logger.debug(s"killProcess(${entry.orderId},  $signal): no OrderProcess")
+            Task.unit
+          case Some(orderProcess) =>
+            logger.debug(s"Kill $signal ${entry.orderId}")
+            entry.isKilled = true
+            entry.sigkilled |= signal == SIGKILL
+            Task
+              .defer/*catch inside task*/ {
+                orderProcess.cancel(immediately = signal == SIGKILL)
+              }
+              .onErrorHandle(t => logger.error(
+                s"Kill ${entry.orderId}}: ${t.toStringWithCauses}", t.nullIfNoStackTrace))
         }
     }
 
@@ -226,6 +231,7 @@ private[agent] object JobDriver
 {
   private final class Entry(val orderId: OrderId) {
     var orderProcess: Option[OrderProcess] = None
+    val terminated = Promise[Outcome.Completed]()
     var killSignal: Option[ProcessSignal] = None
     val timeoutSchedule = SerialCancelable()
     var runningSince: MonixDeadline = null

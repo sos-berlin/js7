@@ -43,6 +43,7 @@ trait ProcessJobExecutor extends JobExecutor
         .map(_.fold(Map.empty)(_ ++ _))
 
     val processDriver = new ProcessDriver(
+      order.id,
       TaskConfiguration(jobKey, executable.toOutcome, startProcess.commandLine, executable.login,
         v1Compatible = v1Compatible),
       jobExecutorConf)
@@ -57,11 +58,7 @@ trait ProcessJobExecutor extends JobExecutor
           case Left(problem) =>
             Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
           case Right(env) =>
-            processDriver
-              .startAndRunProcess(
-                order.id,
-                env,
-                processOrder.stdObservers)
+            processDriver.startAndRunProcess(env, processOrder.stdObservers)
         }
       }
 

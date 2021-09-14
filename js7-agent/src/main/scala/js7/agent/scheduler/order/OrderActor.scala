@@ -144,7 +144,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
                 self ! Internal.OrderProcessed(orderId, outcome)
               })
               .runAsyncAndForget
-            maybeKillOrder(Some(jobDriver))
+            maybeKillOrder(jobDriver)
           }
         }
 
@@ -222,26 +222,29 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           }
     }
 
-  private def maybeKillOrder(jobDriver: Option[JobDriver]): Unit =
+  private def maybeKillOrder(jobDriver: JobDriver): Unit =
     order.mark match {
       case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
-        maybeKillOrder(kill, jobDriver)
+        maybeKillOrder(kill, Some(jobDriver))
 
       case Some(OrderMark.Suspending(SuspensionMode(Some(kill)))) =>
-        maybeKillOrder(kill, jobDriver)
+        maybeKillOrder(kill, Some(jobDriver))
 
       case _ =>
     }
 
   private def maybeKillOrder(kill: CancellationMode.Kill, jobDriver: Option[JobDriver]): Unit =
-    for (jobDriver <- jobDriver) {
-      if (kill.workflowPosition.forall(_ == order.workflowPosition)) {
-        jobDriver
-          .killOrder(
-            order.id,
-            if (kill.immediately) SIGKILL else SIGTERM)
-          .runAsyncAndForget
-      }
+    jobDriver match {
+      case None =>
+        logger.debug(s"maybeKillOrder $kill: jobDriver == None")
+      case Some(jobDriver) =>
+        if (kill.workflowPosition.forall(_ == order.workflowPosition)) {
+          jobDriver
+            .killOrder(
+              order.id,
+              if (kill.immediately) SIGKILL else SIGTERM)
+            .runAsyncAndForget
+        }
     }
 
   private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit = {

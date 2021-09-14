@@ -20,8 +20,10 @@ import js7.executor.process.ProcessDriver._
 import js7.executor.process.ShellScriptProcess.startPipedShellScript
 import monix.eval.{Fiber, Task}
 import scala.concurrent.Promise
+import scala.util.{Failure, Success}
 
 final class ProcessDriver(
+  orderId: OrderId,
   conf: TaskConfiguration,
   jobExecutorConf: JobExecutorConf)
 {
@@ -34,54 +36,68 @@ final class ProcessDriver(
     v1Compatible = conf.v1Compatible)
   private val terminatedPromise = Promise[Completed]()
   private val richProcessOnce = SetOnce[RichProcess]
-  private var killedBeforeStart = false
+  private val startProcessLock = TaskLock(orderId.toString)
+  @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
-  def startAndRunProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
+  def startAndRunProcess(env: Map[String, String], stdObservers: StdObservers)
   : Task[Fiber[Outcome.Completed]] =
-    startProcess(orderId, env, stdObservers)
+    startProcess(env, stdObservers)
       .flatMap {
         case Left(problem) => Task.pure(Outcome.Failed.fromProblem(problem): Outcome.Completed).start
-        case Right(richProcess) => outcomeOf(orderId, richProcess).start
+        case Right(richProcess) => outcomeOf(richProcess).start
       }
 
-  private def startProcess(orderId: OrderId, env: Map[String, String], stdObservers: StdObservers)
+  private def startProcess(env: Map[String, String], stdObservers: StdObservers)
   : Task[Checked[RichProcess]] =
     Task.deferAction { implicit scheduler =>
-      if (killedBeforeStart)
-        Task.pure(Left(Problem.pure(s"$taskId killed before start")))
-      else
-        Task(
-          checkedWindowsLogon
-            .flatMap { maybeWindowsLogon =>
-              Checked.catchNonFatal {
-                for (o <- maybeWindowsLogon)
-                  WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
-              }
-            .map(_ =>
-              ProcessConfiguration(
-                workingDirectory = Some(jobExecutorConf.workingDirectory),
-                additionalEnvironment = env + returnValuesProvider.toEnv,
-                maybeTaskId = Some(taskId),
-                killScriptOption = jobExecutorConf.killScript,
-                maybeWindowsLogon))
-          }
-        ).flatMapT(processConfiguration =>
-          startProcessLock
-            .lock(
-              startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
-            .map(_.map { richProcess =>
-              logger.info(s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
-              terminatedPromise.completeWith(richProcess.terminated.map(_ => Completed).runToFuture)
-              richProcessOnce := richProcess
-            }))
+      killedBeforeStart match {
+        case Some(signal) =>
+          Task.pure(Left(Problem.pure(s"Processing killed before start with $signal")))
+
+        case None =>
+          Task(
+            checkedWindowsLogon
+              .flatMap { maybeWindowsLogon =>
+                Checked.catchNonFatal {
+                  for (o <- maybeWindowsLogon)
+                    WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
+                }
+              .map(_ =>
+                ProcessConfiguration(
+                  workingDirectory = Some(jobExecutorConf.workingDirectory),
+                  additionalEnvironment = env + returnValuesProvider.toEnv,
+                  maybeTaskId = Some(taskId),
+                  killScriptOption = jobExecutorConf.killScript,
+                  maybeWindowsLogon))
+            }
+          ).flatMapT(processConfiguration =>
+            startProcessLock.lock(
+              globalStartProcessLock.lock(
+                startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
+                .flatMapT { richProcess =>
+                  logger.info(s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
+                  terminatedPromise.future.value match {
+                    case Some(Failure(t)) => Task.pure(Left(Problem.fromThrowable(t)))
+                    case Some(Success(_)) => Task.pure(Left(Problem("Duplicate process start?")))
+                    case None =>
+                      terminatedPromise.completeWith(
+                        richProcess.terminated.as(Completed).runToFuture)
+                      richProcessOnce := richProcess
+                      killedBeforeStart
+                        .traverse(sendProcessSignal(richProcess, _))
+                        .as(Right(richProcess))
+                  }
+                }))
+      }
     }
 
-  private def outcomeOf(orderId: OrderId, richProcess: RichProcess): Task[Outcome.Completed] =
+  private def outcomeOf(richProcess: RichProcess): Task[Outcome.Completed] =
     richProcess
       .terminated
       .materialize.flatMap { tried =>
         val rc = tried.map(_.pretty(isWindows = isWindows)).getOrElse(tried)
-        logger.info(s"$orderId: Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
+        logger.info(
+          s"$orderId: Process $richProcess terminated with $rc after ${richProcess.duration.pretty}")
         Task.fromTry(tried)
       }
       .map { returnCode =>
@@ -107,16 +123,24 @@ final class ProcessDriver(
     }
 
   def kill(signal: ProcessSignal): Task[Unit] =
-    Task.defer {
+    startProcessLock.lock(Task.defer {
       richProcessOnce.toOption match {
-        case Some(richProcess) =>
-          richProcess.sendProcessSignal(signal)
         case None =>
+          logger.debug(s"$orderId: Kill before start")
           Task {
-            terminatedPromise.tryFailure(new RuntimeException(s"$taskId killed before start"))
-            killedBeforeStart = true
+            terminatedPromise.tryFailure(new RuntimeException(
+              s"$taskId killed before start with $signal"))
+            killedBeforeStart = Some(signal)
           }
+        case Some(richProcess) =>
+          sendProcessSignal(richProcess, signal)
       }
+    })
+
+  private def sendProcessSignal(richProcess: RichProcess, signal: ProcessSignal): Task[Unit] =
+    Task.defer {
+      logger.info(s"$orderId: Process $richProcess: kill \"$signal\"")
+      richProcess.sendProcessSignal(signal)
     }
 
   override def toString = s"ProcessDriver($taskId ${conf.jobKey})"
@@ -127,7 +151,7 @@ object ProcessDriver
   private val logger = Logger(getClass)
 
   /** Linux may return a "busy" error when starting many processes at once. */
-  private val startProcessLock = TaskLock("syncStartProcess")
+  private val globalStartProcessLock = TaskLock("syncStartProcess")
 
   private object taskIdGenerator extends Iterator[TaskId] {
     private val generator = newGenerator()
