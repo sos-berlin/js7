@@ -69,6 +69,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
     assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
     eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
+    sleep(100.ms)
     assert(controllerState.allOrderWatchesState.pathToOrderWatchState.isEmpty)
   }
 }
