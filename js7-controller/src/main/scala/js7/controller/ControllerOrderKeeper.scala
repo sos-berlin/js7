@@ -528,12 +528,19 @@ with MainJournalingActor[ControllerState, Event]
                 orderQueue.enqueue(subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
                 timestampedEvents ++= subseqEvents.map(Timestamped(_))
 
-                committedPromise.completeWith(
-                  persistTransactionTimestamped(timestampedEvents, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
-                    (stampedEvents, updatedState) =>
-                      handleEvents(stampedEvents, updatedState)
-                      Some(agentEventId)
-                  })
+                persistence.currentState.pathToAgentRefState.get(agentPath).map(_.couplingState) match {
+                  case Some(AgentRefState.Resetting | AgentRefState.Resetting) =>
+                    // Ignore the events, because orders are already marked as detached (and Failed)
+                    // TODO Avoid race-condition and guard with persistence.lock!
+                    // (switch from actors to Task required!)
+                  case _ =>
+                    committedPromise.completeWith(
+                      persistTransactionTimestamped(timestampedEvents, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+                        (stampedEvents, updatedState) =>
+                          handleEvents(stampedEvents, updatedState)
+                          Some(agentEventId)
+                      })
+                }
               }
             }
           }
@@ -817,6 +824,8 @@ with MainJournalingActor[ControllerState, Event]
                 if (agentRefState.couplingState == Resetting)
                   Future.successful(Left(Problem.pure("ResetAgent in progress")))
                 else {
+                  // TODO persistence.lock(agentPath) to avoid race-condition with AgentCoupled
+                  // As a workaround, AgentRefState.applyEvent ignores AgentCoupled if Resetting
                   val events = persistence.currentState.resetAgent(agentPath)
                   persistence.currentState.applyEvents(events) match {
                     case Left(problem) => Future.successful(Left(problem))

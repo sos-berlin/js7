@@ -18,7 +18,8 @@ final class AgentRefStateTest extends AnyFreeSpec
         None,
         None,
         AgentRefState.Reset,
-        123L),
+        123L,
+        None),
       json"""{
         "agentRef": {
           "path": "AGENT",
@@ -39,7 +40,8 @@ final class AgentRefStateTest extends AnyFreeSpec
         Some(agentRunId),
         None,
         AgentRefState.Reset,
-        123L),
+        123L,
+        Some(Problem("PROBLEM"))),
       json"""{
         "agentRef": {
           "path": "AGENT",
@@ -50,7 +52,10 @@ final class AgentRefStateTest extends AnyFreeSpec
         "couplingState": {
           "TYPE": "Reset"
         },
-        "eventId": 123
+        "eventId": 123,
+        "problem": {
+          "message": "PROBLEM"
+        }
       }""")
 
     testJson[AgentRefState.CouplingState](AgentRefState.Reset, json"""{ "TYPE": "Reset" }""")

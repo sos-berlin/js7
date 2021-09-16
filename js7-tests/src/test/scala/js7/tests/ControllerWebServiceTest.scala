@@ -642,6 +642,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
         val obj = json.asObject.get.toMap
         (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentCreated")) &&
             json.as[KeyedEvent[AgentRefStateEvent]].orThrow.key != TestAgentPath || // Let through only Events for one AgentRef, because ordering is undefined
+          obj("TYPE") == Json.fromString("AgentCoupled") ||
           obj("TYPE") == Json.fromString("AgentCouplingFailed") ||
           obj("TYPE") == Json.fromString("AgentEventsObserved")
       }

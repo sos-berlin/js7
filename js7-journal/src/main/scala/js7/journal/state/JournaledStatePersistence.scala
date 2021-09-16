@@ -44,7 +44,6 @@ extends AutoCloseable
   lazy val journalId = recoveredJournalId getOrElse JournalId.random()
 
   private val lockKeeper = new LockKeeper[Any]  // TODO Should the caller be responsible for sequential key updates? We could allow parallel, independent(!) updates
-  import lockKeeper.lock
   private val persistPromise = Promise[PersistFunction[S, Event]]()
   private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
 
@@ -161,6 +160,9 @@ extends AutoCloseable
     actorOnce.task
       .map(_ => ())
       .logWhenItTakesLonger(s"$toString.waitUntilStarted")
+
+  def lock[A](key: Any)(body: Task[A]): Task[A] =
+    lockKeeper.lock(key)(body)
 
   override def toString = s"JournaledStatePersistence[${S.tpe}]"
 }

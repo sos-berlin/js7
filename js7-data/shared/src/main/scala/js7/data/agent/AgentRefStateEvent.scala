@@ -20,6 +20,9 @@ object AgentRefStateEvent
     agentEventId: Option[EventId]/*optional for compatibility with v2.0.0-RC3*/)
   extends AgentRefStateEvent
 
+  type AgentCoupled = AgentCoupled.type
+  final case object AgentCoupled extends AgentRefStateEvent
+
   final case class AgentCouplingFailed(problem: Problem) extends AgentRefStateEvent
 
   final case class AgentReady(timezone: String) extends AgentRefStateEvent
@@ -39,6 +42,7 @@ object AgentRefStateEvent
 
   implicit val jsonCodec = TypedJsonCodec[AgentRefStateEvent](
     Subtype(deriveCodec[AgentCreated]),
+    Subtype(AgentCoupled),
     Subtype(deriveCodec[AgentCouplingFailed]),
     Subtype(deriveCodec[AgentReady]),
     Subtype(deriveCodec[AgentEventsObserved]),

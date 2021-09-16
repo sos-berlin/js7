@@ -31,8 +31,8 @@ import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.agent.AgentRefState.Resetting
-import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentCreated, AgentReset}
+import js7.data.agent.AgentRefState.{Coupled, Reset, Resetting}
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentCreated, AgentReset}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -120,11 +120,17 @@ extends ReceiveLoggingActor.WithStash
         .flatMapT(_ => createAgentIfNeeded)
         .flatMapT { case (agentRunId, agentEventId) =>
           client.commandExecute(CoupleController(agentPath, agentRunId, eventId = agentEventId))
-            .map(_.map { case CoupleController.Response(orderIds) =>
+            .flatMapT { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds
-              agentEventId
-            })
+              persistence
+                .lock(agentPath)(
+                  persistence.persist(controllerState =>
+                    for (a <- controllerState.pathToAgentRefState.checked(agentPath)) yield
+                      (a.couplingState == Reset || (a.couplingState == Coupled && a.problem.nonEmpty))
+                        .thenList(agentPath <-: AgentCoupled)))
+                .rightAs(agentEventId)
+            }
         })
 
     protected def getObservable(api: AgentClient, after: EventId) =
@@ -217,7 +223,7 @@ extends ReceiveLoggingActor.WithStash
 
   override def preStart() = {
     super.preStart()
-    logger.debug("preStart")
+    logger.debug(s"preStart AgentRunId=$agentRunIdOnce")
   }
 
   override def postStop() = {

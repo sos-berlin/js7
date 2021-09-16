@@ -383,7 +383,7 @@ object ControllerStateTest
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
     Map(
       agentRef.path -> AgentRefState(
-        agentRef, None, None, AgentRefState.Reset, EventId(7))),
+        agentRef, None, None, AgentRefState.Reset, EventId(7), None)),
     Map(
       lock.path -> LockState(lock)),
     Map(
