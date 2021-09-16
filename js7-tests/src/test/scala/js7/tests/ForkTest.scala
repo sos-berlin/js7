@@ -1,11 +1,8 @@
 package js7.tests
 
-import js7.agent.data.commands.AgentCommand
 import js7.base.configutils.Configs._
-import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.command.CancellationMode
@@ -119,10 +116,9 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
       expectedFailed,
       OrderCancelled))
 
-    controller.terminate() await 99.s
-    // Kill SLOW job
-    agents(0).executeCommandAsSystemUser(AgentCommand.ShutDown(Some(SIGKILL))).await(99.s).orThrow
-    agents(0).terminated await 99.s
+    controllerApi.executeCommand(
+      CancelOrders(Seq(order.id / "🥕"), CancellationMode.kill(immediately = true))
+    ).await(99.s).orThrow
   }
 }
 
