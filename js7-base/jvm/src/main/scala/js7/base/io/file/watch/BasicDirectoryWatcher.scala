@@ -46,9 +46,6 @@ extends AutoCloseable
         .flatMap(Observable.fromTask)
         .takeWhile(events => !events.contains(Overflow))
         .map(_.asInstanceOf[Seq[DirectoryEvent]])
-        .onErrorRecoverWith {
-          case _: ClosedWatchServiceException => Observable.empty
-        }
     })
 
   private def directoryWatchResource: Resource[Task, WatchKey] =
@@ -70,10 +67,17 @@ extends AutoCloseable
         val events = pollWatchKey()
         logger.trace(prefix + (if (events.isEmpty) "timed out" else events.mkString(", ")))
         Task.pure(events)
-      } catch { case NonFatal(t) if canceled =>
-        logger.trace(s"$prefix canceled (${t.toStringWithCauses})")
-        // Ignore the error, otherwise it would be logged by the thread pool.
-        Task.never  // because the task is canceled
+      } catch {
+        case NonFatal(t) if canceled =>
+          logger.trace(s"$prefix canceled (${t.toStringWithCauses})")
+          // Ignore the error, otherwise it would be logged by the thread pool.
+          Task.never  // because the task is canceled
+
+       case NonFatal(t: ClosedWatchServiceException) =>
+         // At least for testing, check ClosedWatchServiceException exception as early as here,
+         // otherwise RejectedExecutionException may be thrown later.
+         logger.debug(s"${t.toStringWithCauses}")
+         Task.pure(Nil)
       }
     }.executeOn(iox.scheduler)
 
