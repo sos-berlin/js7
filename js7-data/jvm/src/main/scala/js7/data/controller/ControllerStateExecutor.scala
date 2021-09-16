@@ -222,13 +222,19 @@ final case class ControllerStateExecutor private(
           case Some(agentPathToAttached) =>
             agentPathToAttached.view.flatMap {
               case (agentPath, Attached(revision)) =>
+                def detachable =
+                  if (controllerState.pathToAgentRefState.contains(agentPath))
+                    ItemDetachable(item.key, agentPath)
+                  else // shortcut in case, the Agent has been deleted (reset)
+                    ItemDetached(item.key, agentPath)
+
                 item.key match {
                   case itemId: VersionedItemId_ =>
-                    controllerState.isObsoleteItem(itemId) ? ItemDetachable(itemId, agentPath)
+                    controllerState.isObsoleteItem(itemId) ? detachable
 
                   case path: SimpleItemPath =>
                     if (controllerState.deletionMarkedItems.contains(path))
-                      Some(ItemDetachable(path, agentPath))
+                      Some(detachable)
                     else
                       (item.itemRevision != revision) ?
                         (item.dedicatedAgentPath match {
@@ -238,7 +244,7 @@ final case class ControllerStateExecutor private(
                             ItemAttachable(path, agentPath)
                           case Some(_) =>
                             // Item's Agent dedication has changed, so we detach it
-                            ItemDetachable(path, agentPath)
+                            detachable
                         })
                 }
 

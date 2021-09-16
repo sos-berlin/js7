@@ -331,7 +331,7 @@ with Stash
 
     case DetachItem(itemKey @ (_: JobResourcePath | WorkflowId.as(_))) =>
       if (!persistence.currentState.keyToItem.contains(itemKey)) {
-        logger.warn(s"DetachItem($itemKey) but item is unknown (okay after Controller restart)")
+        logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
       } else
         persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>

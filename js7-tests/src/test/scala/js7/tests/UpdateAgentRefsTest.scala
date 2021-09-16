@@ -3,7 +3,7 @@ package js7.tests
 import java.nio.file.Files.move
 import java.nio.file.Paths
 import js7.agent.RunningAgent
-import js7.agent.data.Problems.{AgentAlreadyDedicatedProblem, AgentNotDedicatedProblem, AgentRunIdMismatchProblem}
+import js7.agent.data.Problems.{AgentNotDedicatedProblem, AgentRunIdMismatchProblem}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.{copyDirectory, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked._
@@ -14,7 +14,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import js7.data.Problems.ItemIsStillReferencedProblem
-import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
+import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentDedicated, AgentReady}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
@@ -89,10 +89,10 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     ).await(99.s).orThrow
 
     controller.eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
-    agent.terminate() await 99.s
+    agent.terminated await 99.s
   }
 
-  "Add AgentRef again but keep Agent's journal: should fail" in {
+  "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
     val eventId = controller.eventWatch.lastFileTornEventId
@@ -106,16 +106,8 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
           AddOrChangeSigned(sign(workflow withVersion versionId).signedString)))
       .await(99.s).orThrow
 
-    controller.eventWatch.await[AgentCouplingFailed](
-      _.event.problem == AgentAlreadyDedicatedProblem,
-      after = eventId)
-    agent.terminate().await(99.s)
-  }
-
-  "Restart Agent and do not keep its state" in {
-    deleteDirectoryContentRecursively(agentFileTree.stateDir)
-    agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
-
+    controller.eventWatch.await[AgentDedicated](after = eventId)
+    controller.eventWatch.await[AgentReady](after = eventId)
     controller.runOrder(FreshOrder(OrderId("AGAIN"), workflow.path))
     agent.terminate() await 99.s
   }

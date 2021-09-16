@@ -268,18 +268,39 @@ extends ReceiveLoggingActor.WithStash
         changingUri = None
       }
 
-    case Input.Terminate(noJournal) =>
+    case Input.Terminate(noJournal, reset) =>
       this.noJournal = noJournal
       // Wait until all pending Agent commands are responded, and do not accept further commands
       if (!isTerminating) {
-        logger.debug(s"Terminate " + (noJournal ?? "noJournal"))
+        logger.debug(s"Terminate" + (noJournal ?? " noJournal") + (reset ?? " reset"))
         isTerminating = true
         commandQueue.terminate()
         currentFetchedFuture.foreach(_.cancel())
         eventFetcherTerminated.completeWith(
           eventFetcher.terminate.runToFuture)  // Rejects current commands waiting for coupling
-        stopIfTerminated()
+        agentRunIdOnce.toOption match {
+          case Some(agentRunId) if reset =>
+            // TODO There seems to be a oncurrent logout, letting Reset fail
+            (client.login(onlyIfNotLoggedIn = true) >>
+              client.commandExecute(AgentCommand.Reset(agentRunId))
+                .materializeIntoChecked
+                .map {
+                  case Left(problem) => logger.error(s"Reset command failed: $problem")
+                  case Right(_) =>
+                }
+            ).runToFuture
+              .foreach { _ =>
+              // Ignore any Problem or Exception from Reset command
+              self ! Internal.Terminate
+            }
+
+          case _ =>
+            stopIfTerminated()
+        }
       }
+
+    case Internal.Terminate =>
+      stopIfTerminated()
 
     case Input.Reset =>
       val sender = this.sender()
@@ -562,7 +583,10 @@ private[controller] object AgentDriver
 
     final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends Input with Queueable
 
-    final case class Terminate(noJournal: Boolean = false) extends DeadLetterSuppression
+    final case class Terminate(
+      noJournal: Boolean = false,
+      reset: Boolean = false)
+    extends DeadLetterSuppression
 
     final case object Reset extends DeadLetterSuppression
   }
@@ -589,6 +613,7 @@ private[controller] object AgentDriver
     final case class ReleaseEvents(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
     final case object ReleaseEventsNow extends DeadLetterSuppression
     final case object UriChanged extends DeadLetterSuppression
+    case object Terminate
   }
 
   private case object CancelledMarker extends Exception with NoStackTrace

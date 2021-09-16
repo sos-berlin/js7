@@ -1024,7 +1024,7 @@ with MainJournalingActor[ControllerState, Event]
         entry.actor ! AgentDriver.Input.StartFetchingEvents
 
         // TODO Not required in a future implementation, when Agents must be defined when referenced
-        reattachToAgent(agentRef.path)
+        //reattachToAgent(agentRef.path)
 
       case UnsignedSimpleItemChanged(agentRef: AgentRef) =>
         agentRegister.update(agentRef)
@@ -1037,7 +1037,8 @@ with MainJournalingActor[ControllerState, Event]
 
       case ItemDeleted(agentPath: AgentPath) =>
         for (entry <- agentRegister.get(agentPath)) {
-          entry.actor ! AgentDriver.Input.Terminate()
+          entry.isDeleted = true
+          entry.actor ! AgentDriver.Input.Terminate(reset = true)
           // Actor terminates asynchronously, so do not add an AgentRef immediately after deletion!
         }
 
@@ -1071,7 +1072,7 @@ with MainJournalingActor[ControllerState, Event]
                     }
 
                   case Detachable =>
-                    if (!agentEntry.detachingItems.contains(itemKey)) {
+                    if (/*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey)) {
                       agentEntry.detachingItems += itemKey
                       agentEntry.actor ! AgentDriver.Input.DetachItem(itemKey)
                     }
@@ -1365,6 +1366,7 @@ private[controller] object ControllerOrderKeeper
   {
     var actorTerminated = false
     var isResetting = false
+    var isDeleted = false
     val detachingItems = mutable.Set.empty[InventoryItemKey]
 
     def agentPath = agentRef.path
