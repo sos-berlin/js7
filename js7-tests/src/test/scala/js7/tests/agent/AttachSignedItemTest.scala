@@ -1,7 +1,7 @@
 package js7.tests.agent
 
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachSignedItem, CreateAgent}
+import js7.agent.data.commands.AgentCommand.{AttachSignedItem, DedicateAgent}
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.SimpleUser
 import js7.base.thread.MonixBlocking.syntax._
@@ -27,8 +27,8 @@ final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForSc
     import directoryProvider.itemSigner
     directoryProvider.runAgents() { case Seq(runningAgent) =>
       val agentApi = runningAgent.api(CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
-      assert(agentApi.commandExecute(CreateAgent(agentPath, controllerId)).await(99.s).toOption.get
-        .isInstanceOf[CreateAgent.Response])
+      assert(agentApi.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s).toOption.get
+        .isInstanceOf[DedicateAgent.Response])
 
       // Signed VersionedItem
       val signedWorkflow = itemSigner.sign(workflow)

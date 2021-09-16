@@ -3,9 +3,9 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentResetStarted}
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentResetStarted}
 import js7.data.event.{JournalId, KeyedEvent}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class AgentRefStateEventTest extends AnyFreeSpec
@@ -39,9 +39,21 @@ final class AgentRefStateEventTest extends AnyFreeSpec
         }""")
     }
 
-    "AgentCreated" in {
+    "AgentDedicated" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentPath("AGENT") <-: AgentCreated(
+        AgentPath("AGENT") <-: AgentDedicated(
+          AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
+          Some(1000L)),
+        json"""{
+          "TYPE": "AgentDedicated",
+          "Key": "AGENT",
+          "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+          "agentEventId": 1000
+        }""")
+
+      // Compatible with 2.0.0-alpha.20210909
+      testJsonDecoder[KeyedEvent[AgentRefStateEvent]](
+        AgentPath("AGENT") <-: AgentDedicated(
           AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
           Some(1000L)),
         json"""{
@@ -52,13 +64,13 @@ final class AgentRefStateEventTest extends AnyFreeSpec
         }""")
     }
 
-    "AgentCreated, compatible" in {
+    "AgentDedicated, compatible" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentPath("AGENT") <-: AgentCreated(
+        AgentPath("AGENT") <-: AgentDedicated(
           AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
           None),
         json"""{
-          "TYPE": "AgentCreated",
+          "TYPE": "AgentDedicated",
           "Key": "AGENT",
           "agentRunId": "ABEiM0RVZneImaq7zN3u_w"
         }""")

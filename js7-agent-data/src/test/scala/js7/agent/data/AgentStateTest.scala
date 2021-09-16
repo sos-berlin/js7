@@ -7,7 +7,7 @@ import java.io.File.separator
 import java.nio.file.Paths
 import java.util.UUID
 import js7.agent.data.AgentState.AgentMetaState
-import js7.agent.data.event.AgentEvent.AgentCreated
+import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
@@ -75,27 +75,27 @@ final class AgentStateTest extends AsyncFreeSpec
     Map(
       jobResource.path -> jobResource))
 
-  "isCreated, isFreshlyCreated" - {
+  "isDedicated, isFreshlyDedicated" - {
     "empty" in {
-      assert(!AgentState.empty.isCreated)
+      assert(!AgentState.empty.isDedicated)
     }
 
     "AgentState example" in {
-      assert(agentState.isCreated)
-      assert(!agentState.isFreshlyCreated)
+      assert(agentState.isDedicated)
+      assert(!agentState.isFreshlyDedicated)
     }
 
     "After snapshot" in {
       val afterSnapshot = AgentState.empty.applyEvent(SnapshotTaken).orThrow
-      assert(!afterSnapshot.isCreated)
-      assert(!afterSnapshot.isFreshlyCreated)
+      assert(!afterSnapshot.isDedicated)
+      assert(!afterSnapshot.isFreshlyDedicated)
     }
 
-    val agentCreated = AgentCreated(AgentPath("A"), AgentRunId(JournalId.random()), ControllerId("C"))
-    "AgentCreated" in {
+    val agentCreated = AgentDedicated(AgentPath("A"), AgentRunId(JournalId.random()), ControllerId("C"))
+    "AgentDedicated" in {
       val created = AgentState.empty.applyEvent(agentCreated).orThrow
-      assert(created.isCreated)
-      assert(created.isFreshlyCreated)
+      assert(created.isDedicated)
+      assert(created.isFreshlyDedicated)
     }
   }
 
@@ -211,7 +211,7 @@ final class AgentStateTest extends AsyncFreeSpec
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
       ControllerId("CONTROLLER"))
-    agentState = agentState.applyEvent(AgentCreated(meta.agentPath, meta.agentRunId, meta.controllerId)).orThrow
+    agentState = agentState.applyEvent(AgentDedicated(meta.agentPath, meta.agentRunId, meta.controllerId)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToAgent(workflow)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(

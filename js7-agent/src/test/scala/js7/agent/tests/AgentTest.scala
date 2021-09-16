@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CreateAgent}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, DedicateAgent}
 import js7.agent.tests.AgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.auth.SimpleUser
@@ -55,8 +55,8 @@ final class AgentTest extends AnyFreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            assert(agentApi.commandExecute(CreateAgent(agentPath, controllerId)).await(99.s).toOption.get
-              .isInstanceOf[CreateAgent.Response])
+            assert(agentApi.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s).toOption.get
+              .isInstanceOf[DedicateAgent.Response])
 
             assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))

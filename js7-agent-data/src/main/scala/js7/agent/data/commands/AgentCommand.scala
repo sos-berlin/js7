@@ -93,11 +93,11 @@ object AgentCommand extends CommonCommand.Companion
     * The Agent starts a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class CreateAgent(agentPath: AgentPath, controllerId: ControllerId)
+  final case class DedicateAgent(agentPath: AgentPath, controllerId: ControllerId)
   extends AgentCommand {
-    type Response = CreateAgent.Response
+    type Response = DedicateAgent.Response
   }
-  object CreateAgent {
+  object DedicateAgent {
     /**
       * @param agentRunId Use the value for `CoupleController`. */
     final case class Response(agentRunId: AgentRunId, agentEventId: EventId)
@@ -105,7 +105,7 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   /** Couples the registered Controller identified by current User.
-    * @param agentRunId Must be the value returned by `CreateAgent`. */
+    * @param agentRunId Must be the value returned by `DedicateAgent`. */
   final case class CoupleController(agentPath: AgentPath, agentRunId: AgentRunId, eventId: EventId)
   extends AgentCommand {
     type Response = CoupleController.Response
@@ -217,7 +217,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype[EmergencyStop],
       Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
-      Subtype(deriveCodec[CreateAgent]),
+      Subtype(deriveCodec[DedicateAgent]),
       Subtype(deriveCodec[CoupleController]),
       Subtype(deriveCodec[Reset]),
       Subtype[ShutDown],
@@ -237,7 +237,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype.named(deriveCodec[CoupleController.Response], "CoupleController.Response"),
       Subtype.named(deriveCodec[Batch.Response], "Batch.Response"),
       Subtype(Response.Accepted),
-      Subtype.named(deriveCodec[CreateAgent.Response], "CreateAgent.Response"))
+      Subtype.named(deriveCodec[DedicateAgent.Response], "DedicateAgent.Response"))
 
   intelliJuseImport((FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],

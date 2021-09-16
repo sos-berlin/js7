@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState, _}
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentCreated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
 
@@ -25,9 +25,9 @@ extends UnsignedSimpleItemState
 
   def applyEvent(event: AgentRefStateEvent): Checked[AgentRefState] =
     event match {
-      case AgentCreated(agentRunId_, eventId_) =>
+      case AgentDedicated(agentRunId_, eventId_) =>
         if (agentRunId.isDefined || eventId != EventId.BeforeFirst)
-          Left(Problem("Duplicate AgentCreated event: " + event))
+          Left(Problem("Duplicate AgentDedicated event: " + event))
         else
           Right(copy(
             agentRunId = Some(agentRunId_),

@@ -6,7 +6,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, Batch, CreateAgent, DetachOrder}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, Batch, DedicateAgent, DetachOrder}
 import js7.agent.tests.OrderAgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
@@ -58,12 +58,12 @@ final class OrderAgentTest extends AnyFreeSpec
         withCloser { implicit closer =>
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
-          assert(agentClient.commandExecute(CreateAgent(agentPath, controllerId)).await(99.s) ==
+          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s) ==
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(CreateAgent(agentPath, controllerId)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
-            .isInstanceOf[CreateAgent.Response])
+          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
+            .isInstanceOf[DedicateAgent.Response])
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> StringValue("X")))
 
@@ -118,7 +118,7 @@ final class OrderAgentTest extends AnyFreeSpec
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(CreateAgent(agentPath, controllerId)).await(99.s) == Right(AgentCommand.Response.Accepted))
+          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s) == Right(AgentCommand.Response.Accepted))
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,

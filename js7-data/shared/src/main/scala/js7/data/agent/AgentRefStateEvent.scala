@@ -15,7 +15,7 @@ sealed trait AgentRefStateEvent extends Event {
 object AgentRefStateEvent
 {
   /** A new Agent has been created and is running. */
-  final case class AgentCreated(
+  final case class AgentDedicated(
     agentRunId: AgentRunId,
     agentEventId: Option[EventId]/*optional for compatibility with v2.0.0-RC3*/)
   extends AgentRefStateEvent
@@ -41,7 +41,7 @@ object AgentRefStateEvent
   case object AgentReset extends AgentRefStateEvent
 
   implicit val jsonCodec = TypedJsonCodec[AgentRefStateEvent](
-    Subtype(deriveCodec[AgentCreated]),
+    Subtype(deriveCodec[AgentDedicated], aliases = Seq("AgentCreated")),
     Subtype(AgentCoupled),
     Subtype(deriveCodec[AgentCouplingFailed]),
     Subtype(deriveCodec[AgentReady]),

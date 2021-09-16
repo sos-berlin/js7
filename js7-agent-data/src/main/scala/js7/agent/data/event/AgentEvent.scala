@@ -18,7 +18,7 @@ object AgentEvent
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
-  final case class AgentCreated(
+  final case class AgentDedicated(
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId)
@@ -33,7 +33,7 @@ object AgentEvent
   case object AgentShutDown extends AgentEvent
 
   implicit val jsonCodec = TypedJsonCodec[AgentEvent](
-    Subtype(deriveCodec[AgentCreated]),
+    Subtype(deriveCodec[AgentDedicated], aliases = Seq("AgentCreated")),
     Subtype(deriveCodec[AgentReady]),
     Subtype(AgentShutDown))
 }

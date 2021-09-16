@@ -4,7 +4,7 @@ import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CreateAgent, ShutDown}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, DedicateAgent, ShutDown}
 import js7.agent.tests.AgentShutDownTest._
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.generic.SecretString
@@ -49,7 +49,7 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
 
     val client = AgentClient(agentUri = agent.localUri, Some(userId -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(CreateAgent(agentPath, controllerId)) await 99.s
+    client.commandExecute(DedicateAgent(agentPath, controllerId)) await 99.s
 
     client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
       .await(99.s).orThrow

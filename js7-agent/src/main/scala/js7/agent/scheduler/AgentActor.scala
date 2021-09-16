@@ -9,7 +9,7 @@ import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
-import js7.agent.data.event.AgentEvent.AgentCreated
+import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.{AgentState, AgentTermination}
 import js7.agent.scheduler.AgentActor._
@@ -107,7 +107,7 @@ extends Actor with Stash with SimpleStateActor
 
     case Internal.JournalIsReady(Success(())) =>
       val state = recovered.state
-      if (state.isCreated) {
+      if (state.isDedicated) {
         addOrderKeeper(state.agentPath, state.controllerId).orThrow
       }
       become("startable")(startable)
@@ -128,7 +128,7 @@ extends Actor with Stash with SimpleStateActor
       executeExternalCommand(cmd)
 
     case Input.GetEventWatch =>
-      if (!persistence.currentState.isCreated) {
+      if (!persistence.currentState.isDedicated) {
         sender() ! Left(AgentNotCreatedProblem)
       } else {
         eventWatch.whenStarted.map(Right.apply) pipeTo sender()
@@ -173,18 +173,18 @@ extends Actor with Stash with SimpleStateActor
             }
         }
 
-      case AgentCommand.CreateAgent(agentPath, controllerId) if !terminating =>
+      case AgentCommand.DedicateAgent(agentPath, controllerId) if !terminating =>
         // Command is idempotent until AgentState has been touched
         val agentRunId = AgentRunId(persistence.journalId)
         persistence
           .persist(agentState =>
-            if (!agentState.isCreated)
-              Right((NoKey <-: AgentCreated(agentPath, agentRunId, controllerId)) :: Nil)
+            if (!agentState.isDedicated)
+              Right((NoKey <-: AgentDedicated(agentPath, agentRunId, controllerId)) :: Nil)
             else if (agentPath != agentState.agentPath)
               Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
             else if (controllerId != agentState.meta.controllerId)
               Left(AgentWrongControllerProblem(controllerId))
-            else if (!agentState.isFreshlyCreated)
+            else if (!agentState.isFreshlyDedicated)
               Left(AgentAlreadyCreatedProblem)
             else
               Right(Nil))
@@ -196,7 +196,7 @@ extends Actor with Stash with SimpleStateActor
           .runToFuture
           .onComplete { triedEventId =>
             response.complete(triedEventId.map(_.map(eventId =>
-              AgentCommand.CreateAgent.Response(agentRunId, eventId))))
+              AgentCommand.DedicateAgent.Response(agentRunId, eventId))))
           }
 
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
@@ -233,7 +233,7 @@ extends Actor with Stash with SimpleStateActor
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
     val agentState = persistence.currentState
-    if (!agentState.isCreated)
+    if (!agentState.isDedicated)
       Left(AgentNotCreatedProblem)
     else if (requestedAgentPath != agentState.agentPath)
       Left(AgentPathMismatchProblem(requestedAgentPath, agentState.agentPath))
@@ -243,7 +243,7 @@ extends Actor with Stash with SimpleStateActor
 
   private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] = {
     val agentState = persistence.currentState
-    if (!agentState.isCreated)
+    if (!agentState.isDedicated)
       Left(AgentNotCreatedProblem)
     else if (requestedAgentRunId != agentState.meta.agentRunId) {
       val problem = AgentRunIdMismatchProblem(agentState.meta.agentPath)

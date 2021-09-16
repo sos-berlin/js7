@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.{AgentCreated, AgentReset}
+import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentReset}
 import js7.data.controller.ControllerCommand.ResetAgent
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
@@ -142,7 +142,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Simulate journal deletion at restart" in {
     var eventId = eventWatch.lastAddedEventId
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
-    eventWatch.await[AgentCreated](after = eventId)
+    eventWatch.await[AgentDedicated](after = eventId)
 
     eventId = eventWatch.lastAddedEventId
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
@@ -159,7 +159,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[AgentReset](after = eventId)
-    eventWatch.await[AgentCreated](after = eventId)
+    eventWatch.await[AgentDedicated](after = eventId)
 
     // The restarted Agent has deleted the files (due to markerFile)
     assert(!exists(markerFile) && !exists(garbageFile))

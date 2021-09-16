@@ -4,7 +4,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CoupleController, CreateAgent, DetachOrder, GetOrders}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CoupleController, DedicateAgent, DetachOrder, GetOrders}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.io.file.FileUtils.syntax._
@@ -47,8 +47,8 @@ final class AgentActorTest extends AnyFreeSpec
 
         (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
 
-        val agentRunId = executeCommand(CreateAgent(agentPath, controllerId))
-          .await(99.s).orThrow.asInstanceOf[CreateAgent.Response].agentRunId
+        val agentRunId = executeCommand(DedicateAgent(agentPath, controllerId))
+          .await(99.s).orThrow.asInstanceOf[DedicateAgent.Response].agentRunId
         val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch)(Timeout(88.s))
           .mapTo[Checked[EventWatch]].await(99.s).orThrow
         val stopwatch = new Stopwatch

@@ -3,7 +3,7 @@ package js7.tests.controller.agent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.AgentCreated
+import js7.data.agent.AgentRefStateEvent.AgentDedicated
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -33,7 +33,7 @@ final class AgentRestartBeforeCreationTest extends AnyFreeSpec with DirectoryPro
     directoryProvider.runAgents() { _ =>
       sleep(100.ms)
       directoryProvider.runController() { controller =>
-        controller.eventWatch.await[AgentCreated](_.key == agentPath,
+        controller.eventWatch.await[AgentDedicated](_.key == agentPath,
           after = controller.eventWatch.tornEventId)
         val events = controller.runOrder(FreshOrder(OrderId("ORDER"), workflow.path))
         assert(events.last.value == OrderFinished)

@@ -2,7 +2,7 @@ package js7.agent.data
 
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentEvent
-import js7.agent.data.event.AgentEvent.AgentCreated
+import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -45,12 +45,13 @@ with JournaledState[AgentState]
 
   def companion = AgentState
 
-  def isCreated =
+  /** A Controller has initialized this Agent? */
+  def isDedicated =
     agentPath.nonEmpty/*shortcut*/ ||
       copy(eventId = EventId.BeforeFirst) != AgentState.empty
 
-  def isFreshlyCreated: Boolean =
-    isCreated &&
+  def isFreshlyDedicated: Boolean =
+    isDedicated &&
       this == AgentState.empty.copy(
         eventId = eventId,
         standards = standards,
@@ -128,7 +129,7 @@ with JournaledState[AgentState]
           case _ => applyStandardEvent(keyedEvent)
         }
 
-      case KeyedEvent(_: NoKey, AgentCreated(agentPath, agentRunId, controllerId)) =>
+      case KeyedEvent(_: NoKey, AgentDedicated(agentPath, agentRunId, controllerId)) =>
         Right(copy(meta = meta.copy(
           agentPath = agentPath,
           agentRunId = agentRunId,

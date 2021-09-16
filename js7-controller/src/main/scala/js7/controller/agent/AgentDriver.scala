@@ -6,7 +6,7 @@ import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.agent.data.Problems.AgentNotCreatedProblem
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{CoupleController, CreateAgent}
+import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgent}
 import js7.agent.data.event.AgentEvent
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -32,7 +32,7 @@ import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefState.{Coupled, Reset, Resetting}
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentCreated, AgentReset}
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -117,7 +117,7 @@ extends ReceiveLoggingActor.WithStash
             case _ =>
               Task.pure(Checked.unit)
           })
-        .flatMapT(_ => createAgentIfNeeded)
+        .flatMapT(_ => dedicateAgentIfNeeded)
         .flatMapT { case (agentRunId, agentEventId) =>
           client.commandExecute(CoupleController(agentPath, agentRunId, eventId = agentEventId))
             .flatMapT { case CoupleController.Response(orderIds) =>
@@ -462,19 +462,19 @@ extends ReceiveLoggingActor.WithStash
         .map(_ => Completed)
     }
 
-  private def createAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]] =
+  private def dedicateAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]] =
     Task.defer {
       agentRunIdOnce.toOption match {
         case Some(agentRunId) => Task.pure(Right(agentRunId -> lastFetchedEventId))
         case None =>
-          client.commandExecute(CreateAgent(agentPath, controllerId))
-            .flatMapT { case CreateAgent.Response(agentRunId, agentEventId) =>
+          client.commandExecute(DedicateAgent(agentPath, controllerId))
+            .flatMapT { case DedicateAgent.Response(agentRunId, agentEventId) =>
               (if (noJournal)
                 Task.pure(Checked.unit)
               else
                 persistence
                   .persistKeyedEvent(
-                    agentPath <-: AgentCreated(agentRunId, Some(agentEventId)))
+                    agentPath <-: AgentDedicated(agentRunId, Some(agentEventId)))
                   .map(_.map { _ =>
                     // Asynchronous assignment
                     agentRunIdOnce := agentRunId

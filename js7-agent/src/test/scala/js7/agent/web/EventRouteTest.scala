@@ -2,7 +2,7 @@ package js7.agent.web
 
 import js7.agent.client.AgentClient
 import js7.agent.data.Problems.{AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
-import js7.agent.data.commands.AgentCommand.{CoupleController, CreateAgent, ReleaseEvents, TakeSnapshot}
+import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgent, ReleaseEvents, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider._
@@ -45,8 +45,8 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
       Left(AgentNotCreatedProblem))
   }
 
-  "(CreateAgent)" in {
-    val CreateAgent.Response(agentRunId, _) = agentClient.commandExecute(CreateAgent(agentPath, controllerId))
+  "(DedicateAgent)" in {
+    val DedicateAgent.Response(agentRunId, _) = agentClient.commandExecute(DedicateAgent(agentPath, controllerId))
       .await(99.s).orThrow
     this.agentRunId = agentRunId
   }

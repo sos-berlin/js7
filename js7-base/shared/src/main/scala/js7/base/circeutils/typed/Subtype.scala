@@ -38,16 +38,40 @@ object Subtype {
     * <p>
     * Usage: Subtype(codec)
     */
-  def apply[A](codec: Codec.AsObject[A])(implicit classTag: ClassTag[A]): Subtype[A] =
+  def apply[A](codec: Codec.AsObject[A])
+    (implicit classTag: ClassTag[A])
+  : Subtype[A] =
     apply(codec, codec)
+
+  /**
+    * Use explicitly given Encoder.AsObject and Decoder (CirceCodec); Simple class name is type name.
+    * <p>
+    * Usage: Subtype(codec)
+    */
+  def apply[A](codec: Codec.AsObject[A], aliases: Seq[String])
+    (implicit classTag: ClassTag[A])
+  : Subtype[A] =
+    apply(codec, codec, aliases = aliases)
 
   /**
     * Use explicitly given Encoder.AsObject and Decoder; Simple class name is type name.
     * <p>
     * Usage: Subtype(encoder, decoder)
     */
-  def apply[A](encoder: Encoder.AsObject[A], decoder: Decoder[A])(implicit classTag: ClassTag[A]): Subtype[A] =
+  def apply[A](encoder: Encoder.AsObject[A], decoder: Decoder[A])
+    (implicit classTag: ClassTag[A])
+  : Subtype[A] =
    fromClassName(implicitClass[A], Nil, encoder, decoder)
+
+  /**
+    * Use explicitly given Encoder.AsObject and Decoder; Simple class name is type name.
+    * <p>
+    * Usage: Subtype(encoder, decoder)
+    */
+  def apply[A](encoder: Encoder.AsObject[A], decoder: Decoder[A], aliases: Seq[String] = Nil)
+    (implicit classTag: ClassTag[A])
+  : Subtype[A] =
+   fromClassName(implicitClass[A], Nil, encoder, decoder, aliases = aliases)
 
   /**
     * Use explicitly given Encoder.AsObject and Decoder; Simple class name is type name.

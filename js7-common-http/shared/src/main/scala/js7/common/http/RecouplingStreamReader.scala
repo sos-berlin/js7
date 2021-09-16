@@ -181,7 +181,7 @@ abstract class RecouplingStreamReader[
             new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
         else
           coupleIfNeeded(after = after)
-            .flatMap(after => /*`after` may have changed after initial AgentCreated.*/
+            .flatMap(after => /*`after` may have changed after initial AgentDedicated.*/
               getObservableX(after = after)
                 .materialize.map(Checked.flattenTryChecked)
                 .flatMap {
@@ -246,7 +246,7 @@ abstract class RecouplingStreamReader[
                 Task.raiseError(new IllegalStateException("Coupling while already coupled")))
               _ <- Task { recouplingPause.onCouple() }
               _ <- api.login(onlyIfNotLoggedIn = true)//.timeout(idleTimeout)
-              updatedIndex <- couple(index = after) /*AgentCreated may return a different EventId*/
+              updatedIndex <- couple(index = after) /*AgentDedicated may return a different EventId*/
             } yield updatedIndex
           ) .materializeIntoChecked
             .flatMap {

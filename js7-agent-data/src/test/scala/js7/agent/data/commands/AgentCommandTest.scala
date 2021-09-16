@@ -105,22 +105,22 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "CreateAgent" in {
-    check(AgentCommand.CreateAgent(AgentPath("AGENT"), ControllerId("CONTROLLER")),
+  "DedicateAgent" in {
+    check(AgentCommand.DedicateAgent(AgentPath("AGENT"), ControllerId("CONTROLLER")),
       json"""{
-        "TYPE": "CreateAgent",
+        "TYPE": "DedicateAgent",
         "agentPath": "AGENT",
         "controllerId": "CONTROLLER"
       }""")
   }
 
-  "CreateAgent.Response" in {
+  "DedicateAgent.Response" in {
     testJson[AgentCommand.Response](
-      AgentCommand.CreateAgent.Response(
+      AgentCommand.DedicateAgent.Response(
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
         1000L),
       json"""{
-        "TYPE": "CreateAgent.Response",
+        "TYPE": "DedicateAgent.Response",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
         "agentEventId": 1000
       }""")
