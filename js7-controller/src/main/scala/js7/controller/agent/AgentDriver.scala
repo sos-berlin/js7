@@ -4,7 +4,7 @@ import akka.actor.{DeadLetterSuppression, Props}
 import cats.data.EitherT
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
-import js7.agent.data.Problems.AgentNotCreatedProblem
+import js7.agent.data.Problems.AgentNotDedicatedProblem
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgent}
 import js7.agent.data.event.AgentEvent
@@ -105,7 +105,7 @@ extends ReceiveLoggingActor.WithStash
             case (Resetting, Some(agentRunId)) =>
               client.commandExecute(AgentCommand.Reset(agentRunId))
                 .map {
-                  case Left(AgentNotCreatedProblem) => Checked.unit  // Already reset
+                  case Left(AgentNotDedicatedProblem) => Checked.unit  // Already reset
                   case o => o
                 }
                 .flatMapT(_ =>

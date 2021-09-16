@@ -3,7 +3,7 @@ package js7.tests
 import java.nio.file.Files.move
 import java.nio.file.Paths
 import js7.agent.RunningAgent
-import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentNotCreatedProblem, AgentRunIdMismatchProblem}
+import js7.agent.data.Problems.{AgentAlreadyDedicatedProblem, AgentNotDedicatedProblem, AgentRunIdMismatchProblem}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.{copyDirectory, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked._
@@ -107,7 +107,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
       .await(99.s).orThrow
 
     controller.eventWatch.await[AgentCouplingFailed](
-      _.event.problem == AgentAlreadyCreatedProblem,
+      _.event.problem == AgentAlreadyDedicatedProblem,
       after = eventId)
     agent.terminate().await(99.s)
   }
@@ -160,7 +160,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     val eventId = controller.eventWatch.lastFileTornEventId
     controllerApi.updateUnsignedSimpleItems(Seq(agentRef)).await(99.s).orThrow
     controller.eventWatch.await[AgentCouplingFailed](
-      _.event.problem == AgentNotCreatedProblem,
+      _.event.problem == AgentNotDedicatedProblem,
       after = eventId)
 
     agent.terminate() await 99.s

@@ -26,17 +26,20 @@ object Problems
       "realAgentPath" -> realAgentPath.string)
   }
 
-  final case class AgentWrongControllerProblem(requestedControllerId: ControllerId)
+  final case class AgentWrongControllerProblem(
+    requestedControllerId: ControllerId,
+    realControllerId: ControllerId)
   extends Problem.Coded {
     def arguments = Map(
-      "requestedControllerId" -> requestedControllerId.string)
+      "requestedControllerId" -> requestedControllerId.string,
+      "realControllerId" -> realControllerId.string)
   }
 
   final case class AgentDuplicateOrder(orderId: OrderId) extends Problem.Coded {
     def arguments = Map("orderId" -> orderId.string)
   }
 
-  case object AgentAlreadyCreatedProblem extends Problem.ArgumentlessCoded
+  case object AgentAlreadyDedicatedProblem extends Problem.ArgumentlessCoded
 
-  case object AgentNotCreatedProblem extends Problem.ArgumentlessCoded
+  case object AgentNotDedicatedProblem extends Problem.ArgumentlessCoded
 }

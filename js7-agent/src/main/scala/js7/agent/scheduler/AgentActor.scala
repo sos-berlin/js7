@@ -6,7 +6,7 @@ import com.softwaremill.diffx.generic.auto._
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
-import js7.agent.data.Problems.{AgentAlreadyCreatedProblem, AgentIsShuttingDown, AgentNotCreatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
+import js7.agent.data.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent.AgentDedicated
@@ -129,7 +129,7 @@ extends Actor with Stash with SimpleStateActor
 
     case Input.GetEventWatch =>
       if (!persistence.currentState.isDedicated) {
-        sender() ! Left(AgentNotCreatedProblem)
+        sender() ! Left(AgentNotDedicatedProblem)
       } else {
         eventWatch.whenStarted.map(Right.apply) pipeTo sender()
       }
@@ -183,9 +183,9 @@ extends Actor with Stash with SimpleStateActor
             else if (agentPath != agentState.agentPath)
               Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
             else if (controllerId != agentState.meta.controllerId)
-              Left(AgentWrongControllerProblem(controllerId))
+              Left(AgentWrongControllerProblem(controllerId, agentState.meta.controllerId))
             else if (!agentState.isFreshlyDedicated)
-              Left(AgentAlreadyCreatedProblem)
+              Left(AgentAlreadyDedicatedProblem)
             else
               Right(Nil))
           .flatMapT(eventAndState => Task {
@@ -217,7 +217,7 @@ extends Actor with Stash with SimpleStateActor
         // TODO Check AgentRunId ?
         started.toOption match {
           case None =>
-            response.success(Left(AgentNotCreatedProblem))
+            response.success(Left(AgentNotDedicatedProblem))
           case Some(started) =>
             started.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
         }
@@ -234,7 +234,7 @@ extends Actor with Stash with SimpleStateActor
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
     val agentState = persistence.currentState
     if (!agentState.isDedicated)
-      Left(AgentNotCreatedProblem)
+      Left(AgentNotDedicatedProblem)
     else if (requestedAgentPath != agentState.agentPath)
       Left(AgentPathMismatchProblem(requestedAgentPath, agentState.agentPath))
     else
@@ -244,7 +244,7 @@ extends Actor with Stash with SimpleStateActor
   private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] = {
     val agentState = persistence.currentState
     if (!agentState.isDedicated)
-      Left(AgentNotCreatedProblem)
+      Left(AgentNotDedicatedProblem)
     else if (requestedAgentRunId != agentState.meta.agentRunId) {
       val problem = AgentRunIdMismatchProblem(agentState.meta.agentPath)
       logger.warn(
