@@ -280,7 +280,7 @@ extends ReceiveLoggingActor.WithStash
           eventFetcher.terminate.runToFuture)  // Rejects current commands waiting for coupling
         agentRunIdOnce.toOption match {
           case Some(agentRunId) if reset =>
-            // TODO There seems to be a oncurrent logout, letting Reset fail
+            // TODO There seems to be a concurrent logout, letting Reset fail
             (client.login(onlyIfNotLoggedIn = true) >>
               client.commandExecute(AgentCommand.Reset(agentRunId))
                 .materializeIntoChecked
@@ -311,7 +311,14 @@ extends ReceiveLoggingActor.WithStash
           case None => Task.pure(false)
           case Some(api) =>
             api.commandExecute(AgentCommand.Reset(agentRunIdOnce.orThrow))
-              .map(_.isRight)
+              .materializeIntoChecked
+              .map {
+                case Left(problem) =>
+                  logger.warn(s"Reset: $problem")
+                  false
+                case Right(_) =>
+                  true
+              }
         }
         .flatMap(agentHasBeenReset =>
           eventFetcher.invalidateCoupledApi >>
