@@ -74,7 +74,7 @@ extends UnsignedSimpleItemState
 
       case AgentResetStarted =>
         if (agentRunId.isEmpty)
-          Left(Problem.pure("Agent cannot be reset before it has been initialized (created)"))
+          Left(Problem.pure("Agent is already marked as reset in Controller's AgentRef"))
         else
           Right(copy(
             couplingState = Resetting,

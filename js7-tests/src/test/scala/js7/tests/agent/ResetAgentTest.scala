@@ -136,13 +136,19 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "ResetAgent when Agent is reset" in {
     assert(controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s) == Left(Problem(
-      "Event 'Agent:AGENT <-: AgentResetStarted' cannot be applied: Agent cannot be reset before it has been initialized (created)")))
+      "AgentRef is already in state 'Reset'")))
+    val checked = controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s)
+    val possibleProblems = Set(
+      Problem("AgentRef is already in state 'Resetting'"),
+      Problem("AgentRef is already in state 'Reset'"))
+    assert(checked.left.exists(possibleProblems.contains))
   }
 
   "Simulate journal deletion at restart" in {
     var eventId = eventWatch.lastAddedEventId
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[AgentDedicated](after = eventId)
+    sleep(100.ms)
 
     eventId = eventWatch.lastAddedEventId
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
