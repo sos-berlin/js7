@@ -91,9 +91,9 @@ final class AgentStateTest extends AsyncFreeSpec
       assert(!afterSnapshot.isFreshlyDedicated)
     }
 
-    val agentCreated = AgentDedicated(AgentPath("A"), AgentRunId(JournalId.random()), ControllerId("C"))
+    val dedicated = AgentDedicated(AgentPath("A"), AgentRunId(JournalId.random()), ControllerId("C"))
     "AgentDedicated" in {
-      val created = AgentState.empty.applyEvent(agentCreated).orThrow
+      val created = AgentState.empty.applyEvent(dedicated).orThrow
       assert(created.isDedicated)
       assert(created.isFreshlyDedicated)
     }
