@@ -1,3 +1,5 @@
+// WARNING: Start only in a secure closed environment (like Docker) !!!
+// because tests open localhost TCP ports that may allow code injection.
 /**
   * Install sbt from http://www.scala-sbt.org/.
   * Not needed for standard (JVM-only) production build:
