@@ -68,8 +68,8 @@ final case class ControllerStateExecutor private(
       } yield Some(
         order.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
 
-  def resetAgent(agentPath: AgentPath): Seq[AnyKeyedEvent] = {
-    val agentResetStarted = View(agentPath <-: AgentResetStarted)
+  def resetAgent(agentPath: AgentPath, force: Boolean): Seq[AnyKeyedEvent] = {
+    val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))
     val ordersDetached = controllerState.idToOrder.values.view
       .flatMap(resetAgentForOrder(_, agentPath))
     val itemsDetached = controllerState.itemToAgentToAttachedState.to(View)

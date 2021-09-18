@@ -2,6 +2,8 @@ package js7.tests.agent
 
 import java.nio.file.Files.exists
 import js7.agent.RunningAgent
+import js7.agent.data.Problems.AgentAlreadyDedicatedProblem
+import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.touchFile
@@ -9,11 +11,15 @@ import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.Problems.AgentResetProblem
-import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentReset}
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.ResetAgent
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
+import js7.data.item.VersionId
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
@@ -24,11 +30,14 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
+import js7.proxy.ControllerApi
 import js7.tests.agent.ResetAgentTest._
-import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.jobs.EmptyJob
+import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
@@ -44,21 +53,21 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     """ withFallback super.agentConfig
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(workflow, forkingWorkflow, lock, jobResource)
+  protected val items = Seq(simpleWorkflow, lockWorkflow, forkingWorkflow, lock, jobResource)
 
   private var myAgent: RunningAgent = null
 
-  "ResetAgent while an order is executed" in {
+  "ResetAgent while a locking order is executed" in {
     myAgent = agent
     val orderId = OrderId("RESET-AGENT-1")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.terminated.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
-      OrderAdded(workflow.id),
+      OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
       OrderLockAcquired(lock.path),
@@ -77,14 +86,14 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Run another order" in {
     val orderId = OrderId("RESET-AGENT-2")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controllerApi.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttachable](_.key == orderId)
 
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
-      OrderAdded(workflow.id),
+      OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
       OrderLockAcquired(lock.path),
@@ -100,7 +109,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
-  "fork" in {
+  "ReseAgent while a forking order is executed" in {
     val orderId = OrderId("FORKING")
     val childOrderId = orderId / "FORK"
     controllerApi.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
@@ -134,9 +143,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
   }
 
-  "ResetAgent when Agent is reset" in {
-    assert(controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s) == Left(Problem(
-      "AgentRef is already in state 'Reset'")))
+  "ResetAgent when Agent is reset already" in {
     val checked = controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s)
     val possibleProblems = Set(
       Problem("AgentRef is already in state 'Resetting'"),
@@ -172,8 +179,63 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "One last order" in {
-    barrier.flatMap(_.tryPut(())).runSyncUnsafe()
-    controller.runOrder(FreshOrder(OrderId("🔷"), workflow.path))
+    controller.runOrder(FreshOrder(OrderId("🔷"), simpleWorkflow.path))
+  }
+
+  "Let a second Controller steal the Agent with ResetAgent force" in {
+    // The second Controller has the same ControllerId("Controller"), just because this
+    // is easy to code. It is expected to work for different ControllerId, too.
+
+    val eventId = eventWatch.lastAddedEventId
+    val agentTree = directoryProvider.agents(0)
+    val secondProvider = new DirectoryProvider(
+      testName = Some("ResetAgentTest-second"),
+      agentPaths = Nil,
+      controllerConfig = config"""
+        js7.auth.agents.AGENT = "${agentTree.password.string}"
+      """.withFallback(controllerConfig))
+    autoClosing(secondProvider) { _ =>
+      secondProvider.runController() { secondController =>
+        val v1 = VersionId("1")
+        val secondControllerApi = new ControllerApi(
+          admissionsToApiResources(Seq(Admission(
+            secondController.localUri,
+            Some(directoryProvider.controller.userAndPassword))
+          ))(secondController.actorSystem))
+        secondControllerApi.updateItems(Observable(
+          AddOrChangeSimple(AgentRef(agentPath, agents(0).localUri)),
+          AddOrChangeSigned(secondProvider.toSignedString(jobResource)),
+          AddVersion(v1),
+          AddOrChangeSigned(secondProvider.toSignedString(simpleWorkflow.withVersion(v1))))
+        ).await(99.s).orThrow
+
+        // This is not our Agent
+        val problem = secondController.eventWatch.await[AgentCouplingFailed]().head.value.event.problem
+        assert(problem == AgentAlreadyDedicatedProblem)
+
+        // Simple ResetAgent does not work
+        val checked = secondControllerApi.executeCommand(ResetAgent(agentPath)).await(99.s)
+        assert(checked == Left(Problem("AgentRef is already in state 'Reset'")))
+
+        // Steal this Agent with ReseAgent(force)!
+        secondControllerApi.executeCommand(ResetAgent(agentPath, force = true)).await(99.s)
+        myAgent.terminated.await(99.s)
+        myAgent = directoryProvider.startAgent(agentPath) await 99.s
+
+        // Now, we the Agent is ours! It is dedicated to secondController
+        secondController.eventWatch.await[AgentDedicated]()
+
+        secondController.eventWatch.await[AgentCoupled]()
+        val events = secondController.runOrder(
+          FreshOrder(OrderId("SECOND-CONTROLLER"), simpleWorkflow.path))
+        assert(events.last.value == OrderFinished)
+
+        // The other Controller gets errors now, because we stole the Agent:
+        eventWatch.await[AgentCouplingFailed](after = eventId)
+
+        myAgent.terminate().await(99.s)
+      }
+    }
   }
 }
 
@@ -182,7 +244,11 @@ object ResetAgentTest
   private val agentPath = AgentPath("AGENT")
   private val lock = Lock(LockPath("LOCK"))
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
-  private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL",
+
+  private val simpleWorkflow = Workflow(WorkflowPath("SIMPLE-WORKFLOW") ~ "INITIAL",
+    Seq(EmptyJob.execute(agentPath)))
+
+  private val lockWorkflow = Workflow(WorkflowPath("LOCK-WORKFLOW") ~ "INITIAL",
     Vector(
       TryInstruction(
         Workflow.of(

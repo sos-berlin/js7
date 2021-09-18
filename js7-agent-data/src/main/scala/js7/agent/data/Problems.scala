@@ -39,7 +39,9 @@ object Problems
     def arguments = Map("orderId" -> orderId.string)
   }
 
+  type AgentAlreadyDedicatedProblem = AgentAlreadyDedicatedProblem.type
   case object AgentAlreadyDedicatedProblem extends Problem.ArgumentlessCoded
 
+  type AgentNotDedicatedProblem = AgentNotDedicatedProblem.type
   case object AgentNotDedicatedProblem extends Problem.ArgumentlessCoded
 }

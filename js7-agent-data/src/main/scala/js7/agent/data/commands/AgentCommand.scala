@@ -115,7 +115,7 @@ object AgentCommand extends CommonCommand.Companion
     extends AgentCommand.Response with Big
   }
 
-  final case class Reset(agentRunId: AgentRunId)
+  final case class Reset(agentRunId: Option[AgentRunId])
   extends AgentCommand
   object Reset {
     type Response = AgentCommand.Response

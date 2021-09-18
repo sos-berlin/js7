@@ -1,6 +1,7 @@
 package js7.data.agent
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.extras.Configuration.default.withDefaults
+import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState, _}
@@ -47,7 +48,7 @@ extends UnsignedSimpleItemState
 
       case AgentCoupled =>
         couplingState match {
-          case Resetting =>
+          case Resetting(_) =>
             // Required until ControllerOrderKeeper ResetAgent uses persistence.lock !!!
             scribe.debug("(WARN) Ignoring AgentCoupled event due to Resetting state")
             Right(this)
@@ -72,12 +73,13 @@ extends UnsignedSimpleItemState
           Right(copy(
             eventId = eventId_))
 
-      case AgentResetStarted =>
-        if (agentRunId.isEmpty)
-          Left(Problem.pure("Agent is already marked as reset in Controller's AgentRef"))
+      case AgentResetStarted(force) =>
+        if (agentRunId.isEmpty && !force)
+          Left(Problem.pure("Agent is already marked as 'Reset' in Controller's AgentRef"))
         else
           Right(copy(
-            couplingState = Resetting,
+            couplingState = Resetting(force),
+            agentRunId = if (force) None else agentRunId,
             eventId = EventId.BeforeFirst,
             timezone = None,
             problem = None))
@@ -103,14 +105,15 @@ object AgentRefState
   @deprecated("Use problem field instead", ">2.0.0-alpha.20210909")
   final case class CouplingFailed(problem: Problem) extends CouplingState
   case object ShutDown extends CouplingState
-  case object Resetting extends CouplingState
+  final case class Resetting(force: Boolean = false) extends CouplingState
 
   object CouplingState {
+    implicit val configuration = withDefaults
     implicit val jsonCodec: TypedJsonCodec[CouplingState] = TypedJsonCodec(
       Subtype(Reset),
       Subtype(Coupled),
-      Subtype(deriveCodec[CouplingFailed]),
+      Subtype(deriveConfiguredCodec[CouplingFailed]),
       Subtype(ShutDown),
-      Subtype(Resetting))
+      Subtype(deriveConfiguredCodec[Resetting]))
   }
 }

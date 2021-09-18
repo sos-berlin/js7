@@ -161,8 +161,8 @@ extends Actor with Stash with SimpleStateActor
           response.completeWith(terminateOrderKeeper(command))
         }
 
-      case AgentCommand.Reset(agentRunId) =>
-        checkAgentRunId(agentRunId) match {
+      case AgentCommand.Reset(maybeAgentRunId) =>
+        maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match {
           case Left(problem) => response.success(Left(problem))
           case Right(()) =>
             isResetting = true
@@ -189,7 +189,7 @@ extends Actor with Stash with SimpleStateActor
             else
               Right(Nil))
           .flatMapT(eventAndState => Task {
-            logger.info(s"Creating Agent '${agentPath.string}' for '$controllerId'")
+            logger.info(s"Dedicating Agent '${agentPath.string}' to '$controllerId'")
             addOrderKeeper(agentPath, controllerId)
               .rightAs(eventAndState._2.eventId)
           })

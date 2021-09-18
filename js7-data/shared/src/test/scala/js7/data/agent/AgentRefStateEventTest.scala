@@ -88,9 +88,17 @@ final class AgentRefStateEventTest extends AnyFreeSpec
 
     "AgentResetStarted" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
-        AgentPath("AGENT") <-: AgentResetStarted,json"""
+        AgentPath("AGENT") <-: AgentResetStarted(force = true),json"""
         {
-          "TYPE":  "AgentResetStarted",
+          "TYPE": "AgentResetStarted",
+          "Key": "AGENT",
+          "force": true
+        }""")
+
+      testJsonDecoder[KeyedEvent[AgentRefStateEvent]](
+        AgentPath("AGENT") <-: AgentResetStarted(), json"""
+        {
+          "TYPE": "AgentResetStarted",
           "Key": "AGENT"
         }""")
     }

@@ -18,12 +18,14 @@ object AgentEvent
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
+  /** Agent has been dedicated to a Controlller. */
   final case class AgentDedicated(
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId)
   extends AgentEvent
 
+  /** Agent is up and running. */
   final case class AgentReady(
     timezone: String,
     totalRunningTime: FiniteDuration)

@@ -469,7 +469,7 @@ with MainJournalingActor[ControllerState, Event]
       for (agentEntry <- agentRegister.get(sender())) {
         import agentEntry.agentPath
         for (agentRefState <- persistence.currentState.pathToAgentRefState.get(agentPath)) {
-          if (agentRefState.couplingState != Resetting) {
+          if (!agentRefState.couplingState.isInstanceOf[Resetting]) {
             if (!agentRefState.agentRunId.forall(_ == agentRunId)) {
               logger.debug(s"AgentDriver.Output.EventsFromAgent: Unknown agentRunId=$agentRunId")
             } else {
@@ -529,7 +529,7 @@ with MainJournalingActor[ControllerState, Event]
                 timestampedEvents ++= subseqEvents.map(Timestamped(_))
 
                 persistence.currentState.pathToAgentRefState.get(agentPath).map(_.couplingState) match {
-                  case Some(AgentRefState.Resetting | AgentRefState.Resetting) =>
+                  case Some(AgentRefState.Resetting(_) | AgentRefState.Reset) =>
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with persistence.lock!
                     // (switch from actors to Task required!)
@@ -590,7 +590,7 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister -= actor
         for (agentRefState <- persistence.currentState.pathToAgentRefState.checked(agentPath)) {
           agentRefState.couplingState match {
-            case Resetting | Reset =>
+            case Resetting(_) | Reset =>
               agentEntry = registerAgent(agentRefState.agentRef,
                 agentRunId = None, eventId = EventId.BeforeFirst)
               agentEntry.actor ! AgentDriver.Input.StartFetchingEvents
@@ -814,7 +814,7 @@ with MainJournalingActor[ControllerState, Event]
           Right(ControllerCommand.Response.Accepted)
         }
 
-      case ControllerCommand.ResetAgent(agentPath) =>
+      case ControllerCommand.ResetAgent(agentPath, force) =>
         agentRegister.checked(agentPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(agentEntry) =>
@@ -823,11 +823,13 @@ with MainJournalingActor[ControllerState, Event]
               case Right(agentRefState) =>
                 // TODO persistence.lock(agentPath), to avoid race with AgentCoupled, too
                 agentRefState.couplingState match {
-                  case state @ (Resetting | Reset) =>
-                    Future.successful(Left(Problem.pure(s"AgentRef is already in state '$state'")))
+                  case Resetting(frc) if !force || frc != force =>
+                    Future.successful(Left(Problem.pure(s"AgentRef is already in state 'Resetting'")))
+                  case Reset if !force =>
+                    Future.successful(Left(Problem.pure(s"AgentRef is already in state 'Reset'")))
                   case _ =>
                     // As a workaround, AgentRefState.applyEvent ignores AgentCoupled if Resetting
-                    val events = persistence.currentState.resetAgent(agentPath)
+                    val events = persistence.currentState.resetAgent(agentPath, force = force)
                     persistence.currentState.applyEvents(events) match {
                       case Left(problem) => Future.successful(Left(problem))
                       case Right(_) =>
@@ -835,7 +837,7 @@ with MainJournalingActor[ControllerState, Event]
                           // ResetAgent command may return with error despite it has reset the orders
                           agentEntry.isResetting = true
                           val resettingAgent = agentEntry
-                            .actor.?(AgentDriver.Input.Reset)(controllerConfiguration.akkaAskTimeout)
+                            .actor.?(AgentDriver.Input.Reset(force = force))(controllerConfiguration.akkaAskTimeout)
                             .mapTo[Try[Boolean]]
                             .map { tried =>
                               for (t <- tried.failed) logger.error("ResetAgent: " + t.toStringWithCauses, t)
@@ -849,7 +851,7 @@ with MainJournalingActor[ControllerState, Event]
                                   .pathToAgentRefState.checked(agentPath)
                                   .map(_.couplingState)
                                   .map {
-                                    case Resetting => (agentPath <-: AgentReset) :: Nil
+                                    case Resetting(_) => (agentPath <-: AgentReset) :: Nil
                                     case _ => Nil
                                   })
                               case false =>

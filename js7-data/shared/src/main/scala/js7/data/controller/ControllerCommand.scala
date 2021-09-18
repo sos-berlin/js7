@@ -1,5 +1,7 @@
 package js7.data.controller
 
+import io.circe.generic.extras.Configuration.default.withDefaults
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
@@ -231,7 +233,7 @@ object ControllerCommand extends CommonCommand.Companion
     extends ControllerCommand.Response
   }
 
-  final case class ResetAgent(agentPath: AgentPath)
+  final case class ResetAgent(agentPath: AgentPath, force: Boolean = false)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -250,26 +252,28 @@ object ControllerCommand extends CommonCommand.Companion
       Subtype.named(deriveCodec[InternalClusterCommand.Response], "InternalClusterCommand.Response"))
   }
 
+  private implicit val customConfig = withDefaults
+
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
-    Subtype(deriveCodec[Batch]),
-    Subtype(deriveCodec[AddOrder]),
-    Subtype(deriveCodec[AddOrders]),
+    Subtype(deriveConfiguredCodec[Batch]),
+    Subtype(deriveConfiguredCodec[AddOrder]),
+    Subtype(deriveConfiguredCodec[AddOrders]),
     Subtype[CancelOrders],
-    Subtype(deriveCodec[PostNotice]),
-    Subtype(deriveCodec[DeleteNotice]),
-    Subtype(deriveCodec[DeleteOrdersWhenTerminated]),
-    Subtype(deriveCodec[AnswerOrderPrompt]),
-    Subtype(deriveCodec[NoOperation]),
+    Subtype(deriveConfiguredCodec[PostNotice]),
+    Subtype(deriveConfiguredCodec[DeleteNotice]),
+    Subtype(deriveConfiguredCodec[DeleteOrdersWhenTerminated]),
+    Subtype(deriveConfiguredCodec[AnswerOrderPrompt]),
+    Subtype(deriveConfiguredCodec[NoOperation]),
     Subtype(EmitTestEvent),
     Subtype[EmergencyStop],
-    Subtype(deriveCodec[ReleaseEvents]),
+    Subtype(deriveConfiguredCodec[ReleaseEvents]),
     Subtype[ShutDown],
-    Subtype(deriveCodec[ResumeOrder]),
-    Subtype(deriveCodec[ResumeOrders]),
-    Subtype(deriveCodec[SuspendOrders]),
-    Subtype(deriveCodec[ClusterAppointNodes]),
+    Subtype(deriveConfiguredCodec[ResumeOrder]),
+    Subtype(deriveConfiguredCodec[ResumeOrders]),
+    Subtype(deriveConfiguredCodec[SuspendOrders]),
+    Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
-    Subtype(deriveCodec[InternalClusterCommand]),
-    Subtype(deriveCodec[ResetAgent]),
+    Subtype(deriveConfiguredCodec[InternalClusterCommand]),
+    Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(TakeSnapshot))
 }

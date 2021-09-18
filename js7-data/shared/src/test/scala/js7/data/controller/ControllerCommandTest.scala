@@ -271,7 +271,14 @@ final class ControllerCommandTest extends AnyFreeSpec
   }
 
   "ResetAgent" in {
-    testJson[ControllerCommand](ResetAgent(AgentPath("AGENT")),
+    testJson[ControllerCommand](ResetAgent(AgentPath("AGENT"), force = true),
+      json"""{
+        "TYPE": "ResetAgent",
+        "agentPath": "AGENT",
+        "force": true
+      }""")
+
+    testJsonDecoder[ControllerCommand](ResetAgent(AgentPath("AGENT")),
       json"""{
         "TYPE": "ResetAgent",
         "agentPath": "AGENT"

@@ -102,17 +102,17 @@ extends ReceiveLoggingActor.WithStash
       Task(persistence.currentState.pathToAgentRefState.checked(agentPath))
         .flatMapT(agentRefState =>
           ((agentRefState.couplingState, agentRefState.agentRunId) match {
-            case (Resetting, Some(agentRunId)) =>
-              client.commandExecute(AgentCommand.Reset(agentRunId))
+            case (Resetting(false), None) =>
+              Task.pure(Left(Problem.pure("Resetting, but no AgentRunId?")))  // Invalid state
+
+            case (Resetting(force), maybeAgentRunId) if force || maybeAgentRunId.isDefined =>
+              client.commandExecute(AgentCommand.Reset(maybeAgentRunId))
                 .map {
                   case Left(AgentNotDedicatedProblem) => Checked.unit  // Already reset
                   case o => o
                 }
                 .flatMapT(_ =>
                   persistence.persistKeyedEvent(agentPath <-: AgentReset))
-
-            case (Resetting, None) =>
-              Task.pure(Left(Problem.pure("Resetting, but no AgentRunId?")))  // Invalid state
 
             case _ =>
               Task.pure(Checked.unit)
@@ -280,9 +280,10 @@ extends ReceiveLoggingActor.WithStash
           eventFetcher.terminate.runToFuture)  // Rejects current commands waiting for coupling
         agentRunIdOnce.toOption match {
           case Some(agentRunId) if reset =>
+            // Required only for ItemDeleted, redundant for ResetAgent
             // TODO There seems to be a concurrent logout, letting Reset fail
             (client.login(onlyIfNotLoggedIn = true) >>
-              client.commandExecute(AgentCommand.Reset(agentRunId))
+              client.commandExecute(AgentCommand.Reset(Some(agentRunId)))
                 .materializeIntoChecked
                 .map {
                   case Left(problem) => logger.error(s"Reset command failed: $problem")
@@ -302,7 +303,7 @@ extends ReceiveLoggingActor.WithStash
     case Internal.Terminate =>
       stopIfTerminated()
 
-    case Input.Reset =>
+    case Input.Reset(force) =>
       val sender = this.sender()
       isReset = true
       commandQueue.reset()
@@ -310,7 +311,7 @@ extends ReceiveLoggingActor.WithStash
         .flatMap {
           case None => Task.pure(false)
           case Some(api) =>
-            api.commandExecute(AgentCommand.Reset(agentRunIdOnce.orThrow))
+            api.commandExecute(AgentCommand.Reset(!force ? agentRunIdOnce.orThrow))
               .materializeIntoChecked
               .map {
                 case Left(problem) =>
@@ -595,7 +596,7 @@ private[controller] object AgentDriver
       reset: Boolean = false)
     extends DeadLetterSuppression
 
-    final case object Reset extends DeadLetterSuppression
+    final case class Reset(force: Boolean) extends DeadLetterSuppression
   }
 
   object Output {
