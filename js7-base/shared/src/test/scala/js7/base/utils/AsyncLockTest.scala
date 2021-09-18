@@ -3,6 +3,7 @@ package js7.base.utils
 import js7.base.time.Stopwatch
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.util.Random
 
@@ -11,19 +12,31 @@ import scala.util.Random
   */
 final class AsyncLockTest extends AsyncFreeSpec
 {
-  private val n = 10000
+  private val n = 100000
   private val initial = 1
 
-  "AsyncLock" in {
+  "AsyncLock, concurrent" in {
     val lock = AsyncLock("TEST", logWorryDurations = Nil)
     doTest(lock.lock(_))
       .map(o => assert(o == Vector.fill(n)(initial)))
       .runToFuture
   }
 
-  "Same test without lock" in {
+  "No AsyncLock, concurrent" in {
     doTest(identity)
       .map(o => assert(o != Vector.fill(n)(initial)))
+      .runToFuture
+  }
+
+  "AsyncLock, not concurrent" in {
+    val lock = AsyncLock("TEST", logWorryDurations = Nil)
+    Observable.fromIterable(1 to n)
+      .map(_ => lock.lock(Task.unit))
+      .completedL
+      .timed.map { case (duration, ()) =>
+        scribe.info(Stopwatch.itemsPerSecondString(duration, n))
+        succeed
+      }
       .runToFuture
   }
 
