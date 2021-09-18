@@ -198,8 +198,14 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderDetached)))
 
         // TORN EVENT STREAM
-        val problem = controllerApi.eventAndStateObservable(fromEventId = Some(EventId.BeforeFirst))
-          .take(1).completedL.materialize.await(99.s).failed.get.asInstanceOf[ProblemException].problem
+        val problem = controllerApi
+          .eventAndStateObservable(fromEventId = Some(EventId.BeforeFirst))
+          .take(1)
+          .completedL
+          .materialize
+          .await(99.s)
+          .failed.get.asInstanceOf[ProblemException]
+          .problem
         assert(problem == SnapshotForUnknownEventIdProblem(EventId.BeforeFirst))
 
         val eventId = controllerApi.eventAndStateObservable(fromEventId = Some(finishedEventId))

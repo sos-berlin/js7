@@ -12,7 +12,7 @@ extends EventInstructionExecutor
 {
   type Instr = AddOrder
 
-  def toEvents(addOrder: AddOrder, order: Order[Order.State], state: StateView) = {
+  def toEvents(addOrder: AddOrder, order: Order[Order.State], state: StateView) =
     detach(order)
       .orElse(start(order))
       .getOrElse(
@@ -36,5 +36,4 @@ extends EventInstructionExecutor
             events.map(_.map(order.id <-: _).toList)
           case _ => Right(Nil)
         })
-  }
 }
