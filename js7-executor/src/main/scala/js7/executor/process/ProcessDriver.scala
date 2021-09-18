@@ -71,8 +71,8 @@ final class ProcessDriver(
                   maybeWindowsLogon))
             }
           ).flatMapT(processConfiguration =>
-            startProcessLock.lock(
-              globalStartProcessLock.lock(
+            startProcessLock.lock("startProcess")(
+              globalStartProcessLock.lock(orderId.toString)(
                 startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
                 .flatMapT { richProcess =>
                   logger.info(s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
@@ -123,7 +123,7 @@ final class ProcessDriver(
     }
 
   def kill(signal: ProcessSignal): Task[Unit] =
-    startProcessLock.lock(Task.defer {
+    startProcessLock.lock("kill")(Task.defer {
       richProcessOnce.toOption match {
         case None =>
           logger.debug(s"$orderId: Kill before start")
@@ -151,7 +151,7 @@ object ProcessDriver
   private val logger = Logger(getClass)
 
   /** Linux may return a "busy" error when starting many processes at once. */
-  private val globalStartProcessLock = TaskLock("syncStartProcess")
+  private val globalStartProcessLock = TaskLock("globalStartProcessLock")
 
   private object taskIdGenerator extends Iterator[TaskId] {
     private val generator = newGenerator()

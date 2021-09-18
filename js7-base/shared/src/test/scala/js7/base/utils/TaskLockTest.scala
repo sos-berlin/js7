@@ -1,28 +1,25 @@
 package js7.base.utils
 
-import cats.effect.Resource
-import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.util.Random
 
-/**
-  * @author Joacim Zschimmer
-  */
 final class TaskLockTest extends AsyncFreeSpec
 {
-  private val n = 1000
+  private val n = 10000
   private val initial = 1
 
-  "TaskLock" in {
-    val lock = TaskLock("TEST", logWorryDurations = Nil)
-    doTest(task => lock.lock(task))
+  "AsyncLock" in {
+    val lock = AsyncLock("TEST", logWorryDurations = Nil)
+    doTest(lock.lock(_))
       .map(o => assert(o == Vector.fill(n)(initial)))
       .runToFuture
   }
 
-  "Other Resource does not lock" in {
-    doTest(task => task)
+  "Same test without lock" in {
+    doTest(identity)
       .map(o => assert(o != Vector.fill(n)(initial)))
       .runToFuture
   }
@@ -36,13 +33,17 @@ final class TaskLockTest extends AsyncFreeSpec
             val found = guardedVariable
             guardedVariable += 1
             found
-          }.flatMap { found =>
-            Task.sleep(100.µs) >>
+          } .tapEval(_ => if (Random.nextBoolean()) Task.shift else Task.unit)
+            .flatMap { found =>
               Task {
                 guardedVariable = initial
                 found
               }
-          }
+            }
         })
+      .timed.map { case (duration, result) =>
+        scribe.info(Stopwatch.itemsPerSecondString(duration, n))
+        result
+    }
   }
 }
