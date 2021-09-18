@@ -96,7 +96,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Existing child OrderId" in {
-    // Existing child orders are thought only. This should not be possible.
+    // Existing child orders are thought only. It is expected to be impossible in production.
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
     controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE|🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
     eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE|🥕"))
@@ -117,8 +117,9 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCancelled))
 
     controllerApi.executeCommand(
-      CancelOrders(Seq(order.id / "🥕"), CancellationMode.kill(immediately = true))
+      CancelOrders(Seq(OrderId("DUPLICATE|🥕")), CancellationMode.kill(immediately = true))
     ).await(99.s).orThrow
+    eventWatch.await[OrderCancelled](_.key == OrderId("DUPLICATE|🥕"))
   }
 }
 
