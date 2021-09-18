@@ -163,6 +163,7 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
 object HttpControllerApi
 {
   val UriPrefixPath = "/controller"
+  private val logger = scribe.Logger[this.type]
 
   /** Logs out when the resource is being released. */
   def resource(
@@ -177,7 +178,7 @@ object HttpControllerApi
       api.logout()
         .void
         .onErrorHandle { t =>
-          scribe.debug(s"logout() => ${t.toStringWithCauses}")
+          logger.debug(s"logout() => ${t.toStringWithCauses}")
           ()
         })
 

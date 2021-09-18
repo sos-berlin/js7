@@ -10,6 +10,7 @@ import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
+import js7.data.execution.workflow.OrderEventSource._
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLockDequeued, OrderLockReleased, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
@@ -106,13 +107,13 @@ final class OrderEventSource(state: StateView)
           if (order.isOrderFailedApplicable)
             failOrDetach(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
               case Left(prblm) =>
-                scribe.debug(s"WARN ${order.id}: $prblm")
+                logger.debug(s"WARN ${order.id}: $prblm")
                 OrderBroken(problem) :: Nil
               case Right(events) => events
             }
           else if (order.isAttached && order.isInDetachableState
             && order.copy(attachedState = None).isOrderFailedApplicable) {
-            scribe.debug(s"Detaching ${order.id} after failure: $problem")
+            logger.debug(s"Detaching ${order.id} after failure: $problem")
             // Controller is expected to repeat this call and to reproduce the problem.
             OrderDetachable :: Nil
           } else
@@ -130,7 +131,7 @@ final class OrderEventSource(state: StateView)
     fail(order, outcome, uncatchable)
       .map(events =>
         if (events.view.collectFirst { case _: OrderFailed if order.isAttached => }.nonEmpty) {
-          scribe.debug(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
+          logger.debug(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
           // Controller is expected to reproduce the problem !!!
           OrderDetachable :: Nil
         } else
@@ -495,9 +496,13 @@ final class OrderEventSource(state: StateView)
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow.checked(workflowPosition.workflowId) match {
       case Left(_) =>
-        scribe.error(s"Missing ${workflowPosition.workflowId}")
+        logger.error(s"Missing ${workflowPosition.workflowId}")
         Gap.empty
       case Right(workflow) =>
         workflow.instruction(workflowPosition.position)
     }
+}
+
+object OrderEventSource {
+  private val logger = scribe.Logger[this.type]
 }

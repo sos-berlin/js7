@@ -17,6 +17,7 @@ object Checked
 {
   val unit = Checked(())
   val completed = Checked(Completed)
+  private val logger = scribe.Logger[this.type]
 
   def apply[A](a: A): Checked[A] = Right(a)
 
@@ -42,7 +43,7 @@ object Checked
     try Right(f)
     catch {
       case NonFatal(t) =>
-        for (t <- t.ifStackTrace) scribe.debug(s"Checked.catchNonFatal: ${t.toStringWithCauses}", t)
+        for (t <- t.ifStackTrace) logger.debug(s"Checked.catchNonFatal: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
     }
 

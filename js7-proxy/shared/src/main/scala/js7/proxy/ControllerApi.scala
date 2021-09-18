@@ -25,6 +25,7 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersion
 import js7.data.item.{ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
+import js7.proxy.ControllerApi._
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyEvent}
@@ -174,9 +175,9 @@ extends ControllerApiWithHttp
         .onErrorRestartLoop(()) {
           case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
             if (warned.elapsed >= 60.s) {
-              scribe.warn(t.toStringWithCauses)
+              logger.warn(t.toStringWithCauses)
               warned = now
-            } else scribe.debug(t.toStringWithCauses)
+            } else logger.debug(t.toStringWithCauses)
             apiCache.clear >>
               Task.sleep(delays.next()) >>
               retry(())
@@ -188,6 +189,8 @@ extends ControllerApiWithHttp
 
 object ControllerApi
 {
+  private val logger = scribe.Logger[this.type]
+
   def resource(
     apiResources: Seq[Resource[Task, HttpControllerApi]],
     proxyConf: ProxyConf = ProxyConf.default)

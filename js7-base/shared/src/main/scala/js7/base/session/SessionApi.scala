@@ -4,6 +4,7 @@ import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.session.SessionApi._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax._
@@ -40,27 +41,29 @@ trait SessionApi
 
   final def tryLogout: Task[Completed] =
     Task.defer {
-      scribe.trace(s"$toString: tryLogout")
+      logger.trace(s"$toString: tryLogout")
       tryLogoutLock.lock(
         logout()
           .onErrorRecover { case t =>
-            scribe.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
+            logger.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
             clearSession()
             Completed
           }
           .guaranteeCase(exitCase => Task {
-            scribe.trace(s"$toString: tryLogout => $exitCase")
+            logger.trace(s"$toString: tryLogout => $exitCase")
           }))
     }
 
   protected[SessionApi] final def onErrorDefault(throwable: Throwable): Task[Unit] =
     Task {
-      scribe.debug(toString + ": " + throwable.toStringWithCauses)
+      logger.debug(toString + ": " + throwable.toStringWithCauses)
     }
 }
 
 object SessionApi
 {
+  private val logger = scribe.Logger[this.type]
+
   trait NoSession extends SessionApi
   {
     final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false) =
@@ -104,12 +107,12 @@ object SessionApi
 
     def logError(throwable: Throwable): Task[Boolean] =
       Task {
-        scribe.warn(s"$toString: ${throwable.toStringWithCauses}")
+        logger.warn(s"$toString: ${throwable.toStringWithCauses}")
         throwable match {
           case _: javax.net.ssl.SSLException =>
           case _ =>
             if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
-              scribe.debug(s"$toString: ${throwable.toString}", throwable)
+              logger.debug(s"$toString: ${throwable.toString}", throwable)
             }
         }
         true
@@ -137,7 +140,7 @@ object SessionApi
                 // Race condition with a parallel operation,
                 // which after the same error has already logged-in again successfully.
                 // Should be okay if login is delayed like here
-                scribe.info(s"Login again due to: $problem")
+                logger.info(s"Login again due to: $problem")
                 Task.sleep(delays.next()) >>
                   login() >>
                   retry(())
@@ -159,7 +162,7 @@ object SessionApi
                 case HttpException.HasProblem(problem)
                   if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
                   // Do not call onError on this minor problem
-                  scribe.debug(problem.toString)
+                  logger.debug(problem.toString)
                   loginUntilReachable(delays, onError = onError)
 
                 case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>

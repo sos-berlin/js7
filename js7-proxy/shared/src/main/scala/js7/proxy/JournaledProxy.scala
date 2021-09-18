@@ -59,7 +59,7 @@ trait JournaledProxy[S <: JournaledState[S]]
       }
       .takeUntil(Observable.fromFuture(stopRequested.future))
       .doOnSubscriptionCancel(Task(
-        scribe.debug("connectableObservable: cancelling")))
+        logger.debug("connectableObservable: cancelling")))
       .publish(scheduler)
 
   final def observable: Observable[EventAndState[Event, S]] =
@@ -77,17 +77,17 @@ trait JournaledProxy[S <: JournaledState[S]]
       whenCompleted.onComplete {
         case Success(()) =>
           if (!stopRequested.isCompleted) {
-            scribe.error("Observable has terminated")
+            logger.error("Observable has terminated")
           }
           // ???
         case Failure(t) =>
-          scribe.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+          logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
           // ???
       }
       CancelableFuture(
         currentStateFilled.future,
         () => {
-          scribe.debug("startObserving: cancelling")
+          logger.debug("startObserving: cancelling")
           whenCompleted.cancel()
           cancelable.cancel()
         })
@@ -134,7 +134,7 @@ object JournaledProxy
 {
   private type Api[S <: JournaledState[S]] = EventApi { type State = S }
 
-  private val scribe = _root_.scribe.Logger(getClass.scalaName)
+  private val logger = scribe.Logger[this.type]
 
   def observable[S <: JournaledState[S]](
     apiResources: Seq[Resource[Task, Api[S]]],
@@ -169,13 +169,13 @@ object JournaledProxy
                     case t if fromEventId.isEmpty || !isTorn(t) =>
                       val continueWithState =
                         if (isTorn(t)) {
-                          scribe.error(t.toStringWithCauses)
-                          scribe.warn("Restarting observation from a new snapshot, loosing some events")
+                          logger.error(t.toStringWithCauses)
+                          logger.warn("Restarting observation from a new snapshot, loosing some events")
                           None
                         } else {
-                          scribe.warn(t.toStringWithCauses)
-                          if (t.getStackTrace.nonEmpty) scribe.debug(t.toStringWithCauses, t)
-                          scribe.debug("Restarting observation and try to continue seamlessly after=" +
+                          logger.warn(t.toStringWithCauses)
+                          if (t.getStackTrace.nonEmpty) logger.debug(t.toStringWithCauses, t)
+                          logger.debug("Restarting observation and try to continue seamlessly after=" +
                             EventId.toString(state.eventId))
                           Some(lastState)
                         }
@@ -209,7 +209,7 @@ object JournaledProxy
     }
 
     observable2
-      .tapEach(o => scribe.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
+      .tapEach(o => logger.trace(s"observable => ${o.stampedEvent.toString.truncateWithEllipsis(200)}"))
   }
 
   /** Drop all events until the requested one and
@@ -333,7 +333,7 @@ object JournaledProxy
                   logProblems(list, maybeActive)
                   apisWithClusterNodeStateFibers
                     .collect { case o if list.forall(_.api ne o.api) =>
-                      scribe.debug(s"Cancel discarded request to '${o.api}'")
+                      logger.debug(s"Cancel discarded request to '${o.api}'")
                       o.fiber.cancel
                     }
                     .sequence
@@ -345,7 +345,7 @@ object JournaledProxy
                 .guaranteeCase {
                   case ExitCase.Completed => Task.unit
                   case exitCase =>
-                    scribe.debug(exitCase.toString)
+                    logger.debug(exitCase.toString)
                     apisWithClusterNodeStateFibers
                       .map(_.fiber.cancel)
                       .sequence
@@ -353,13 +353,13 @@ object JournaledProxy
                 })
         )
         .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
-          scribe.warn(throwable.toStringWithCauses)
-          if (throwable.getStackTrace.nonEmpty) scribe.debug(throwable.toString, throwable)
+          logger.warn(throwable.toStringWithCauses)
+          if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toString, throwable)
           tryAgain(()).delayExecution(failureDelay)
       }
       .map { case (api, clusterNodeState) =>
         val x = if (clusterNodeState.isActive) "active" else "maybe passive"
-        scribe.info(s"Selected $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
+        logger.info(s"Selected $x node ${api.baseUri} '${clusterNodeState.nodeId}'")
         api
       }
     }
@@ -384,10 +384,10 @@ object JournaledProxy
     maybeActive: Option[(Api, ClusterNodeState)])
   : Unit = {
     list.collect { case ApiWithNodeState(api, Left(problem)) => api -> problem }
-      .foreach { case (api, problem) => scribe.warn(
+      .foreach { case (api, problem) => logger.warn(
         s"Cluster node '${api.baseUri}' is not accessible: $problem")
     }
-    if (maybeActive.isEmpty) scribe.warn("No cluster node seems to be active")
+    if (maybeActive.isEmpty) logger.warn("No cluster node seems to be active")
   }
 
   private case class InternalProblemException(problem: Problem) extends NoStackTrace {

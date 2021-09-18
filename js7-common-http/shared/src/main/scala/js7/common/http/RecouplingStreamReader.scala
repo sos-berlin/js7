@@ -39,15 +39,15 @@ abstract class RecouplingStreamReader[
       var logged = false
       lazy val msg = s"$api: coupling failed: $problem"
       if (inUse.get() && !stopRequested && !coupledApiVar.isStopped) {
-        scribe.warn(msg)
+        logger.warn(msg)
         logged = true
       }
       for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace) if !api.isIgnorableStackTrace(throwable)) {
-        scribe.debug(msg, throwable)
+        logger.debug(msg, throwable)
         logged = true
       }
       if (!logged) {
-        scribe.debug(msg)
+        logger.debug(msg)
       }
       true  // Recouple and continue
     }
@@ -77,14 +77,14 @@ abstract class RecouplingStreamReader[
   /** Observes endlessly, recoupling and repeating when needed. */
   final def observe(api: Api, after: I): Observable[V] = {
     Observable.fromTask(
-      Task(scribe.debug(s"$api: observe(after=$after)")) >>
+      Task(logger.debug(s"$api: observe(after=$after)")) >>
         waitUntilNotInUse(api) >>
         decouple
     ) >>
       new ForApi(api, after)
         .observeAgainAndAgain
         .guarantee(Task {
-          scribe.trace(s"$api: inUse := false")
+          logger.trace(s"$api: inUse := false")
           inUse := false
         })
   }
@@ -103,13 +103,13 @@ abstract class RecouplingStreamReader[
           if (inUse.getAndSet(true))
             Task {
               val msg = s"RecouplingStreamReader.observe($api) is still inUse ..."
-              if (i % 50 == 10) scribe.warn(msg) else scribe.debug(msg)
+              if (i % 50 == 10) logger.warn(msg) else logger.debug(msg)
             } >>
               Task.sleep(100.ms)
                 .map(_ => Left(i + 1))
           else
             Task {
-              scribe.debug(s"RecouplingStreamReader.observe($api) inUse is false, we continue")
+              logger.debug(s"RecouplingStreamReader.observe($api) inUse is false, we continue")
               Right(())
             }))
 
@@ -194,7 +194,7 @@ abstract class RecouplingStreamReader[
                       (problem match {
                         case InvalidSessionTokenProblem =>
                           Task {
-                            scribe.debug(s"$api: $InvalidSessionTokenProblem")
+                            logger.debug(s"$api: $InvalidSessionTokenProblem")
                             true
                           }
                         case _ =>
@@ -217,13 +217,13 @@ abstract class RecouplingStreamReader[
         getObservable(api, after = after)
           //.timeout(idleTimeout)
           .onErrorRecoverWith { case t: TimeoutException =>
-            scribe.debug(s"$api: ${t.toString}")
+            logger.debug(s"$api: ${t.toString}")
             Task.pure(Right(Observable.empty))
           }
           .map(_.map(
             _.timeoutOnSlowUpstream(idleTimeout)
               .onErrorRecoverWith { case t: UpstreamTimeoutException =>
-                scribe.debug(s"$api: ${t.toString}")
+                logger.debug(s"$api: ${t.toString}")
                 // This should let Akka close the TCP connection to abort the stream
                 Observable.empty
               }))
@@ -283,6 +283,7 @@ object RecouplingStreamReader
   val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
 
   private val PauseGranularity = 500.ms
+  private val logger = scribe.Logger[this.type]
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace](
     toIndex: V => I,

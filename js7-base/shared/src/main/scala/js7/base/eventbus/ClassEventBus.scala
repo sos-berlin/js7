@@ -1,6 +1,7 @@
 package js7.base.eventbus
 
 import java.util.concurrent.ConcurrentHashMap
+import js7.base.eventbus.ClassEventBus._
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.SuperclassCache
 import monix.eval.Task
@@ -33,7 +34,7 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
           for (subscription <- subscriptions) {
             try subscription.call(event)
             catch { case NonFatal(t) =>
-              scribe.error(s"Error in event handler ignored: $t", t)
+              logger.error(s"Error in event handler ignored: $t", t)
             }
           }
       }
@@ -113,4 +114,8 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
 
     def close() = removeSubscription(this)
   }
+}
+
+object ClassEventBus {
+  private val logger = scribe.Logger[this.type]
 }

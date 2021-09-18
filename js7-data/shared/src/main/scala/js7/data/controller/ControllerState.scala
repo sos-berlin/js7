@@ -17,6 +17,7 @@ import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
+import js7.data.controller.ControllerState.logger
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -487,7 +488,7 @@ with JournaledState[ControllerState]
       .view
       .mapValues(_.toVector)
       .toMap
-      .tap(o => scribe.trace(s"${items.size} items => pathToReferencingItemKeys size=${o.size}"))
+      .tap(o => logger.trace(s"${items.size} items => pathToReferencingItemKeys size=${o.size}"))
 
   private[controller] def isObsoleteItem(itemId: VersionedItemId_) =
     !repo.isCurrentItem(itemId) && !isInUse(itemId)
@@ -501,7 +502,7 @@ with JournaledState[ControllerState]
   // Slow ???
   private[controller] lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
     idToOrder.values.view.map(_.workflowId).toSet
-      .tap(o => scribe.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
+      .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
@@ -637,6 +638,8 @@ with JournaledState[ControllerState]
 
 object ControllerState extends JournaledState.Companion[ControllerState]
 {
+  private val logger = scribe.Logger[this.type]
+
   val Undefined = ControllerState(
     EventId.BeforeFirst,
     JournaledState.Standards.empty,

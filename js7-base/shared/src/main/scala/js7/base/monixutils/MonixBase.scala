@@ -31,7 +31,7 @@ object MonixBase
   private val CompletedTask = Task.pure(Completed)
   val DefaultBatchSize = 256
   val DefaultWorryDurations = Seq(3.s, 7.s, 10.s)
-  private val logger = scribe.Logger(getClass.scalaName)
+  private val logger = scribe.Logger[this.type]
 
   object syntax
   {
@@ -71,8 +71,8 @@ object MonixBase
       def logWhenItTakesLonger(what: String): Task[A] =
         task.whenItTakesLonger()(duration => Task {
           def msg = s"Still waiting for $what for ${duration.pretty} ..."
-          if (duration < 10.s) scribe.debug(msg)
-          else scribe.info(msg)
+          if (duration < 10.s) logger.debug(msg)
+          else logger.info(msg)
         })
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */

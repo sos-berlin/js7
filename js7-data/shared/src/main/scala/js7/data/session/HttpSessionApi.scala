@@ -10,6 +10,7 @@ import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.AsyncLock
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.JournaledState
+import js7.data.session.HttpSessionApi._
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 import scala.concurrent.duration.Deadline.now
@@ -28,7 +29,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
 
   protected final def logOpenSession(): Unit =
     for (token <- sessionTokenRef.get()) {
-      scribe.debug(s"close(), but $token not logged-out: $toString")
+      logger.debug(s"close(), but $token not logged-out: $toString")
     }
 
   final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false)
@@ -39,7 +40,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
           Task.completed
         else {
           val cmd = Login(userAndPassword)
-          Task { scribe.debug(s"$toString: $cmd") } >>
+          Task { logger.debug(s"$toString: $cmd") } >>
           executeSessionCommand(cmd)
             .map { response =>
               setSessionToken(response.sessionToken)
@@ -56,7 +57,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
           case sometoken @ Some(sessionToken) =>
             Task.defer {
               val cmd = Logout(sessionToken)
-              scribe.debug(s"$toString: $cmd ${userAndPassword.fold("")(_.userId.string)}")
+              logger.debug(s"$toString: $cmd ${userAndPassword.fold("")(_.userId.string)}")
               executeSessionCommand(cmd, suppressSessionToken = true)
                 .doOnFinish(_ => Task {
                   // Change nothing in case of a concurrent successful Logout or Login
@@ -93,12 +94,16 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
       val startedAt = now
       httpClient.getRawLinesObservable(uri)
         .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
-          scribe.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
+          logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
         .map(_
           .mapParallelOrderedBatch()(_
             .parseJsonAs(S.snapshotObjectJsonCodec).orThrow))
         .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
-          scribe.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
+          logger.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))
         .flatMap(S.fromObservable)
     }
+}
+
+object HttpSessionApi {
+  private val logger = scribe.Logger[this.type]
 }

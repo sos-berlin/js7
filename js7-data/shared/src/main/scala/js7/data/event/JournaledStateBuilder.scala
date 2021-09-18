@@ -120,7 +120,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
   def logStatistics(byteCount: Option[Long]): Unit = {
     val elapsed = since.elapsed
     if (elapsed >= 1.s) {
-      scribe.debug(
+      logger.debug(
         itemsPerSecondString(elapsed, _snapshotCount + eventCount, "snapshots+events") +
         byteCount.fold("")(byteCount =>
           ", " + perSecondStringOnly(elapsed, byteCount / 1_000_000, "MB", gap = false) +
@@ -129,7 +129,7 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     }
     if (snapshotCount + eventCount > 0) {
       val age = (Timestamp.now - EventId.toTimestamp(eventId)).withMillis(0).pretty
-      scribe.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
+      logger.info(s"Recovered last EventId is ${EventId.toString(eventId)}, emitted $age ago " +
         s"($snapshotCount snapshot objects and $eventCount events" +
         (byteCount.fold("")(o => ", " + toKBGB(o))) +
         " read" +
@@ -175,6 +175,8 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
 
 object JournaledStateBuilder
 {
+  private val logger = scribe.Logger[this.type]
+
   abstract class Simple[S <: JournaledState[S]](protected val S: JournaledState.Companion[S])
   extends JournaledStateBuilder[S]
   {
