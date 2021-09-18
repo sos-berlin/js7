@@ -6,7 +6,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.util.Random
 
-final class TaskLockTest extends AsyncFreeSpec
+/**
+  * @author Joacim Zschimmer
+  */
+final class AsyncLockTest extends AsyncFreeSpec
 {
   private val n = 10000
   private val initial = 1

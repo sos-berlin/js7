@@ -3,13 +3,13 @@ package js7.base.utils
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.time.ScalaTime._
-import js7.base.utils.TaskLock._
+import js7.base.utils.AsyncLock._
 import monix.catnap.MVar
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
-final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDuration])
+final class AsyncLock private(name: String, warnTimeouts: IterableOnce[FiniteDuration])
 {
   private val lockM = MVar[Task].of(()).memoize
 
@@ -36,7 +36,7 @@ final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDura
               })
               .map(_ => logger.debug(s"$acquirer acquired $toString after ${since.elapsed.pretty}"))
           case Some(()) =>
-            scribe.trace(s"$acquirer acquired $toString")
+            logger.trace(s"$acquirer acquired $toString")
             Task.unit
         })
 
@@ -46,13 +46,13 @@ final class TaskLock private(name: String, warnTimeouts: IterableOnce[FiniteDura
       lockM.flatMap(_.put(()))
     }
 
-  override def toString = s"TaskLock:$name"
+  override def toString = s"AsyncLock:$name"
 }
 
-object TaskLock
+object AsyncLock
 {
   private val logger = scribe.Logger[this.type]
 
   def apply(name: String, logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations) =
-    new TaskLock(name, logWorryDurations)
+    new AsyncLock(name, logWorryDurations)
 }

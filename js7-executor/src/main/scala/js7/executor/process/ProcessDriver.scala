@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.{SetOnce, TaskLock}
+import js7.base.utils.{AsyncLock, SetOnce}
 import js7.data.job.TaskId.newGenerator
 import js7.data.job.{ProcessExecutable, TaskId}
 import js7.data.order.{OrderId, Outcome}
@@ -36,7 +36,7 @@ final class ProcessDriver(
     v1Compatible = conf.v1Compatible)
   private val terminatedPromise = Promise[Completed]()
   private val richProcessOnce = SetOnce[RichProcess]
-  private val startProcessLock = TaskLock(orderId.toString)
+  private val startProcessLock = AsyncLock(orderId.toString)
   @volatile private var killedBeforeStart: Option[ProcessSignal] = None
 
   def startAndRunProcess(env: Map[String, String], stdObservers: StdObservers)
@@ -151,7 +151,7 @@ object ProcessDriver
   private val logger = Logger(getClass)
 
   /** Linux may return a "busy" error when starting many processes at once. */
-  private val globalStartProcessLock = TaskLock("globalStartProcessLock")
+  private val globalStartProcessLock = AsyncLock("globalStartProcessLock")
 
   private object taskIdGenerator extends Iterator[TaskId] {
     private val generator = newGenerator()

@@ -1,12 +1,12 @@
 package js7.base.monixutils
 
 import cats.effect.Resource
-import js7.base.utils.TaskLock
+import js7.base.utils.AsyncLock
 import monix.eval.Task
 
 final class RefCountedResource[A](base: Resource[Task, A])
 {
-  private val lock = TaskLock("RefCountedResource")
+  private val lock = AsyncLock("RefCountedResource")
   @volatile private var maybeCached: Option[Cached] = None
 
   val resource: Resource[Task, A] =

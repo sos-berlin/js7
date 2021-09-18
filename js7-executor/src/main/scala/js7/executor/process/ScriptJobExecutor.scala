@@ -7,9 +7,9 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF}
-import js7.base.utils.TaskLock
 import js7.data.job.{JobConf, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
@@ -26,7 +26,7 @@ final class ScriptJobExecutor(
   protected val pathToJobResource: JobResourcePath => Checked[JobResource])
 extends PathProcessJobExecutor
 {
-  private val userToFileLock = TaskLock("ScriptJobExecutor.userToFile")
+  private val userToFileLock = AsyncLock("ScriptJobExecutor.userToFile")
   private val userToFile = mutable.Map.empty[Option[WindowsUserName], Path]
 
   protected def checkFile =

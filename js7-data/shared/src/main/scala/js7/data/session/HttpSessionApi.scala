@@ -7,7 +7,7 @@ import js7.base.problem.Checked._
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.base.utils.TaskLock
+import js7.base.utils.AsyncLock
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.JournaledState
 import monix.eval.Task
@@ -23,7 +23,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
   protected def httpClient: HttpClient
   protected def sessionUri: Uri
 
-  private val lock = TaskLock("HttpSessionApi")
+  private val lock = AsyncLock("HttpSessionApi")
   private val sessionTokenRef = AtomicAny[Option[SessionToken]](None)
 
   protected final def logOpenSession(): Unit =

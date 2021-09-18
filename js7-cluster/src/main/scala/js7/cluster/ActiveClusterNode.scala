@@ -13,8 +13,8 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.TaskLock
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode._
 import js7.cluster.ObservablePauseDetector._
@@ -51,7 +51,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
     actorSystem: ActorSystem,
     journalActorAskTimeout: Timeout)
 {
-  private val clusterStateLock = TaskLock("ClusterState")
+  private val clusterStateLock = AsyncLock("ClusterState")
   private val journalActor = persistence.journalActor
   private val fetchingAcks = AtomicBoolean(false)
   private val fetchingAcksCancelable = SerialCancelable()
