@@ -688,6 +688,8 @@ with Stash
       def pathToLockState = persistence.currentState.pathToLockState
 
       def pathToBoardState = persistence.currentState.pathToBoardState
+
+      def pathToJobResource = persistence.currentState.pathToJobResource
     })
 
   override def toString = "AgentOrderKeeper"

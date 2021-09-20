@@ -1,12 +1,10 @@
 package js7.data.execution.workflow.instructions
 
-import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted, OrderNoticeRead}
 import js7.data.state.StateView
-import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.instructions.PostNotice
 import scala.collection.View
 
@@ -24,8 +22,8 @@ extends EventInstructionExecutor
           import instruction.boardPath
           for {
             board <- state.pathToBoard.checked(boardPath)
-            orderScope <- state.toScope(order)
-            notice <- board.postingOrderToNotice(orderScope |+| NowScope(clock.now()))
+            orderScope <- state.toImpureOrderExecutingScope(order, clock.now())
+            notice <- board.postingOrderToNotice(orderScope)
             boardState <- state.pathToBoardState.checked(boardPath)
             expectingOrders <- boardState
               .expectingOrders(notice.id)

@@ -17,7 +17,7 @@ extends EventInstructionExecutor
           case Order.Ready =>
             val maybeErrorMessage = fail.message
               .map(messageExpr => state
-                .toScope(order)
+                .toImpureOrderExecutingScope(order, clock.now())
                 .flatMap(messageExpr.evalAsString(_))
                 .fold(_.toString, identity))
             val outcome = Outcome.Failed(maybeErrorMessage, fail.namedValues)

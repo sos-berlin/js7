@@ -17,7 +17,7 @@ extends EventInstructionExecutor
       .orElse(order
         .ifState[Ready].map(_ =>
           for {
-            scope <- state.toScope(order)
+            scope <- state.toImpureOrderExecutingScope(order, clock.now())
             question <- prompt.question.eval(scope)
           } yield (order.id <-: OrderPrompted(question)) :: Nil))
       .getOrElse(Right(Nil))

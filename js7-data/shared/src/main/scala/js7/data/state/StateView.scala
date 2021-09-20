@@ -1,17 +1,19 @@
 package js7.data.state
 
+import cats.syntax.semigroup._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.NotImplementedMap
-import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{Board, BoardPath, BoardState}
 import js7.data.controller.ControllerId
-import js7.data.job.JobKey
+import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.FailedInFork
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
-import js7.data.value.expression.scopes.OrderScopes
+import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
@@ -36,6 +38,8 @@ trait StateView
     pathToBoardState.map(_.board)
 
   def pathToBoardState: PartialFunction[BoardPath, BoardState]
+
+  def pathToJobResource: PartialFunction[JobResourcePath, JobResource]
 
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
     for {
@@ -79,9 +83,23 @@ trait StateView
       (order.state.eq(FailedInFork) || endReached)
   }
 
-  final def toScope(order: Order[Order.State]): Checked[Scope] =
+  /** A pure (stable, repeatable) Scope. */
+  final def toPureScope(order: Order[Order.State]): Checked[Scope] =
+    for (orderScopes <- toOrderScopes(order)) yield
+      orderScopes.pureOrderScope
+
+  /** An impure (unstable, non-repeatable) Scope. */
+  final def toImpureOrderExecutingScope(order: Order[Order.State], now: Timestamp): Checked[Scope] =
+    for (orderScopes <- toOrderScopes(order)) yield {
+      val nowScope = NowScope(now)
+      orderScopes.pureOrderScope |+| nowScope |+|
+        JobResourceScope(pathToJobResource,
+          useScope = orderScopes.variablelessOrderScope |+| nowScope)
+    }
+
+  final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
     for (w <- idToWorkflow.checked(order.workflowId)) yield
-      OrderScopes(order, w, controllerId).orderScope
+      OrderScopes(order, w, controllerId)
 
   protected def orderIdToBoardState(orderId: OrderId)
   : Checked[BoardState] =
@@ -113,13 +131,15 @@ object StateView
       val isAgent = isAgent_
       val idToOrder = idToOrder_
       val idToWorkflow = idToWorkflow_
+      val pathToLockState = pathToLockState_
+      val pathToBoardState = pathToBoardState_
+      val controllerId = controllerId_
 
       def workflowPathToId(workflowPath: WorkflowPath) =
         Left(Problem("workflowPathToId is not implemented"))
 
-      val pathToLockState = pathToLockState_
-      val pathToBoardState = pathToBoardState_
-      val controllerId = controllerId_
+      def pathToJobResource =
+        Map.empty
     }
   }
 
@@ -139,6 +159,9 @@ object StateView
 
     def pathToBoardState: PartialFunction[BoardPath, BoardState] =
       new NotImplementedMap[BoardPath, BoardState]
+
+    def pathToJobResource: PartialFunction[JobResourcePath, JobResource] =
+      new NotImplementedMap[JobResourcePath, JobResource]
 
     val controllerId = ControllerId("CONTROLLER")
   }

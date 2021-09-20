@@ -24,7 +24,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   def nextPosition(instruction: If, order: Order[Order.State], state: StateView) = {
     // order may be predicted and different from actual idToOrder(order.id)
     for {
-      scope <- state.toScope(order)
+      scope <- state.toPureScope(order)
       condition <- instruction.predicate.evalAsBoolean(scope)
     } yield
       Some(

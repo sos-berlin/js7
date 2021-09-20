@@ -41,7 +41,7 @@ extends EventInstructionExecutor with ForkInstructionExecutor
   private def toForkedEvent(fork: ForkList, order: Order[Order.Ready], state: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     for {
-      scope <- state.toScope(order)
+      scope <- state.toImpureOrderExecutingScope(order, clock.now())
       elements <- fork.children.evalAsVector(scope)
       childIds <- elements
         .traverseWithIndexM { case (element, i) =>

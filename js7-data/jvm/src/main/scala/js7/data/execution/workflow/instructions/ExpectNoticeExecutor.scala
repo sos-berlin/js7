@@ -27,7 +27,7 @@ extends EventInstructionExecutor
             order.state match {
               case _: Order.Ready =>
                 for {
-                  scope <- state.toScope(order)
+                  scope <- state.toPureScope(order)
                   noticeId <- boardState.board.expectingOrderToNoticeId(scope)
                 } yield
                   tryRead(boardState, noticeId, order.position)

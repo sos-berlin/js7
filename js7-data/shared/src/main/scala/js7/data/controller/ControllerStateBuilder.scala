@@ -402,4 +402,7 @@ with StateView
   def journalState = standards.journalState
 
   def clusterState = standards.clusterState
+
+  def pathToJobResource =
+    throw new NotImplementedError("ControllerStateBuilder.pathToJobResource")
 }

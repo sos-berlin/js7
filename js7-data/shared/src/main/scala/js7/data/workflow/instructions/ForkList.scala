@@ -1,7 +1,8 @@
 package js7.data.workflow.instructions
 
 import io.circe._
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.generic.extras.Configuration.default.withDefaults
+import io.circe.generic.extras.semiauto.{deriveConfiguredDecoder, deriveConfiguredEncoder}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.agent.AgentPath
@@ -74,12 +75,15 @@ object ForkList
     childToArguments: ExprFunction,
     workflow: Workflow,
     agentPath: Option[AgentPath] = None,
+    joinIfFailed: Boolean = false,
     sourcePos: Option[SourcePos] = None)
   : Checked[ForkList] =
-    new ForkList(children, childToId, childToArguments, workflow, agentPath, sourcePos)
-      .checked
+    new ForkList(children, childToId, childToArguments, workflow, agentPath,
+      joinIfFailed = joinIfFailed,sourcePos
+    ).checked
 
-  implicit val jsonEncoder: Encoder.AsObject[ForkList] = deriveEncoder[ForkList]
-  implicit val jsonDecoder: Decoder[ForkList] = deriveDecoder[ForkList]
+  private implicit val circeConfiguration = withDefaults
+  implicit val jsonEncoder: Encoder.AsObject[ForkList] = deriveConfiguredEncoder[ForkList]
+  implicit val jsonDecoder: Decoder[ForkList] = deriveConfiguredDecoder[ForkList]
     .emap(_.checked.left.map(_.toString))
 }

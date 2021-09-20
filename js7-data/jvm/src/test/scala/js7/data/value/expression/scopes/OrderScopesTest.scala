@@ -34,7 +34,7 @@ final class OrderScopesTest extends AnyFreeSpec
     }
 
     "if, prompt and fail instructions" in {
-      val scope = orderScopes.orderScope
+      val scope = orderScopes.pureOrderScope
       assert(scope.parseAndEval("$orderArgument") == Right(StringValue("ORDER-ARGUMENT")))
       assert(scope.parseAndEval("scheduledOrEmpty($dateTimeFormat, $timezone)") == Right(expectedSchedule))
       assert(scope.parseAndEval("catchCount") == Right(NumberValue(0)))
@@ -63,7 +63,7 @@ final class OrderScopesTest extends AnyFreeSpec
     }
 
     "JobResource.env" in {
-      val scope = orderScopes.scopeForJobResourceEnv
+      val scope = orderScopes.scopeForJobResources
 
       assert(scope.parseAndEval("$orderArgument") == Left(Problem("No such named value: orderArgument")))
       assert(scope.parseAndEval("scheduledOrEmpty('yyyy')") == Right(StringValue("2021")))

@@ -28,12 +28,12 @@ trait ProcessJobExecutor extends JobExecutor
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
   : OrderProcess = {
-    import processOrder.{evalLazilyJobResourceVariables, order, scopeForJobResourceEnv}
+    import processOrder.{evalLazilyJobResourceVariables, order, scopeForJobResources}
 
     def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] =
       evalEnv(
         jobResource.env,
-        scopeForJobResourceEnv |+|
+        scopeForJobResources |+|
           NameToCheckedValueScope(evalLazilyJobResourceVariables(jobResource)))
 
     val checkedJobResourcesEnv: Checked[Map[String, String]] =

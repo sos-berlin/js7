@@ -33,7 +33,7 @@ trait OrderScopes
 
   // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`, without order variables. */
-  protected final lazy val variablelessOrderScope: Scope =
+  final lazy val variablelessOrderScope: Scope =
     combine(
       js7VariablesScope,
       scheduledScope(order.scheduledFor),
@@ -42,9 +42,8 @@ trait OrderScopes
       },
       EnvScope)
 
-  // MUST BE A PURE FUNCTION!
   /** For `Order[Order.State]`. */
-  final lazy val orderScope =
+  final lazy val pureOrderScope =
     OrderVariablesScope(order, workflow) |+| variablelessOrderScope
 
   protected[scopes] lazy val nowScope = new NowScope()
@@ -115,18 +114,15 @@ trait ProcessingOrderScopes extends OrderScopes
     "js7JobExecutionCount" -> NumberValue(jobExecutionCount)))
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */
-  private lazy val scopeForJobResources =
+  lazy val scopeForJobResources =
     js7JobVariablesScope |+| variablelessOrderScope |+| nowScope
 
   private lazy val jobResourceScope = JobResourceScope(
     jobResources.toKeyedMap(_.path),
     useScope = scopeForJobResources)
 
-  final lazy val scopeForJobResourceEnv =
-    js7JobVariablesScope |+| variablelessOrderScope |+| nowScope
-
   final lazy val processingOrderScope =
-    js7JobVariablesScope |+| orderScope |+| nowScope |+| jobResourceScope
+    js7JobVariablesScope |+| pureOrderScope |+| nowScope |+| jobResourceScope
 
   /** For defaultArguments (Execute and WorkflowJob). */
   private lazy val scopeForOrderDefaultArguments =
