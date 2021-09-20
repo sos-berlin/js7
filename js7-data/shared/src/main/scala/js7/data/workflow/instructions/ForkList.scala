@@ -18,6 +18,7 @@ final case class ForkList private(
   childToArguments: ExprFunction,
   workflow: Workflow,
   agentPath: Option[AgentPath] = None,
+  joinIfFailed: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction
 {

@@ -31,4 +31,19 @@ final class BranchIdTest extends AnyFreeSpec
   "fork" in {
     assert(fork("A") == BranchId.Named("fork+A"))
   }
+
+  "IsFailureBoundary.unapply" in {
+    BranchId("A") match {
+      case BranchId.IsFailureBoundary(_) => fail()
+      case _ =>
+    }
+    BranchId.fork("A") match {
+      case BranchId.IsFailureBoundary(_) =>
+      case _ => fail()
+    }
+    BranchId.ForkList match {
+      case BranchId.IsFailureBoundary(BranchId.ForkList) =>
+      case _ => fail()
+    }
+  }
 }

@@ -3,6 +3,7 @@ package js7.data.workflow.position
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax._
 import scala.language.implicitConversions
 
 /** Denotes a branch in a instruction, for example fork or if-then-else..
@@ -11,11 +12,14 @@ import scala.language.implicitConversions
   */
 sealed trait BranchId
 {
-  private[position] def toSimpleType: Any
+
+  def string: String
 
   def normalized: BranchId
 
   def isFork: Boolean
+
+  final def isIsFailureBoundary = isFork
 }
 
 object BranchId
@@ -47,7 +51,14 @@ object BranchId
       case _ => Left(Problem(s"Invalid BranchId for nextTryBranchId: $branchId"))
     }
 
-  def fork(branch: String) = BranchId(ForkPrefix + branch)
+  def fork(branch: String) =
+    BranchId(ForkPrefix + branch)
+
+  object IsFailureBoundary
+  {
+    def unapply(branchId: BranchId): Option[BranchId] =
+      branchId.isIsFailureBoundary ? branchId
+  }
 
   final case class Named(string: String) extends BranchId {
     def normalized =
@@ -55,9 +66,8 @@ object BranchId
       else if (string startsWith "catch+") "catch"
       else this
 
-    def isFork = string startsWith ForkPrefix
+    def isFork = string.startsWith(ForkPrefix) || string == "fork"
 
-    private[position] def toSimpleType: String = string
     override def toString = string
   }
   object Named {

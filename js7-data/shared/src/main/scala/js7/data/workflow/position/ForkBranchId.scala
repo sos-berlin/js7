@@ -2,7 +2,8 @@ package js7.data.workflow.position
 
 import js7.data.workflow.instructions.Fork
 
-object ForkBranchId
+// Not used
+private object ForkBranchId
 {
   private val NamePattern = """fork\+(.+)""".r
 

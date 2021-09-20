@@ -12,6 +12,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
+import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.{InternalExecutable, ShellScriptExecutable}
 import js7.data.order.OrderEvent._
@@ -44,7 +45,8 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(atControllerWorkflow, atAgentWorkflow, mixedAgentsWorkflow,
-    errorWorkflow, indexWorkflow, exampleWorkflow)
+    errorWorkflow, failingChildOrdersWorkflow, joinFailingChildOrdersWorkflow,
+    indexWorkflow, exampleWorkflow)
   private lazy val proxy = controllerApi.startProxy().await(99.s)
 
   "Events and Order.Forked snapshot" in {
@@ -122,7 +124,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     asserted.await(9.s)
   }
 
-  "Fork with duplicates" in {
+  "ForkList with duplicates" in {
     val workflowId = atControllerWorkflow.id
     val orderId = OrderId("DUPLICATE-TEST")
 
@@ -148,7 +150,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
           "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))))))
   }
 
-  "Fork with invalid value" in {
+  "ForkList with invalid value" in {
     val childToProblem = Seq(
       "|" -> Problem("OrderId must not contain reserved characters: |"),
       "" -> EmptyStringProblem("OrderId.withChild"))
@@ -178,7 +180,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
-  "Fork with index" in {
+  "ForkList with index" in {
     val workflowId = indexWorkflow.id
     val orderId = OrderId(s"INDEX")
 
@@ -203,38 +205,62 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
-  "Fork with empty array" in {
+  "ForkList with empty array" in {
     runOrder(atControllerWorkflow.path, OrderId("EMPTY"), n = 0)
     runOrder(atAgentWorkflow.path, OrderId("EMPTY"), n = 0)
   }
 
-  "Fork with single element" in {
+  "ForkList with single element" in {
     runOrder(atControllerWorkflow.path, OrderId("EMPTY"), n = 1)
     runOrder(atAgentWorkflow.path, OrderId("EMPTY"), n = 1)
   }
 
-  "Fork with a small array" in {
+  "ForkList with a small array" in {
     // Use same OrderId twice to test the ForkInstructionExecutor.Cache.
     val orderId = OrderId("SMALL")
     runOrder(atControllerWorkflow.path, orderId, n = 3)
     runOrder(atAgentWorkflow.path, orderId, n = 3)
   }
 
-  "Fork with big array" in {
+  "ForkList with big array" in {
     val n = sys.props.get("test.speed").fold(100)(_.toInt)
     val t = now
     runOrder(atControllerWorkflow.path, OrderId("BIG"), n)
     logger.info(itemsPerSecondString(t.elapsed, n, "orders"))
   }
 
-  private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int): Unit = {
-    val expectedChildOrderIds = for (i <- 1 to n) yield orderId / s"ELEMENT-$i"
+  "ForkList with failing child orders, joinIfFailed=true" in {
+    runOrder(joinFailingChildOrdersWorkflow.path, OrderId("FAIL-THEN-JOIN"), 2,
+      expectedChildOrderEvent = OrderFailedInFork(
+        Position(0) / "fork" % 1,
+        Some(Outcome.Failed(Some("TEST FAILURE"), Map.empty))),
+      expectedTerminationEvent = OrderFailed(Position(0)))
+  }
+
+  "ForkList with failing child orders" in {
+    runOrder(failingChildOrdersWorkflow.path, OrderId("FAIL-THEN-STOP"), 2,
+      expectedChildOrderEvent = OrderFailed(
+        Position(0) / "fork" % 1,
+        Some(Outcome.Failed(Some("TEST FAILURE"), Map.empty))),
+      cancelChildOrders = true,
+      expectedTerminationEvent = OrderFailed(Position(0)))
+  }
+
+  private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
+    expectedChildOrderEvent: OrderEvent = OrderProcessed(Outcome.succeeded),
+    expectedTerminationEvent: OrderTerminated = OrderFinished,
+    cancelChildOrders: Boolean = false
+  ): Unit = {
+    val childOrderIds = (1 to n).map(i => orderId / s"ELEMENT-$i").toSet
     val eventId = eventWatch.lastAddedEventId
 
     val childOrdersProcessed = proxy.observable
       .map(_.stampedEvent.value)
-      .collect { case KeyedEvent(orderId: OrderId, _: OrderProcessed) => orderId }
-      .scan0(expectedChildOrderIds.toSet)(_ - _)
+      .collect {
+        case KeyedEvent(orderId: OrderId, `expectedChildOrderEvent`) =>
+          orderId
+      }
+      .scan0(childOrderIds)(_ - _)
       .takeWhile(_.nonEmpty)
       .completedL
       .runToFuture
@@ -242,10 +268,15 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val order = newOrder(orderId, workflowPath, n)
     controllerApi.addOrders(Observable(order)).await(99.s).orThrow
 
-    assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-      .head.value.event == OrderFinished)
-
     childOrdersProcessed.await(9.s)
+    if (cancelChildOrders) {
+      controllerApi.executeCommand(
+        CancelOrders(childOrderIds)
+      ).await(99.s).orThrow
+    }
+
+    assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+      .head.value.event == expectedTerminationEvent)
   }
 
   "Mixed agents" in {
@@ -482,13 +513,36 @@ object ForkListTest
             expr("$UNKNOWN == 'UNKNOWN'"),
             Workflow.of(EmptyJob.execute(agentPath)))))))
 
+  private val failingChildOrdersWorkflow = Workflow(
+    WorkflowPath("FAILING-CHILD-ORDER-WORKFLOW") ~ "INITIAL",
+    Vector(
+      ForkList(
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
+        Workflow.of(
+          EmptyJob.execute(agentPath),
+          Fail(Some(expr("'TEST FAILURE'")))))))
+
+  private val joinFailingChildOrdersWorkflow = Workflow(
+    WorkflowPath("JOIN-FAILING-CHILD-ORDER-WORKFLOW") ~ "INITIAL",
+    Vector(
+      ForkList(
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
+        Workflow.of(
+          EmptyJob.execute(agentPath),
+          Fail(Some(expr("'TEST FAILURE'")))),
+        joinIfFailed = true)))
+
   private val indexWorkflow = Workflow(
     WorkflowPath("INDEX-WORKFLOW") ~ "INITIAL",
     Vector(
       ForkList(
-          expr("$myList"),
-          exprFunction("(element, i) => $i"),
-          exprFunction("(element, i) => { element: $element, index: $i }"),
+        expr("$myList"),
+        exprFunction("(element, i) => $i"),
+        exprFunction("(element, i) => { element: $element, index: $i }"),
         Workflow.of(
           If(expr("$index < 0 || $index > 9999"),
             Workflow.of(Fail())),

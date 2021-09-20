@@ -17,9 +17,9 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, Orde
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{End, Fork, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, ForkInstruction, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
-import js7.data.workflow.position.{BranchId, ForkBranchId, Position, TryBranchId, WorkflowPosition}
+import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
@@ -150,11 +150,11 @@ final class OrderEventSource(state: StateView)
     uncatchable: Boolean)
   : Checked[List[OrderActorEvent]] =
     leaveBlocks(workflow, order, catchable = !uncatchable) {
-      case (None | Some(ForkBranchId(_)), failPosition) =>
+      case (None | Some(BranchId.IsFailureBoundary(_)), failPosition) =>
         // TODO Transfer parent order to Agent to access joinIfFailed there !
         // For now, order will be moved to Controller, which joins the orders anyway.
         val joinIfFailed = order.parent
-          .flatMap(forkOrder => instruction_[Fork](forkOrder).toOption)
+          .flatMap(forkOrder => instruction_[ForkInstruction](forkOrder).toOption)
           .fold(false)(_.joinIfFailed)
         if (joinIfFailed/*false at Agent*/)
           OrderFailedInFork(failPosition, outcome)
@@ -184,7 +184,7 @@ final class OrderEventSource(state: StateView)
         case Nil =>
           callToEvent(None, failPosition)
 
-        case Segment(_, branchId @ ForkBranchId(_)) :: _ =>
+        case Segment(_, branchId @ (BranchId.IsFailureBoundary(_))) :: _ =>
           callToEvent(Some(branchId), failPosition)
 
         case Segment(_, BranchId.Lock) :: prefix =>
@@ -221,7 +221,7 @@ final class OrderEventSource(state: StateView)
       && (order.isState[FailedInFork] || order.isState[Cancelled]))
       for {
         forkPosition <- order.forkPosition
-        fork <- state.instruction_[Fork](order.workflowId /: forkPosition)
+        fork <- state.instruction_[ForkInstruction](order.workflowId /: forkPosition)
       } yield executorService.forkExecutor.tryJoinChildOrder(order, fork, state)
     else
       Right(None)
@@ -286,7 +286,7 @@ final class OrderEventSource(state: StateView)
     else if (order.isDetached && !isAgent)
       Some(
         leaveBlocks(idToWorkflow(order.workflowId), order) {
-          case (None | Some(ForkBranchId(_)), _) => OrderCancelled
+          case (None | Some(BranchId.IsFailureBoundary(_)), _) => OrderCancelled
         }.orThrow/*???*/)
     else
       None

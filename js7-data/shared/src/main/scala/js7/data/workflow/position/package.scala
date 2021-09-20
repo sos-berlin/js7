@@ -32,7 +32,7 @@ package object position
       segments.view.flatMap(p => View(p.nr.asJson, p.branchId.asJson)).toVector
 
     def toSeq: Vector[Any] =
-      segments.view.flatMap(p => View(Int.box(p.nr.number), p.branchId.toSimpleType)).toVector
+      segments.view.flatMap(p => View(Int.box(p.nr.number), p.branchId.string)).toVector
   }
 
   implicit val branchPathShow: Show[BranchPath] =

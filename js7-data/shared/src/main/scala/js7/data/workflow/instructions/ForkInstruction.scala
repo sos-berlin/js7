@@ -6,4 +6,6 @@ import js7.data.workflow.Instruction
 trait ForkInstruction extends Instruction
 {
   def agentPath: Option[AgentPath]
+
+  def joinIfFailed: Boolean
 }

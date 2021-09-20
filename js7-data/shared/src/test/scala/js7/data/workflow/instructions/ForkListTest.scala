@@ -10,7 +10,7 @@ import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Instruction, Workflow}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ForkListTest extends AnyFreeSpec
@@ -48,6 +48,7 @@ final class ForkListTest extends AnyFreeSpec
             }
           ]
         },
+        "joinIfFailed": false,
         "sourcePos": [ 1, 2 ]
       }""")
 
@@ -66,7 +67,24 @@ final class ForkListTest extends AnyFreeSpec
         "workflow": {
           "instructions": []
         },
-        "agentPath": "AGENT"
+        "agentPath": "AGENT",
+        "joinIfFailed": false
+      }""")
+
+    testJsonDecoder[Instruction.Labeled](
+      ForkList(
+        expr("$children"),
+        exprFunction("(listElement) => $listElement"),
+        exprFunction("(listElement) => { myId: $listElement }"),
+        Workflow.empty),
+      json"""{
+        "TYPE": "ForkList",
+        "children": "$$children",
+        "childToId": "(listElement)=>$$listElement",
+        "childToArguments": "(listElement)=>{myId:$$listElement}",
+        "workflow": {
+          "instructions": []
+        }
       }""")
 
     assert(
