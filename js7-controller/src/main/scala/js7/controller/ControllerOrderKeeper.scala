@@ -822,45 +822,48 @@ with MainJournalingActor[ControllerState, Event]
               case Left(problem) => Future.successful(Left(problem))
               case Right(agentRefState) =>
                 // TODO persistence.lock(agentPath), to avoid race with AgentCoupled, too
+                // As a workaround, AgentRefState.applyEvent ignores AgentCoupled if Resetting
                 agentRefState.couplingState match {
                   case Resetting(frc) if !force || frc != force =>
                     Future.successful(Left(Problem.pure(s"AgentRef is already in state 'Resetting'")))
                   case Reset if !force =>
                     Future.successful(Left(Problem.pure(s"AgentRef is already in state 'Reset'")))
                   case _ =>
-                    // As a workaround, AgentRefState.applyEvent ignores AgentCoupled if Resetting
-                    val events = persistence.currentState.resetAgent(agentPath, force = force)
-                    persistence.currentState.applyEvents(events) match {
+                    persistence.currentState.resetAgent(agentPath, force = force) match {
                       case Left(problem) => Future.successful(Left(problem))
-                      case Right(_) =>
-                        persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
-                          // ResetAgent command may return with error despite it has reset the orders
-                          agentEntry.isResetting = true
-                          val resettingAgent = agentEntry
-                            .actor.?(AgentDriver.Input.Reset(force = force))(controllerConfiguration.akkaAskTimeout)
-                            .mapTo[Try[Boolean]]
-                            .map { tried =>
-                              for (t <- tried.failed) logger.error("ResetAgent: " + t.toStringWithCauses, t)
-                              Checked.fromTry(tried)
-                            }
-                          handleEvents(stampedEvents, updatedState)
-                          Task.fromFuture(resettingAgent)
-                            .flatMapT {
-                              case true =>
-                                persistence.persist(_
-                                  .pathToAgentRefState.checked(agentPath)
-                                  .map(_.couplingState)
-                                  .map {
-                                    case Resetting(_) => (agentPath <-: AgentReset) :: Nil
-                                    case _ => Nil
-                                  })
-                              case false =>
-                                Task.pure(Checked.unit)
-                            }
-                            .flatMapT(_ => Task.pure(Right(ControllerCommand.Response.Accepted)))
-                            .runToFuture
-                        }.flatten
-                   }
+                      case Right(events) =>
+                        persistence.currentState.applyEvents(events) match {
+                          case Left(problem) => Future.successful(Left(problem))
+                          case Right(_) =>
+                            persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
+                              // ResetAgent command may return with error despite it has reset the orders
+                              agentEntry.isResetting = true
+                              val resettingAgent = agentEntry
+                                .actor.?(AgentDriver.Input.Reset(force = force))(controllerConfiguration.akkaAskTimeout)
+                                .mapTo[Try[Boolean]]
+                                .map { tried =>
+                                  for (t <- tried.failed) logger.error("ResetAgent: " + t.toStringWithCauses, t)
+                                  Checked.fromTry(tried)
+                                }
+                              handleEvents(stampedEvents, updatedState)
+                              Task.fromFuture(resettingAgent)
+                                .flatMapT {
+                                  case true =>
+                                    persistence.persist(_
+                                      .pathToAgentRefState.checked(agentPath)
+                                      .map(_.couplingState)
+                                      .map {
+                                        case Resetting(_) => (agentPath <-: AgentReset) :: Nil
+                                        case _ => Nil
+                                      })
+                                  case false =>
+                                    Task.pure(Checked.unit)
+                                }
+                                .flatMapT(_ => Task.pure(Right(ControllerCommand.Response.Accepted)))
+                                .runToFuture
+                            }.flatten
+                       }
+                    }
                 }
             }
         }

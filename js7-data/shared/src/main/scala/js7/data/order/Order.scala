@@ -508,6 +508,14 @@ final case class Order[+S <: Order.State](
         Left(Problem(s"'$id' should be Detaching, but is $o"))
     }
 
+  def isAtAgent(agentPath: AgentPath): Boolean =
+    attachedState match {
+      case None => false
+      case Some(Attaching(`agentPath`)) => true
+      case Some(Attached(`agentPath`)) => true
+      case Some(Detaching(`agentPath`)) => true
+    }
+
   def isInDetachableState =
     isState[Fresh] ||
       isState[Ready] ||
@@ -628,6 +636,26 @@ object Order
     def maybeDelayedUntil: Option[Timestamp] = None
   }
 
+  object State {
+    implicit val jsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
+      Subtype[IsFreshOrReady],
+      Subtype(Processing),
+      Subtype(Processed),
+      Subtype(ProcessingKilled),
+      Subtype(deriveCodec[DelayedAfterError]),
+      Subtype(FailedWhileFresh),
+      Subtype(deriveCodec[Forked]),
+      Subtype(WaitingForLock),
+      Subtype(deriveCodec[ExpectingNotice]),
+      Subtype(Failed),
+      Subtype(FailedInFork),
+      Subtype(Finished),
+      Subtype(Cancelled),
+      Subtype(Deleted),
+      Subtype(deriveCodec[Prompting]),
+      Subtype(deriveCodec[Broken]))
+  }
+
   /** OrderStarted occurred. */
   sealed trait IsStarted extends State
 
@@ -703,24 +731,6 @@ object Order
   implicit val FreshOrReadyJsonCodec: TypedJsonCodec[IsFreshOrReady] = TypedJsonCodec[IsFreshOrReady](
     Subtype(Fresh),
     Subtype(Ready))
-
-  implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
-    Subtype[IsFreshOrReady],
-    Subtype(Processing),
-    Subtype(Processed),
-    Subtype(ProcessingKilled),
-    Subtype(deriveCodec[DelayedAfterError]),
-    Subtype(FailedWhileFresh),
-    Subtype(deriveCodec[Forked]),
-    Subtype(WaitingForLock),
-    Subtype(deriveCodec[ExpectingNotice]),
-    Subtype(Failed),
-    Subtype(FailedInFork),
-    Subtype(Finished),
-    Subtype(Cancelled),
-    Subtype(Deleted),
-    Subtype(deriveCodec[Prompting]),
-    Subtype(deriveCodec[Broken]))
 
   implicit val jsonEncoder: Encoder.AsObject[Order[State]] = order =>
     JsonObject(

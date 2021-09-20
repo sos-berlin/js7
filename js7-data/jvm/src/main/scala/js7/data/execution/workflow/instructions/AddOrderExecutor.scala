@@ -34,6 +34,7 @@ extends EventInstructionExecutor
                     deleteWhenTerminated = addOrder.deleteWhenTerminated),
                   OrderMoved(order.position.increment))
             events.map(_.map(order.id <-: _).toList)
+
           case _ => Right(Nil)
         })
 }

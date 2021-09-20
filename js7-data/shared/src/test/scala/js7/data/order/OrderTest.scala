@@ -320,9 +320,7 @@ final class OrderTest extends AnyFreeSpec
       OrderBroken(Problem("Problem")),
 
       OrderDetachable,
-      OrderDetached,
-      OrderDetached
-    )
+      OrderDetached)
 
     "Event list is complete" in {
       assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])

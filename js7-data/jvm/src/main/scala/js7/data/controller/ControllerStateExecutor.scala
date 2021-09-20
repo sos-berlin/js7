@@ -17,7 +17,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderAdded, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
@@ -68,38 +68,40 @@ final case class ControllerStateExecutor private(
       } yield Some(
         order.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
 
-  def resetAgent(agentPath: AgentPath, force: Boolean): Seq[AnyKeyedEvent] = {
+  def resetAgent(agentPath: AgentPath, force: Boolean): Checked[Seq[AnyKeyedEvent]] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))
-    val ordersDetached = controllerState.idToOrder.values.view
-      .flatMap(resetAgentForOrder(_, agentPath))
     val itemsDetached = controllerState.itemToAgentToAttachedState.to(View)
       .filter(_._2.contains(agentPath))
       .map(_._1)
       .map(itemKey => NoKey <-: ItemDetached(itemKey, agentPath))
-    (agentResetStarted ++ ordersDetached ++ itemsDetached).toVector
+    controllerState
+      .idToOrder.values.view
+      .filter(_.isAtAgent(agentPath))
+      .map(forciblyDetachOrder(_, agentPath))
+      .toVector.sequence
+      .map(_.view.flatten)
+      .map(ordersDetached => (agentResetStarted ++ ordersDetached ++ itemsDetached))
+      .map(_.toVector)
   }
 
-  private def resetAgentForOrder(order: Order[Order.State], agentPath: AgentPath)
-  : Seq[KeyedEvent[OrderCoreEvent]] = {
+  private[controller] def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
+  : Checked[Seq[KeyedEvent[OrderCoreEvent]]] = {
     val outcome = Outcome.Disrupted(AgentResetProblem(agentPath))
-    order.attachedState match {
-      case Some(Order.AttachedState.HasAgentPath(`agentPath`)) =>
-        val stateEvents = (order.state: State) match {
-          case Order.Processing =>
-            Vector(order.id <-: OrderProcessed(outcome))
+    val stateEvents = (order.state: State) match {
+      case Order.Processing =>
+        Vector(order.id <-: OrderProcessed(outcome))
 
-          case _ => Vector.empty
-        }
-        val detached = stateEvents :+ (order.id <-: OrderDetached)
-        val detachedState = controllerState.applyEvents(detached)
-          .orThrow
-        val fail = new OrderEventSource(detachedState)
-          .failOrDetach(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
-          .orThrow
-        detached ++ fail.view.map(order.id <-: _)
+      case _: Order.DelayedAfterError =>
+        Vector(order.id <-: OrderAwoke)
 
-      case _ => Nil
+      case _ => Vector.empty
     }
+    val detached = stateEvents :+ (order.id <-: OrderDetached)
+    for {
+      detachedState <- controllerState.applyEvents(detached)
+      fail <- new OrderEventSource(detachedState)
+        .failOrDetach(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
+    } yield detached ++ fail.view.map(order.id <-: _)
   }
 
   def applyEventsAndReturnSubsequentEvents(keyedEvents: Iterable[AnyKeyedEvent])
