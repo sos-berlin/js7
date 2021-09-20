@@ -17,7 +17,7 @@ Ein `Board` ist ein `UnsignedSimpleItem` (nicht signiert, nicht versioniert) und
 * `expectingOrderToNoticeId`
   * Ausdruck, der für die Anweisung `ExpectNotice` eine `NoticeId` liefert.
 
-Die Ausdrücke haben Zugriff auf den Auftrag (`$js7OrderId`, Auftragsvariablen) und die Uhr (`$epochMilli`).
+Die Ausdrücke haben Zugriff auf den Auftrag (`$js7OrderId`, Auftragsvariablen) und die Uhr (`$js7EpochMilli`).
 
 JSON-Beispiel, das die NoticeId aus dem Tagesplantag einer OrderId "#yyyy-mm-dd#..." errechnet:
 ```json
@@ -25,7 +25,7 @@ JSON-Beispiel, das die NoticeId aus dem Tagesplantag einer OrderId "#yyyy-mm-dd#
   "TYPE": "Board",
   "path": "MY-BOARD",
   "toNotice": "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')",
-  "endOfLife": "$epochMillis + 24 * 3600 * 1000",
+  "endOfLife": "$js7EpochMilli + 24 * 3600 * 1000",
   "expectingOrderToNoticeId": "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"
 }
 ```

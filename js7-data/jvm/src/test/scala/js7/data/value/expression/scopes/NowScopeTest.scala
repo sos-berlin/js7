@@ -1,7 +1,7 @@
 package js7.data.value.expression.scopes
 
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, OffsetDateTime, ZoneId}
 import js7.base.time.JavaTimestamp.specific._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -12,9 +12,9 @@ final class NowScopeTest extends AnyFreeSpec
 {
   private lazy val nowScope = new NowScope(Timestamp("2021-08-16T12:00:00Z"))
 
-  "Example with now() and $epochSecond" in {
+  "Example with now() and $js7EpochSecond" in {
     val checkedValue = nowScope.parseAndEval(
-      "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \", $epochSecond\"")
+      "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \", $js7EpochSecond\"")
     val yyyymmdd = nowScope.now.toLocalDateTime(ZoneId.of("Antarctica/Troll"))
       .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val epochSecond = nowScope.now.toEpochMilli / 1000
@@ -31,10 +31,10 @@ final class NowScopeTest extends AnyFreeSpec
     assert(checkedValue == Right(StringValue((expected))))
   }
 
-  "$epochMilli" in {
+  "$js7EpochMilli" in {
     val scope = nowScope
     val epochMilli = nowScope.now.toEpochMilli
-    val checkedValue = scope.parseAndEval("$epochMilli")
+    val checkedValue = scope.parseAndEval("$js7EpochMilli")
     assert(checkedValue == Right(NumberValue(epochMilli)))
     val n = checkedValue.flatMap(_.asNumber).orThrow.toLongExact
     assert(n == epochMilli)
@@ -42,7 +42,7 @@ final class NowScopeTest extends AnyFreeSpec
 
   "nameToCheckedValue" in {
     assert(nowScope.nameToCheckedValue.toMap == Map(
-      "epochMilli" -> Right(NumberValue(1629115200000L)),
-      "epochSecond" -> Right(NumberValue(1629115200))))
+      "js7EpochMilli" -> Right(NumberValue(1629115200000L)),
+      "js7EpochSecond" -> Right(NumberValue(1629115200))))
   }
 }

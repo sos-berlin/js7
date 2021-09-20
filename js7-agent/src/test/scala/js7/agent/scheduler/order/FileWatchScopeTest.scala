@@ -47,8 +47,8 @@ final class FileWatchScopeTest extends AnyFreeSpec
     implicit val scope = fileWatchScope |+| NowScope()
     val checkedValue = scope.parseAndEval(
       "'#' ++ now(format='yyyy-MM-dd', " +
-        "timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchPath:$1\"")
-    val now = Instant.ofEpochSecond(NamedValue("epochSecond").evalAsNumber.orThrow.toLong)
+        "timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\"")
+    val now = Instant.ofEpochSecond(NamedValue("js7EpochSecond").evalAsNumber.orThrow.toLong)
     val yyyymmdd = LocalDateTime.ofInstant(now, ZoneId.of("Antarctica/Troll"))
       .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     val epochSecond = now.toEpochMilli / 1000

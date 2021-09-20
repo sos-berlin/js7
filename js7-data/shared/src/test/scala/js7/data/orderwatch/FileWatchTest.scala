@@ -30,7 +30,7 @@ final class FileWatchTest extends AnyFreeSpec
           OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "/DIRECTORY",
           Some(SimplePattern("[a-z]+.csv")),
           Some(ExpressionParser.parse(
-            """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$epochSecond-$orderWatchPath:$1"""").orThrow),
+            """'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ "#F$js7EpochSecond-$orderWatchPath:$1"""").orThrow),
           2.s),
         json"""{
           "TYPE": "FileWatch",
@@ -39,7 +39,7 @@ final class FileWatchTest extends AnyFreeSpec
           "agentPath": "AGENT",
           "directory": "/DIRECTORY",
           "pattern": "[a-z]+.csv",
-          "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$epochSecond-$$orderWatchPath:$$1\"",
+          "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$$js7EpochSecond-$$orderWatchPath:$$1\"",
           "delay": 2
         }""")
     }

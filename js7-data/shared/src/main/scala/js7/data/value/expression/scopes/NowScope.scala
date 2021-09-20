@@ -13,13 +13,13 @@ final class NowScope(val now: Timestamp = Timestamp.now) extends Scope
   override lazy val nameToCheckedValue =
     new MapView[String, Checked[Value]] {
       def get(key: String) = key match {
-        case "epochMilli" => Some(Right(NumberValue(now.toEpochMilli)))
-        case "epochSecond" => Some(Right(NumberValue(now.toEpochMilli / 1000)))
+        case "js7EpochMilli" => Some(Right(NumberValue(now.toEpochMilli)))
+        case "js7EpochSecond" => Some(Right(NumberValue(now.toEpochMilli / 1000)))
         case _ => None
       }
 
       def iterator =
-        Iterator("epochMilli", "epochSecond")
+        Iterator("js7EpochMilli", "js7EpochSecond")
           .flatMap(k => get(k).map(k -> _))
     }
 

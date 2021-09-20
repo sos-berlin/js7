@@ -353,7 +353,7 @@ object BoardTest
   private val board = Board(
     BoardPath("BOARD"),
     postOrderToNoticeId = orderIdToNoticeId,
-    endOfLife = expr(s"$$epochMilli + ${lifeTime.toMillis}"),
+    endOfLife = expr(s"$$js7EpochMilli + ${lifeTime.toMillis}"),
     expectOrderToNoticeId = orderIdToNoticeId)
 
   private val expectingWorkflow = Workflow(WorkflowPath("EXPECTING") ~ "INITIAL", Seq(

@@ -47,7 +47,7 @@ final class OrderScopesTest extends AnyFreeSpec
 
       assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
 
-      assert(scope.parseAndEval("$epochMilli") == Left(Problem("No such named value: epochMilli")))
+      assert(scope.parseAndEval("$js7EpochMilli") == Left(Problem("No such named value: js7EpochMilli")))
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") == Left(
         Problem("JobResources are not accessible here: JobResource:JOB-RESOURCE:VARIABLE")))
     }
@@ -81,7 +81,7 @@ final class OrderScopesTest extends AnyFreeSpec
 
       assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
       assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
-      assert(scope.parseAndEval("$epochMilli") == Right(
+      assert(scope.parseAndEval("$js7EpochMilli") == Right(
         NumberValue(orderScopes.nowScope.now.toEpochMilli)))
 
       // Könnte zugelassen werden ?
@@ -223,7 +223,7 @@ final class OrderScopesTest extends AnyFreeSpec
         assert(scope.parseAndEval("JobResource:JOB-RESOURCE:SELF") ==
           Left(Problem("No such named value: SELF")))
 
-        assert(scope.parseAndEval("$epochMilli") == Right(
+        assert(scope.parseAndEval("$js7EpochMilli") == Right(
           NumberValue(orderScopes.nowScope.now.toEpochMilli)))
       }
     }
@@ -246,7 +246,7 @@ final class OrderScopesTest extends AnyFreeSpec
         Problem("No such named value: js7WorkflowPosition")))
       assert(scope.parseAndEval("$js7Label") == Left(Problem("No such named value: js7Label")))
 
-      assert(scope.parseAndEval("$epochMilli").isRight)
+      assert(scope.parseAndEval("$js7EpochMilli").isRight)
 
       assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
 

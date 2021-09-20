@@ -56,8 +56,8 @@ Beispiele
 - `scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ss')`  (UTC-Zeitzone)
 
 ### Variablen
-- `$epochSecond`: Zahl der Sekunden seit dem 1. Januar 1970 UTC.
-- `$epochMilli`: Zahl der Millisekunden seit dem 1. Januar 1970 UTC.
+- `$js7EpochSecond`: Zahl der Sekunden seit dem 1. Januar 1970 UTC.
+- `$js7EpochMilli`: Zahl der Millisekunden seit dem 1. Januar 1970 UTC.
 - `$js7OrderId`
 - `$js7JobName`
 - `$js7Label`: Das Label oder der leere String

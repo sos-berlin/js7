@@ -48,7 +48,7 @@ final class JFileWatchTester
                         AgentPath.of("AGENT"),
                         directory,
                         Optional.of("file-(.+)\\.txt"),
-                        Optional.of("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchPath:$1\""),
+                        Optional.of("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\""),
                         Duration.ofSeconds(0)))))));
 
             Path file = directory.resolve("file-TEST.txt");

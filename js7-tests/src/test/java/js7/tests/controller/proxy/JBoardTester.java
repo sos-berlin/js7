@@ -51,7 +51,7 @@ public class JBoardTester
         getOrThrow(JExpression.parse(
             "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),
         getOrThrow(JExpression.parse(
-            "$epochMilli + 24 * 3600 * 1000")));
+            "$js7EpochMilli + 24 * 3600 * 1000")));
 
     private final JControllerProxy proxy;
     private final JControllerApi api;

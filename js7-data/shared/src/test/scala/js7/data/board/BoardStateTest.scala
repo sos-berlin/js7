@@ -41,7 +41,7 @@ private object BoardStateTest
     BoardPath("BOARD"),
     postOrderToNoticeId = expr("'NOTICE'"),
     expectOrderToNoticeId = expr("'NOTICE'"),
-    endOfLife = expr("$epochMillis + 24 * 3600 * 1000"))
+    endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"))
 
   private val notice = Notice(NoticeId("A"), Timestamp.ofEpochSecond(1))
   private val aOrderId = OrderId("A")

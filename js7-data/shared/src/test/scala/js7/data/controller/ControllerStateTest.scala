@@ -209,7 +209,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         "path": "BOARD",
         "postOrderToNoticeId": "$$orderId",
         "expectOrderToNoticeId": "$$orderId",
-        "endOfLife": "$$epochMillis + 24 * 3600 * 1000",
+        "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000",
         "itemRevision": 7
       }, {
         "TYPE": "Notice",
@@ -347,7 +347,7 @@ object ControllerStateTest
     BoardPath("BOARD"),
     postOrderToNoticeId = expr("$orderId"),
     expectOrderToNoticeId = expr("$orderId"),
-    endOfLife = expr("$epochMillis + 24*3600*1000"),
+    endOfLife = expr("$js7EpochMilli + 24*3600*1000"),
     itemRevision = Some(ItemRevision(7)))
   private val boardState = BoardState(
     board,

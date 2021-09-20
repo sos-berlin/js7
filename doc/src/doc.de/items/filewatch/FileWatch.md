@@ -69,8 +69,8 @@ Beispiele
 - `now(format='yyyy-MM-dd')`  (UTC-Zeitzone)
 
 #### Variablen
-- `$epochSecond`: Zahl der Sekunden seit dem 1. Januar 1970 UTC.
-- `$epochMilli`: Zahl der Millisekunden seit dem 1. Januar 1970 UTC.
+- `$js7EpochSecond`: Zahl der Sekunden seit dem 1. Januar 1970 UTC.
+- `$js7EpochMilli`: Zahl der Millisekunden seit dem 1. Januar 1970 UTC.
 - `$0`: Gruppe 0 des regulären Ausdrucks, also der gesamte Dateiname
 - `$1`, `$2`, ... Die _capturing group_ des Ausdrucks (`(.*)` im obigen Beispiel).
 
@@ -100,7 +100,7 @@ Beispiele (in JSON):
   "agentPath": "AGENT",
   "directory": "/.../DIRECTORY",
   "pattern": "file-(.+)\\.csv",
-  "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$epochSecond-$orderWatchId:$1\"",
+  "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchId:$1\"",
   "delay": 2
 }
 ```
