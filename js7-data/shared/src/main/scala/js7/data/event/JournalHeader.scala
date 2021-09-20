@@ -35,7 +35,8 @@ final case class JournalHeader private[data](
 
 object JournalHeader
 {
-  private[data] val Version = "0.42"  // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  val Version = "1"
+  private val compatibility = Map("0.42" -> "1")
 
   implicit lazy val jsonCodec = {
     intelliJuseImport(FiniteDurationJsonEncoder)
@@ -62,8 +63,9 @@ object JournalHeader
         case _ => Right(header)
       })
       yield
-        if (header.version != Version) Left(Problem(
-          s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
+        if (compatibility.getOrElse(header.version, header.version) != Version)
+          Left(Problem(
+            s"Journal file has version ${header.version} but $Version is expected. Incompatible journal file: $journalFileForInfo"))
         else {
           for (o <- expectedJournalId) scribe.debug(s"JournalHeader of file '${journalFileForInfo.getFileName}' is as expected, journalId=$o")
           Right(())

@@ -10,6 +10,7 @@ import js7.base.thread.Futures.blockingThreadFuture
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
+import js7.data.event.{JournalHeader, JournalHeaders}
 import js7.journal.JournalActor
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.journal.test.JournalTest._
@@ -189,7 +190,7 @@ object JournalTest
       "totalRunningTime": 3600,
       "startedAt": "STARTED-AT",
       "timestamp": "TIMESTAMP",
-      "version": "0.42",
+      "version": "${JournalHeader.Version}",
       "js7Version": "${BuildInfo.longVersion}",
       "buildId": "${BuildInfo.buildId}"
     }""",
@@ -273,7 +274,7 @@ object JournalTest
   private val SecondJournal = Vector(
     json"""{
       "TYPE": "JS7.Journal",
-      "version": "0.42",
+      "version": "${JournalHeader.Version}",
       "js7Version": "${BuildInfo.longVersion}",
       "buildId": "${BuildInfo.buildId}",
       "journalId": "ABEiM0RVZneImaq7zN3u_w",
