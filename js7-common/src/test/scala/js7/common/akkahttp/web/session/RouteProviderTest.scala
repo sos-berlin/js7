@@ -95,7 +95,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
     }
 
     "Known SessionToken" in {
-      sessionToken = sessionRegister.login(TestUser).await(99.seconds)
+      sessionToken = sessionRegister.login(TestUser, Some("0.0.0-TEST")).await(99.seconds)
       Get("/sessionOption") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check {
         assert(status == OK)
         assert(responseAs[String] == "userId=TEST-USER")

@@ -10,7 +10,6 @@ import js7.base.auth.{SessionToken, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters._
 import js7.common.system.ServerOperatingSystem.operatingSystem
@@ -29,7 +28,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
   val systemUser: Task[Checked[S#User]] = systemSession.map(_.map(_.currentUser))
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
-    for (sessionToken <- login(user, isEternalSession = true)) yield {
+    for (sessionToken <- login(user, clientVersion = None, isEternalSession = true)) yield {
       deleteIfExists(file)
       createFile(file, operatingSystem.secretFileAttributes: _*)
       file := sessionToken.secret.string
@@ -38,9 +37,15 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
       sessionToken
     }
 
-  def login(user: S#User, sessionTokenOption: Option[SessionToken] = None, isEternalSession: Boolean = false): Task[SessionToken] =
+  def login(
+    user: S#User,
+    clientVersion: Option[String],
+    sessionTokenOption: Option[SessionToken] = None,
+    isEternalSession: Boolean = false
+  ): Task[SessionToken] =
     Task.deferFuture(
-      (actor ? SessionActor.Command.Login(user, sessionTokenOption, isEternalSession = isEternalSession)).mapTo[SessionToken])
+      (actor ? SessionActor.Command.Login(user, clientVersion, sessionTokenOption,
+        isEternalSession = isEternalSession)).mapTo[SessionToken])
 
   def logout(sessionToken: SessionToken): Task[Completed] =
     Task.deferFuture(
@@ -61,8 +66,6 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
 
 object SessionRegister
 {
-  private val logger = Logger(getClass)
-
   def start[S <: Session](actorRefFactory: ActorRefFactory, newSession: SessionInit[S#User] => S, config: Config)
     (implicit scheduler: Scheduler)
   : SessionRegister[S] = {

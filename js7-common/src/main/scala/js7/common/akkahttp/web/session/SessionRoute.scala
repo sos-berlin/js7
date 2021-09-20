@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives._
 import cats.syntax.traverse._
+import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked._
@@ -50,11 +51,11 @@ trait SessionRoute extends RouteProvider
   private def execute(command: SessionCommand, idsOrUser: Either[Set[UserId], Session#User], sessionTokenOption: Option[SessionToken])
   : Task[Checked[SessionCommand.Response]] =
     command match {
-      case Login(userAndPasswordOption) =>
+      case Login(userAndPasswordOption, version) =>
         authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption)
           .traverse(user =>
-            sessionRegister.login(user, sessionTokenOption)
-              .map(Login.LoggedIn.apply))
+            sessionRegister.login(user, version, sessionTokenOption)
+              .map(Login.LoggedIn(_, Some(BuildInfo.version))))
 
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)

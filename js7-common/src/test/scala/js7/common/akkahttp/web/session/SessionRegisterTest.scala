@@ -1,6 +1,7 @@
 package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import js7.base.BuildInfo
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked.Ops
@@ -37,7 +38,7 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   }
 
   "login anonymously" in {
-    sessionToken = sessionRegister.login(Anonymous).await(99.seconds)
+    sessionToken = sessionRegister.login(Anonymous, clientVersion = None).await(99.seconds)
   }
 
   "login and update User" in {
@@ -66,7 +67,8 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
     val mySystem = newActorSystem("SessionRegisterTest")
     val mySessionRegister = SessionRegister.start[MySession](mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
-    val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous).await(99.seconds)
+    val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, clientVersion = Some("0.0.0-TEST"))
+      .await(99.seconds)
 
     mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).orThrow
     assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == SimpleUser.TestAnonymous)
@@ -90,8 +92,8 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   "Session timeout" in {
     assert(sessionRegister.count.await(99.seconds) == 0)
 
-    sessionToken = sessionRegister.login(AUser).await(99.seconds)
-    val eternal = sessionRegister.login(BUser, isEternalSession = true).await(99.seconds)
+    sessionToken = sessionRegister.login(AUser, Some(BuildInfo.version)).await(99.seconds)
+    val eternal = sessionRegister.login(BUser, Some(BuildInfo.version), isEternalSession = true).await(99.seconds)
     assert(sessionRegister.count.await(99.seconds) == 2)
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isRight)
 

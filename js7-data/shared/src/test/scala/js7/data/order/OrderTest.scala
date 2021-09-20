@@ -577,7 +577,6 @@ final class OrderTest extends AnyFreeSpec
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
         assert(order.applyEvent(OrderDetached).isLeft)
-        assert(order.applyEvent(OrderDetached).isLeft)
       }
 
       "attachedState=Attaching" in {

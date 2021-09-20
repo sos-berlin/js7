@@ -1,5 +1,6 @@
 package js7.data.session
 
+import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
@@ -39,11 +40,15 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
         if (onlyIfNotLoggedIn && hasSession)
           Task.completed
         else {
-          val cmd = Login(userAndPassword)
+          val cmd = Login(userAndPassword, Some(BuildInfo.version))
           Task { logger.debug(s"$toString: $cmd") } >>
           executeSessionCommand(cmd)
             .map { response =>
               setSessionToken(response.sessionToken)
+              for (version <- response.js7Version) if (version != BuildInfo.version) {
+                logger.info(sessionUri.string.takeWhile(_ != '/') +
+                  s" server version $version differs from own version ${BuildInfo.version}")
+              }
               Completed
             }
         }

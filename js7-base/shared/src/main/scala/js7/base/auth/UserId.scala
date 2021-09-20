@@ -11,6 +11,8 @@ import js7.base.problem.Problems.InvalidNameProblem
 final case class UserId private(string: String) extends GenericString
 {
   def isAnonymous = this == UserId.Anonymous
+
+  override def toString = s"User:$string"
 }
 
 object UserId extends GenericString.Checked_[UserId]

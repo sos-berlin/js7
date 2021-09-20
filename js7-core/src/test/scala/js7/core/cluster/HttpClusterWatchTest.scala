@@ -3,6 +3,7 @@ package js7.core.cluster
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.typesafe.config.ConfigFactory
+import js7.base.BuildInfo
 import js7.base.auth.SessionToken
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
@@ -85,7 +86,10 @@ object HttpClusterWatchTest
         entity(as[SessionCommand]) { cmd =>
           val response: SessionCommand.Response = cmd match {
             case _: SessionCommand.Login =>
-              SessionCommand.Login.LoggedIn(SessionToken(SecretString("SESSION")))
+              SessionCommand.Login.LoggedIn(
+                SessionToken(SecretString("SESSION")),
+                js7Version = Some(BuildInfo.version))
+
             case _: SessionCommand.Logout =>
               SessionCommand.Response.Accepted
           }

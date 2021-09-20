@@ -314,14 +314,14 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
         path("ValidUserPermission") {
           gateKeeper.authorize(user, Set(ValidUserPermission)) { user =>
             (get | post) {
-              complete(user.id.toString)
+              complete(user.id.string)
             }
           }
         } ~
         path("OPEN") {
           gateKeeper.authorize(user, Set.empty) { user =>  // GET is public, POST is public only with loopbackIsPublic on loopback interface
             (get | post) {
-              complete(user.id.toString)
+              complete(user.id.string)
             }
           }
         }

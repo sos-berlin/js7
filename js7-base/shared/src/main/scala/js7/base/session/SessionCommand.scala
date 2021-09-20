@@ -1,5 +1,6 @@
 package js7.base.session
 
+import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.circeutils.CirceCodec
@@ -19,21 +20,31 @@ object SessionCommand
   /** Authenticate a user and establish a session.
     * @param userAndPassword if None, the HTTP header authentication is used to allow browser authentication dialog.
     */
-  final case class Login(userAndPassword: Option[UserAndPassword]) extends SessionCommand {
+  final case class Login(
+    userAndPassword: Option[UserAndPassword],
+    version: Option[String] = None)
+  extends SessionCommand {
     type Response = Login.LoggedIn
   }
 
   object Login {
-    final case class LoggedIn(sessionToken: SessionToken) extends SessionCommand.Response
+    final case class LoggedIn(
+      sessionToken: SessionToken,
+      js7Version: Option[String]/*Optional for compatibility with <2.0.0-alpha.20210916*/)
+    extends SessionCommand.Response
 
     object LoggedIn {
       implicit val jsonEncoder: Encoder.AsObject[LoggedIn] =
-        o => JsonObject("sessionToken" -> Json.fromString(o.sessionToken.secret.string))
+        o => JsonObject(
+          "sessionToken" -> o.sessionToken.secret.string.asJson,
+          "js7Version" -> o.js7Version.asJson)
 
       implicit val jsonDecoder: Decoder[LoggedIn] =
         cursor =>
-          for (token <- cursor.get[String]("sessionToken")) yield
-            LoggedIn(SessionToken(SecretString(token)))
+          for {
+            token <- cursor.get[String]("sessionToken")
+            version <- cursor.get[Option[String]]("js7Version")
+          } yield LoggedIn(SessionToken(SecretString(token)), js7Version = version)
     }
   }
 

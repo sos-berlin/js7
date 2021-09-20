@@ -13,13 +13,16 @@ final class SessionCommandTest extends AnyFreeSpec {
 
   "JSON" - {
     "Login" in {
-      testJson[SessionCommand](SessionCommand.Login(Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD")))),
+      testJson[SessionCommand](SessionCommand.Login(
+        Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
+        Some("0.0.0-TEST")),
         json"""{
           "TYPE": "Login",
           "userAndPassword": {
             "userId": "USER",
             "password": "PASSWORD"
-          }
+          },
+          "version": "0.0.0-TEST"
         }""")
     }
 
@@ -32,10 +35,13 @@ final class SessionCommandTest extends AnyFreeSpec {
     }
 
     "LoggedIn" in {
-      testJson[SessionCommand.Response](SessionCommand.Login.LoggedIn(SessionToken(SecretString("SESSION-TOKEN"))),
+      testJson[SessionCommand.Response](SessionCommand.Login.LoggedIn(
+        SessionToken(SecretString("SESSION-TOKEN")),
+        Some("0.0.0-TEST")),
         json"""{
           "TYPE": "LoggedIn",
-          "sessionToken": "SESSION-TOKEN"
+          "sessionToken": "SESSION-TOKEN",
+          "js7Version": "0.0.0-TEST"
         }""")
     }
   }

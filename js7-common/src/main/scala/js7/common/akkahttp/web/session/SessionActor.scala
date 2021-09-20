@@ -2,6 +2,7 @@ package js7.common.akkahttp.web.session
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
 import com.typesafe.config.Config
+import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, User, UserId}
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -45,7 +46,7 @@ extends Actor {
   }
 
   def receive = {
-    case Command.Login(_user: User, tokenOption, isEternalSession) =>
+    case Command.Login(_user: User, clientVersion, tokenOption, isEternalSession) =>
       val user = _user.asInstanceOf[S#User]
       for (t <- tokenOption) delete(t, reason = "second login")
       val token = SessionToken.generateFromSecretString(SecretStringGenerator.newSecretString())
@@ -55,12 +56,16 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken -> session)
-      logger.info(s"Session:${session.sessionNumber} for User '${user.id}' added${session.isEternal ?? " (eternal)"}")
+      logger.info(s"${session.sessionToken} for ${user.id}: Login" +
+        clientVersion.fold("")(v => " (" + v + (if (v == BuildInfo.version) " ✔️ )" else ", version differs!)")) +
+        (session.isEternal ?? " (eternal)"))
       sender() ! token
       scheduleNextCleanup()
 
     case Command.Logout(token) =>
-      delete(token, reason = "logout")
+      for (session <- tokenToSession.remove(token)) {
+        logger.info(s"$token for User '${session.currentUser.id}': Logout")
+      }
       sender() ! Completed
 
     case Command.Get(token, _idsOrUser: Either[Set[UserId], User]) =>
@@ -113,10 +118,10 @@ extends Actor {
     if (session.sessionInit.loginUser.isAnonymous &&
         session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
     {
-      logger.info(s"Session:${session.sessionNumber} for User '${session.sessionInit.loginUser.id}' switched to User '${newUser.id}'")
+      logger.info(s"${session.sessionToken} for ${session.sessionInit.loginUser.id} switched to ${newUser.id}")
       Some(session)
     } else {
-      logger.debug(s"Rejecting session token ${session.sessionNumber} belonging to user '${session.currentUser.id}' but sent by user '${newUser.id.string}'")
+      logger.debug(s"${session.sessionToken}: Rejecting session token belonging to ${session.currentUser.id} but sent by ${newUser.id}")
       None
     }
   }
@@ -150,7 +155,12 @@ object SessionActor
 
   private[session] sealed trait Command
   private[session] object Command {
-    final case class Login[U <: User](user: U, oldSessionTokenOption: Option[SessionToken], isEternalSession: Boolean) extends Command
+    final case class Login[U <: User](
+      user: U,
+      clientVersion: Option[String],
+      oldSessionTokenOption: Option[SessionToken],
+      isEternalSession: Boolean
+    ) extends Command
     final case class Logout(token: SessionToken) extends Command
     final case class Get[U <: User](token: SessionToken, idsOrUser: Either[Set[UserId], U]) extends Command
     final case object GetCount extends Command

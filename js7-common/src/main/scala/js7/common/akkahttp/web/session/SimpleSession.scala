@@ -9,5 +9,5 @@ final case class SimpleSession(sessionInit: SessionInit[SimpleUser]) extends Ses
 {
   type User = SimpleUser
 
-  override def toString = sessionToken.short
+  override def toString = sessionToken.toString
 }
