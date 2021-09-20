@@ -4,6 +4,7 @@ import js7.base.problem.Problems.DuplicateKey
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderOrderAdded}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.StateView
+import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.workflow.instructions.AddOrder
 import scala.collection.View
 
@@ -20,9 +21,9 @@ extends EventInstructionExecutor
           case Order.Ready =>
             val events = for {
               workflowId <- state.workflowPathToId(addOrder.workflowPath)
-              scope <- state.toScope(order)
+              scope <- state.toImpureOrderExecutingScope(order, clock.now())
               addedOrderId <- addOrder.orderId.evalAsString(scope).flatMap(OrderId.checked)
-              args <- addOrder.arguments.eval(scope).flatMap(_.asObjectValue)
+              args <- evalExpressionMap(addOrder.arguments, scope)
             } yield
               if (state.idToOrder.isDefinedAt(addedOrderId))
                 View(OrderFailedIntermediate_(
@@ -30,7 +31,7 @@ extends EventInstructionExecutor
                     DuplicateKey("OrderId", addedOrderId.string)))))
               else
                 View(
-                  OrderOrderAdded(addedOrderId, workflowId, args.nameToValue,
+                  OrderOrderAdded(addedOrderId, workflowId, args,
                     deleteWhenTerminated = addOrder.deleteWhenTerminated),
                   OrderMoved(order.position.increment))
             events.map(_.map(order.id <-: _).toList)
