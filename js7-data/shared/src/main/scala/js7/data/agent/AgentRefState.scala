@@ -4,7 +4,7 @@ import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
-import js7.data.agent.AgentRefState.{Coupled, CouplingFailed, CouplingState, _}
+import js7.data.agent.AgentRefState.{Coupled, CouplingState, _}
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
@@ -61,7 +61,6 @@ extends UnsignedSimpleItemState
 
       case AgentCouplingFailed(problem) =>
         Right(copy(
-          couplingState = if (couplingState == Coupled) CouplingFailed(problem) else couplingState,
           problem = Some(problem)))
 
       case AgentEventsObserved(eventId_) =>
@@ -112,7 +111,6 @@ object AgentRefState
     implicit val jsonCodec: TypedJsonCodec[CouplingState] = TypedJsonCodec(
       Subtype(Reset),
       Subtype(Coupled),
-      Subtype(deriveConfiguredCodec[CouplingFailed]),
       Subtype(ShutDown),
       Subtype(deriveConfiguredCodec[Resetting]))
   }

@@ -81,14 +81,5 @@ final class AgentRefStateTest extends AnyFreeSpec
 
     testJson[AgentRefState.CouplingState](AgentRefState.Reset, json"""{ "TYPE": "Reset" }""")
     testJson[AgentRefState.CouplingState](AgentRefState.Coupled, json"""{ "TYPE": "Coupled" }""")
-
-    testJson[AgentRefState.CouplingState](
-      AgentRefState.CouplingFailed(Problem("PROBLEM")),
-      json"""{
-        "TYPE": "CouplingFailed",
-        "problem": {
-          "message": "PROBLEM"
-        }
-      }""")
   }
 }
