@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "${0%/*}/../js7-controller/.."
+
+merge=""
+to=""
+next=""
+branch="test/2.0"
+pushOptions=()
+
+function usage() {
+  echo "Usage: $0 --merge=<version> --to=<version> --next=<version>"
+  echo "--merge, if given, merges this (development) version"
+  echo "--to and --next are used together to name the released version"
+  echo "--to names the released version"
+  echo "--next names the following snapshot version"
+  echo "Example: $0 --merge=2.0.0-alpha.20210921 --to=2.0.0 --next=2.0.0-SNAPSHOT"
+}
+
+for arg in "$@"; do :
+  case "$arg" in
+    --merge=*)
+      merge="${arg#*=}"
+      ;;
+    --to=*)
+      to="${arg#*=}"
+      ;;
+    --next=*)
+      next="${arg#*=}"
+      ;;
+    --no-push)
+      pushOptions+=("--dry-run")
+      ;;
+    -\?|-h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Invalid option: $arg"
+      usage
+      exit 1
+      ;;
+  esac
+done
+if ([ -n "$to" ] && [ -z "$next" ]) || ([ -z "$to" ] && [ -n "$next" ]); then
+  echo "Please set both or none of --to and --next"
+  usage
+  exit 1
+fi
+
+git pull --ff-only
+
+if [ -n "$to" ]; then
+  git checkout "$branch"
+  git rebase
+fi
+
+if [ -n "$merge" ]; then
+  git merge "v$merge"
+fi
+
+./sbt-batch \
+  -Djs7.version="$to" \
+  -Djs7.nextVersion="$next" \
+  'release with-defaults'
+
+git push "${pushOptions[@]+"${pushOptions[@]}"}" --follow-tags
+
+if [ -n "$to" ]; then :
+#  git reset --hard "$to"
+#  echo ./sbt-batch publish
+#  git rebase
+  git checkout main
+fi

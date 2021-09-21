@@ -648,10 +648,11 @@ def isExcludedJar(path: String) =
 //--------------------------------------------------------------------------------------------------
 // RELEASE
 
-val js7Version = sys.props.get("js7.version")
-val js7NextVersion = sys.props.get("js7.nextVersion")
+val js7Version = sys.props.get("js7.version").filter(_.nonEmpty)
+val js7NextVersion = sys.props.get("js7.nextVersion").filter(_.nonEmpty)
 val isStandardRelease = {
-  if (js7Version.isDefined != js7NextVersion.isDefined) throw new RuntimeException("Please set both js7.version and js7.nextVersion")
+  if (js7Version.isDefined != js7NextVersion.isDefined)
+    throw new RuntimeException("Please set both js7.version and js7.nextVersion")
   js7Version.isDefined
 }
 
