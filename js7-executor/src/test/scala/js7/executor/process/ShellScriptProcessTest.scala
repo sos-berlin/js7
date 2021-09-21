@@ -50,7 +50,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
   }
 
   if (isUnix) {
-    if (false && !KernelSupportsNestedShebang)
+    if (!KernelSupportsNestedShebang)
       "#! (shebang) not testable because the kernel likely does not support nested interpreters" in {
         pending
       }
