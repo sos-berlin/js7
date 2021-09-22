@@ -2,10 +2,15 @@
 set -euo pipefail
 cd "${0%/*}/../js7-controller/.."
 
+if [ ${BASH_VERSINFO[0]} -lt 5 ]; then
+  # Before 4.4, bash does handle empty arrays with -u
+  set +u
+fi
+
 merge=""
 to=""
 next=""
-branch="test/2.0"
+branch="release/2.0"
 pushOptions=()
 
 function usage() {
@@ -64,7 +69,7 @@ fi
   -Djs7.nextVersion="$next" \
   'release with-defaults'
 
-git push "${pushOptions[@]+"${pushOptions[@]}"}" --follow-tags
+git push "${pushOptions[@]}" --follow-tags
 
 if [ -n "$to" ]; then :
 #  git reset --hard "$to"
