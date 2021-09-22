@@ -337,7 +337,7 @@ final case class Order[+S <: Order.State](
             copy(
               isSuspended = false,
               mark = None,
-              state = if (isState[Broken] || isState[Failed] || isState[Failed]) Ready else state,
+              state = if (isState[Failed] || isState[Broken]) Ready else state,
               historicOutcomes = historicOutcomes
             ).withPosition(maybePosition getOrElse position)))
 
