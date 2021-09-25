@@ -22,7 +22,7 @@ import js7.data.value.expression.PositionSearch
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BoardInstruction, End, Execute, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{BoardInstruction, End, Execute, Fork, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
@@ -73,20 +73,9 @@ extends VersionedItem
 
   def withId(id: VersionedItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
 
-  private def checked: Checked[Workflow] = {
-    val problems = labeledInstructions.map (_.instruction).collect {
-      case jump: JumpInstruction if !labelToNumber.contains(jump.to) =>
-        Problem.pure(s"Unknown label '${jump.to}'")
-    }
-    if (problems.nonEmpty)
-      Left(Problem.Combined(problems))
-    else
-      Right(this)
-  }
-
   /** Checks a complete workflow including subworkflows using jobs in its outer workflows. */
   def completelyChecked: Checked[Workflow] = {
-    val chk = flattenedWorkflows.map(_.checked) ++
+    val chk =
       checkJobReferences ++
       checkRetry() ++
       checkLabels
@@ -222,21 +211,11 @@ extends VersionedItem
       .map(_._1)
       .toChecked(UnknownKeyProblem("Label", label.toString))
 
-  private def jobNameToPositions(name: WorkflowJob.Name): Checked[Iterable[Position]] =
-    findJob(name)
-      .map(_ => flattenedInstructions
-        .collect {
-          case (pos, Labeled(_, ex: Execute.Named, _)) if ex.name == name => pos
-        })
-
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)
 
   def lastNr: InstructionNr =
     instructions.length - 1
-
-  private def flattenedWorkflows: View[Workflow] =
-    flattenedWorkflowsOf(Nil).map(_._2)
 
   private[workflow] def flattenedBranchToWorkflow: Map[BranchPath, Workflow] =
     flattenedWorkflowsOf(Nil).toMap
@@ -270,16 +249,6 @@ extends VersionedItem
     labeledInstructions.view
       .zipWithIndex
       .map { case (s, i) => InstructionNr(i) -> s }
-
-  private[workflow] def reduce: Workflow =
-    copy(rawLabeledInstructions =
-      rawLabeledInstructions.sliding(2).flatMap { // Peep-hole optimize
-        case Seq(_ @: (jmp: JumpInstruction), maybeLabel @: _) if maybeLabel contains jmp.to => Nil
-        case Seq(_ @: IfFailedGoto(errorTo, _), _ @: Goto(to, _)) if errorTo == to => Nil
-        case Seq(a, _) => a :: Nil
-        case Seq(_) => Nil  // Unused code in contrast to sliding's documentation?
-      }.toVector ++
-        rawLabeledInstructions.lastOption)
 
   def reduceForAgent(agentPath: AgentPath): Workflow =
     reuseIfEqual(this, copy(
@@ -494,7 +463,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       timeZone, jobResourcePaths, source, outer).orThrow
 
   /** Checks a subworkflow.
-    * Use `completelyChecked` to check a whole workflow incldung subworkfows. */
+    * Use `completelyChecked` to check a whole workflow including subworkfows. */
   def checkedSub(
     id: WorkflowId,
     labeledInstructions: IndexedSeq[Instruction.Labeled],
@@ -505,7 +474,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Checked[Workflow] =
-    new Workflow(
+    Right(new Workflow(
       id,
       labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
       nameToJob,
@@ -513,30 +482,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       timeZone,
       jobResourcePaths ,
       source,
-      outer
-    ).checked
-
-  /** Checks a complete workflow including subworkflows. */
-  private def completelyChecked(
-    id: WorkflowId,
-    labeledInstructions: IndexedSeq[Instruction.Labeled],
-    nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
-    orderPreparation: OrderPreparation = OrderPreparation.default,
-    timeZone: TimeZone = TimeZone.utc,
-    jobResourcePaths: Seq[JobResourcePath] = Nil,
-    source: Option[String] = None,
-    outer: Option[Workflow] = None)
-  : Checked[Workflow] =
-    new Workflow(
-      id,
-      labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd()),
-      nameToJob,
-      orderPreparation,
-      timeZone,
-      jobResourcePaths,
-      source,
-      outer
-    ).completelyChecked
+      outer))
 
   def of(instructions: Instruction.Labeled*): Workflow =
     if (instructions.isEmpty)
@@ -549,8 +495,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
 
   def isCorrectlyEnded(labeledInstructions: IndexedSeq[Instruction.Labeled]): Boolean =
     labeledInstructions.nonEmpty &&
-      (labeledInstructions.last.instruction.isInstanceOf[End] ||
-       labeledInstructions.last.instruction.isInstanceOf[Goto])
+      labeledInstructions.last.instruction.isInstanceOf[End]
 
   override lazy val subtype: Subtype[Workflow] =
     Subtype(jsonEncoder, topJsonDecoder)

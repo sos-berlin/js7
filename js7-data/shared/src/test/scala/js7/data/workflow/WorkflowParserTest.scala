@@ -13,7 +13,7 @@ import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, Fail, Finish, Fork, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.tester.DiffxAssertions.assertEqual
 import org.scalatest.freespec.AnyFreeSpec
@@ -498,35 +498,6 @@ final class WorkflowParserTest extends AnyFreeSpec
       Workflow(WorkflowPath.NoId, Vector(
         Finish(sourcePos(33, 39)),
         ImplicitEnd(sourcePos = sourcePos(47, 48)))))
-  }
-
-  "onError and goto" in {
-    checkWithSourcePos("""
-      define workflow {
-        execute executable="/A", agent="AGENT";
-        ifFailedGoto FAILURE;
-        execute executable="/B", agent="AGENT";
-        goto END;
-        FAILURE: execute executable="/OnFailure", agent="AGENT";
-        END: end;
-      }""",
-    Workflow(
-      WorkflowPath.NoId,
-      Vector(
-        Execute.Anonymous(
-          WorkflowJob(AgentPath("AGENT"), PathExecutable("/A")),
-          sourcePos = sourcePos(33, 71)),
-        IfFailedGoto(Label("FAILURE"), sourcePos(81, 101)),
-        Execute.Anonymous(
-          WorkflowJob(AgentPath("AGENT"), PathExecutable("/B")),
-          sourcePos = sourcePos(111, 149)),
-        Goto(Label("END"), sourcePos(159, 167)),
-        "FAILURE" @:
-        Execute.Anonymous(
-          WorkflowJob(AgentPath("AGENT"), PathExecutable("/OnFailure")),
-          sourcePos = sourcePos(186, 232)),
-        "END" @:
-        ExplicitEnd(sourcePos(247, 250)))))
   }
 
   //for (n <- sys.props.get("test.speed").map(_.toInt)) "Speed" - {

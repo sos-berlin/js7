@@ -1,6 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe._
+import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.syntax._
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString
@@ -30,7 +31,6 @@ extends ForkInstruction
   // TODO Fork.checked(..): Checked[Fork]
   for (dups <- branches.duplicateKeys(_.id))
     throw DuplicatedBranchIdsInForkProblem(dups.keys.toSeq).throwable.appendCurrentStackTrace
-  for (idAndScript <- branches) Fork.validateBranch(idAndScript).orThrow
 
   def withoutSourcePos = copy(
     sourcePos = None,
@@ -101,12 +101,6 @@ object Fork
         .map { case (id, workflow) => Branch(Branch.Id(id), workflow) }
         .toVector)
 
-  private def validateBranch(branch: Branch): Checked[Branch] =
-    if (branch.workflow.instructions.exists(o => o.isInstanceOf[Goto] || o.isInstanceOf[IfFailedGoto]))
-      Left(Problem(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto'"))
-    else
-      Right(branch)
-
   final case class Branch(id: Branch.Id, workflow: Workflow)
   object Branch {
     implicit def fromPair(pair: (String, Workflow)): Branch =
@@ -121,7 +115,8 @@ object Fork
       implicit def fromString(string: String) = apply(string)
     }
 
-    implicit val jsonCodec = deriveCodec[Branch]
+    private implicit val customConfig = withDefaults
+    implicit val jsonCodec = deriveConfiguredCodec[Branch]
   }
 
   //implicit lazy val jsonCodec: CirceObjectCodec[Fork] = deriveCodec[Fork]

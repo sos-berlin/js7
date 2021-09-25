@@ -17,7 +17,6 @@ object Instructions
     Subtype[Fork],
     Subtype[ForkList],
     Subtype[If],
-    Subtype[IfFailedGoto],
     Subtype[Prompt],
     Subtype[PostNotice],
     Subtype[ExpectNotice],
@@ -25,6 +24,5 @@ object Instructions
     Subtype.named[TryInstruction]("Try"),
     Subtype.named[LockInstruction]("Lock"),
     Subtype[AddOrder],
-    Subtype[Goto],
     Subtype[Gap])
 }

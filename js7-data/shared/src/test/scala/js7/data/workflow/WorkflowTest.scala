@@ -16,7 +16,7 @@ import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResource
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExpectNotice, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, PostNotice, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExpectNotice, Fail, Fork, Gap, If, ImplicitEnd, LockInstruction, PostNotice, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.ForkTestSetting
@@ -541,18 +541,6 @@ final class WorkflowTest extends AnyFreeSpec
     .toString contains "Duplicate labels")
   }
 
-  "Missing Label for Goto" in {
-    intercept[RuntimeException] {
-      Workflow.of(Goto(Label("A")))
-    }
-  }
-
-  "Missing Label for IfFailedGoto" in {
-    intercept[RuntimeException] {
-      Workflow.of(IfFailedGoto(Label("A")))
-    }
-  }
-
   "jobOption" in {
     assert(TestWorkflow.checkedExecute(Position(0)) == Right(AExecute))
     assert(TestWorkflow.checkedExecute(Position(1)) == Left(Problem("Expected 'Execute' statement at workflow position 1 (not: If)")))
@@ -566,30 +554,6 @@ final class WorkflowTest extends AnyFreeSpec
     assert(TestWorkflow.nestedWorkflow(Nil) == Right(TestWorkflow))
     assert(TestWorkflow.nestedWorkflow(Position(2) / "fork+🥕") == Right(
       TestWorkflow.instruction(2).asInstanceOf[Fork].workflow(BranchId("fork+🥕")).orThrow))
-  }
-
-  "reduce" in {
-    val job = Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("EXECUTABLE-A")))
-    val B = Label("B")
-    val C = Label("C")
-    val D = Label("D")
-    val END = Label("END")
-
-    val instructions = Vector[(Instruction.Labeled, Boolean)](
-      (()  @: job)              -> true,
-      (()  @: Goto(B))          -> true,
-      (C   @: job)              -> true,
-      (()  @: Goto(D))          -> true,   // reducible?
-      (()  @: IfFailedGoto(D))  -> false,  // reducible
-      (()  @: Goto(D))          -> false,  // reducible
-      (D   @: job)              -> true,
-      (()  @: Goto(END))        -> false,  // reducible
-      (END @: ExplicitEnd())      -> true,
-      (B   @: job)              -> true,
-      (()  @: Goto(C))          -> true)
-    val id = WorkflowPath("WORKFLOW") ~ "VERSION"
-    val a = Workflow(id, instructions.map(_._1))
-    assert(a.reduce == Workflow(id, instructions collect { case (s, true) => s }))
   }
 
   "numberedInstruction" in {

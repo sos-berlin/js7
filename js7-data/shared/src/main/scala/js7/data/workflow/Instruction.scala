@@ -63,10 +63,6 @@ trait Instruction
     showSourcePos ?? s" /*$sourcePos*/"
 }
 
-trait JumpInstruction extends Instruction {
-  def to: Label
-}
-
 object Instruction
 {
   private val showSourcePos = sys.props contains "js7.show-source-pos"  // For Debugging

@@ -18,7 +18,7 @@ import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Finish, Fork, Goto, If, IfFailedGoto, ImplicitEnd, LockInstruction, Prompt, Retry, TryInstruction, End => EndInstr, Fail => FailInstr}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Finish, Fork, If, ImplicitEnd, LockInstruction, Prompt, Retry, TryInstruction, End => EndInstr, Fail => FailInstr}
 import scala.concurrent.duration._
 
 /**
@@ -242,14 +242,6 @@ object WorkflowParser
           } yield try_
         })
 
-    private def ifFailedGotoInstruction[_: P] = P[IfFailedGoto](
-      (Index ~ keyword("ifFailedGoto") ~ w ~ label ~ hardEnd)
-        .map { case (start, n, end) => IfFailedGoto(n, sourcePos(start, end)) })
-
-    private def gotoInstruction[_: P] = P[Goto](
-      Index ~ keyword("goto") ~ w ~ label ~ hardEnd
-        map { case (start, n, end) => Goto(n, sourcePos(start, end)) })
-
     private def lockInstruction[_: P] = P[LockInstruction](
       (Index ~ keyword("lock") ~ w ~/
         inParentheses(keyValues(
@@ -272,9 +264,7 @@ object WorkflowParser
         failInstruction |
         finishInstruction |
         forkInstruction |
-        gotoInstruction |
         ifInstruction |
-        ifFailedGotoInstruction |
         jobInstruction |
         promptInstruction |
         retryInstruction |

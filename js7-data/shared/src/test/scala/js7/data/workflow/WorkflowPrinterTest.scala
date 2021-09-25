@@ -7,7 +7,7 @@ import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fork, Goto, If, IfFailedGoto}
+import js7.data.workflow.instructions.{Execute, Fork, If}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -201,30 +201,6 @@ final class WorkflowPrinterTest extends AnyFreeSpec
         |      execute agent='AGENT', executable='B';
         |    }
         |  };
-        |}
-        |""".stripMargin)
-  }
-
-  "onError and goto" in {
-    check(
-      Workflow(
-        WorkflowPath.NoId,
-        Vector(
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("A"))),
-          IfFailedGoto(Label("FAILURE")),
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("B"))),
-          Goto(Label("END")),
-          "FAILURE" @:
-          Execute.Anonymous(WorkflowJob(AgentPath("AGENT"), PathExecutable("OnFailure"))),
-          "END" @:
-          ExplicitEnd())),
-      """define workflow {
-        |  execute agent='AGENT', executable='A';
-        |  ifFailedGoto FAILURE;
-        |  execute agent='AGENT', executable='B';
-        |  goto END;
-        |  FAILURE: execute agent='AGENT', executable='OnFailure';
-        |  END: end;
         |}
         |""".stripMargin)
   }

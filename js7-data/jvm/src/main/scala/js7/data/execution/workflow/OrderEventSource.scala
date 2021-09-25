@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, Orde
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{End, ForkInstruction, Gap, Goto, IfFailedGoto, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, ForkInstruction, Gap, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
@@ -451,35 +451,12 @@ final class OrderEventSource(state: StateView)
   }
 
   private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
-    idToWorkflow.checked(order.workflowId) flatMap { workflow =>
-      workflow.instruction(order.position) match {
-        case Goto(label, _) =>
-          workflow.labelToPosition(order.position.branchPath, label) map Some.apply
+    for {
+      workflow <- idToWorkflow.checked(order.workflowId)
+      maybePosition <- executorService.nextPosition(workflow.instruction(order.position), order, state)
+    } yield maybePosition
 
-        case IfFailedGoto(label, _) =>
-          if (order.lastOutcome.isFailed)
-            workflow.labelToPosition(order.position.branchPath, label) map Some.apply
-          else
-            Right(Some(order.position.increment))
-
-        case instr: Instruction =>
-          executorService.nextPosition(instr, order, state)
-
-        //case _: End if order.position.isNested =>
-        //  order.position.dropChild.flatMap(returnPosition =>
-        //    workflow.instruction(returnPosition) match {
-        //      case _: If =>
-        //        nextPosition(order withPosition returnPosition)
-        //      case _ =>
-        //        None
-        //    })
-
-        case _ => Right(None)
-      }
-  }
-
-  private def instruction_[A <: Instruction: ClassTag](orderId: OrderId)
-  : Checked[A] = {
+  private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] = {
     for {
       order <- idToOrder.checked(orderId)
       instr <- instruction_[A](order.workflowPosition)

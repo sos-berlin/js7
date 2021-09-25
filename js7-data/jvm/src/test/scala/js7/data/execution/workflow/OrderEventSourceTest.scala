@@ -1,8 +1,8 @@
 package js7.data.execution.workflow
 
 import cats.syntax.option._
+import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.CancelStartedOrderProblem
@@ -23,7 +23,7 @@ import js7.data.state.{OrderEventHandler, StateView}
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Fork, Gap, Goto, If, IfFailedGoto, LockInstruction, TryInstruction}
+import js7.data.workflow.instructions.{Execute, Fail, Fork, If, LockInstruction, TryInstruction}
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.test.ForkTestSetting
@@ -171,42 +171,6 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
   "applyMoveInstructions" - {
     for (isAgent <- Seq(false, true)) s"isAgent=$isAgent" - {
-      "Goto, IfFailedGoto" in {
-        val workflow = Workflow.of(TestWorkflowId,
-                   executeScript,  // 0
-                   Goto("B"),      // 1
-                   Gap.empty,      // 2
-          "C" @:   executeScript,  // 3
-          "END" @: ExplicitEnd(),  // 4
-          "B" @:   IfFailedGoto("C"), // 5
-                   TryInstruction(               // 6
-                     Workflow.of(executeScript),  // 6/0:0
-                     Workflow.of(executeScript))) // 6/1:0
-        val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder), isAgent = isAgent)
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Right(Position(0)))    // Job
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Right(Position(6) / try_(0) % 0)) // success, next instruction was try
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Right(Position(2)))    // Gap
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(3)) == Right(Position(3)))    // Job
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(4)) == Right(Position(4)))    // ExplicitEnd
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Right(Position(6) / try_(0) % 0)) // success, next instruction was try
-        assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(5)) == Right(Position(3)))    // failure
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Right(Position(6) / try_(0) % 0))
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(7)) == Right(Position(7)))    // ImplicitEnd
-        eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99).isLeft
-      }
-
-      "Jump loops are detected" in {
-        val workflow = Workflow.of(
-          "A" @: Goto("B"),           // 0
-          "B" @: Goto("A"),           // 1
-          "C" @: IfFailedGoto("A"))   // 2
-        val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder), isAgent = isAgent)
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Left(Problem("Order:SUCCESS is in a workflow loop: 1 B: goto A --> 0 A: goto B")))
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Left(Problem("Order:SUCCESS is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
-        assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(2)) == Right(Position(3)))
-        assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(2)) == Left(Problem("Order:FAILED is in a workflow loop: 0 A: goto B --> 1 B: goto A")))
-      }
-
       "Job, Fork" in {
         val eventSource = newWorkflowEventSource(ForkWorkflow, List(succeededOrder, failedOrder), isAgent = isAgent)
         assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Right(Position(0)))
