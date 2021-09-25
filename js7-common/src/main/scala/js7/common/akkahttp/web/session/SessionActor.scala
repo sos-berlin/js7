@@ -64,7 +64,7 @@ extends Actor {
 
     case Command.Logout(token) =>
       for (session <- tokenToSession.remove(token)) {
-        logger.info(s"$token for User '${session.currentUser.id}': Logout")
+        logger.info(s"$token for ${session.currentUser.id}: Logout")
       }
       sender() ! Completed
 
@@ -72,7 +72,7 @@ extends Actor {
       val idsOrUser = _idsOrUser.map(_.asInstanceOf[S#User])
       val sessionOption = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
-          logger.debug(s"Rejecting unknown session token of user '${idsOrUser.fold(_.mkString("|"), _.id)}'")
+          logger.debug(s"Rejecting unknown session token of ${idsOrUser.fold(_.mkString("|"), _.id)}")
           None
 
         case (Some(session), Right(user)) if !user.id.isAnonymous && user.id != session.currentUser.id =>
@@ -80,7 +80,7 @@ extends Actor {
 
         case (Some(session), Left(userIds)) if !userIds.contains(session.currentUser.id) =>
           logger.debug(s"HTTPS distinguished name UserIds '${userIds.mkString(", ")}'" +
-            s" do not include Sessions's User '${session.currentUser.id}''")
+            s" do not include Sessions's ${session.currentUser.id}")
           None
 
         case (Some(session), _) =>
@@ -142,7 +142,7 @@ extends Actor {
 
   private def delete(token: SessionToken, reason: String): Unit =
     tokenToSession.remove(token) foreach { session =>
-      logger.info(s"Session:${session.sessionNumber} for User '${session.currentUser.id}' deleted due to $reason")
+      logger.info(s"$token for ${session.currentUser.id} deleted due to $reason")
     }
 }
 
