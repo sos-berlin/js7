@@ -16,6 +16,7 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.monixutils.MonixDeadline.now
+import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -64,14 +65,17 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
   common: ClusterCommon)
   (implicit S: JournaledState.Companion[S])
 {
+  import recovered.eventWatch
   import setting.{activeId, idToUri}
+
   private val jsonReadAhead = config.getInt("js7.web.client.json-read-ahead")
 
   assertThat(activeId != ownId && setting.passiveId == ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
 
-  import recovered.eventWatch
-  private val activeUri = idToUri(activeId)
+  private val activeApiCache = new RefCountedResource(
+    common.clusterContext.clusterNodeApi(idToUri(activeId), name = "Active node"))
+  private val activeApiResource = activeApiCache.resource
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor(recovered.state)
   private var dontActivateBecauseOtherFailedOver = otherFailed
@@ -90,8 +94,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
           })
 
     val notifyActive =
-      common.clusterContext
-        .clusterNodeApi(setting.activeUri, "ClusterPassiveDown")
+      activeApiResource
         .use(api =>
           (api.login(onlyIfNotLoggedIn = true) >>
             api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)).void
@@ -146,7 +149,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
             case _: Decoupled =>
               tryEndlesslyToSendClusterPrepareCoupling
             case _: PreparedToBeCoupled =>
-              common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
+              common.tryEndlesslyToSendCommand(
+                activeApiResource,
+                ClusterCouple(activeId = activeId, passiveId = ownId))
             case _: Coupled =>
               // After a quick restart of this passive node, the active node may not yet have noticed the loss.
               // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
@@ -154,7 +159,9 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
               // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
               // The active node ignores this command if it has emitted a ClusterPassiveLost event.
               awaitingCoupledEvent = true
-              common.tryEndlesslyToSendCommand(activeUri, ClusterRecouple(activeId = activeId, passiveId = ownId))
+              common.tryEndlesslyToSendCommand(
+                activeApiResource,
+                ClusterRecouple(activeId = activeId, passiveId = ownId))
           })
           .runAsyncUncancelable {
             case Left(throwable) => logger.error("While notifying the active cluster node about restart of this passive node:" +
@@ -166,6 +173,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
           .guarantee(Task {
             stopped = true
           })
+          .guarantee(activeApiCache.clear)
       })
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
@@ -187,14 +195,18 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
     //  ["HEARTBEAT", { timestamp: 1234.567 }]
     //  {TYPE: "Heartbeat", eventId: 1234567000, timestamp: 1234.567 }    Herzschlag-Event?
     //  Funktioniert nicht, wenn die Uhren verschieden gehen. Differenz feststellen?
-    common.tryEndlesslyToSendCommand(activeUri, ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
+    common.tryEndlesslyToSendCommand(
+      activeApiResource,
+      ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
 
   private def sendClusterCouple: Task[Unit] =
-    common.tryEndlesslyToSendCommand(activeUri, ClusterCouple(activeId = activeId, passiveId = ownId))
+    common.tryEndlesslyToSendCommand(
+      activeApiResource,
+      ClusterCouple(activeId = activeId, passiveId = ownId))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
   : Task[Checked[ClusterFollowUp[S]]] =
-    common.clusterContext.clusterNodeApi(activeUri, "active journal")
+    activeApiResource
       .use(activeNodeApi =>
         Task.tailRecM(
           (recovered.recoveredJournalFile match {
@@ -574,8 +586,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
             }
         }
         .guarantee(
-          Task { out.close() } >>
-            recouplingStreamReader.terminate.map(_ => ()))
+          Task { out.close() })
     }
 
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =

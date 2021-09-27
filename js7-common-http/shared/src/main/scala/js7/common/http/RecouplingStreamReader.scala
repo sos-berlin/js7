@@ -113,7 +113,7 @@ abstract class RecouplingStreamReader[
               Right(())
             }))
 
-  final def terminate: Task[Completed] =
+  final def terminateAndLogout: Task[Completed] =
     decouple >> coupledApiVar.terminate
 
   final def decouple: Task[Completed] =

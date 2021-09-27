@@ -277,7 +277,7 @@ extends ReceiveLoggingActor.WithStash
         commandQueue.terminate()
         currentFetchedFuture.foreach(_.cancel())
         eventFetcherTerminated.completeWith(
-          eventFetcher.terminate.runToFuture)  // Rejects current commands waiting for coupling
+          eventFetcher.terminateAndLogout.runToFuture)  // Rejects current commands waiting for coupling
         agentRunIdOnce.toOption match {
           case Some(agentRunId) if reset =>
             // Required only for ItemDeleted, redundant for ResetAgent

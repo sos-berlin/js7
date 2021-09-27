@@ -1,6 +1,7 @@
 package js7.cluster
 
 import akka.actor.ActorSystem
+import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -25,7 +26,7 @@ import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
-import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.eval.Task
@@ -100,17 +101,27 @@ private[cluster] final class ClusterCommon(
 
   def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
-    clusterContext.clusterNodeApi(uri, name = name)
-      .evalTap(_.loginUntilReachable())
-      .use(_
-        .executeClusterCommand(command))
-        .map((_: ClusterCommand.Response) => ())
-      .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
-        logger.debug(throwable.toString, throwable)
-        // TODO ClusterFailed event?
-        retry(()).delayExecution(1.s/*TODO*/)        // TODO Handle heartbeat timeout!
-      }
+    tryEndlesslyToSendCommand(clusterContext.clusterNodeApi(uri, name = name), command)
+  }
+
+  def tryEndlesslyToSendCommand(
+    apiResource: Resource[Task, ClusterNodeApi],
+    command: ClusterCommand)
+  : Task[Unit] = {
+    val name = command.getClass.simpleScalaName
+    apiResource
+      .use(api =>
+        api.loginUntilReachable(onlyIfNotLoggedIn = true) >>
+          api.executeClusterCommand(command)
+            .map((_: ClusterCommand.Response) => ())
+            .onErrorRestartLoop(()) { (throwable, _, retry) =>
+              logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
+              logger.debug(throwable.toString, throwable)
+              // TODO ClusterFailed event?
+              api.tryLogout >>
+                Task.sleep(1.s/*TODO*/) >>       // TODO Handle heartbeat timeout!
+                retry(())
+            })
   }
 
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
