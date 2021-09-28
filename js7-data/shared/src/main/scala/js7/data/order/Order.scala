@@ -510,10 +510,10 @@ final case class Order[+S <: Order.State](
 
   def isAtAgent(agentPath: AgentPath): Boolean =
     attachedState match {
-      case None => false
       case Some(Attaching(`agentPath`)) => true
       case Some(Attached(`agentPath`)) => true
       case Some(Detaching(`agentPath`)) => true
+      case _ => false
     }
 
   def isInDetachableState =
