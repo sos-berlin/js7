@@ -157,7 +157,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
               !fork.agentPath.contains(parentsAgentPath) ?
                 OrderDetachable
 
-            case None =>
+            case _ =>
               fork.agentPath.map(OrderAttachable(_))
           }
         }
