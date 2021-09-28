@@ -14,7 +14,7 @@ import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
-import js7.executor.process.{AbsolutePathJobExecutor, CommandLineJobExecutor, RelativePathJobExecutor, ScriptJobExecutor}
+import js7.executor.process.{AbsolutePathJobExecutor, CommandLineJobExecutor, RelativePathJobExecutor, ShellScriptJobExecutor}
 import js7.executor.{OrderProcess, ProcessOrder}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -61,7 +61,7 @@ object JobExecutor
         Right(new RelativePathJobExecutor(executable, jobConf, executorConf, pathToJobResource))
 
       case executable: ShellScriptExecutable =>
-        ScriptJobExecutor.checked(executable, jobConf, executorConf, pathToJobResource)
+        ShellScriptJobExecutor.checked(executable, jobConf, executorConf, pathToJobResource)
 
       case executable: CommandLineExecutable =>
         if (!executorConf.scriptInjectionAllowed)

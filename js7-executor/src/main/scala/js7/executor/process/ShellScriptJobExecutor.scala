@@ -15,18 +15,18 @@ import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed
 import js7.executor.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
 import js7.executor.process.RichProcess.{tryDeleteFile, tryDeleteFiles}
-import js7.executor.process.ScriptJobExecutor.writeScriptToFile
+import js7.executor.process.ShellScriptJobExecutor.writeScriptToFile
 import monix.eval.Task
 import scala.collection.mutable
 
-final class ScriptJobExecutor(
+final class ShellScriptJobExecutor(
   protected val executable: ShellScriptExecutable,
   protected val jobConf: JobConf,
   protected val jobExecutorConf: JobExecutorConf,
   protected val pathToJobResource: JobResourcePath => Checked[JobResource])
 extends PathProcessJobExecutor
 {
-  private val userToFileLock = AsyncLock("ScriptJobExecutor.userToFile")
+  private val userToFileLock = AsyncLock("ShellScriptJobExecutor.userToFile")
   private val userToFile = mutable.Map.empty[Option[WindowsUserName], Path]
 
   protected def checkFile =
@@ -52,18 +52,18 @@ extends PathProcessJobExecutor
     })
 }
 
-object ScriptJobExecutor
+object ShellScriptJobExecutor
 {
   def checked(
     executable: ShellScriptExecutable,
     jobConf: JobConf,
     executorConf: JobExecutorConf,
     pathToJobResource: JobResourcePath => Checked[JobResource])
-  : Checked[ScriptJobExecutor] =
+  : Checked[ShellScriptJobExecutor] =
     if (!executorConf.scriptInjectionAllowed)
       Left(SignedInjectionNotAllowed)
     else
-      Right(new ScriptJobExecutor(executable, jobConf, executorConf, pathToJobResource))
+      Right(new ShellScriptJobExecutor(executable, jobConf, executorConf, pathToJobResource))
 
   private def writeScriptToFile(script: String, tmpDir: Path, userName: Option[WindowsUserName]): Checked[Path] =
     Checked.catchNonFatal {
