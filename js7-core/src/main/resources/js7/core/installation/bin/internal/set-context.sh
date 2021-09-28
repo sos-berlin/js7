@@ -5,26 +5,6 @@
 # - pathSeparator
 # - classpathString
 
-isWindows() {
-  [ "$(uname -o)" = "Cygwin" ]
-}
-
-toUnixPath() {
-  if (isWindows); then
-    cygpath "$@"
-  else
-    echo "$@"
-  fi
-}
-
-toSystemPath() {
-  if isWindows; then
-    cygpath -w "$@"
-  else
-    echo "$@"
-  fi
-}
-
 if [ -z "${JS7_HOME:-}" ]; then :
   JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
   export JS7_HOME
@@ -32,13 +12,26 @@ fi
 
 declare JAVA_HOME
 declare -a classpath=()
-if isWindows; then
+
+if [ "$(uname -o)" == "Cygwin" ]; then
+  function toUnixPath() {
+    cygpath "$@"
+  }
+  function toSystemPath() {
+    cygpath -w "$@"
+  }
   pathSeparator=";"
   classpath+=("$(cygpath -w "$JS7_HOME/lib")/*")
   javaHome=""
   [ -n "$JAVA_HOME" ] && javaHome="$(cygpath "$JAVA_HOME")"
   #unused javaHome=$(dirname $(dirname $(readlink --canonicalize $(which java))))
 else
+  function toUnixPath() {
+    echo "$@"
+  }
+  function toSystemPath() {
+    echo "$@"
+  }
   pathSeparator=":"
   classpath+=("$JS7_HOME/lib/*")
   javaHome="$JAVA_HOME"
@@ -48,7 +41,7 @@ classpathString="$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
 
 java=java
 if [ -n "$javaHome" ]; then :
-    java="$javaHome/bin/java"
+  java="$javaHome/bin/java"
 fi
 
 timestamp() {

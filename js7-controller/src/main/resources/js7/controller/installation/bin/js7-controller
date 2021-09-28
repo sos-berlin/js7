@@ -17,28 +17,15 @@ javaOptions=(
   -XX:+UseStringDeduplication
   -XX:MaxJavaStackTraceDepth=999999999)
 log4jAsync=false
-terminateCommand='{ "TYPE": "ShutDown" }'
 
 for arg in "$@"; do :
   case "$arg" in
-    --rmx-port=*)
-      a="${arg#*=}"
-      javaOptions+=(
-        "-Dcom.sun.management.jmxremote"
-        "-Dcom.sun.management.jmxremote.ssl=false"
-        "-Dcom.sun.management.jmxremote.authenticate=false"
-        "-Dcom.sun.management.jmxremote.port=$a")
-      ;;
-    --debug-port=*)
-      a="${arg#*=}"
-      javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
+    -J*)
+      a="${arg#-J}"
+      javaOptions+=("$a")
       ;;
     --java-option=*)
       a="${arg#*=}"
-      javaOptions+=("$a")
-      ;;
-    -J*)
-      a="${arg#-J}"
       javaOptions+=("$a")
       ;;
     --directory=*)
@@ -59,6 +46,18 @@ for arg in "$@"; do :
       ;;
     --log4j-async)
       log4jAsync=true
+      ;;
+    --rmx-port=*)
+      a="${arg#*=}"
+      javaOptions+=(
+        "-Dcom.sun.management.jmxremote"
+        "-Dcom.sun.management.jmxremote.ssl=false"
+        "-Dcom.sun.management.jmxremote.authenticate=false"
+        "-Dcom.sun.management.jmxremote.port=$a")
+      ;;
+    --debug-port=*)
+      a="${arg#*=}"
+      javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
       ;;
     *)
       controllerOptions+=("$arg")
@@ -83,6 +82,8 @@ logs="$data/logs"
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
+tmpDir="$data/tmp"
+
 # Copy stdout and stderr to stdouterr.log
 if [ -e "$logs/stdouterr.log" ]; then
   echo >>"$logs/stdouterr.log" \
@@ -100,8 +101,7 @@ if $log4jAsync; then :
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 
-controllerOptions+=("--config-directory=$config")
-controllerOptions+=("--data-directory=$data")
+controllerOptions+=("--config-directory=$config" "--data-directory=$data")
 [ -z "$httpPort" ] || controllerOptions+=("--http-port=$httpPort")
 [ -z "$httpsPort" ] || controllerOptions+=("--https-port=$httpsPort")
 
@@ -113,7 +113,7 @@ execute=(
   "${controllerOptions[@]}")
 
 while true; do
-  rm -rf "$data"/tmp
+  rm -rf "$tmpDir"
 
   log "${execute[@]}"
   "${execute[@]}" &
@@ -124,12 +124,13 @@ while true; do
   log PID $pid
 
   terminate() {
-    echo "⚡$1"
+    echo "⚡ $1"
     log "$1: ShutDown JS7 Controller"
     # Add some seconds to start Java with ControllerClientMain
     #local terminateTimeout=30
+    local shutdownCmd='{ "TYPE": "ShutDown" }'
     if [ "$SHELL" = "/bin/bash" ]; then
-      "$JS7_HOME/bin/js7-client" --data-directory="$data" '{ "TYPE": "ShutDown" }' &
+      "$JS7_HOME/bin/js7-client" --data-directory="$data" "$shutdownCmd" &
     else
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=js7/controller/client/main/log4j2.xml \
@@ -137,7 +138,7 @@ while true; do
         js7.controller.client.main.ControllerClientMain \
         --data-directory="$data" \
         http://127.0.0.1:"$httpPort" \
-        "$terminateCommand" \
+        "$shutdownCmd" \
         >/dev/null &
     fi
     #(sleep $terminateTimeout && kill $pid) &

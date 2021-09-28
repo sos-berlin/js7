@@ -19,7 +19,7 @@ argToGet() {
 Host: host\r
 Connection: close\r
 x-js7-session: $(cat "$sessionTokenFile")\r
-Accept: text/plain;charset=UTF-8\r
+Accept: application/json\r
 Accept-Charset: UTF-8\r
 \r
 "
@@ -33,7 +33,7 @@ Connection: close\r
 x-js7-session: $(cat "$sessionTokenFile")\r
 Content-Type: application/json\r
 Content-Length: ${#arg}\r
-Accept: text/plain;charset=UTF-8\r
+Accept: application/json\r
 \r
 $arg"
 }
@@ -51,7 +51,7 @@ done
 
 sessionTokenFile="$data/state/session-token"
 if [ ! -f "$sessionTokenFile" ]; then
-  echo "Invalid argument --data-directory=$data (missing file $data/state/session-token)"
+  echo "Invalid argument --data-directory=$data (or missing file $data/state/session-token)"
   exit 1
 fi
 
@@ -79,11 +79,13 @@ for arg in "${args[@]}"; do
     echo "$status $remainder"
     echo
   fi
-  while IFS='' read -r line && [ "$line" != "$(echo -e '\r')" ]; do :; done <&3   # Skip headers
+  # Skip headers
+  while IFS='' read -r line && [ "$line" != "$(echo -e '\r')" ]; do :; done <&3
+
   cat <&3
   exec 3>&-
+  echo
   if [ "$status" != '200' ]; then
-    echo
     exit 1
   fi
 done
