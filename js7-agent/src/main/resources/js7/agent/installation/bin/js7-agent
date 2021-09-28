@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-JOBSCHEDULER_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
-export JOBSCHEDULER_HOME
-. "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
+JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
+export JS7_HOME
+. "$JS7_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
 
 config=/var/opt/js7/agent/config
@@ -132,7 +132,7 @@ while true; do
     # Add some seconds to start Java with AgentClientMain
     #local terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
-      "$JOBSCHEDULER_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
+      "$JS7_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
     else
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=js7/agent/client/main/log4j2.xml \
