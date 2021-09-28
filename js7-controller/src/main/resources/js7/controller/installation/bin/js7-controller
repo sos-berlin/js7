@@ -100,6 +100,15 @@ if $log4jAsync; then :
   javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
+if [ "$JAVA_VERSION" -ge 13 ]; then
+  [ -d "$data/java-shared-archives" ] || mkdir "$data/java-shared-archives"
+  jsaFile="$data/java-shared-archives/js7-controller-$(cat "$JS7_HOME/VERSION").jsa"
+  if [ -f "$jsaFile" ]; then
+    javaOptions+=("-XX:SharedArchiveFile=$jsaFile" -Xshare:auto)
+  else
+    javaOptions+=("-XX:ArchiveClassesAtExit=$jsaFile" -Xshare:auto)
+  fi
+fi
 
 controllerOptions+=("--config-directory=$config" "--data-directory=$data")
 [ -z "$httpPort" ] || controllerOptions+=("--http-port=$httpPort")
