@@ -100,6 +100,8 @@ object Outcome
   extends Completed with NotSucceeded
   {
     def isSucceeded = false
+
+    override def toString = s"⚠️ Failed(${errorMessage getOrElse "None"}, $namedValues)"
   }
   object Failed extends Completed.Companion[Failed]
   {
@@ -136,16 +138,20 @@ object Outcome
   final case class TimedOut(outcome: Outcome.Completed)
   extends Outcome {
     def isSucceeded = false
+
+    override def toString = s"⚠️ TimedOut($outcome)"
   }
 
   final case class Killed(outcome: Outcome.Completed)
   extends Outcome {
     def isSucceeded = false
+    override def toString = s"⚠️ Killed($outcome)"
   }
 
   /** No response from job - some other error has occurred. */
   final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
     def isSucceeded = false
+    override def toString = s"💥 Disrupted($reason)"
   }
   object Disrupted {
     def apply(problem: Problem): Disrupted =

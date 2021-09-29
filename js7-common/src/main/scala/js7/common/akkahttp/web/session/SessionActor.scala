@@ -57,7 +57,7 @@ extends Actor {
       }
       tokenToSession.insert(session.sessionToken -> session)
       logger.info(s"${session.sessionToken} for ${user.id}: Login" +
-        clientVersion.fold("")(v => " (" + v + (if (v == BuildInfo.version) " ✔️ )" else ", version differs!)")) +
+        clientVersion.fold("")(v => " (" + v + (if (v == BuildInfo.version) " ✔)" else " ⚠️ version differs!)")) +
         (session.isEternal ?? " (eternal)"))
       sender() ! token
       scheduleNextCleanup()
