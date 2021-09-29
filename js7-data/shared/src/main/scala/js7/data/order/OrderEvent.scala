@@ -162,6 +162,9 @@ object OrderEvent
   }
 
   final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent
+  {
+    override def isFailed = outcome.isFailed
+  }
 
   final case class OrderForked(children: Vector[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
@@ -191,6 +194,9 @@ object OrderEvent
 
   final case class OrderJoined(outcome: Outcome)
   extends OrderActorEvent
+  {
+    override def isFailed = outcome.isFailed
+  }
 
   sealed trait OrderNoticeEvent extends OrderActorEvent
 

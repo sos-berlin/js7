@@ -13,7 +13,10 @@ trait Event {
     */
   type Key
 
+  def isFailed: Boolean = false
+
   def toShortString = toString
 
-  final def <-:(key: Key) = new KeyedEvent[this.type](key, this)
+  final def <-:(key: Key) =
+    new KeyedEvent[this.type](key, this)
 }

@@ -32,26 +32,26 @@ trait JournalLogging
 
   private val sb = new StringBuilder
 
-  protected final def logCommitted(persists: Iterable[LoggablePersist], ack: Boolean) = {
-    lazy val loggablePersists = dropLastEmptyPersists(persists)
-    lazy val committedAt = now
-    logger.whenTraceEnabled {
-      logPersists(loggablePersists, committedAt)(
-        traceLogPersist(ack))
-    }
-    if (conf.infoLogEvents.nonEmpty) {
-      logger.whenInfoEnabled {
-        val persists = dropLastEmptyPersists(loggablePersists
-          .filter(_
-            .stampedSeq.exists(stamped =>
-              infoLoggableEventClasses.contains(stamped.value.event.getClass))))
-        if (persists.nonEmpty) {
-          logPersists(persists, committedAt, infoLoggableEventClasses.contains)(
-            infoLogPersist)
-        }
+  protected final def logCommitted(persists: Iterable[LoggablePersist], ack: Boolean) =
+    logger.whenInfoEnabled {
+      lazy val myPersists = dropLastEmptyPersists(persists)
+      lazy val committedAt = now
+      logger.whenTraceEnabled {
+        logPersists(myPersists, committedAt)(traceLogPersist(ack))
       }
+
+      def isLoggable(stamped: Stamped[AnyKeyedEvent]) = {
+        val event = stamped.value.event
+        infoLoggableEventClasses.contains(event.getClass) || event.isFailed
+      }
+
+      //if (conf.infoLogEvents.nonEmpty) {
+        val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))
+        if (loggablePersists.nonEmpty) {
+          logPersists(loggablePersists, committedAt, isLoggable)(infoLogPersist)
+        }
+      //}
     }
-  }
 
   private def dropLastEmptyPersists(persists: Iterable[LoggablePersist])
   : Vector[LoggablePersist] = {
@@ -64,13 +64,12 @@ trait JournalLogging
   }
 
   private def logPersists(loggablePersists: Vector[LoggablePersist], committedAt: Deadline,
-    isLoggable: Class[_ <: Event] => Boolean = _ => true)
+    isLoggable: Stamped[AnyKeyedEvent] => Boolean = _ => true)
     (body: (Frame, Stamped[AnyKeyedEvent]) => Unit)
   : Unit = {
     var index = 0
     for (persist <- loggablePersists) {
-      val stampedSeq = persist.stampedSeq
-        .filter(o => isLoggable(o.value.event.getClass))
+      val stampedSeq = persist.stampedSeq.filter(isLoggable)
       val frame = Frame(persist, stampedSeq.length, index, loggablePersists.length, committedAt)
       val stampedIterator = stampedSeq.iterator
       var hasNext = stampedIterator.hasNext
