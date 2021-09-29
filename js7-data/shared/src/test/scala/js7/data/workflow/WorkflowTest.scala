@@ -13,6 +13,7 @@ import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecuta
 import js7.data.lock.LockPath
 import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant, StringConstant}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -155,7 +156,10 @@ final class WorkflowTest extends AnyFreeSpec
                         }
                       },
                       { "TYPE": "Execute.Named", "jobName": "B" }
-                    ]
+                    ],
+                    "result": {
+                      "RESULT": "$$RESULT"
+                    }
                   }
                 }
               ]
@@ -335,7 +339,10 @@ final class WorkflowTest extends AnyFreeSpec
                         "position": [ 2, "fork+🍋", 2 ],
                         "TYPE": "ImplicitEnd"
                       }
-                    ]
+                    ],
+                    "result": {
+                      "RESULT": "$$RESULT"
+                    }
                   }
                 }
               ]
@@ -1156,9 +1163,12 @@ private object WorkflowTest
         "🥕" -> Workflow.of(
           AExecute,
           Execute.Named(AJobName)),
-        "🍋" -> Workflow.of(
-          BExecute,
-          Execute.Named(BJobName))),
+        "🍋" -> Workflow.anonymous(
+          Seq(
+            BExecute,
+            Execute.Named(BJobName)),
+          result = Some(Map(
+            "RESULT" -> expr("$RESULT"))))),
       BExecute),
     Map(
       AJobName -> AJob,

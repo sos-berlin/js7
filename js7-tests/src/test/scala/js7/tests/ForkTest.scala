@@ -5,22 +5,23 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated, ResumeOrder}
 import js7.data.event.EventSeq
-import js7.data.job.{PathExecutable, RelativePathExecutable}
 import js7.data.order.OrderEvent._
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.StringValue
-import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fail, Fork}
+import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.{NumberValue, StringValue}
+import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.Position
-import js7.data.workflow.test.ForkTestSetting._
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.executor.OrderProcess
+import js7.executor.internal.InternalJob
 import js7.tests.ForkTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -35,20 +36,13 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  protected val agentPaths = AAgentPath :: BAgentPath :: Nil
-  protected val items = Seq(TestWorkflow, DuplicateWorkflow,
+  protected val agentPaths = aAgentPath :: bAgentPath :: Nil
+  protected val items = Seq(workflow, failingResultWorkflow, duplicateWorkflow,
     joinIfFailedForkWorkflow, failInForkWorkflow)
-
-  override def beforeAll() = {
-    directoryProvider.agents(0).writeExecutable(RelativePathExecutable("SLOW.cmd"), script(60.s))
-    for (a <- directoryProvider.agents) a.writeExecutable(TestPathExecutable, script(100.ms))
-    super.beforeAll()
-  }
 
   "Events" in {
     controller.addOrderBlocking(TestOrder)
     eventWatch.await[OrderFinished](_.key == TestOrder.id)
-    controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(TestOrder.id))).await(99.s).orThrow
     eventWatch.all[OrderEvent] match {
       case EventSeq.NonEmpty(stampeds) =>
         val keyedEvents = stampeds.map(_.value).toVector
@@ -59,6 +53,29 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
       case o =>
         fail(s"Unexpected EventSeq received: $o")
     }
+
+    assert(controllerState.idToOrder(TestOrder.id).historicOutcomes == Seq(
+      HistoricOutcome(Position(0), Outcome.succeeded),
+      HistoricOutcome(Position(1), Outcome.succeeded),
+      HistoricOutcome(Position(2), Outcome.succeeded),
+      HistoricOutcome(Position(3), Outcome.Succeeded(Map(
+        "CARROT" -> NumberValue(11),
+        "CITRON" -> NumberValue(21)))),
+      HistoricOutcome(Position(4), Outcome.succeeded)))
+
+    controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(TestOrder.id)))
+      .await(99.s).orThrow
+  }
+
+  "failingResultWorkflow" in {
+    val events = controller.runOrder(FreshOrder(OrderId("💥"), failingResultWorkflow.id.path))
+      .map(_.value)
+    assert(events == Seq(
+      OrderAdded(failingResultWorkflow.id),
+      OrderStarted,
+      OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("💥"), OrderId("💥|💥")))),
+      OrderJoined(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      OrderFailed(Position(0), None)))
   }
 
   "joinIfFailed" in {
@@ -98,7 +115,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Existing child OrderId" in {
     // Existing child orders are thought only. It is expected to be impossible in production.
     val order = TestOrder.copy(id = OrderId("DUPLICATE"))
-    controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE|🥕"), DuplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
+    controller.addOrderBlocking(FreshOrder.unchecked(OrderId("DUPLICATE|🥕"), duplicateWorkflow.id.path))  // Invalid syntax is allowed for this OrderId, check is suppressed
     eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE|🥕"))
 
     controller.addOrderBlocking(order)
@@ -111,7 +128,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
-      OrderAdded(TestWorkflow.id, order.arguments),
+      OrderAdded(workflow.id, order.arguments),
       OrderStarted,
       expectedFailed,
       OrderCancelled))
@@ -123,99 +140,65 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 }
 
-object ForkTest {
-  private val DuplicateWorkflow = Workflow(
+object ForkTest
+{
+  private val aAgentPath = AgentPath("AGENT-A")
+  private val bAgentPath = AgentPath("AGENT-B")
+
+  final class SlowJob extends InternalJob
+  {
+    def toOrderProcess(step: Step) =
+      OrderProcess(
+        Task.sleep(60.s)
+          .as(Outcome.succeeded))
+  }
+  object SlowJob extends InternalJob.Companion[SlowJob]
+
+  final class TestJob extends InternalJob
+  {
+    def toOrderProcess(step: Step) =
+      OrderProcess.fromCheckedOutcome(
+        for (arg <- step.arguments("ARG").asNumber) yield
+          Outcome.Succeeded(Map(
+            "jobResult" -> NumberValue(arg + 1))))
+  }
+  object TestJob extends InternalJob.Companion[TestJob]
+
+  private val workflow = Workflow(
+    WorkflowPath("WORKFLOW") ~ "INITIAL" ,
+    Vector(
+      /*0*/ Fork.of(
+        "🥕" -> Workflow.of(EmptyJob.execute(aAgentPath)),
+        "🍋" -> Workflow.of(EmptyJob.execute(aAgentPath))),
+      /*1*/ Fork.of(
+        "🥕" -> Workflow.of(EmptyJob.execute(aAgentPath)),
+        "🍋" -> Workflow.of(EmptyJob.execute(aAgentPath))),
+      /*2*/ EmptyJob.execute(bAgentPath),
+      /*3*/ Fork.checked(Seq(
+        Fork.Branch(
+          "🥕",
+          Workflow.anonymous(
+            Seq(
+              TestJob.execute(bAgentPath, Map(
+                "ARG" -> expr("10")))),
+            result = Some(Map("CARROT" -> expr("$jobResult"))))),
+        Fork.Branch(
+          "🍋",
+          Workflow.anonymous(
+            Seq(
+              TestJob.execute(aAgentPath, Map(
+                "ARG" -> expr("20"))),
+              EmptyJob.execute(bAgentPath)),
+            result = Some(Map("CITRON" -> expr("$jobResult"))))))
+      ).orThrow,
+      /*4*/ Fork.of(
+        "🥕" -> Workflow.of(EmptyJob.execute(aAgentPath)),
+        "🍋" -> Workflow.of(EmptyJob.execute(bAgentPath)))))
+
+  private val duplicateWorkflow = Workflow(
     WorkflowPath("DUPLICATE") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(AAgentPath, PathExecutable("SLOW.cmd")))))
-  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path, Map("KEY" -> StringValue("VALUE")))
-  private val XOrderId = OrderId(s"🔺|🥕")
-  private val YOrderId = OrderId(s"🔺|🍋")
-
-  private val ExpectedEvents = Vector(
-    TestOrder.id <-: OrderAdded(TestWorkflow.id, Map("KEY" -> StringValue("VALUE"))),
-
-    TestOrder.id <-: OrderStarted,
-    TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
-      XOrderId <-: OrderAttachable(AAgentPath),                 YOrderId <-: OrderAttachable(AAgentPath),
-      XOrderId <-: OrderAttached(AAgentPath),                   YOrderId <-: OrderAttached(AAgentPath),
-
-      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(Outcome.succeededRC0),      YOrderId <-: OrderProcessed(Outcome.succeededRC0),
-      XOrderId <-: OrderMoved(Position(0) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(0) / "fork+🍋" % 1),
-
-      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.succeeded),
-    TestOrder.id <-: OrderMoved(Position(1)),
-
-    TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
-      XOrderId <-: OrderAttachable(AAgentPath),                 YOrderId <-: OrderAttachable(AAgentPath),
-      XOrderId <-: OrderAttached(AAgentPath),                   YOrderId <-: OrderAttached(AAgentPath),
-
-      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(Outcome.succeededRC0),      YOrderId <-: OrderProcessed(Outcome.succeededRC0),
-      XOrderId <-: OrderMoved(Position(1) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(1) / "fork+🍋" % 1),
-
-      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.succeeded),
-    TestOrder.id <-: OrderMoved(Position(2)),
-
-    TestOrder.id <-: OrderAttachable(BAgentPath),
-    TestOrder.id <-: OrderAttached(BAgentPath),
-    TestOrder.id <-: OrderProcessingStarted,
-    TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
-    TestOrder.id <-: OrderProcessed(Outcome.succeededRC0),
-    TestOrder.id <-: OrderMoved(Position(3)),
-
-    TestOrder.id <-: OrderDetachable,
-    TestOrder.id <-: OrderDetached,
-    TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
-      XOrderId <-: OrderAttachable(BAgentPath),               YOrderId <-: OrderAttachable(AAgentPath),
-      XOrderId <-: OrderAttached(BAgentPath),                 YOrderId <-: OrderAttached(AAgentPath),
-
-      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(Outcome.succeededRC0),      YOrderId <-: OrderProcessed(Outcome.succeededRC0),
-      XOrderId <-: OrderMoved(Position(3) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 1),
-
-                                                              YOrderId <-: OrderDetachable,
-                                                              YOrderId <-: OrderDetached,
-                                                              YOrderId <-: OrderAttachable(BAgentPath),
-                                                              YOrderId <-: OrderAttached(BAgentPath),
-
-                                                              YOrderId <-: OrderProcessingStarted,
-                                                              YOrderId <-: OrderStdoutWritten(StdoutOutput),
-                                                              YOrderId <-: OrderProcessed(Outcome.succeededRC0),
-                                                              YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 2),
-
-      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.succeeded),
-    TestOrder.id <-: OrderMoved(Position(4)),
-
-    TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
-      XOrderId <-: OrderAttachable(AAgentPath),                 YOrderId <-: OrderAttachable(BAgentPath),
-      XOrderId <-: OrderAttached(AAgentPath),                   YOrderId <-: OrderAttached(BAgentPath),
-
-      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
-      XOrderId <-: OrderStdoutWritten(StdoutOutput),          YOrderId <-: OrderStdoutWritten(StdoutOutput),
-      XOrderId <-: OrderProcessed(Outcome.succeededRC0),      YOrderId <-: OrderProcessed(Outcome.succeededRC0),
-      XOrderId <-: OrderMoved(Position(4) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(4) / "fork+🍋" % 1),
-
-      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
-      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
-    TestOrder.id <-: OrderJoined(Outcome.succeeded),
-    TestOrder.id <-: OrderMoved(Position(5)),
-    TestOrder.id <-: OrderFinished,
-    TestOrder.id <-: OrderDeleted)
+      SlowJob.execute(aAgentPath)))
 
   private val joinIfFailedForkWorkflow = Workflow(
     WorkflowPath("JOIN-IF-FAILED-FORK") ~ "INITIAL",
@@ -224,7 +207,7 @@ object ForkTest {
         Vector(
           "💥" -> Workflow.of(
             Fail(),
-            EmptyJob.execute(AAgentPath)),
+            EmptyJob.execute(aAgentPath)),
           "🍋" -> Workflow.empty),
         joinIfFailed = true)))
 
@@ -234,6 +217,99 @@ object ForkTest {
       Fork(Vector(
         "💥" -> Workflow.of(
           Fail(),
-          EmptyJob.execute(AAgentPath)),
+          EmptyJob.execute(aAgentPath)),
         "🍋" -> Workflow.empty))))
+
+  private val failingResultWorkflow = Workflow(
+    WorkflowPath("FAILING-RESULT-FORK") ~ "INITIAL",
+    Seq(
+      Fork(Vector(
+        Fork.Branch("💥",
+          Workflow.anonymous(Nil, result = Some(Map(
+            "DUPLICATE" -> expr("$UNKNOWN")))))))))
+
+  private val TestOrder = FreshOrder(OrderId("🔺"), workflow.id.path, Map("KEY" -> StringValue("VALUE")))
+  private val XOrderId = OrderId(s"🔺|🥕")
+  private val YOrderId = OrderId(s"🔺|🍋")
+
+  private val ExpectedEvents = Vector(
+    TestOrder.id <-: OrderAdded(workflow.id, Map("KEY" -> StringValue("VALUE"))),
+
+    TestOrder.id <-: OrderStarted,
+    TestOrder.id <-: OrderForked(Vector(
+      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
+      XOrderId <-: OrderAttachable(aAgentPath),               YOrderId <-: OrderAttachable(aAgentPath),
+      XOrderId <-: OrderAttached(aAgentPath),                 YOrderId <-: OrderAttached(aAgentPath),
+
+      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderProcessed(Outcome.succeeded),         YOrderId <-: OrderProcessed(Outcome.succeeded),
+      XOrderId <-: OrderMoved(Position(0) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(0) / "fork+🍋" % 1),
+
+      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
+    TestOrder.id <-: OrderJoined(Outcome.succeeded),
+    TestOrder.id <-: OrderMoved(Position(1)),
+
+    TestOrder.id <-: OrderForked(Vector(
+      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
+      XOrderId <-: OrderAttachable(aAgentPath),               YOrderId <-: OrderAttachable(aAgentPath),
+      XOrderId <-: OrderAttached(aAgentPath),                 YOrderId <-: OrderAttached(aAgentPath),
+
+      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderProcessed(Outcome.succeeded),         YOrderId <-: OrderProcessed(Outcome.succeeded),
+      XOrderId <-: OrderMoved(Position(1) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(1) / "fork+🍋" % 1),
+
+      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
+    TestOrder.id <-: OrderJoined(Outcome.succeeded),
+    TestOrder.id <-: OrderMoved(Position(2)),
+
+    TestOrder.id <-: OrderAttachable(bAgentPath),
+    TestOrder.id <-: OrderAttached(bAgentPath),
+    TestOrder.id <-: OrderProcessingStarted,
+    TestOrder.id <-: OrderProcessed(Outcome.succeeded),
+    TestOrder.id <-: OrderMoved(Position(3)),
+
+    TestOrder.id <-: OrderDetachable,
+    TestOrder.id <-: OrderDetached,
+    TestOrder.id <-: OrderForked(Vector(
+      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
+      XOrderId <-: OrderAttachable(bAgentPath),               YOrderId <-: OrderAttachable(aAgentPath),
+      XOrderId <-: OrderAttached(bAgentPath),                 YOrderId <-: OrderAttached(aAgentPath),
+
+      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderProcessed(Outcome.Succeeded(Map("jobResult" -> NumberValue(11)))),
+                                                              YOrderId <-: OrderProcessed(Outcome.Succeeded(Map("jobResult" -> NumberValue(21)))),
+      XOrderId <-: OrderMoved(Position(3) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 1),
+
+                                                              YOrderId <-: OrderDetachable,
+                                                              YOrderId <-: OrderDetached,
+                                                              YOrderId <-: OrderAttachable(bAgentPath),
+                                                              YOrderId <-: OrderAttached(bAgentPath),
+
+                                                              YOrderId <-: OrderProcessingStarted,
+                                                              YOrderId <-: OrderProcessed(Outcome.succeeded),
+                                                              YOrderId <-: OrderMoved(Position(3) / "fork+🍋" % 2),
+
+      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
+    TestOrder.id <-: OrderJoined(Outcome.Succeeded(Map(
+      "CARROT" -> NumberValue(11),
+      "CITRON" -> NumberValue(21)))),
+    TestOrder.id <-: OrderMoved(Position(4)),
+
+    TestOrder.id <-: OrderForked(Vector(
+      OrderForked.Child("🥕", XOrderId),                      OrderForked.Child("🍋", YOrderId))),
+      XOrderId <-: OrderAttachable(aAgentPath),               YOrderId <-: OrderAttachable(bAgentPath),
+      XOrderId <-: OrderAttached(aAgentPath),                 YOrderId <-: OrderAttached(bAgentPath),
+
+      XOrderId <-: OrderProcessingStarted,                    YOrderId <-: OrderProcessingStarted,
+      XOrderId <-: OrderProcessed(Outcome.succeeded),         YOrderId <-: OrderProcessed(Outcome.succeeded),
+      XOrderId <-: OrderMoved(Position(4) / "fork+🥕" % 1),   YOrderId <-: OrderMoved(Position(4) / "fork+🍋" % 1),
+
+      XOrderId <-: OrderDetachable,                           YOrderId <-: OrderDetachable,
+      XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
+    TestOrder.id <-: OrderJoined(Outcome.succeeded),
+    TestOrder.id <-: OrderMoved(Position(5)),
+    TestOrder.id <-: OrderFinished)
 }

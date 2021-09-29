@@ -27,7 +27,7 @@ extends EventInstructionExecutor with ForkInstructionExecutor
         .orElse(
           for {
             order <- order.ifState[Order.Forked]
-            joined <- toJoined(order, state)
+            joined <- toJoined(order, fork, state)
           } yield Right(joined :: Nil))
         .orElse(order.ifState[Order.Processed].map { order =>
           val event = if (order.lastOutcome.isSucceeded)

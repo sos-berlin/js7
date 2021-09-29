@@ -82,9 +82,15 @@ object Collections
       def checkUniqueness: Checked[Iterable[A]] =
         checkUniqueness(identity[A])
 
-      def checkUniqueness[K](
-        key: A => K,
-        duplicatesToProblem: Map[K, Iterable[A]] => Problem = defaultDuplicatesToProblem[K](_))
+      def checkUniqueness[K](key: A => K): Checked[CC[A]] =
+        duplicateKeys(key) match {
+          case Some(duplicates) => Left(defaultDuplicatesToProblem(duplicates))
+          case None => Right(underlying)
+        }
+
+      def checkUniqueness_[K](
+        key: A => K)(
+        duplicatesToProblem: Map[K, Iterable[A]] => Problem)
       : Checked[CC[A]] =
         duplicateKeys(key) match {
           case Some(duplicates) => Left(duplicatesToProblem(duplicates))
@@ -158,9 +164,8 @@ object Collections
         val result = delegate.toMap
         if (delegate.sizeIs != result.size)
           delegate
-            .checkUniqueness/*returns Left*/(_._1,
-              (duplicates: Map[K, Iterable[(K, V)]]) =>
-                duplicatesToProblem(duplicates.view.mapValues(_.map(_._2)).toMap))
+            .checkUniqueness_/*returns Left*/(_._1)(
+              duplicates => duplicatesToProblem(duplicates.view.mapValues(_.map(_._2)).toMap))
             .flatMap(_ => Left(Problem.pure("checkedUniqueToMap"))/*never happens*/)
         else
           Right(result)

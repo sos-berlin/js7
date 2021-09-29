@@ -9,10 +9,10 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.reuseIfEqual
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherIterable}
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
+import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Fork._
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
@@ -22,16 +22,12 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class Fork private(
-  branches: IndexedSeq[Fork.Branch],
+  branches: Vector[Fork.Branch],
   agentPath: Option[AgentPath] = None,
   joinIfFailed: Boolean = false,
   sourcePos: Option[SourcePos] = None)
 extends ForkInstruction
 {
-  // TODO Fork.checked(..): Checked[Fork]
-  for (dups <- branches.duplicateKeys(_.id))
-    throw DuplicatedBranchIdsInForkProblem(dups.keys.toSeq).throwable.appendCurrentStackTrace
-
   def withoutSourcePos = copy(
     sourcePos = None,
     branches = branches.map(b => b.copy(workflow = b.workflow.withoutSourcePos)))
@@ -81,19 +77,35 @@ extends ForkInstruction
 
 object Fork
 {
-  private def apply(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos]) =
+  private def apply(branches: Seq[Fork.Branch], sourcePos: Option[SourcePos]) =
     throw new NotImplementedError
 
-  def forTest(branches: IndexedSeq[Fork.Branch], sourcePos: Option[SourcePos] = None): Fork =
+  def forTest(branches: Seq[Fork.Branch], sourcePos: Option[SourcePos] = None): Fork =
     checked(branches, sourcePos = sourcePos).orThrow
 
   def checked(
-    branches: IndexedSeq[Fork.Branch],
+    branches: Seq[Fork.Branch],
     agentPath: Option[AgentPath] = None,
     joinIfFailed: Boolean = false,
     sourcePos: Option[SourcePos] = None)
-  : Checked[Fork] =
-    Right(new Fork(branches, agentPath, joinIfFailed = joinIfFailed, sourcePos))
+  : Checked[Fork] = {
+    val checkedResult = branches.view
+      .flatMap(b => b.result.keys.view.map(_ -> b.id))
+      .checkUniqueness_(_._1)(_
+        .view
+        .mapValues(_.map(_._2))
+        .map { case (name, branchIds) =>
+          Problem(s"Result name '$name' is used duplicately in Fork branches " +
+            s"${branchIds.mkString("'", "' , '", "'")}")
+        }
+        .reduce(Problem.combine))
+    val checkedUniqueBranchIds = branches.duplicateKeys(_.id)
+      .map(dups => DuplicatedBranchIdsInForkProblem(dups.keys.toSeq))
+      .toLeft(())
+    Seq(checkedResult, checkedUniqueBranchIds)
+      .reduceLeftEither
+      .map(_ => new Fork(branches.toVector, agentPath, joinIfFailed = joinIfFailed, sourcePos))
+  }
 
   def of(idAndWorkflows: (String, Workflow)*) =
     new Fork(
@@ -102,6 +114,10 @@ object Fork
         .toVector)
 
   final case class Branch(id: Branch.Id, workflow: Workflow)
+  {
+    def result: Map[String, Expression] =
+      workflow.result.getOrElse(Map.empty)
+  }
   object Branch {
     implicit def fromPair(pair: (String, Workflow)): Branch =
       new Branch(Branch.Id(pair._1), pair._2)
@@ -129,7 +145,7 @@ object Fork
 
   implicit val jsonDecoder: Decoder[Fork] =
     c => for {
-      branches <- c.get[IndexedSeq[Fork.Branch]]("branches")
+      branches <- c.get[Vector[Fork.Branch]]("branches")
       sourcePos <- c.get[Option[SourcePos]]("sourcePos")
       agentPath <- c.get[Option[AgentPath]]("agentPath")
       joinIfFailed <- c.getOrElse[Boolean]("joinIfFailed")(false)
@@ -137,7 +153,7 @@ object Fork
         .toDecoderResult(c.history)
     } yield fork
 
-  private case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {
+  final case class DuplicatedBranchIdsInForkProblem(branchIds: Seq[Fork.Branch.Id]) extends Problem.Coded {
     def arguments = Map(
       "branchIds" -> branchIds.mkString(", ")
     )

@@ -443,11 +443,13 @@ object Workflow extends VersionedItem.Companion[Workflow]
   def anonymous(
     labeledInstructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
+    result: Option[Map[String, Expression]] = None,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
     apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderPreparation.default,
-      TimeZone.utc, source = source, outer = outer)
+      TimeZone.utc, result = result,
+      source = source, outer = outer)
 
   /** Test only. */
   def apply(

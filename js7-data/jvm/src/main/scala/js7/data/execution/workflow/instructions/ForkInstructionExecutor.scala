@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
@@ -12,7 +13,7 @@ import js7.data.order.Order.Cancelled
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.ForkInstruction
+import js7.data.workflow.instructions.{Fork, ForkInstruction, ForkList}
 import scala.collection.mutable
 
 trait ForkInstructionExecutor extends EventInstructionExecutor
@@ -22,7 +23,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
 
   private[workflow] final def tryJoinChildOrder(
     childOrder: Order[Order.State],
-    evidence: ForkInstruction,
+    fork: ForkInstruction,
     state: StateView)
   : Option[KeyedEvent[OrderActorEvent]] =
     if (childOrder.isAttached)
@@ -37,10 +38,13 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
           else
             withCacheAccess(parentOrder, state) { cache =>
               cache.onChildBecameJoinable(childOrder.id)
-              toJoined(parentOrder, state)
+              toJoined(parentOrder, fork, state)
             })
 
-  protected[instructions] final def toJoined(order: Order[Order.Forked], state: StateView)
+  protected[instructions] final def toJoined(
+    order: Order[Order.Forked],
+    fork: ForkInstruction,
+    state: StateView)
   : Option[KeyedEvent[OrderActorEvent]] =
     if (order.isAttached)
       Some(order.id <-: OrderDetachable)
@@ -51,9 +55,32 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
           val allSucceeded = order.state.children.view
             .map(child => state.idToOrder(child.orderId))
             .forall(_.lastOutcome.isSucceeded)
+          val now = clock.now()
           order.id <-: OrderJoined(
             if (allSucceeded)
-              Outcome.succeeded
+              fork match {
+                case fork: Fork =>
+                  fork.branches
+                    .traverse { branch =>
+                      state.idToOrder.checked(order.id / branch.id.string)
+                        .flatMap(childOrder =>
+                          branch.result
+                            .toVector
+                            .traverse { case (name, expr) =>
+                              for {
+                                scope <- state.toImpureOrderExecutingScope(childOrder, now)
+                                value <- expr.eval(scope)
+                              } yield name -> value
+                            })
+                    }
+                    .match_ {
+                      case Left(problem) => Outcome.Failed.fromProblem(problem)
+                      case Right(result) => Outcome.Succeeded(result.view.flatten.toMap)
+                    }
+
+                case _: ForkList =>
+                  Outcome.succeeded
+              }
             else
               Outcome.Failed(toJoinFailedMessage(order, state)))
         }
