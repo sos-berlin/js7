@@ -49,9 +49,9 @@ for arg in "$@"; do :
   esac
 done
 
-sessionTokenFile="$data/state/session-token"
+sessionTokenFile="$data/work/session-token"
 if [ ! -f "$sessionTokenFile" ]; then
-  echo "Invalid argument --data-directory=$data (or missing file $data/state/session-token)"
+  echo "Invalid argument --data-directory=$data (or missing file $data/work/session-token)"
   exit 1
 fi
 

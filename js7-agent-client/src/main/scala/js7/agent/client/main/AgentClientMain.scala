@@ -34,7 +34,7 @@ object AgentClientMain
 
   def run(args: Seq[String], print: String => Unit): Int = {
     val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
-    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
+    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
     autoClosing(new AkkaHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)

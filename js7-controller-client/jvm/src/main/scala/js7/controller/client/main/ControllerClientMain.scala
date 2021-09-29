@@ -34,7 +34,7 @@ object ControllerClientMain {
 
   def run(args: Seq[String], print: String => Unit): Int = {
     val (controllerUri, configDir, dataDir, operations) = parseArgs(args)
-    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "state/session-token").asScala mkString ""))
+    val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
     autoClosing(new AkkaHttpControllerTextApi(controllerUri, None, print, configDir)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)

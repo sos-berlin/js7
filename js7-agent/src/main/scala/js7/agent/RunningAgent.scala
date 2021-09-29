@@ -171,7 +171,7 @@ object RunningAgent {
 
       agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
-      val sessionTokenFile = agentConfiguration.stateDirectory / "session-token"
+      val sessionTokenFile = agentConfiguration.workDirectory / "session-token"
       val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
 
       val task = for {

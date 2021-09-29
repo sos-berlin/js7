@@ -466,7 +466,7 @@ object RunningController
 
     private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Task[Unit] =
       Task.defer {
-        val sessionTokenFile = controllerConfiguration.stateDirectory / "session-token"
+        val sessionTokenFile = controllerConfiguration.workDirectory / "session-token"
         sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
           .logWhenItTakesLonger("createSystemSession")
           .guarantee(Task {
