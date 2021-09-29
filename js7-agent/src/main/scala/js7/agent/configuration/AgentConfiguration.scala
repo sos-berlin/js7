@@ -81,9 +81,9 @@ extends CommonConfiguration
     if (!exists(stateDirectory)) {
       createDirectory(stateDirectory)
     }
-    if (!exists(temporaryDirectory)) {
-      assertThat(temporaryDirectory == dataDirectory / "tmp")
-      createDirectory(temporaryDirectory)
+    if (!exists(workDirectory)) {
+      assertThat(workDirectory == dataDirectory / "work")
+      createDirectory(workDirectory)
     }
     this
   }
@@ -92,23 +92,23 @@ extends CommonConfiguration
     killScript match {
       case Some(DelayUntilFinishKillScript) =>
         val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent termination, leave behind the kill script, in case of regular termination after error.
-        copy(killScript = Some(provider.provideTo(temporaryDirectory)))
+        copy(killScript = Some(provider.provideTo(workDirectory)))
       case _ => this
     }
   }
 
   //??? private def killScriptConf: Option[KillScriptConf] =
-  //  killScript.map(o => KillScriptConf(o, temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
+  //  killScript.map(o => KillScriptConf(o, workDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
 
-  lazy val temporaryDirectory: Path =
-    dataDirectory  / "tmp"
+  lazy val workDirectory: Path =
+    dataDirectory  / "work"
 
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
   def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService) =
     JobExecutorConf(
       executablesDirectory = executablesDirectory,
-      temporaryDirectory = temporaryDirectory,
+      workDirectory = workDirectory,
       workingDirectory = jobWorkingDirectory,
       killScript = killScript,
       scriptInjectionAllowed = scriptInjectionAllowed,

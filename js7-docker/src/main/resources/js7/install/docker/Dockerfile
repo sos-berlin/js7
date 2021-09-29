@@ -8,7 +8,7 @@ FROM openjdk:17
 #   /opt/js7-VERSION/lib/
 #   /opt/js7 -> js7-VERSION
 #   /var/opt/js7/{controller,agent}/config/  read-only
-#   /var/opt/js7/{controller,agent}/data/{logs,state,tmp,...}  writable
+#   /var/opt/js7/{controller,agent}/data/{logs,state,work,...}  writable
 #   /home/js7/bin
 
 ARG UID

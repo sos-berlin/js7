@@ -11,7 +11,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-private[process] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) extends AutoCloseable
+private[process] final class FilePool(jobKey: JobKey, workDirectory: Path) extends AutoCloseable
 {
   private var free = List.empty[FileSet]
   private val used = mutable.Set.empty[FileSet]
@@ -23,7 +23,7 @@ private[process] final class FilePool(jobKey: JobKey, temporaryDirectory: Path) 
         head.clear()
         head
       case Nil =>
-        val fileSet = FileSet(new ShellReturnValuesProvider(temporaryDirectory))
+        val fileSet = FileSet(new ShellReturnValuesProvider(workDirectory))
         logger.trace(s"Job '${jobKey.name}': Using file ${fileSet.shellReturnValuesProvider} for order namedValues")
         fileSet
     }

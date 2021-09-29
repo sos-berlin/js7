@@ -8,7 +8,9 @@ import monix.execution.Scheduler
 
 final case class JobExecutorConf(
   executablesDirectory: Path,
-  temporaryDirectory: Path,
+  /** Kind of temporary directory. */
+  workDirectory: Path,
+  /** Working directory of the process to be started. */
   workingDirectory: Path,
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,

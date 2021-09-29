@@ -44,6 +44,8 @@ extends CommonConfiguration
 
   def stateDirectory: Path = dataDirectory / "state"
 
+  def workDirectory: Path = dataDirectory / "work"
+
   lazy val journalMeta = JournalMeta(ControllerState, stateDirectory / "controller")
 
   // Suppresses Config (which may contain secrets)
@@ -65,6 +67,8 @@ object ControllerConfiguration
     if (!Files.exists(data)) createDirectory(data)
     val state = data / "state"
     if (!Files.exists(state)) createDirectory(state)
+    val work = data / "work"
+    if (!Files.exists(work)) createDirectory(work)
     fromDirectories(
       configDirectory = configAndData / "config",
       dataDirectory = data,

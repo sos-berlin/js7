@@ -38,7 +38,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
     js7.filewatch.retry-delays = [0ms]
     """
 
-  private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
+  private val sourceDirectory = directoryProvider.agents(0).dataDir / "work/files"
 
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),

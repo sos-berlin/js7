@@ -54,9 +54,11 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
     withTemporaryDirectory("ControllerAgentWithoutAuthenticationTest-") { dir =>
       createDirectories(dir / "controller/config/private")
       createDirectories(dir / "controller/data/state")
+      createDirectories(dir / "controller/data/work")
       createDirectories(dir / "agent/config/private")
       createDirectories(dir / "agent/config/executables")
       createDirectories(dir / "agent/data/state")
+      createDirectories(dir / "agent/data/work")
 
       if (isPublic) {
         dir / "agent/config/agent.conf" := "js7.web.server.auth.public = true\n"

@@ -3,9 +3,9 @@ set -euo pipefail
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
-rm -rf volumes/{controller,backup-controller,provider,agent-1,agent-2}/data/{java-shared-archives,tmp}
+rm -rf volumes/{controller,backup-controller,provider,agent-1,agent-2}/data/{cache,work}
 mkdir -p -m 700 volumes/{controller,backup-controller,provider,agent-1,agent-2}/config/private
-mkdir -p volumes/{controller,backup-controller,provider,agent-1,agent-2}/data/{logs,state,tmp}
+mkdir -p volumes/{controller,backup-controller,provider,agent-1,agent-2}/data/{logs,state,work}
 mkdir -p volumes/provider/config/{live,order-generators}
 mkdir -p volumes/agent-{1,2}/config/executables
 

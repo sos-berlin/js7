@@ -161,12 +161,12 @@ private object OrderActorTest {
   extends Actor {
     import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
-    if (!exists(dir / "tmp")) createDirectory(dir / "tmp")
+    if (!exists(dir / "work")) createDirectory(dir / "work")
 
     private val executorConf = JobExecutorConf(
       executablesDirectory = (dir / "config" / "executables").toRealPath(),
-      temporaryDirectory = dir / "data" / "tmp",
-      workingDirectory = dir / "data" / "tmp",
+      workDirectory = dir / "data" / "work",
+      workingDirectory = dir / "data" / "work",
       killScript = None,
       scriptInjectionAllowed = false,
       globalIOX,

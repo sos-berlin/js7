@@ -82,6 +82,8 @@ logs="$data/logs"
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
+workDir="$data/work"
+
 # Copy stdout and stderr to stdouterr.log
 if [ -e "$logs/stdouterr.log" ]; then
   echo >>"$logs/stdouterr.log" \
@@ -116,7 +118,8 @@ execute=(
   "${agentOptions[@]}")
 
 while true; do
-  rm -rf "$data"/tmp
+  rm -rf "$workDir"
+  mkdir "$workDir"
 
   log "${execute[@]}"
   "${execute[@]}" &

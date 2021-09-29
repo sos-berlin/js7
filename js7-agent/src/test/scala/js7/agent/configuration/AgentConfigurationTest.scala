@@ -36,7 +36,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
         logDirectory = data / "logs",
         jobWorkingDirectory = WorkingDirectory,
         defaultJobSigkillDelay = 15.s,
-        killScript = Some(ProcessKillScript(data / "tmp" / s"kill_task.$shellExt")),
+        killScript = Some(ProcessKillScript(data / "work" / s"kill_task.$shellExt")),
         akkaAskTimeout = 1.hour,
         journalConf = JournalConf.fromConfig(DefaultConfig)
           .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
@@ -68,7 +68,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
 
   "--kill-script= is missing (default)" in {
     provideConfigAndData { (config, data) =>
-      val expectedFile = data / s"tmp/kill_task.$shellExt"
+      val expectedFile = data / s"work/kill_task.$shellExt"
       val myConf = conf(s"--config-directory=$config", s"--data-directory=$data").finishAndProvideFiles
       assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
     }

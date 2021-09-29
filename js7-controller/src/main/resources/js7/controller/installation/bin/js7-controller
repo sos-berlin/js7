@@ -82,7 +82,7 @@ logs="$data/logs"
 stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
-tmpDir="$data/tmp"
+workDir="$data/work"
 
 # Copy stdout and stderr to stdouterr.log
 if [ -e "$logs/stdouterr.log" ]; then
@@ -101,8 +101,8 @@ if $log4jAsync; then :
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
 if [ "$JAVA_VERSION" -ge 13 ]; then
-  [ -d "$data/java-shared-archives" ] || mkdir "$data/java-shared-archives"
-  jsaFile="$data/java-shared-archives/js7-controller-$(cat "$JS7_HOME/VERSION").jsa"
+  [ -d "$data/cache" ] || mkdir "$data/cache"
+  jsaFile="$data/cache/js7-controller-$(cat "$JS7_HOME/VERSION").jsa"
   if [ -f "$jsaFile" ]; then
     javaOptions+=("-XX:SharedArchiveFile=$jsaFile" -Xshare:auto)
   else
@@ -122,7 +122,8 @@ execute=(
   "${controllerOptions[@]}")
 
 while true; do
-  rm -rf "$tmpDir"
+  rm -rf "$workDir"
+  mkdir "$workDir"
 
   log "${execute[@]}"
   "${execute[@]}" &

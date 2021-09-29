@@ -56,7 +56,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private val watchDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
+  private val watchDirectory = directoryProvider.agents(0).dataDir / "work/files"
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
@@ -66,7 +66,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
 
-  private lazy val waitingWatchDirectory = directoryProvider.agents(0).dataDir / "tmp/files-waiting"
+  private lazy val waitingWatchDirectory = directoryProvider.agents(0).dataDir / "work/files-waiting"
   private lazy val waitingFileWatch = FileWatch(
     OrderWatchPath("WAITING-WATCH"),
     waitingWorkflow.path,

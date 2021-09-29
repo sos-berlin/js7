@@ -42,7 +42,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private val sourceDirectory = directoryProvider.agents(0).dataDir / "tmp/files"
+  private val sourceDirectory = directoryProvider.agents(0).dataDir / "work/files"
 
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),

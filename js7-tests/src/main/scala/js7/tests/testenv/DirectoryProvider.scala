@@ -266,6 +266,7 @@ object DirectoryProvider
       createDirectory(configDir)
       createDirectory(configDir / "private")
       createDirectory(dataDir)
+      createDirectory(dataDir / "work")
     }
   }
 
