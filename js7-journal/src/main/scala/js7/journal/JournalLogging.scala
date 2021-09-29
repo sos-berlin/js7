@@ -114,7 +114,7 @@ trait JournalLogging
       sb.append("       ")
     }
 
-    sb.append(transactionMarker)
+    sb.append(transactionMarker(true))
     sb.append(stamped.eventId)
     sb.append(' ')
     sb.append(stamped.value.toString.truncateWithEllipsis(200, firstLineOnly = true))
@@ -128,7 +128,7 @@ trait JournalLogging
     sb.clear()
     sb.append(persistMarker)
     sb.append("Event ")
-    sb.append(transactionMarker)
+    sb.append(transactionMarker(false))
     if (key != NoKey) {
       sb.append(key)
       sb.append(" <-: ")
@@ -170,11 +170,11 @@ object JournalLogging
       else if (isLast) '├'  //'┤'
       else '│'
 
-    def transactionMarker: Char =
+    def transactionMarker(withNipple: Boolean): Char =
       if (!persist.isTransaction || persistEventCount == 1) ' '
       else if (isFirst) '⎧'
       else if (isLast) '⎩'
-      else if (nr == nextToLastEventNr) '⎨'
+      else if (withNipple && nr == nextToLastEventNr) '⎨'
       else '⎪'
   }
 }
