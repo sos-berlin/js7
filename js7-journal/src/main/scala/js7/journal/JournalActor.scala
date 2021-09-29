@@ -58,7 +58,7 @@ extends Actor with Stash with JournalLogging
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  protected def logger = JournalActor.logger
+  protected val logger = JournalActor.logger
 
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
   private var snapshotSchedule: Cancelable = null
@@ -191,7 +191,8 @@ extends Actor with Stash with JournalLogging
             if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
               reply(sender(), replyTo, Output.Accepted(callersItem))
               persistBuffer.add(
-                AcceptEarlyPersist(stampedEvents.size, since, lastFileLengthAndEventId, sender()))
+                AcceptEarlyPersist(totalEventCount + 1, stampedEvents.size, since,
+                  lastFileLengthAndEventId, sender()))
               // acceptEarly-events must not modify the JournaledState !!!
               // The EventId will be updated.
               // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
@@ -288,7 +289,7 @@ extends Actor with Stash with JournalLogging
 
     case Internal.StillWaitingForAcknowledge =>
       if (requireClusterAcknowledgement && lastAcknowledgedEventId < lastWrittenEventId) {
-        val notAckSeq = persistBuffer.view.collect { case o: LoggablePersist => o }
+        val notAckSeq = persistBuffer.view.collect { case o: StandardPersist => o }
           .takeWhile(_.since.elapsed >= conf.ackWarnDurations.headOption.getOrElse(FiniteDuration.MaxValue))
         val n = persistBuffer.view.map(_.eventCount).sum
         if (n > 0) {
@@ -332,9 +333,11 @@ extends Actor with Stash with JournalLogging
         //}
         throw tt;
       }
-      for (w <- persistBuffer.view.reverse collectFirst { case o: LoggablePersist if !o.isEmpty => o }) {
-        w.isLastOfFlushedOrSynced = true  // For logging: This last Persist (including all before) has been flushed or synced
-      }
+
+      persistBuffer.view.reverse
+        .collectFirst { case o: StandardPersist if !o.isEmpty => o }
+        .foreach { _.isLastOfFlushedOrSynced = true }
+
       if (!terminating) {
         onReadyForAcknowledgement()
       }
@@ -380,16 +383,16 @@ extends Actor with Stash with JournalLogging
 
   private def finishCommitted(n: Int, ack: Boolean): Unit = {
     val ackWritten = persistBuffer.view.take(n)
-    val standardPersistSeq = ackWritten collect { case o: StandardPersist => o }
-
-    logCommitted(standardPersistSeq, ack = ack)
+    logCommitted(ackWritten, ack = ack)
 
     for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
       lastAcknowledgedEventId = lastFileLengthAndEventId.value
       eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.map(_.eventCount).sum)
     }
 
-    standardPersistSeq foreach updateStateAndContinueCallers
+    for (persist <- ackWritten.collect { case o: StandardPersist => o }) {
+      updateStateAndContinueCallers(persist)
+    }
 
     // Update EventId for trailing acceptEarly events
     ackWritten.lastOption
@@ -793,22 +796,16 @@ object JournalActor
     def eventCount = _eventCount
   }
 
-  private sealed trait Persist {
+  private[journal] sealed trait Persist {
+    def eventNumber: Long
     def eventCount: Int
-    def isEmpty: Boolean
+    def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
+    def isEmpty = stampedSeq.isEmpty
+    def isTransaction: Boolean
     def lastFileLengthAndEventId: Option[PositionAnd[EventId]]
     def lastStamped: Option[Stamped[AnyKeyedEvent]]
     def since: Deadline
-  }
-
-  private[journal] sealed trait LoggablePersist {
-    def eventNumber: Long
-    def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
-    def isTransaction: Boolean
-    def since: Deadline
-
-    /** For logging: last stamped has been flushed */
-    final var isLastOfFlushedOrSynced = false
+    def isLastOfFlushedOrSynced: Boolean
   }
 
   /** A bundle of written but not yet committed (flushed and acknowledged) Persists. */
@@ -821,25 +818,30 @@ object JournalActor
     replyTo: ActorRef,
     sender: ActorRef,
     callersItem: CallersItem)
-  extends Persist with LoggablePersist
+  extends Persist
   {
-    def isEmpty = stampedSeq.isEmpty
-
     def eventCount = stampedSeq.size
 
     def lastStamped: Option[Stamped[AnyKeyedEvent]] =
       stampedSeq.reverseIterator.buffered.headOption
+
+    /** For logging: last stamped (and all before) has been flushed or synced */
+    var isLastOfFlushedOrSynced = false
   }
 
   // Without event to keep heap usage low (especially for many big stdout event)
   private final case class AcceptEarlyPersist(
+    eventNumber: Long,
     eventCount: Int,
     since: Deadline,
     lastFileLengthAndEventId: Option[PositionAnd[EventId]],
     sender: ActorRef)
   extends Persist
   {
-    def isEmpty = true
+    /** The events are not shown here */
+    def stampedSeq = Nil
+    def isTransaction = false
     def lastStamped = None
+    def isLastOfFlushedOrSynced = false
   }
 }

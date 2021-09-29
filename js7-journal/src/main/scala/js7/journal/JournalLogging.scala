@@ -7,19 +7,17 @@ import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, Stamped}
-import js7.journal.JournalActor.LoggablePersist
+import js7.journal.JournalActor.Persist
 import js7.journal.JournalLogging._
 import js7.journal.configuration.JournalConf
-import scala.collection.mutable
+import scala.collection.{IndexedSeqView, mutable}
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
 trait JournalLogging
 {
-  protected def conf: JournalConf
-  protected def logger: Logger
-
-  private lazy val infoLoggableEventClasses = new SubclassCache(conf.infoLogEvents)
+  protected val conf: JournalConf
+  protected val logger: Logger
 
   private val syncOrFlushString: String =
     if (!conf.syncOnCommit)
@@ -29,13 +27,14 @@ trait JournalLogging
     else
       "sync  "
   private val ackSyncOrFlushString = syncOrFlushString.toUpperCase(ROOT)
-
+  private val infoLoggableEventClasses = new SubclassCache(conf.infoLogEvents)
   private val sb = new StringBuilder
 
-  protected final def logCommitted(persists: Iterable[LoggablePersist], ack: Boolean) =
+  protected final def logCommitted(persists: IndexedSeqView[Persist], ack: Boolean) =
     logger.whenInfoEnabled {
-      lazy val myPersists = dropLastEmptyPersists(persists)
-      lazy val committedAt = now
+      val committedAt = now
+      val myPersists = dropEmptyPersists(persists)
+
       logger.whenTraceEnabled {
         logPersists(myPersists, committedAt)(traceLogPersist(ack))
       }
@@ -45,32 +44,27 @@ trait JournalLogging
         infoLoggableEventClasses.contains(event.getClass) || event.isFailed
       }
 
-      //if (conf.infoLogEvents.nonEmpty) {
-        val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))
-        if (loggablePersists.nonEmpty) {
-          logPersists(loggablePersists, committedAt, isLoggable)(infoLogPersist)
-        }
-      //}
+      val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))
+      if (loggablePersists.nonEmpty) {
+        logPersists(loggablePersists.toVector.view, committedAt, isLoggable)(infoLogPersist)
+      }
     }
 
-  private def dropLastEmptyPersists(persists: Iterable[LoggablePersist])
-  : Vector[LoggablePersist] = {
-    var i, nonEmptyLength = 0
-    for (o <- persists) {
-      i += 1
-      if (o.stampedSeq.nonEmpty) nonEmptyLength = i
-    }
-    persists.view.take(nonEmptyLength).toVector
+  private def dropEmptyPersists(persists: IndexedSeqView[Persist]): IndexedSeqView[Persist]
+  = {
+    val dropLeft = persists.segmentLength(_.stampedSeq.isEmpty)
+    val dropRight = persists.reverse.segmentLength(_.stampedSeq.isEmpty)
+    persists.slice(dropLeft, persists.length - dropRight)
   }
 
-  private def logPersists(loggablePersists: Vector[LoggablePersist], committedAt: Deadline,
+  private def logPersists(persists: IndexedSeqView[Persist], committedAt: Deadline,
     isLoggable: Stamped[AnyKeyedEvent] => Boolean = _ => true)
     (body: (Frame, Stamped[AnyKeyedEvent]) => Unit)
   : Unit = {
     var index = 0
-    for (persist <- loggablePersists) {
+    for (persist <- persists) {
       val stampedSeq = persist.stampedSeq.filter(isLoggable)
-      val frame = Frame(persist, stampedSeq.length, index, loggablePersists.length, committedAt)
+      val frame = Frame(persist, stampedSeq.length, index, persists.length, committedAt)
       val stampedIterator = stampedSeq.iterator
       var hasNext = stampedIterator.hasNext
       while (hasNext) {
@@ -159,7 +153,7 @@ object JournalLogging
     override def toString = s"SubclassCache($superclassNames)"
   }
 
-  private final case class Frame(persist: LoggablePersist,
+  private final case class Frame(persist: Persist,
     persistEventCount: Int, persistIndex: Int, persistCount: Int,
     committedAt: Deadline)
   {
