@@ -14,7 +14,6 @@ import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.OrderParameterTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.eval.Task
 import org.scalatest.freespec.AnyFreeSpec
 
 final class OrderParameterTest extends AnyFreeSpec with ControllerAgentForScalaTest
@@ -104,19 +103,15 @@ object OrderParameterTest
   private final class TestInternalJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
-      OrderProcess(
-        Task {
-          Outcome.Completed.fromChecked(
-            for (number <- step.arguments.checked("ARG").flatMap(_.asNumber)) yield
-              Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
-        })
+      OrderProcess.fromCheckedOutcome(
+        for (number <- step.arguments.checked("ARG").flatMap(_.asNumber)) yield
+          Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(number + 1))))
   }
 
   private final class ReturnArgumentsInternalJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
-      OrderProcess(
-        Task.pure(Outcome.Succeeded(step.arguments)))
+      OrderProcess.succeeded(step.arguments)
   }
   private object ReturnArgumentsInternalJob
   extends InternalJob.Companion[ReturnArgumentsInternalJob]

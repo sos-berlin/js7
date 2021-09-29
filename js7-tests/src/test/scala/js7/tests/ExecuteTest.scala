@@ -506,8 +506,7 @@ object ExecuteTest
   private final class ReturnArgumentsInternalJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
-      OrderProcess(
-        Task.pure(Outcome.Succeeded(step.arguments)))
+      OrderProcess.succeeded(step.arguments)
   }
   private object ReturnArgumentsInternalJob
   extends InternalJob.Companion[ReturnArgumentsInternalJob]

@@ -12,7 +12,7 @@ import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.job.InternalExecutable
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.Execute
@@ -24,7 +24,6 @@ import js7.proxy.ControllerApi
 import js7.tests.controller.cluster.BigJsonClusterTest._
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -87,8 +86,8 @@ object BigJsonClusterTest
 
   final class TestJob extends InternalJob
   {
-    private val orderProcess = OrderProcess(
-      Task.pure(Outcome.Succeeded(Map("RESULT" -> StringValue(bigString)))))
+    private val orderProcess = OrderProcess.succeeded(Map(
+      "RESULT" -> StringValue(bigString)))
 
     def toOrderProcess(step: Step) = orderProcess
   }

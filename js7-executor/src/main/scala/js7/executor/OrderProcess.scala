@@ -1,7 +1,9 @@
 package js7.executor
 
+import js7.base.problem.Checked
 import js7.base.utils.SetOnce
 import js7.data.order.Outcome
+import js7.data.value.NamedValues
 import js7.executor.OrderProcess._
 import monix.eval.{Fiber, Task}
 import monix.execution.{CancelableFuture, Scheduler}
@@ -40,6 +42,12 @@ object OrderProcess
 {
   def apply(run: Task[Outcome.Completed]): OrderProcess =
     new Simple(run)
+
+  def succeeded(result: NamedValues = Map.empty): OrderProcess =
+    new Simple(Task.pure(Outcome.Succeeded(result)))
+
+  def fromCheckedOutcome(checkedOutcome: Checked[Outcome.Completed]): OrderProcess =
+    OrderProcess(Task.pure(Outcome.Completed.fromChecked(checkedOutcome)))
 
   private final class Simple(task: Task[Outcome.Completed])
   extends OrderProcess
