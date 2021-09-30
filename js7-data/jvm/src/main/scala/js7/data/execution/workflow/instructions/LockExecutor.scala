@@ -12,6 +12,7 @@ private[instructions] final class LockExecutor(protected val service: Instructio
 extends EventInstructionExecutor
 {
   type Instr = LockInstruction
+  val instructionClass = classOf[LockInstruction]
 
   def toEvents(instruction: LockInstruction, order: Order[Order.State], state: StateView) = {
     import instruction.{count, lockPath}

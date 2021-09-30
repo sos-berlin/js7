@@ -11,6 +11,7 @@ private[instructions] final class ForkExecutor(protected val service: Instructio
 extends EventInstructionExecutor with ForkInstructionExecutor
 {
   type Instr = Fork
+  val instructionClass = classOf[Fork]
 
   def toEvents(fork: Fork, order: Order[Order.State], state: StateView) =
     start(order)

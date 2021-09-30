@@ -10,6 +10,7 @@ private[instructions] final class PromptExecutor(protected val service: Instruct
 extends EventInstructionExecutor
 {
   type Instr = Prompt
+  val instructionClass = classOf[Prompt]
 
   def toEvents(prompt: Prompt, order: Order[Order.State], state: StateView) =
     detach(order)

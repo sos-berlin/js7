@@ -9,6 +9,7 @@ private[instructions] final class FailExecutor(protected val service: Instructio
 extends EventInstructionExecutor
 {
   type Instr = Fail
+  val instructionClass = classOf[Fail]
 
   def toEvents(fail: Fail, order: Order[Order.State], state: StateView) =
     start(order)

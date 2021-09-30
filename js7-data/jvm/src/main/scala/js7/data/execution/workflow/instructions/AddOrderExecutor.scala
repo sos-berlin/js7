@@ -12,6 +12,7 @@ private[instructions] final class AddOrderExecutor(protected val service: Instru
 extends EventInstructionExecutor
 {
   type Instr = AddOrder
+  val instructionClass = classOf[AddOrder]
 
   def toEvents(addOrder: AddOrder, order: Order[Order.State], state: StateView) =
     detach(order)

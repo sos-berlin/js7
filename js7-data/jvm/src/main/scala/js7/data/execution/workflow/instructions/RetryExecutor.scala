@@ -19,6 +19,7 @@ private[instructions] final class RetryExecutor(protected val service: Instructi
 extends EventInstructionExecutor
 {
   type Instr = Retry
+  val instructionClass = classOf[Retry]
 
   def toEvents(retry: Retry, order: Order[Order.State], state: StateView) =
     if (!order.isState[Order.Ready])

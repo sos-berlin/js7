@@ -13,6 +13,7 @@ private[instructions] final class PostNoticeExecutor(
 extends EventInstructionExecutor
 {
   type Instr = PostNotice
+  val instructionClass = classOf[PostNotice]
 
   def toEvents(instruction: PostNotice, order: Order[Order.State], state: StateView) =
     detach(order)

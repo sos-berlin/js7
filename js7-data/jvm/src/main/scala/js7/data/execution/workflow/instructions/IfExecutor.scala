@@ -12,6 +12,7 @@ private[instructions] final class IfExecutor(protected val service: InstructionE
 extends EventInstructionExecutor with PositionInstructionExecutor
 {
   type Instr = If
+  val instructionClass = classOf[If]
 
   def toEvents(instruction: If, order: Order[Order.State], state: StateView) =
     if (order.isState[Broken] || order.isState[FailedWhileFresh] || order.isState[Failed])

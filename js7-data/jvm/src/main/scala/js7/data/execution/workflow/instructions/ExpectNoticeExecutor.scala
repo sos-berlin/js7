@@ -14,6 +14,7 @@ private[instructions] final class ExpectNoticeExecutor(
 extends EventInstructionExecutor
 {
   type Instr = ExpectNotice
+  val instructionClass = classOf[ExpectNotice]
 
   def toEvents(instruction: ExpectNotice, order: Order[Order.State], state: StateView) = {
     import instruction.boardPath

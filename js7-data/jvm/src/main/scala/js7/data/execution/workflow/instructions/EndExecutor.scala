@@ -9,6 +9,7 @@ private[instructions] final class EndExecutor(protected val service: Instruction
 extends EventInstructionExecutor with PositionInstructionExecutor
 {
   type Instr = End
+  val instructionClass = classOf[End]
 
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
     Right(

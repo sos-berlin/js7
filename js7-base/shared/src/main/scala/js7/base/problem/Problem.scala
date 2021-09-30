@@ -69,6 +69,9 @@ object Problem extends Semigroup[Problem]
     Left(problem)
 
   def apply(messageFunction: => String, cause: Option[Problem] = None): Problem =
+    lzy(messageFunction, cause)
+
+  def lzy(messageFunction: => String, cause: Option[Problem] = None): Problem =
     new Lazy(messageFunction, cause)
 
   def pure(message: String): Problem =

@@ -10,6 +10,7 @@ private[instructions] final class GapExecutor(protected val service: Instruction
 extends EventInstructionExecutor {
 
   type Instr = Gap
+  val instructionClass = classOf[Gap]
 
   def toEvents(instruction: Gap, order: Order[Order.State], state: StateView) =
     if (!order.isAttached)

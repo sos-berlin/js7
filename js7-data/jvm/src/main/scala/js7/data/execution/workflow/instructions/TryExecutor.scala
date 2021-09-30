@@ -12,6 +12,7 @@ private[instructions] final class TryExecutor(protected val service: Instruction
 extends PositionInstructionExecutor with EventInstructionExecutor {
 
   type Instr = TryInstruction
+  val instructionClass = classOf[TryInstruction]
 
   def nextPosition(instruction: TryInstruction, order: Order[Order.State], state: StateView): Checked[Option[Position]] =
     Right(Some(nextPos(order)))

@@ -17,6 +17,7 @@ private[instructions] final class ExecuteExecutor(protected val service: Instruc
 extends EventInstructionExecutor with PositionInstructionExecutor
 {
   type Instr = Execute
+  val instructionClass = classOf[Execute]
 
   def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
     for (job <- state.workflowJob(order.workflowPosition)) yield

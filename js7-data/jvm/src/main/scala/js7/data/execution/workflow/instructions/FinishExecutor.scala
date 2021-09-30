@@ -12,6 +12,7 @@ private[instructions] final class FinishExecutor(protected val service: Instruct
 extends EventInstructionExecutor
 {
   type Instr = Finish
+  val instructionClass = classOf[Finish]
 
   def toEvents(instruction: Finish, order: Order[Order.State], state: StateView) =
     start(order)

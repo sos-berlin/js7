@@ -13,8 +13,11 @@ import js7.data.workflow.position.Position
 /**
   * @author Joacim Zschimmer
   */
-trait InstructionExecutor {
+trait InstructionExecutor
+{
   type Instr <: Instruction
+
+  def instructionClass: Class[_ <: Instr]
 }
 
 trait EventInstructionExecutor extends InstructionExecutor
