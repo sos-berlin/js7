@@ -101,7 +101,7 @@ object Outcome
   {
     def isSucceeded = false
 
-    override def toString = s"⚠️ Failed(${errorMessage getOrElse "None"}, $namedValues)"
+    override def toString = s"⚠️ Failed(${errorMessage.fold("")(o => s"$o, ")}$namedValues)"
   }
   object Failed extends Completed.Companion[Failed]
   {

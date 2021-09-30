@@ -158,6 +158,7 @@ extends Actor with Stash with SimpleStateActor
     command match {
       case command: AgentCommand.ShutDown =>
         if (!terminating) {
+          logger.info(s"❗️ $command")
           response.completeWith(terminateOrderKeeper(command))
         }
 

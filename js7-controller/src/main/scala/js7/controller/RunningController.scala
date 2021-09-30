@@ -486,6 +486,7 @@ object RunningController
     def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       (command match {
         case command: ControllerCommand.ShutDown =>
+          logger.info(s"❗️ $command")
           if (command.clusterAction.nonEmpty && !cluster.isWorkingNode)
             Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else
