@@ -16,7 +16,7 @@ object Dependencies
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.1"
   val scalaJava8Version = "1.0.0"
-  val scalaTestVersion = "3.2.9"
+  val scalaTestVersion = "3.2.10"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
@@ -30,7 +30,7 @@ object Dependencies
   val diffxVersion = "0.5.6"
   val reactorVersion = "3.4.10"
   val vavrVersion = "0.10.4"
-  val jnaVersion = "5.8.0"
+  val jnaVersion = "5.9.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -55,7 +55,7 @@ object Dependencies
   val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.5.5"
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guice               = ("com.google.inject" % "guice" % "4.2.3" classifier "no_aop") :: javaxInject :: Nil
+  val guice               = ("com.google.inject" % "guice" % "5.0.1") :: javaxInject :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.1"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
