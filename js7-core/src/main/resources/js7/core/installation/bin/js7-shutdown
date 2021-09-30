@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+data="."
+
+function usage() {
+  echo "Usage: $0 --data-directory=DATA --restart"
+}
+
+jsonFields='"TYPE": "ShutDown"'
+for arg in "$@"; do :
+  case "$arg" in
+    --data-directory=*)
+      data="${arg#*=}"
+      ;;
+    --restart)
+      jsonFields+=', "restart": true'
+      ;;
+    --suppress-snapshot=*)
+      jsonFields+=', 'suppressSnapshot': true'
+      to="${arg#*=}"
+      ;;
+    -\?|-h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Invalid option: $arg"
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+exec /opt/js7/bin/js7-client --data-directory="$data" \
+  "{ $jsonFields }"
