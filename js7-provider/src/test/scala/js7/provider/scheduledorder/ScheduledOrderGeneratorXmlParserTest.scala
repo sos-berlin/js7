@@ -18,14 +18,14 @@ final class ScheduledOrderGeneratorXmlParserTest extends AnyFreeSpec {
     val id = ScheduledOrderGeneratorPath("TEST") ~ "VERSION"
     val timeZone = ZoneId.of("Europe/Berlin")
     val orderGenerator = ScheduledOrderGeneratorXmlParser.parseXml(id,
-      <order job_chain="JOBCHAIN">
-        <params>
-          <param name="a" value="AAA"/>
-        </params>
-        <run_time>
-          <period absolute_repeat="10"/>
-        </run_time>
-      </order>,
+     """<order job_chain="JOBCHAIN">
+          <params>
+            <param name="a" value="AAA"/>
+          </params>
+          <run_time>
+            <period absolute_repeat="10"/>
+          </run_time>
+        </order>""",
       timeZone).orThrow
     assert(orderGenerator == ScheduledOrderGenerator(
       id,

@@ -25,7 +25,7 @@ final class XmlSourcesTest extends AnyFreeSpec {
   }
 
   "xmlElemToSource" in {
-    check(<A B='1'/>)
+    check("""<A B='1'/>""")
   }
 
   private def check(source: Source): Unit = {

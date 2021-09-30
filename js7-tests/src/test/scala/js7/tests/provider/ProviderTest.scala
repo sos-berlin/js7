@@ -19,7 +19,6 @@ import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.xmls.ScalaXmls.implicits._
 import js7.core.item.{ItemPaths, VersionedItemReader}
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
@@ -268,24 +267,24 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     "Add an order generator" in {
       lastEventId = controller.eventWatch.lastAddedEventId
-      (orderGeneratorsDir / "test.order.xml").xml =
+      (orderGeneratorsDir / "test.order.xml") := """<?xml version="1.0"?>
         <order job_chain="A">
           <run_time>
             <period absolute_repeat="1"/>
           </run_time>
-        </order>
+        </order>"""
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
       lastEventId = controller.eventWatch.lastAddedEventId
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == AWorkflowPath, after = lastEventId)
     }
 
     "Replace an order generator" in {
-      (orderGeneratorsDir / "test.order.xml").xml =
+      (orderGeneratorsDir / "test.order.xml") := """<?xml version="1.0"?>
         <order job_chain="B">
           <run_time>
             <period absolute_repeat="1"/>
           </run_time>
-        </order>
+        </order>"""
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)
       lastEventId = controller.eventWatch.lastAddedEventId
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)

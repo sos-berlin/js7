@@ -12,14 +12,14 @@ final class VariablesXmlParserTest extends AnyFreeSpec {
 
   "variables" in {
     for (variablesXml <- Array(
-      <variables>
-        <variable name="NAME" value="VALUE"/>
-        <variable name="a" value="aa"/>
-      </variables>,
-      <params>
-        <param name="NAME" value="VALUE"/>
-        <param name="a" value="aa"/>
-      </params>))
+     """<variables>
+          <variable name="NAME" value="VALUE"/>
+          <variable name="a" value="aa"/>
+        </variables>""",
+     """<params>
+          <param name="NAME" value="VALUE"/>
+          <param name="a" value="aa"/>
+        </params>"""))
     {
       assert(ScalaXMLEventReader.parseDocument(variablesXml)(VariablesXmlParser.parse) ==
         Map(
@@ -31,12 +31,11 @@ final class VariablesXmlParserTest extends AnyFreeSpec {
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
     val xmlString =
-      <variables>{
-        for (i <- 1 to 10) yield <variable name={s"NAME-$i"} value={"*" * 100}/>
-      }</variables>
-      .toString
+     "<variables>" +
+       (1 to 10).map(i => s"""<variable name="NAME-$i" value="${"*" * 100}"/>""").mkString +
+       "</variables>"
     for (_ <- 1 to 10) info(
-      measureTime(n, "job") {
+      measureTime(n) {
         ScalaXMLEventReader.parseDocument(xmlString)(VariablesXmlParser.parse)
       }.toString)
   }
