@@ -110,16 +110,29 @@ crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
 log "crashKillScript=$crashKillScript"
 [ -z "$crashKillScript" ] || rm -f "$crashKillScript"
 
-execute=(
-  "$java"
-  "${javaOptions[@]}"
-  -classpath "$classpathString"
-  js7.agent.main.AgentMain
-  "${agentOptions[@]}")
-
 while true; do
   rm -rf "$workDir"
   mkdir "$workDir"
+
+  loopJavaOptions=()
+
+  if [ "$JAVA_VERSION" -ge 13 ]; then
+    [ -d "$data/cache" ] || mkdir "$data/cache"
+    jsaFile="$data/cache/js7-agent-$(cat "$JS7_HOME/VERSION").jsa"
+    if [ -f "$jsaFile" ]; then
+      loopJavaOptions+=("-XX:SharedArchiveFile=$jsaFile" -Xshare:auto)
+    else
+      loopJavaOptions+=("-XX:ArchiveClassesAtExit=$jsaFile" -Xshare:auto)
+    fi
+  fi
+
+  execute=(
+    "$java"
+    "${javaOptions[@]}"
+    "${loopJavaOptions[@]}"
+    -classpath "$classpathString"
+    js7.agent.main.AgentMain
+    "${agentOptions[@]}")
 
   log "${execute[@]}"
   "${execute[@]}" &

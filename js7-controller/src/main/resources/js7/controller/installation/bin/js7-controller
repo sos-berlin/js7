@@ -100,30 +100,34 @@ if $log4jAsync; then :
   javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
-if [ "$JAVA_VERSION" -ge 13 ]; then
-  [ -d "$data/cache" ] || mkdir "$data/cache"
-  jsaFile="$data/cache/js7-controller-$(cat "$JS7_HOME/VERSION").jsa"
-  if [ -f "$jsaFile" ]; then
-    javaOptions+=("-XX:SharedArchiveFile=$jsaFile" -Xshare:auto)
-  else
-    javaOptions+=("-XX:ArchiveClassesAtExit=$jsaFile" -Xshare:auto)
-  fi
-fi
 
 controllerOptions+=("--config-directory=$config" "--data-directory=$data")
 [ -z "$httpPort" ] || controllerOptions+=("--http-port=$httpPort")
 [ -z "$httpsPort" ] || controllerOptions+=("--https-port=$httpsPort")
 
-execute=(
-  "$java"
-  "${javaOptions[@]}"
-  -classpath "$classpathString"
-  js7.controller.ControllerMain
-  "${controllerOptions[@]}")
-
 while true; do
   rm -rf "$workDir"
   mkdir "$workDir"
+
+  loopJavaOptions=()
+
+  if [ "$JAVA_VERSION" -ge 13 ]; then
+    [ -d "$data/cache" ] || mkdir "$data/cache"
+    jsaFile="$data/cache/js7-controller-$(cat "$JS7_HOME/VERSION").jsa"
+    if [ -f "$jsaFile" ]; then
+      loopJavaOptions+=("-XX:SharedArchiveFile=$jsaFile" -Xshare:auto)
+    else
+      loopJavaOptions+=("-XX:ArchiveClassesAtExit=$jsaFile" -Xshare:auto)
+    fi
+  fi
+
+  execute=(
+    "$java"
+    "${javaOptions[@]}"
+    "${loopJavaOptions[@]}"
+    -classpath "$classpathString"
+    js7.controller.ControllerMain
+    "${controllerOptions[@]}")
 
   log "${execute[@]}"
   "${execute[@]}" &
@@ -138,19 +142,7 @@ while true; do
     log "$1: ShutDown JS7 Controller"
     # Add some seconds to start Java with ControllerClientMain
     #local terminateTimeout=30
-    local shutdownCmd='{ "TYPE": "ShutDown" }'
-    if [ "$SHELL" = "/bin/bash" ]; then
-      "$JS7_HOME/bin/js7-client" --data-directory="$data" "$shutdownCmd" &
-    else
-      "$java" -Xmx50m \
-        -Dlog4j.configurationFile=js7/controller/client/main/log4j2.xml \
-        -classpath "$classpathString" \
-        js7.controller.client.main.ControllerClientMain \
-        --data-directory="$data" \
-        http://127.0.0.1:"$httpPort" \
-        "$shutdownCmd" \
-        >/dev/null &
-    fi
+    "$JS7_HOME/bin/js7-shutdown" --data-directory="$data" &
     #(sleep $terminateTimeout && kill $pid) &
     #killer=$!
     wait $pid
