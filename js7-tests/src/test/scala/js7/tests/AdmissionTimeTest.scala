@@ -8,7 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AdmissionTimeSchemeForJavaTime._
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, JavaTimestamp, TimeZone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, JavaTimestamp, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.order.Order.Fresh
@@ -160,7 +160,7 @@ object AdmissionTimeTest
     Seq(
       Execute(WorkflowJob(agentPath, EmptyJob.executable(),
         admissionTimeScheme = Some(mondayAdmissionTimeScheme)))),
-    timeZone = TimeZone(timeZone.getId))
+    timeZone = Timezone(timeZone.getId))
 
   private val sundayAdmissionTimeScheme = AdmissionTimeScheme(Seq(
     WeekdayPeriod(SUNDAY, LocalTime.of(3, 0), 1.h) /*dst gap*/))
@@ -169,7 +169,7 @@ object AdmissionTimeTest
     Seq(
       Execute(WorkflowJob(agentPath, EmptyJob.executable(),
         admissionTimeScheme = Some(sundayAdmissionTimeScheme)))),
-    timeZone = TimeZone(timeZone.getId))
+    timeZone = Timezone(timeZone.getId))
 
   private def ts(ts: String)(implicit zone: ZoneId) =
     JavaTimestamp.parseLocal(ts, zone)

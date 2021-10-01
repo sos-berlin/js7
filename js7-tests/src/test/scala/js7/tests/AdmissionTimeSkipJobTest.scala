@@ -7,7 +7,7 @@ import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, JavaTimestamp, TimeZone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, JavaTimestamp, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
@@ -150,7 +150,7 @@ object AdmissionTimeSkipJobTest
 
   private val singleJobWorkflow = Workflow(WorkflowPath("SINGLE-JOB") ~ "INITIAL",
     Seq(fridayExecute),
-    timeZone = TimeZone(timeZone.getId))
+    timeZone = Timezone(timeZone.getId))
 
   private val multipleJobsWorkflow = Workflow(WorkflowPath("MULTIPLE-JOBS") ~ "INITIAL",
     Seq(
@@ -158,7 +158,7 @@ object AdmissionTimeSkipJobTest
       fridayExecute,
       fridayExecute,
       EmptyJob.execute(agentPath)),
-    timeZone = TimeZone(timeZone.getId))
+    timeZone = Timezone(timeZone.getId))
 
   private def ts(ts: String)(implicit zone: ZoneId) =
     JavaTimestamp.parseLocal(ts, zone)

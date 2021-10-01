@@ -7,7 +7,7 @@ import js7.base.circeutils.typed.Subtype
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.TimeZone
+import js7.base.time.Timezone
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import js7.base.utils.ScalaUtils.syntax._
@@ -37,7 +37,7 @@ final case class Workflow private(
   rawLabeledInstructions: IndexedSeq[Instruction.Labeled],
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],
   orderPreparation: OrderPreparation,
-  timeZone: TimeZone,
+  timeZone: Timezone,
   jobResourcePaths: Seq[JobResourcePath],
   result: Option[Map[String, Expression]],
   source: Option[String],
@@ -448,7 +448,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     outer: Option[Workflow] = None)
   : Workflow =
     apply(WorkflowPath.NoId, labeledInstructions, nameToJob, OrderPreparation.default,
-      TimeZone.utc, result = result,
+      Timezone.utc, result = result,
       source = source, outer = outer)
 
   /** Test only. */
@@ -457,7 +457,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderPreparation: OrderPreparation = OrderPreparation.default,
-    timeZone: TimeZone = TimeZone.utc,
+    timeZone: Timezone = Timezone.utc,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     result: Option[Map[String, Expression]] = None,
     source: Option[String] = None,
@@ -473,7 +473,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     labeledInstructions: IndexedSeq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderPreparation: OrderPreparation = OrderPreparation.default,
-    timeZone: TimeZone = TimeZone.utc,
+    timeZone: Timezone = Timezone.utc,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     result: Option[Map[String, Expression]] = None,
     source: Option[String] = None,
@@ -514,7 +514,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       id.asJsonObject ++
         JsonObject(
           "orderPreparation" -> orderPreparation.??.asJson,
-          "timeZone" -> ((tz != TimeZone.utc) ? tz).asJson,
+          "timeZone" -> ((tz != Timezone.utc) ? tz).asJson,
           "jobResourcePaths" -> jobResourcePaths.??.asJson,
           "instructions" -> instructions
             .dropLastWhile(labeled =>
@@ -532,7 +532,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       for {
         id <- cursor.value.as[WorkflowId]
         orderPreparation <- cursor.getOrElse[OrderPreparation]("orderPreparation")(OrderPreparation.default)
-        tz <- cursor.getOrElse[TimeZone]("timeZone")(TimeZone.utc)
+        tz <- cursor.getOrElse[Timezone]("timeZone")(Timezone.utc)
         jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
         instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
         namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)

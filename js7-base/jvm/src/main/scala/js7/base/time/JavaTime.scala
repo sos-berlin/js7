@@ -93,7 +93,7 @@ object JavaTime
     def toInstant(zone: ZoneId) = ZonedDateTime.of(localDateTime, zone).toInstant
   }
 
-  implicit final class JavaTimeZone(private val timeZone: TimeZone) extends AnyVal
+  implicit final class JavaTimeZone(private val timeZone: Timezone) extends AnyVal
   {
     def toZoneId: Checked[ZoneId] =
       Checked.catchNonFatal(ZoneId.of(timeZone.string))
