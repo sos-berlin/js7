@@ -212,6 +212,9 @@ final class ScalaTimeTest extends AnyFreeSpec
     "toDecimalString" in {
       assert(0.s.toDecimalString == "0")
       assert(1.s.toDecimalString == "1")
+      assert((-1).s.toDecimalString == "-1")
+      assert(1500.ms.toDecimalString == "1.5")
+      assert(4_000_000_000L.s.toDecimalString == "4000000000") // >100 years
       assert(Duration(1, NANOSECONDS).toDecimalString == "0.000000001")
     }
 

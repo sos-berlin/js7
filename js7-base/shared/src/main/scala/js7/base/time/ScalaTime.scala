@@ -63,7 +63,7 @@ object ScalaTime
   }
 
   implicit final class DurationRichBigDecimal(private val delegate: BigDecimal) extends AnyVal {
-    def s: Duration = bigDecimalToDuration(delegate)
+    def s: FiniteDuration = bigDecimalToDuration(delegate)
   }
 
   private[time] def bigDecimalToDuration(o: BigDecimal): FiniteDuration = {
@@ -279,7 +279,7 @@ object ScalaTime
     }
 
     def toDecimalString: String =
-      duration.toBigDecimalSeconds.bigDecimal.toPlainString
+      duration.toBigDecimalSeconds.bigDecimal.stripTrailingZeros.toPlainString
 
     def pretty: String = (duration: Duration).pretty
   }
