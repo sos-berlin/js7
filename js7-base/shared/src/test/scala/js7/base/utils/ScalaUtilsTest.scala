@@ -163,6 +163,12 @@ final class ScalaUtilsTest extends AnyFreeSpec
   }
 
   "Option" - {
+    "fold_" in {
+      def f(a: Option[Int]): Either[Int, String] = a.fold_(Left(0), o => Right(o.toString))
+      assert(f(None) == Left(0))
+      assert(f(Some(7)) == Right("7"))
+    }
+
     "!!" in {
       assert((false !! Problem("PROBLEM")) == Left(Problem("PROBLEM")))
       assert((true !! Problem("PROBLEM")) == Right(()))

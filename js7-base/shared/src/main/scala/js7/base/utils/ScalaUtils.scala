@@ -92,6 +92,13 @@ object ScalaUtils
 
     implicit final class RichOption[A](private val option: Option[A]) extends AnyVal
     {
+      /** Like Scala's `fold`, but with proper result type derivation. */
+      def fold_[B](ifNone: => B, ifSome: A => B): B =
+        option match {
+          case None => ifNone
+          case Some(a) => ifSome(a)
+        }
+
       def !!(problem: => Problem): Checked[A] =
         option match {
           case None => Left(problem)
