@@ -6,6 +6,9 @@ trait WallClock
 
   final def now(): Timestamp =
     Timestamp.ofEpochMilli(epochMilli())
+
+  override def toString =
+    s"WallClock(${now()})"
 }
 
 object WallClock extends WallClock
@@ -14,10 +17,11 @@ object WallClock extends WallClock
     System.currentTimeMillis()
 
   def fixed(timestamp: Timestamp): WallClock =
-    new Fixed(timestamp.toEpochMilli)
+    Fixed(timestamp)
 
-  private final case class Fixed(fixed: Long) extends WallClock
+  private final case class Fixed(now_ : Timestamp)
+  extends WallClock
   {
-    def epochMilli() = fixed
+    def epochMilli() = now_.toEpochMilli
   }
 }
