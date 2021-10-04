@@ -7,7 +7,9 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.ReturnCode
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.value.NamedValues
+import scala.collection.View
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -73,6 +75,9 @@ object Outcome
 
   final case class Succeeded(namedValues: NamedValues) extends Completed {
     def isSucceeded = true
+
+    override def toString =
+      if (namedValues.isEmpty) "Succeeded" else s"Succeeded($namedValues)"
   }
   object Succeeded extends Completed.Companion[Succeeded]
   {
@@ -101,7 +106,8 @@ object Outcome
   {
     def isSucceeded = false
 
-    override def toString = s"⚠️ Failed(${errorMessage.fold("")(o => s"$o, ")}$namedValues)"
+    override def toString =
+      View(errorMessage, namedValues.??).mkString("⚠️ Failed(", ", ", ")")
   }
   object Failed extends Completed.Companion[Failed]
   {
