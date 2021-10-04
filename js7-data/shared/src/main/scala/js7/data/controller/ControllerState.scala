@@ -501,7 +501,7 @@ with JournaledState[ControllerState]
 
   // Slow ???
   private[controller] lazy val isWorkflowUsedByOrders: Set[WorkflowId] =
-    idToOrder.values.view.map(_.workflowId).toSet
+    idToOrder.valuesIterator.map(_.workflowId).toSet
       .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)

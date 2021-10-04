@@ -487,39 +487,41 @@ final class ScalaUtilsTest extends AnyFreeSpec
     }
   }
 
-  "Boolean ? value" in {
-    assert((true ? 7: Option[Int]) == Some(7))
-    assert((false ? 7: Option[Int]) == None)
-  }
+  "Boolean" - {
+    "Boolean ? value" in {
+      assert((true ? 7: Option[Int]) == Some(7))
+      assert((false ? 7: Option[Int]) == None)
+    }
 
-  "Boolean ?" in {
-    assert(true.? == Some(true))
-    assert(false.? == None)
-  }
+    "Boolean ?" in {
+      assert(true.? == Some(true))
+      assert(false.? == None)
+    }
 
-  "Boolean.option" in {
-    assert((true option 7: Option[Int]) == Some(7))
-    assert((false option 7: Option[Int]) == None)
-  }
+    "Boolean.option" in {
+      assert((true option 7: Option[Int]) == Some(7))
+      assert((false option 7: Option[Int]) == None)
+    }
 
-  "Boolean.thenList" in {
-    assert((true thenList 7: List[Int]) == List(7))
-    assert((false thenList 7: List[Int]) == Nil)
-  }
+    "Boolean.thenList" in {
+      assert((true thenList 7: List[Int]) == List(7))
+      assert((false thenList 7: List[Int]) == Nil)
+    }
 
-  "Boolean.thenVector" in {
-    assert((true thenVector 7: Vector[Int]) == Vector(7))
-    assert((false thenVector 7: Vector[Int]) == Vector())
-  }
+    "Boolean.thenVector" in {
+      assert((true thenVector 7: Vector[Int]) == Vector(7))
+      assert((false thenVector 7: Vector[Int]) == Vector())
+    }
 
-  "Boolean.thenSet" in {
-    assert((true thenSet 7: Set[Int]) == Set(7))
-    assert((false thenSet 7: Set[Int]) == Set())
-  }
+    "Boolean.thenSet" in {
+      assert((true thenSet 7: Set[Int]) == Set(7))
+      assert((false thenSet 7: Set[Int]) == Set())
+    }
 
-  "Boolean.thenIterator" in {
-    assert((true thenIterator 7: Iterator[Int]).toList == List(7))
-    assert((false thenIterator 7: Iterator[Int]).isEmpty)
+    "Boolean.thenIterator" in {
+      assert((true thenIterator 7: Iterator[Int]).toList == List(7))
+      assert((false thenIterator 7: Iterator[Int]).isEmpty)
+    }
   }
 
   "shortStringToInputStream" in {

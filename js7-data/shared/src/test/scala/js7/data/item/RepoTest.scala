@@ -258,8 +258,8 @@ final class RepoTest extends AnyFreeSpec
   }
 
   locally {
-    val n = sys.props.get("RepoTest").map(_.toInt) getOrElse 2000
-    s"Add many $n versions" in {
+    val n = sys.props.get("RepoTest").map(_.toInt) getOrElse 100
+    s"Add many ($n) versions" in {
       // ControllerCommand.UpdateRepo calls itemsToEventBlock
       var repo = emptyRepo
       val stopwatch = new Stopwatch

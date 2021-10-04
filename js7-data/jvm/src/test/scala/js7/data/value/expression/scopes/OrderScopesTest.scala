@@ -301,7 +301,7 @@ final class OrderScopesTest extends AnyFreeSpec
 
     "Speed" in {
       implicit val scope = orderScopes.processingOrderScope
-      val n = sys.props.get("test.speed").fold(10_000)(_.toInt)
+      val n = sys.props.get("test.speed").fold(100)(_.toInt)
       val expressionsStrings = View("$orderArgument", "$js7Label", "$js7WorkflowPosition",
         "JobResource:JOB-RESOURCE:`ORDER-ID`", "JobResource:JOB-RESOURCE:NOW",
         "now($dateTimeFormat, $timezone)")

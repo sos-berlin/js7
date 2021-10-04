@@ -36,7 +36,6 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import js7.tester.DiffxAssertions.assertEqual
 import monix.execution.Scheduler.Implicits.global
-import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 
 /**
@@ -143,11 +142,10 @@ final class ControllerStateTest extends AsyncFreeSpec
   }
 
   "fromIterator is the reverse of toSnapshotObservable" in {
-    val task = for {
-      elems <- controllerState.toSnapshotObservable.toListL
-      expectedState <- ControllerState.fromObservable(Observable.fromIterable(elems))
-    } yield assertEqual(controllerState, expectedState)
-    task.runToFuture
+    ControllerState
+      .fromObservable(controllerState.toSnapshotObservable)
+      .map(expectedState => assertEqual(controllerState, expectedState))
+      .runToFuture
   }
 
   private val expectedSnapshotJsonArray =

@@ -113,7 +113,7 @@ final class ExpressionParserTest extends AnyFreeSpec
       }
 
       "U+0080...U+7FFF" in {
-        for (char <- (0x80 to 0x7fff).map(_.toChar)) {
+        for (char <- (0x80 to 0x7fff).view.map(_.toChar)) {
           val doubleQuoted = s""" "$char" """.trim
           testExpressionRaw(doubleQuoted, StringConstant(s"$char"))
           val singleQuoted = s""" "'$char" """.trim

@@ -1,6 +1,5 @@
 package js7.base.time
 
-import java.time.Instant
 import js7.base.problem.Problem
 import scala.math.abs
 import scala.scalajs.js
@@ -72,8 +71,6 @@ object JsTimestamp extends Timestamp.Companion
   }
 
   def ofEpochMilli(millis: Long) = new SystemTimestamp(toEpochMilli = millis)
-
-  def fromInstant(instant: Instant) = ofEpochMilli(instant.toEpochMilli)
 
   def parse(string: String) = ofEpochMilli(js.Date.parse(string).toLong)
 }
