@@ -91,7 +91,7 @@ final class OrderEventSource(state: StateView)
   // In this case, OrderFailed event must have original failures's position, not failed retry's position.
   private def isMaxRetriesReached(workflowId: WorkflowId, firstCatchPos: Position): Boolean =
     catchStartsWithRetry(workflowId /: firstCatchPos) &&
-      firstCatchPos.dropChild.forall(parentPos =>
+      firstCatchPos.parent.forall(parentPos =>
         instruction(workflowId /: parentPos) match {  // Parent must be a TryInstruction
           case t: TryInstruction => t.maxTries.forall(firstCatchPos.tryCount >= _)
         })

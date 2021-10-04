@@ -51,10 +51,10 @@ final class PositionTest extends AnyFreeSpec
     }
   }
 
-  "dropChild" in {
-    assert(Position(1).dropChild == None)
-    assert((Position(1) / "A" % 2).dropChild == Some(Position(1)))
-    assert((Position(1) / "A" % 2 / "B" % 3).dropChild == Some(Position(1) / "A" % 2))
+  "parent" in {
+    assert(Position(1).parent == None)
+    assert((Position(1) / "A" % 2).parent == Some(Position(1)))
+    assert((Position(1) / "A" % 2 / "B" % 3).parent == Some(Position(1) / "A" % 2))
   }
 
   "splitBranchAndNr" in {
@@ -78,9 +78,9 @@ final class PositionTest extends AnyFreeSpec
     val a = Position(1) / "A" % 2
     assert(a == Position(1) / "A" % 2)
     assert(a == Position(BranchPath.Segment(InstructionNr(1), "A") :: Nil, InstructionNr(2)))
-    assert(a.dropChild == Position(1).some)
-    assert((a / "B" % 3).dropChild == a.some)
-    assert(Position(1).dropChild == None)
+    assert(a.parent == Position(1).some)
+    assert((a / "B" % 3).parent == a.some)
+    assert(Position(1).parent == None)
     assert(Position(1) / "A" % 2 / "B" % 3  ==
       Position(
         BranchPath.Segment(InstructionNr(1), "A") ::

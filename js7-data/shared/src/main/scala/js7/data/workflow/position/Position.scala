@@ -23,7 +23,7 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
 
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
-  // TODO Rename as parentPosition
+  @deprecated
   def dropChild: Option[Position] =
     parent
 
