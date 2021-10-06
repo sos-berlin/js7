@@ -25,4 +25,8 @@ final class JavaTimestampTest extends AnyFreeSpec
   "toOffsetDateTime" in {
     assert(timestamp.toOffsetDateTime(zone) == OffsetDateTime.of(local, ZoneOffset.of("+03:00")))
   }
+
+  "local" in {
+    assert(JavaTimestamp.local("2021-10-01T00:00")(zone) == Timestamp("2021-09-30T21:00:00Z"))
+  }
 }

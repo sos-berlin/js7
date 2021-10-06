@@ -6,8 +6,9 @@ import java.time.{LocalTime, ZoneId}
 import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, JavaTimestamp, Timezone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
@@ -40,7 +41,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
 
   private implicit val timeZone = AdmissionTimeSkipJobTest.timeZone
   private val clock = AlarmClock.forTest(
-    ts("2021-09-09T00:00"),
+    local("2021-09-09T00:00"),
     clockCheckInterval = 100.ms)
 
   override protected def controllerModule = new AbstractModule {
@@ -92,7 +93,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   }
 
   "Do not skip if job has a admission time for order date" in {
-    clock := ts("2021-09-10T00:00")
+    clock := local("2021-09-10T00:00")
     val orderId = OrderId("#2021-09-03#")  // Friday
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == Some(FRIDAY))
 
@@ -101,26 +102,26 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-    clock := ts("2021-09-10T18:00")
+    clock := local("2021-09-10T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId)
     eventWatch.await[OrderFinished](_.key == orderId)
   }
 
   "Do not skip if OrderId has no order date" in {
-    clock := ts("2021-09-10T00:00")
+    clock := local("2021-09-10T00:00")
     val orderId = OrderId("NO-DATE")
     controllerApi.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId)
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-    clock := ts("2021-09-10T18:00")
+    clock := local("2021-09-10T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId)
     eventWatch.await[OrderFinished](_.key == orderId)
   }
 
   "Do not skip if OrderId has an invalid order date" in {
-    clock := ts("2021-09-10T00:00")
+    clock := local("2021-09-10T00:00")
     val orderId = OrderId("#2021-02-29#invalid")
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == None)
 
@@ -129,7 +130,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-    clock := ts("2021-09-10T18:00")
+    clock := local("2021-09-10T18:00")
     eventWatch.await[OrderProcessed](_.key == orderId)
     eventWatch.await[OrderFinished](_.key == orderId)
   }
@@ -159,7 +160,4 @@ object AdmissionTimeSkipJobTest
       fridayExecute,
       EmptyJob.execute(agentPath)),
     timeZone = Timezone(timeZone.getId))
-
-  private def ts(ts: String)(implicit zone: ZoneId) =
-    JavaTimestamp.parseLocal(ts, zone)
 }

@@ -4,6 +4,7 @@ import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
 import js7.base.time.AdmissionTimeIntervalSwitchTest._
+import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
@@ -37,9 +38,9 @@ final class AdmissionTimeIntervalSwitchTest extends AnyFreeSpec
 
   "Mariehamn daylight saving time" in {
     implicit val zone = mariehamnZoneId
-    assert(ts("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
-    assert(ts("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
-    assert(ts("2021-03-28T04:00") - ts("2021-03-28T02:59:59") == 1.s)
+    assert(local("2021-03-28T02:59") == Timestamp("2021-03-28T00:59:00Z"))
+    assert(local("2021-03-28T04:00") == Timestamp("2021-03-28T01:00:00Z"))
+    assert(local("2021-03-28T04:00") - local("2021-03-28T02:59:59") == 1.s)
     check(zone)
   }
 
@@ -51,40 +52,40 @@ final class AdmissionTimeIntervalSwitchTest extends AnyFreeSpec
     "Week without a period due to daylight saving time gap" in {
       val tester = new Tester(Some(admissionTimeScheme))
       tester.check(
-        ts("2021-03-21T00:00"),
-        switched = Some(None -> Some(TimeInterval(ts("2021-03-21T03:00:00"), 1.h))),
+        local("2021-03-21T00:00"),
+        switched = Some(None -> Some(TimeInterval(local("2021-03-21T03:00"), 1.h))),
         admissionStarted = false,
         isAdmitted = false)
 
       tester.check(
-        ts("2021-03-21T03:00"),
+        local("2021-03-21T03:00"),
         admissionStarted = true,
         isAdmitted = true)
 
       // Because the admission is in the dst gap, the next valid local time is returned.
       tester.check(
-        ts("2021-03-21T04:00"),
+        local("2021-03-21T04:00"),
         admissionStarted = false,
         isAdmitted = false,
-        switched = Some(Some(TimeInterval(ts("2021-03-21T03:00:00"), 1.h))
-                     -> Some(TimeInterval(ts("2021-03-28T04:00:00"), 1.h))))
+        switched = Some(Some(TimeInterval(local("2021-03-21T03:00"), 1.h))
+                     -> Some(TimeInterval(local("2021-03-28T04:00"), 1.h))))
 
       tester.check(
-        ts("2021-03-28T04:00"),
+        local("2021-03-28T04:00"),
         admissionStarted = true,
         isAdmitted = true)
 
       tester.check(
-        ts("2021-03-28T04:59"),
+        local("2021-03-28T04:59"),
         admissionStarted = false,
         isAdmitted = true)
 
       tester.check(
-        ts("2021-03-28T05:00"),
+        local("2021-03-28T05:00"),
         admissionStarted = false,
         isAdmitted = false,
-        switched = Some(Some(TimeInterval(ts("2021-03-28T04:00:00"), 1.h))
-                     -> Some(TimeInterval(ts("2021-04-04T03:00:00"), 1.h))))
+        switched = Some(Some(TimeInterval(local("2021-03-28T04:00"), 1.h))
+                     -> Some(TimeInterval(local("2021-04-04T03:00"), 1.h))))
     }
   }
 
@@ -95,40 +96,37 @@ final class AdmissionTimeIntervalSwitchTest extends AnyFreeSpec
       WeekdayPeriod(SUNDAY, LocalTime.of(23, 0), 3.h)))
 
     val tester = new Tester(Some(admissionTimeScheme))
-    assert(ts("2021-03-22T00:00:00").toLocalDateTime(zone).getDayOfWeek == MONDAY)
+    assert(local("2021-03-22T00:00").toLocalDateTime(zone).getDayOfWeek == MONDAY)
 
-    tester.check(ts("2021-03-22T00:00"),
-      switched = Some(None -> Some(TimeInterval(ts("2021-03-21T23:00:00"), 3.h))),
+    tester.check(local("2021-03-22T00:00"),
+      switched = Some(None -> Some(TimeInterval(local("2021-03-21T23:00"), 3.h))),
       admissionStarted = false,
       isAdmitted = true)
 
-    tester.check(ts("2021-03-22T07:00"),
-      switched = Some(Some(TimeInterval(ts("2021-03-21T23:00:00"), 3.h))
-                   -> Some(TimeInterval(ts("2021-03-22T08:00:00"), 2.h))),
+    tester.check(local("2021-03-22T07:00"),
+      switched = Some(Some(TimeInterval(local("2021-03-21T23:00"), 3.h))
+                   -> Some(TimeInterval(local("2021-03-22T08:00"), 2.h))),
       admissionStarted = false,
       isAdmitted = false)
 
-    tester.check(ts("2021-03-22T08:00"),
+    tester.check(local("2021-03-22T08:00"),
       admissionStarted = true,
       isAdmitted = true)
 
-    tester.check(ts("2021-03-22T09:59"),
+    tester.check(local("2021-03-22T09:59"),
       admissionStarted = false,
       isAdmitted = true)
 
-    tester.check(ts("2021-03-22T10:00"),
-      switched = Some(Some(TimeInterval(ts("2021-03-22T08:00:00"), 2.h))
-                   -> Some(TimeInterval(ts("2021-03-28T23:00:00"), 3.h))),
+    tester.check(local("2021-03-22T10:00"),
+      switched = Some(Some(TimeInterval(local("2021-03-22T08:00"), 2.h))
+                   -> Some(TimeInterval(local("2021-03-28T23:00"), 3.h))),
       admissionStarted = false,
       isAdmitted = false)
 
-    tester.check(ts("2021-03-28T23:00"),
+    tester.check(local("2021-03-28T23:00"),
       admissionStarted = true,
       isAdmitted = true)
   }
-
-  def ts(ts: String)(implicit zone: ZoneId) =
-    JavaTimestamp.parseLocal(ts, zone)
 }
 
 object AdmissionTimeIntervalSwitchTest

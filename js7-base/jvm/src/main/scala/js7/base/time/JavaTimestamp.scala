@@ -68,7 +68,11 @@ object JavaTimestamp extends Timestamp.Companion
     ofInstant(Instant.from(dateTimeFormatter parse string))
 
   @TestOnly
-  def parseLocal(string: String, zone: ZoneId): JavaTimestamp = {
+  def parseLocal(string: String, zone: ZoneId): JavaTimestamp =
+    local(string)(zone)
+
+  @TestOnly
+  def local(string: String)(implicit zone: ZoneId): JavaTimestamp = {
     val local = LocalDateTime.parse(string)  // throws
     ofZoned(ZonedDateTime.of(local, zone))
   }

@@ -7,8 +7,9 @@ import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AdmissionTimeSchemeForJavaTime._
+import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, JavaTimestamp, Timezone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.order.Order.Fresh
@@ -40,7 +41,7 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
   private implicit val timeZone = AdmissionTimeTest.timeZone
   private val clock = AlarmClock.forTest(
-    ts("2021-03-20T00:00"),
+    local("2021-03-20T00:00"),
     clockCheckInterval = 100.ms)
 
   override protected def agentModule = new AbstractModule {
@@ -55,23 +56,23 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-      clock := ts("2021-03-21T02:59")
+      clock := local("2021-03-21T02:59")
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-      clock := ts("2021-03-21T03:00")
+      clock := local("2021-03-21T03:00")
       eventWatch.await[OrderFinished](_.key == orderId)
     }
 
     "Start order while in permission period" in {
-      clock := ts("2021-03-21T03:59")
+      clock := local("2021-03-21T03:59")
       val orderId = OrderId("🟢")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
     }
 
     "Start order at end of permission period" in {
-      clock := ts("2021-03-21T04:00")
+      clock := local("2021-03-21T04:00")
       val orderId = OrderId("🟠")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       sleep(100.ms)
@@ -80,27 +81,27 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
     "Start order with permission in daylight saving time gap" in {
       // Permission is shifted to the next valid local time
-      assert(ts("2021-03-28T04:00") - ts("2021-03-28T02:59") == 1.minute)
-      clock := ts("2021-03-28T02:59")
+      assert(local("2021-03-28T04:00") - local("2021-03-28T02:59") == 1.minute)
+      clock := local("2021-03-28T02:59")
       val orderId = OrderId("🟤")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId)
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-      clock := ts("2021-03-28T04:00")
+      clock := local("2021-03-28T04:00")
       eventWatch.await[OrderFinished](_.key == orderId)
     }
 
     "Start order with permission in daylight saving time gap (2)" in {
-      clock := ts("2021-03-28T04:59")
+      clock := local("2021-03-28T04:59")
       val orderId = OrderId("🔴")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
     }
 
     "Start order at end of shifted permission period" in {
-      clock := ts("2021-03-28T05:00")
+      clock := local("2021-03-28T05:00")
       val orderId = OrderId("🟣")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       sleep(100.ms)
@@ -109,25 +110,25 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
   }
 
   "Monday after end of daylight saving time" in {
-    assert(ts("2021-10-31T04:00") - ts("2021-10-31T03:59") == 1.h + 1.minute)
+    assert(local("2021-10-31T04:00") - local("2021-10-31T03:59") == 1.h + 1.minute)
 
-    clock := ts("2021-10-31T00:00")
+    clock := local("2021-10-31T00:00")
     val orderId = OrderId("🟦")
     controllerApi.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId)
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-    clock := ts("2021-11-01T07:59")
+    clock := local("2021-11-01T07:59")
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 
-    clock := ts("2021-11-01T08:00")
+    clock := local("2021-11-01T08:00")
     eventWatch.await[OrderFinished](_.key == orderId)
   }
 
   "Late start" in {
-    val tooEarly = ts("2021-11-08T07:59")
+    val tooEarly = local("2021-11-08T07:59")
     assert(!mondayAdmissionTimeScheme.isPermitted(tooEarly, timeZone))
     clock := tooEarly
     val orderId = OrderId("🟥")
@@ -138,9 +139,9 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
     // Let the clock skip the permission interval until it is too late.
     // This may happen due to any delay, for example due to other other orders in the job.
-    assert(mondayAdmissionTimeScheme.isPermitted(ts("2021-11-08T08:00"), timeZone))
+    assert(mondayAdmissionTimeScheme.isPermitted(local("2021-11-08T08:00"), timeZone))
 
-    val tooLate = ts("2021-11-08T10:00")
+    val tooLate = local("2021-11-08T10:00")
     assert(!mondayAdmissionTimeScheme.isPermitted(tooLate, timeZone))
     clock := tooLate  // To late
     sleep(100.ms)
@@ -170,7 +171,4 @@ object AdmissionTimeTest
       Execute(WorkflowJob(agentPath, EmptyJob.executable(),
         admissionTimeScheme = Some(sundayAdmissionTimeScheme)))),
     timeZone = Timezone(timeZone.getId))
-
-  private def ts(ts: String)(implicit zone: ZoneId) =
-    JavaTimestamp.parseLocal(ts, zone)
 }
