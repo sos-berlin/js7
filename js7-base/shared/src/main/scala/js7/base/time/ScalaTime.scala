@@ -63,6 +63,7 @@ object ScalaTime
   }
 
   implicit final class DurationRichBigDecimal(private val delegate: BigDecimal) extends AnyVal {
+    /** Duration, counted in seconds. */
     def s: FiniteDuration = bigDecimalToDuration(delegate)
   }
 

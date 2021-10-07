@@ -18,6 +18,8 @@ import scala.collection.mutable
 
 trait ForkInstructionExecutor extends EventInstructionExecutor
 {
+  type Instr <: ForkInstruction
+
   protected val service: InstructionExecutorService
   private implicit val implicitService = service
 

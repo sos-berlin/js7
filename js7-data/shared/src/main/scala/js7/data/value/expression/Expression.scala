@@ -70,12 +70,12 @@ object Expression
 
   // Experimental
   sealed trait PurityDependsOnSubexpressions extends Expression {
-    def isPure = subexpressions.forall(_.isPure)
+    protected def isPure = subexpressions.forall(_.isPure)
   }
 
   // Experimental
   sealed trait Pure extends Expression {
-    def isPure = true
+    protected def isPure = true
   }
 
   sealed trait Constant extends Pure {
@@ -432,7 +432,7 @@ object Expression
     import NamedValue._
     def precedence = Precedence.Factor
     def subexpressions = Nil
-    def isPure = false
+    protected def isPure = false
 
     protected def evalAllowError(implicit scope: Scope) = {
       val w = where match {
@@ -531,7 +531,7 @@ object Expression
   extends Expression {
     protected def precedence = Precedence.Factor
     def subexpressions = Nil
-    def isPure = false
+    protected def isPure = false
 
     def evalAllowError(implicit scope: Scope) =
       scope.evalFunctionCall(this)
@@ -684,7 +684,7 @@ object Expression
   }
 
   final class ImpureTest(eval: () => Checked[Value]) extends Expression {
-    def isPure = false
+    protected def isPure = false
     def precedence = Precedence.Highest
     def subexpressions = Nil
     protected def evalAllowError(implicit scope: Scope) = eval()

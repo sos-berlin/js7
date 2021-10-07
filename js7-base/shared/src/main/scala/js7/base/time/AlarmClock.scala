@@ -40,8 +40,7 @@ object AlarmClock
   def apply(clockCheckInterval: FiniteDuration)(implicit s: Scheduler): AlarmClock =
     new Standard(clockCheckInterval)
 
-  def forTest(start: Timestamp, clockCheckInterval: FiniteDuration)
-    (implicit scheduler: Scheduler)
+  def forTest(start: Timestamp, clockCheckInterval: FiniteDuration)(implicit s: Scheduler)
   : TestAlarmClock =
     new TestAlarmClockImpl(start, clockCheckInterval)
 
