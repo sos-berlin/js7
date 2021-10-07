@@ -37,6 +37,12 @@ final class TimestampTest extends AnyFreeSpec
     assert(timestamp.toIsoString == isoString)
   }
 
+  "toTimeString" in {
+    assert(timestamp.toTimeString == "11:22:33.456")
+    assert(Timestamp("2021-10-08T11:22:33Z").toTimeString == "11:22:33")
+    assert(Timestamp("2021-10-08T11:22:00Z").toTimeString == "11:22:00")
+  }
+
   "plus" in {
     assert(timestamp + (1.hour + 111.milliseconds) == Timestamp("2017-12-04T12:22:33.567Z"))
     assert(timestamp + Long.MaxValue.nanoseconds == Timestamp("2310-03-16T11:09:50.310Z"))

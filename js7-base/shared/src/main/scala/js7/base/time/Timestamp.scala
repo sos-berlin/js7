@@ -4,6 +4,7 @@ import cats.Show
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.number.Numbers.{addSaturating, subtractSaturating}
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp._
 import scala.concurrent.duration._
 
@@ -22,6 +23,9 @@ trait Timestamp extends Ordered[Timestamp] {
     * For example "2017-12-04T11:22:33.456Z".
     */
   def toIsoString: String
+
+  def toTimeString: String =
+    toIsoString.substring(11).stripSuffix("Z")
 
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String]
 
@@ -59,13 +63,15 @@ trait Timestamp extends Ordered[Timestamp] {
 
   def pretty = toString.replace('T', ' ')
 
-  override def toString = toIsoString
+  override def toString =
+    if (toEpochMilli == 0) "Epoch" else toIsoString
 }
 
 object Timestamp
 {
   val implementation: Companion = SystemTimestamp
   final val Epoch = ofEpochMilli(0)
+  final val Epsilon = 1.ms
 
   def ofEpochSecond(second: Long): Timestamp =
     ofEpochMilli(second * 1000)
