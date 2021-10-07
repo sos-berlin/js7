@@ -6,6 +6,7 @@ import java.time.{LocalDate, LocalDateTime, LocalTime}
 import js7.base.time.AdmissionPeriodForJavaTime._
 import js7.base.time.ScalaTime._
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration.FiniteDuration
 
 final class AdmissionPeriodForJavaTimeTest extends AnyFreeSpec
 {
@@ -24,37 +25,37 @@ final class AdmissionPeriodForJavaTimeTest extends AnyFreeSpec
 
     "secondsSinceStart" in {
       val jwp = JavaWeekdayPeriod(weekdayPeriod)
-      assert(jwp.secondsSinceStart(LocalDateTime.parse("2021-08-23T00:00")) == -(24+8)*3600)
-      assert(jwp.secondsSinceStart(LocalDateTime.parse("2021-08-23T01:00")) == -(24+7)*3600)
-      assert(jwp.secondsSinceStart(LocalDateTime.parse("2021-08-24T00:00")) == -8*3600)
-      assert(jwp.secondsSinceStart(LocalDateTime.parse("2021-08-24T08:00")) == 0)
-      assert(jwp.secondsSinceStart(LocalDateTime.parse("2021-08-24T09:00")) == 3600)
-      assert(jwp.secondsSinceStart(LocalDateTime.parse("2021-08-29T00:00")) == (4*24+16)*3600)
+      assert(jwp.secondsSinceStart(localDT("2021-08-23T00:00")) == -(24+8)*3600)
+      assert(jwp.secondsSinceStart(localDT("2021-08-23T01:00")) == -(24+7)*3600)
+      assert(jwp.secondsSinceStart(localDT("2021-08-24T00:00")) == -8*3600)
+      assert(jwp.secondsSinceStart(localDT("2021-08-24T08:00")) == 0)
+      assert(jwp.secondsSinceStart(localDT("2021-08-24T09:00")) == 3600)
+      assert(jwp.secondsSinceStart(localDT("2021-08-29T00:00")) == (4*24+16)*3600)
     }
 
     "toInterval" in {
-      assert(admissionPeriod.toInterval(LocalDateTime.parse("2021-08-23T00:00")) ==
-        Some(LocalInterval(LocalDateTime.parse("2021-08-24T08:00"), 2.h)))
+      assert(admissionPeriod.toInterval(localDT("2021-08-23T00:00")) ==
+        Some(LocalInterval(localDT("2021-08-24T08:00"), 2.h)))
     }
 
     "toInterval may return past period" in {
       // Past periods will be deleted by the caller. For easier code.
-      assert(admissionPeriod.toInterval(LocalDateTime.parse("2021-08-29T00:00")) ==
-        Some(LocalInterval(LocalDateTime.parse("2021-08-24T08:00"), 2.h)))
+      assert(admissionPeriod.toInterval(localDT("2021-08-29T00:00")) ==
+        Some(LocalInterval(localDT("2021-08-24T08:00"), 2.h)))
     }
 
     "calendarStart" in {
-      assert(admissionPeriod.calendarStart(LocalDateTime.parse("2021-08-23T00:00")) ==
-        LocalDateTime.parse("2021-08-23T00:00"))
-      assert(admissionPeriod.calendarStart(LocalDateTime.parse("2021-08-29T23:59")) ==
-        LocalDateTime.parse("2021-08-23T00:00"))
+      assert(admissionPeriod.calendarStart(localDT("2021-08-23T00:00")) ==
+        localDT("2021-08-23T00:00"))
+      assert(admissionPeriod.calendarStart(localDT("2021-08-29T23:59")) ==
+        localDT("2021-08-23T00:00"))
     }
 
     "nextCalendarStart" in {
-      assert(admissionPeriod.nextCalendarStart(LocalDateTime.parse("2021-08-23T00:00")) ==
-        LocalDateTime.parse("2021-08-30T00:00"))
-      assert(admissionPeriod.nextCalendarStart(LocalDateTime.parse("2021-08-29T23:59")) ==
-        LocalDateTime.parse("2021-08-30T00:00"))
+      assert(admissionPeriod.nextCalendarStart(localDT("2021-08-23T00:00")) ==
+        localDT("2021-08-30T00:00"))
+      assert(admissionPeriod.nextCalendarStart(localDT("2021-08-29T23:59")) ==
+        localDT("2021-08-30T00:00"))
     }
 
     "hasPeriodForDay" - {
@@ -89,4 +90,100 @@ final class AdmissionPeriodForJavaTimeTest extends AnyFreeSpec
       }
     }
   }
+
+  "DailyPeriod" - {
+    val dailyPeriod = DailyPeriod(LocalTime.of(8, 0), 2.h)
+    val admissionPeriod: AdmissionPeriod = dailyPeriod
+
+    "secondOfDay" in {
+      assert(dailyPeriod.secondOfDay == 8*3600)
+    }
+
+    "secondsSinceStart" in {
+      val period = JavaDailyPeriod(dailyPeriod)
+      assert(period.secondsSinceStart(localDT("2021-10-01T00:00")) == -8*3600)
+      assert(period.secondsSinceStart(localDT("2021-10-01T01:00")) == -7*3600)
+      assert(period.secondsSinceStart(localDT("2021-10-02T00:00")) == -8*3600)
+      assert(period.secondsSinceStart(localDT("2021-10-02T08:00")) == 0)
+      assert(period.secondsSinceStart(localDT("2021-10-02T09:00")) == 3600)
+      assert(period.secondsSinceStart(localDT("2021-08-29T00:00")) == -8*3600)
+    }
+
+    "toInterval" in {
+      assert(admissionPeriod.toInterval(localDT("2021-10-01T00:00")) ==
+        Some(LocalInterval(localDT("2021-10-01T08:00"), 2.h)))
+    }
+
+    //"toInterval may return past period" in {
+    //  // Past periods will be deleted by the caller. For easier code.
+    //  assert(admissionPeriod.toInterval(localDT("2021-10-02T00:00")) ==
+    //    Some(LocalInterval(localDT("2021-10-01T08:00"), 2.h)))
+    //}
+
+    "calendarStart" in {
+      assert(admissionPeriod.calendarStart(localDT("2021-10-01T00:00")) ==
+        localDT("2021-10-01T00:00"))
+      assert(admissionPeriod.calendarStart(localDT("2021-10-01T23:59")) ==
+        localDT("2021-10-01T00:00"))
+    }
+
+    "nextCalendarStart" in {
+      assert(admissionPeriod.nextCalendarStart(localDT("2021-10-01T00:00")) ==
+        localDT("2021-10-02T00:00"))
+      assert(admissionPeriod.nextCalendarStart(localDT("2021-10-01T23:59")) ==
+        localDT("2021-10-02T00:00"))
+    }
+
+    "hasPeriodForDay" - {
+      "period within a day" in {
+        assert(admissionPeriod.hasPeriodForDay(LocalDate.parse("2021-10-01")))
+
+        val empty = DailyPeriod.checked(1, 0.s)
+        assert(empty.isLeft)
+      }
+
+      "period starts at midnight" in {
+        val dailyPeriod = DailyPeriod(MIDNIGHT, 1.h)
+        assert(dailyPeriod.hasPeriodForDay(LocalDate.parse("2021-08-30")))
+      }
+
+      "period ends at midnight" in {
+        val dailyPeriod = DailyPeriod(LocalTime.of(23, 0), 1.h)
+        assert(dailyPeriod.hasPeriodForDay(LocalDate.parse("2021-08-30")))   // Mon
+      }
+
+      "period over midnight" in {
+        val dailyPeriod = DailyPeriod(LocalTime.of(23, 0), 24.h)
+        assert(dailyPeriod.hasPeriodForDay(LocalDate.parse("2021-08-28")))   // Sat
+      }
+    }
+  }
+
+  "AlwaysPeriod" - {
+    val admissionPeriod: AdmissionPeriod = AlwaysPeriod
+
+    "toInterval" in {
+      assert(admissionPeriod.toInterval(localDT("2021-10-01T00:00")) ==
+        Some(LocalInterval(localDT("2021-10-01T00:00"), FiniteDuration.MaxValue)))
+    }
+
+    "calendarStart (not used)" in {
+      assert(admissionPeriod.calendarStart(localDT("2021-10-01T00:00")) ==
+        localDT("2021-10-01T00:00"))
+      assert(admissionPeriod.calendarStart(localDT("2021-10-01T23:59")) ==
+        localDT("2021-10-01T23:59"))
+    }
+
+    "nextCalendarStart (not used)" in {
+      assert(admissionPeriod.nextCalendarStart(localDT("2021-10-01T00:00")) ==
+        localDT("2021-10-01T00:00:01"))
+    }
+
+    "hasPeriodForDay" in {
+      assert(admissionPeriod.hasPeriodForDay(LocalDate.parse("2021-10-01")))
+    }
+  }
+
+  private def localDT(localDateTime: String) =
+    LocalDateTime.parse(localDateTime)
 }

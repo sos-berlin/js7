@@ -36,6 +36,7 @@ object AdmissionPeriodForJavaTime
     admissionPeriod match {
       case AlwaysPeriod => JavaAlwaysPeriod
       case o: WeekdayPeriod => JavaWeekdayPeriod(o)
+      case o: DailyPeriod => JavaDailyPeriod(o)
     }
 
   private val NoOffset = ZoneOffset.ofTotalSeconds(0)
@@ -51,7 +52,7 @@ object AdmissionPeriodForJavaTime
     def nextCalendarStart(local: LocalDateTime): LocalDateTime
   }
 
-  private case object JavaAlwaysPeriod extends AdmissionPeriodJava
+  private[time] case object JavaAlwaysPeriod extends AdmissionPeriodJava
   {
     def hasPeriodForDay(localDate: LocalDate) =
       true
@@ -63,25 +64,23 @@ object AdmissionPeriodForJavaTime
       local  // not used
 
     def nextCalendarStart(local: LocalDateTime) =
-      local  // not used
+      local.plusSeconds(1)  // not used
   }
 
-  private[time] final case class JavaWeekdayPeriod(weekdayPeriod: WeekdayPeriod)
+  private[time] abstract class JavaDayPeriod
   extends AdmissionPeriodJava
   {
-    import weekdayPeriod.{duration, secondOfWeek}
-
-    def hasPeriodForDay(localDate: LocalDate) = {
+    final def hasPeriodForDay(localDate: LocalDate) = {
       val startOfDay = LocalDateTime.of(localDate, MIDNIGHT)
       val endOfDay = startOfDay.plusDays(1)
       val a = toLocalInterval0(startOfDay)
       a.end > startOfDay && a.start < endOfDay
     }
 
-    def toLocalInterval(local: LocalDateTime) =
+    final def toLocalInterval(local: LocalDateTime) =
       Some(toLocalInterval0(local))
 
-    def toLocalInterval0(local: LocalDateTime) = {
+    final def toLocalInterval0(local: LocalDateTime) = {
       val a = toLocalInterval1(calendarStart(local) - FiniteDuration.Epsilon)  // Overlap from last week?
       if (a.contains(local))
         a
@@ -94,6 +93,18 @@ object AdmissionPeriodForJavaTime
       LocalInterval(
         local.withNano(0).minusSeconds(secondsSinceStart(local)),
         duration)
+
+    protected def duration: FiniteDuration
+    private[time] def secondsSinceStart(local: LocalDateTime): Long
+  }
+
+  private[time] final case class JavaWeekdayPeriod(weekdayPeriod: WeekdayPeriod)
+  extends JavaDayPeriod
+  {
+    import weekdayPeriod.secondOfWeek
+
+    protected def duration =
+      weekdayPeriod.duration
 
     def calendarStart(local: LocalDateTime): LocalDateTime =
       LocalDateTime.of(
@@ -111,5 +122,24 @@ object AdmissionPeriodForJavaTime
 
     override def toString =
       weekdayPeriod.toString
+  }
+
+  private[time] final case class JavaDailyPeriod(dailyPeriod: DailyPeriod)
+  extends JavaDayPeriod
+  {
+    protected def duration = dailyPeriod.duration
+    import dailyPeriod.secondOfDay
+
+    def calendarStart(local: LocalDateTime): LocalDateTime =
+      LocalDateTime.of(local.toLocalDate, MIDNIGHT)
+
+    def nextCalendarStart(local: LocalDateTime): LocalDateTime =
+      LocalDateTime.of(local.toLocalDate.plusDays(1), MIDNIGHT)
+
+    private[time] def secondsSinceStart(local: LocalDateTime): Long =
+      local.toEpochSecond(NoOffset) % (24*3600) - secondOfDay
+
+    override def toString =
+      dailyPeriod.toString
   }
 }
