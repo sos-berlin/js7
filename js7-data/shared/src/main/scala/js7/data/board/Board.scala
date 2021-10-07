@@ -39,7 +39,7 @@ extends UnsignedSimpleItem
   private def evalEndOfLife(scope: Scope): Checked[Timestamp] =
     endOfLife
       .eval(scope)
-      .flatMap(_.asLong)
+      .flatMap(_.asLongIgnoreFraction)
       .map(Timestamp.ofEpochMilli)
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =

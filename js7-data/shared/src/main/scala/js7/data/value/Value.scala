@@ -9,6 +9,7 @@ import javax.annotation.{Nonnull, Nullable}
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
@@ -16,6 +17,7 @@ import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem
 import scala.collection.View
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
+import scala.math.BigDecimal.RoundingMode
 import scala.util.control.NonFatal
 
 sealed trait Value
@@ -34,8 +36,17 @@ sealed trait Value
   def asStringValue: Checked[StringValue] =
     Left(UnexpectedValueTypeProblem(StringValue, this))
 
+  final def asInt: Checked[Int] =
+    asNumber.flatMap(o => Checked.catchNonFatal(o.toIntExact))
+
   final def asLong: Checked[Long] =
-    asNumber.map(_.toLong)
+    asNumber.flatMap(o => Checked.catchNonFatal(o.toLongExact))
+
+  final def asLongIgnoreFraction: Checked[Long] =
+    asNumber
+      .flatMap(o => Checked.catchNonFatal(o
+        .setScale(0, RoundingMode.DOWN)
+        .toLongExact))
 
   final def asNumber: Checked[BigDecimal] =
     asNumberValue.map(_.number)

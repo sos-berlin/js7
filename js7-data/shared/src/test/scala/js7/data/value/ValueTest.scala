@@ -2,6 +2,7 @@ package js7.data.value
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Problem
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -117,6 +118,29 @@ final class ValueTest extends AnyFreeSpec
       assert(NumberValue(1).toBooleanValue == Right(BooleanValue(true)))
       assert(NumberValue(0).toBooleanValue == Right(BooleanValue(false)))
       assert(NumberValue(-1).toBooleanValue.isLeft)
+    }
+
+    "asInt" in {
+      assert(NumberValue(Int.MaxValue).asInt == Right(Int.MaxValue))
+      assert(NumberValue(Int.MinValue).asInt == Right(Int.MinValue))
+      assert(NumberValue(Int.MaxValue.toLong + 1).asInt ==
+        Left(Problem("java.lang.ArithmeticException: Overflow")))
+      assert(NumberValue(BigDecimal("1.2")).asInt ==
+        Left(Problem("java.lang.ArithmeticException: Rounding necessary")))
+    }
+
+    "asLong" in {
+      assert(NumberValue(Long.MaxValue).asLong == Right(Long.MaxValue))
+      assert(NumberValue(Long.MinValue).asLong == Right(Long.MinValue))
+      assert(NumberValue(BigDecimal(Long.MaxValue) + 1).asLong ==
+        Left(Problem("java.lang.ArithmeticException: Overflow")))
+      assert(NumberValue(BigDecimal("1.2")).asLong ==
+        Left(Problem("java.lang.ArithmeticException: Rounding necessary")))
+    }
+
+    "asLongIgnoreFraction" in {
+      assert(NumberValue(BigDecimal("1.2")).asLongIgnoreFraction == Right(1))
+      assert(NumberValue(BigDecimal("-1.2")).asLongIgnoreFraction == Right(-1))
     }
   }
 
