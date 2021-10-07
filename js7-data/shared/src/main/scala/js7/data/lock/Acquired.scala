@@ -46,15 +46,10 @@ object Acquired {
       this.orderId == orderId
 
     def acquireFor(orderId: OrderId, count: Option[Int]) =
-      count match {
-        case None | Some(1) =>
-          if (this.orderId == orderId)
-            Left(AlreadyAcquiredByThisOrder)
-          else
-            Left(IsInUse)
-        case Some(n) =>
-          Left(InvalidCount(n))
-      }
+      if (this.orderId == orderId)
+        Left(AlreadyAcquiredByThisOrder)
+      else
+        Left(IsInUse)
 
     def release(orderId: OrderId) =
       if (this.orderId != orderId)
@@ -104,4 +99,3 @@ object Acquired {
     Subtype(deriveCodec[NonExclusive]),
     Subtype(Available))
 }
-

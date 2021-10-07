@@ -56,9 +56,6 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
       case KeyedEvent(orderId, OrderLockDequeued(lock.path)) =>
         Right(dequeue(orderId))
 
-      case KeyedEvent(orderId: OrderId, _: OrderFailedEvent) =>
-        release(orderId)
-
       case _ => Left(Problem.pure(s"Invalid event for '$lockPath': $keyedEvent"))
     }
   }
