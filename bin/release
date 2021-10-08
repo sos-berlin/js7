@@ -7,31 +7,25 @@ if [ ${BASH_VERSINFO[0]} -lt 5 ]; then
   set +u
 fi
 
-merge=""
-to=""
-next=""
-branch="release/2.0"
+asVersion=""
+nextSnapshot=""
 pushOptions=()
 
 function usage() {
-  echo "Usage: $0 --merge=<version> --to=<version> --next=<version>"
-  echo "--merge, if given, merges this (development) version"
-  echo "--to and --next are used together to name the released version"
-  echo "--to names the released version"
-  echo "--next names the following snapshot version"
-  echo "Example: $0 --merge=2.0.0-alpha.20210921 --to=2.0.0 --next=2.0.0-SNAPSHOT"
+  echo "Usage: $0 --merge=<version> --as=<version> --next-snapshot=<version>"
+  echo "--as and --next-snapshot are used together to name the released version"
+  echo "--as names the released version"
+  echo "--next-snapshot names the following snapshot version"
+  echo "Example: $0 --as=2.0.0 --next-snapshot=2.0.0-SNAPSHOT"
 }
 
 for arg in "$@"; do :
   case "$arg" in
-    --merge=*)
-      merge="${arg#*=}"
+    --as=*)
+      asVersion="${arg#*=}"
       ;;
-    --to=*)
-      to="${arg#*=}"
-      ;;
-    --next=*)
-      next="${arg#*=}"
+    --next-snapshot=*)
+      nextSnapshot="${arg#*=}"
       ;;
     --no-push)
       pushOptions+=("--dry-run")
@@ -47,33 +41,19 @@ for arg in "$@"; do :
       ;;
   esac
 done
-if ([ -n "$to" ] && [ -z "$next" ]) || ([ -z "$to" ] && [ -n "$next" ]); then
-  echo "Please set both or none of --to and --next"
+if [ -z "$asVersion" ] && [ -n "$nextSnapshot" ]; then
+  echo "Please set --as=<version> with --next-snapshot=<version>"
   usage
   exit 1
 fi
 
 git pull --ff-only
 
-if [ -n "$to" ]; then
-  git checkout "$branch"
-  git rebase
-fi
-
-if [ -n "$merge" ]; then
-  git merge "v$merge"
-fi
-
+# We skip-tests because the commit asVersion be released should already have been tested.
+# Don't forget asVersion build and test the release !
 ./sbt-batch \
-  -Djs7.version="$to" \
-  -Djs7.nextVersion="$next" \
-  'release with-defaults'
+  -Djs7.asVersion="$asVersion" \
+  -Djs7.nextSnapshot="$nextSnapshot" \
+  'release with-defaults skip-tests'
 
 git push "${pushOptions[@]}" --follow-tags
-
-if [ -n "$to" ]; then :
-#  git reset --hard "$to"
-#  echo ./sbt-batch publish
-#  git rebase
-  git checkout main
-fi

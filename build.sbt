@@ -648,22 +648,16 @@ def isExcludedJar(path: String) =
 //--------------------------------------------------------------------------------------------------
 // RELEASE
 
-val js7Version = sys.props.get("js7.version").filter(_.nonEmpty)
-val js7NextVersion = sys.props.get("js7.nextVersion").filter(_.nonEmpty)
-val isStandardRelease = {
-  if (js7Version.isDefined != js7NextVersion.isDefined)
-    throw new RuntimeException("Please set both js7.version and js7.nextVersion")
-  js7Version.isDefined
-}
+val js7AsVersion = sys.props.get("js7.asVersion").filter(_.nonEmpty)
+val js7NextSnapshot = sys.props.get("js7.nextSnapshot").filter(_.nonEmpty)
+val isStandardRelease = js7AsVersion.isDefined
 
 releaseTagComment        := s"Version ${version.value}"
 releaseCommitMessage     := s"Version ${version.value}"
 releaseNextCommitMessage := s"Version ${version.value}"
 
-releaseVersion := (
-  if (isStandardRelease)
-    _ => js7Version.get
-  else v =>
+releaseVersion := (v =>
+  js7AsVersion.getOrElse(
     Version(v).fold(versionFormatError(v)) { currentVersion =>
       val prelease = {
         val commitDate = BuildInfos.committedAt.value
@@ -682,13 +676,12 @@ releaseVersion := (
         v = s"$version.$i"
       }
       v
-    })
+    }))
 
-releaseNextVersion := (
-  if (isStandardRelease)
-    _ => js7NextVersion.get
-  else v =>
-    Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT"))
+
+releaseNextVersion := (v =>
+  js7NextSnapshot.getOrElse(
+    Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT")))
 
 releaseProcess := {
   import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, runTest, setNextVersion, setReleaseVersion, tagRelease}
@@ -699,7 +692,7 @@ releaseProcess := {
     Seq[ReleaseStep](
       checkSnapshotDependencies,
       inquireVersions,
-      //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean theirself!
+      //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean themself!
       runTest,
       setReleaseVersion,
       commitReleaseVersion,       // performs the initial git checks
