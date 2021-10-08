@@ -121,7 +121,7 @@ object AdmissionTimeSchemeTest
   def findLocalInterval(dateTimeString: String)(implicit admissionTimeScheme: AdmissionTimeScheme)
   : Option[LocalInterval] =
     admissionTimeScheme.findLocalInterval(
-      ZonedDateTime.of(LocalDateTime.parse(dateTimeString), UTC))
+      LocalDateTime.parse(dateTimeString))
 
   def localInterval(dateTimeString: String, duration: FiniteDuration): LocalInterval =
     LocalInterval(LocalDateTime.parse(dateTimeString), duration)

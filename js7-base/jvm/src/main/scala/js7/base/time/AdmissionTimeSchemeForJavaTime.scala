@@ -1,6 +1,6 @@
 package js7.base.time
 
-import java.time.{LocalDate, ZoneId, ZonedDateTime}
+import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import js7.base.time.AdmissionPeriodForJavaTime._
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 
@@ -21,11 +21,10 @@ object AdmissionTimeSchemeForJavaTime
       findTimeInterval(timestamp.toZonedDateTime(zone))
 
     def findTimeInterval(zoned: ZonedDateTime): Option[TimeInterval] =
-      findLocalInterval(zoned)
+      findLocalInterval(zoned.toLocalDateTime)
         .map(_.toTimeInterval(zoned.getZone))
 
-    def findLocalInterval(zoned: ZonedDateTime): Option[LocalInterval] = {
-      val local = zoned.toLocalDateTime
+    def findLocalInterval(local: LocalDateTime): Option[LocalInterval] =
       admissionTimeScheme.periods.view
         .flatMap { admissionPeriod =>
           admissionPeriod.toInterval(local) ++
@@ -36,6 +35,5 @@ object AdmissionTimeSchemeForJavaTime
         }
         .filterNot(_.endsBefore(local))
         .minByOption(_.start)
-    }
   }
 }
