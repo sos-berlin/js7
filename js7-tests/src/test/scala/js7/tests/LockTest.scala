@@ -22,6 +22,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{LockInstruction, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
@@ -480,6 +481,69 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Queue.empty))
   }
 
+  "Use Lock both exclusivly and non-exclusively" in {
+    val exclusiveWorkflow = addWorkflow(Workflow(
+      WorkflowPath("EXCLUSIVE-WORKFLOW"),
+      Seq(
+        LockInstruction(limit2LockPath,
+          count = None,
+          lockedWorkflow = Workflow.of(Prompt(expr("'?'")))))))
+    val nonExclusiveWorkflow = addWorkflow(Workflow(
+      WorkflowPath("NON-EXCLUSIVE-WORKFLOW"),
+      Seq(
+        LockInstruction(limit2LockPath,
+          count = Some(2),
+          lockedWorkflow = Workflow.of(Prompt(expr("'?'")))))))
+
+    locally {
+      // First exclusive, then non-exclusive is queued
+      val aOrder = FreshOrder(OrderId("EXCLUSIVE-A"), exclusiveWorkflow.path,
+        deleteWhenTerminated = true)
+      controllerApi.addOrder(aOrder).await(99.s).orThrow
+      eventWatch.await[OrderPrompted](_.key == aOrder.id)
+
+      val bOrder = FreshOrder(OrderId("EXCLUSIVE-B"), nonExclusiveWorkflow.path,
+        deleteWhenTerminated = true)
+      controllerApi.addOrder(bOrder).await(99.s).orThrow
+      eventWatch.await[OrderLockQueued](_.key == bOrder.id)
+
+      controllerApi.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == aOrder.id)
+
+      eventWatch.await[OrderPrompted](_.key == bOrder.id)
+      controllerApi.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == bOrder.id)
+    }
+
+    locally {
+      // First non-exclusive, then exclusive is queued
+      val aOrder = FreshOrder(OrderId("EXCLUSIVE-AA"), exclusiveWorkflow.path,
+        deleteWhenTerminated = true)
+      controllerApi.addOrder(aOrder).await(99.s).orThrow
+      eventWatch.await[OrderPrompted](_.key == aOrder.id)
+
+      val bOrder = FreshOrder(OrderId("EXCLUSIVE-BB"), nonExclusiveWorkflow.path,
+        deleteWhenTerminated = true)
+      controllerApi.addOrder(bOrder).await(99.s).orThrow
+      eventWatch.await[OrderLockQueued](_.key == bOrder.id)
+
+      controllerApi.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == aOrder.id)
+      eventWatch.await[OrderDeleted](_.key == aOrder.id)
+
+      eventWatch.await[OrderPrompted](_.key == bOrder.id)
+      controllerApi.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == bOrder.id)
+      eventWatch.await[OrderDeleted](_.key == bOrder.id)
+    }
+
+    controllerApi.updateItems(Observable(
+      AddVersion(VersionId("REMOVE-EXCLUSIVE")),
+      RemoveVersioned(exclusiveWorkflow.path),
+      RemoveVersioned(nonExclusiveWorkflow.path)
+    )).await(99.s).orThrow
+  }
+
   "Lock is not deletable while in use by a Workflow" in {
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
@@ -574,7 +638,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 }
 
-object LockTest {
+object LockTest
+{
   private val agentPath = AgentPath("AGENT")
   private val bAgentPath = AgentPath("B-AGENT")
   private val workflowPath = WorkflowPath("WORKFLOW")
@@ -591,5 +656,4 @@ object LockTest {
         count = None,
         lockedWorkflow = Workflow.of(
           Prompt(StringConstant("PROMPT"))))))
-
 }
