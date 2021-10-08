@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "${0%/*}/../js7-controller/.."
+# -----------------------------------------------------------------------------
+# Prepare your local git directory yourself like this:
+#   git checkout release/2.0
+#   git pull --ff-only
+# -----------------------------------------------------------------------------
+
+#cd "${0%/*}/../js7-controller/.."
+# Must be a js7 directory
+cd js7-controller/..
 
 if [ ${BASH_VERSINFO[0]} -lt 5 ]; then
   # Before 4.4, bash does handle empty arrays with -u
@@ -46,8 +54,6 @@ if [ -z "$asVersion" ] && [ -n "$nextSnapshot" ]; then
   usage
   exit 1
 fi
-
-git pull --ff-only
 
 # We skip-tests because the commit asVersion be released should already have been tested.
 # Don't forget asVersion build and test the release !
