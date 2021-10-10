@@ -47,6 +47,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
     js7.web.server.services.event.streaming.delay = 20ms
     js7.web.server.services.event.streaming.chunk-timeout = 1h
     js7.web.server.services.streaming-post-size-limit-factor = 50%
+    js7.web.server.services.command-size-limit = 8m
     """
 
   override def beforeAll() = {
