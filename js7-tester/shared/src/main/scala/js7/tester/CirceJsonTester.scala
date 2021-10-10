@@ -1,5 +1,6 @@
 package js7.tester
 
+import cats.implicits.toShow
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, ParsingFailure, Printer}
@@ -42,9 +43,9 @@ object CirceJsonTester
   private def rightOrThrow[R](either: Either[io.circe.Error, R]): R =
     either match {
       case Left(t: DecodingFailure) =>
-        throw new RuntimeException(t.message + (if (t.history.isEmpty) "" else t.history.mkString("<-")), t)
+        throw new RuntimeException(t.show, t)
       case Left(t: ParsingFailure) =>
-        throw new RuntimeException(t.getMessage, t)   // Add stacktrace
+        throw new RuntimeException(t.show, t)   // Add stacktrace
       case Right(o) => o
     }
 
