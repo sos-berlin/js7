@@ -103,6 +103,12 @@ object Collections
       def requireUniqueness[K](key: A => K): Iterable[A] =
         ifNotUnique[K, A](key, keys => throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
 
+      def areUnique: Boolean =
+        areUniqueBy[A](identity)
+
+      def areUniqueBy[K](key: A => K): Boolean =
+        duplicateKeys(key).isEmpty
+
       def ifNotUnique[K, B >: A](key: A => K, then_ : Iterable[K] => Iterable[B]): Iterable[B] =
         duplicateKeys(key) match {
           case Some(o) => then_(o.keys)

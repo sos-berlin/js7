@@ -412,6 +412,16 @@ object OrderEvent
   final case class OrderPromptAnswered(/*outcome: Outcome.Completed*/)
   extends OrderCoreEvent
 
+  final case class OrderCyclingPrepared(cycleState: CycleState)
+  extends OrderActorEvent
+
+  type OrderCycleStarted = OrderCycleStarted.type
+  final case object OrderCycleStarted
+  extends OrderActorEvent
+
+  final case class OrderCycleFinished(cycleState: Option[CycleState])
+  extends OrderActorEvent
+
   implicit val jsonCodec = TypedJsonCodec[OrderEvent](
     Subtype[OrderAdded],
     Subtype[OrderOrderAdded],
@@ -454,5 +464,8 @@ object OrderEvent
     Subtype(deriveCodec[OrderNoticeExpected]),
     Subtype(OrderNoticeRead),
     Subtype(deriveCodec[OrderPrompted]),
-    Subtype(deriveCodec[OrderPromptAnswered]))
+    Subtype(deriveCodec[OrderPromptAnswered]),
+    Subtype(deriveCodec[OrderCyclingPrepared]),
+    Subtype(OrderCycleStarted),
+    Subtype(deriveCodec[OrderCycleFinished]))
 }

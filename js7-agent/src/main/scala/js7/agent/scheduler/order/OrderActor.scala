@@ -152,9 +152,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         context.stop(self)
     }
 
-  private def failedOrBroken: Receive =
-    receiveEvent() orElse receiveCommand orElse receiveTerminate
-
   private def processing(jobDriver: JobDriver, stdObservers: StdObservers, outerrCompleted: Future[Unit],
     stdoutStderrStatistics: () => Option[String])
   : Receive =
@@ -186,7 +183,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def processed: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
-  private def forked: Receive =
+  private def standard: Receive =
     receiveEvent() orElse receiveCommand orElse receiveTerminate
 
   private def receiveEvent(jobDriver: Option[JobDriver] = None): Receive = {
@@ -253,17 +250,18 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     else
     if (force || anOrder.state.getClass != order.state.getClass) {
       anOrder.state match {
-        case _: Order.Fresh      => become("fresh")(fresh)
-        case _: Order.Ready      => become("ready")(ready)
-        case _: Order.Processing => sys.error("Unexpected Order.state 'Processing'")  // Not handled here
-        case _: Order.Processed  => become("processed")(processed)
+        case _: Order.Fresh             => become("fresh")(fresh)
+        case _: Order.Ready             => become("ready")(ready)
+        case _: Order.Processing        => sys.error("Unexpected Order.state 'Processing'")  // Not handled here
+        case _: Order.Processed         => become("processed")(processed)
         case _: Order.ProcessingKilled  => become("processingKilled")(processingKilled)
         case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
-        case _: Order.Forked     => become("forked")(forked)
-        case _: Order.Failed     => become("failed")(failedOrBroken)
-        case _: Order.FailedWhileFresh => become("stoppedWhileFresh")(failedOrBroken)
-        case _: Order.FailedInFork => become("failedInFork")(failedOrBroken)
-        case _: Order.Broken     => become("broken")(failedOrBroken)
+        case _: Order.Forked            => become("forked")(standard)
+        case _: Order.BetweenCycles     => become("forked")(standard)
+        case _: Order.Failed            => become("failed")(standard)
+        case _: Order.FailedWhileFresh  => become("stoppedWhileFresh")(standard)
+        case _: Order.FailedInFork      => become("failedInFork")(standard)
+        case _: Order.Broken            => become("broken")(standard)
         case Order.WaitingForLock | _: Order.ExpectingNotice | _: Order.Prompting |
              Order.Finished | Order.Cancelled | Order.Deleted =>
           sys.error(s"Order is expected to be at the Controller, not at Agent: ${order.state}")   // A Finished order must be at Controller

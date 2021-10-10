@@ -16,6 +16,7 @@ final class InstructionExecutorService(val clock: WallClock)
 {
   private[workflow] val forkExecutor = new ForkExecutor(this)
   private[instructions] val lockExecutor = new LockExecutor(this)
+  private[instructions] val cycleExecutor = new CycleExecutor(this)
 
   private val classToExecutor = new SubclassToX(
     Seq(
@@ -33,7 +34,8 @@ final class InstructionExecutorService(val clock: WallClock)
       new ExpectNoticeExecutor(this),
       new PromptExecutor(this),
       new RetryExecutor(this),
-      new AddOrderExecutor(this)
+      new AddOrderExecutor(this),
+      cycleExecutor
     ).toKeyedMap(_.instructionClass: Class[_ <: Instruction]))
 
   private[instructions] val forkCache = new ForkInstructionExecutor.Cache
@@ -48,6 +50,10 @@ final class InstructionExecutorService(val clock: WallClock)
         executor.nextPosition(instruction.asInstanceOf[executor.Instr], order, stateView)
       case _ => Right(None)
     }
+
+  def toEvents(order: Order[Order.State], stateView: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
+    toEvents(stateView.instruction(order.workflowPosition), order, stateView)
 
   def toEvents(instruction: Instruction, order: Order[Order.State], stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =

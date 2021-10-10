@@ -147,6 +147,12 @@ final class CollectionsTest extends AnyFreeSpec
     assert(dup(Seq(a1, a2, b1, c1, c2, c3)) == Some(Map(1 -> Seq(a1, a2), 3 -> Seq(c1, c2, c3))))
   }
 
+  "isUnique" in {
+    assert(Nil.areUnique)
+    assert(Seq(1, 2, 3).areUnique)
+    assert(!Seq(1, 1).areUnique)
+  }
+
   "requireUniqueness" in {
     def r(o: Seq[A]) = o.requireUniqueness(_.i)
 

@@ -15,6 +15,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import scala.collection.View
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.math.BigDecimal.RoundingMode
@@ -50,6 +51,9 @@ sealed trait Value
 
   final def asNumber: Checked[BigDecimal] =
     asNumberValue.map(_.number)
+
+  final def asDuration: Checked[FiniteDuration] =
+    asNumber.map(_.setScale(3, RoundingMode.DOWN).s)
 
   def toNumberValue: Checked[NumberValue] =
     asNumberValue

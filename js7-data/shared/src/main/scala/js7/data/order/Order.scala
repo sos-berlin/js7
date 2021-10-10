@@ -96,7 +96,8 @@ final case class Order[+S <: Order.State](
     applyEvent2(event, force = true)
 
   private def applyEvent2(event: OrderEvent.OrderCoreEvent, force: Boolean): Checked[Order[State]] = {
-    def inapplicable = Left(InapplicableOrderEventProblem(event, this))
+    def inapplicableProblem = InapplicableOrderEventProblem(event, this)
+    def inapplicable = Left(inapplicableProblem)
 
     def check[A](okay: => Boolean, updated: A) =
       if (force || okay) Right(updated) else inapplicable
@@ -178,7 +179,7 @@ final case class Order[+S <: Order.State](
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
 
       case OrderMoved(to) =>
-        check((isState[IsFreshOrReady]/*before TryInstruction*/ || isState[Processed])
+        check((isState[IsFreshOrReady]/*before Try*/ || isState[Processed] || isState[BetweenCycles])
           && (isDetached || isAttached),
           withPosition(to).copy(
             state = if (isState[Fresh]) state else Ready))
@@ -393,6 +394,35 @@ final case class Order[+S <: Order.State](
         // See also ControllerState, ControllerStateBuilder
         check(isDetached && isState[Ready],
           this)
+
+      case OrderCyclingPrepared(cycleState) =>
+        check((isDetached || isAttached)
+          & (isState[Ready] || isState[BetweenCycles])
+          & !isSuspended,
+          copy(
+            state = BetweenCycles(Some(cycleState))))
+
+      case OrderCycleStarted =>
+        state match {
+          case BetweenCycles(Some(cycleState)) =>
+            val branchId = BranchId.cycle(
+              cycleState.copy(
+                next = cycleState.next))
+            check((isDetached || isAttached) & !isSuspended,
+              copy(
+                state = Ready
+              ).withPosition(position / branchId % 0))
+
+          case _ => inapplicable
+        }
+
+      case OrderCycleFinished(cycleState/*???*/) =>
+        position.parent
+          .toChecked(inapplicableProblem)
+          .map(cyclePosition =>
+            copy(
+              state = BetweenCycles(cycleState)
+            ).withPosition(cyclePosition))
     }
   }
 
@@ -522,6 +552,7 @@ final case class Order[+S <: Order.State](
       isState[Forked] ||
       isState[Processed] ||
       isState[ProcessingKilled] ||
+      isState[BetweenCycles] ||
       isState[FailedWhileFresh] ||
       isState[Failed] ||
       isState[FailedInFork] ||
@@ -537,6 +568,7 @@ final case class Order[+S <: Order.State](
      isState[WaitingForLock] ||
      isState[Prompting] ||
      isState[ExpectingNotice] ||
+     isState[BetweenCycles] ||
      isState[FailedWhileFresh] ||
      isState[DelayedAfterError] ||
      isState[Failed] ||
@@ -647,6 +679,7 @@ object Order
       Subtype(deriveCodec[Forked]),
       Subtype(WaitingForLock),
       Subtype(deriveCodec[ExpectingNotice]),
+      Subtype(deriveCodec[BetweenCycles]),
       Subtype(Failed),
       Subtype(FailedInFork),
       Subtype(Finished),
@@ -709,6 +742,13 @@ object Order
 
   final case class Prompting(question: Value)
   extends IsStarted
+
+  final case class BetweenCycles(cycleState: Option[CycleState])
+  extends IsStarted
+  {
+    override def maybeDelayedUntil =
+      cycleState.map(_.next)
+  }
 
   type Failed = Failed.type
   final case object Failed extends IsStarted

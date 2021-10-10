@@ -36,13 +36,13 @@ object JavaTimestamp extends Timestamp.Companion
     {
       def toInstant = Instant.ofEpochMilli(timestamp.toEpochMilli)
 
-      def toZonedDateTime(zone: ZoneId): ZonedDateTime =
+      def toZonedDateTime(implicit zone: ZoneId): ZonedDateTime =
         ZonedDateTime.ofInstant(toInstant, zone)
 
-      def toOffsetDateTime(zone: ZoneId): OffsetDateTime =
+      def toOffsetDateTime(implicit zone: ZoneId): OffsetDateTime =
         OffsetDateTime.ofInstant(toInstant, zone)
 
-      def toLocalDateTime(zone: ZoneId): LocalDateTime =
+      def toLocalDateTime(implicit zone: ZoneId): LocalDateTime =
         LocalDateTime.ofInstant(toInstant, zone)
 
       def toJavaUtilDate: java.util.Date =
@@ -66,10 +66,6 @@ object JavaTimestamp extends Timestamp.Companion
 
   def parse(string: String): JavaTimestamp =
     ofInstant(Instant.from(dateTimeFormatter parse string))
-
-  @TestOnly
-  def parseLocal(string: String, zone: ZoneId): JavaTimestamp =
-    local(string)(zone)
 
   @TestOnly
   def local(string: String)(implicit zone: ZoneId): JavaTimestamp = {

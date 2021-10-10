@@ -13,8 +13,8 @@ import js7.data.board.{Notice, NoticeId}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -221,6 +221,24 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
+      "BetweenCycles" in {
+        testJson[State](
+          BetweenCycles(Some(CycleState(
+            end = Timestamp("2021-10-01T00:00:00Z"),
+            schemeIndex = 1,
+            index = 2,
+            next = Timestamp("2021-10-01T12:00:00Z")))),
+          json"""{
+            "TYPE": "BetweenCycles",
+            "cycleState": {
+              "end": 1633046400000,
+              "schemeIndex": 1,
+              "index": 2,
+              "next": 1633089600000
+            }
+          }""")
+      }
+
       "Cancelled" in {
         testJson[State](Cancelled,
           json"""{
@@ -269,6 +287,7 @@ final class OrderTest extends AnyFreeSpec
     val orderId = OrderId("ID")
     val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
     val agentPath = AgentPath("AGENT")
+    val cycleState = CycleState.initial(until = Timestamp.Epoch)
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
       OrderOrderAdded(OrderId("ADDED"), workflowId),
@@ -316,6 +335,10 @@ final class OrderTest extends AnyFreeSpec
 
       OrderPrompted(StringValue("QUESTION")),
       OrderPromptAnswered(),
+
+      OrderCyclingPrepared(cycleState),
+      OrderCycleStarted,
+      OrderCycleFinished(None),
 
       OrderBroken(Problem("Problem")),
 
@@ -396,6 +419,7 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderNoticeExpected   , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[ExpectingNotice]
           case (_: OrderNoticeRead       , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderPrompted         , _                 , _            , IsDetached             ) => _.isInstanceOf[Prompting]
+          case (_: OrderCyclingPrepared  , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
           case (_: OrderOrderAdded       , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken]
         })
@@ -479,6 +503,23 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderBroken        , _, _, _         ) => _.isInstanceOf[Broken]
         })
     }
+
+    "BetweenCycles" in {
+      checkAllEvents(Order(orderId, workflowId, BetweenCycles(Some(cycleState)),
+          historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
+        deletionMarkable[BetweenCycles] orElse
+        markable[BetweenCycles] orElse
+        cancelMarkedAllowed[BetweenCycles] orElse
+        suspendMarkedAllowed[BetweenCycles] orElse
+        detachingAllowed[BetweenCycles] orElse {
+          case (_: OrderCyclingPrepared, IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
+          case (OrderCycleStarted      , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderMoved          , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (OrderCancelled         , _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken         , _                 , _, _                      ) => _.isInstanceOf[Broken]
+        })
+    }
+
 
     "FailedWhileFresh" in {
       checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,

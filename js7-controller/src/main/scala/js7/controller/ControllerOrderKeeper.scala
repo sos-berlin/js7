@@ -59,7 +59,6 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticeRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -1176,10 +1175,12 @@ with MainJournalingActor[ControllerState, Event]
 
   private def proceedWithOrder(orderId: OrderId): Unit =
     for (order <- _controllerState.idToOrder.get(orderId)) {
-      if (order.isDetached && order.isState[Fresh]) {
+      if (order.isDetached) {
         for (until <- order.maybeDelayedUntil) {
           alarmClock.lock {
-            if (alarmClock.now() < until) {
+            if (until <= alarmClock.now()) {
+              orderQueue.enqueue(orderId :: Nil)
+            } else {
               for (entry <- orderRegister.get(orderId)) {
                 // TODO Cancel timer when unused
                 entry.timer := alarmClock.scheduleAt(until) {

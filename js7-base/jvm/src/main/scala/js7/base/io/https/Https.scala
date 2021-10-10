@@ -34,6 +34,8 @@ object Https
   private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
   private val algorithm = KeyManagerFactory.getDefaultAlgorithm  // "SunX509", but for IBM Java: "IbmX509"
 
+  logger.debug("algorithm=" + algorithm)
+
   def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
     val keyManagers = keyStoreRef match {
       case None => Array.empty[KeyManager]
