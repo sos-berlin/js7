@@ -142,7 +142,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
       val builder = new VectorBuilder[Json]
       try reader.iterator foreach (o => builder += normalizeValues(o.value))
       catch {
-        case _: EOFException => None
+        case _: EOFException =>
       }
       builder.result()
     }

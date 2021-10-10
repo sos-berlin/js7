@@ -77,8 +77,10 @@ object ControllerCommand extends CommonCommand.Companion
     implicit val jsonCodec = deriveCodec[AddOrdersResponse]
   }
 
-  final case class CancelOrders(orderIds: immutable.Iterable[OrderId], mode: CancellationMode = CancellationMode.FreshOrStarted())
-  extends ControllerCommand {
+  final case class CancelOrders(
+    orderIds: immutable.Iterable[OrderId],
+    mode: CancellationMode = CancellationMode.FreshOrStarted())
+  extends ControllerCommand with Big {
     type Response = Response.Accepted
     override def toShortString = s"CancelOrders(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
   }
@@ -111,7 +113,7 @@ object ControllerCommand extends CommonCommand.Companion
   }
 
   final case class DeleteOrdersWhenTerminated(orderIds: immutable.Iterable[OrderId])
-  extends ControllerCommand {
+  extends ControllerCommand with Big {
     type Response = Response.Accepted
     override def toShortString = s"DeleteOrdersWhenTerminated(${orderIds.size} orders, ${orderIds.take(3).map(o => o.toString + ", ").mkString} ...)"
   }
@@ -197,12 +199,12 @@ object ControllerCommand extends CommonCommand.Companion
   }
 
   final case class ResumeOrders(orderIds: immutable.Iterable[OrderId])
-  extends ControllerCommand {
+  extends ControllerCommand with Big {
     type Response = Response.Accepted
   }
 
   final case class SuspendOrders(orderIds: immutable.Iterable[OrderId], mode: SuspensionMode = SuspensionMode.standard)
-  extends ControllerCommand {
+  extends ControllerCommand with Big {
     type Response = Response.Accepted
   }
 

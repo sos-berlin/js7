@@ -95,7 +95,7 @@ trait GenericEventRoute extends RouteProvider
           Route.seal {
             authorizedUser(ValidUserPermission) { user =>
               routeTask(
-                eventWatchFor(user)/*⚡️AkkaAskTimeout*/ map {
+                eventWatchFor(user)/*AkkaAskTimeout!!*/ map {
                   case Left(problem) =>
                     complete(problem)
 

@@ -12,7 +12,7 @@ trait EntitySizeLimitProvider
   protected def config: Config
   protected def maxMemory = sys.runtime.maxMemory
 
-  protected lazy val streamingEntitySizeLimit =
+  private lazy val streamingEntitySizeLimit =
     config.as("js7.web.server.services.streaming-post-size-limit-factor")(StringAsPercentage)
 
   protected final lazy val entitySizeLimit = {
