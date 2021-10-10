@@ -80,11 +80,11 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
   private implicit def implicitSessionToken = Task(Some(SessionToken(SecretString(sessionToken))))
 
   override val agentModule = new AbstractModule {
-    @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(2000)
+    @Provides @Singleton def eventIdClock(): EventIdClock = EventIdClock.fixed(2000)
   }
 
   override val controllerModule = new AbstractModule {
-    @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(1000)
+    @Provides @Singleton def eventIdClock(): EventIdClock = EventIdClock.fixed(1000)
   }
 
   private implicit def materializer = httpClient.materializer

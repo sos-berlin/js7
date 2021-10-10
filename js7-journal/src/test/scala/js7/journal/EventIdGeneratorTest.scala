@@ -13,8 +13,8 @@ import scala.jdk.CollectionConverters._
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdGeneratorTest extends AnyFreeSpec {
-
+final class EventIdGeneratorTest extends AnyFreeSpec
+{
   "test" in {
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala
     val eventIdGenerator = new EventIdGenerator
@@ -27,7 +27,7 @@ final class EventIdGeneratorTest extends AnyFreeSpec {
   }
 
   "updateLastEventId" in {
-    val eventIdGenerator = new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 100))
+    val eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(epochMilli = 100))
     assert(eventIdGenerator.lastUsedEventId == 0)
     assert(eventIdGenerator.next() == 100000)
 

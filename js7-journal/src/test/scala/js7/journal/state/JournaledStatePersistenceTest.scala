@@ -137,7 +137,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
       implicit val timeout = Timeout(99.s)
       persistence = JournaledStatePersistence
         .start(recovered, journalMeta, JournalConf.fromConfig(TestConfig),
-          new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)))
+          new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
         .await(99.s)
       persistence
     }

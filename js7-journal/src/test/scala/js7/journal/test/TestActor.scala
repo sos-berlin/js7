@@ -42,7 +42,7 @@ extends Actor with Stash
     val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, config)
     persistence = JournaledStatePersistence
       .start(recovered, journalMeta, journalConf,
-        new EventIdGenerator(new EventIdClock.Fixed(currentTimeMillis = 1000/*EventIds start at 1000000*/)))
+        new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
       .runToFuture
       .await(99.s)
 

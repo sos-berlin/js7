@@ -1,22 +1,26 @@
 package js7.journal
 
-import com.google.inject.ImplementedBy
+import js7.base.time.{TestWallClock, Timestamp, WallClock}
 
 /**
   * @author Joacim Zschimmer
   */
-@ImplementedBy(classOf[EventIdClock.JavaClock])
-trait EventIdClock {
+final class EventIdClock(val clock: WallClock)
+{
+  def this() = this(WallClock)
+
   /** Current time in milliseconds since 1970-01-01 UTC, like Java currentTimeMillis. */
-  def currentTimeMillis: Long
+  def currentTimeMillis: Long =
+    clock.epochMilli()
 }
 
-object EventIdClock {
-  def Default: EventIdClock = new JavaClock
+object EventIdClock
+{
+  val Default = EventIdClock(WallClock)
 
-  final class JavaClock extends EventIdClock {
-    def currentTimeMillis = System.currentTimeMillis
-  }
+  def apply(clock: WallClock): EventIdClock =
+    new EventIdClock(clock)
 
-  final class Fixed(val currentTimeMillis: Long) extends EventIdClock
+  def fixed(epochMilli: Long) =
+    new EventIdClock(TestWallClock(Timestamp.ofEpochMilli(epochMilli)))
 }

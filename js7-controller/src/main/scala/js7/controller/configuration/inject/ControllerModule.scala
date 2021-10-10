@@ -7,9 +7,8 @@ import javax.inject.Singleton
 import js7.base.auth.{Permission, SimpleUser, UpdateItemPermission}
 import js7.base.eventbus.StandardEventBus
 import js7.base.log.Logger
-import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters._
-import js7.base.time.AlarmClock
+import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -37,8 +36,8 @@ extends AbstractModule
     new EventIdGenerator(eventIdClock)
 
   @Provides @Singleton
-  def eventIdClock(): EventIdClock =
-    EventIdClock.Default
+  def eventIdClock(clock: WallClock): EventIdClock =
+    EventIdClock(clock)
 
   @Provides @Singleton
   def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =
@@ -88,6 +87,11 @@ extends AbstractModule
   @Provides @Singleton
   def controllerConfiguration(): ControllerConfiguration =
     configuration
+
+  /** Do not override this, override alarmClock! */
+  @Provides @Singleton
+  def wallClock(clock: AlarmClock)(implicit s: Scheduler): WallClock =
+    clock
 
   @Provides @Singleton
   def alarmClock(config: Config)(implicit s: Scheduler): AlarmClock =

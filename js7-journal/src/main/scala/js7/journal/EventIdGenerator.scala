@@ -2,6 +2,8 @@ package js7.journal
 
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}
+import js7.base.time.WallClock
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.{EventId, Stamped}
 import scala.annotation.tailrec
 
@@ -9,7 +11,10 @@ import scala.annotation.tailrec
   * @author Joacim Zschimmer
   */
 @Singleton
-final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Default) extends Iterator[EventId] {
+final class EventIdGenerator @Inject()(eventIdClock: EventIdClock)
+extends Iterator[EventId]
+{
+  def this() = this(EventIdClock.Default)
 
   private val lastResult = new AtomicLong(EventId.BeforeFirst)
 
@@ -26,7 +31,7 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
 
   @tailrec
   def next(): EventId = {
-    val nowId = clock.currentTimeMillis * EventId.IdsPerMillisecond
+    val nowId = eventIdClock.currentTimeMillis * EventId.IdsPerMillisecond
     val last = lastResult.get
     val nextId = if (last < nowId) nowId else last + 1
     if (lastResult.compareAndSet(last, nextId))
@@ -36,10 +41,15 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
   }
 
   def stamp[A](a: A, timestampMillis: Option[Long] = None): Stamped[A] =
-    stampWith(a, next(), timestampMillis)
+    stampWith(a, next(),
+      timestampMillis.orElse(
+        !isWallclock ? eventIdClock.clock.epochMilli()))
 
   private def stampWith[A](a: A, eventId: EventId, timestampMillis: Option[Long]): Stamped[A] = {
     val ts = timestampMillis getOrElse EventId.toEpochMilli(eventId)
     new Stamped(eventId, ts, a)
   }
+
+  @inline private def isWallclock =
+    eventIdClock.clock eq WallClock
 }

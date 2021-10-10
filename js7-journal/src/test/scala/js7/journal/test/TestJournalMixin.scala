@@ -12,6 +12,7 @@ import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
+import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.LogLevel.syntax._
@@ -25,7 +26,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.jsonseq.InputStreamJsonSeqReader
-import js7.data.event.{Event, JournalId, KeyedEvent, Stamped}
+import js7.data.event.{Event, JournalId, KeyedEvent}
 import js7.journal.files.JournalFiles
 import js7.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.journal.test.TestJournalMixin._
@@ -124,7 +125,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     journalJsons
       .collect {
         case o if TestState.keyedEventJsonCodec canDeserialize o =>
-          o.as[Stamped[KeyedEvent[Event]]].map(_.value).orThrow
+          o.as[KeyedEvent[Event]].toChecked.orThrow
       }
       .collect { case KeyedEvent(k: String, e: TestEvent) => k <-: e }  // Ignore JournalEvent.SnapshotTaken
 
