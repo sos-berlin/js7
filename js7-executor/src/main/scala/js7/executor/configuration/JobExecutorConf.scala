@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Path
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
+import js7.base.time.AlarmClock
 import monix.execution.Scheduler
 
 final case class JobExecutorConf(
@@ -15,7 +16,8 @@ final case class JobExecutorConf(
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
   implicit val iox: IOExecutor,
-  blockingJobScheduler: Scheduler)
+  blockingJobScheduler: Scheduler,
+  clock: AlarmClock)
 
 object JobExecutorConf
 {

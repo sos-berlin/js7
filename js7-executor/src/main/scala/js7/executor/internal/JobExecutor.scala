@@ -76,7 +76,7 @@ object JobExecutor
           lazy val scope = NowScope() |+| EnvScope
           for (jobArguments <- evalExpressionMap(executable.jobArguments, scope))
             yield new InternalJobExecutor(executable, jobConf, pathToJobResource, jobArguments,
-              executorConf.blockingJobScheduler)
+              executorConf.blockingJobScheduler, executorConf.clock)
         }
     }
   }

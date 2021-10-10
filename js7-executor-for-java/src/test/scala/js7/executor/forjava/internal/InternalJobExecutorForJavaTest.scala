@@ -7,6 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
 import js7.common.system.ThreadPools.newUnlimitedScheduler
@@ -55,7 +56,8 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
             workflow,
             ControllerId("CONTROLLER"),
             sigkillDelay = 0.s),
-          JobExecutorConf(u, u, u, None, scriptInjectionAllowed = true, globalIOX, blockingJobScheduler),
+          JobExecutorConf(u, u, u, None, scriptInjectionAllowed = true, globalIOX, blockingJobScheduler,
+            AlarmClock()),
           _ => Left(Problem("No JobResource here"))
         ).orThrow.asInstanceOf[InternalJobExecutor]
       }

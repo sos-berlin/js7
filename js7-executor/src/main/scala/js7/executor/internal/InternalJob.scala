@@ -5,6 +5,7 @@ import js7.base.monixutils.TaskObserver
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.IOExecutor
+import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
 import js7.data.agent.AgentPath
@@ -43,7 +44,8 @@ object InternalJob
     jobConf: JobConf,
     implicit val js7Scheduler: Scheduler,
     ioExecutor: IOExecutor,
-    blockingJobScheduler: Scheduler)
+    blockingJobScheduler: Scheduler,
+    clock: AlarmClock)
 
   final case class Step private(processOrder: ProcessOrder, arguments: NamedValues) {
     self =>

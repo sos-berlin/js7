@@ -14,13 +14,14 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
 import js7.base.thread.IOExecutor
+import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.Tests.isTest
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.common.utils.Tests.isTest
 import js7.core.configuration.CommonConfiguration
 import js7.executor.configuration.{JobExecutorConf, ProcessKillScript}
 import js7.executor.process.ProcessKillScriptProvider
@@ -105,7 +106,7 @@ extends CommonConfiguration
 
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService) =
+  def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock) =
     JobExecutorConf(
       executablesDirectory = executablesDirectory,
       workDirectory = workDirectory,
@@ -113,7 +114,8 @@ extends CommonConfiguration
       killScript = killScript,
       scriptInjectionAllowed = scriptInjectionAllowed,
       iox,
-      blockingJobScheduler = blockingJobScheduler)
+      blockingJobScheduler = blockingJobScheduler,
+      clock)
 
   val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
 

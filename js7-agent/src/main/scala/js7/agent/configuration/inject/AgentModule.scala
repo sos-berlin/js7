@@ -10,8 +10,8 @@ import js7.agent.web.AgentWebServer
 import js7.base.auth.SimpleUser
 import js7.base.thread.IOExecutor
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
-import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
@@ -38,8 +38,8 @@ extends AbstractModule
     new EventIdGenerator(eventIdClock)
 
   @Provides @Singleton
-  def eventIdClock(): EventIdClock =
-    EventIdClock.Default
+  def eventIdClock(clock: WallClock): EventIdClock =
+    EventIdClock(clock)
 
   @Provides @Singleton
   def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =
@@ -67,6 +67,11 @@ extends AbstractModule
   def executionContext(scheduler: Scheduler): ExecutionContext =
     scheduler
 
+  /** Do not override this, override alarmClock! */
+  @Provides @Singleton
+  def wallClock(clock: AlarmClock)(implicit s: Scheduler): WallClock =
+    clock
+
   @Provides @Singleton
   def alarmClock(config: Config, scheduler: Scheduler): AlarmClock =
     AlarmClock(
@@ -79,7 +84,7 @@ extends AbstractModule
       ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
 
   @Provides @Singleton
-  def jobExecutorConf(conf: AgentConfiguration, iox: IOExecutor, closer: Closer)
+  def jobExecutorConf(conf: AgentConfiguration, iox: IOExecutor, clock: AlarmClock, closer: Closer)
   : JobExecutorConf = {
     val blockingJobScheduler: SchedulerService = {
       // For BlockingInternalJob (thread-blocking Java jobs)
@@ -87,7 +92,7 @@ extends AbstractModule
       closer.onClose(scheduler.shutdown())
       scheduler
     }
-    conf.toExecutorConf(iox, blockingJobScheduler)
+    conf.toExecutorConf(iox, blockingJobScheduler, clock)
   }
 
   @Provides @Singleton

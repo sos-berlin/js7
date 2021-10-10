@@ -21,6 +21,7 @@ import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
+import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime._
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.HasCloser
@@ -170,7 +171,8 @@ private object OrderActorTest {
       killScript = None,
       scriptInjectionAllowed = false,
       globalIOX,
-      blockingJobScheduler = globalIOX.scheduler)
+      blockingJobScheduler = globalIOX.scheduler,
+      AlarmClock())
 
     private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
 

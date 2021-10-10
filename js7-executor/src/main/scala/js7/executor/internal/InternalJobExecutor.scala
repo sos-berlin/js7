@@ -6,6 +6,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
+import js7.base.time.AlarmClock
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
@@ -24,7 +25,8 @@ final class InternalJobExecutor(
   val jobConf: JobConf,
   protected val pathToJobResource: JobResourcePath => Checked[JobResource],
   val jobArguments: NamedValues,
-  blockingJobScheduler: Scheduler)
+  blockingJobScheduler: Scheduler,
+  clock: AlarmClock)
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends JobExecutor
 {
@@ -87,7 +89,7 @@ extends JobExecutor
   }
 
   private def toJobContext(cls: Class[_]) =
-    JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler)
+    JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler, clock)
 
   override def toString = s"InternalJobExecutor(${jobConf.jobKey} ${executable.className})"
 }

@@ -5,6 +5,7 @@ import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.globalIOX
 import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichPartialFunction}
 import js7.data.agent.AgentPath
@@ -42,7 +43,8 @@ final class InternalJobExecutorTest extends AnyFreeSpec
         sigkillDelay = 0.s),
       _ => Left(Problem("No JobResource here")),
       Map.empty,
-      globalIOX.scheduler)(Scheduler.global, globalIOX)
+      globalIOX.scheduler,
+      AlarmClock())(Scheduler.global, globalIOX)
     val out = PublishSubject[String]()
     val err = PublishSubject[String]()
     val whenOutString = out.fold.lastL.runToFuture
