@@ -6,7 +6,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.base.time.{AlarmClock, Timestamp}
+import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.ItemIsStillReferencedProblem
@@ -50,7 +50,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     postingWorkflow, expectingWorkflow,
     postingAgentWorkflow, expectingAgentWorkflow)
 
-  private val alarmClock = AlarmClock.forTest(startTimestamp, clockCheckInterval = 100.ms)
+  private val alarmClock = TestAlarmClock(startTimestamp)
 
   override protected def controllerModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = alarmClock

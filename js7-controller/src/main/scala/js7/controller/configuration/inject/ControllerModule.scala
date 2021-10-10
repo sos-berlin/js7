@@ -90,9 +90,9 @@ extends AbstractModule
 
   @Provides @Singleton
   def alarmClock(config: Config)(implicit s: Scheduler): AlarmClock =
-    AlarmClock(config
+    AlarmClock(Some(config
       .getDuration("js7.time.clock-setting-check-interval")
-      .toFiniteDuration)
+      .toFiniteDuration))
 
   @Provides @Singleton
   def closer(): Closer =

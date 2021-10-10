@@ -1178,11 +1178,13 @@ with MainJournalingActor[ControllerState, Event]
     for (order <- _controllerState.idToOrder.get(orderId)) {
       if (order.isDetached && order.isState[Fresh]) {
         for (until <- order.maybeDelayedUntil) {
-          if (alarmClock.now() < until) {
-            for (entry <- orderRegister.get(orderId)) {
-              // TODO Cancel timer when unused
-              entry.timer := alarmClock.scheduleAt(until) {
-                self ! Internal.OrderIsDue(orderId)
+          alarmClock.lock {
+            if (alarmClock.now() < until) {
+              for (entry <- orderRegister.get(orderId)) {
+                // TODO Cancel timer when unused
+                entry.timer := alarmClock.scheduleAt(until) {
+                  self ! Internal.OrderIsDue(orderId)
+                }
               }
             }
           }

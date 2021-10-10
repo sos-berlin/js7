@@ -6,9 +6,6 @@ trait WallClock
 
   final def now(): Timestamp =
     Timestamp.ofEpochMilli(epochMilli())
-
-  override def toString =
-    s"WallClock(${now()})"
 }
 
 object WallClock extends WallClock

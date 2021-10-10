@@ -1,11 +1,10 @@
 package js7.base.time
 
 import js7.base.time.ScalaTime._
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import monix.execution.atomic.{Atomic, AtomicLong}
+import monix.eval.Task
+import monix.execution.atomic.Atomic
 import monix.execution.cancelables.SerialCancelable
-import monix.execution.schedulers.TestScheduler
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -14,44 +13,74 @@ trait AlarmClock extends WallClock
 {
   def stop(): Unit
 
+  def scheduleOnce(delay: FiniteDuration)(callback: => Unit): Cancelable
+
   def scheduleAt(at: Timestamp)(callback: => Unit): Cancelable
-}
 
-trait TestAlarmClock extends AlarmClock
-{
-  def :=(timestamp: Timestamp): Unit
+  def sleep(delay: FiniteDuration): Task[Unit] =
+    Task.create((_, callback) =>
+      scheduleOnce(delay)(callback(Right(()))))
 
-  final def +=(duration: FiniteDuration): Unit =
-    this := now() + duration
+  def sleepUntil(ts: Timestamp): Task[Unit] =
+    Task.create((_, callback) =>
+      scheduleAt(ts)(callback(Right(()))))
 
-  final def -=(duration: FiniteDuration): Unit =
-    this += -duration
+  /** TestAlarmClock synchronizes time query and time change. */
+  def lock[A](body: => A): A =
+    body
 
-  def tick(duration: FiniteDuration = ZeroDuration): Unit
-
-  final def tickUntil(timestamp: Timestamp): Unit =
-    tick(timestamp - now())
+  protected def prefix: String
 }
 
 object AlarmClock
 {
   private val logger = scribe.Logger[this.type]
 
-  def apply(clockCheckInterval: FiniteDuration)(implicit s: Scheduler): AlarmClock =
-    new Standard(clockCheckInterval)
+  def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit s: Scheduler): AlarmClock =
+    clockCheckInterval match {
+      case None =>
+        new SimpleAlarmClock
 
-  def forTest(start: Timestamp, clockCheckInterval: FiniteDuration)(implicit s: Scheduler)
-  : TestAlarmClock =
-    new TestAlarmClockImpl(start, clockCheckInterval)
+      case Some(clockCheckInterval) =>
+        new ClockCheckingAlarmClock(clockCheckInterval)
+    }
 
-  private final class Standard(val clockCheckInterval: FiniteDuration)
-    (implicit val scheduler: Scheduler)
-  extends AlarmClock with Impl {
+  private final class SimpleAlarmClock
+    (implicit val s: Scheduler)
+  extends AlarmClock with Simple {
     def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
+    protected def scheduler = s
+    protected def prefix = "AlarmClock"
   }
 
-  private trait Impl extends Runnable {
-    this: AlarmClock =>
+  private final class ClockCheckingAlarmClock(val clockCheckInterval: FiniteDuration)
+    (implicit val s: Scheduler)
+  extends AlarmClock with ClockChecking {
+    def epochMilli() = scheduler.clockRealTime(MILLISECONDS)
+    protected def scheduler = s
+    protected def prefix = "ClockCheckingAlarmClock"
+  }
+
+  private[time] trait Simple {
+    self: AlarmClock =>
+
+    protected def scheduler: Scheduler
+
+    def stop() = {}
+
+    final def scheduleOnce(delay: FiniteDuration)(callback: => Unit): Cancelable =
+      scheduler.scheduleOnce(delay)(callback)
+
+    final def scheduleAt(at: Timestamp)(callback: => Unit): Cancelable =
+      scheduler.scheduleOnce(at - now())(callback)
+
+    override def toString =
+      prefix + "(" + now() + ")"
+  }
+
+  /** Checks the clock for change and corrects the schedule. */
+  private[time] trait ClockChecking extends Runnable {
+    self: AlarmClock =>
 
     protected def clockCheckInterval: FiniteDuration
     protected def scheduler: Scheduler
@@ -66,21 +95,23 @@ object AlarmClock
     private lazy val tickInterval = clockCheckInterval.toMillis
     private val ticker = SerialCancelable()
     @volatile private var ticking = false
-
     @volatile private var stopped = false
 
-    def stop(): Unit = {
+    def stop() = {
       stopped = true
-      synchronized {
+      self.synchronized {
         epochMilliToAlarms.values.view.flatten.foreach(_.cancel())
         epochMilliToAlarms.clear()
       }
     }
 
+    final def scheduleOnce(delay: FiniteDuration)(callback: => Unit): Cancelable =
+      scheduleAt(now() + delay)(callback)
+
     final def scheduleAt(at: Timestamp)(callback: => Unit): Cancelable = {
-      val milli: Long = at.toEpochMilli
+      val milli = at.toEpochMilli
       val alarm = new Alarm(milli, callback)
-      synchronized {
+      self.synchronized {
         epochMilliToAlarms += milli -> (epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
         scheduleNext()
       }
@@ -98,57 +129,56 @@ object AlarmClock
           val now = epochMilli()
           val delay = (firstMilli - now) max 0
           if (delay > tickInterval) {
-            startTicking()
+            startTicking(tickInterval)
           } else {
             stopTicking()
           }
-          logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
+          //logger.trace(s"scheduleOnce ${delay.ms.pretty} (${Timestamp.ofEpochMilli(now)})")
           timer := scheduler.scheduleOnce(delay, MILLISECONDS, this)
           nextMilli = firstMilli
       }
 
-    private def startTicking() =
+    private def startTicking(tickInterval: Long) =
       if (!ticking) {
         ticking = true
         ticker := scheduler.scheduleAtFixedRate(tickInterval, tickInterval, MILLISECONDS, this)
-        logger.trace(s"Ticking ${tickInterval.ms.pretty}")
+        //logger.trace(s"Ticking ${tickInterval.ms.pretty}")
       }
 
     private def stopTicking() =
       if (ticking) {
         ticking = false
-        timer := Cancelable.empty
-        logger.trace(s"Ticking stopped")
+        ticker := Cancelable.empty
+        //logger.trace(s"Ticking stopped")
       }
-
-    protected final def checkSchedulesNow() =
-      scheduler.scheduleOnce(0, MILLISECONDS, this)
 
     final def run(): Unit =
       if (!stopped) {
         if (nextMilli <= epochMilli()) {
           var alarms = Vector.empty[Alarm]
-          synchronized {
+          self.synchronized {
             while (epochMilliToAlarms.nonEmpty && epochMilliToAlarms.firstKey <= epochMilli()) {
               alarms ++= epochMilliToAlarms.remove(epochMilliToAlarms.firstKey).get
             }
           }
-          logger.trace(s"${alarms.size} alarms")
+          //logger.trace(s"Tick: ${alarms.size} alarms!")
           for (a <- alarms) a.call()
-        } else
-          logger.trace("Tick")
+        } else {
+          //logger.trace("Tick")
+        }
 
-        synchronized {
+        self.synchronized {
           scheduleNext()
         }
       }
 
     override def toString =
-      s"AlarmClock(" +
+      prefix + "(" + now() + ", " +
         epochMilliToAlarms.headOption.fold("no alarm")(o =>
-          Timestamp.ofEpochMilli(o._1).toString +
+          "alarms=" +
+            Timestamp.ofEpochMilli(o._1).toString +
             ((epochMilliToAlarms.size > 1) ?? s", ${epochMilliToAlarms.size} alarms")) +
-        (ticking ?? ", ticking") +
+        (ticking ?? s", ticking ${clockCheckInterval.pretty}") +
         ")"
 
     private final class Alarm(epochMilli: Long, callback: => Unit)
@@ -161,7 +191,7 @@ object AlarmClock
         }
 
       def cancel() =
-        Impl.this.synchronized {
+        self.synchronized {
           for (alarms <- epochMilliToAlarms.get(epochMilli)) {
             val remaining = alarms.filterNot(_ eq this)
             if (remaining.nonEmpty) {
@@ -172,35 +202,6 @@ object AlarmClock
             }
           }
         }
-    }
-  }
-
-  private final class TestAlarmClockImpl(
-    start: Timestamp,
-    protected val clockCheckInterval: FiniteDuration)
-    (implicit val scheduler: Scheduler)
-  extends TestAlarmClock with Impl
-  {
-    private val clock = AtomicLong(start.toEpochMilli)
-
-    def epochMilli() = clock()
-
-    def :=(timestamp: Timestamp): Unit = {
-      logger.debug(s"TestAlarmClock := $timestamp")
-      clock := timestamp.toEpochMilli
-    }
-
-    /** With TestScheduler: tick it, other Scheduler: checkSchedulesNow. */
-    def tick(duration: FiniteDuration = ZeroDuration) = {
-      assertThat(!duration.isNegative)
-      synchronized {
-        clock += duration.toMillis
-
-        scheduler match {
-          case scheduler: TestScheduler => scheduler.tick(duration)
-          case _ => checkSchedulesNow()
-        }
-      }
     }
   }
 }

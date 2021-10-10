@@ -2,7 +2,6 @@ package js7.base.time
 
 import js7.base.time.ScalaTime._
 import monix.execution.atomic.Atomic
-import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
@@ -10,14 +9,14 @@ final class AlarmClockTest extends AnyFreeSpec
 {
   private val start = Timestamp("2021-01-01T00:00:00Z")
   private val clockCheckInterval = 1.minute
-  private implicit val scheduler = TestScheduler()
 
   "scheduleAt, and tick at scheduled time" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes + 7.s) { x += 1 }
-    assert(clock.toString == "AlarmClock(2021-01-01T00:10:07Z, ticking)")
+    assert(clock.toString ==
+      s"ClockCheckingTestAlarmClock($start, alarms=2021-01-01T00:10:07Z, ticking 60s)")
     assert(x() == 0)
 
     clock.tick(1.s)
@@ -29,25 +28,26 @@ final class AlarmClockTest extends AnyFreeSpec
     clock.tick(10.minutes + 7.s - (1.s + clockCheckInterval))
     assert(x() == 1)
 
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 
   "scheduleAt, not ticking due to short delay" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     clock.scheduleAt(start + clockCheckInterval) { x += 1 }
-    assert(clock.toString == "AlarmClock(2021-01-01T00:01:00Z)")
+    assert(clock.toString ==
+      s"ClockCheckingTestAlarmClock(${clock.now()}, alarms=2021-01-01T00:01:00Z)")
     assert(x() == 0)
 
     clock.tick(clockCheckInterval)
     assert(x() == 1)
 
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 
   "scheduleAt, and tick late" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes) { x += 1 }
@@ -58,18 +58,18 @@ final class AlarmClockTest extends AnyFreeSpec
     clock.tick(3.s + clockCheckInterval)
     assert(x() == 1)
 
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 
   "Put the clock forward, but before the schedule" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes + 7.s) { x += 1 }
     assert(x() == 0)
 
     // Put clock forward
-    clock += 30.s
+    clock.resetTo(clock.now() + 30.s)
     assert(x() == 0)
 
     clock.tick()
@@ -84,18 +84,18 @@ final class AlarmClockTest extends AnyFreeSpec
     clock.tick(1.s)
     assert(x() == 1)
 
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 
   "Put the clock forward, after the schedule" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes + 7.s) { x += 1 }
     assert(x() == 0)
 
     // Put clock forward
-    clock += 10.minutes + 30.s
+    clock.resetTo(clock.now() + 10.minutes + 30.s)
     assert(x() == 0)
 
     clock.tick()
@@ -104,18 +104,18 @@ final class AlarmClockTest extends AnyFreeSpec
     clock.tick(clockCheckInterval)
     assert(x() == 1)
 
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 
   "Put the clock backward" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes) { x += 1 }
     assert(x() == 0)
 
     // Put clock backward
-    clock -= 5.minutes
+    clock.resetTo(clock.now() - 5.minutes)
     assert(x() == 0)
 
     clock.tick()
@@ -130,11 +130,11 @@ final class AlarmClockTest extends AnyFreeSpec
     clock.tick(1.minutes)
     assert(x() == 1)
 
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 
   "Multiple schedules" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     clock.scheduleAt(start + 10.minutes) { x += 1 }
@@ -149,7 +149,8 @@ final class AlarmClockTest extends AnyFreeSpec
     clock.scheduleAt(start + 30.minutes) { x += 200 }
     clock.scheduleAt(start + 30.minutes) { x += 400 }
 
-    assert(clock.toString == "AlarmClock(2021-01-01T00:10:00Z, 3 alarms, ticking)")
+    assert(clock.toString ==
+      s"ClockCheckingTestAlarmClock(${clock.now()}, alarms=2021-01-01T00:10:00Z, 3 alarms, ticking 60s)")
     assert(x() == 0)
 
     clock.tick(10.minutes)
@@ -158,11 +159,11 @@ final class AlarmClockTest extends AnyFreeSpec
     clock.tick(20.minutes)
     assert(x() == 777)
 
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 
   "cancel" in {
-    val clock = AlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
+    val clock = TestAlarmClock.forTest(start, clockCheckInterval = clockCheckInterval)
     val x = Atomic(0)
 
     val a = clock.scheduleAt(start + 10.minutes) { x += 1 }
@@ -178,6 +179,6 @@ final class AlarmClockTest extends AnyFreeSpec
     e.cancel()
     clock.tick(20.minutes)
     assert(x() == 50)
-    assert(clock.toString == "AlarmClock(no alarm)")
+    assert(clock.toString == s"ClockCheckingTestAlarmClock(${clock.now()}, no alarm)")
   }
 }

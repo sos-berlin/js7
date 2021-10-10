@@ -4,8 +4,7 @@ import com.google.inject.{AbstractModule, Provides}
 import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.DuplicateKey
-import js7.base.time.ScalaTime._
-import js7.base.time.{AlarmClock, Timestamp}
+import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderPrompted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
@@ -30,8 +29,7 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
 
-  private val alarmClock = AlarmClock.forTest(Timestamp("2099-01-01T00:00:00Z"),
-    clockCheckInterval = 1.s)
+  private val alarmClock = TestAlarmClock(Timestamp("2099-01-01T00:00:00Z"))
 
   override protected def controllerModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = alarmClock

@@ -556,28 +556,34 @@ with Stash
     val orderEntry = orderRegister(orderId)
     val order = orderEntry.order
     if (order.isAttached) {
-      order.maybeDelayedUntil match {
-        case Some(until) if clock.now() < until =>
-          // TODO Schedule only the next order ?
-          orderEntry.timer := clock.scheduleAt(until) {
-            self ! Internal.Due(orderId)
-          }
+      val delayed = clock.lock {
+        order.maybeDelayedUntil match {
+          case Some(until) if clock.now() < until =>
+            // TODO Schedule only the next order ?
+            orderEntry.timer := clock.scheduleAt(until) {
+              self ! Internal.Due(orderId)
+            }
+            true
 
-        case _ =>
-          val keyedEvents = orderEventSource.nextEvents(order.id)
-          keyedEvents foreach {
-            case KeyedEvent(orderId, OrderBroken(problem)) =>
-              logger.error(s"Order ${orderId.string} is broken: $problem")
+          case _ =>
+            false
+        }
+      }
+      if (!delayed) {
+        val keyedEvents = orderEventSource.nextEvents(order.id)
+        keyedEvents foreach {
+          case KeyedEvent(orderId, OrderBroken(problem)) =>
+            logger.error(s"Order ${orderId.string} is broken: $problem")
 
-            case KeyedEvent(orderId_, event) =>
-              orderRegister(orderId_).actor ? OrderActor.Command.HandleEvents(event :: Nil)  // Ignore response ???
-              // TODO Not awaiting the response may lead to duplicate events
-              //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
-              //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
-          }
-          if (keyedEvents.isEmpty && order.isProcessable) {
-            onOrderIsProcessable(orderEntry)
-          }
+          case KeyedEvent(orderId_, event) =>
+            orderRegister(orderId_).actor ? OrderActor.Command.HandleEvents(event :: Nil)  // Ignore response ???
+            // TODO Not awaiting the response may lead to duplicate events
+            //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
+            //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
+        }
+        if (keyedEvents.isEmpty && order.isProcessable) {
+          onOrderIsProcessable(orderEntry)
+        }
       }
     }
   }

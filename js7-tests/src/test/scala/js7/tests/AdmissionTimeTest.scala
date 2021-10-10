@@ -9,7 +9,7 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AdmissionTimeSchemeForJavaTime._
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, Timezone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.order.Order.Fresh
@@ -40,9 +40,7 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
   private implicit val timeZone = AdmissionTimeTest.timeZone
-  private val clock = AlarmClock.forTest(
-    local("2021-03-20T00:00"),
-    clockCheckInterval = 100.ms)
+  private val clock = TestAlarmClock(local("2021-03-20T00:00"))
 
   override protected def agentModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock

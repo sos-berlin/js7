@@ -8,7 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, Timezone, WeekdayPeriod}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
@@ -40,9 +40,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   protected def items = Seq(singleJobWorkflow, multipleJobsWorkflow)
 
   private implicit val timeZone = AdmissionTimeSkipJobTest.timeZone
-  private val clock = AlarmClock.forTest(
-    local("2021-09-09T00:00"),
-    clockCheckInterval = 100.ms)
+  private val clock = TestAlarmClock(local("2021-09-09T00:00"))
 
   override protected def controllerModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
@@ -93,7 +91,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   }
 
   "Do not skip if job has a admission time for order date" in {
-    clock := local("2021-09-10T00:00")
+    clock.resetTo(local("2021-09-10T00:00"))
     val orderId = OrderId("#2021-09-03#")  // Friday
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == Some(FRIDAY))
 
@@ -108,7 +106,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   }
 
   "Do not skip if OrderId has no order date" in {
-    clock := local("2021-09-10T00:00")
+    clock.resetTo(local("2021-09-10T00:00"))
     val orderId = OrderId("NO-DATE")
     controllerApi.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId)
@@ -121,7 +119,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   }
 
   "Do not skip if OrderId has an invalid order date" in {
-    clock := local("2021-09-10T00:00")
+    clock.resetTo(local("2021-09-10T00:00"))
     val orderId = OrderId("#2021-02-29#invalid")
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == None)
 
