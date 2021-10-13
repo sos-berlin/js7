@@ -25,14 +25,16 @@ final class AdmissionTimeIntervalSwitch(
     admissionTimer.cancel()
 
   /** Update the state with the current or next admission time and set a timer. */
-  def update(now: Timestamp, zone: ZoneId)(onPermissionStart: => Unit)(implicit clock: AlarmClock)
-  : Boolean = {
-    val updated = updateAdmission(now, zone)
-    if (updated || !timerActive/*also set timer if clock has been adjusted*/) {
-      callbackOnIntervalStart(now, onPermissionStart, clock)
+  def update(zone: ZoneId)(onPermissionStart: => Unit)(implicit clock: AlarmClock)
+  : Boolean =
+    clock.lock {
+      val now = clock.now()
+      val updated = updateAdmission(now, zone)
+      if (updated || !timerActive/*also set timer if clock has been adjusted*/) {
+        callbackOnIntervalStart(now, onPermissionStart, clock)
+      }
+      isEnterable(now)
     }
-    isEnterable(now)
-  }
 
   private[time] def updateAdmission(now: Timestamp, zone: ZoneId): Boolean =
     admissionTimeScheme.fold(false)(admissionTimeScheme =>

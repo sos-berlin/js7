@@ -15,15 +15,16 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AdmissionTimeIntervalSwitchTest extends AnyFreeSpec
 {
   "No AdmissionTimeScheme means admission is always granted" in {
-    implicit val alarmClock = AlarmClock()(TestScheduler())
+    implicit val alarmClock = TestAlarmClock(Timestamp("2021-01-01T12:00:00Z"))
     val switch = new AdmissionTimeIntervalSwitch(None, (_, _) => ())
     assert(switch.currentTimeInterval == Some(TimeInterval.alwaysSinceEpoch))
 
-    var isEnterable = switch.update(Timestamp.now, UTC)(sys.error("FAILED"))
+    var isEnterable = switch.update(UTC)(sys.error("FAILED"))
     assert(isEnterable)
     assert(switch.currentTimeInterval == Some(TimeInterval.alwaysSinceEpoch))
 
-    isEnterable = switch.update(Timestamp.now + 99*365*24.h, UTC)(sys.error("FAILED"))
+    alarmClock += 99*365*24.h
+    isEnterable = switch.update(UTC)(sys.error("FAILED"))
     assert(isEnterable)
   }
 
@@ -148,7 +149,7 @@ object AdmissionTimeIntervalSwitchTest
       val was = admissionStarts
       val sw = switched.getOrElse(_switched)
       clock := now
-      val isAdmitted_ = switch.update(clock.now(), zone) { admissionStarts += 1 }
+      val isAdmitted_ = switch.update(zone) { admissionStarts += 1 }
 
       assert(_switched == sw)
       assert(switch.currentTimeInterval == sw._2)

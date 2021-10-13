@@ -736,7 +736,7 @@ object AgentOrderKeeper {
 
     def updateAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit)
     : Boolean =
-      admissionTimeIntervalSwitch.update(clock.now(), zone)(onPermissionGranted)(clock)
+      admissionTimeIntervalSwitch.update(zone)(onPermissionGranted)(clock)
 
     def isBelowParallelismLimit =
       taskCount < workflowJob.parallelism
