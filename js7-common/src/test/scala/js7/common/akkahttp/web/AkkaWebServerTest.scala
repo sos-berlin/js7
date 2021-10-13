@@ -1,7 +1,8 @@
 package js7.common.akkahttp.web
 
 import akka.http.scaladsl.model.HttpMethods.GET
-import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
+import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.{ConnectionContext, Http}
 import java.net.{InetAddress, InetSocketAddress}
@@ -74,7 +75,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 
   override def beforeAll(): Unit = {
-    webServer.start() await 99.seconds
+    webServer.start() await 99.s
     super.beforeAll()
   }
 
@@ -85,15 +86,18 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 
   "HTTP" in {
-    val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST")) await 99.seconds
-    assert(response.status == StatusCodes.OK)
-    assert(response.utf8String.await(99.seconds) == "OKAY")
+    val response = http.singleRequest(HttpRequest(GET, s"http://127.0.0.1:$httpPort/TEST"))
+      .await(99.s)
+    assert(response.status == OK)
+    assert(response.utf8String.await(99.s) == "OKAY")
   }
 
   "HTTPS" - {
     "Client does not know server certificate" in {
       intercept[SSLHandshakeException] {
-        http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST")) await 99.seconds }
+        http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"))
+          .await(99.s)
+      }
     }
 
     lazy val httpsConnectionContext =
@@ -101,17 +105,27 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
 
     "Hostname verification rejects 127.0.0.1" in {
       val e = intercept[javax.net.ssl.SSLHandshakeException] {
-        http.singleRequest(HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"), httpsConnectionContext) await 99.seconds
+        http
+          .singleRequest(
+            HttpRequest(GET, s"https://127.0.0.1:$httpsPort/TEST"),
+            httpsConnectionContext)
+          .await(99.s)
       }
       assert(e.getMessage == "No subject alternative names matching IP address 127.0.0.1 found" ||
              e.getMessage == "General SSLEngine problem")
     }
 
     "Hostname verification accepts localhost" in {
-      assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")  // Check file /etc/host
-      val response = http.singleRequest(HttpRequest(GET, s"https://localhost:$httpsPort/TEST"), httpsConnectionContext) await 99.seconds
-      assert(response.status == StatusCodes.OK)
-      assert(response.utf8String.await(99.seconds) == "OKAY")
+      // localhost must point to web servers's 127.0.0.1 (usually defined in /etc/host file).
+      assert(InetAddress.getByName("localhost").getHostAddress == "127.0.0.1")
+
+      val response = http
+        .singleRequest(
+          HttpRequest(GET, s"https://localhost:$httpsPort/TEST"),
+          httpsConnectionContext)
+        .await(99.s)
+      assert(response.status == OK)
+      assert(response.utf8String.await(99.s) == "OKAY")
     }
   }
 }
@@ -130,5 +144,7 @@ object AkkaWebServerTest
   private val TrustStoreResource = JavaResource(getClass.getClassLoader,
     "js7/common/akkahttp/https/test-resources/export/https-truststore.p12")
 
-  private val ClientTrustStoreRef = TrustStoreRef(TrustStoreResource.url, storePassword = SecretString("jobscheduler"))
+  private val ClientTrustStoreRef = TrustStoreRef(
+    TrustStoreResource.url,
+    storePassword = SecretString("jobscheduler"))
 }
