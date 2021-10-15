@@ -8,6 +8,7 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.time.Timezone
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
+import js7.data.calendar.CalendarPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
@@ -199,7 +200,11 @@ final class WorkflowTest extends AnyFreeSpec
               "parallelism": 3,
               "defaultArguments": { "JOB_B": "'B-VALUE'" }}
           },
-          "jobResourcePaths": [ "JOB-RESOURCE" ]
+          "jobResourcePaths": [ "JOB-RESOURCE" ],
+          "calendarPath": "CALENDAR",
+          "result": {
+            "RESULT": "$$RESULT"
+          }
         }""")
     }
 
@@ -385,7 +390,11 @@ final class WorkflowTest extends AnyFreeSpec
               "parallelism": 3,
               "defaultArguments": { "JOB_B": "'B-VALUE'" }}
           },
-          "jobResourcePaths": [ "JOB-RESOURCE" ]
+          "jobResourcePaths": [ "JOB-RESOURCE" ],
+          "calendarPath": "CALENDAR",
+          "result": {
+            "RESULT": "$$RESULT"
+          }
         }"""))
     }
 
@@ -1136,7 +1145,8 @@ final class WorkflowTest extends AnyFreeSpec
   "referencedItempPaths" in {
     assert(TestWorkflow.referencedItemPaths.toSet == Set(
       TestAgentPath,
-      JobResourcePath("JOB-RESOURCE")))
+      JobResourcePath("JOB-RESOURCE"),
+      CalendarPath("CALENDAR")))
 
     assert(ForkTestSetting.TestWorkflow.referencedItemPaths.toSet == Set(
       ForkTestSetting.AAgentPath,
@@ -1182,5 +1192,8 @@ private object WorkflowTest
         allowUndeclared = true)),
     Timezone("Europe/Berlin"),
     jobResourcePaths = Seq(
-      JobResourcePath("JOB-RESOURCE")))
+      JobResourcePath("JOB-RESOURCE")),
+    calendarPath = Some(CalendarPath("CALENDAR")),
+    result = Some(Map(
+      "RESULT" -> expr("$RESULT"))))
 }
