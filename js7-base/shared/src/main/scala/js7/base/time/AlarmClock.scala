@@ -13,9 +13,11 @@ trait AlarmClock extends WallClock
 {
   def stop(): Unit
 
-  def scheduleOnce(delay: FiniteDuration)(callback: => Unit): Cancelable
+  def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
+    (implicit fullName: sourcecode.FullName): Cancelable
 
-  def scheduleAt(at: Timestamp)(callback: => Unit): Cancelable
+  def scheduleAt(at: Timestamp)(callback: => Unit)
+    (implicit fullName: sourcecode.FullName): Cancelable
 
   def sleep(delay: FiniteDuration): Task[Unit] =
     Task.create((_, callback) =>
@@ -68,10 +70,12 @@ object AlarmClock
 
     def stop() = {}
 
-    final def scheduleOnce(delay: FiniteDuration)(callback: => Unit): Cancelable =
+    def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
+      (implicit fullName: sourcecode.FullName): Cancelable =
       scheduler.scheduleOnce(delay)(callback)
 
-    final def scheduleAt(at: Timestamp)(callback: => Unit): Cancelable =
+    def scheduleAt(at: Timestamp)(callback: => Unit)
+      (implicit fullName: sourcecode.FullName): Cancelable =
       scheduler.scheduleOnce(at - now())(callback)
 
     override def toString =
@@ -105,10 +109,14 @@ object AlarmClock
       }
     }
 
-    final def scheduleOnce(delay: FiniteDuration)(callback: => Unit): Cancelable =
+    final def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
+      (implicit fullName: sourcecode.FullName)
+    : Cancelable =
       scheduleAt(now() + delay)(callback)
 
-    final def scheduleAt(at: Timestamp)(callback: => Unit): Cancelable = {
+    final def scheduleAt(at: Timestamp)(callback: => Unit)
+      (implicit fullName: sourcecode.FullName)
+    : Cancelable = {
       val milli = at.toEpochMilli
       val alarm = new Alarm(milli, callback)
       self.synchronized {

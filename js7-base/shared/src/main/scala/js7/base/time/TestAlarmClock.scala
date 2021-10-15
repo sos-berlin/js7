@@ -3,6 +3,7 @@ package js7.base.time
 import js7.base.time.AlarmClock.{ClockChecking, Simple}
 import js7.base.time.ScalaTime.{ZeroDuration, _}
 import js7.base.utils.Assertions.assertThat
+import monix.execution.Cancelable
 import monix.execution.atomic.AtomicLong
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration.FiniteDuration
@@ -31,6 +32,26 @@ object TestAlarmClock
   private final class SimpleTestAlarmClock(protected val start: Timestamp)
   extends Simple with Impl {
     def prefix = "TestAlarmClock"
+
+    override def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
+      (implicit fullName: sourcecode.FullName)
+    : Cancelable = {
+      logger.trace(s"scheduleOnce ${delay.pretty} for ${fullName.value}")
+      super.scheduleOnce(delay) {
+        logger.trace("🔔 scheduled " + delay.pretty)
+        callback
+      }
+    }
+
+    override def scheduleAt(at: Timestamp)(callback: => Unit)
+      (implicit fullName: sourcecode.FullName)
+    : Cancelable = {
+      logger.trace(s"scheduleAt $at for ${fullName.value}")
+      super.scheduleAt(at){
+        logger.trace(s"🔔 scheduled $at for ${fullName.value}")
+        callback
+      }
+    }
   }
 
   private trait Impl
@@ -48,7 +69,7 @@ object TestAlarmClock
 
     final def resetTo(timestamp: Timestamp): Unit =
       synchronized {
-        logger.info(s"TestAlarmClock resetTo $timestamp")
+        logger.info(s"⏰ resetTo $timestamp")
         clock := timestamp.toEpochMilli
       }
 
@@ -59,7 +80,7 @@ object TestAlarmClock
 
     final def :=(timestamp: Timestamp): Unit =
       synchronized {
-        logger.info(s"TestAlarmClock := $timestamp")
+        logger.info(s"⏰ := $timestamp")
         tick1(timestamp - now())
       }
 
