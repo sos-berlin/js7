@@ -15,8 +15,10 @@ import js7.base.io.file.watch.DirectoryState
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.base.time.Timezone
 import js7.base.utils.SimplePattern
 import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.SnapshotTaken
@@ -44,6 +46,15 @@ final class AgentStateTest extends AsyncFreeSpec
 {
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
+
+  private val calendar = Calendar(
+    CalendarPath("CALENDAR"),
+    Timezone("Europe/Mariehamn"),
+    dateOffset = 6.h,
+    orderIdToDatePattern = "#([^#]+)#.*",
+    periodDatePattern = "yyyy-MM-dd",
+    Some(ItemRevision(1)))
+
   private val fileWatch = FileWatch(
     OrderWatchPath("ORDER-SOURCE-ID"),
     WorkflowPath("WORKFLOW"),
@@ -53,6 +64,7 @@ final class AgentStateTest extends AsyncFreeSpec
     Some(Expression.NamedValue("0")),
     3.s,
     Some(ItemRevision(7)))
+
   private val agentState = AgentState(
     EventId(1000),
     JournaledState.Standards(
@@ -73,7 +85,9 @@ final class AgentStateTest extends AsyncFreeSpec
           DirectoryState.Entry(Paths.get("/DIRECTORY/1.csv")),
           DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))),
     Map(
-      jobResource.path -> jobResource))
+      jobResource.path -> jobResource),
+    Map(
+      calendar.path -> calendar))
 
   "isDedicated, isFreshlyDedicated" - {
     "empty" in {
@@ -100,7 +114,7 @@ final class AgentStateTest extends AsyncFreeSpec
   }
 
   "estimatedSnapshotSize" in {
-    assert(agentState.estimatedSnapshotSize == 8)
+    assert(agentState.estimatedSnapshotSize == 9)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
   }
@@ -170,6 +184,15 @@ final class AgentStateTest extends AsyncFreeSpec
             "path": "JOB-RESOURCE",
             "variables": {},
             "env": {}
+          }""",
+          json"""{
+            "TYPE": "Calendar",
+            "path" : "CALENDAR",
+            "timezone": "Europe/Mariehamn",
+            "dateOffset": 21600,
+            "orderIdToDatePattern": "#([^#]+)#.*",
+            "periodDatePattern": "yyyy-MM-dd",
+            "itemRevision": 1
           }"""))
 
         AgentState
@@ -232,6 +255,7 @@ final class AgentStateTest extends AsyncFreeSpec
             attachedState = Some(Order.Attached(agentPath)), parent = Some(orderId))),
       Map(workflowId -> workflow),
       AllFileWatchesState.empty,
+      Map.empty,
       Map.empty))
   }
 

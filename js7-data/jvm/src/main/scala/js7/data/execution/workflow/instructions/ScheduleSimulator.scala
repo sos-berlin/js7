@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.time.ScalaTime._
-import js7.base.time.{TestWallClock, Timestamp}
+import js7.base.time.{TestWallClock, TimeInterval, Timestamp}
 import js7.data.execution.workflow.instructions.ScheduleSimulator._
 import js7.data.order.CycleState
 import scala.annotation.tailrec
@@ -11,9 +11,10 @@ import scala.concurrent.duration.FiniteDuration
 trait ScheduleSimulator {
   this: ScheduleCalculator =>
 
-  def simulate(start: Timestamp, limit: Int, jobExecutionTime: FiniteDuration = 0.s): Result = {
-    val clock = TestWallClock(start)
-    val initialCycleState = CycleState.initial(until = nextMidnight(clock.now()))
+  def simulate(timeInterval: TimeInterval, limit: Int, jobExecutionTime: FiniteDuration = 0.s)
+  : Result = {
+    val clock = TestWallClock(timeInterval.start)
+    val initialCycleState = CycleState.initial(timeInterval)
     val builder = new VectorBuilder[Scheduled]
 
     @tailrec def loop(cycleState: CycleState, i: Int): Unit =

@@ -3,7 +3,7 @@ package js7.data.controller
 import cats.syntax.traverse._
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
 import js7.data.controller.VerifiedUpdateItemsExecutor._
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.KeyedEvent.NoKey
@@ -12,13 +12,14 @@ import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.VersionedItemRemoved
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
 import js7.data.orderwatch.OrderWatchPath
 import scala.collection.View
 
 final case class VerifiedUpdateItemsExecutor(
   verifiedUpdateItems: VerifiedUpdateItems,
-  controllerState: ControllerState)
+  controllerState: ControllerState,
+  checkItem: InventoryItem => Checked[Unit])
 {
   def executeVerifiedUpdateItems: Checked[Seq[KeyedEvent[NoKeyEvent]]] =
     ( for {
@@ -86,7 +87,7 @@ final case class VerifiedUpdateItemsExecutor(
     if (item.itemRevision.isDefined)
       Left(Problem.pure("ItemRevision is not accepted here"))
     else
-      Right(
+      for (_ <- checkItem(item)) yield
         controllerState.pathToSimpleItem.get(item.key) match {
           case None =>
             UnsignedSimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
@@ -94,7 +95,7 @@ final case class VerifiedUpdateItemsExecutor(
             UnsignedSimpleItemChanged(item
               .withRevision(Some(
                 existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
-        })
+        }
 
   private def simpleItemDeletionEvents(path: SimpleItemPath): View[BasicItemEvent] =
     path match {
@@ -112,10 +113,16 @@ final case class VerifiedUpdateItemsExecutor(
 
 object VerifiedUpdateItemsExecutor
 {
-  def execute(verifiedUpdateItems: VerifiedUpdateItems, controllerState: ControllerState)
+  def execute(
+    verifiedUpdateItems: VerifiedUpdateItems,
+    controllerState: ControllerState,
+    checkItem: PartialFunction[InventoryItem, Checked[Unit]] = PartialFunction.empty)
   : Checked[Seq[KeyedEvent[NoKeyEvent]]] =
-    new VerifiedUpdateItemsExecutor(verifiedUpdateItems, controllerState)
-      .executeVerifiedUpdateItems
+    new VerifiedUpdateItemsExecutor(
+      verifiedUpdateItems,
+      controllerState,
+      checkItem.getOrElse(_, Checked.unit)
+    ).executeVerifiedUpdateItems
 
   private def deleteRemovedVersionedItem(controllerState: ControllerState, path: VersionedItemPath): Option[KeyedEvent[ItemDeleted]] =
     controllerState.repo

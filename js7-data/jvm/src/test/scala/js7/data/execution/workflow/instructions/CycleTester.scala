@@ -7,7 +7,7 @@ import js7.base.log.Logger
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
+import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.execution.workflow.instructions.CycleTester._
 import js7.data.order.CycleState
@@ -19,7 +19,7 @@ trait CycleTester extends AnyFreeSpec
 {
   /** For testing the example in `js7.data.workflow.instructions.CycleTest`. */
   protected final def addStandardCycleTests(
-    testDay: (Timestamp, FiniteDuration, ZoneId, Seq[(Timestamp, CycleState)], Timestamp) => Unit)
+    testDay: (TimeInterval, FiniteDuration, ZoneId, Seq[(Timestamp, CycleState)], Timestamp) => Unit)
     (implicit pos: source.Position)
   : Unit =
     for (day <- setting) {
@@ -27,7 +27,10 @@ trait CycleTester extends AnyFreeSpec
         logger.debug("—"*40 + day.testName)
         assert(day.dayOfWeek == day.start.toLocalDateTime(zoneId).getDayOfWeek,
           "Weekday does not match start date")
-        testDay(day.start, day.cycleDuration, zoneId,
+        testDay(
+          TimeInterval(day.start, 24.h),
+          day.cycleDuration,
+          zoneId,
           day.expectedCycles.map { case (now, cs) => now -> cs.toCycleState(day.end) },
           day.exit)
       }
@@ -41,11 +44,11 @@ object CycleTester
 
   private val setting = Seq(
     Day(MONDAY,
-      start = local("2021-10-04T00:00"),
-      end   = local("2021-10-05T00:00"),
+      start = local("2021-10-04T01:00"),
+      end   = local("2021-10-05T01:00"),
       expectedCycles = Seq(
         // Ticking
-        local("2021-10-04T00:00") -> CS(scheme = 1, i = 1, next = local("2021-10-04T02:00")),
+        local("2021-10-04T01:00") -> CS(scheme = 1, i = 1, next = local("2021-10-04T02:00")),
         local("2021-10-04T02:00") -> CS(scheme = 1, i = 2, next = local("2021-10-04T02:20")),
         local("2021-10-04T02:20") -> CS(scheme = 1, i = 3, next = local("2021-10-04T02:40")),
 
@@ -59,11 +62,11 @@ object CycleTester
 
 
     Day(TUESDAY,
-      start = local("2021-10-05T00:33"),
-      end   = local("2021-10-06T00:00"),
+      start = local("2021-10-05T01:00"),
+      end   = local("2021-10-06T01:00"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-05T00:33") -> CS(scheme = 0, i = 1, next = local("2021-10-05T09:10")),
+        local("2021-10-05T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-05T09:10")),
         local("2021-10-05T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-05T09:15")),
         local("2021-10-05T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-05T09:20")),
         local("2021-10-05T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-05T10:10")),
@@ -71,11 +74,11 @@ object CycleTester
       exit = local("2021-10-05T10:15")),
 
     Day(WEDNESDAY,
-      start = local("2021-10-06T00:00"),
-      end   = local("2021-10-07T00:00"),
+      start = local("2021-10-06T01:00"),
+      end   = local("2021-10-07T01:00"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-06T00:00") -> CS(scheme = 0, i = 1, next = local("2021-10-06T09:10")),
+        local("2021-10-06T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-06T09:10")),
         local("2021-10-06T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-06T09:15")),
         local("2021-10-06T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-06T09:20")),
         local("2021-10-06T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-06T10:10")),
@@ -83,11 +86,11 @@ object CycleTester
       exit = local("2021-10-06T10:15")),
 
     Day(THURSDAY,
-      start = local("2021-10-07T00:00"),
-      end   = local("2021-10-08T00:00"),
+      start = local("2021-10-07T01:00"),
+      end   = local("2021-10-08T01:00"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-07T00:00") -> CS(scheme = 0, i = 1, next = local("2021-10-07T09:10")),
+        local("2021-10-07T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-07T09:10")),
         local("2021-10-07T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-07T09:15")),
         local("2021-10-07T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-07T09:20")),
         local("2021-10-07T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-07T10:10")),
@@ -95,11 +98,11 @@ object CycleTester
       exit = local("2021-10-07T10:15")),
 
     Day(FRIDAY,
-      start = local("2021-10-08T00:00"),
-      end   = local("2021-10-09T00:00"),
+      start = local("2021-10-08T01:00"),
+      end   = local("2021-10-09T01:00"),
       expectedCycles = Seq(
         // Ticking
-        local("2021-10-08T00:00") -> CS(scheme = 1, i = 1, next = local("2021-10-08T04:00")),
+        local("2021-10-08T01:00") -> CS(scheme = 1, i = 1, next = local("2021-10-08T04:00")),
         local("2021-10-08T04:00") -> CS(scheme = 1, i = 2, next = local("2021-10-08T04:20")),
         local("2021-10-08T04:20") -> CS(scheme = 1, i = 3, next = local("2021-10-08T04:40")),
 
@@ -112,11 +115,11 @@ object CycleTester
       exit = local("2021-10-08T10:15")),
 
     Day(SATURDAY,
-      start = local("2021-10-09T00:00"),
-      end   = local("2021-10-10T00:00"),
+      start = local("2021-10-09T01:00"),
+      end   = local("2021-10-10T01:00"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-09T00:00") -> CS(scheme = 0, i = 1, next = local("2021-10-09T09:10")),
+        local("2021-10-09T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-09T09:10")),
         local("2021-10-09T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-09T09:15")),
         local("2021-10-09T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-09T09:20")),
         local("2021-10-09T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-09T10:10")),
@@ -124,11 +127,11 @@ object CycleTester
       exit = local("2021-10-09T10:15")),
 
     Day(SUNDAY, title = "Continuous, with zero execution time",
-      start = local("2021-10-10T00:00"),
-      end   = local("2021-10-11T00:00"),
+      start = local("2021-10-10T01:00"),
+      end   = local("2021-10-11T01:00"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T00:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         local("2021-10-10T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:15")),
         local("2021-10-10T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-10T10:10")),
@@ -149,12 +152,12 @@ object CycleTester
       exit = local("2021-10-10T20:02")),
 
     Day(SUNDAY, title = "Continuous, with execution time shorter than cycle interval",
-      start = local("2021-10-10T00:00"),
-      end   = local("2021-10-11T00:00"),
+      start = local("2021-10-10T01:00"),
+      end   = local("2021-10-11T01:00"),
       cycleDuration = 3.minutes,
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T00:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         local("2021-10-10T09:13") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:15")),
         local("2021-10-10T09:18") -> CS(scheme = 0, i = 3, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:23") -> CS(scheme = 0, i = 4, next = local("2021-10-10T10:10")),
@@ -173,12 +176,12 @@ object CycleTester
       exit = local("2021-10-10T20:11")),
 
     Day(SUNDAY, title = "Continuous, with execution time longer then cycle interval",
-      start = local("2021-10-10T00:00"),
-      end   = local("2021-10-11T00:00"),
+      start = local("2021-10-10T01:00"),
+      end   = local("2021-10-11T01:00"),
       cycleDuration = 6.minutes,
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T00:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         local("2021-10-10T09:16") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:15")),
         local("2021-10-10T09:22") -> CS(scheme = 0, i = 3, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:28") -> CS(scheme = 0, i = 4, next = local("2021-10-10T10:10")),
@@ -196,12 +199,12 @@ object CycleTester
       exit = local("2021-10-10T20:20")),
 
     Day(SUNDAY, title = "Continuous, with execution time longer then two times cycle interval",
-      start = local("2021-10-10T00:00"),
-      end   = local("2021-10-11T00:00"),
+      start = local("2021-10-10T01:00"),
+      end   = local("2021-10-11T01:00"),
       cycleDuration = 11.minutes,
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T00:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         // skipped        09:21") -> CS(scheme = 0,        next = local("2021-10-10T09:15")),
         local("2021-10-10T09:21") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:32") -> CS(scheme = 0, i = 3, next = local("2021-10-10T10:10")),

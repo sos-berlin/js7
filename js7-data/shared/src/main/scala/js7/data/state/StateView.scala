@@ -7,6 +7,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{Board, BoardPath, BoardState}
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.lock.{LockPath, LockState}
@@ -38,6 +39,8 @@ trait StateView
     pathToBoardState.map(_.board)
 
   def pathToBoardState: PartialFunction[BoardPath, BoardState]
+
+  def pathToCalendar: PartialFunction[CalendarPath, Calendar]
 
   def pathToJobResource: PartialFunction[JobResourcePath, JobResource]
 
@@ -118,7 +121,8 @@ object StateView
     idToOrder: PartialFunction[OrderId, Order[Order.State]] = new NotImplementedMap,
     idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
     pathToLockState: PartialFunction[LockPath, LockState] = new NotImplementedMap,
-    pathToBoardState: PartialFunction[BoardPath, BoardState] = new NotImplementedMap
+    pathToBoardState: PartialFunction[BoardPath, BoardState] = new NotImplementedMap,
+    pathToCalendar: PartialFunction[CalendarPath, Calendar] = new NotImplementedMap
   ) = {
     val isAgent_ = isAgent
     val controllerId_ = controllerId
@@ -126,6 +130,7 @@ object StateView
     val idToWorkflow_ = idToWorkflow
     val pathToLockState_ = pathToLockState
     val pathToBoardState_ = pathToBoardState
+    val pathToCalendar_ = pathToCalendar
 
     new StateView {
       val isAgent = isAgent_
@@ -133,6 +138,7 @@ object StateView
       val idToWorkflow = idToWorkflow_
       val pathToLockState = pathToLockState_
       val pathToBoardState = pathToBoardState_
+      val pathToCalendar = pathToCalendar_
       val controllerId = controllerId_
 
       def workflowPathToId(workflowPath: WorkflowPath) =
@@ -159,6 +165,9 @@ object StateView
 
     def pathToBoardState: PartialFunction[BoardPath, BoardState] =
       new NotImplementedMap[BoardPath, BoardState]
+
+    def pathToCalendar: PartialFunction[CalendarPath, Calendar] =
+      new NotImplementedMap[CalendarPath, Calendar]
 
     def pathToJobResource: PartialFunction[JobResourcePath, JobResource] =
       new NotImplementedMap[JobResourcePath, JobResource]

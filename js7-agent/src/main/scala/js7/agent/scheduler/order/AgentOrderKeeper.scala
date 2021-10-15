@@ -33,12 +33,13 @@ import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
+import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
-import js7.data.item.SignableItem
+import js7.data.item.{SignableItem, UnsignedSimpleItem}
 import js7.data.job.{JobConf, JobKey, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -313,13 +314,8 @@ with Stash
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
     case cmd: OrderCommand => processOrderCommand(cmd)
 
-    case AttachItem(fileWatch: FileWatch) =>
-      if (!conf.scriptInjectionAllowed)
-        Future.successful(Left(SignedInjectionNotAllowed))
-      else
-        fileWatchManager.update(fileWatch)
-          .map(_.rightAs(AgentCommand.Response.Accepted))
-          .runToFuture
+    case AttachItem(item) =>
+      attachUnsignedItem(item)
 
     case AttachSignedItem(signed: Signed[SignableItem]) =>
       attachSignedItem(signed)
@@ -345,6 +341,25 @@ with Stash
 
     case _ => Future.successful(Left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}")))  // Should not happen
   }
+
+  private def attachUnsignedItem(item: UnsignedSimpleItem): Future[Checked[Response.Accepted]] =
+    item match {
+      case fileWatch: FileWatch =>
+        if (!conf.scriptInjectionAllowed)
+          Future.successful(Left(SignedInjectionNotAllowed))
+        else
+          fileWatchManager.update(fileWatch)
+            .map(_.rightAs(AgentCommand.Response.Accepted))
+            .runToFuture
+
+      case item: Calendar =>
+        persist(ItemAttachedToAgent(item)) { (stampedEvent, journaledState) =>
+          Right(AgentCommand.Response.Accepted)
+        }
+
+      case _ =>
+        Future.successful(Left(Problem.pure(s"AgentCommand.AttachItem(${item.key}) for unknown InventoryItem")))
+    }
 
   private def attachSignedItem(signed: Signed[SignableItem]): Future[Checked[Response.Accepted]] =
     signatureVerifier.verify(signed.signedString) match {
@@ -381,7 +396,7 @@ with Stash
             }
 
           case _ =>
-            Future.successful(Left(Problem.pure(s"AgentCommand.AttachedItem(${signed.value.key}) for unknown SignableItem")))
+            Future.successful(Left(Problem.pure(s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")))
         }
     }
 
@@ -696,6 +711,8 @@ with Stash
       def pathToBoardState = persistence.currentState.pathToBoardState
 
       def pathToJobResource = persistence.currentState.pathToJobResource
+
+      def pathToCalendar = persistence.currentState.pathToCalendar
     })
 
   override def toString = "AgentOrderKeeper"

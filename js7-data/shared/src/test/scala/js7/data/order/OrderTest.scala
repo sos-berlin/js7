@@ -5,7 +5,8 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.time.Timestamp
+import js7.base.time.ScalaTime._
+import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
@@ -287,7 +288,7 @@ final class OrderTest extends AnyFreeSpec
     val orderId = OrderId("ID")
     val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
     val agentPath = AgentPath("AGENT")
-    val cycleState = CycleState.initial(until = Timestamp.Epoch)
+    val cycleState = CycleState.initial(TimeInterval(Timestamp.Epoch, 100*9000.h))
     val allEvents = ListSet[OrderCoreEvent](
       OrderAdded(workflowId),
       OrderOrderAdded(OrderId("ADDED"), workflowId),

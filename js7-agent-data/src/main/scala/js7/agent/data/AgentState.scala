@@ -10,6 +10,7 @@ import js7.base.problem.Problem
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -35,7 +36,8 @@ final case class AgentState(
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow],
   allFileWatchesState: AllFileWatchesState,
-  pathToJobResource: Map[JobResourcePath, JobResource])
+  pathToJobResource: Map[JobResourcePath, JobResource],
+  pathToCalendar: Map[CalendarPath, Calendar])
 extends StateView
 with JournaledState[AgentState]
 {
@@ -63,7 +65,8 @@ with JournaledState[AgentState]
       idToWorkflow.size +
       idToOrder.size +
       allFileWatchesState.estimatedSnapshotSize +
-      pathToJobResource.size
+      pathToJobResource.size +
+      pathToCalendar.size
 
   def toSnapshotObservable =
     standards.toSnapshotObservable ++
@@ -71,7 +74,8 @@ with JournaledState[AgentState]
       Observable.fromIterable(idToWorkflow.values) ++
       Observable.fromIterable(idToOrder.values) ++
       allFileWatchesState.toSnapshot ++
-      Observable.fromIterable(pathToJobResource.values)
+      Observable.fromIterable(pathToJobResource.values) ++
+      Observable.fromIterable(pathToCalendar.values)
 
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)
@@ -111,6 +115,11 @@ with JournaledState[AgentState]
             Right(copy(
               pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
+          case ItemAttachedToAgent(calendar: Calendar) =>
+            // May replace an existing Calendar
+            Right(copy(
+              pathToCalendar = pathToCalendar + (calendar.path -> calendar)))
+
           case ItemDetached(WorkflowId.as(workflowId), _) =>
             for (_ <- idToWorkflow.checked(workflowId)) yield
               copy(
@@ -125,6 +134,11 @@ with JournaledState[AgentState]
             for (_ <- pathToJobResource.checked(path)) yield
               copy(
                 pathToJobResource = pathToJobResource - path)
+
+          case ItemDetached(path: CalendarPath, meta.agentPath) =>
+            for (_ <- pathToCalendar.checked(path)) yield
+              copy(
+                pathToCalendar = pathToCalendar - path)
 
           case _ => applyStandardEvent(keyedEvent)
         }
@@ -210,12 +224,12 @@ object AgentState extends JournaledState.Companion[AgentState]
 {
   val empty = AgentState(EventId.BeforeFirst, JournaledState.Standards.empty,
     AgentMetaState.empty,
-    Map.empty, Map.empty, AllFileWatchesState.empty, Map.empty)
+    Map.empty, Map.empty, AllFileWatchesState.empty, Map.empty, Map.empty)
 
   def newBuilder() = new AgentStateBuilder
 
   protected val InventoryItems: Seq[InventoryItem.Companion_] =
-    Seq(FileWatch, Workflow, JobResource)
+    Seq(FileWatch, Workflow, JobResource, Calendar)
 
 
   final case class AgentMetaState(
@@ -234,7 +248,8 @@ object AgentState extends JournaledState.Companion[AgentState]
       Workflow.subtype,
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],
-      Subtype(AgentState.signableSimpleItemJsonCodec))
+      Subtype(AgentState.signableSimpleItemJsonCodec),
+      Subtype(AgentState.unsignedSimpleItemJsonCodec))
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec("AgentState.Event",

@@ -16,6 +16,8 @@ final case class TimeInterval(start: Timestamp, duration: FiniteDuration)
   def endsBefore(timestamp: Timestamp) =
     end <= timestamp
 
+  def toStartEndString = s"$start...$end"
+
   override def toString = s"TimeInterval($start, ${duration.pretty})"
 }
 
@@ -23,4 +25,7 @@ object TimeInterval
 {
   val never = TimeInterval(Timestamp.ofEpochMilli(Long.MinValue), 0.s)
   val alwaysSinceEpoch = TimeInterval(Timestamp.Epoch, FiniteDuration.MaxValue)
+
+  implicit def fromStartAndEnd(interval: (Timestamp, Timestamp)): TimeInterval =
+    TimeInterval(interval._1, interval._2 - interval._1)
 }

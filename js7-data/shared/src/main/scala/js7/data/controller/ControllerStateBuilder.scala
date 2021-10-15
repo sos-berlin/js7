@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardPath, BoardState, Notice}
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
@@ -41,6 +42,7 @@ with StateView
   private val _pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
   private val _pathToLockState = mutable.Map.empty[LockPath, LockState]
   private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
+  private val _pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
   private var allOrderWatchesState = AllOrderWatchesState.empty
   private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
@@ -68,6 +70,7 @@ with StateView
 
   val pathToLockState = _pathToLockState
   val pathToBoardState = _pathToBoardState
+  val pathToCalendar = _pathToCalendar
   def controllerId = controllerMetaState.controllerId
 
   protected def onInitializeState(state: ControllerState): Unit = {
@@ -80,6 +83,7 @@ with StateView
     _pathToAgentRefState ++= state.pathToAgentRefState
     _pathToLockState ++= state.pathToLockState
     _pathToBoardState ++= state.pathToBoardState
+    _pathToCalendar ++= state.pathToCalendar
     allOrderWatchesState = state.allOrderWatchesState
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     itemToAgentToAttachedState ++= state.itemToAgentToAttachedState
@@ -108,6 +112,9 @@ with StateView
 
     case board: Board =>
       _pathToBoardState.insert(board.path -> BoardState(board))
+
+    case calendar: Calendar =>
+      _pathToCalendar.insert(calendar.path -> calendar)
 
     case noticeSnapshot: Notice.Snapshot =>
       _pathToBoardState(noticeSnapshot.boardPath) = _pathToBoardState(noticeSnapshot.boardPath)
@@ -176,6 +183,9 @@ with StateView
 
                 case board: Board =>
                   _pathToBoardState.insert(board.path -> BoardState(board))
+
+                case calendar: Calendar =>
+                  _pathToCalendar.insert(calendar.path -> calendar)
               }
 
             case UnsignedSimpleItemChanged(item) =>
@@ -198,6 +208,9 @@ with StateView
                       .map(boardState => boardState.copy(
                         board = board))
                       .orThrow
+
+                case calendar: Calendar =>
+                  _pathToCalendar += calendar.path -> calendar
               }
           }
 
@@ -250,6 +263,9 @@ with StateView
 
                 case boardPath: BoardPath =>
                   _pathToBoardState -= boardPath
+
+                case calendarPath: CalendarPath =>
+                  _pathToCalendar -= calendarPath
               }
           }
       }
@@ -392,6 +408,7 @@ with StateView
       _pathToAgentRefState.toMap,
       _pathToLockState.toMap,
       _pathToBoardState.toMap,
+      _pathToCalendar.toMap,
       allOrderWatchesState,
       repo,
       pathToSignedSimpleItem.toMap,

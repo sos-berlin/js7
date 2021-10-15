@@ -379,12 +379,15 @@ object ScalaUtils
       def ? : Option[Boolean] =
         if (underlying) SomeTrue else None
 
+      def option[A](a: => A): Option[A] =
+        thenOption(a)
+
       /**
         * Conditional `Option`.
         * <p>`(true option a) == Some(a)`
         * <br>`(false option a) == None`
         */
-      def option[A](a: => A): Option[A] =
+      def thenOption[A](a: => A): Option[A] =
         if (underlying) Some(a) else None
 
       /**

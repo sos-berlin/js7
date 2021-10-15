@@ -4,6 +4,7 @@ import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, JournaledState, JournaledStateBuilder, Stamped}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -21,6 +22,7 @@ extends JournaledStateBuilder[AgentState]
   private var agentMetaState = AgentMetaState.empty
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
+  private val pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
   private val allFileWatchesState = new AllFileWatchesState.Builder
   private val pathToJobResource = mutable.Map.empty[JobResourcePath, JobResource]
   private var _state = AgentState.empty
@@ -37,6 +39,9 @@ extends JournaledStateBuilder[AgentState]
 
     case jobResource: JobResource =>
       pathToJobResource.insert(jobResource.path -> jobResource)
+
+    case calendar: Calendar =>
+      pathToCalendar.insert(calendar.path -> calendar)
 
     case snapshot: FileWatchState.Snapshot =>
       allFileWatchesState.addSnapshot(snapshot)
@@ -56,7 +61,8 @@ extends JournaledStateBuilder[AgentState]
       idToOrder.toMap,
       idToWorkflow.toMap,
       allFileWatchesState.result(),
-      pathToJobResource.toMap)
+      pathToJobResource.toMap,
+      pathToCalendar.toMap)
   }
 
   protected def onAddEvent = {

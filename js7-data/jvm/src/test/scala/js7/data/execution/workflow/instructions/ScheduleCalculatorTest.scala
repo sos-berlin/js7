@@ -5,7 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, Timestamp}
+import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
@@ -213,7 +213,7 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with CycleTester
 
     "Winter to summer" in {
       val times = calculator
-        .simulate(local("2021-03-28T02:30"), 3)
+        .simulate(TimeInterval(local("2021-03-28T02:30"), 24.h), 3)
         .scheduledSeq.map(_.next)
 
       assert(times == Seq(
@@ -229,7 +229,7 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with CycleTester
 
     "Summer to winter" in {
       val times = calculator
-        .simulate(local("2021-10-31T02:30"), 3)
+        .simulate(TimeInterval(local("2021-10-31T02:30"), 24.h), 3)
         .scheduledSeq.map(_.next)
 
       assert(times == Seq(
@@ -245,10 +245,10 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with CycleTester
   }
 
   "CycleTest example" - {
-    addStandardCycleTests { (start, cycleDuration, zone, expected, exitTimestamp) =>
+    addStandardCycleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
       val result =
         ScheduleCalculator(exampleSchedule, zone)
-          .simulate(start, limit = 1000, jobExecutionTime = cycleDuration)
+          .simulate(timeInterval, limit = 1000, jobExecutionTime = cycleDuration)
       assert(result.scheduledSeq
         .map(scheduled => scheduled.arriveAt -> scheduled.cycleState)
         == expected)

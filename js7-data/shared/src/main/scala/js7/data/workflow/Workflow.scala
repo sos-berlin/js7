@@ -15,6 +15,7 @@ import js7.base.utils.ScalaUtils.{implicitClass, reuseIfEqual}
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
+import js7.data.calendar.CalendarPath
 import js7.data.item.{VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.lock.LockPath
@@ -22,7 +23,7 @@ import js7.data.value.expression.{Expression, PositionSearch}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BoardInstruction, End, Execute, Fork, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{BoardInstruction, Cycle, End, Execute, Fork, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
@@ -39,6 +40,7 @@ final case class Workflow private(
   orderPreparation: OrderPreparation,
   timeZone: Timezone,
   jobResourcePaths: Seq[JobResourcePath],
+  calendarPath: Option[CalendarPath],
   result: Option[Map[String, Expression]],
   source: Option[String],
   outer: Option[Workflow])
@@ -79,7 +81,8 @@ extends VersionedItem
     val chk =
       checkJobReferences ++
       checkRetry() ++
-      checkLabels
+      checkLabels ++
+      checkCalendar
     val problems = chk.collect { case Left(problem) => problem }.toVector
     if (problems.nonEmpty)
       Left(Problem.Combined(problems))
@@ -131,6 +134,12 @@ extends VersionedItem
           positions.mkString(", ")))
       }
 
+  private def checkCalendar: View[Checked[Unit]] =
+    new View.Single(
+      (!flattenedInstructions.exists(_._2.instruction.isInstanceOf[Cycle])
+        || calendarPath.nonEmpty
+      ) !! Problem("Cycle instruction requires calendarPath"))
+
   override lazy val referencedAgentPaths: Set[AgentPath] =
     workflowJobs.map(_.agentPath).toSet
 
@@ -155,6 +164,9 @@ extends VersionedItem
       workflowJobs.flatMap(_.referencedJobResourcePaths) ++
       orderPreparation.referencedJobResourcePaths
     ).toSet
+
+  override lazy val referencedCalendarPaths: Set[CalendarPath] =
+    calendarPath.toSet
 
   private[workflow] def workflowJobs: View[WorkflowJob] =
     keyToJob.values.view
@@ -459,12 +471,13 @@ object Workflow extends VersionedItem.Companion[Workflow]
     orderPreparation: OrderPreparation = OrderPreparation.default,
     timeZone: Timezone = Timezone.utc,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
+    calendarPath: Option[CalendarPath] = None,
     result: Option[Map[String, Expression]] = None,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
     checkedSub(id, labeledInstructions.toIndexedSeq, nameToJob, orderPreparation,
-      timeZone, jobResourcePaths, result, source, outer).orThrow
+      timeZone, jobResourcePaths, calendarPath, result, source, outer).orThrow
 
   /** Checks a subworkflow.
     * Use `completelyChecked` to check a whole workflow including subworkfows. */
@@ -475,6 +488,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
     orderPreparation: OrderPreparation = OrderPreparation.default,
     timeZone: Timezone = Timezone.utc,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
+    calendarPath: Option[CalendarPath] = None,
     result: Option[Map[String, Expression]] = None,
     source: Option[String] = None,
     outer: Option[Workflow] = None)
@@ -486,6 +500,7 @@ object Workflow extends VersionedItem.Companion[Workflow]
       orderPreparation,
       timeZone,
       jobResourcePaths,
+      calendarPath,
       result,
       source,
       outer))
@@ -509,13 +524,15 @@ object Workflow extends VersionedItem.Companion[Workflow]
   implicit lazy val jsonCodec = Codec.AsObject.from(jsonDecoder_, jsonEncoder_)
 
   private val jsonEncoder_ : Encoder.AsObject[Workflow] = {
-    case Workflow(id, instructions, namedJobs, orderPreparation, tz, jobResourcePaths, result, src, _) =>
+    case Workflow(id, instructions, namedJobs, orderPreparation, tz, jobResourcePaths,
+    calendarPath, result, src, _) =>
       implicit val x: Encoder.AsObject[Instruction] = Instructions.jsonCodec
       id.asJsonObject ++
         JsonObject(
           "orderPreparation" -> orderPreparation.??.asJson,
           "timeZone" -> ((tz != Timezone.utc) ? tz).asJson,
           "jobResourcePaths" -> jobResourcePaths.??.asJson,
+          "calendarPath" -> calendarPath.asJson,
           "instructions" -> instructions
             .dropLastWhile(labeled =>
               labeled.instruction == ImplicitEnd.empty && labeled.maybePosition.isEmpty)
@@ -534,12 +551,13 @@ object Workflow extends VersionedItem.Companion[Workflow]
         orderPreparation <- cursor.getOrElse[OrderPreparation]("orderPreparation")(OrderPreparation.default)
         tz <- cursor.getOrElse[Timezone]("timeZone")(Timezone.utc)
         jobResourcePaths <- cursor.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
+        calendarPath <- cursor.get[Option[CalendarPath]]("calendarPath")
         instructions <- cursor.get[IndexedSeq[Instruction.Labeled]]("instructions")
         namedJobs <- cursor.getOrElse[Map[WorkflowJob.Name, WorkflowJob]]("jobs")(Map.empty)
         result <- cursor.get[Option[Map[String, Expression]]]("result")
         source <- cursor.get[Option[String]]("source")
         workflow <- Workflow.checkedSub(id, instructions, namedJobs, orderPreparation, tz,
-          jobResourcePaths = jobResourcePaths, result, source)
+          jobResourcePaths, calendarPath, result, source)
           .toDecoderResult(cursor.history)
       } yield workflow
     }

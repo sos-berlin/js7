@@ -2,8 +2,8 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.event.KeyedEvent
 import js7.data.order.Order.{BetweenCycles, Ready}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
@@ -21,13 +21,18 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     val now = clock.now()
     start(order)
       .orElse(order.ifState[Ready].map(order =>
-        for (calculator <- toScheduleCalculator(order, cycle, state)) yield {
+        for {
+          pair <- toCalendarAndScheduleCalculator(order, cycle, state)
+          (calendar, calculator) = pair
+          calendarExecutor <- CalendarExecutor.checked(calendar)
+          timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
+        } yield {
           val cycleState = calculator.nextCycleState(
             CycleState(
-              end = calculator.nextMidnight(now), // TODO `end` sollte ein Parameter sein
+              next = timeInterval.start,
+              end = timeInterval.end,
               schemeIndex = -1,
-              index = 0,
-              next = Timestamp.Epoch),
+              index = 0),
             now)
           nextCycleStateToEvent(cycleState, order)
         }))
@@ -42,7 +47,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
               .flatMap(_.maybeRecalcCycleState(cycleState, now))
               .map {
                 case None =>
-                  // cyclestate is still valid
+                  // cycleState is still valid
                   (cycleState.next <= now).thenList(
                     order.id <-: OrderCycleStarted)
 
@@ -78,8 +83,19 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         calculator.nextCycleState(cycleState, clock.now()))
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
+    for (pair <- toCalendarAndScheduleCalculator(order, cycle, state)) yield
+      pair._2
+
+  private def toCalendarAndScheduleCalculator(
+    order: Order[Order.State],
+    cycle: Cycle,
+    state: StateView)
+  : Checked[(Calendar, ScheduleCalculator)] =
     for {
       workflow <- state.idToWorkflow.checked(order.workflowId)
-      calculator <- ScheduleCalculator.checked(cycle.schedule, workflow.timeZone)
-    } yield calculator
+      calendarPath <- workflow.calendarPath
+        .toChecked(Problem("Cycle instruction requires Workflow.calendarPath"))
+      calendar <- state.pathToCalendar.checked(calendarPath)
+      calculator <- ScheduleCalculator.checked(cycle.schedule, calendar.timezone)
+    } yield calendar -> calculator
 }

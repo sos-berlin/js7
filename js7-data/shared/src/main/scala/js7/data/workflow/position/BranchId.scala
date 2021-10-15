@@ -79,6 +79,8 @@ object BranchId
       branchId.isIsFailureBoundary ? branchId
   }
 
+  private val emptyCycleState = CycleState(Timestamp.Epoch, 0, 0, Timestamp.Epoch)
+
   final case class Named(string: String) extends BranchId {
     // TODO Differentiate static and dynamic BranchId (used for static and dynamic call stacks)
     def normalized =
@@ -91,7 +93,7 @@ object BranchId
 
     def toCycleState: Checked[CycleState] =
       try {
-        var cycleState = CycleState(Timestamp.Epoch, 0, 0, Timestamp.Epoch)
+        var cycleState = emptyCycleState
         if (string == "cycle")
           Right(cycleState)
         else if (!string.startsWith("cycle+"))

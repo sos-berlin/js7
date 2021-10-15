@@ -5,6 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
+import js7.data.calendar.CalendarPath
 import js7.data.item.InventoryItem.Companion
 import js7.data.job.JobResourcePath
 import js7.data.lock.LockPath
@@ -38,7 +39,8 @@ trait InventoryItem
       referencedBoardPaths.view ++
       referencedAgentPaths ++
       referencedJobResourcePaths ++
-      referencedWorkflowPaths
+      referencedWorkflowPaths ++
+      referencedCalendarPaths
 
   def referencedLockPaths: Set[LockPath] =
     Set.empty
@@ -53,6 +55,9 @@ trait InventoryItem
     Set.empty
 
   def referencedWorkflowPaths: Set[WorkflowPath] =
+    Set.empty
+
+  def referencedCalendarPaths: Set[CalendarPath] =
     Set.empty
 
   def isReferencing(referenced: InventoryItemPath): Boolean =

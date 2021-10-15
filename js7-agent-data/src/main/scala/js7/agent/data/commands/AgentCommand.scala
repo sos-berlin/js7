@@ -4,7 +4,7 @@ import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
-import js7.agent.data.AgentState.{inventoryItemJsonCodec, inventoryItemKeyJsonCodec, signableItemJsonCodec}
+import js7.agent.data.AgentState.{inventoryItemJsonCodec, inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
@@ -21,7 +21,7 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournaledState}
-import js7.data.item.{InventoryItem, InventoryItemKey, SignableItem}
+import js7.data.item.{InventoryItemKey, SignableItem, UnsignedSimpleItem}
 import js7.data.order.{Order, OrderId, OrderMark}
 
 /**
@@ -142,7 +142,7 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait OrderCommand extends AgentCommand
 
-  final case class AttachItem(item: InventoryItem)
+  final case class AttachItem(item: UnsignedSimpleItem)
   extends AgentCommand
   {
     type Response = Response.Accepted
@@ -241,5 +241,5 @@ object AgentCommand extends CommonCommand.Companion
 
   intelliJuseImport((FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
-    inventoryItemKeyJsonCodec, inventoryItemJsonCodec, signableItemJsonCodec))
+    signableItemJsonCodec, unsignedSimpleItemJsonCodec, inventoryItemKeyJsonCodec))
 }

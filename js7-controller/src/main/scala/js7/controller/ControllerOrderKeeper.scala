@@ -46,6 +46,7 @@ import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, Agent
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, Notice, NoticeId}
+import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -58,7 +59,7 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDele
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticeRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -605,7 +606,9 @@ with MainJournalingActor[ControllerState, Event]
   private def executeVerifiedUpdateItems(verifiedUpdateItems: VerifiedUpdateItems): Unit = {
     val t = now
     (for {
-      keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, _controllerState)
+      keyedEvents <- VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, _controllerState, {
+        case calendar: Calendar => CalendarExecutor.checked(calendar).rightAs(())
+      })
       _ <- checkAgentDriversAreTerminated(
         keyedEvents.view
           .collect { case KeyedEvent(_, UnsignedSimpleItemAdded(a: AgentRef)) => a.path })
@@ -1252,6 +1255,16 @@ with MainJournalingActor[ControllerState, Event]
                 .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
               if (attachedState == Detached || attachedState == Attachable) {
                 agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+              }
+            }
+
+            val calendars = signedWorkflow.value.referencedCalendarPaths
+              .flatMap(_controllerState.pathToCalendar.get)
+            for (item <- calendars) {
+              val attachedState = _controllerState
+                .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
+              if (attachedState == Detached || attachedState == Attachable) {
+                agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
               }
             }
 

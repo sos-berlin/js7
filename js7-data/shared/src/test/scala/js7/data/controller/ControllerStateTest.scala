@@ -6,12 +6,13 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
+import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId}
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -44,7 +45,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 final class ControllerStateTest extends AsyncFreeSpec
 {
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 17)
+    assert(controllerState.estimatedSnapshotSize == 18)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -78,6 +79,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.pathToLockState.values ++
           Seq(board) ++
           boardState.notices.map(Notice.Snapshot(board.path, _)) ++
+          Seq(calendar) ++
           Seq(
             UnsignedSimpleItemAdded(FileWatch(
               fileWatch.path,
@@ -215,6 +217,14 @@ final class ControllerStateTest extends AsyncFreeSpec
         "id": "NOTICE-1",
         "endOfLife": 10086400000
       }, {
+        "TYPE": "Calendar",
+        "path": "Calendar",
+        "timezone": "Europe/Mariehamn",
+        "dateOffset": 21600,
+        "orderIdToDatePattern": "#([^#]+)#.*",
+        "periodDatePattern": "yyyy-MM-dd",
+        "itemRevision": 1
+      }, {
         "TYPE": "UnsignedSimpleItemAdded",
         "item": {
           "TYPE": "FileWatch",
@@ -341,17 +351,28 @@ object ControllerStateTest
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
   private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
   private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Set(expectingNoticeOrderId))
+
   private val board = Board(
     BoardPath("BOARD"),
     postOrderToNoticeId = expr("$orderId"),
     expectOrderToNoticeId = expr("$orderId"),
     endOfLife = expr("$js7EpochMilli + 24*3600*1000"),
     itemRevision = Some(ItemRevision(7)))
+
   private val boardState = BoardState(
     board,
     Map(
       notice.id -> notice,
       noticeExpectation.id -> noticeExpectation))
+
+  private val calendar = Calendar(
+    CalendarPath("Calendar"),
+    Timezone("Europe/Mariehamn"),
+    orderIdToDatePattern = "#([^#]+)#.*",
+    periodDatePattern = "yyyy-MM-dd",
+    dateOffset = 6.h,
+    itemRevision = Some(ItemRevision(1)))
+
   private val versionId = VersionId("1.0")
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction(lock.path, None, Workflow.of(
@@ -386,6 +407,8 @@ object ControllerStateTest
       lock.path -> LockState(lock)),
     Map(
       boardState.path -> boardState),
+    Map(
+      calendar.path -> calendar),
     AllOrderWatchesState(Map(
       fileWatch.path -> OrderWatchState(
         fileWatch,

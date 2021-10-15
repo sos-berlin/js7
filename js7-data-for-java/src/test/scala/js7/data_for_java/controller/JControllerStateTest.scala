@@ -94,6 +94,7 @@ private object JControllerStateTest
       AgentRefState(AgentRef(AgentPath("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Reset, EventId(7), None)),
     Map.empty,
     Map.empty,
+    Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty
       .applyEvents(List(

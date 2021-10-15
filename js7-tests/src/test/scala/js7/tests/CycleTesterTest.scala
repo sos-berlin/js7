@@ -4,10 +4,14 @@ import com.google.inject.{AbstractModule, Provides}
 import javax.inject.Singleton
 import js7.base.configutils.Configs._
 import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.JavaTime.JavaTimeZone
+import js7.base.time.JavaTimestamp.local
+import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime._
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.execution.workflow.instructions.CycleTester
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderFinished}
 import js7.data.order.{FreshOrder, OrderId}
@@ -23,7 +27,7 @@ import scala.collection.immutable.VectorBuilder
 final class CycleTesterTest extends AnyFreeSpec with ControllerAgentForScalaTest with CycleTester
 {
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(workflow)
+  protected val items = Seq(workflow, calendar)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -41,19 +45,23 @@ final class CycleTesterTest extends AnyFreeSpec with ControllerAgentForScalaTest
     @Provides @Singleton def alarmClock(): AlarmClock = clock
   }
 
-  "TestCycle example" - {
-    val orderIdIterator = Iterator.from(1).map(i => OrderId(s"CycleTester-$i"))
+  private implicit val zone = calendar.timezone.toZoneId.orThrow
 
-    addStandardCycleTests { (start, cycleDuration, zone, expected, exitTimestamp) =>
+  "TestCycle example" - {
+    clock.resetTo(local("2021-10-01T00:00"))
+
+    addStandardCycleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
+      val end = timeInterval.end // ???
       val expectedCycleStartTimes = expected
         .map { case (cycleWaitTimestamp, cycleState) =>
           cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
         }
 
       var eventId = eventWatch.lastAddedEventId
-      clock.resetTo(start) // -1.s <-- TODO Does not work if order arrives to early
+      clock.resetTo(timeInterval.start - 1.s)  // Start the order early
 
-      val orderId = orderIdIterator.next()
+      val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
+      val orderId = OrderId(s"#$orderDate#CycleTesterTest")
       scribe.debug(s"addOrder $orderId")
       controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
@@ -93,6 +101,13 @@ object CycleTesterTest
     def currentTimeMillis() = clock.epochMilli()
   }
 
+  private val calendar = Calendar(
+    CalendarPath("CALENDAR"),
+    Timezone(CycleTester.zoneId.getId),
+    dateOffset = 0.h,  // FIXME Test with dateOffset = 6.h
+    orderIdToDatePattern = "#([^#]+)#.*",
+    periodDatePattern = "yyyy-MM-dd")
+
   private val workflow =
     Workflow(WorkflowPath("CycleTesterTest"),
       Seq(
@@ -100,7 +115,7 @@ object CycleTesterTest
           .copy(
             cycleWorkflow = Workflow.of(
               TestJob.execute(agentPath)))),
-      timeZone = Timezone(CycleTester.zoneId.getId))
+      calendarPath = Some(calendar.path))
 
   final class TestJob extends SemaphoreJob(TestJob)
   object TestJob extends SemaphoreJob.Companion[TestJob]

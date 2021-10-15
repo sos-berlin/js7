@@ -15,6 +15,7 @@ import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemPro
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice}
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerState.logger
@@ -50,6 +51,7 @@ final case class ControllerState(
   pathToAgentRefState: Map[AgentPath, AgentRefState],
   pathToLockState: Map[LockPath, LockState],
   pathToBoardState: Map[BoardPath, BoardState],
+  pathToCalendar: Map[CalendarPath, Calendar],
   allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
@@ -75,6 +77,7 @@ with JournaledState[ControllerState]
     pathToLockState.size +
     pathToBoardState.values.size +
     pathToBoardState.values.view.map(_.notices.size).sum +
+    pathToCalendar.values.size +
     allOrderWatchesState.estimatedSnapshotSize +
     pathToSignedSimpleItem.size +
     itemToAgentToAttachedState.values.view.map(_.size).sum +
@@ -90,6 +93,7 @@ with JournaledState[ControllerState]
       Observable.fromIterable(pathToLockState.values),
       Observable.fromIterable(pathToBoardState.values.view.map(_.toSnapshotObservable))
         .flatten,
+      Observable.fromIterable(pathToCalendar.values),
       allOrderWatchesState.toSnapshot,
       Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
@@ -148,6 +152,10 @@ with JournaledState[ControllerState]
                 case board: Board =>
                   for (o <- pathToBoardState.insert(board.path -> BoardState(board))) yield
                     copy(pathToBoardState = o)
+
+                case calendar: Calendar =>
+                  for (o <- pathToCalendar.insert(calendar.path -> calendar)) yield
+                    copy(pathToCalendar = o)
               }
 
             case UnsignedSimpleItemChanged(item) =>
@@ -174,6 +182,11 @@ with JournaledState[ControllerState]
                     yield copy(
                       pathToBoardState = pathToBoardState + (board.path -> boardState.copy(
                         board = board)))
+
+                case calendar: Calendar =>
+                  for (calendar <- pathToCalendar.checked(calendar.path))
+                    yield copy(
+                      pathToCalendar = pathToCalendar + (calendar.path -> calendar))
               }
           }
 
@@ -247,6 +260,10 @@ with JournaledState[ControllerState]
                 case boardPath: BoardPath =>
                   Right(copy(
                     pathToBoardState = pathToBoardState - boardPath))
+
+                case calendarPath: CalendarPath =>
+                  Right(copy(
+                    pathToCalendar = pathToCalendar - calendarPath))
 
                 case _ =>
                   Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
@@ -629,6 +646,7 @@ with JournaledState[ControllerState]
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
       case path: BoardPath => pathToBoard.get(path)
+      case path: CalendarPath => pathToCalendar.get(path)
       case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
     }
 
@@ -647,6 +665,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     Map.empty,
     Map.empty,
     Map.empty,
+    Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty,
@@ -659,7 +678,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
   def newBuilder() = new ControllerStateBuilder
 
   protected val InventoryItems = Seq[InventoryItem.Companion_](
-    AgentRef, Lock, Board, FileWatch, JobResource, Workflow)
+    AgentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec("ControllerState.Snapshot",
@@ -671,6 +690,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[AgentRefState],
       Subtype[LockState],
       Subtype[Board],
+      Subtype[Calendar],
       Subtype.named[Notice.Snapshot]("Notice"),
       Subtype[VersionedEvent],  // These events describe complete objects
       Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded

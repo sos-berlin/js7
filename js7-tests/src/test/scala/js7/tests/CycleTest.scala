@@ -11,9 +11,10 @@ import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, AlwaysPeriod, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventSeq, KeyedEvent, Stamped}
-import js7.data.execution.workflow.instructions.{CycleTester, ScheduleCalculator}
+import js7.data.execution.workflow.instructions.CycleTester
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, Outcome}
@@ -32,7 +33,7 @@ import scala.concurrent.duration._
 final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with CycleTester
 {
   protected val agentPaths = Seq(agentPath)
-  protected val items = Nil
+  protected val items = Seq(calendar)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -43,8 +44,6 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private implicit val zone = CycleTest.zone
-
   override protected def controllerModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }
@@ -52,6 +51,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }
 
+  private implicit val zone = CycleTest.zone
   private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
 
   "Cycle with empty Schedule" in {
@@ -61,9 +61,9 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
         Cycle(
           Schedule(Nil),
           Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
-      timeZone = Timezone(zone.getId)))
+      calendarPath = Some(calendar.path)))
 
-    val events = controller.runOrder(FreshOrder(OrderId("EMPTY"), workflow.path))
+    val events = controller.runOrder(FreshOrder(OrderId("#2021-10-01#EMPTY"), workflow.path))
       .map(_.value)
     assert(events == Seq(
       OrderAdded(workflow.id),
@@ -83,9 +83,9 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
               Schedule.Continuous(pause = 0.s, limit = Some(3))))),
           cycleWorkflow = Workflow.of(
             EmptyJob.execute(agentPath)))),
-      timeZone = Timezone(zone.getId)))
+      calendarPath = Some(calendar.path)))
 
-    val events = controller.runOrder(FreshOrder(OrderId("SIMPLE-LOOP"), workflow.path))
+    val events = controller.runOrder(FreshOrder(OrderId("#2021-10-01#SIMPLE-LOOP"), workflow.path))
       .map(_.value)
     val until = local("2021-10-02T00:00")
     val cycleState =
@@ -133,7 +133,8 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
           Schedule(Seq(Schedule.Scheme(
             AdmissionTimeScheme(Seq(AlwaysPeriod)),
             Schedule.Continuous(pause = 0.s, limit = Some(Int.MaxValue))))),
-          Workflow.empty))))
+          Workflow.empty)),
+      calendarPath = Some(calendar.path)))
     val events = controller.runOrder(FreshOrder(OrderId("ENDLESS"), workflow.path))
       .map(_.value)
   }
@@ -147,12 +148,13 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
             AdmissionTimeScheme(Seq(AlwaysPeriod)),
             Schedule.Continuous(pause = 0.s, limit = Some(1))))),
           Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
-      timeZone = Timezone(zone.getId)))
+      calendarPath = Some(calendar.path)))
 
-    val events = controller.runOrder(FreshOrder(OrderId("FAILING"), workflow.path))
+    val orderDate = "2021-10-01"
+    val events = controller.runOrder(FreshOrder(OrderId(s"#$orderDate#FAILING"), workflow.path))
       .map(_.value)
     val cycleState = CycleState(
-      end = ScheduleCalculator.nextMidnight(clock.now(), zone),
+      end = local("2021-10-02T00:00"),
       schemeIndex = 0,
       index = 1,
       next = Timestamp.Epoch)
@@ -178,12 +180,13 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
                 Schedule.Continuous(pause = 0.s, limit = Some(1))))),
               Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
           Workflow.empty)),
-      timeZone = Timezone(zone.getId)))
+      calendarPath = Some(calendar.path)))
 
-    val events = controller.runOrder(FreshOrder(OrderId("CATCH"), workflow.path))
+    val orderDate = "2021-10-01"
+    val events = controller.runOrder(FreshOrder(OrderId(s"#$orderDate#CATCH"), workflow.path))
       .map(_.value)
     val cycleState = CycleState(
-      end = ScheduleCalculator.nextMidnight(clock.now(), zone),
+      end = local("2021-10-02T00:00"),
       schemeIndex = 0,
       index = 1,
       next = Timestamp.Epoch)
@@ -201,6 +204,8 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
   }
 
   "Cancel while in Order.BetweenCycle" in {
+    clock.resetTo(local("2021-10-01T00:00"))
+    val orderDate = "2021-10-01"
     val workflow = addWorkflow(Workflow(
       WorkflowPath("CANCEL"),
       Seq(
@@ -210,20 +215,22 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
               DailyPeriod(LocalTime.parse("18:00"), 1.s))),
             Periodic(1.h, Seq(0.s))))),
           Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
-      timeZone = Timezone(zone.getId)))
+      calendarPath = Some(calendar.path)))
 
     val eventId = eventWatch.lastAddedEventId
-    val orderId = OrderId("CANCEL")
+    val orderId = OrderId(s"#$orderDate#CANCEL")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
+
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
       .map(_.value.event)
+
     assert(eventWatch.keyedEvents[OrderEvent](key = orderId, after = eventId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
       OrderCyclingPrepared(CycleState(
-        end = ScheduleCalculator.nextMidnight(clock.now(), zone),
+        end = local("2021-10-02T00:00"),
         schemeIndex = 0,
         index = 1,
         next = local("2021-10-01T18:00"))),
@@ -266,7 +273,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
               AlwaysPeriod)),
             Periodic(1.h, Seq(0.minute, 30.minute))))),
           Workflow.empty)),
-      timeZone = Timezone(zone.getId)))
+      calendarPath = Some(calendar.path)))
 
     def orderCycleStartedTimetamps(orderId: OrderId) =
       eventWatch.all[OrderCycleStarted]
@@ -280,7 +287,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     "Winter to summer" in {
       clock.resetTo(Timestamp("2021-03-28T01:00:00Z"))
       var eventId = eventWatch.lastAddedEventId
-      val orderId = OrderId("SUMMER")
+      val orderId = OrderId("#2021-03-28#SUMMER")
       controllerApi.addOrder(FreshOrder(orderId, workflow.path))
         .await(99.s).orThrow
       eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
@@ -311,7 +318,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     "Summer to winter" in {
       clock.resetTo(Timestamp("2021-10-31T00:00:00Z"))
       var eventId = eventWatch.lastAddedEventId
-      val orderId = OrderId("WINTER")
+      val orderId = OrderId("#2021-10-31#WINTER")
       controllerApi.addOrder(FreshOrder(orderId, workflow.path))
         .await(99.s).orThrow
 
@@ -352,6 +359,10 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     }
   }
 
+  "Run Cycle on Agent" in {
+    pending // TODO
+  }
+
   private def addWorkflow(workflow: Workflow): Workflow = {
     val v = versionIdIterator.next()
     val w = workflow.withVersion(v)
@@ -365,6 +376,13 @@ object CycleTest
   private val agentPath = AgentPath("AGENT")
   private implicit val zone = ZoneId.of("Europe/Mariehamn")
   private val clock = TestAlarmClock(local("2021-10-01T04:00"))
+
+  private val calendar = Calendar(
+    CalendarPath("CALENDAR"),
+    Timezone("Europe/Mariehamn"),
+    dateOffset = 0.h,  // FIXME Test with dateOffset = 6.h
+    orderIdToDatePattern = "#([^#]+)#.*",
+    periodDatePattern = "yyyy-MM-dd")
 
   // Use this Log4j Clock with the properties
   // -Dlog4j2.Clock=js7.tests.CycleTestt$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn

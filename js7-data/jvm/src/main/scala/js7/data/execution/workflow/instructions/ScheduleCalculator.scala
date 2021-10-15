@@ -1,13 +1,11 @@
 package js7.data.execution.workflow.instructions
 
 import java.time.DayOfWeek.MONDAY
-import java.time.LocalTime.MIDNIGHT
 import java.time.ZoneOffset.UTC
-import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
+import java.time.{LocalDateTime, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime._
 import js7.base.time.JavaTime.JavaTimeZone
-import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.JavaTimestamp.specific._
 import js7.base.time.{JavaTimestamp, TimeInterval, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax._
@@ -18,11 +16,6 @@ import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
 private[instructions] final class ScheduleCalculator(schedule: Schedule, zone: ZoneId)
 extends ScheduleSimulator
 {
-  // TODO Use customers end of calender day (which may start and end at 8:00, for example)
-  @deprecated
-  def nextMidnight(ts: Timestamp): Timestamp =
-    ScheduleCalculator.nextMidnight(ts, zone)
-
   def nextCycleState(cycleState: CycleState, now: Timestamp): Option[CycleState] =
     for ((schemeIndex, next) <- nextCycle(cycleState, now)) yield
       cycleState.copy(
@@ -144,11 +137,4 @@ object ScheduleCalculator
 
   private[instructions] def checked(schedule: Schedule, zone: ZoneId): Checked[ScheduleCalculator] =
     Right(new ScheduleCalculator(schedule, zone))
-
-  // TODO Use customers end of calender day (which may start and end at 8:00, for example)
-  @deprecated
-  def nextMidnight(ts: Timestamp, zoneId: ZoneId): Timestamp = {
-    val nextDay = ts.toZonedDateTime(zoneId).toLocalDate.plusDays(1)
-    ZonedDateTime.of(nextDay, MIDNIGHT, zoneId).toInstant.toTimestamp
-  }
 }

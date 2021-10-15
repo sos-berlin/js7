@@ -1,6 +1,6 @@
 package js7.base.time
 
-import java.time.{Duration, Instant}
+import java.time.{Duration, Instant, ZonedDateTime}
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import js7.base.log.Logger
 import js7.base.time.ScalaTime._
@@ -21,9 +21,16 @@ object JavaTimeConverters
       true
     }
 
-  implicit final class AsScalaInstant(private val delegate: Instant) extends AnyVal
+  implicit final class AsScalaInstant(private val instant: Instant) extends AnyVal
   {
-    def toTimestamp = JavaTimestamp.ofEpochMilli(delegate.toEpochMilli)
+    def toTimestamp: Timestamp =
+      JavaTimestamp.ofEpochMilli(instant.toEpochMilli)
+  }
+
+  implicit final class RichZonedDateTime(private val zoned: ZonedDateTime) extends AnyVal
+  {
+    def toTimestamp: Timestamp =
+      zoned.toInstant.toTimestamp
   }
 
   implicit final class AsScalaDuration(private val underlying: Duration) extends AnyVal

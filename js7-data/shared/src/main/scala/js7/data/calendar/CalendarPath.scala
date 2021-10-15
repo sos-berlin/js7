@@ -1,0 +1,22 @@
+package js7.data.calendar
+
+import js7.base.annotation.javaApi
+import js7.data.item.UnsignedSimpleItemPath
+
+final case class CalendarPath private(string: String) extends UnsignedSimpleItemPath
+{
+  protected type Self = CalendarPath
+
+  val companion = CalendarPath
+}
+
+object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]
+{
+  def itemTypeName = Calendar.typeName
+
+  protected def unchecked(string: String) = new CalendarPath(string)
+
+  @javaApi
+  def of(validName: String): CalendarPath =
+    apply(validName)
+}
