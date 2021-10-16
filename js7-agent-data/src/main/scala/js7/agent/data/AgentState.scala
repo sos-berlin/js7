@@ -210,6 +210,7 @@ with JournaledState[AgentState]
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
         pathToJobResource.iterator ++
+          pathToCalendar.iterator ++
           allFileWatchesState.pathToFileWatchState.view.mapValues(_.fileWatch).iterator ++
           idToWorkflow.iterator
     }

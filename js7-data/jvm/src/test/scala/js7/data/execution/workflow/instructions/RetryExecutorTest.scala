@@ -56,6 +56,8 @@ object RetryExecutorTest
     val stateView = new StateView.ForTest {
       def isAgent = false
 
+      def keyToItem = throw new NotImplementedError
+
       override def idToOrder = Map(order.id -> order)
 
       override def instruction(position: WorkflowPosition) =

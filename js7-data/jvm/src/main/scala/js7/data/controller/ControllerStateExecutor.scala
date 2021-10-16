@@ -16,6 +16,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeleted, ItemDetachable
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
+import js7.data.job.JobResource
 import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
@@ -32,7 +33,7 @@ final case class ControllerStateExecutor private(
   (implicit instructionExecutorService: InstructionExecutorService)
 {
   import ControllerStateExecutor.convertImplicitly
-  import controllerState.{controllerId, pathToJobResource}
+  import controllerState.controllerId
 
   // Same clock time for a chunk of operations
   private lazy val nowScope = NowScope()
@@ -64,7 +65,7 @@ final case class ControllerStateExecutor private(
       for {
         workflow <- controllerState.repo.pathTo[Workflow](order.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
-          order, controllerId, pathToJobResource, nowScope)
+          order, controllerId, controllerState.keyTo(JobResource), nowScope)
       } yield Some(
         order.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
 

@@ -51,10 +51,12 @@ final class ControllerStateTest extends AsyncFreeSpec
   }
 
   "pathToSimpleItem" in {
-    val sum = (controllerState.pathToAgentRefState ++
-      controllerState.pathToLockState ++
-      controllerState.allOrderWatchesState.pathToOrderWatchState).map(_._2.item) ++
-      controllerState.pathToSignedSimpleItem.values.map(_.value)
+    val sum =
+      controllerState.pathToCalendar.values ++
+        controllerState.pathToAgentRefState.map(_._2.item) ++
+        controllerState.pathToLockState.map(_._2.item) ++
+        controllerState.allOrderWatchesState.pathToOrderWatchState.map(_._2.item) ++
+        controllerState.pathToSignedSimpleItem.values.map(_.value)
     assert(controllerState.pathToSimpleItem.toMap == sum.toKeyedMap(_.key))
   }
 
@@ -336,7 +338,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(controllerState.keyToItem.get(workflow.id) == Some(workflow))
 
     assert(controllerState.keyToItem.keySet == Set(
-      jobResource.path, agentRef.path, lock.path, fileWatch.path, workflow.id))
+      jobResource.path, calendar.path, agentRef.path, lock.path, fileWatch.path, workflow.id))
   }
 }
 

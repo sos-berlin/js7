@@ -20,6 +20,7 @@ import js7.data.workflow.instructions.{Cycle, CycleTest, ImplicitEnd, Schedule}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.MapView
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 
@@ -369,7 +370,9 @@ final class CycleExecutorTest extends AnyFreeSpec with CycleTester
       def isAgent = true
 
       override def idToWorkflow = Map(workflow.id -> workflow)
-      override def pathToCalendar = Map(calendar.path -> calendar)
+
+      def keyToItem =
+        MapView(calendar.path -> calendar)
     }
 
     def executorService(ts: Timestamp) =
@@ -462,9 +465,11 @@ object CycleExecutorTest
       def isAgent = true
 
       override def idToWorkflow = Map(workflow.id -> workflow)
-      override def pathToCalendar = Map(
-        calendar.path -> calendar,
-        zeroOffsetCalendar.path -> zeroOffsetCalendar)
+
+      def keyToItem =
+        MapView(
+          calendar.path -> calendar,
+          zeroOffsetCalendar.path -> zeroOffsetCalendar)
     }
 
     private val executorService = new InstructionExecutorService(clock)

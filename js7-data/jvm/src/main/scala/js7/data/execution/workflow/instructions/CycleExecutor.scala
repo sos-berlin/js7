@@ -95,7 +95,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       workflow <- state.idToWorkflow.checked(order.workflowId)
       calendarPath <- workflow.calendarPath
         .toChecked(Problem("Cycle instruction requires Workflow.calendarPath"))
-      calendar <- state.pathToCalendar.checked(calendarPath)
+      calendar <- state.keyTo(Calendar).checked(calendarPath)
       calculator <- ScheduleCalculator.checked(cycle.schedule, calendar.timezone)
     } yield calendar -> calculator
 }

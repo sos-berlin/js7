@@ -6,10 +6,10 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.board.{Board, BoardPath, BoardState}
-import js7.data.calendar.{Calendar, CalendarPath}
+import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
-import js7.data.job.{JobKey, JobResource, JobResourcePath}
+import js7.data.item.{InventoryItem, InventoryItemKey, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
+import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.FailedInFork
 import js7.data.order.{Order, OrderId}
@@ -19,6 +19,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
+import scala.collection.MapView
 import scala.reflect.ClassTag
 
 trait StateView
@@ -31,18 +32,27 @@ trait StateView
 
   def idToWorkflow: PartialFunction[WorkflowId, Workflow]
 
+  def keyToItem: MapView[InventoryItemKey, InventoryItem]
+
+  final lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
+    keyToItem.asInstanceOf[MapView[SimpleItemPath, SimpleItem]]
+      .filter(_._2.isInstanceOf[SimpleItem])
+
+  lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
+    keyToItem
+      .filter(_._2.isInstanceOf[UnsignedSimpleItem])
+      .asInstanceOf[MapView[UnsignedSimpleItemPath, UnsignedSimpleItem]]
+
+  final def keyTo[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
+    keyToItem
+      .filter { case (_, v) => I.cls.isAssignableFrom(v.getClass) }
+      .asInstanceOf[MapView[I.Key, I]]
+
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
 
   def pathToLockState: PartialFunction[LockPath, LockState]
 
-  final def pathToBoard: PartialFunction[BoardPath, Board] =
-    pathToBoardState.map(_.board)
-
   def pathToBoardState: PartialFunction[BoardPath, BoardState]
-
-  def pathToCalendar: PartialFunction[CalendarPath, Calendar]
-
-  def pathToJobResource: PartialFunction[JobResourcePath, JobResource]
 
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
     for {
@@ -96,7 +106,7 @@ trait StateView
     for (orderScopes <- toOrderScopes(order)) yield {
       val nowScope = NowScope(now)
       orderScopes.pureOrderScope |+| nowScope |+|
-        JobResourceScope(pathToJobResource,
+        JobResourceScope(keyTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
     }
 
@@ -121,16 +131,14 @@ object StateView
     idToOrder: PartialFunction[OrderId, Order[Order.State]] = new NotImplementedMap,
     idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
     pathToLockState: PartialFunction[LockPath, LockState] = new NotImplementedMap,
-    pathToBoardState: PartialFunction[BoardPath, BoardState] = new NotImplementedMap,
-    pathToCalendar: PartialFunction[CalendarPath, Calendar] = new NotImplementedMap
-  ) = {
+    pathToBoardState: PartialFunction[BoardPath, BoardState] = new NotImplementedMap)
+  = {
     val isAgent_ = isAgent
     val controllerId_ = controllerId
     val idToOrder_ = idToOrder
     val idToWorkflow_ = idToWorkflow
     val pathToLockState_ = pathToLockState
     val pathToBoardState_ = pathToBoardState
-    val pathToCalendar_ = pathToCalendar
 
     new StateView {
       val isAgent = isAgent_
@@ -138,14 +146,23 @@ object StateView
       val idToWorkflow = idToWorkflow_
       val pathToLockState = pathToLockState_
       val pathToBoardState = pathToBoardState_
-      val pathToCalendar = pathToCalendar_
       val controllerId = controllerId_
 
       def workflowPathToId(workflowPath: WorkflowPath) =
         Left(Problem("workflowPathToId is not implemented"))
 
-      def pathToJobResource =
-        Map.empty
+      lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
+        new MapView[InventoryItemKey, InventoryItem] {
+          def get(itemKey: InventoryItemKey): Option[InventoryItem] =
+            itemKey match {
+              case WorkflowId.as(id) => idToWorkflow.get(id)
+              case path: LockPath => pathToLockState.get(path).map(_.item)
+              case path: BoardPath => pathToBoardState.get(path).map(_.item)
+            }
+
+          def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
+            throw new NotImplementedError
+        }
     }
   }
 
@@ -165,12 +182,6 @@ object StateView
 
     def pathToBoardState: PartialFunction[BoardPath, BoardState] =
       new NotImplementedMap[BoardPath, BoardState]
-
-    def pathToCalendar: PartialFunction[CalendarPath, Calendar] =
-      new NotImplementedMap[CalendarPath, Calendar]
-
-    def pathToJobResource: PartialFunction[JobResourcePath, JobResource] =
-      new NotImplementedMap[JobResourcePath, JobResource]
 
     val controllerId = ControllerId("CONTROLLER")
   }

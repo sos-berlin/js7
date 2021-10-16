@@ -10,11 +10,11 @@ import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
-import js7.data.board.BoardPath
+import js7.data.board.{Board, BoardPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.lock.LockPath
+import js7.data.lock.{Lock, LockPath}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.Value
@@ -92,8 +92,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a Lock item in the current version. */
   @Nonnull
   def pathToLock(@Nonnull lockPath: LockPath): VEither[Problem, JLock] =
-    asScala.pathToLockState.checked(lockPath)
-      .map(_.lock)
+    asScala.keyTo(Lock).checked(lockPath)
       .map(JLock.apply)
       .toVavr
 
@@ -107,8 +106,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a Board item. */
   @Nonnull
   def pathToBoard(@Nonnull boardPath: BoardPath): VEither[Problem, JBoard] =
-    asScala.pathToBoardState.checked(boardPath)
-      .map(_.board)
+    asScala.keyTo(Board).checked(boardPath)
       .map(JBoard.apply)
       .toVavr
 
@@ -122,27 +120,22 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a JFileWatch. */
   @Nonnull
   def pathToFileWatch(@Nonnull path: OrderWatchPath): VEither[Problem, JFileWatch] =
-    asScala.pathToSimpleItem.checked(path)
-      .flatMap {
-        case o: FileWatch => Right(JFileWatch(o))
-        case _ => Left(Problem(s"Path '$path' does not denote a FileWatch"))
-      }
+    asScala.keyTo(FileWatch).checked(path)
+      .map(JFileWatch(_))
       .toVavr
 
   @Nonnull
   def fileWatches(): java.util.Collection[JFileWatch] =
-    asScala.pathToSimpleItem.values
-      .flatMap {
-        case o: FileWatch => JFileWatch(o) :: Nil
-        case _ => Nil
-      }
+    asScala.keyTo(FileWatch).values
+      .view
+      .map(JFileWatch(_))
       .asJavaCollection
 
   /** Looks up a JJobResource. */
   @Nonnull
   def pathToJobResource(@Nonnull path: JobResourcePath): VEither[Problem, JJobResource] =
-    asScala.pathToSimpleItem.checked(path)
-      .map(o => JJobResource(o.asInstanceOf[JobResource]))
+    asScala.keyTo(JobResource).checked(path)
+      .map(JJobResource(_))
       .toVavr
 
   @Nonnull

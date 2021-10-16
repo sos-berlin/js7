@@ -263,6 +263,7 @@ final class AgentStateTest extends AsyncFreeSpec
     assert(!agentState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
     assert(agentState.keyToItem.get(workflow.id) == Some(workflow))
     assert(agentState.keyToItem.get(jobResource.path) == Some(jobResource))
-    assert(agentState.keyToItem.keySet == Set(workflow.id, jobResource.path, fileWatch.path))
+    assert(agentState.keyToItem.keySet ==
+      Set(workflow.id, jobResource.path, calendar.path, fileWatch.path))
   }
 }

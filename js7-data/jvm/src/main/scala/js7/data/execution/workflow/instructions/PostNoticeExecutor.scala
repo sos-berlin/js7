@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import cats.syntax.traverse._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.data.board.Board
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted, OrderNoticeRead}
 import js7.data.state.StateView
@@ -22,7 +23,7 @@ extends EventInstructionExecutor
         if (order.isState[Order.Ready]) {
           import instruction.boardPath
           for {
-            board <- state.pathToBoard.checked(boardPath)
+            board <- state.keyTo(Board).checked(boardPath)
             orderScope <- state.toImpureOrderExecutingScope(order, clock.now())
             notice <- board.postingOrderToNotice(orderScope)
             boardState <- state.pathToBoardState.checked(boardPath)

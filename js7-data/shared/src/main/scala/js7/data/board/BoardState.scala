@@ -2,14 +2,18 @@ package js7.data.board
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.data.item.InventoryItemState
 import js7.data.order.OrderId
 import monix.reactive.Observable
 
 final case class BoardState(
   board: Board,
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty)
+extends InventoryItemState
 {
   def path = board.path
+
+  def item = board
 
   def toSnapshotObservable: Observable[Any] = {
     board +: Observable.fromIterable(notices.map(Notice.Snapshot(board.path, _)))

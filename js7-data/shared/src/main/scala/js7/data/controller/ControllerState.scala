@@ -27,7 +27,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, Item
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, VersionedEvent, VersionedItemId_, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
@@ -537,11 +537,11 @@ with JournaledState[ControllerState]
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
         itemKey match {
           case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
-          case path: SimpleItemPath => pathToSimpleItem.get(path)
+          case path: SimpleItemPath => keyToItemFunc(path).collect { case o: SimpleItem => o }
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
-        pathToSimpleItem.iterator ++
+        simpleItems.view.map(item => item.key -> item).iterator ++
           repo.items.map(item => item.id -> item)
     }
 
@@ -549,22 +549,17 @@ with JournaledState[ControllerState]
     new MapView[InventoryItemPath, InventoryItem] {
       def get(path: InventoryItemPath): Option[InventoryItem] = {
         path match {
-          case path: SimpleItemPath => pathToSimpleItem.get(path)
-          case path: VersionedItemPath => repo.pathToItem(path).toOption
+          case path: SimpleItemPath =>
+            keyToItemFunc(path) collect { case o: SimpleItem => o }
+
+          case path: VersionedItemPath =>
+            repo.pathToItem(path).toOption
         }
       }
 
       def iterator: Iterator[(InventoryItemPath, InventoryItem)] =
-        pathToSimpleItem.iterator ++ repo.currentItems.iterator.map(o => o.path -> o)
-    }
-
-  lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
-    new MapView[SimpleItemPath, SimpleItem] {
-      def get(path: SimpleItemPath): Option[SimpleItem] =
-        keyToItemFunc(path) collect { case o: SimpleItem => o }
-
-      def iterator: Iterator[(SimpleItemPath, SimpleItem)] =
-        simpleItems.view.map(item => item.key -> item).iterator
+        simpleItems.view.map(item => item.key -> item).iterator ++
+          repo.currentItems.iterator.map(o => o.path -> o)
     }
 
   def items: View[InventoryItem] =
@@ -574,12 +569,12 @@ with JournaledState[ControllerState]
     unsignedSimpleItems ++ pathToSignedSimpleItem.values.view.map(_.value)
 
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
-    (pathToAgentRefState.view ++
-      pathToLockState ++
-      allOrderWatchesState.pathToOrderWatchState
-    ).map(_._2.item)
+    pathToCalendar.values.view ++
+      (pathToAgentRefState.view ++
+        pathToLockState ++
+        allOrderWatchesState.pathToOrderWatchState
+      ).map(_._2.item)
 
-  lazy val pathToJobResource = keyTo(JobResource)
 
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow] {
@@ -597,28 +592,6 @@ with JournaledState[ControllerState]
   def workflowPathToId(workflowPath: WorkflowPath) =
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
-
-  def keyTo[I <: SignableSimpleItem](I: SignableSimpleItem.Companion[I]): MapView[I.Key, I] =
-    new MapView[I.Key, I] {
-      def get(key: I.Key) =
-        pathToSignedSimpleItem.get(key).map(_.value.asInstanceOf[I])
-
-      def iterator =
-        pathToSignedSimpleItem.iterator
-          .collect { case (key: I.Key @unchecked, Signed(item: I @unchecked, _))
-            if item.companion eq I =>
-              key -> item
-          }
-    }
-
-  lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
-    new MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] {
-      def get(path: UnsignedSimpleItemPath): Option[UnsignedSimpleItem] =
-        keyToItemFunc(path) collect { case o: UnsignedSimpleItem => o }
-
-      def iterator: Iterator[(UnsignedSimpleItemPath, UnsignedSimpleItem)] =
-        unsignedSimpleItems.map(item => item.path -> item).iterator
-    }
 
   lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
     new MapView[SignableItemKey, Signed[SignableItem]] {
@@ -645,7 +618,7 @@ with JournaledState[ControllerState]
       case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
-      case path: BoardPath => pathToBoard.get(path)
+      case path: BoardPath => pathToBoardState.get(path).map(_.item)
       case path: CalendarPath => pathToCalendar.get(path)
       case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
     }

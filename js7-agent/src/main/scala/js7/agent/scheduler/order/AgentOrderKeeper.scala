@@ -710,9 +710,7 @@ with Stash
 
       def pathToBoardState = persistence.currentState.pathToBoardState
 
-      def pathToJobResource = persistence.currentState.pathToJobResource
-
-      def pathToCalendar = persistence.currentState.pathToCalendar
+      def keyToItem = persistence.currentState.keyToItem
     })
 
   override def toString = "AgentOrderKeeper"

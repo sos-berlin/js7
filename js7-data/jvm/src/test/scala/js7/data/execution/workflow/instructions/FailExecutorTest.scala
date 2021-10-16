@@ -11,6 +11,7 @@ import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.MapView
 
 /**
   * @author Joacim Zschimmer
@@ -21,6 +22,8 @@ final class FailExecutorTest extends AnyFreeSpec
 
   private lazy val stateView = new StateView.ForTest {
     val isAgent = false
+
+    def keyToItem = MapView.empty
 
     override val idToOrder = Map(
       TestOrder.id -> TestOrder,

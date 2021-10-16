@@ -17,7 +17,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, Item
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
@@ -27,7 +27,7 @@ import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, O
 import js7.data.state.StateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import scala.collection.mutable
+import scala.collection.{MapView, mutable}
 
 final class ControllerStateBuilder
 extends JournaledStateBuilder[ControllerState]
@@ -72,6 +72,9 @@ with StateView
   val pathToBoardState = _pathToBoardState
   val pathToCalendar = _pathToCalendar
   def controllerId = controllerMetaState.controllerId
+
+  lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
+    throw new NotImplementedError("ControllerStateBuilder.keyToItem")
 
   protected def onInitializeState(state: ControllerState): Unit = {
     standards = state.standards
@@ -419,7 +422,4 @@ with StateView
   def journalState = standards.journalState
 
   def clusterState = standards.clusterState
-
-  def pathToJobResource =
-    throw new NotImplementedError("ControllerStateBuilder.pathToJobResource")
 }
