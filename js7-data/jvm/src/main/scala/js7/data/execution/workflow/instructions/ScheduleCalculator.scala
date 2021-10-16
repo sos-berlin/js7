@@ -70,7 +70,7 @@ extends ScheduleSimulator
             case Continuous(pause, limit) =>
               val index = if (first) 0 else cycleState.index
               limit.forall(index < _) ? {
-                val next = (now.max(interval.start) + pause * (!first).toInt)
+                val next = now.max(interval.start) + pause * (!first).toInt
                 if (next <= now) Timestamp.Epoch else next
               }
           }

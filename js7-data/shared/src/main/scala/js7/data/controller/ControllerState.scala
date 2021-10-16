@@ -184,7 +184,7 @@ with JournaledState[ControllerState]
                         board = board)))
 
                 case calendar: Calendar =>
-                  for (calendar <- pathToCalendar.checked(calendar.path))
+                  for (_ <- pathToCalendar.checked(calendar.path))
                     yield copy(
                       pathToCalendar = pathToCalendar + (calendar.path -> calendar))
               }
