@@ -52,8 +52,6 @@ final class CalendarTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private implicit val zone = CalendarTest.zone
 
-  private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
-
   "Reject invalid Calendar" in {
     // Falsches Datumsformat
     // Falscher dateOffset

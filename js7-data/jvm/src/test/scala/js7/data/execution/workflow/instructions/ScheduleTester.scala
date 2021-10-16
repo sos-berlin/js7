@@ -9,16 +9,16 @@ import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime._
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
-import js7.data.execution.workflow.instructions.CycleTester._
+import js7.data.execution.workflow.instructions.ScheduleTester._
 import js7.data.order.CycleState
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
-trait CycleTester extends AnyFreeSpec
+trait ScheduleTester extends AnyFreeSpec
 {
   /** For testing the example in `js7.data.workflow.instructions.CycleTest`. */
-  protected final def addStandardCycleTests(
+  protected final def addStandardScheduleTests(
     testDay: (TimeInterval, FiniteDuration, ZoneId, Seq[(Timestamp, CycleState)], Timestamp) => Unit)
     (implicit pos: source.Position)
   : Unit =
@@ -37,7 +37,7 @@ trait CycleTester extends AnyFreeSpec
     }
 }
 
-object CycleTester
+object ScheduleTester
 {
   implicit val zoneId = ZoneId.of("Europe/Mariehamn")
   private val logger = Logger[this.type]

@@ -14,7 +14,7 @@ import js7.data.workflow.instructions.ScheduleTest.exampleSchedule
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
-final class ScheduleCalculatorTest extends AnyFreeSpec with CycleTester
+final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
 {
   coupleScribeWithSlf4j()
 
@@ -244,8 +244,8 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with CycleTester
     }
   }
 
-  "CycleTest example" - {
-    addStandardCycleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
+  "ScheduleTest example" - {
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
       val result =
         ScheduleCalculator(exampleSchedule, zone)
           .simulate(timeInterval, limit = 1000, jobExecutionTime = cycleDuration)

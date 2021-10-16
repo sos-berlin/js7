@@ -7,6 +7,7 @@ import javax.inject.Singleton
 import js7.base.configutils.Configs._
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
+import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, AlwaysPeriod, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -14,7 +15,7 @@ import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventSeq, KeyedEvent, Stamped}
-import js7.data.execution.workflow.instructions.CycleTester
+import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, Outcome}
@@ -24,16 +25,17 @@ import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest._
-import js7.tests.jobs.EmptyJob
+import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 
-final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with CycleTester
+final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with ScheduleTester
 {
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(calendar)
+  protected val items = Seq(calendar, cycleTestExampleCalendar, cycleTestExampleWorkflow)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -76,6 +78,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     val workflow = addWorkflow(Workflow(
       WorkflowPath("SIMPLE-LOOP"),
       Seq(
+        EmptyJob.execute(agentPath),  // Let start Cycle at Agent
         Cycle(
           Schedule(Seq(
             Scheme(
@@ -92,29 +95,33 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       CycleState(end = until, schemeIndex = 0, index = 1, next = Timestamp.Epoch)
     assert(events == Seq(
       OrderAdded(workflow.id),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
+      OrderProcessingStarted,
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(1)),
+
       OrderCyclingPrepared(cycleState),
 
       OrderCycleStarted,
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeeded),
-      OrderMoved(Position(0) / "cycle+end=1633122000000,i=1" % 1),
+      OrderMoved(Position(1) / "cycle+end=1633122000000,i=1" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 2))),
 
       OrderCycleStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeeded),
-      OrderMoved(Position(0) / "cycle+end=1633122000000,i=2" % 1),
+      OrderMoved(Position(1) / "cycle+end=1633122000000,i=2" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 3))),
 
       OrderCycleStarted,
       OrderProcessingStarted,
       OrderProcessed(Outcome.succeeded),
-      OrderMoved(Position(0) / "cycle+end=1633122000000,i=3" % 1),
+      OrderMoved(Position(1) / "cycle+end=1633122000000,i=3" % 1),
       OrderCycleFinished(None),
-      OrderMoved(Position(1)),
+      OrderMoved(Position(2)),
 
       OrderDetachable,
       OrderDetached,
@@ -359,8 +366,46 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     }
   }
 
-  "Run Cycle on Agent" in {
-    pending // TODO
+  "TestCycle example" - {
+    // Test the js7-data CycleTest JSON example.
+    clock.resetTo(local("2021-10-01T00:00"))
+
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
+      val end = timeInterval.end // ???
+      val expectedCycleStartTimes = expected
+        .map { case (cycleWaitTimestamp, cycleState) =>
+          cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
+        }
+
+      var eventId = eventWatch.lastAddedEventId
+      clock.resetTo(timeInterval.start - 1.s)  // Start the order early
+
+      val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
+      val orderId = OrderId(s"#$orderDate#CycleTesterTest")
+      scribe.debug(s"addOrder $orderId")
+      controllerApi.addOrder(FreshOrder(orderId, cycleTestExampleWorkflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+
+      eventWatch.await[OrderCyclingPrepared](_.key == orderId)
+      val cycleStartedTimes = new VectorBuilder[Timestamp]
+      for (t <- expectedCycleStartTimes) {
+        clock := t  // Difference may be zero, so OrderCycleStarted may already have been emitted
+        val stamped = eventWatch
+          .await[OrderCycleStarted](_.key == orderId, after = eventId)
+          .head
+        cycleStartedTimes += stamped.timestamp
+        eventId = stamped.eventId
+
+        clock += cycleDuration
+        TestJob.continue.runSyncUnsafe()
+        eventId = eventWatch.await[OrderCycleFinished](_.key == orderId, after = eventId)
+          .head.eventId
+      }
+      assert(cycleStartedTimes.result() == expectedCycleStartTimes)
+
+      clock := exitTimestamp
+      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+    }
   }
 
   private def addWorkflow(workflow: Workflow): Workflow = {
@@ -377,12 +422,27 @@ object CycleTest
   private implicit val zone = ZoneId.of("Europe/Mariehamn")
   private val clock = TestAlarmClock(local("2021-10-01T04:00"))
 
-  private val calendar = Calendar(
+  private val calendar = Calendar.jocStandard(
     CalendarPath("CALENDAR"),
-    Timezone("Europe/Mariehamn"),
-    dateOffset = 0.h,  // FIXME Test with dateOffset = 6.h
-    orderIdToDatePattern = "#([^#]+)#.*",
-    periodDatePattern = "yyyy-MM-dd")
+    Timezone(zone.getId),
+    dateOffset = 0.h)
+
+  private val cycleTestExampleCalendar = Calendar.jocStandard(
+    CalendarPath("CycleTest-example"),
+    Timezone(zone.getId),
+    dateOffset = 0.h)  // FIXME Test with dateOffset = 6.h
+
+  private val cycleTestExampleWorkflow =
+    Workflow(WorkflowPath("CycleTest-example"),
+      Seq(
+        js7.data.workflow.instructions.CycleTest.exampleCycle
+          .copy(
+            cycleWorkflow = Workflow.of(
+              TestJob.execute(agentPath)))),
+      calendarPath = Some(cycleTestExampleCalendar.path))
+
+  final class TestJob extends SemaphoreJob(TestJob)
+  object TestJob extends SemaphoreJob.Companion[TestJob]
 
   // Use this Log4j Clock with the properties
   // -Dlog4j2.Clock=js7.tests.CycleTestt$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn

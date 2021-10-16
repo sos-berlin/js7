@@ -24,7 +24,7 @@ import scala.collection.MapView
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 
-final class CycleExecutorTest extends AnyFreeSpec with CycleTester
+final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
 {
   coupleScribeWithSlf4j()
 
@@ -301,7 +301,7 @@ final class CycleExecutorTest extends AnyFreeSpec with CycleTester
   }
 
   "CycleTest example" - {
-    addStandardCycleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
       val expectedCycleStartTimes = expected
         .map { case (cycleWaitTimestamp, cycleState) =>
           cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart

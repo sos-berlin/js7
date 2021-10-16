@@ -41,7 +41,7 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
   val Key = CalendarPath
 
   @TestOnly
-  def standard(
+  def jocStandard(
     path: CalendarPath,
     timezone: Timezone,
     dateOffset: FiniteDuration = Duration.Zero,
