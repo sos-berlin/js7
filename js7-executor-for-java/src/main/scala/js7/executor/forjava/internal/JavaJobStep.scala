@@ -1,7 +1,5 @@
 package js7.executor.forjava.internal
 
-import cats.instances.option._
-import cats.syntax.traverse._
 import io.vavr.control.{Either => VEither}
 import java.util.Optional
 import javax.annotation.Nonnull
@@ -68,12 +66,4 @@ trait JavaJobStep extends JavaWrapper
   def namedValue(name: String): Optional[VEither[Problem, Value]] =
     asScala.processOrder.scope.namedValue(name)
       .map(_.toVavr).toJava
-
-  @Nonnull
-  @deprecated("Use namedValue", ">2.0.0-alpha.20210813")
-  @Deprecated
-  def namedValueDeprecated(name: String): VEither[Problem, Optional[Value]] =
-    asScala.processOrder.scope.namedValue(name)
-      .sequence
-      .map(_.toJava).toVavr
 }

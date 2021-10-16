@@ -42,11 +42,6 @@ object JOrderPredicates
     order => stateClass isAssignableFrom order.state.getClass
   }
 
-  @Deprecated
-  @Nonnull
-  def markedAsRemoveWhenTerminated(@Nonnull value: Boolean): Predicate =
-    markedAsDeleteWhenTerminated(value)
-
   @Nonnull
   def markedAsDeleteWhenTerminated(@Nonnull value: Boolean): Predicate = {
     requireNonNull(value)

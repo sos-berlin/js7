@@ -16,7 +16,6 @@ import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, R
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.node.NodeId
 import js7.data.order.OrderId
-import js7.data_for_java.agent.JAgentRef
 import js7.data_for_java.command.{JCancellationMode, JSuspensionMode}
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
@@ -90,15 +89,6 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
       .runToFuture
       .asJava
   }
-
-  @Deprecated
-  @deprecated("Use updateItems", "2020-12-11")
-  @Nonnull
-  def updateAgentRefs(@Nonnull agentRefs: java.util.List[JAgentRef]): CompletableFuture[VEither[Problem, Void]] =
-    asScala.updateAgentRefs(agentRefs.asScala.map(_.asScala).toVector)
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
 
   /** Update the Items, i.e. add, change or remove/delete simple or versioned items.
     *

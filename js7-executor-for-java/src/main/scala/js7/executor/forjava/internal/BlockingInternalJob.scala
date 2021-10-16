@@ -6,7 +6,6 @@ import java.util.{Map => JMap}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.Lazy
-import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
 import js7.data.value.Value
 import js7.data_for_java.common.JavaUtils.Void
@@ -77,21 +76,10 @@ object BlockingInternalJob
       expression.asScala.eval(asScala.processOrder.scope)
         .toVavr
 
-    /** Value access throws on expression error due to lazy evaluation. */
-    @Deprecated
-    def jobResourceToNameToValue: JMap[JobResourcePath, JMap[String, Value]] =
-      asScala.jobResourceToVariables
-        .view.mapValues(_.mapValues(_.orThrow).toMap.asJava)
-        .to(ListMap).asJava
-
     def jobResourceToNameToCheckedValue: JMap[JobResourcePath, JMap[String, VEither[Problem, Value]]] =
       asScala.jobResourceToVariables
         .view.mapValues(_.mapValues(_.toVavr).toMap.asJava)
         .to(ListMap).asJava
-
-    @Deprecated
-    def byJobResourceAndName(jobResourcePath: JobResourcePath, name: String): VEither[Problem, Value] =
-      jobResourceVariable(jobResourcePath, name)
 
     def jobResourceVariable(jobResourcePath: JobResourcePath, name: String): VEither[Problem, Value] =
       asScala.jobResourceVariable(jobResourcePath, name)

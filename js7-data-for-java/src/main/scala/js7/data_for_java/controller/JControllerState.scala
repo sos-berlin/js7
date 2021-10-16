@@ -75,13 +75,6 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(JAgentRef.apply)
       .toVavr
 
-  /** Looks up an AgentRef VersionedItem in the current version. */
-  @Deprecated
-  @deprecated("Use pathToAgentRef", "2020-12-11")
-  @Nonnull
-  def nameToAgentRef(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRef] =
-    pathToAgentRef(agentPath)
-
   /** Looks up an AgentRefState. */
   @Nonnull
   def pathToAgentRefState(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRefState] =

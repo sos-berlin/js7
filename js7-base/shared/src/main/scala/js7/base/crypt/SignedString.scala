@@ -27,12 +27,6 @@ object SignedString
   def pgp(string: String, signatureString: String): SignedString =
     SignedString(string, GenericSignature("PGP", signatureString))
 
-  @Deprecated
-  @javaApi
-  def x509WithSignedId(string: String, signatureBase64: String, algorithm: String, signerId: SignerId)
-  : SignedString =
-    x509WithSignerId(string, signatureBase64, algorithm, signerId)
-
   @javaApi
   def x509WithSignerId(string: String, signatureBase64: String, algorithm: String, signerId: SignerId)
   : SignedString =

@@ -82,9 +82,6 @@ object JOrder extends JJsonable.Companion[JOrder]
 
   val forked = new StateType(classOf[Forked], classOf[Order.Forked])
   val finished = new StateType(Finished.getClass, Order.Finished.getClass)
-  /** PLEASE USE deleted. */
-  @Deprecated
-  val removed = new StateType(Deleted.getClass, Order.Deleted.getClass)
   val deleted = new StateType(Deleted.getClass, Order.Deleted.getClass)
 
   sealed trait State extends JavaWrapper
