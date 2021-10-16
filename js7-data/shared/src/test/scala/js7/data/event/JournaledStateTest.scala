@@ -70,7 +70,7 @@ private object JournaledStateTest
     val empty = MyState(EventId.BeforeFirst, JournaledState.Standards.empty)
 
     // TODO Refactor this into a separate common trait
-    protected def InventoryItems = throw new NotImplementedError
+    protected def inventoryItems = throw new NotImplementedError
     def snapshotObjectJsonCodec = throw new NotImplementedError
     implicit def keyedEventJsonCodec = throw new NotImplementedError
     def newBuilder() = throw new NotImplementedError

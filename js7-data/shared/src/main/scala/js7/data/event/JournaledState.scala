@@ -143,35 +143,35 @@ object JournaledState
 
     def newBuilder(): JournaledStateBuilder[S]
 
-    protected def InventoryItems: Seq[InventoryItem.Companion_]
+    protected def inventoryItems: Seq[InventoryItem.Companion_]
 
 
     final lazy val ItemPaths: Seq[VersionedItemPath.AnyCompanion] =
-      InventoryItems.collect { case o: VersionedItem.Companion_ => o.Path }
+      inventoryItems.collect { case o: VersionedItem.Companion_ => o.Path }
 
     final lazy val SimpleItems: Seq[SimpleItem.Companion_] =
-      InventoryItems collect { case o: SimpleItem.Companion_ => o }
+      inventoryItems collect { case o: SimpleItem.Companion_ => o }
 
     final lazy val UnsignedSimpleItems: Seq[UnsignedSimpleItem.Companion_] =
-      InventoryItems collect { case o: UnsignedSimpleItem.Companion_ => o }
+      inventoryItems collect { case o: UnsignedSimpleItem.Companion_ => o }
 
     final lazy val SignableItems: Seq[SignableItem.Companion_] =
-      InventoryItems collect { case o: SignableItem.Companion_ => o }
+      inventoryItems collect { case o: SignableItem.Companion_ => o }
 
     final lazy val SignableSimpleItems: Seq[SignableSimpleItem.Companion_] =
-      InventoryItems collect { case o: SignableSimpleItem.Companion_ => o }
+      inventoryItems collect { case o: SignableSimpleItem.Companion_ => o }
 
     final lazy val VersionedItems: Seq[VersionedItem.Companion_] =
-      InventoryItems collect { case o: VersionedItem.Companion_ => o }
+      inventoryItems collect { case o: VersionedItem.Companion_ => o }
 
 
     implicit final lazy val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
-      TypedJsonCodec[InventoryItem](InventoryItems.map(_.subtype): _*)
+      TypedJsonCodec[InventoryItem](inventoryItems.map(_.subtype): _*)
 
     implicit final lazy val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(this)
 
     implicit final lazy val inventoryItemKeyJsonCodec: Codec[InventoryItemKey] =
-      InventoryItemKey.jsonCodec(InventoryItems.map(_.Key))
+      InventoryItemKey.jsonCodec(inventoryItems.map(_.Key))
 
     implicit final lazy val signableItemKeyJsonCodec: Codec[SignableItemKey] =
       SignableItemKey.jsonCodec(SignableItems.map(_.Key))

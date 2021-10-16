@@ -677,7 +677,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
 
   def newBuilder() = new ControllerStateBuilder
 
-  protected val InventoryItems = Seq[InventoryItem.Companion_](
+  protected val inventoryItems = Seq[InventoryItem.Companion_](
     AgentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =

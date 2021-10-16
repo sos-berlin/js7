@@ -278,7 +278,7 @@ private object JournaledStatePersistenceTest
         }
       }
 
-    protected val InventoryItems = Nil
+    protected val inventoryItems = Nil
 
     def snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       TypedJsonCodec[Any](

@@ -229,7 +229,7 @@ object AgentState extends JournaledState.Companion[AgentState]
 
   def newBuilder() = new AgentStateBuilder
 
-  protected val InventoryItems: Seq[InventoryItem.Companion_] =
+  protected val inventoryItems: Seq[InventoryItem.Companion_] =
     Seq(FileWatch, Workflow, JobResource, Calendar)
 
 

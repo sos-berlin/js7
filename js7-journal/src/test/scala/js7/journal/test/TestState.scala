@@ -72,5 +72,5 @@ object TestState extends JournaledState.Companion[TestState]
         KeyedSubtype[JournalEvent],
         KeyedSubtype[TestEvent])
 
-  protected def InventoryItems = Nil
+  protected def inventoryItems = Nil
 }
