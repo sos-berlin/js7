@@ -203,6 +203,7 @@ with JournaledState[AgentState]
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
         itemKey match {
           case path: JobResourcePath => pathToJobResource.get(path)
+          case path: CalendarPath => pathToCalendar.get(path)
           case path: OrderWatchPath => allFileWatchesState.pathToFileWatchState.get(path).map(_.fileWatch)
           case WorkflowId.as(id) => idToWorkflow.get(id)
         }

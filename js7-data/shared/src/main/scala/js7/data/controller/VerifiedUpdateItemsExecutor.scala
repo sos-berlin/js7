@@ -12,8 +12,7 @@ import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.VersionedItemRemoved
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
-import js7.data.orderwatch.OrderWatchPath
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
 import scala.collection.View
 
 final case class VerifiedUpdateItemsExecutor(
@@ -99,12 +98,10 @@ final case class VerifiedUpdateItemsExecutor(
 
   private def simpleItemDeletionEvents(path: SimpleItemPath): View[BasicItemEvent] =
     path match {
-      case path: OrderWatchPath =>
-        if (controllerState.itemToAgentToAttachedState.contains(path))
+      case path: InventoryItemPath.AssignableToAgent
+        if controllerState.itemToAgentToAttachedState.contains(path) =>
           (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
             controllerState.detach(path)
-        else
-          View(ItemDeleted(path))
 
       case _ =>
         View(ItemDeleted(path))

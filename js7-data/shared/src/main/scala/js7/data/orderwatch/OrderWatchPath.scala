@@ -1,9 +1,11 @@
 package js7.data.orderwatch
 
 import js7.base.annotation.javaApi
-import js7.data.item.UnsignedSimpleItemPath
+import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
-final case class OrderWatchPath(string: String) extends UnsignedSimpleItemPath
+final case class OrderWatchPath(string: String)
+extends UnsignedSimpleItemPath
+with InventoryItemPath.AssignableToAgent
 {
   protected type Self = OrderWatchPath
 

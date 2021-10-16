@@ -40,6 +40,18 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
   type Key = CalendarPath
   val Key = CalendarPath
 
+  @TestOnly
+  def standard(
+    path: CalendarPath,
+    timezone: Timezone,
+    dateOffset: FiniteDuration = Duration.Zero,
+    itemRevision: Option[ItemRevision] = None)
+  : Calendar =
+    apply(path, timezone, dateOffset,
+      orderIdToDatePattern = orderIdToDatePatternDefault,
+      periodDatePattern = "yyyy-MM-dd",
+      itemRevision = itemRevision)
+
   def apply(
     path: CalendarPath,
     timezone: Timezone,

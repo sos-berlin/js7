@@ -1,10 +1,11 @@
 package js7.data.workflow
 
 import js7.base.annotation.javaApi
-import js7.data.item.{SourceType, VersionedItemPath}
+import js7.data.item.{InventoryItemPath, SourceType, VersionedItemPath}
 
 final case class WorkflowPath private(string: String)
 extends VersionedItemPath
+with InventoryItemPath.AssignableToAgent
 {
   def companion = WorkflowPath
 }

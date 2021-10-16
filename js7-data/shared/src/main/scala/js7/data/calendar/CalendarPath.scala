@@ -1,9 +1,11 @@
 package js7.data.calendar
 
 import js7.base.annotation.javaApi
-import js7.data.item.UnsignedSimpleItemPath
+import js7.data.item.{InventoryItemPath, UnsignedSimpleItemPath}
 
-final case class CalendarPath private(string: String) extends UnsignedSimpleItemPath
+final case class CalendarPath private(string: String)
+extends UnsignedSimpleItemPath
+with InventoryItemPath.AssignableToAgent
 {
   protected type Self = CalendarPath
 

@@ -34,6 +34,9 @@ extends SignableItemKey
     else
       s"${path.string}$VersionSeparator${versionId.string}"
 
+  def isAssignableToAgent =
+    path.isAssignableToAgent
+
   override def toString =
     if (versionId.isAnonymous)
       path.toString

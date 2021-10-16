@@ -1,9 +1,11 @@
 package js7.data.job
 
 import js7.base.annotation.javaApi
-import js7.data.item.SignableSimpleItemPath
+import js7.data.item.{InventoryItemPath, SignableSimpleItemPath}
 
-final case class JobResourcePath(string: String) extends SignableSimpleItemPath
+final case class JobResourcePath(string: String)
+extends SignableSimpleItemPath
+with InventoryItemPath.AssignableToAgent
 {
   def companion = JobResourcePath
 }

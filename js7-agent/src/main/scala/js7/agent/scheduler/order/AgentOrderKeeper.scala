@@ -39,8 +39,8 @@ import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
-import js7.data.item.{SignableItem, UnsignedSimpleItem}
-import js7.data.job.{JobConf, JobKey, JobResource, JobResourcePath}
+import js7.data.item.{InventoryItemPath, SignableItem, UnsignedSimpleItem}
+import js7.data.job.{JobConf, JobKey, JobResource}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
@@ -325,7 +325,7 @@ with Stash
         .map(_.rightAs(AgentCommand.Response.Accepted))
         .runToFuture
 
-    case DetachItem(itemKey @ (_: JobResourcePath | WorkflowId.as(_))) =>
+    case DetachItem(itemKey @ (_: InventoryItemPath.AssignableToAgent | WorkflowId.as(_))) =>
       if (!persistence.currentState.keyToItem.contains(itemKey)) {
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))

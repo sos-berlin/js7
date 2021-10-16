@@ -4,21 +4,35 @@ import com.google.inject.{AbstractModule, Provides}
 import java.time.ZoneId
 import javax.inject.Singleton
 import js7.base.configutils.Configs._
+import js7.base.problem.Problem
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.DurationRichInt
-import js7.base.time.{AlarmClock, TestAlarmClock, Timezone}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, AlwaysPeriod, TestAlarmClock, Timestamp, Timezone}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
+import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
+import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.VersionId
-import js7.data.workflow.Workflow
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.{CycleState, FreshOrder, OrderId, Outcome}
+import js7.data.workflow.instructions.Schedule.Scheme
+import js7.data.workflow.instructions.{Cycle, Schedule}
+import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CalendarTest._
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
 final class CalendarTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(calendar)
+  protected val items = Seq(calendar, workflow)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -43,31 +57,50 @@ final class CalendarTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Reject invalid Calendar" in {
     // Falsches Datumsformat
     // Falscher dateOffset
-    pending // TODO
-  }
-
-  "Add Calendar" in {
-    pending // TODO
+    val checked = controllerApi.updateUnsignedSimpleItems(Seq(calendar.copy(dateOffset = 24.h)))
+      .await(99.s)
+    assert(checked == Left(Problem("Invalid dateOffset")))
   }
 
   "Use Calendar" in {
-    pending // TODO
+    val eventId = eventWatch.lastAddedEventId
+    val events = controller.runOrder(
+      FreshOrder(OrderId("#2021-10-01#"), workflow.path, deleteWhenTerminated = true))
+    assert(events.map(_.value) == expectedOrderEvents)
+
+    eventWatch.await[ItemAttached](_.event.key == calendar.path, after = eventId)
   }
 
   "Change Calendar" in {
-    pending // TODO
+    val myCalendar = Calendar(
+      CalendarPath("CALENDAR"),
+      Timezone("Europe/Mariehamn"),
+      orderIdToDatePattern = "/([^/]+)/.*",
+      periodDatePattern = "yyyy-MM-dd")
+
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.updateUnsignedSimpleItems(Seq(myCalendar))
+      .await(99.s).orThrow
+    eventWatch.await[UnsignedSimpleItemChanged](_.event.key == calendar.path, after = eventId)
+
+    val events = controller.runOrder(
+      FreshOrder(OrderId("/2021-10-01/"), workflow.path, deleteWhenTerminated = true))
+    assert(events.map(_.value) == expectedOrderEvents)
+
+    eventWatch.await[ItemAttached](_.event.key == calendar.path, after = eventId)
   }
 
   "Delete Workflow and Calendar" in {
-    pending // TODO
-    // Calendar must be detached from Agent
-  }
-
-  private def addWorkflow(workflow: Workflow): Workflow = {
-    val v = versionIdIterator.next()
-    val w = workflow.withVersion(v)
-    directoryProvider.updateVersionedItems(controller, v, Seq(workflow))
-    w
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.updateItems(Observable(
+      DeleteSimple(calendar.path),
+      AddVersion(VersionId("DELETE")),
+      RemoveVersioned(workflow.path))
+    ).await(99.s).orThrow
+    eventWatch.await[ItemDeletionMarked](_.event.key == calendar.path, after = eventId)
+    eventWatch.await[ItemDetachable](_.event.key == calendar.path, after = eventId)
+    eventWatch.await[ItemDetached](_.event.key == calendar.path, after = eventId)
+    eventWatch.await[ItemDeleted](_.event.key == calendar.path, after = eventId)
   }
 }
 
@@ -75,19 +108,42 @@ object CalendarTest
 {
   private val agentPath = AgentPath("AGENT")
   private implicit val zone = ZoneId.of("Europe/Mariehamn")
-  private val clock = TestAlarmClock(local("2021-10-01T04:00"))
+  private val clock = TestAlarmClock(local("2021-10-01T00:00"))
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
     Timezone("Europe/Mariehamn"),
-    dateOffset = 0.h,  // FIXME Test with dateOffset = 6.h
     orderIdToDatePattern = "#([^#]+)#.*",
     periodDatePattern = "yyyy-MM-dd")
 
-  // Use this Log4j Clock with the properties
-  // -Dlog4j2.Clock=js7.tests.CalendarTestt$CalendarTestLog4jClock -Duser.timezone=Europe/Mariehamn
-  final class CalendarTestLog4jClock extends org.apache.logging.log4j.core.util.Clock
-  {
-    def currentTimeMillis() = clock.epochMilli()
-  }
+  private val workflow = Workflow(
+    WorkflowPath("WORKFLOW") ~ "INITIAL",
+    Seq(
+      Cycle(
+        Schedule(Seq(Scheme(
+          AdmissionTimeScheme(Seq(AlwaysPeriod)),
+          Schedule.Continuous(pause = 1.s, limit = Some(1))))),
+        Workflow.of(EmptyJob.execute(agentPath)))),
+    calendarPath = Some(calendar.path))
+
+  private val expectedOrderEvents = Seq(
+    OrderAdded(workflow.id, deleteWhenTerminated = true),
+    OrderStarted,
+    OrderCyclingPrepared(CycleState(
+      next = Timestamp.Epoch,
+      index = 1,
+      schemeIndex = 0,
+      end = local("2021-10-02T00:00"))),
+    OrderCycleStarted,
+    OrderAttachable(agentPath),
+    OrderAttached(agentPath),
+    OrderProcessingStarted,
+    OrderProcessed(Outcome.succeeded),
+    OrderMoved(Position(0) / "cycle+end=1633122000000,i=1" %  1),
+    OrderCycleFinished(None),
+    OrderMoved(Position(1)),
+    OrderDetachable,
+    OrderDetached,
+    OrderFinished,
+    OrderDeleted)
 }
