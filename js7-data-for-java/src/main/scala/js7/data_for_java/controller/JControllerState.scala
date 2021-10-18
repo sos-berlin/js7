@@ -85,41 +85,47 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a Lock item in the current version. */
   @Nonnull
   def pathToLock(@Nonnull lockPath: LockPath): VEither[Problem, JLock] =
-    asScala.keyTo(Lock).checked(lockPath)
+    asScala.keyTo(Lock)
+      .checked(lockPath)
       .map(JLock.apply)
       .toVavr
 
   /** Looks up a LockState. */
   @Nonnull
   def pathToLockState(@Nonnull lockPath: LockPath): VEither[Problem, JLockState] =
-    asScala.pathToLockState.checked(lockPath)
+    asScala.pathToLockState
+      .checked(lockPath)
       .map(JLockState.apply)
       .toVavr
 
   /** Looks up a Board item. */
   @Nonnull
   def pathToBoard(@Nonnull boardPath: BoardPath): VEither[Problem, JBoard] =
-    asScala.keyTo(Board).checked(boardPath)
+    asScala.keyTo(Board)
+      .checked(boardPath)
       .map(JBoard.apply)
       .toVavr
 
   /** Looks up a BoardState. */
   @Nonnull
   def pathToBoardState(@Nonnull boardPath: BoardPath): VEither[Problem, JBoardState] =
-    asScala.pathToBoardState.checked(boardPath)
+    asScala.pathToBoardState
+      .checked(boardPath)
       .map(JBoardState.apply)
       .toVavr
 
   /** Looks up a JFileWatch. */
   @Nonnull
   def pathToFileWatch(@Nonnull path: OrderWatchPath): VEither[Problem, JFileWatch] =
-    asScala.keyTo(FileWatch).checked(path)
+    asScala.keyTo(FileWatch)
+      .checked(path)
       .map(JFileWatch(_))
       .toVavr
 
   @Nonnull
   def fileWatches(): java.util.Collection[JFileWatch] =
-    asScala.keyTo(FileWatch).values
+    asScala.keyTo(FileWatch)
+      .values
       .view
       .map(JFileWatch(_))
       .asJavaCollection
@@ -127,7 +133,8 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a JJobResource. */
   @Nonnull
   def pathToJobResource(@Nonnull path: JobResourcePath): VEither[Problem, JJobResource] =
-    asScala.keyTo(JobResource).checked(path)
+    asScala.keyTo(JobResource)
+      .checked(path)
       .map(JJobResource(_))
       .toVavr
 

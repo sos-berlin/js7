@@ -57,7 +57,7 @@ final class CalendarExecutorTest extends AnyFreeSpec
       .checked(
         CalendarPath("CALENDAR"),
         Timezone(zoneId.toString),
-        offset = 6.h,
+        dateOffset = 6.h,
         orderIdToDatePattern = Calendar.orderIdToDatePatternDefault,
         periodDatePattern = "YYYY-'W'w")
       .orThrow

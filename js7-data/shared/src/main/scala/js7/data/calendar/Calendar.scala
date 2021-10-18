@@ -80,16 +80,16 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
   def checked(
     path: CalendarPath,
     timezone: Timezone,
-    offset: FiniteDuration,
+    dateOffset: FiniteDuration,
     orderIdToDatePattern: String,
     periodDatePattern: String,
     itemRevision: Option[ItemRevision] = None)
   : Checked[Calendar] =
-    if (offset.isNegative)
+    if (dateOffset.isNegative)
       Left(Problem.pure("Invalid Calender arguments"))
     else
       Right(
-        new Calendar(path, timezone, offset, orderIdToDatePattern, periodDatePattern,
+        new Calendar(path, timezone, dateOffset, orderIdToDatePattern, periodDatePattern,
           itemRevision))
 
   implicit val jsonCodec: Codec.AsObject[Calendar] = {
