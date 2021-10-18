@@ -52,10 +52,15 @@ extends HasCloser with Observing with ProvideActorSystem
       userName <- conf.config.optionAs[String]("js7.provider.controller.user")
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
-  protected val httpControllerApi = new AkkaHttpControllerApi(conf.controllerUri, userAndPassword, actorSystem = actorSystem,
-    config = conf.config, keyStoreRef = conf.httpsConfig.keyStoreRef, trustStoreRefs = conf.httpsConfig.trustStoreRefs)
+
+  protected val httpControllerApi = new AkkaHttpControllerApi(
+    conf.controllerUri, userAndPassword,
+    actorSystem = actorSystem,
+    conf.config, conf.httpsConfig)
+
   private val controllerApi = new ControllerApi(Seq(AkkaHttpControllerApi.admissionToApiResource(
     Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))
+
   protected def config = conf.config
 
   private val firstRetryLoginDurations = conf.config.getDurationList("js7.provider.controller.login-retry-delays")

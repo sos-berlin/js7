@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.io.https.HttpsConfig
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -60,8 +61,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected val baseUri = Uri("https://example.com:9999")
       protected val name = "AkkaHttpClientTest"
       protected def uriPrefixPath = "/PREFIX"
-      protected def keyStoreRef = None
-      protected def trustStoreRefs = Nil
+      protected def httpsConfig = HttpsConfig.empty
     }.closeWithCloser
 
     "toCheckedAgentUri, checkAgentUri and apply, failing" - {
@@ -138,8 +138,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected val baseUri = webServer.localUri
       protected val name = "AkkaHttpClientTest"
       protected def uriPrefixPath = ""
-      protected def keyStoreRef = None
-      protected def trustStoreRefs = Nil
+      protected def httpsConfig = HttpsConfig.empty
     }.closeWithCloser
 
     lazy val uri = webServer.localUri
@@ -263,8 +262,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       protected val baseUri = uri
       protected val name = "AkkaHttpClientTest"
       protected def uriPrefixPath = "/PREFIX"
-      protected def keyStoreRef = None
-      protected def trustStoreRefs = Nil
+      protected def httpsConfig = HttpsConfig.empty
     }
     implicit val sessionToken = Task.pure(none[SessionToken])
 

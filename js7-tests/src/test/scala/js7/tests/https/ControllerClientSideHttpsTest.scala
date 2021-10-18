@@ -1,6 +1,7 @@
 package js7.tests.https
 
 import javax.net.ssl.SSLException
+import js7.base.io.https.HttpsConfig
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
@@ -23,8 +24,9 @@ final class ControllerClientSideHttpsTest extends ControllerHttpsStandardTests
 
   "Client without HTTPS certificate is rejected" in {
     autoClosing(new AkkaHttpControllerApi(controller.localUri, None, actorSystem = actorSystem,
-      keyStoreRef = None,
-      trustStoreRefs = ExportedControllerTrustStoreRef :: Nil))
+      httpsConfig = HttpsConfig(
+        keyStoreRef = None,
+        trustStoreRefs = ExportedControllerTrustStoreRef :: Nil)))
     { api =>
       intercept[SSLException] {
         api.overview.await(99.s)

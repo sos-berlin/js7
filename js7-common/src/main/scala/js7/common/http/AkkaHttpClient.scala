@@ -26,7 +26,7 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.HttpsConfig
 import js7.base.log.LogLevel.syntax.LevelLogger
 import js7.base.log.LogLevel.{Debug, Trace}
 import js7.base.log.Logger
@@ -75,16 +75,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   private lazy val chunkSize = http.system.settings.config.memorySizeAsInt("js7.web.chunk-size").orThrow
   @volatile private var closed = false
 
-  protected def keyStoreRef: Option[KeyStoreRef]
-  protected def trustStoreRefs: Seq[TrustStoreRef]
+  protected def httpsConfig: HttpsConfig
 
-  private lazy val httpsConnectionContext = {
-    logger.trace(s"keyStoreRef=$keyStoreRef trustStoreRefs=$trustStoreRefs")
-    if (keyStoreRef.isEmpty && trustStoreRefs.isEmpty)
+  private lazy val httpsConnectionContext =
+    if (httpsConfig.keyStoreRef.isEmpty && httpsConfig.trustStoreRefs.isEmpty)
       http.defaultClientHttpsContext
     else
-      ConnectionContext.httpsClient(loadSSLContext(keyStoreRef, trustStoreRefs))
-  }
+      ConnectionContext.httpsClient(
+        loadSSLContext(httpsConfig.keyStoreRef, httpsConfig.trustStoreRefs))
 
   final def materializer: Materializer = implicitly[Materializer]
 
@@ -407,10 +405,7 @@ object AkkaHttpClient
     protected val baseUri: Uri,
     protected val uriPrefixPath: String,
     protected val actorSystem: ActorSystem,
-    /** To provide a client certificate to server. */
-    protected val keyStoreRef: Option[KeyStoreRef] = None,
-    /** To trust the server's certificate. */
-    protected val trustStoreRefs: Seq[TrustStoreRef] = Nil,
+    protected val httpsConfig: HttpsConfig = HttpsConfig.empty,
     protected val name: String = "")
   extends AkkaHttpClient
 

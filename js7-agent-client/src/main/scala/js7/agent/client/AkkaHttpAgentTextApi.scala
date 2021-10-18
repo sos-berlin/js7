@@ -7,7 +7,7 @@ import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
@@ -31,13 +31,17 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def keyStoreRef = None
 
-  protected lazy val trustStoreRefs = configDirectory.toList.flatMap { configDir =>
-    // Use Controller's keystore as truststore for client access, using also Controller's store-password
-    val controllersConfig = configDirectoryConfig(configDir)
-    KeyStoreRef.fromConfig(controllersConfig, configDir / "private/https-keystore.p12")
-      .map(TrustStoreRef.fromKeyStore)
-      .toOption
-  }
+  protected lazy val httpsConfig =
+    HttpsConfig(
+      keyStoreRef = None,
+      trustStoreRefs = configDirectory.toList
+        .flatMap { configDir =>
+          // Use Controller's keystore as truststore for client access, using also Controller's store-password
+          val controllersConfig = configDirectoryConfig(configDir)
+          KeyStoreRef.clientFromConfig(controllersConfig, configDirectory = configDir)
+            .map(TrustStoreRef.fromKeyStore)
+            .toOption
+        })
 
   protected val baseUri = agentUri
 

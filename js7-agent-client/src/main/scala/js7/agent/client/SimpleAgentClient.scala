@@ -2,7 +2,7 @@ package js7.agent.client
 
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs._
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.HttpsConfig
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
@@ -20,13 +20,13 @@ import js7.common.akkautils.Akkas.newActorSystem
 final class SimpleAgentClient(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
-  protected val keyStoreRef: Option[KeyStoreRef] = None,
-  protected val trustStoreRefs: Seq[TrustStoreRef] = Nil)
+  protected val httpsConfig: HttpsConfig = HttpsConfig.empty)
 extends HasCloser with AgentClient
 {
   protected val name = "SimpleAgentClient"
-  protected val actorSystem = newActorSystem("SimpleAgentClient", config"akka.log-dead-letters = 0")
-    .withCloser(Akkas.terminateAndWait(_, 10.s/*!!!*/))
+  protected val actorSystem =
+    newActorSystem("SimpleAgentClient", config"akka.log-dead-letters = 0")
+      .withCloser(Akkas.terminateAndWait(_, 10.s/*!!!*/))
 
   onClose { super[AgentClient].close() }
 

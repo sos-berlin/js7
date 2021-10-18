@@ -8,7 +8,7 @@ import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.https.KeyStoreRef
+import js7.base.io.https.{HttpsConfig, KeyStoreRef}
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
@@ -136,10 +136,11 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with
     standardUserAndPassword,
     actorSystem,
     config,
-    keyStoreRef = Some(KeyStoreRef(clientKeyStore,
-      storePassword = SecretString("jobscheduler"),
-      keyPassword = SecretString("jobscheduler"))),
-    trustStoreRefs = ExportedControllerTrustStoreRef :: Nil,
+    HttpsConfig(
+      keyStoreRef = Some(KeyStoreRef(clientKeyStore,
+        storePassword = SecretString("jobscheduler"),
+        keyPassword = SecretString("jobscheduler"))),
+    trustStoreRefs = ExportedControllerTrustStoreRef :: Nil)
   ).closeWithCloser
 
   override protected final def agentHttps = true

@@ -4,6 +4,7 @@ import cats.effect.Resource
 import cats.syntax.flatMap._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
+import js7.base.io.https.HttpsConfig
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
@@ -31,8 +32,7 @@ final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
         val baseUri = server.localUri
         def uriPrefixPath = ""
         protected val userAndPassword = Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD")))
-        protected def keyStoreRef = None
-        protected def trustStoreRefs = Nil
+        protected def httpsConfig = HttpsConfig.empty
       }
     }).use(api =>
       api.retryUntilReachable() {

@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.generic.{Completed, SecretString}
+import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
@@ -419,8 +420,7 @@ extends AnyFreeSpec with SessionRouteTester
       def baseUri = localUri
       def uriPrefixPath = ""
       override val standardHeaders = idsOrUserOrHeaders.toOption.toList.flatten ::: super.standardHeaders
-      def keyStoreRef = None
-      def trustStoreRefs = Nil
+      def httpsConfig = HttpsConfig.empty
     }
     autoClosing(api) { _ =>
       val saved = preAuthenticateResult

@@ -52,12 +52,10 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
     private val keyStoreRef: KeyStoreRef = {
       createDirectory(directory / "private")
       KeyStoreResource copyToFile directory / "private" / "https-keystore.p12"
-      KeyStoreRef.fromConfig(
-        config"""
-          js7.web.https.keystore {
-            key-password = "jobscheduler"
-            store-password = "jobscheduler"
-          }""",
+      KeyStoreRef.fromSubconfig(config"""
+          key-password = "jobscheduler"
+          store-password = "jobscheduler"
+          """,
         directory / "private/https-keystore.p12")
       .orThrow
     }

@@ -3,6 +3,7 @@ package js7.core.configuration
 import cats.syntax.semigroup._
 import com.typesafe.config.Config
 import java.nio.file.Path
+import js7.base.configutils.Configs.RichConfig
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.Logger
@@ -24,16 +25,24 @@ trait CommonConfiguration extends WebServerBinding.HasLocalUris
 
   def webServerPorts: Seq[WebServerPort]
 
-  private lazy val keyStoreRef: Checked[KeyStoreRef] =
-    KeyStoreRef.fromConfig(config, default = configDirectory resolve "private/https-keystore.p12")
-
-  final lazy val keyStoreRefOption: Option[KeyStoreRef] =
-    keyStoreRef onProblem (p => logger.debug(s"No keystore: $p"))
+  lazy val httpsConfig =
+    HttpsConfig(
+      keyStoreRef =
+        (if (config.hasPath("js7.web.https.client-keystore"))
+          KeyStoreRef.fromSubconfig(config.getConfig("js7.web.https.client-keystore"),
+            defaultFile = configDirectory.resolve("private/https-client-keystore.p12"))
+        else
+          keyStoreRef
+        ).onProblem(p => logger.debug(s"No keystore: $p")),
+      trustStoreRefs)
 
   final lazy val trustStoreRefs: Seq[TrustStoreRef] =
     TrustStoreRef.fromConfig(config)
 
-  def httpsConfig = HttpsConfig(keyStoreRefOption, trustStoreRefs)
+  private lazy val keyStoreRef: Checked[KeyStoreRef] =
+    config.checkedPath("js7.web.https.keystore")(path =>
+      KeyStoreRef.fromSubconfig(config.getConfig(path),
+        defaultFile = configDirectory.resolve("private/https-keystore.p12")))
 
   final def http: Seq[WebServerBinding.Http] =
     webServerBindings collect { case o: WebServerBinding.Http => o }

@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{Admission, UserAndPassword}
-import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
@@ -17,16 +17,13 @@ class AkkaHttpControllerApi(
   protected final val userAndPassword: Option[UserAndPassword],
   actorSystem: ActorSystem,
   protected final val config: Config = ConfigFactory.empty,
-  /** To provide a client certificate to server. */
-  keyStoreRef: Option[KeyStoreRef] = None,
-  /** To trust the server's certificate. */
-  trustStoreRefs: Seq[TrustStoreRef] = Nil,
+  httpsConfig: HttpsConfig = HttpsConfig.empty,
   override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays,
   name: String = "")
 extends HttpControllerApi with AutoCloseable
 {
   final val httpClient = new AkkaHttpClient.Standard(
-    baseUri, HttpControllerApi.UriPrefixPath, actorSystem, keyStoreRef, trustStoreRefs, name = name)
+    baseUri, HttpControllerApi.UriPrefixPath, actorSystem, httpsConfig, name = name)
 
   def close() = {
     logOpenSession()
@@ -63,7 +60,7 @@ object AkkaHttpControllerApi
     for {
       httpClient <- Resource.fromAutoCloseable(Task(
         new AkkaHttpClient.Standard(uri, HttpControllerApi.UriPrefixPath, actorSystem,
-          httpsConfig.keyStoreRef, httpsConfig.trustStoreRefs, name = name)))
+          httpsConfig, name = name)))
       api <- HttpControllerApi.resource(uri, userAndPassword, httpClient, loginDelays)
     } yield api
 

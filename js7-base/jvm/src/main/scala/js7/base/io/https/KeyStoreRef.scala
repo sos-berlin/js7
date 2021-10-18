@@ -32,11 +32,20 @@ object KeyStoreRef
     keyPassword: SecretString)
   = new KeyStoreRef(file.toUri.toURL, storePassword, keyPassword)
 
-  def fromConfig(config: Config, default: Path): Checked[KeyStoreRef] =
-    config.checkedPath("js7.web.https.keystore.store-password")(path =>
+  def clientFromConfig(config: Config, configDirectory: Path): Checked[KeyStoreRef] =
+    if (config.hasPath("js7.web.https.client-keystore"))
+      fromSubconfig(config.getConfig("js7.web.https.client-keystore"),
+        defaultFile = configDirectory.resolve("private/https-client-keystore.p12"))
+    else
+      config.checkedPath("js7.web.https.keystore")(path =>
+        fromSubconfig(config.getConfig(path),
+          defaultFile = configDirectory.resolve("private/https-keystore.p12")))
+
+  def fromSubconfig(subconfig: Config, defaultFile: Path): Checked[KeyStoreRef] =
+    subconfig.checkedPath("store-password")(path =>
       Right(
         KeyStoreRef(
-          config.as[Path]("js7.web.https.keystore.file", default).toAbsolutePath,
-          storePassword = config.as[SecretString](path),
-          keyPassword = config.as[SecretString]("js7.web.https.keystore.key-password"))))
+          subconfig.as[Path]("file", defaultFile).toAbsolutePath,
+          storePassword = subconfig.as[SecretString](path),
+          keyPassword = subconfig.as[SecretString]("key-password"))))
 }

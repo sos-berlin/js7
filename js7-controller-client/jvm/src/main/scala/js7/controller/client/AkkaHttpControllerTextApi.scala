@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
@@ -41,14 +41,15 @@ extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with 
 
   protected def apiUri(tail: String) = controllerUris.api(tail)
 
-  protected def keyStoreRef = None
-
-  protected lazy val trustStoreRefs = configDirectory
-    .flatMap(dir =>
-      KeyStoreRef.fromConfig(configDirectoryConfig(dir), dir / "private/https-keystore.p12")
-        .toOption)
-    .map(TrustStoreRef.fromKeyStore)
-    .toSeq
+  protected lazy val httpsConfig =
+    HttpsConfig(
+      keyStoreRef = None,
+      trustStoreRefs = configDirectory
+        .flatMap(dir =>
+          KeyStoreRef.clientFromConfig(configDirectoryConfig(dir), configDirectory = dir)
+            .toOption)
+        .map(TrustStoreRef.fromKeyStore)
+        .toSeq)
 
   closer.onClose { super.close() }
 

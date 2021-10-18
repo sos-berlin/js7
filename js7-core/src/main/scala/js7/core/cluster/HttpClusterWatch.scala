@@ -23,7 +23,7 @@ import monix.eval.Task
 final class HttpClusterWatch(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
-  httpsConfig: HttpsConfig,
+  protected val httpsConfig: HttpsConfig,
   protected val actorSystem: ActorSystem)
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 {
@@ -39,10 +39,6 @@ extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
   protected val sessionUri = Uri(s"$baseUri/agent/api/session")
 
   protected def name = "ClusterWatch"
-
-  protected def keyStoreRef = httpsConfig.keyStoreRef
-
-  protected def trustStoreRefs = httpsConfig.trustStoreRefs
 
   private val clusterUri = Uri(s"$baseUri/agent/api/clusterWatch")
 

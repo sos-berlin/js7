@@ -235,8 +235,7 @@ extends ReceiveLoggingActor.WithStash
 
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, agentUserAndPassword, label = agentPath.toString,
-      controllerConfiguration.keyStoreRefOption, controllerConfiguration.trustStoreRefs)(
-      context.system)
+      controllerConfiguration.httpsConfig)(context.system)
 
   def receive = {
     case input: Input with Queueable if sender() == context.parent && !isTerminating =>

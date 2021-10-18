@@ -61,8 +61,7 @@ trait AgentProxyRoute extends ControllerRouteProvider
       agentRef.uri,
       userAndPassword = None,
       label = agentRef.path.toString,
-      controllerConfiguration.keyStoreRefOption,
-      controllerConfiguration.trustStoreRefs)
+      controllerConfiguration.httpsConfig)
     implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
     agentClient
       .sendReceive(HttpRequest(GET,  forwardUri, headers = headers.filter(h => isForwardableHeaderClass(h.getClass))))

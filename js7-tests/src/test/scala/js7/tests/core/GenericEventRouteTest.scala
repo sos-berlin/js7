@@ -4,6 +4,7 @@ import io.circe.Decoder
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs._
+import js7.base.io.https.HttpsConfig
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -112,8 +113,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
     protected val baseUri = server.localUri
     protected val name = "GenericEventRouteTest"
     protected val uriPrefixPath = ""
-    protected def keyStoreRef = None
-    protected def trustStoreRefs = Nil
+    protected def httpsConfig = HttpsConfig.empty
   }
 
   private implicit val noSessionToken: Task[Option[SessionToken]] = Task.pure(None)

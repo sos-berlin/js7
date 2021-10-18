@@ -1,5 +1,6 @@
 package js7.tests
 
+import js7.base.io.https.HttpsConfig
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas
@@ -15,8 +16,7 @@ final class SimpleAkkaHttpClient(
   protected val uriPrefixPath: String) extends AkkaHttpClient
 {
   protected val name = label
-  protected def keyStoreRef = None
-  protected def trustStoreRefs = Nil
+  protected val httpsConfig = HttpsConfig.empty
   implicit val actorSystem = newActorSystem(label)
 
   protected def userAndPassword = None

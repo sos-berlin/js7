@@ -30,8 +30,10 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, workflow)
 
-  private lazy val api = new AkkaHttpControllerApi(controller.localUri, Some(userAndPassword), actorSystem = controller.actorSystem)
-    .closeWithCloser
+  private lazy val api =
+    new AkkaHttpControllerApi(controller.localUri, Some(userAndPassword),
+      actorSystem = controller.actorSystem
+    ).closeWithCloser
 
   override def beforeAll() = {
     directoryProvider.controller.configDir / "private" / "private.conf" ++= """

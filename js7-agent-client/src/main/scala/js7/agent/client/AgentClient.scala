@@ -8,7 +8,7 @@ import js7.agent.data.commands.AgentCommand._
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
-import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
+import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
@@ -29,8 +29,6 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
   protected def httpClient = this
 
   def baseUri: Uri
-  protected def keyStoreRef: Option[KeyStoreRef]
-  protected def trustStoreRefs: Seq[TrustStoreRef]
 
   protected lazy val sessionUri = agentUris.session
   protected lazy val agentUris = AgentUris(baseUri)
@@ -77,13 +75,12 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
 object AgentClient
 {
   def apply(agentUri: Uri, userAndPassword: Option[UserAndPassword], label: String = "Agent",
-    keyStoreRef: => Option[KeyStoreRef] = None, trustStoreRefs: => Seq[TrustStoreRef] = Nil)
+    httpsConfig: => HttpsConfig = HttpsConfig.empty)
     (implicit actorSystem: ActorSystem)
   : AgentClient = {
     val a = actorSystem
     val up = userAndPassword
-    def k = keyStoreRef    // lazy, to avoid reference when not needed (needed only for http)
-    def t = trustStoreRefs  // lazy, to avoid reference when not needed (needed only for http)
+    def h = httpsConfig  // lazy, to avoid reference when not needed (needed only for http)
     new AgentClient {
       override def close(): Unit = {
         logOpenSession()
@@ -93,8 +90,7 @@ object AgentClient
       protected val actorSystem = a
       val baseUri = agentUri
       protected val name = label
-      protected def keyStoreRef = k
-      protected def trustStoreRefs = t
+      protected def httpsConfig = h
       protected def userAndPassword = up
     }
   }
