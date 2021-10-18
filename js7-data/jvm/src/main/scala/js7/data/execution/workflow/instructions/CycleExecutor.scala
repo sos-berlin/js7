@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.event.KeyedEvent
@@ -96,6 +97,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       calendarPath <- workflow.calendarPath
         .toChecked(Problem("Cycle instruction requires Workflow.calendarPath"))
       calendar <- state.keyTo(Calendar).checked(calendarPath)
-      calculator <- ScheduleCalculator.checked(cycle.schedule, calendar.timezone)
+      zone <- calendar.timezone.toZoneId
+      calculator <- ScheduleCalculator.checked(cycle.schedule, zone, calendar.dateOffset)
     } yield calendar -> calculator
 }

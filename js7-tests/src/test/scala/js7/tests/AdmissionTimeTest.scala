@@ -127,7 +127,7 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
   "Late start" in {
     val tooEarly = local("2021-11-08T07:59")
-    assert(!mondayAdmissionTimeScheme.isPermitted(tooEarly, timeZone))
+    assert(!mondayAdmissionTimeScheme.isPermitted(tooEarly, timeZone, dateOffset = 0.s))
     clock := tooEarly
     val orderId = OrderId("🟥")
     controllerApi.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
@@ -137,10 +137,11 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
     // Let the clock skip the permission interval until it is too late.
     // This may happen due to any delay, for example due to other other orders in the job.
-    assert(mondayAdmissionTimeScheme.isPermitted(local("2021-11-08T08:00"), timeZone))
+    assert(mondayAdmissionTimeScheme
+      .isPermitted(local("2021-11-08T08:00"), timeZone, dateOffset = 0.s))
 
     val tooLate = local("2021-11-08T10:00")
-    assert(!mondayAdmissionTimeScheme.isPermitted(tooLate, timeZone))
+    assert(!mondayAdmissionTimeScheme.isPermitted(tooLate, timeZone, dateOffset = 0.s))
     clock := tooLate  // To late
     sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])

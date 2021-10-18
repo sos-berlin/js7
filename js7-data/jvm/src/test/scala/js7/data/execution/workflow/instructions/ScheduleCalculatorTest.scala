@@ -28,7 +28,7 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
           AdmissionTimeScheme(Seq(DailyPeriod(LocalTime.parse("12:00"), duration = 1.h))),
           Ticking(15.minutes))))
 
-    val calculator = ScheduleCalculator.checked(schedule, UTC).orThrow
+    val calculator = ScheduleCalculator.checked(schedule, UTC, dateOffset = 6.h).orThrow
 
     "Periodic" - {
       val cs = CycleState(
@@ -209,7 +209,7 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
         AlwaysPeriod)),
       Periodic(1.h, Seq(0.minute, 30.minute)))))
 
-    val calculator = ScheduleCalculator.checked(schedule, zone).orThrow
+    val calculator = ScheduleCalculator.checked(schedule, zone, dateOffset = 0.s).orThrow
 
     "Winter to summer" in {
       val times = calculator
@@ -247,7 +247,7 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
   "ScheduleTest example" - {
     addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
       val result =
-        ScheduleCalculator(exampleSchedule, zone)
+        ScheduleCalculator(exampleSchedule, zone, dateOffset = ScheduleTester.dateOffset)
           .simulate(timeInterval, limit = 1000, jobExecutionTime = cycleDuration)
       assert(result.scheduledSeq
         .map(scheduled => scheduled.arriveAt -> scheduled.cycleState)

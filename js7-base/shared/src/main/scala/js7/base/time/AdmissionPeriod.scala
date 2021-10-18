@@ -26,12 +26,12 @@ extends AdmissionPeriod
   assert(duration <= WeekDuration)
 
   private[time] def dayName: String =
-    WeekdaysNames(dayNumber - 1)
+    WeekdaysNames(dayOffset)
 
-  private[time] def dayNumber: Int =
-    1 + secondOfWeek / DaySeconds
+  def dayOffset: Int =
+    secondOfWeek / DaySeconds
 
-  private def secondOfDay: Int =
+  def secondOfDay: Int =
     secondOfWeek % DaySeconds
 
   override def toString = "WeekdayPeriod(" + dayName + " " +

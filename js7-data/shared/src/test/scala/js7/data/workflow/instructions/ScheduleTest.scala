@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import java.time.DayOfWeek.{FRIDAY, MONDAY, SUNDAY}
+import java.time.DayOfWeek.{SATURDAY, SUNDAY, TUESDAY}
 import java.time.LocalTime
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
@@ -39,11 +39,11 @@ final class ScheduleTest extends AnyFreeSpec
               "periods": [
                 {
                   "TYPE": "WeekdayPeriod",
-                  "secondOfWeek": 7200,
+                  "secondOfWeek": 93600,
                   "duration": 3600
                 }, {
                   "TYPE": "WeekdayPeriod",
-                  "secondOfWeek": 360000,
+                  "secondOfWeek": 446400,
                   "duration": 3600
                 }
               ]
@@ -120,8 +120,8 @@ object ScheduleTest
 
     Scheme(
       AdmissionTimeScheme(Seq(
-        WeekdayPeriod(MONDAY, localTime("02:00"), 1.h),
-        WeekdayPeriod(FRIDAY, localTime("04:00"), 1.h))),
+        WeekdayPeriod(TUESDAY, localTime("02:00"), 1.h),     // Business day monday night
+        WeekdayPeriod(SATURDAY, localTime("04:00"), 1.h))),  // Business day friday night
       Ticking(20.minutes)),
 
     Scheme(

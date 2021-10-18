@@ -36,11 +36,11 @@ final class CycleTest extends AnyFreeSpec
                 "periods": [
                   {
                     "TYPE": "WeekdayPeriod",
-                    "secondOfWeek": 7200,
+                    "secondOfWeek": 93600,
                     "duration": 3600
                   }, {
                     "TYPE": "WeekdayPeriod",
-                    "secondOfWeek": 360000,
+                    "secondOfWeek": 446400,
                     "duration": 3600
                   }
                 ]

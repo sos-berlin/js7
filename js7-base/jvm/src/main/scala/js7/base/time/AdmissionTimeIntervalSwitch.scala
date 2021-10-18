@@ -2,6 +2,7 @@ package js7.base.time
 
 import java.time.ZoneId
 import js7.base.time.AdmissionTimeSchemeForJavaTime.JavaAdmissionTimeSchemeJava
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import monix.execution.cancelables.SerialCancelable
 
@@ -40,7 +41,7 @@ final class AdmissionTimeIntervalSwitch(
     admissionTimeScheme.fold(false)(admissionTimeScheme =>
       _currentTimeInterval.fold(false)(admissionInterval =>
         admissionInterval.endsBefore(now) && {
-          val next = admissionTimeScheme.findTimeInterval(now, zone)
+          val next = admissionTimeScheme.findTimeInterval(now, zone, dateOffset = 0.s)
           onSwitch((admissionInterval != TimeInterval.never) ? admissionInterval, next)
           _currentTimeInterval = next
           true

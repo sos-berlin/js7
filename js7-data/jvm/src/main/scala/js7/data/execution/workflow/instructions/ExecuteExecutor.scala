@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import java.time.LocalDate
 import js7.base.time.AdmissionTimeSchemeForJavaTime._
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
 import js7.data.order.Order.{IsFreshOrReady, Processed}
@@ -65,7 +66,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         for {
           admissionTimeScheme <- job.admissionTimeScheme
           localDate <- orderIdToDate(order.id)
-        } yield !admissionTimeScheme.hasPeriodForDay(localDate)
+        } yield !admissionTimeScheme.hasPeriodForDay(localDate, dateOffset = 0.s/*???*/)
       ).getOrElse(false)
 }
 

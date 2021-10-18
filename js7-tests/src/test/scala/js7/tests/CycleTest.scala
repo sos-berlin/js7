@@ -383,7 +383,8 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
       val orderId = OrderId(s"#$orderDate#CycleTesterTest")
       scribe.debug(s"addOrder $orderId")
-      controllerApi.addOrder(FreshOrder(orderId, cycleTestExampleWorkflow.path, deleteWhenTerminated = true))
+      controllerApi
+        .addOrder(FreshOrder(orderId, cycleTestExampleWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
       eventWatch.await[OrderCyclingPrepared](_.key == orderId)
@@ -430,7 +431,7 @@ object CycleTest
   private val cycleTestExampleCalendar = Calendar.jocStandard(
     CalendarPath("CycleTest-example"),
     Timezone(zone.getId),
-    dateOffset = 0.h)  // FIXME Test with dateOffset = 6.h
+    dateOffset = ScheduleTester.dateOffset)
 
   private val cycleTestExampleWorkflow =
     Workflow(WorkflowPath("CycleTest-example"),

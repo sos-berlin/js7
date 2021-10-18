@@ -5,15 +5,18 @@ import java.time.ZoneOffset.UTC
 import java.time.{LocalDateTime, ZoneId}
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime._
-import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.time.JavaTimestamp.specific._
-import js7.base.time.{JavaTimestamp, TimeInterval, Timestamp, Timezone}
+import js7.base.time.{JavaTimestamp, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
+import scala.concurrent.duration._
 
-private[instructions] final class ScheduleCalculator(schedule: Schedule, zone: ZoneId)
+private[instructions] final class ScheduleCalculator(
+  schedule: Schedule,
+  zone: ZoneId,
+  dateOffset: FiniteDuration)
 extends ScheduleSimulator
 {
   def nextCycleState(cycleState: CycleState, now: Timestamp): Option[CycleState] =
@@ -35,7 +38,7 @@ extends ScheduleSimulator
   def maybeRecalcCycleState(cycleState: CycleState, now: Timestamp)
   : Checked[Option[Option[CycleState]]] =
     for (scheme <- schedule.schemes.checked(cycleState.schemeIndex)) yield
-      !scheme.admissionTimeScheme.isPermitted(now max cycleState.next, zone) ?
+      !scheme.admissionTimeScheme.isPermitted(now max cycleState.next, zone, dateOffset) ?
         nextCycleState(cycleState, now)
 
   /** Returns schemeIndex and Timestamp. */
@@ -43,7 +46,7 @@ extends ScheduleSimulator
     schedule.schemes.view.zipWithIndex
       // For each Scheme
       .flatMap { case (scheme, schemeIndex) =>
-        for (interval <- scheme.admissionTimeScheme.findTimeInterval(now, zone))
+        for (interval <- scheme.admissionTimeScheme.findTimeInterval(now, zone, dateOffset))
           yield (interval, scheme.repeat, schemeIndex)
       }
       // For each current or next TimeInterval in Schemes
@@ -118,7 +121,7 @@ extends ScheduleSimulator
   def findTimeInterval(schemeIndex: Int, now: Timestamp): Checked[Option[TimeInterval]] =
     for (scheme <- schedule.schemes.checked(schemeIndex)) yield
       scheme.admissionTimeScheme
-        .findTimeInterval(now, zone)
+        .findTimeInterval(now, zone, dateOffset)
 }
 
 object ScheduleCalculator
@@ -126,15 +129,13 @@ object ScheduleCalculator
   private val monday1 = LocalDateTime.parse("2021-11-01T00:00")
   assert(monday1.getDayOfWeek == MONDAY)
 
-  def apply(schedule: Schedule, zone: ZoneId) =
-    checked(schedule, zone).orThrow
+  def apply(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration) =
+    checked(schedule, zone, dateOffset).orThrow
 
-  private[instructions] def checked(cycle: Schedule, timezone: Timezone): Checked[ScheduleCalculator] =
-    for {
-      zone <- timezone.toZoneId
-      calculator <- checked(cycle, zone)
-    } yield calculator
-
-  private[instructions] def checked(schedule: Schedule, zone: ZoneId): Checked[ScheduleCalculator] =
-    Right(new ScheduleCalculator(schedule, zone))
+  private[instructions] def checked(
+    schedule: Schedule,
+    zone: ZoneId,
+    dateOffset: FiniteDuration)
+  : Checked[ScheduleCalculator] =
+    Right(new ScheduleCalculator(schedule, zone, dateOffset))
 }

@@ -321,7 +321,7 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
           Seq(
             CycleTest.exampleCycle),
           timeZone = Timezone(zone.getId),
-          calendarPath = Some(zeroOffsetCalendar.path)),  // TODO check dateOffset != 0
+          calendarPath = Some(calendar.path)),
         clock)
       val builder = new VectorBuilder[Timestamp]
 
@@ -452,12 +452,7 @@ object CycleExecutorTest
   private val calendar = Calendar.daily(
     CalendarPath("CALENDAR"),
     Timezone(zone.toString),
-    dateOffset = 6.h)
-
-  private val zeroOffsetCalendar = Calendar.daily(
-    CalendarPath("CALENDAR-0"),
-    Timezone(zone.toString),
-    dateOffset = 0.h)
+    dateOffset = ScheduleTester.dateOffset)
 
   final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock)
   {
@@ -466,10 +461,7 @@ object CycleExecutorTest
 
       override def idToWorkflow = Map(workflow.id -> workflow)
 
-      def keyToItem =
-        MapView(
-          calendar.path -> calendar,
-          zeroOffsetCalendar.path -> zeroOffsetCalendar)
+      def keyToItem = MapView(calendar.path -> calendar)
     }
 
     private val executorService = new InstructionExecutorService(clock)

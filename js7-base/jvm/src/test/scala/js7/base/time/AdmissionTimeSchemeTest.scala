@@ -1,8 +1,7 @@
 package js7.base.time
 
 import java.time.DayOfWeek.{SUNDAY, TUESDAY}
-import java.time.ZoneOffset.UTC
-import java.time.{LocalDateTime, LocalTime, ZonedDateTime}
+import java.time.{LocalDateTime, LocalTime}
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.time.AdmissionTimeSchemeForJavaTime._
 import js7.base.time.AdmissionTimeSchemeTest._
@@ -121,7 +120,8 @@ object AdmissionTimeSchemeTest
   def findLocalInterval(dateTimeString: String)(implicit admissionTimeScheme: AdmissionTimeScheme)
   : Option[LocalInterval] =
     admissionTimeScheme.findLocalInterval(
-      LocalDateTime.parse(dateTimeString))
+      LocalDateTime.parse(dateTimeString),
+      dateOffset = 0.s)
 
   def localInterval(dateTimeString: String, duration: FiniteDuration): LocalInterval =
     LocalInterval(LocalDateTime.parse(dateTimeString), duration)

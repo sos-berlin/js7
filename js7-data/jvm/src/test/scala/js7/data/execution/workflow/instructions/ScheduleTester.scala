@@ -1,11 +1,12 @@
 package js7.data.execution.workflow.instructions
 
 import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, SUNDAY, THURSDAY, TUESDAY, WEDNESDAY}
-import java.time.{DayOfWeek, ZoneId}
+import java.time.LocalTime.MIDNIGHT
+import java.time.{DayOfWeek, LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import java.util.Locale
 import js7.base.log.Logger
+import js7.base.time.JavaTimeConverters.RichZonedDateTime
 import js7.base.time.JavaTimestamp.local
-import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime._
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
@@ -14,6 +15,7 @@ import js7.data.order.CycleState
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
+import scala.jdk.DurationConverters.ScalaDurationOps
 
 trait ScheduleTester extends AnyFreeSpec
 {
@@ -25,13 +27,16 @@ trait ScheduleTester extends AnyFreeSpec
     for (day <- setting) {
       day.testName in {
         logger.debug("—"*40 + day.testName)
-        assert(day.dayOfWeek == day.start.toLocalDateTime(zoneId).getDayOfWeek,
-          "Weekday does not match start date")
+        assert(day.dayOfWeek == day.date.getDayOfWeek, "Weekday does not match start date")
+        val localStart = LocalDateTime.of(day.date, MIDNIGHT).plus(dateOffset.toJava)
+        val localEnd = localStart.plusDays(1)
+        val start = ZonedDateTime.of(localStart, zone).toTimestamp
+        val end = ZonedDateTime.of(localEnd, zone).toTimestamp
         testDay(
-          TimeInterval(day.start, 24.h),
+          start -> end,
           day.cycleDuration,
-          zoneId,
-          day.expectedCycles.map { case (now, cs) => now -> cs.toCycleState(day.end) },
+          zone,
+          day.expectedCycles.map { case (now, cs) => now -> cs.toCycleState(end) },
           day.exit)
       }
     }
@@ -39,34 +44,33 @@ trait ScheduleTester extends AnyFreeSpec
 
 object ScheduleTester
 {
-  implicit val zoneId = ZoneId.of("Europe/Mariehamn")
+  implicit val zone = ZoneId.of("Europe/Mariehamn")
+  val dateOffset = 6.h  // Business day starts at 6:00 (i.e., switching from monday to tuesday)
   private val logger = Logger[this.type]
 
   private val setting = Seq(
     Day(MONDAY,
-      start = local("2021-10-04T01:00"),
-      end   = local("2021-10-05T01:00"),
+      date = LocalDate.parse("2021-10-04"),
       expectedCycles = Seq(
-        // Ticking
-        local("2021-10-04T01:00") -> CS(scheme = 1, i = 1, next = local("2021-10-04T02:00")),
-        local("2021-10-04T02:00") -> CS(scheme = 1, i = 2, next = local("2021-10-04T02:20")),
-        local("2021-10-04T02:20") -> CS(scheme = 1, i = 3, next = local("2021-10-04T02:40")),
-
         // Periodic
-        local("2021-10-04T02:40") -> CS(scheme = 0, i = 1, next = local("2021-10-04T09:10")),
+        local("2021-10-04T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-04T09:10")),
         local("2021-10-04T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-04T09:15")),
         local("2021-10-04T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-04T09:20")),
         local("2021-10-04T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-04T10:10")),
-        local("2021-10-04T10:10") -> CS(scheme = 0, i = 5, next = local("2021-10-04T10:15"))),
-      exit = local("2021-10-04T10:15")),
+        local("2021-10-04T10:10") -> CS(scheme = 0, i = 5, next = local("2021-10-04T10:15")),
+
+        // Ticking (business day ends 6:00)
+        local("2021-10-04T10:15") -> CS(scheme = 1, i = 1, next = local("2021-10-05T02:00")),
+        local("2021-10-05T02:00") -> CS(scheme = 1, i = 2, next = local("2021-10-05T02:20")),
+        local("2021-10-05T02:20") -> CS(scheme = 1, i = 3, next = local("2021-10-05T02:40"))),
+      exit = local("2021-10-05T02:40")),
 
 
     Day(TUESDAY,
-      start = local("2021-10-05T01:00"),
-      end   = local("2021-10-06T01:00"),
+      date = LocalDate.parse("2021-10-05"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-05T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-05T09:10")),
+        local("2021-10-05T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-05T09:10")),
         local("2021-10-05T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-05T09:15")),
         local("2021-10-05T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-05T09:20")),
         local("2021-10-05T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-05T10:10")),
@@ -74,11 +78,10 @@ object ScheduleTester
       exit = local("2021-10-05T10:15")),
 
     Day(WEDNESDAY,
-      start = local("2021-10-06T01:00"),
-      end   = local("2021-10-07T01:00"),
+      date = LocalDate.parse("2021-10-06"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-06T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-06T09:10")),
+        local("2021-10-06T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-06T09:10")),
         local("2021-10-06T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-06T09:15")),
         local("2021-10-06T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-06T09:20")),
         local("2021-10-06T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-06T10:10")),
@@ -86,11 +89,10 @@ object ScheduleTester
       exit = local("2021-10-06T10:15")),
 
     Day(THURSDAY,
-      start = local("2021-10-07T01:00"),
-      end   = local("2021-10-08T01:00"),
+      date = LocalDate.parse("2021-10-07"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-07T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-07T09:10")),
+        local("2021-10-07T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-07T09:10")),
         local("2021-10-07T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-07T09:15")),
         local("2021-10-07T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-07T09:20")),
         local("2021-10-07T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-07T10:10")),
@@ -98,28 +100,26 @@ object ScheduleTester
       exit = local("2021-10-07T10:15")),
 
     Day(FRIDAY,
-      start = local("2021-10-08T01:00"),
-      end   = local("2021-10-09T01:00"),
+      date = LocalDate.parse("2021-10-08"),
       expectedCycles = Seq(
-        // Ticking
-        local("2021-10-08T01:00") -> CS(scheme = 1, i = 1, next = local("2021-10-08T04:00")),
-        local("2021-10-08T04:00") -> CS(scheme = 1, i = 2, next = local("2021-10-08T04:20")),
-        local("2021-10-08T04:20") -> CS(scheme = 1, i = 3, next = local("2021-10-08T04:40")),
-
         // Periodic
-        local("2021-10-08T04:40") -> CS(scheme = 0, i = 1, next = local("2021-10-08T09:10")),
+        local("2021-10-08T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-08T09:10")),
         local("2021-10-08T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-08T09:15")),
         local("2021-10-08T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-08T09:20")),
         local("2021-10-08T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-08T10:10")),
-        local("2021-10-08T10:10") -> CS(scheme = 0, i = 5, next = local("2021-10-08T10:15"))),
-      exit = local("2021-10-08T10:15")),
+        local("2021-10-08T10:10") -> CS(scheme = 0, i = 5, next = local("2021-10-08T10:15")),
+
+        // Ticking (still business calendar friday)
+        local("2021-10-08T10:15") -> CS(scheme = 1, i = 1, next = local("2021-10-09T04:00")),
+        local("2021-10-09T04:00") -> CS(scheme = 1, i = 2, next = local("2021-10-09T04:20")),
+        local("2021-10-09T04:20") -> CS(scheme = 1, i = 3, next = local("2021-10-09T04:40"))),
+      exit = local("2021-10-09T04:40")),
 
     Day(SATURDAY,
-      start = local("2021-10-09T01:00"),
-      end   = local("2021-10-10T01:00"),
+      date = LocalDate.parse("2021-10-09"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-09T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-09T09:10")),
+        local("2021-10-09T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-09T09:10")),
         local("2021-10-09T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-09T09:15")),
         local("2021-10-09T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-09T09:20")),
         local("2021-10-09T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-09T10:10")),
@@ -127,11 +127,10 @@ object ScheduleTester
       exit = local("2021-10-09T10:15")),
 
     Day(SUNDAY, title = "Continuous, with zero execution time",
-      start = local("2021-10-10T01:00"),
-      end   = local("2021-10-11T01:00"),
+      date = LocalDate.parse("2021-10-10"),
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         local("2021-10-10T09:10") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:15")),
         local("2021-10-10T09:15") -> CS(scheme = 0, i = 3, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:20") -> CS(scheme = 0, i = 4, next = local("2021-10-10T10:10")),
@@ -152,12 +151,11 @@ object ScheduleTester
       exit = local("2021-10-10T20:02")),
 
     Day(SUNDAY, title = "Continuous, with execution time shorter than cycle interval",
-      start = local("2021-10-10T01:00"),
-      end   = local("2021-10-11T01:00"),
+      date = LocalDate.parse("2021-10-10"),
       cycleDuration = 3.minutes,
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         local("2021-10-10T09:13") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:15")),
         local("2021-10-10T09:18") -> CS(scheme = 0, i = 3, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:23") -> CS(scheme = 0, i = 4, next = local("2021-10-10T10:10")),
@@ -176,12 +174,11 @@ object ScheduleTester
       exit = local("2021-10-10T20:11")),
 
     Day(SUNDAY, title = "Continuous, with execution time longer then cycle interval",
-      start = local("2021-10-10T01:00"),
-      end   = local("2021-10-11T01:00"),
+      date = LocalDate.parse("2021-10-10"),
       cycleDuration = 6.minutes,
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         local("2021-10-10T09:16") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:15")),
         local("2021-10-10T09:22") -> CS(scheme = 0, i = 3, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:28") -> CS(scheme = 0, i = 4, next = local("2021-10-10T10:10")),
@@ -199,12 +196,11 @@ object ScheduleTester
       exit = local("2021-10-10T20:20")),
 
     Day(SUNDAY, title = "Continuous, with execution time longer then two times cycle interval",
-      start = local("2021-10-10T01:00"),
-      end   = local("2021-10-11T01:00"),
+      date = LocalDate.parse("2021-10-10"),
       cycleDuration = 11.minutes,
       expectedCycles = Seq(
         // Periodic
-        local("2021-10-10T01:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
+        local("2021-10-10T06:00") -> CS(scheme = 0, i = 1, next = local("2021-10-10T09:10")),
         // skipped        09:21") -> CS(scheme = 0,        next = local("2021-10-10T09:15")),
         local("2021-10-10T09:21") -> CS(scheme = 0, i = 2, next = local("2021-10-10T09:20")),
         local("2021-10-10T09:32") -> CS(scheme = 0, i = 3, next = local("2021-10-10T10:10")),
@@ -221,8 +217,7 @@ object ScheduleTester
 
   private final case class Day(
     dayOfWeek: DayOfWeek,
-    start: Timestamp,
-    end: Timestamp,
+    date: LocalDate,
     cycleDuration: FiniteDuration = 0.s,
     title: String = "",
     expectedCycles: Seq[(Timestamp, CS)],
