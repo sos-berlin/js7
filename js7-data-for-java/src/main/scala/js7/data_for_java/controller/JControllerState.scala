@@ -11,6 +11,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.board.{Board, BoardPath}
+import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.data.job.{JobResource, JobResourcePath}
@@ -21,6 +22,7 @@ import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState}
+import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.item.{JInventoryItem, JRepo}
@@ -112,6 +114,13 @@ extends JJournaledState[JControllerState, ControllerState]
     asScala.pathToBoardState
       .checked(boardPath)
       .map(JBoardState.apply)
+      .toVavr
+
+  @Nonnull
+  def pathToCalendar(@Nonnull boardPath: CalendarPath): VEither[Problem, JCalendar] =
+    asScala.keyTo(Calendar)
+      .checked(boardPath)
+      .map(JCalendar.apply)
       .toVavr
 
   /** Looks up a JFileWatch. */
