@@ -662,7 +662,7 @@ releaseVersion := (v =>
           .take(10)/*yyyy-mm-dd*/
         // Remove hyphens according to Semantic Versioning pre-release syntax
         val yyyymmdd = commitDate.substring(0, 4) + commitDate.substring(5, 7) + commitDate.substring(8, 10)
-        "alpha." + yyyymmdd
+        "beta." + yyyymmdd
       }
       val version = currentVersion.withoutQualifier.string + "-" + prelease
       var v = version
