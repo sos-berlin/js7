@@ -174,7 +174,8 @@ extends JJournaledState[JControllerState, ControllerState]
       .asJava
 
   @Nonnull
-  def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean): java.util.stream.Stream[JOrder] =
+  def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean)
+  : java.util.stream.Stream[JOrder] =
     asScala.idToOrder
       .valuesIterator
       .filter(predicate)
@@ -197,7 +198,8 @@ extends JJournaledState[JControllerState, ControllerState]
     orderStateToCount(any)
 
   @Nonnull
-  def orderStateToCount(predicate: Order[Order.State] => Boolean): JMap[Class[_ <: Order.State], java.lang.Integer] =
+  def orderStateToCount(predicate: Order[Order.State] => Boolean)
+  : JMap[Class[_ <: Order.State], java.lang.Integer] =
     asScala.idToOrder.values.view
       .filter(predicate)
       .groupBy(_.state.getClass)
@@ -205,11 +207,12 @@ extends JJournaledState[JControllerState, ControllerState]
       .toMap.asJava
 }
 
-object JControllerState
+object JControllerState extends JJournaledState.Companion[JControllerState, ControllerState]
 {
-  implicit val companion = new JJournaledState.Companion[JControllerState, ControllerState] {
-    def apply(underlying: ControllerState) = new JControllerState(underlying)
-  }
+  implicit val companion = this
+
+  def apply(underlying: ControllerState) =
+    new JControllerState(underlying)
 
   /** Includes the type. */
   def inventoryItemToJson(item: JInventoryItem): String =
