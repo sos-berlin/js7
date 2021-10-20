@@ -38,7 +38,7 @@ final class OrderObstacleCalculator(val stateView: StateView)
 
   private val _jobToOrderCount = new ConcurrentHashMap[JobKey, Int]()
 
-  def jobToOrderCount(jobKey: JobKey): Int = {
+  def jobToOrderCount(jobKey: JobKey): Int =
     _jobToOrderCount.computeIfAbsent(
       jobKey,
       jobKey => stateView
@@ -50,7 +50,6 @@ final class OrderObstacleCalculator(val stateView: StateView)
               order.state.isInstanceOf[Processing] &&
                 order.workflowId == jobKey.workflowId &&
                 workflow.positionToJobKey(order.position).contains(jobKey))))
-  }
 }
 
 object OrderObstacleCalculator

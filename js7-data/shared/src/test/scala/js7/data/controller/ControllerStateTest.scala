@@ -223,7 +223,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         "path": "Calendar",
         "timezone": "Europe/Mariehamn",
         "dateOffset": 21600,
-        "orderIdToDatePattern": "#([^#]+)#.*",
+        "orderIdPattern": "#([^#]+)#.*",
         "periodDatePattern": "yyyy-MM-dd",
         "itemRevision": 1
       }, {

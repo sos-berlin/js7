@@ -190,7 +190,7 @@ final class AgentStateTest extends AsyncFreeSpec
             "path" : "CALENDAR",
             "timezone": "Europe/Mariehamn",
             "dateOffset": 21600,
-            "orderIdToDatePattern": "#([^#]+)#.*",
+            "orderIdPattern": "#([^#]+)#.*",
             "periodDatePattern": "yyyy-MM-dd",
             "itemRevision": 1
           }"""))

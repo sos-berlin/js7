@@ -41,7 +41,7 @@ extends JJsonable[JCalendar] with JUnsignedSimpleItem
 
   @Nonnull
   def orderIdToDatePattern: String =
-    asScala.orderIdToDatePattern
+    asScala.orderIdPattern
 
   @Nonnull
   def periodDatePattern: String =

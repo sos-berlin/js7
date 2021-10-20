@@ -23,7 +23,7 @@ final class CalendarTest extends AnyFreeSpec
           "path": "CALENDAR",
           "timezone": "Europe/Mariehamn",
           "dateOffset": 21600,
-          "orderIdToDatePattern": "#([^#]+)#.*",
+          "orderIdPattern": "#([^#]+)#.*",
           "periodDatePattern": "yyyy-MM-dd",
           "itemRevision": 1
         } """)
@@ -38,7 +38,7 @@ final class CalendarTest extends AnyFreeSpec
         {
           "path": "CALENDAR",
           "timezone": "Europe/Mariehamn",
-          "orderIdToDatePattern": "#([^#]+)#.*",
+          "orderIdPattern": "#([^#]+)#.*",
           "periodDatePattern": "yyyy-MM-dd"
         } """)
   }

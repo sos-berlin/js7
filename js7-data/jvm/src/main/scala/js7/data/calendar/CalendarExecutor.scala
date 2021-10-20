@@ -56,7 +56,7 @@ object CalendarExecutor
       _ <- (calendar.dateOffset >= 0.s && calendar.dateOffset < period.normalDuration) !!
         Problem("Invalid dateOffset")
       zoneId <- calendar.timezone.toZoneId
-      orderIdToDateRegex <- Checked.catchNonFatal(calendar.orderIdToDatePattern.r)
+      orderIdToDateRegex <- Checked.catchNonFatal(calendar.orderIdPattern.r)
     } yield new CalendarExecutor(calendar, zoneId, orderIdToDateRegex, period)
 
   private def toFormatterAndQuery(pattern: String)

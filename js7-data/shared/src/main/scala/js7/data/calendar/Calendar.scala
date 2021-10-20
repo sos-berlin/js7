@@ -17,7 +17,7 @@ final case class Calendar(
   path: CalendarPath,
   timezone: Timezone,
   dateOffset: FiniteDuration = Duration.Zero,
-  orderIdToDatePattern: String,
+  orderIdPattern: String,
   periodDatePattern: String,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
