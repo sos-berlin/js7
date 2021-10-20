@@ -1,6 +1,7 @@
 package js7.tests.controller.proxy;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -48,10 +49,15 @@ class JControllerApiOrderTester
         assertThat(controllerState.idToOrder(OrderId.of("TEST-CANCEL")).isPresent(), equalTo(true));
 
         // OrderObstacle
-        Set<JOrderObstacle> obstacles = getOrThrow(controllerState.orderToObstacles(orderId, Instant.now()));
+        Set<JOrderObstacle> obstacles = getOrThrow(
+            controllerState.orderToObstacles(orderId, Instant.now()));
         JOrderObstacle obstacle = obstacles.iterator().next();
         assertThat(obstacle instanceof WaitingForTime, equalTo(true));
-        assertThat(((WaitingForTime)obstacle).instant(), equalTo(scheduledFor));
+        assertThat(((WaitingForTime)obstacle).until(), equalTo(scheduledFor));
+
+        Map<OrderId, Set<JOrderObstacle>> orderIdToObstacle = getOrThrow(
+            controllerState.ordersToObstacles(controllerState.orderIds(), Instant.now()));
+        assertThat(orderIdToObstacle.get(orderId), equalTo(obstacles));
 
         CompletableFuture<JEventAndControllerState<Event>> cancelled =
             api.when(es -> es.stampedEvent().value().event() instanceof OrderEvent.OrderCancelled$);

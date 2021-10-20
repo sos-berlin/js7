@@ -9,9 +9,9 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
-import js7.data.order.OrderObstacle.{WaitingForTime, jobParallelismLimitReached}
+import js7.data.order.OrderObstacle.{WaitingForAdmission, jobParallelismLimitReached}
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
-import js7.data.order.{Order, OrderId, OrderObstacle, Outcome}
+import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -65,10 +65,10 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     for (job <- state.workflowJob(order.workflowPosition)) yield
       isSkipped(order, job) ? order.position.increment
 
-  override def toObstacles(order: Order[Order.State], state: StateView)
+  override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
     for {
-      workflow <- state.idToWorkflow.checked(order.workflowId)
+      workflow <- calculator.stateView.idToWorkflow.checked(order.workflowId)
       zone <- workflow.timeZone.toZoneId
       job <- workflow.checkedWorkflowJob(order.position)
       jobKey <- workflow.positionToJobKey(order.position)
@@ -78,10 +78,10 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           .filterNot(_ => isSkipped(order, job))
           .flatMap(_
             .findTimeInterval(clock.now(), zone, dateOffset = noDateOffset))
-          .map(interval => WaitingForTime(interval.start))
+          .map(interval => WaitingForAdmission(interval.start))
           .toSet
         admissionObstacles ++
-          (state.jobToOrderCount(jobKey) >= job.parallelism)
+          (calculator.jobToOrderCount(jobKey) >= job.parallelism)
             .thenSet(jobParallelismLimitReached)
       } else
         Set.empty

@@ -7,7 +7,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.InstructionExecutor._
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderStarted}
-import js7.data.order.{Order, OrderObstacle}
+import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
 import js7.data.workflow.position.Position
@@ -21,7 +21,8 @@ trait InstructionExecutor
 
   def instructionClass: Class[_ <: Instr]
 
-  def toObstacles(order: Order[Order.State], state: StateView): Checked[Set[OrderObstacle]] =
+  def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
+  : Checked[Set[OrderObstacle]] =
     noObstacles
 }
 

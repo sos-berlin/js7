@@ -1,5 +1,6 @@
 package js7.data_for_java.controller
 
+import cats.syntax.traverse._
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
 import java.util.{Map => JMap, Optional => JOptional}
@@ -214,8 +215,23 @@ extends JJournaledState[JControllerState, ControllerState]
   : VEither[Problem, java.util.Set[JOrderObstacle]] = {
     val service = new InstructionExecutorService(
       WallClock.fixed(now.toTimestamp))
-    OrderObstacleCalculator.orderToObstacles(orderId, asScala)(service)
+    new OrderObstacleCalculator(asScala).orderToObstacles(orderId)(service)
       .map(_.map(JOrderObstacle(_)).asJava)
+      .toVavr
+  }
+
+  @Nonnull
+  def ordersToObstacles(@Nonnull orderIds: java.lang.Iterable[OrderId], @Nonnull now: Instant)
+  : VEither[Problem, java.util.Map[OrderId, java.util.Set[JOrderObstacle]]] = {
+    val instructionService = new InstructionExecutorService(WallClock.fixed(now.toTimestamp))
+    val obstacleCalculator = new OrderObstacleCalculator(asScala)
+    orderIds.asScala
+      .toVector
+      .traverse(orderId =>
+        obstacleCalculator
+          .orderToObstacles(orderId)(instructionService)
+          .map(obstacles => orderId -> obstacles.map(JOrderObstacle(_)).asJava))
+      .map(_.toMap.asJava)
       .toVavr
   }
 }

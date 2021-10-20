@@ -9,17 +9,27 @@ object OrderObstacle
   val waitingForCommand: OrderObstacle =
     WaitingForCommand
 
-  def waitingForTime(timestamp: Timestamp): OrderObstacle =
-    WaitingForTime(timestamp)
+  def waitingForOtherTime(until: Timestamp): OrderObstacle =
+    WaitingForOtherTime(until)
+
+  def waitingForAdmmission(until: Timestamp): OrderObstacle =
+    WaitingForAdmission(until)
 
   val jobParallelismLimitReached: OrderObstacle =
     JobParallelismLimitReached
 
-  final case object WaitingForCommand
-  extends OrderObstacle
+  final case object WaitingForCommand extends OrderObstacle
 
-  final case class WaitingForTime(timestamp: Timestamp)
-  extends OrderObstacle
+  sealed trait WaitingForTime extends OrderObstacle
+  {
+    def until: Timestamp
+  }
+
+  final case class WaitingForAdmission(until: Timestamp)
+  extends WaitingForTime
+
+  final case class WaitingForOtherTime(until: Timestamp)
+  extends WaitingForTime
 
   final case object JobParallelismLimitReached
   extends OrderObstacle

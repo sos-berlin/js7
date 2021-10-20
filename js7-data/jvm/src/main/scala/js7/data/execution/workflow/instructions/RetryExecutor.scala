@@ -5,9 +5,9 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.instructions.RetryExecutor._
-import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderRetrying}
-import js7.data.order.OrderObstacle.WaitingForTime
+import js7.data.order.OrderObstacle.WaitingForOtherTime
+import js7.data.order.{Order, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{Retry, TryInstruction}
 import js7.data.workflow.position.{BranchPath, TryBranchId}
@@ -53,13 +53,13 @@ extends EventInstructionExecutor
       case at => at
     }
 
-  override def toObstacles(order: Order[Order.State], state: StateView) =
+  override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator) =
     order.state match {
       case Order.DelayedAfterError(until) =>
-        Right(Set(WaitingForTime(until)))
+        Right(Set(WaitingForOtherTime(until)))
 
       case _ =>
-        super.toObstacles(order, state)
+        super.toObstacles(order, calculator)
     }
 }
 

@@ -1,9 +1,9 @@
 package js7.data.execution.workflow.instructions
 
-import js7.data.order.Order
 import js7.data.order.Order.Ready
 import js7.data.order.OrderEvent.OrderPrompted
 import js7.data.order.OrderObstacle.WaitingForCommand
+import js7.data.order.{Order, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.Prompt
 
@@ -24,12 +24,12 @@ extends EventInstructionExecutor
           } yield (order.id <-: OrderPrompted(question)) :: Nil))
       .getOrElse(Right(Nil))
 
-  override def toObstacles(order: Order[Order.State], state: StateView) =
+  override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator) =
     order.state match {
       case Order.Prompting(_) =>
         Right(Set(WaitingForCommand))
 
       case _ =>
-        super.toObstacles(order, state)
+        super.toObstacles(order, calculator)
     }
 }

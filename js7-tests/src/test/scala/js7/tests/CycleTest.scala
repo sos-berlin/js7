@@ -18,7 +18,7 @@ import js7.data.event.{EventSeq, KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.OrderObstacle.WaitingForTime
+import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
@@ -302,7 +302,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
         .await(99.s).orThrow
       eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
       assert(orderToObstacles(orderId) ==
-        Right(Set[OrderObstacle](WaitingForTime(local("2021-03-28T03:30")))))
+        Right(Set[OrderObstacle](WaitingForOtherTime(local("2021-03-28T03:30")))))
 
       for (i <- 1 to 4) {
         if (i > 1) {

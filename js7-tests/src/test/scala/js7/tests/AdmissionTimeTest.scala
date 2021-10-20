@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished}
-import js7.data.order.OrderObstacle.waitingForTime
+import js7.data.order.OrderObstacle.waitingForAdmmission
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -57,13 +57,15 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
-      assert(orderToObstacles(orderId) == Right(Set(waitingForTime(local("2021-03-21T03:00")))))
+      assert(orderToObstacles(orderId) ==
+        Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
 
       clock := local("2021-03-21T02:59")
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
-      assert(orderToObstacles(orderId) == Right(Set(waitingForTime(local("2021-03-21T03:00")))))
+      assert(orderToObstacles(orderId) ==
+        Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
 
       clock := local("2021-03-21T03:00")
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
@@ -85,7 +87,8 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
-      assert(orderToObstacles(orderId) == Right(Set(waitingForTime(local("2021-03-28T03:00")))))
+      assert(orderToObstacles(orderId) ==
+        Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
     }
 
     "Start order with permission in daylight saving time gap" in {
@@ -99,7 +102,8 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
-      assert(orderToObstacles(orderId) == Right(Set(waitingForTime(local("2021-03-28T03:00")))))
+      assert(orderToObstacles(orderId) ==
+        Right(Set(waitingForAdmmission(local("2021-03-28T03:00")))))
 
       clock := local("2021-03-28T04:00")
       eventWatch.await[OrderFinished](_.key == orderId)
@@ -121,7 +125,8 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
-      assert(orderToObstacles(orderId) == Right(Set(waitingForTime(local("2021-04-04T03:00")))))
+      assert(orderToObstacles(orderId) ==
+        Right(Set(waitingForAdmmission(local("2021-04-04T03:00")))))
     }
   }
 

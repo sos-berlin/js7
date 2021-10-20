@@ -35,11 +35,12 @@ final class OrderEventHandler(
 
       case OrderCancelled | OrderDetachable =>
         // Order may be enqueued in Job's queue, still waiting for start allowance
-        for {
-          workflow <- idToWorkflow(previousOrder.workflowId)
-          jobKey <- workflow.positionToJobKey(previousOrder.position)
-        } yield
-          FollowUp.LeaveJob(jobKey) :: Nil
+        for (workflow <- idToWorkflow(previousOrder.workflowId)) yield
+          workflow
+            .positionToJobKey(previousOrder.position)
+            .toOption
+            .map(FollowUp.LeaveJob(_))
+            .toList
 
       case event: OrderForked =>
         Right(previousOrder
