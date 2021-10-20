@@ -3,6 +3,7 @@ package js7.base.time
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import scala.concurrent.duration._
+import scala.language.implicitConversions
 
 final case class TimeInterval(start: Timestamp, duration: FiniteDuration)
 {
