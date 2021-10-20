@@ -1,7 +1,9 @@
 package js7.base.time
 
-import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
+import org.jetbrains.annotations.TestOnly
+import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 
 /** Code requiring java time (JVM) .*/
@@ -20,15 +22,23 @@ object AdmissionTimeSchemeForJavaTime
       findTimeInterval(timestamp, zone, dateOffset)
         .exists(_.contains(timestamp))
 
+    /** Find a current or next TimeInterval for admission.
+     * Shifts the interval when daylight saving time skips an hour. */
     def findTimeInterval(timestamp: Timestamp, zone: ZoneId, dateOffset: FiniteDuration)
     : Option[TimeInterval] =
-      findTimeInterval(timestamp.toZonedDateTime(zone), dateOffset)
+      findLocalIntervals(timestamp.toLocalDateTime(zone), dateOffset)
+        .map(_.toTimeInterval(zone))
+        .filterNot(_.endsBefore(timestamp))
+        .minByOption(_.start)
 
-    def findTimeInterval(zoned: ZonedDateTime, dateOffset: FiniteDuration): Option[TimeInterval] =
-      findLocalInterval(zoned.toLocalDateTime, dateOffset)
-        .map(_.toTimeInterval(zoned.getZone))
-
+    /** Calculates end time with local time, yielding a hour more or less when dst shifts. */
+    @TestOnly
     def findLocalInterval(local: LocalDateTime, dateOffset: FiniteDuration): Option[LocalInterval] =
+      findLocalIntervals(local, dateOffset)
+        .filterNot(_.endsBefore(local))
+        .minByOption(_.start)
+
+    private def findLocalIntervals(local: LocalDateTime, dateOffset: FiniteDuration): View[LocalInterval] =
       admissionTimeScheme.periods
         .view
         .map(AdmissionPeriodCalculator(_, dateOffset))
@@ -39,7 +49,5 @@ object AdmissionTimeSchemeForJavaTime
             executor.toLocalInterval(
               executor.nextCalendarStart(local))
         }
-        .filterNot(_.endsBefore(local))
-        .minByOption(_.start)
   }
 }

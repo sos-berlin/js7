@@ -25,7 +25,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTime._
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeIntervalSwitch, AlarmClock}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{DuplicateKeyException, SetOnce}
@@ -37,7 +37,7 @@ import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.{InventoryItemPath, SignableItem, UnsignedSimpleItem}
 import js7.data.job.{JobConf, JobKey, JobResource}
@@ -629,7 +629,7 @@ with Stash
     }
 
   private def tryStartProcessing(jobEntry: JobEntry): Unit = {
-    val isEnterable = jobEntry.updateAdmissionTimeInterval(clock) {
+    val isEnterable = jobEntry.checkAdmissionTimeInterval(clock) {
       self ! Internal.JobDue(jobEntry.jobKey)
     }
     if (isEnterable) {
@@ -740,18 +740,19 @@ object AgentOrderKeeper {
     val jobDriver: JobDriver)
   {
     val queue = new OrderQueue
-    private val admissionTimeIntervalSwitch = new AdmissionTimeIntervalSwitch(
-      workflowJob.admissionTimeScheme,
-      onSwitch = (from, to) => logger.debug(s"$jobKey: Next admission: " +
-        from.fold("")(_.toString + " -> ") + to.getOrElse("None") + " " + zone))
+    private val admissionTimeIntervalSwitch = new ExecuteAdmissionTimeSwitch(
+      workflowJob.admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
+      zone,
+      onSwitch = to =>
+        logger.debug(s"$jobKey: Next admission: " + to.getOrElse("None") + " " + zone))
+
     var taskCount = 0
 
     def close(): Unit =
       admissionTimeIntervalSwitch.cancel()
 
-    def updateAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit)
-    : Boolean =
-      admissionTimeIntervalSwitch.update(zone)(onPermissionGranted)(clock)
+    def checkAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit): Boolean =
+      admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)(clock)
 
     def isBelowParallelismLimit =
       taskCount < workflowJob.parallelism

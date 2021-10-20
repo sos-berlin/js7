@@ -91,7 +91,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   }
 
   "Do not skip if job has a admission time for order date" in {
-    clock.resetTo(local("2021-09-10T00:00"))
+    clock.resetTo(local("2021-09-10T00:00")) // Friday
     val orderId = OrderId("#2021-09-03#")  // Friday
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == Some(FRIDAY))
 
@@ -106,7 +106,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   }
 
   "Do not skip if OrderId has no order date" in {
-    clock.resetTo(local("2021-09-10T00:00"))
+    clock.resetTo(local("2021-09-10T00:00")) // Friday
     val orderId = OrderId("NO-DATE")
     controllerApi.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId)
@@ -119,7 +119,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   }
 
   "Do not skip if OrderId has an invalid order date" in {
-    clock.resetTo(local("2021-09-10T00:00"))
+    clock.resetTo(local("2021-09-10T00:00")) // Friday
     val orderId = OrderId("#2021-02-29#invalid")
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == None)
 

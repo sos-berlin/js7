@@ -14,7 +14,8 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished}
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.OrderObstacle.WaitingForTime
+import js7.data.order.{FreshOrder, OrderId, OrderObstacle}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -40,7 +41,7 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
   private implicit val timeZone = AdmissionTimeTest.timeZone
-  private val clock = TestAlarmClock(local("2021-03-20T00:00"))
+  private implicit val clock = TestAlarmClock(local("2021-03-20T00:00"))
 
   override protected def agentModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
@@ -53,10 +54,14 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
       eventWatch.await[OrderAttached](_.key == orderId)
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
+      assert(orderToObstacles(orderId) ==
+        Right(Set[OrderObstacle](WaitingForTime(local("2021-03-21T03:00")))))
 
       clock := local("2021-03-21T02:59")
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
+      assert(orderToObstacles(orderId) ==
+        Right(Set[OrderObstacle](WaitingForTime(local("2021-03-21T03:00")))))
 
       clock := local("2021-03-21T03:00")
       eventWatch.await[OrderFinished](_.key == orderId)
@@ -78,7 +83,7 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
     }
 
     "Start order with permission in daylight saving time gap" in {
-      // Permission is shifted to the next valid local time
+      // Admission is shifted to the next valid local time
       assert(local("2021-03-28T04:00") - local("2021-03-28T02:59") == 1.minute)
       clock := local("2021-03-28T02:59")
       val orderId = OrderId("🟤")
