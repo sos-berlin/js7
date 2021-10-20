@@ -59,7 +59,7 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDele
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticeRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -1126,8 +1126,6 @@ with MainJournalingActor[ControllerState, Event]
             val dependentOrderIds = mutable.Set.empty[OrderId]
             for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
               followUps foreach {
-                case _: FollowUp.Processed if order.isAttached =>
-
                 case FollowUp.AddChild(childOrder) =>
                   dependentOrderIds += childOrder.id
 
@@ -1136,7 +1134,7 @@ with MainJournalingActor[ControllerState, Event]
                     entry.timer.cancel()
                   }
 
-                case _: FollowUp.Processed =>
+                case _: FollowUp.LeaveJob =>
               }
             }
 

@@ -548,10 +548,9 @@ with Stash
     orderRegister(order.id).order = order
     for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {
       followUps foreach {
-        case FollowUp.Processed(jobKey) =>
-          //TODO assertThat(orderEntry.jobOption exists (_.jobPath == job.jobPath))
+        case FollowUp.LeaveJob(jobKey) =>
           for (jobEntry <- jobRegister.checked(jobKey).onProblem(p => logger.error(p withKey order.id))) {
-            jobEntry.queue -= order.id
+            jobEntry.queue.remove(order.id, dontWarn = true)
           }
 
         case FollowUp.AddChild(childOrder) =>
@@ -786,11 +785,14 @@ object AgentOrderKeeper {
       queueSet += orderId
     }
 
-    def -=(orderId: OrderId) =
+    def -=(orderId: OrderId): Unit =
+      remove(orderId)
+
+    def remove(orderId: OrderId, dontWarn: Boolean = false): Unit =
       if (!inProcess.remove(orderId)) {
         val s = queue.size
         queue -= orderId
-        if (queue.size == s) {
+        if (!dontWarn && queue.size == s) {
           logger.warn(s"JobRegister.OrderQueue: unknown $orderId")
         }
         queueSet -= orderId

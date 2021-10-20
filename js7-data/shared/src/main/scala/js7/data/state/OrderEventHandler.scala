@@ -3,7 +3,7 @@ package js7.data.state
 import js7.base.problem.{Checked, Problem}
 import js7.data.event.KeyedEvent
 import js7.data.job.JobKey
-import js7.data.order.OrderEvent.{OrderDeleted, OrderForked, OrderJoined, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderCancelled, OrderDeleted, OrderDetachable, OrderForked, OrderJoined, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -31,7 +31,15 @@ final class OrderEventHandler(
           workflow <- idToWorkflow(previousOrder.workflowId)
           jobKey <- workflow.positionToJobKey(previousOrder.position)
         } yield
-          FollowUp.Processed(jobKey) :: Nil
+          FollowUp.LeaveJob(jobKey) :: Nil
+
+      case OrderCancelled | OrderDetachable =>
+        // Order may be enqueued in Job's queue, still waiting for start allowance
+        for {
+          workflow <- idToWorkflow(previousOrder.workflowId)
+          jobKey <- workflow.positionToJobKey(previousOrder.position)
+        } yield
+          FollowUp.LeaveJob(jobKey) :: Nil
 
       case event: OrderForked =>
         Right(previousOrder
@@ -61,7 +69,7 @@ object OrderEventHandler
 {
   sealed trait FollowUp
   object FollowUp {
-    final case class Processed(job: JobKey) extends FollowUp
+    final case class LeaveJob(job: JobKey) extends FollowUp
     final case class AddChild(order: Order[Order.Ready]) extends FollowUp
     final case class Delete(orderId: OrderId) extends FollowUp
   }
