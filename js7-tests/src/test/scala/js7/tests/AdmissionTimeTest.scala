@@ -60,6 +60,10 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
       assert(orderToObstacles(orderId) ==
         Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
 
+      assert(orderToObstacles(orderId) ==
+        Right(Set(waitingForAdmmission(local("2021-03-21T03:00")))))
+      assert(orderObstacleCalculator.waitingForAdmissionOrderCount(clock.now()) == 1)
+
       clock := local("2021-03-21T02:59")
       sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
@@ -69,6 +73,7 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
       clock := local("2021-03-21T03:00")
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+      assert(orderObstacleCalculator.waitingForAdmissionOrderCount(clock.now()) == 0)
     }
 
     "Start order while in permission period" in {
