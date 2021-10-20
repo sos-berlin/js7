@@ -4,8 +4,9 @@ import js7.base.problem.Checked
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.event.KeyedEvent
-import js7.data.order.Order
+import js7.data.execution.workflow.instructions.InstructionExecutor._
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderStarted}
+import js7.data.order.{Order, OrderObstacle}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
 import js7.data.workflow.position.Position
@@ -18,6 +19,14 @@ trait InstructionExecutor
   type Instr <: Instruction
 
   def instructionClass: Class[_ <: Instr]
+
+  def toObstacles(order: Order[Order.State], state: StateView): Checked[Set[OrderObstacle]] =
+    noObstacles
+}
+
+object InstructionExecutor {
+  private def noObstacles: Checked[Set[OrderObstacle]] =
+    Right(Set.empty)
 }
 
 trait EventInstructionExecutor extends InstructionExecutor

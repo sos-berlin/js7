@@ -7,6 +7,8 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Problem
+import js7.base.time.JavaTimeConverters.AsScalaInstant
+import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
@@ -14,9 +16,10 @@ import js7.data.board.{Board, BoardPath}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
@@ -28,8 +31,8 @@ import js7.data_for_java.common.JJournaledState
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
-import js7.data_for_java.order.JOrder
 import js7.data_for_java.order.JOrderPredicates.any
+import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.{JWorkflow, JWorkflowId}
@@ -205,6 +208,16 @@ extends JJournaledState[JControllerState, ControllerState]
       .groupBy(_.state.getClass)
       .view.mapValues(o => java.lang.Integer.valueOf(o.size))
       .toMap.asJava
+
+  @Nonnull
+  def orderToObstacles(@Nonnull orderId: OrderId, @Nonnull now: Instant)
+  : VEither[Problem, java.util.Set[JOrderObstacle]] = {
+    val service = new InstructionExecutorService(
+      WallClock.fixed(now.toTimestamp))
+    OrderObstacleCalculator.orderToObstacles(orderId, asScala)(service)
+      .map(_.map(JOrderObstacle(_)).asJava)
+      .toVavr
+  }
 }
 
 object JControllerState extends JJournaledState.Companion[JControllerState, ControllerState]

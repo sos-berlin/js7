@@ -6,8 +6,8 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SubclassToX
 import js7.data.event.KeyedEvent
-import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderActorEvent
+import js7.data.order.{Order, OrderObstacle}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
 import js7.data.workflow.position.Position
@@ -63,4 +63,9 @@ final class InstructionExecutorService(val clock: WallClock)
       case _ =>
         Right(Nil)
     }
+
+  def toObstacles(order: Order[Order.State], state: StateView)
+  : Checked[Set[OrderObstacle]] =
+    instructionToExecutor(state.instruction(order.workflowPosition))
+      .toObstacles(order, state)
 }

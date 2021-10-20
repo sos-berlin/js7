@@ -8,6 +8,7 @@ import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.event.KeyedEvent
 import js7.data.order.Order.{BetweenCycles, Ready}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
+import js7.data.order.OrderObstacle.WaitingForTime
 import js7.data.order.{CycleState, Order}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.Cycle
@@ -100,4 +101,12 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       zone <- calendar.timezone.toZoneId
       calculator <- ScheduleCalculator.checked(cycle.schedule, zone, calendar.dateOffset)
     } yield calendar -> calculator
+
+  override def toObstacles(order: Order[Order.State], state: StateView) =
+    order.state match {
+      case Order.BetweenCycles(Some(cycleState: CycleState)) if clock.now() < cycleState.next =>
+        Right(Set(WaitingForTime(cycleState.next)))
+
+      case _ => super.toObstacles(order, state)
+    }
 }

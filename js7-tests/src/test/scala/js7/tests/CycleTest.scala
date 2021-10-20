@@ -18,7 +18,8 @@ import js7.data.event.{EventSeq, KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
-import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.OrderObstacle.WaitingForTime
+import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
 import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
@@ -45,6 +46,8 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
+
+  private implicit val clock = CycleTest.clock
 
   override protected def controllerModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
@@ -298,6 +301,8 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       controllerApi.addOrder(FreshOrder(orderId, workflow.path))
         .await(99.s).orThrow
       eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
+      assert(orderToObstacles(orderId) ==
+        Right(Set[OrderObstacle](WaitingForTime(local("2021-03-28T03:30")))))
 
       for (i <- 1 to 4) {
         if (i > 1) {
