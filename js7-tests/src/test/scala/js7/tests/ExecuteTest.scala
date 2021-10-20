@@ -9,11 +9,17 @@ import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.time.ScalaTime._
+import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
+import js7.data.command.CancellationMode
+import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.item.VersionId
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
-import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderStdoutWritten}
+import js7.data.order.OrderObstacle.jobParallelismLimitReached
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser
@@ -24,8 +30,11 @@ import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, 
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.tests.ExecuteTest._
+import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -423,6 +432,37 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .contains("ARGUMENTS=/1 two three ARG-VALUE/"))
   }
 
+  "parallelism" in {
+    val parallelism = 2
+    val workflow = addWorkflow(Workflow.of(
+      ParallelInternalJob.execute(agentPath, parallelism = parallelism)))
+    val orderIds = for (i <- 1 to parallelism) yield OrderId(s"PARALLEL-$i")
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.addOrders(Observable
+      .fromIterable(orderIds)
+      .map(FreshOrder(_, workflow.path)))
+      .await(99.s).orThrow
+    for (orderId <- orderIds) {
+      eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+    }
+    val extraOrderId = OrderId("PARALLEL-EXTRA")
+    controllerApi.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
+    eventWatch.await[OrderAttached](_.key == extraOrderId, after = eventId)
+    sleep(100.ms)
+    assert(orderToObstacles(extraOrderId)(WallClock) == Right(Set(jobParallelismLimitReached)))
+
+    controllerApi.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow
+    eventWatch.await[OrderCancelled](_.key == extraOrderId, after = eventId)
+
+    controllerApi
+      .executeCommand(
+        CancelOrders(orderIds, CancellationMode.kill(immediately = true)))
+      .await(99.s).orThrow
+    for (orderId <- orderIds) {
+      eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
+    }
+  }
+
   private def addExecuteTest(
     execute: Execute,
     orderArguments: Map[String, Value] = Map.empty,
@@ -510,4 +550,7 @@ object ExecuteTest
   }
   private object ReturnArgumentsInternalJob
   extends InternalJob.Companion[ReturnArgumentsInternalJob]
+
+  private final class ParallelInternalJob extends SemaphoreJob(ParallelInternalJob)
+  private object ParallelInternalJob extends SemaphoreJob.Companion[ParallelInternalJob]
 }

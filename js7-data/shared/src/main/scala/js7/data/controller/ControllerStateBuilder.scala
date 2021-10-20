@@ -73,6 +73,8 @@ with StateView
   val pathToCalendar = _pathToCalendar
   def controllerId = controllerMetaState.controllerId
 
+  def orders = _idToOrder.values
+
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     throw new NotImplementedError("ControllerStateBuilder.keyToItem")
 

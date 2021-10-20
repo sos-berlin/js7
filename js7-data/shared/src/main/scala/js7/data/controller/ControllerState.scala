@@ -623,6 +623,8 @@ with JournaledState[ControllerState]
       case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
     }
 
+  def orders = idToOrder.values
+
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
     s"Repo(${repo.currentVersionSize} objects, ...))"
 }

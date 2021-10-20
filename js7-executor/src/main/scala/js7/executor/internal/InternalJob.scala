@@ -88,8 +88,8 @@ object InternalJob
   {
     final def executable(
       jobArguments: Map[String, Expression] = Map.empty,
-      arguments: Map[String, Expression] = Map.empty
-    ): InternalExecutable =
+      arguments: Map[String, Expression] = Map.empty)
+    : InternalExecutable =
       InternalExecutable(
         implicitClass[I].scalaName,
         jobArguments = jobArguments,
@@ -97,9 +97,13 @@ object InternalJob
 
     final def execute(
       agentPath: AgentPath,
-      arguments: Map[String, Expression] = Map.empty
-    ): Execute.Anonymous =
+      arguments: Map[String, Expression] = Map.empty,
+      parallelism: Int = 1)
+    : Execute.Anonymous =
       Execute(
-        WorkflowJob(agentPath, executable(arguments = arguments)))
+        WorkflowJob(
+          agentPath,
+          executable(arguments = arguments),
+          parallelism = parallelism))
   }
 }

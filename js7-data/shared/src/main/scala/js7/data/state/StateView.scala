@@ -11,7 +11,7 @@ import js7.data.controller.ControllerId
 import js7.data.item.{InventoryItem, InventoryItemKey, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
-import js7.data.order.Order.FailedInFork
+import js7.data.order.Order.{FailedInFork, Processing}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
@@ -29,6 +29,19 @@ trait StateView
   def controllerId: ControllerId
 
   def idToOrder: PartialFunction[OrderId, Order[Order.State]]
+
+  def orders: Iterable[Order[Order.State]]
+
+  // SLOW !!!
+  def jobToOrderCount(jobKey: JobKey): Int =
+    idToWorkflow
+      .get(jobKey.workflowId)
+      .fold(0)(workflow =>
+        orders.view
+          .count(order =>
+            order.state.isInstanceOf[Processing] &&
+              order.workflowId == jobKey.workflowId &&
+              workflow.positionToJobKey(order.position).contains(jobKey)))
 
   def idToWorkflow: PartialFunction[WorkflowId, Workflow]
 
@@ -128,7 +141,7 @@ object StateView
   def forTest(
     isAgent: Boolean,
     controllerId: ControllerId = ControllerId("CONTROLLER"),
-    idToOrder: PartialFunction[OrderId, Order[Order.State]] = new NotImplementedMap,
+    idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
     idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
     pathToLockState: PartialFunction[LockPath, LockState] = new NotImplementedMap,
     pathToBoardState: PartialFunction[BoardPath, BoardState] = new NotImplementedMap)
@@ -143,6 +156,7 @@ object StateView
     new StateView {
       val isAgent = isAgent_
       val idToOrder = idToOrder_
+      val orders = idToOrder_.values
       val idToWorkflow = idToWorkflow_
       val pathToLockState = pathToLockState_
       val pathToBoardState = pathToBoardState_
@@ -168,8 +182,11 @@ object StateView
 
   trait ForTest extends StateView
   {
-    def idToOrder: PartialFunction[OrderId, Order[Order.State]] =
+    def idToOrder: Map[OrderId, Order[Order.State]] =
       new NotImplementedMap[OrderId, Order[Order.State]]
+
+    def orders: Iterable[Order[Order.State]] =
+      idToOrder.values
 
     def idToWorkflow: PartialFunction[WorkflowId, Workflow] =
       new NotImplementedMap[WorkflowId, Workflow]

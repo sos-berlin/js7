@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
-import js7.data.order.OrderObstacle.WaitingForTime
+import js7.data.order.OrderObstacle.{WaitingForTime, jobParallelismLimitReached}
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, OrderId, OrderObstacle, Outcome}
 import js7.data.state.StateView
@@ -71,16 +71,22 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       workflow <- state.idToWorkflow.checked(order.workflowId)
       zone <- workflow.timeZone.toZoneId
       job <- workflow.checkedWorkflowJob(order.position)
+      jobKey <- workflow.positionToJobKey(order.position)
     } yield
-      job.admissionTimeScheme
-        .filterNot(_ => isSkipped(order, job))
-        .flatMap(_
-          .findTimeInterval(clock.now(), zone, dateOffset = noDateOffset))
-        .map(interval => WaitingForTime(interval.start))
-        .toSet
+      if (order.isState[IsFreshOrReady]) {
+        val admissionObstacles = job.admissionTimeScheme
+          .filterNot(_ => isSkipped(order, job))
+          .flatMap(_
+            .findTimeInterval(clock.now(), zone, dateOffset = noDateOffset))
+          .map(interval => WaitingForTime(interval.start))
+          .toSet
+        admissionObstacles ++
+          (state.jobToOrderCount(jobKey) >= job.parallelism)
+            .thenSet(jobParallelismLimitReached)
+      } else
+        Set.empty
 
-  private def isSkipped(order: Order[Order.State], job: WorkflowJob)
-  : Boolean =
+  private def isSkipped(order: Order[Order.State], job: WorkflowJob): Boolean =
     job.skipIfNoAdmissionForOrderDay &&
       job.admissionTimeScheme.fold(false)(admissionTimeScheme =>
         orderIdToDate(order.id)

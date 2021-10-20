@@ -701,6 +701,8 @@ with Stash
       // Not persistence.currentState.idToOrder due to different update times (TODO fix this!)
       def idToOrder = orderRegister.idToOrder
 
+      def orders = orderRegister.values.view.map(_.order)
+
       def idToWorkflow = persistence.currentState.idToWorkflow
 
       def workflowPathToId(workflowPath: WorkflowPath) =
