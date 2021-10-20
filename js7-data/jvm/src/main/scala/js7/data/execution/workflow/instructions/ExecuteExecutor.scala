@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}
-import js7.data.order.OrderEvent.{OrderAttachable, OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
+import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.OrderObstacle.WaitingForTime
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, OrderId, OrderObstacle, Outcome}
@@ -24,40 +24,42 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   val instructionClass = classOf[Execute]
 
   def toEvents(instruction: Execute, order: Order[Order.State], state: StateView) =
-    for (job <- state.workflowJob(order.workflowPosition)) yield
-      order
-        .ifState[IsFreshOrReady].map(order =>
-          if (isSkipped(order, job)) {
+    state.workflowJob(order.workflowPosition)
+      .flatMap(job => order
+        .ifState[IsFreshOrReady]
+        .flatMap(order =>
+          if (isSkipped(order, job))
             // If order should start, change nextPosition function, too!
             //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
-              OrderMoved(order.position.increment) :: Nil
-          } else
-          if (order.isProcessable && order.isDetached)
-            OrderAttachable(job.agentPath) :: Nil
+            Some(Right((order.id <-: OrderMoved(order.position.increment)) :: Nil))
+          else if (order.isProcessable)
+            attach(order, job.agentPath)
           else
-            Nil)
+            Some(Right(Nil)))
         .orElse(
           // Order.Ready: Execution has to be started by the caller
           //order.ifState[Order.Fresh].map(order =>
           //  OrderStarted)
           //.orElse(
-          order.ifState[Processed].map(order =>
-            (order.lastOutcome match {
-              case Outcome.Disrupted(JobSchedulerRestarted) =>
-                OrderMoved(order.position) // Repeat
+          order
+            .ifState[Processed]
+            .map { order =>
+              val event = order.lastOutcome match {
+                case Outcome.Disrupted(JobSchedulerRestarted) =>
+                  OrderMoved(order.position) // Repeat
 
-              case _: Outcome.Succeeded =>
-                OrderMoved(order.position.increment)
+                case _: Outcome.Succeeded =>
+                  OrderMoved(order.position.increment)
 
-              case _: Outcome.NotSucceeded | _: Outcome.TimedOut =>
-                OrderFailedIntermediate_()
+                case _: Outcome.NotSucceeded | _: Outcome.TimedOut =>
+                  OrderFailedIntermediate_()
 
-              case _: Outcome.Killed =>
-                OrderProcessingKilled
-            }) :: Nil))
-        .toList
-        .flatten
-        .map(order.id <-: _)
+                case _: Outcome.Killed =>
+                  OrderProcessingKilled
+              }
+              Checked((order.id <-: event) :: Nil)
+            })
+        .getOrElse(Right(Nil)))
 
   def nextPosition(instruction: Execute, order: Order[Order.State], state: StateView) =
     for (job <- state.workflowJob(order.workflowPosition)) yield

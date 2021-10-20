@@ -6,6 +6,12 @@ sealed trait OrderObstacle
 
 object OrderObstacle
 {
+  val waitingForCommand: OrderObstacle =
+    WaitingForCommand
+
+  def waitingForTime(timestamp: Timestamp): OrderObstacle =
+    WaitingForTime(timestamp)
+
   final case object WaitingForCommand
   extends OrderObstacle
 
