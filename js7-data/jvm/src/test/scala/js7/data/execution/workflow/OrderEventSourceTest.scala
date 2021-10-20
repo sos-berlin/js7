@@ -3,6 +3,7 @@ package js7.data.execution.workflow
 import cats.syntax.option._
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
+import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.CancelStartedOrderProblem
@@ -11,7 +12,7 @@ import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSourceTest._
-import js7.data.execution.workflow.instructions.InstructionExecutorService.implicits.defaultInstructionExecutorService
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderResumed.ReplaceHistoricOutcome
@@ -36,6 +37,8 @@ import scala.collection.mutable
   */
 final class OrderEventSourceTest extends AnyFreeSpec
 {
+  import OrderEventSourceTest.instructionExecutorService
+
   "JobSchedulerRestarted" in {
     val eventSource = new OrderEventSource(
       StateView.forTest(
@@ -997,6 +1000,9 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
 object OrderEventSourceTest
 {
+  private implicit val instructionExecutorService: InstructionExecutorService =
+    new InstructionExecutorService(WallClock)
+
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
   private val TestAgentPath = AgentPath("AGENT")

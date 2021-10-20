@@ -72,14 +72,12 @@ extends EventInstructionExecutor with PositionInstructionExecutor
 
 object ExecuteExecutor
 {
+  // TODO Use a Calendar ?
   private val OrderDateRegex = "#([0-9]{4}-[0-9][0-9]-[0-9][0-9])#.*".r
 
   def orderIdToDate(orderId: OrderId): Option[LocalDate] =
-    if (!orderId.string.startsWith("#"))
-      None
-    else
-      orderId.string match {
-        case OrderDateRegex(date) => Try(LocalDate.parse(date)).toOption
-        case _ => None
-      }
+    orderId.string match {
+      case OrderDateRegex(date) => Try(LocalDate.parse(date)).toOption
+      case _ => None
+    }
 }

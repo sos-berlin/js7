@@ -64,12 +64,3 @@ final class InstructionExecutorService(val clock: WallClock)
         Right(Nil)
     }
 }
-
-object InstructionExecutorService
-{
-  val default = new InstructionExecutorService(WallClock)
-
-  object implicits {
-    implicit val defaultInstructionExecutorService = default
-  }
-}

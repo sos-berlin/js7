@@ -2,6 +2,7 @@ package js7.data.controller
 
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem, UnknownItemPathProblem}
@@ -11,6 +12,7 @@ import js7.data.controller.ControllerStateExecutorTest._
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
+import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -20,7 +22,6 @@ import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderStarted}
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.execution.workflow.instructions.InstructionExecutorService.implicits.defaultInstructionExecutorService
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
@@ -34,6 +35,8 @@ import scala.collection.View
 
 final class ControllerStateExecutorTest extends AnyFreeSpec
 {
+  import ControllerStateExecutorTest.instructionExecutorService
+
   "resetAgent" in {
     pending // TODO
   }
@@ -435,6 +438,9 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
 object ControllerStateExecutorTest
 {
+  private implicit val instructionExecutorService: InstructionExecutorService =
+    new InstructionExecutorService(WallClock)
+
   private val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
 
   private val aAgentRef = AgentRef(AgentPath("A-AGENT"), Uri("http://0.0.0.0:0"), Some(ItemRevision(0)))
@@ -506,6 +512,5 @@ object ControllerStateExecutorTest
         controllerState = eventsAndState.controllerState
         eventsAndState.keyedEvents.toVector
       }
-
   }
 }
