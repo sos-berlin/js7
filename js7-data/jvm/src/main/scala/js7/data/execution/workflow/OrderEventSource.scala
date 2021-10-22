@@ -300,23 +300,20 @@ final class OrderEventSource(state: StateView)
   /** Returns a `Right(Some(OrderSuspended | OrderSuspensionMarked))` iff order is not already marked as suspending. */
   def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[List[OrderActorEvent]]] =
     withOrder(orderId)(order =>
-      if (order.isSuspended)
-        Right(trySuspend(order).map(_ :: Nil))
-      else
-        order.mark match {
-          case Some(_: OrderMark.Cancelling) =>
+      order.mark match {
+        case Some(_: OrderMark.Cancelling) =>
+          Left(CannotSuspendOrderProblem)
+        case Some(_: OrderMark.Suspending) =>  // Already marked
+          Right(None)
+        case None | Some(_: OrderMark.Resuming) =>
+          if (order.isState[Failed] || order.isState[IsTerminated])
             Left(CannotSuspendOrderProblem)
-          case Some(_: OrderMark.Suspending) =>  // Already marked
-            Right(None)
-          case None | Some(_: OrderMark.Resuming) =>
-            if (order.isState[Failed] || order.isState[IsTerminated])
-              Left(CannotSuspendOrderProblem)
-            else
-              Right(
-                (!order.isSuspended || order.isResuming) ?
-                  (trySuspend(order).getOrElse(OrderSuspensionMarked(mode))
-                    :: Nil))
-        })
+          else
+            Right(
+              (!order.isSuspended || order.isResuming) ?
+                (trySuspend(order).getOrElse(OrderSuspensionMarked(mode))
+                  :: Nil))
+      })
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
     if (weHave(order) && isOrderSuspendible(order))
