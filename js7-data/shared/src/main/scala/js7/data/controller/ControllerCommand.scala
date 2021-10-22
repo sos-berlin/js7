@@ -203,7 +203,9 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class SuspendOrders(orderIds: immutable.Iterable[OrderId], mode: SuspensionMode = SuspensionMode.standard)
+  final case class SuspendOrders(
+    orderIds: immutable.Iterable[OrderId],
+    mode: SuspensionMode = SuspensionMode.standard)
   extends ControllerCommand with Big {
     type Response = Response.Accepted
   }

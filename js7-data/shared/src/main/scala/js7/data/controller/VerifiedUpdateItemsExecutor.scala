@@ -104,7 +104,7 @@ final case class VerifiedUpdateItemsExecutor(
             controllerState.detach(path)
 
       case _ =>
-        View(ItemDeleted(path))
+        new View.Single(ItemDeleted(path))
     }
 }
 

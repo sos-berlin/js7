@@ -26,6 +26,7 @@ import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
@@ -894,7 +895,7 @@ with MainJournalingActor[ControllerState, Event]
   private def executeOrderMarkCommands(orderIds: Vector[OrderId])
     (toEvents: OrderId => Checked[Option[List[OrderActorEvent]]])
   : Future[Checked[ControllerCommand.Response]] =
-    if (orderIds.distinct.sizeIs < orderIds.size)
+    if (!orderIds.areUnique)
       Future.successful(Left(Problem.pure("OrderIds must be unique")))
     else
       orderIds.traverse(_controllerState.idToOrder.checked) match {
