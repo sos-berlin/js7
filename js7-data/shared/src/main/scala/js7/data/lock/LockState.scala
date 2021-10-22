@@ -8,7 +8,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.lock.Acquired.Available
 import js7.data.lock.LockRefusal.{InvalidCount, IsInUse, LimitReached}
-import js7.data.order.OrderEvent.{OrderFailedEvent, OrderLockAcquired, OrderLockDequeued, OrderLockEvent, OrderLockQueued, OrderLockReleased}
+import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockDequeued, OrderLockEvent, OrderLockQueued, OrderLockReleased}
 import js7.data.order.OrderId
 import scala.collection.immutable.Queue
 
@@ -20,6 +20,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 {
   import lock.limit
 
+  type Item = Lock
   def item = lock
 
   def agentPathToAttachedState = Map.empty

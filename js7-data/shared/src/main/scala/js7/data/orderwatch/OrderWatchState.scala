@@ -25,6 +25,7 @@ final case class OrderWatchState(
   private[orderwatch] val vanishedQueue: Set[ExternalOrderName])
 extends UnsignedSimpleItemState
 {
+  type Item = OrderWatch
   def item = orderWatch
 
   def id: OrderWatchPath = orderWatch.key

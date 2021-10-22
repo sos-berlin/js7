@@ -2,5 +2,7 @@ package js7.data.item
 
 trait UnsignedSimpleItemState extends InventoryItemState
 {
-  def item: UnsignedSimpleItem
+  type Item <: UnsignedSimpleItem
+
+  def item: Item
 }

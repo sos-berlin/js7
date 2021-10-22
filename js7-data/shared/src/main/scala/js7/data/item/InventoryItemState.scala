@@ -2,5 +2,7 @@ package js7.data.item
 
 trait InventoryItemState
 {
-  def item: InventoryItem
+  type Item <: InventoryItem
+
+  def item: Item
 }

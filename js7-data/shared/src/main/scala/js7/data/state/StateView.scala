@@ -8,7 +8,7 @@ import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
-import js7.data.item.{InventoryItem, InventoryItemKey, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, Processing}
@@ -77,6 +77,13 @@ trait StateView
     instruction_[BoardInstruction](workflowPosition)
       .map(_.boardPath)
 
+  protected def orderIdToBoardState(orderId: OrderId): Checked[BoardState] =
+    for {
+      order <- idToOrder.checked(orderId)
+      instr <- instruction_[BoardInstruction](order.workflowPosition)
+      boardState <- pathToBoardState.checked(instr.boardPath)
+    } yield boardState
+
   def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow
       .checked(workflowPosition.workflowId)
@@ -126,14 +133,6 @@ trait StateView
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
     for (w <- idToWorkflow.checked(order.workflowId)) yield
       OrderScopes(order, w, controllerId)
-
-  protected def orderIdToBoardState(orderId: OrderId)
-  : Checked[BoardState] =
-    for {
-      order <- idToOrder.checked(orderId)
-      instr <- instruction_[BoardInstruction](order.workflowPosition)
-      boardState <- pathToBoardState.checked(instr.boardPath)
-    } yield boardState
 }
 
 object StateView

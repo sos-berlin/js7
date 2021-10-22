@@ -18,6 +18,7 @@ final case class AgentRefState(
   problem: Option[Problem])
 extends UnsignedSimpleItemState
 {
+  type Item = AgentRef
   def item = agentRef
 
   def agentPath = agentRef.path
