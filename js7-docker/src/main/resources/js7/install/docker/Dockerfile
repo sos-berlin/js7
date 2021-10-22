@@ -1,4 +1,4 @@
-FROM openjdk:17
+FROM openjdk:18
 
 # UID of the 'js7'. The mounted volume /var/opt/js7 must be rwx for this UID
 # Used as group ID, too.
