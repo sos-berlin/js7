@@ -5,13 +5,13 @@ JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JS7_HOME
 . "$JS7_HOME/bin/internal/set-context.sh"
 declare classpathString java
+declare -a standardJavaOptions
 
 httpPort=4444
 args=()
 javaOptions=(
   -Xms50m
-  -Xmx100m
-  -XX:MaxJavaStackTraceDepth=999999999)
+  -Xmx100m)
 
 for arg in "$@"; do :
   case "$arg" in
@@ -34,9 +34,10 @@ done
 execute=(
   "$java"
   "${javaOptions[@]}"
+  -Dlog4j.configurationFile=js7/controller/client/main/log4j2.xml
+  "${standardJavaOptions[@]}"
   -classpath "$classpathString"
-  -Dlog4j.configurationFile=js7/controller/client/main/log4j2.xml \
   js7.controller.client.main.ControllerClientMain
-  http://127.0.0.1:$httpPort
+  "http://127.0.0.1:$httpPort"
   "${args[@]}")
 exec "${execute[@]}"

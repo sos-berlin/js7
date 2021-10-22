@@ -7,13 +7,12 @@ JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JS7_HOME
 . "$JS7_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
+declare -a standardJavaOptions
 
 config=/var/opt/js7/provider/config
 data=/var/opt/js7/provider/data
 providerOptions=()
-javaOptions=(
-  -XX:+UseStringDeduplication
-  -XX:MaxJavaStackTraceDepth=999999999)
+javaOptions=(-XX:+UseStringDeduplication)
 log4jAsync=false
 
 for arg in "$@"; do :
@@ -102,6 +101,7 @@ fi
 execute=(
   "$java"
   "${javaOptions[@]}"
+  "${standardJavaOptions[@]}"
   -classpath "$classpathString"
   js7.provider.ProviderMain
   "${providerOptions[@]}")

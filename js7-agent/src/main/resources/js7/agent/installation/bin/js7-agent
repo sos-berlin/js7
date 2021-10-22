@@ -5,15 +5,14 @@ JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JS7_HOME
 . "$JS7_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
+declare -a standardJavaOptions
 
 config=/var/opt/js7/agent/config
 data=/var/opt/js7/agent/data
 httpPort=127.0.0.1:4444
 httpsPort=4443
 agentOptions=()
-javaOptions=(
-  -XX:+UseStringDeduplication
-  -XX:MaxJavaStackTraceDepth=999999999)
+javaOptions=(-XX:+UseStringDeduplication)
 log4Async=false
 terminateCommand='{ "TYPE": "ShutDown" }'
 
@@ -100,6 +99,7 @@ if $log4Async; then :
   javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
+javaOptions+=("-Dfile.encoding=UTF-8")
 
 agentOptions+=("--config-directory=$config")
 agentOptions+=("--data-directory=$data")
@@ -152,6 +152,7 @@ while true; do
     else
       "$java" -Xmx50m \
         -Dlog4j.configurationFile=js7/agent/client/main/log4j2.xml \
+        "${standardJavaOptions[@]}" \
         -classpath "$classpathString" \
         js7.agent.client.main.AgentClientMain \
         --data-directory="$data" \

@@ -3,10 +3,11 @@ set -euo pipefail
 
 . "${0%/*}/internal/set-context.sh"
 declare java classpathString
+declare -a standardJavaOptions
 
 "$java"\
   -classpath "$classpathString"\
   -Dlog4j.configurationFile="js7/agent/client/main/log4j2.xml"\
-  -XX:MaxJavaStackTraceDepth=999999999 \
-  js7.agent.client.main.AgentClientMain\
+  "${standardJavaOptions[@]}" \
+  js7.agent.client.main.AgentClientMain \
   "$@"

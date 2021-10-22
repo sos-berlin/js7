@@ -4,10 +4,11 @@ set -euo pipefail
 export JS7_HOME=/opt/js7
 . "$JS7_HOME"/bin/internal/set-context.sh
 declare classpathString java
+declare -a standardJavaOptions
 
 directory=/var/opt/js7/testControllerAgent
 log4jXml="js7/tests/log4j2.xml"   # Java resource
-javaOptions=(-XX:MaxJavaStackTraceDepth=999999999)
+javaOptions=()
 args=()
 
 for arg in "$@"; do :
@@ -43,6 +44,7 @@ javaOptions+=("-Djs7.log4j.immediateFlush=false")
 execute=(
   "$java"
   "${javaOptions[@]}"
+  "${standardJavaOptions[@]}"
   -classpath "$classpathString"
   "js7.tests.TestControllerAgent"
   "--directory=$directory"

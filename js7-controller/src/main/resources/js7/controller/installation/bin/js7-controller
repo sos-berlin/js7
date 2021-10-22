@@ -7,15 +7,14 @@ JS7_HOME="$(cd "${0%/*}/../bin/.." && pwd)"
 export JS7_HOME
 . "$JS7_HOME/bin/internal/set-context.sh"
 declare classpathString java  # returned by set-context.sh
+declare standardJavaOptions
 
 config=/var/opt/js7/controller/config
 data=/var/opt/js7/controller/data
 httpPort=4444
 httpsPort=4443
 controllerOptions=()
-javaOptions=(
-  -XX:+UseStringDeduplication
-  -XX:MaxJavaStackTraceDepth=999999999)
+javaOptions=(-XX:+UseStringDeduplication)
 log4jAsync=false
 
 for arg in "$@"; do :
@@ -125,6 +124,7 @@ while true; do
     "$java"
     "${javaOptions[@]}"
     "${loopJavaOptions[@]}"
+    "${standardJavaOptions[@]}"
     -classpath "$classpathString"
     js7.controller.ControllerMain
     "${controllerOptions[@]}")

@@ -44,6 +44,10 @@ if [ -n "$javaHome" ]; then :
   java="$javaHome/bin/java"
 fi
 
+standardJavaOptions=()
+standardJavaOptions+=("-Dfile.encoding=UTF-8")
+standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
+
 timestamp() {
   local t
   t=$(date +"%Y-%m-%d %H:%M:%S.%N")
