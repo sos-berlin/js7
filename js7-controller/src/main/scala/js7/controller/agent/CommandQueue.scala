@@ -7,7 +7,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.controller.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
 import js7.controller.agent.CommandQueue._
-import js7.data.order.OrderId
+import js7.data.order.{OrderId, OrderMark}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.{View, mutable}
@@ -137,7 +137,9 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
           executeCommand(Batch(inputs map inputToAgentCommand))
             .materialize foreach {
               case Success(Right(Batch.Response(responses))) =>
-                asyncOnBatchSucceeded(for ((i, r) <- inputs zip responses) yield QueuedInputResponse(i, r))
+                asyncOnBatchSucceeded(
+                  for ((i, r) <- inputs zip responses) yield
+                    QueuedInputResponse(i, r))
 
               case Success(Left(problem)) =>
                 asyncOnBatchFailed(inputs, problem)

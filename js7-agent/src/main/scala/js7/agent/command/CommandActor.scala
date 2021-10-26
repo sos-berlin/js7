@@ -3,6 +3,8 @@ package js7.agent.command
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.instances.future._
+import cats.syntax.traverse._
 import js7.agent.command.CommandActor._
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgent, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, Response, ShutDown, TakeSnapshot}
@@ -10,7 +12,7 @@ import js7.agent.scheduler.AgentHandle
 import js7.base.auth.UserId
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import js7.base.log.Logger
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.common.system.startup.Halt
@@ -18,7 +20,7 @@ import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Promise
 import scala.util.{Success, Try}
 
 /**
@@ -66,17 +68,24 @@ extends Actor {
       case _ => logger.debug(run.toString)
     }
 
-  private def executeCommand2(batchId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta,
-    response: Promise[Checked[Response]]): Unit
-  =
+  private def executeCommand2(
+    batchId: Option[InternalCommandId],
+    id: InternalCommandId,
+    command: AgentCommand,
+    meta: CommandMeta,
+    response: Promise[Checked[Response]])
+  : Unit =
     command match {
       case Batch(commands) =>
-        val responses = Vector.fill(commands.size) { Promise[Checked[Response]]() }
-        for ((c, r) <- commands zip responses)
-          executeCommand(c, meta, r, batchId orElse Some(id))
-        val singleResponseFutures = responses.map(_.future)
+        val promises = Vector.fill(commands.size) { Promise[Checked[Response]]() }
+        for ((cmd, promise) <- commands zip promises)
+          executeCommand(cmd, meta, promise, batchId orElse Some(id))
         response.completeWith(
-          Future.sequence(singleResponseFutures)
+          promises
+            .map(_.future.recover {
+              case t => Left(Problem.fromThrowable(t))
+            })
+            .sequence
             .map(checkedResponse => Right(AgentCommand.Batch.Response(checkedResponse))))
 
       case NoOperation =>
