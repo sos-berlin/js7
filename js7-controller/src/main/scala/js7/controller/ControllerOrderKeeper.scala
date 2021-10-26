@@ -930,35 +930,35 @@ with MainJournalingActor[ControllerState, Event]
     entry
   }
 
-  private def reattachToAgent(agentPath: AgentPath): Unit =
-    for (actor <- agentRegister.get(agentPath).map(_.actor)) {
-      for ((itemKey, agentToAttachedState) <- _controllerState.itemToAgentToAttachedState) {
-        agentToAttachedState.get(agentPath) foreach {
-          case Attachable =>
-            itemKey match {
-              case itemKey: SignableItemKey =>
-                for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
-                  actor ! AgentDriver.Input.AttachSignedItem(signedItem)
-                }
-
-              case path: UnsignedSimpleItemPath =>
-                for (item <- _controllerState.pathToUnsignedSimpleItem.get(path)) {
-                  actor ! AgentDriver.Input.AttachUnsignedItem(item)
-                }
-            }
-
-          case Detachable =>
-            actor ! AgentDriver.Input.DetachItem(itemKey)
-
-          case _ =>
-        }
-      }
-
-      _controllerState.idToOrder.valuesIterator
-        .filter(_.attachedState.contains(Order.Attaching(agentPath)))
-        .flatMap(_.checkedState[Order.IsFreshOrReady].toOption)
-        .foreach(tryAttachOrderToAgent)
-    }
+  //private def reattachToAgent(agentPath: AgentPath): Unit =
+  //  for (actor <- agentRegister.get(agentPath).map(_.actor)) {
+  //    for ((itemKey, agentToAttachedState) <- _controllerState.itemToAgentToAttachedState) {
+  //      agentToAttachedState.get(agentPath) foreach {
+  //        case Attachable =>
+  //          itemKey match {
+  //            case itemKey: SignableItemKey =>
+  //              for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
+  //                actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+  //              }
+  //
+  //            case path: UnsignedSimpleItemPath =>
+  //              for (item <- _controllerState.pathToUnsignedSimpleItem.get(path)) {
+  //                actor ! AgentDriver.Input.AttachUnsignedItem(item)
+  //              }
+  //          }
+  //
+  //        case Detachable =>
+  //          actor ! AgentDriver.Input.DetachItem(itemKey)
+  //
+  //        case _ =>
+  //      }
+  //    }
+  //
+  //    _controllerState.idToOrder.valuesIterator
+  //      .filter(_.attachedState.contains(Order.Attaching(agentPath)))
+  //      .flatMap(_.checkedState[Order.IsFreshOrReady].toOption)
+  //      .foreach(tryAttachOrderToAgent)
+  //  }
 
   private def addOrder(freshOrder: FreshOrder): Future[Checked[Boolean]] =
     _controllerState.addOrder(freshOrder, suppressOrderIdCheckFor = suppressOrderIdCheckFor)
@@ -1241,38 +1241,36 @@ with MainJournalingActor[ControllerState, Event]
       }
 
   private def tryAttachOrderToAgent(order: Order[Order.IsFreshOrReady]): Unit =
-    if (order.isProcessable) {
-      for ((signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
-        if (order.isAttaching && !agentEntry.isResetting) {
-          val orderEntry = orderRegister(order.id)
-          if (!orderEntry.triedToAttached) {
-            val jobResources = signedWorkflow.value.referencedJobResourcePaths
-              .flatMap(_controllerState.pathToSignedSimpleItem.get)
-            for (signedItem <- jobResources ++ View(signedWorkflow)) {
-              val item = signedItem.value
-              val attachedState = _controllerState
-                .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
-              if (attachedState == Detached || attachedState == Attachable) {
-                agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
-              }
+    for ((signedWorkflow, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
+      if (order.isAttaching && !agentEntry.isResetting) {
+        val orderEntry = orderRegister(order.id)
+        if (!orderEntry.triedToAttached) {
+          val jobResources = signedWorkflow.value.referencedJobResourcePaths
+            .flatMap(_controllerState.pathToSignedSimpleItem.get)
+          for (signedItem <- jobResources ++ View(signedWorkflow)) {
+            val item = signedItem.value
+            val attachedState = _controllerState
+              .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
+            if (attachedState == Detached || attachedState == Attachable) {
+              agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
-
-            val calendars = signedWorkflow.value.referencedCalendarPaths
-              .flatMap(_controllerState.pathToCalendar.get)
-            for (item <- calendars) {
-              val attachedState = _controllerState
-                .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
-              if (attachedState == Detached || attachedState == Attachable) {
-                agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
-              }
-            }
-
-            orderEntry.triedToAttached = true
-            // TODO AttachOrder mit parent orders!
-            // Agent markiert die als bloß gebraucht für Kindaufträge
-            // Mit Referenzzähler: der letzte Kindauftrag löscht seine Elternaufträge
-            agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentPath)
           }
+
+          val calendars = signedWorkflow.value.referencedCalendarPaths
+            .flatMap(_controllerState.pathToCalendar.get)
+          for (item <- calendars) {
+            val attachedState = _controllerState
+              .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
+            if (attachedState == Detached || attachedState == Attachable) {
+              agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
+            }
+          }
+
+          orderEntry.triedToAttached = true
+          // TODO AttachOrder mit parent orders!
+          // Agent markiert die als bloß gebraucht für Kindaufträge
+          // Mit Referenzzähler: der letzte Kindauftrag löscht seine Elternaufträge
+          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentPath)
         }
       }
     }
