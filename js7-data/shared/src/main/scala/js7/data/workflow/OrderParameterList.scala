@@ -31,22 +31,22 @@ final case class OrderParameterList private(
   def referencedJobResourcePaths: Iterable[JobResourcePath] =
     nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
 
-  def workflowOrderVariablesScope(
-    freshOrder: FreshOrder,
-    controllerId: ControllerId,
-    pathToJobResource: PartialFunction[JobResourcePath, JobResource],
-    nowScope: Scope)
-  : Scope = {
-    val nestedScope = combine(
-      scheduledScope(freshOrder.scheduledFor),
-      minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
-      EnvScope,
-      nowScope)
-    combine(
-      nestedScope,
-      NamedValueScope(freshOrder.arguments),
-      JobResourceScope(pathToJobResource, useScope = nestedScope))
-  }
+  //def workflowOrderVariablesScope(
+  //  freshOrder: FreshOrder,
+  //  controllerId: ControllerId,
+  //  pathToJobResource: PartialFunction[JobResourcePath, JobResource],
+  //  nowScope: Scope)
+  //: Scope = {
+  //  val nestedScope = combine(
+  //    scheduledScope(freshOrder.scheduledFor),
+  //    minimalJs7VariablesScope(freshOrder.id, freshOrder.workflowPath, controllerId),
+  //    EnvScope,
+  //    nowScope)
+  //  combine(
+  //    nestedScope,
+  //    NamedValueScope(freshOrder.arguments),
+  //    JobResourceScope(pathToJobResource, useScope = nestedScope))
+  //}
 
   def prepareOrderArguments(
     freshOrder: FreshOrder,
@@ -68,8 +68,7 @@ final case class OrderParameterList private(
     )
   }
 
-  private def prepareOrderArguments2(arguments: NamedValues, scope: Scope)
-  : Checked[NamedValues] =
+  private def prepareOrderArguments2(arguments: NamedValues, scope: Scope): Checked[NamedValues] =
   {
     lazy val recursiveScope: Scope = combine(
       scope,

@@ -22,6 +22,7 @@ trait OrderProcess
   def cancel(immediately: Boolean): Task[Unit] =
     Task { future.cancel() }
 
+  /** Returns a Task with a Future for the started and running process. */
   final def start(stdObservers: StdObservers)(implicit s: Scheduler)
   : Task[Future[Outcome.Completed]] =
     run.map(fiber =>

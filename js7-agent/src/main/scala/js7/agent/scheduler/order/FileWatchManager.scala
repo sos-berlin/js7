@@ -148,7 +148,7 @@ final class FileWatchManager(
         .observable(
           directoryState,
           WatchOptions(
-            Paths.get(fileWatch.directory),
+            directory,
             Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
             // Regular expresion is evaluated twice: here and when deriving OrderId
             matches = relativePath => fileWatch.resolvedPattern.matcher(relativePath.toString).matches,
