@@ -18,6 +18,7 @@ import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchDelayTest._
 import js7.tests.jobs.DeleteFileJob
@@ -51,7 +52,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
     orderWatchPath,
     workflow.path,
     agentPath,
-    watchedDirectory.toString,
+    StringConstant(watchedDirectory.toString),
     delay = systemWatchDelay + 1.s)
 
   private def fileToOrderId(filename: String): OrderId =

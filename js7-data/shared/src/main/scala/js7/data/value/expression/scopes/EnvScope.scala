@@ -1,5 +1,6 @@
 package js7.data.value.expression.scopes
 
+import java.util.concurrent.ConcurrentHashMap
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.utils.ScalaUtils.syntax._
@@ -7,10 +8,13 @@ import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{StringValue, Value}
+import org.jetbrains.annotations.TestOnly
 
 /** Accesses environment variables. */
-sealed class EnvScope(env: String => Option[String]) extends Scope
+trait EnvScope extends Scope
 {
+  protected def get(name: String): Option[String]
+
   override def evalFunctionCall(functionCall: Expression.FunctionCall)(implicit scope: Scope) =
     functionCall match {
       case FunctionCall("env", arguments) =>
@@ -18,7 +22,7 @@ sealed class EnvScope(env: String => Option[String]) extends Scope
           case Seq(Argument(nameExpr, None | Some("name"))) =>
             for {
               name <- nameExpr.evalAsString
-              string <- env(name) !! UnknownKeyProblem("environment variable", name)
+              string <- get(name) !! UnknownKeyProblem("environment variable", name)
             } yield StringValue(string)
 
           case Seq(
@@ -26,7 +30,7 @@ sealed class EnvScope(env: String => Option[String]) extends Scope
           Argument(defaultExpr, None | Some("default"))) =>
             for {
               name <- nameExpr.evalAsString
-              result <- env(name).fold(defaultExpr.eval)(v => Checked(StringValue(v): Value))
+              result <- get(name).fold(defaultExpr.eval)(v => Checked(StringValue(v): Value))
             } yield result
 
           case _ =>
@@ -40,4 +44,14 @@ sealed class EnvScope(env: String => Option[String]) extends Scope
   override def toString = "EnvScope"
 }
 
-object EnvScope extends EnvScope(sys.env.lift)
+object EnvScope extends EnvScope
+{
+  def get(name: String) =
+    Option(testEnv.get(name)) orElse sys.env.get(name)
+
+  private val testEnv = new ConcurrentHashMap[String, String]
+
+  @TestOnly
+  private[js7] def putForTest(name: String, value: String): Unit =
+    testEnv.put(name, value)
+}

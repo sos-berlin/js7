@@ -16,6 +16,7 @@ import js7.data.order.OrderEvent.{OrderDeleted, OrderStarted}
 import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -48,7 +49,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
     agentPath,
-    sourceDirectory.toString)
+    StringConstant(sourceDirectory.toString))
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow

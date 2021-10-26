@@ -88,7 +88,7 @@ Beispiele (in JSON):
   "path": "MY-FILEWATCH",
   "workflowPath": "WORKFLOW",
   "agentPath": "AGENT",
-  "directory": "/.../DIRECTORY"
+  "directoryExpr": "'/.../DIRECTORY'"
 }
 ```
 
@@ -98,7 +98,7 @@ Beispiele (in JSON):
   "path": "MY-FILEWATCH",
   "workflowPath": "WORKFLOW",
   "agentPath": "AGENT",
-  "directory": "/.../DIRECTORY",
+  "directoryExpr": "'/.../DIRECTORY'",
   "pattern": "file-(.+)\\.csv",
   "orderIdExpression": "'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchId:$1\"",
   "delay": 2

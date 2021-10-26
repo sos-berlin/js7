@@ -14,7 +14,7 @@ final case class WatchOptions(
 
 object WatchOptions
 {
-  def forTest(  directory: Path,
+  def forTest(directory: Path,
     kinds: Set[WatchEvent.Kind[Path]],
     fileMatches: Path => Boolean = _ => true,
     retryDurations: Seq[FiniteDuration] = Seq(100.ms),

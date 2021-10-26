@@ -32,6 +32,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position._
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.removeJNull
@@ -59,7 +60,7 @@ final class AgentStateTest extends AsyncFreeSpec
     OrderWatchPath("ORDER-SOURCE-ID"),
     WorkflowPath("WORKFLOW"),
     AgentPath("AGENT"),
-    s"${separator}DIRECTORY",
+    expr(s"'${separator}DIRECTORY'"),
     Some(SimplePattern("""\.csv""".r.pattern.pattern)),
     Some(Expression.NamedValue("0")),
     3.s,
@@ -162,7 +163,7 @@ final class AgentStateTest extends AsyncFreeSpec
               "path": "ORDER-SOURCE-ID",
               "workflowPath": "WORKFLOW",
               "agentPath": "AGENT",
-              "directory": "${separator}DIRECTORY",
+              "directoryExpr": "'${separator}DIRECTORY'",
               "pattern": "\\.csv",
               "delay": 3,
               "orderIdExpression": "$$0",

@@ -1,9 +1,10 @@
 package js7.data.orderwatch
 
-import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
+import io.circe.generic.extras.JsonKey
+import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
+import io.circe.{Codec, Decoder}
 import java.util.regex.Pattern
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -19,7 +20,7 @@ final case class FileWatch(
   path: OrderWatchPath,
   workflowPath: WorkflowPath,
   agentPath: AgentPath,
-  directory: String,
+  @JsonKey("directoryExpr") directory: Expression,
   pattern: Option[SimplePattern] = None,
   orderIdExpression: Option[Expression] = None,
   delay: FiniteDuration = ZeroDuration,
@@ -51,8 +52,25 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
   private val defaultPattern = Pattern.compile("[^.].*")
 
   implicit val jsonCodec: Codec.AsObject[FileWatch] = {
+    val decoder: Decoder[FileWatch] =
+      c => for {
+        path <- c.get[OrderWatchPath]("path")
+        workflowPath <- c.get[WorkflowPath]("workflowPath")
+        agentPath <- c.get[AgentPath]("agentPath")
+        directoryExpr <- c.get[Expression]("directoryExpr")
+          .orElse(
+            c.get[String]("directory")/*until v2.0.1*/.map(Expression.StringConstant(_)))
+        pattern <- c.get[Option[SimplePattern]]("pattern")
+        orderIdExpression <- c.get[Option[Expression]]("orderIdExpression")
+        delay <- c.getOrElse[FiniteDuration]("delay")(ZeroDuration)
+        itemRevision <- c.get[Option[ItemRevision]]("itemRevision")
+      } yield FileWatch(path, workflowPath, agentPath,
+        directoryExpr, pattern, orderIdExpression, delay, itemRevision)
+
     implicit val configuration = withDefaults
-    deriveConfiguredCodec[FileWatch]
+    Codec.AsObject.from(
+      decoder,
+      deriveConfiguredEncoder[FileWatch])
   }
 
   intelliJuseImport(FiniteDurationJsonEncoder)

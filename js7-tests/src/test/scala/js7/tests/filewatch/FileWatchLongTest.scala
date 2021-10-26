@@ -14,6 +14,7 @@ import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.order.OrderId
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchLongTest._
 import js7.tests.jobs.DeleteFileJob
@@ -44,7 +45,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
     agentPath,
-    sourceDirectory.toString)
+    StringConstant(sourceDirectory.toString))
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow

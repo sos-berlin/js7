@@ -10,6 +10,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderDeletionMarked}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, HasOrder, Vanished}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec
@@ -20,7 +21,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val workflowId = workflowPath ~ v1
   private val aOrderWatch = FileWatch(OrderWatchPath("A-WATCH"),
-    workflowPath, AgentPath("AGENT"), "DIRECTORY")
+    workflowPath, AgentPath("AGENT"), expr("'DIRECTORY'"))
   private val bOrderWatch = aOrderWatch.copy(path = OrderWatchPath("B-WATCH"))
   private var aows = AllOrderWatchesState.empty
 
@@ -43,7 +44,7 @@ final class AllOrderWatchesStateTest extends AnyFreeSpec
   }
 
   "changeOrderWatch" in {
-    val a1 = aOrderWatch.copy(directory = "CHANGED")
+    val a1 = aOrderWatch.copy(directory = expr("'CHANGED'"))
     val all1 = aows.changeOrderWatch(a1).orThrow
     assert(all1.pathToOrderWatchState(a1.path) == OrderWatchState(a1))
   }

@@ -226,7 +226,8 @@ with Stash
             AgentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
             "\n" + "─" * 80)
         }
-        fileWatchManager.start()
+        fileWatchManager.start
+          .map(_.orThrow)  // How to handle a failure, due to missing environment variable ???
           .runAsyncAndForget
       }
 

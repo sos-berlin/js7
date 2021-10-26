@@ -18,6 +18,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.StringValue
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
@@ -190,7 +191,8 @@ final class AgentCommandTest extends AnyFreeSpec
   "AttachItem" in {
     check(
       AgentCommand.AttachItem(
-        FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"), "DIRECTORY")),
+        FileWatch(OrderWatchPath("PATH"), WorkflowPath("WORKFLOW"), AgentPath("AGENT"),
+          expr("'DIRECTORY'"))),
       json"""{
         "TYPE": "AttachItem",
         "item": {
@@ -198,7 +200,7 @@ final class AgentCommandTest extends AnyFreeSpec
           "path": "PATH",
           "workflowPath": "WORKFLOW",
           "agentPath": "AGENT",
-          "directory": "DIRECTORY",
+          "directoryExpr": "'DIRECTORY'",
           "delay": 0
         }
       }""")

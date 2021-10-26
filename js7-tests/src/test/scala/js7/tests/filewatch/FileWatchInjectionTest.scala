@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchInjectionTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -28,7 +29,7 @@ final class FileWatchInjectionTest extends AnyFreeSpec with ControllerAgentForSc
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
     agentPath,
-    sourceDirectory.toString)
+    StringConstant(sourceDirectory.toString))
 
   "Start with existing file" in {
     controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow

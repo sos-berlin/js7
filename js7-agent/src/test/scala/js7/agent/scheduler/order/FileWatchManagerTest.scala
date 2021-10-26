@@ -9,6 +9,7 @@ import js7.data.agent.AgentPath
 import js7.data.order.OrderId
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -18,7 +19,7 @@ final class FileWatchManagerTest extends AnyFreeSpec
     OrderWatchPath("FILE-WATCH"),
     WorkflowPath("WORKFLOW"),
     AgentPath("AGENT"),
-    "DIRECTORY",
+    expr("'DIRECTORY'"),
     Some(SimplePattern("""file-(.+)\.csv""".r.pattern.pattern)),
     Some(ExpressionParser.parse(
       """"#" ++ now(format="yyyy-MM-dd", timezone="Pacific/Tahiti") ++ "#F-$orderWatchPath:$1""""

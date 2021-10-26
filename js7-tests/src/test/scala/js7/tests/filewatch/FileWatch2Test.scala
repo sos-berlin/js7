@@ -54,8 +54,8 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private val aDirectory = directoryProvider.agents(0).dataDir / "tmp/a-files"
-  private val bDirectory = directoryProvider.agents(0).dataDir / "tmp/b-files"
+  private val aDirectory = directoryProvider.agents(0).dataDir / "work/a-files"
+  private val bDirectory = directoryProvider.agents(0).dataDir / "work/b-files"
 
   val orderWatchPath = OrderWatchPath("FILE-WATCH")
 
@@ -63,8 +63,8 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
     orderWatchPath,
     workflow.path,
     aAgentPath,
-    aDirectory.toString)
-  private lazy val bFileWatch = aFileWatch.copy(directory = bDirectory.toString)
+    StringConstant(aDirectory.toString))
+  private lazy val bFileWatch = aFileWatch.copy(directory = StringConstant(bDirectory.toString))
 
   private val orderId1 = OrderId("file:FILE-WATCH:1")
   private val orderId2 = OrderId("file:FILE-WATCH:2")

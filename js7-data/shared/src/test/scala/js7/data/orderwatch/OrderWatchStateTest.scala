@@ -12,6 +12,7 @@ import js7.data.item.{ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchState.{Arised, ExternalOrderSnapshot, HasOrder, Vanished, VanishedAck}
 import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
@@ -25,7 +26,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
       OrderWatchPath("FILE-WATCH"),
       WorkflowPath("WORKFLOW"),
       AgentPath("AGENT"),
-      "DIRECTORY",
+      expr("'DIRECTORY'"),
       Some(SimplePattern("PATTERN.*\\.csv".r.pattern.pattern)),
       Some(NamedValue("1")),
       delay = 2.s,
@@ -149,7 +150,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
               "path": "FILE-WATCH",
               "workflowPath": "WORKFLOW",
               "agentPath": "AGENT",
-              "directory": "DIRECTORY",
+              "directoryExpr": "'DIRECTORY'",
               "pattern": "PATTERN.*\\.csv",
               "orderIdExpression": "$$1",
               "delay": 2,

@@ -3,7 +3,7 @@ package js7.data_for_java.orderwatch
 import cats.instances.option._
 import cats.syntax.traverse._
 import io.vavr.control.{Either => VEither}
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import java.util.Optional
 import java.util.regex.Pattern
 import javax.annotation.Nonnull
@@ -13,10 +13,12 @@ import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
+import js7.data_for_java.value.JExpression
 import js7.data_for_java.vavr.VavrConverters.RichVavrOption
 import scala.jdk.OptionConverters._
 
@@ -39,8 +41,8 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
     asScala.agentPath
 
   @Nonnull
-  lazy val directory: Path =
-    Paths.get(asScala.directory)
+  lazy val directory: JExpression =
+    JExpression(asScala.directory)
 
   @Nonnull
   def pattern: Optional[Pattern] =
@@ -68,7 +70,7 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
         orderIdExpression <- orderIdExpression.toScala.traverse(ExpressionParser.parse(_))
       } yield
         JFileWatch(FileWatch(
-            id, workflowPath, agentPath, directory.toString,
+            id, workflowPath, agentPath, StringConstant(directory.toString),
             pattern,
             orderIdExpression,
             delay.toFiniteDuration))

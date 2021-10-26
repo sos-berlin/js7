@@ -38,10 +38,13 @@ final class EnvScopeTest extends AnyFreeSpec
       }
 
       "Nested call" in {
-        val envScope = new EnvScope(condOpt(_) {
-          case "A" => "B"
-          case "B" => "RESULT"
-        })
+        val envScope = new EnvScope {
+          def get(name: String) =
+            condOpt(name) {
+              case "A" => "B"
+              case "B" => "RESULT"
+            }
+        }
         assert(envScope.parseAndEval("env(env('A'))") == Right(StringValue("RESULT")))
       }
     }

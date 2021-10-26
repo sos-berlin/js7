@@ -87,7 +87,7 @@ final class ControllerStateTest extends AsyncFreeSpec
               fileWatch.path,
               workflow.path,
               agentRef.path,
-              "/tmp/directory",
+              expr("'/tmp/directory'"),
               itemRevision = Some(ItemRevision(7)))),
             OrderWatchState.ExternalOrderSnapshot(
               fileWatch.path,
@@ -233,7 +233,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           "path": "WATCH",
           "workflowPath": "WORKFLOW",
           "agentPath": "AGENT",
-          "directory": "/tmp/directory",
+          "directoryExpr": "'/tmp/directory'",
           "delay": 0,
           "itemRevision": 7
         }
@@ -385,7 +385,7 @@ object ControllerStateTest
     OrderWatchPath("WATCH"),
     workflow.path,
     AgentPath("AGENT"),
-    "/tmp/directory",
+    expr("'/tmp/directory'"),
     itemRevision = Some(ItemRevision(7)))
 
   // Also used by ControllerStateExecutorTest

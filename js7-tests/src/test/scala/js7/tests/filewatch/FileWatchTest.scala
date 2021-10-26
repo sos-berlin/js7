@@ -1,6 +1,8 @@
 package js7.tests.filewatch
 
+import java.io.File
 import java.nio.file.Files.{createDirectory, delete, exists}
+import java.nio.file.Paths
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
@@ -26,6 +28,9 @@ import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderDeleted, 
 import js7.data.order.{OrderId, Outcome}
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderVanished
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.scopes.EnvScope
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -56,12 +61,16 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private val watchDirectory = directoryProvider.agents(0).dataDir / "work/files"
+  // Calculate directory path from an environment variable
+  private val watchPrefix = (directoryProvider.agents(0).dataDir / "work").toString + File.separator
+  private val watchDirectory = Paths.get(watchPrefix + "files")
+  private val envName = getClass.getName
+  EnvScope.putForTest(envName, "files")
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("TEST-WATCH"),
     workflow.path,
     aAgentPath,
-    watchDirectory.toString)
+    expr(s"${StringConstant.quote(watchPrefix)} ++ env('$envName')"))
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
@@ -71,7 +80,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     OrderWatchPath("WAITING-WATCH"),
     waitingWorkflow.path,
     aAgentPath,
-    waitingWatchDirectory.toString)
+    StringConstant(waitingWatchDirectory.toString))
 
   def watchedFileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
