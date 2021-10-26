@@ -998,7 +998,7 @@ with MainJournalingActor[ControllerState, Event]
     delayOrderDeletion(
       _controllerState
         .applyEventsAndReturnSubsequentEvents(keyedEvents)
-        .map(_.keyedEvents.toVector)
+        .map(_.keyedEvents)
         .orThrow)
 
   private def nextOrderEvents(orderIds: Seq[OrderId]): Seq[AnyKeyedEvent] =

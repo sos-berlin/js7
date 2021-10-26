@@ -209,7 +209,7 @@ final case class Order[+S <: Order.State](
       case OrderAttached(agentPath) =>
         attachedState match {
           case Some(Attaching(`agentPath`)) =>
-            check((isState[Fresh] || isState[Ready] || isState[Forked]) && isAttaching,
+            check(isState[Fresh] || isState[Ready] || isState[Forked],
               copy(attachedState = Some(Attached(agentPath))))
           case _ =>
             if (force)
