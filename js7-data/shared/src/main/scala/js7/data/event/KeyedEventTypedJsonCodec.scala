@@ -98,9 +98,9 @@ with Decoder[KeyedEvent[E]]
 object KeyedEventTypedJsonCodec
 {
   def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*): KeyedEventTypedJsonCodec[E] =
-    apply[E](implicitClass[E].shortClassName, subtypes: _*)
+    named[E](implicitClass[E].shortClassName, subtypes: _*)
 
-  def apply[E <: Event: ClassTag](name: String, subtypes: KeyedSubtype[_ <: E]*)
+  def named[E <: Event: ClassTag](name: String, subtypes: KeyedSubtype[_ <: E]*)
   : KeyedEventTypedJsonCodec[E] =
     new KeyedEventTypedJsonCodec[E](implicitClass[E].simpleScalaName, printName = name, subtypes)
 

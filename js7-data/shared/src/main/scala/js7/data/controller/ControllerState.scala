@@ -656,7 +656,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
     AgentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
-    TypedJsonCodec("ControllerState.Snapshot",
+    TypedJsonCodec.named("ControllerState.Snapshot",
       Subtype[JournalHeader],
       Subtype[SnapshotMeta],
       Subtype[JournalState],
@@ -673,7 +673,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[Order[Order.State]])
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
-    KeyedEventTypedJsonCodec("ControlllerState.Event",
+    KeyedEventTypedJsonCodec.named("ControlllerState.Event",
       KeyedSubtype[JournalEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[VersionedEvent],

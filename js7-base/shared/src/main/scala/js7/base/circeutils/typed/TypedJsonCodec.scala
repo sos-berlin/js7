@@ -112,7 +112,7 @@ object TypedJsonCodec
   def apply[A: ClassTag](subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] =
     fromIterable(implicitClass[A].shortClassName, subtypes)
 
-  def apply[A: ClassTag](name: String, subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] =
+  def named[A: ClassTag](name: String, subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] =
     fromIterable(name, subtypes)
 
   def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[_ <: A]]): TypedJsonCodec[A] =
