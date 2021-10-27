@@ -15,7 +15,7 @@ import js7.data.value.expression.Expression.{Argument, FunctionCall, StringConst
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.forwindows.{WindowsProcessCredential, WindowsProcessTest}
+import js7.launcher.forwindows.{WindowsProcessCredential, WindowsProcessTest}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.windows.WindowsLogonTest._
 import org.scalatest.freespec.AnyFreeSpec

@@ -16,8 +16,8 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.tests.ForkTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest

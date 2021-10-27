@@ -23,8 +23,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, ForkList, If}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.proxy.data.event.EventAndState
 import js7.tests.ForkListTest._
 import js7.tests.jobs.EmptyJob

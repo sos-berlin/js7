@@ -21,9 +21,9 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
-import js7.executor.StdObservers
-import js7.executor.configuration.{JobExecutorConf, TaskConfiguration}
-import js7.executor.process.{ProcessDriver, RichProcess}
+import js7.launcher.StdObservers
+import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
+import js7.launcher.process.{ProcessDriver, RichProcess}
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
@@ -59,7 +59,7 @@ final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with Te
         Order.Processing,
         historicOutcomes = Vector(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
       val taskRunner = new ProcessDriver(order.id, taskConfiguration,
-        injector.instance[JobExecutorConf])
+        injector.instance[JobLauncherConf])
       val out, err = PublishSubject[String]()
       val stdObservers = new StdObservers(out, err, charBufferSize = 7, keepLastErrLine = false)
       val whenOut = out.foldL.runToFuture

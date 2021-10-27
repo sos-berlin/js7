@@ -161,8 +161,9 @@ lazy val js7 = (project in file("."))
     `js7-common`,
     `js7-common-http`.jvm,
     `js7-core`,
-    `js7-executor`,
-    `js7-executor-for-java`,
+    `js7-launcher`,
+    `js7-launcher-for-java`,
+    `js7-launcher-for-windows`,
     `js7-data`.jvm,
     `js7-data-for-java`,
     `js7-docker`,
@@ -178,7 +179,6 @@ lazy val js7 = (project in file("."))
     `js7-tests`,
     `js7-license`,
     `js7-license-fake`,
-    `js7-executor-for-windows`,
     `js7-build-info`)
   .settings(publish / skip := true)
 
@@ -195,7 +195,7 @@ lazy val all = (project in file("target/project-all"))  // Not the default proje
   .aggregate(js7, js7JS)
 
 lazy val `js7-install` = project
-  .dependsOn(`js7-controller`, `js7-provider`, `js7-agent`, `js7-executor-for-java`, `js7-tests`, `js7-license-fake`)
+  .dependsOn(`js7-controller`, `js7-provider`, `js7-agent`, `js7-launcher-for-java`, `js7-tests`, `js7-license-fake`)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
@@ -480,8 +480,8 @@ lazy val `js7-core` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-executor` = project
-  .dependsOn(`js7-executor-for-windows`, `js7-core`, `js7-tester`.jvm % "test")
+lazy val `js7-launcher` = project
+  .dependsOn(`js7-launcher-for-windows`, `js7-core`, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -492,8 +492,8 @@ lazy val `js7-executor` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-executor-for-java` = project
-  .dependsOn(`js7-executor`, `js7-data-for-java`, `js7-tester`.jvm % "test")
+lazy val `js7-launcher-for-java` = project
+  .dependsOn(`js7-launcher`, `js7-data-for-java`, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -506,7 +506,7 @@ lazy val `js7-executor-for-java` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-executor-for-windows` = project
+lazy val `js7-launcher-for-windows` = project
   .dependsOn(`js7-base`.jvm, `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
@@ -548,7 +548,7 @@ lazy val `js7-cluster` = project
   }
 
 lazy val `js7-agent` = project
-  .dependsOn(`js7-agent-data`, `js7-executor`, `js7-core`, `js7-common`, `js7-data`.jvm,
+  .dependsOn(`js7-agent-data`, `js7-launcher`, `js7-core`, `js7-common`, `js7-data`.jvm,
     `js7-agent-client` % "test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
@@ -612,8 +612,8 @@ lazy val `js7-tests` = project
     `js7-provider`,
     `js7-tester`.jvm % "test",
     `js7-docker` % "test",
-    `js7-executor-for-java` % "test->test",
-    `js7-executor-for-windows` % "test->test",
+    `js7-launcher-for-java` % "test->test",
+    `js7-launcher-for-windows` % "test->test",
     `js7-license-fake`)
   .settings(
     commonSettings,

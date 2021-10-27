@@ -23,8 +23,8 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.JobSchedulerConfiguration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.configuration.CommonConfiguration
-import js7.executor.configuration.{JobExecutorConf, ProcessKillScript}
-import js7.executor.process.ProcessKillScriptProvider
+import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
+import js7.launcher.process.ProcessKillScriptProvider
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import monix.execution.schedulers.SchedulerService
@@ -107,7 +107,7 @@ extends CommonConfiguration
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
   def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock) =
-    JobExecutorConf(
+    JobLauncherConf(
       executablesDirectory = executablesDirectory,
       workDirectory = workDirectory,
       workingDirectory = jobWorkingDirectory,

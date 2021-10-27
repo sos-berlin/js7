@@ -13,7 +13,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
-import js7.executor.configuration.ProcessKillScript
+import js7.launcher.configuration.ProcessKillScript
 import js7.journal.configuration.JournalConf
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

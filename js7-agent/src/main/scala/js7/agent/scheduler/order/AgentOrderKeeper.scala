@@ -50,8 +50,8 @@ import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import js7.executor.configuration.JobExecutorConf
-import js7.executor.configuration.Problems.SignedInjectionNotAllowed
+import js7.launcher.configuration.JobLauncherConf
+import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
@@ -73,7 +73,7 @@ final class AgentOrderKeeper(
   totalRunningSince: Deadline,
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
-  executorConf: JobExecutorConf,
+  jobLauncherConf: JobLauncherConf,
   persistence: JournaledStatePersistence[AgentState],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
@@ -518,7 +518,7 @@ with Stash
           JobConf(
             jobKey, job, workflow, controllerId,
             sigkillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay),
-          executorConf,
+          jobLauncherConf,
           id => persistence.currentState.pathToJobResource.checked(id))
         jobRegister.insert(jobKey -> new JobEntry(jobKey, job, zone, jobDriver))
       }

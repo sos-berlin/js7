@@ -8,9 +8,9 @@ import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.Outcome
 import js7.data.orderwatch.FileWatch.FileArgumentName
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.JobContext
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
+import js7.launcher.internal.InternalJob.JobContext
 import js7.tests.jobs.DeleteFileJob.logger
 import monix.eval.Task
 

@@ -22,10 +22,10 @@ import js7.data.workflow.WorkflowPrinter.instructionToString
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
-import js7.executor.OrderProcess
-import js7.executor.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
-import js7.executor.internal.InternalJob
-import js7.executor.internal.InternalJob.JobContext
+import js7.launcher.OrderProcess
+import js7.launcher.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
+import js7.launcher.internal.InternalJob
+import js7.launcher.internal.InternalJob.JobContext
 import js7.tests.internaljob.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -57,7 +57,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
   private val testCounter = AtomicInt(0)
 
-  "One InternalJob.start for multiple InternalJob.prepareOrderProcess" in {
+  "One InternalJob.start for multiple InternalJob.toOrderProcess" in {
     val versionId = versionIdIterator.next()
     val workflow = Workflow.of(execute_[AddOneJob])
       .withId(workflowPathIterator.next() ~ versionId)
@@ -70,7 +70,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val outcomes = events.collect { case OrderProcessed(outcome) => outcome }
       assert(outcomes == Vector(Outcome.Succeeded(
         NamedValues(
-          "START" -> NumberValue(1),  // One start only for multiple prepareOrderProcess calls
+          "START" -> NumberValue(1),  // One start only for multiple toOrderProcess calls
           "PROCESS" -> NumberValue(processNumber),
           "RESULT" -> NumberValue(301)))))
     }

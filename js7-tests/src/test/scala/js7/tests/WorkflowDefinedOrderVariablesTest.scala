@@ -12,8 +12,8 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.OrderParameterList.FinalOrderArgumentProblem
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.tests.WorkflowDefinedOrderVariablesTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task

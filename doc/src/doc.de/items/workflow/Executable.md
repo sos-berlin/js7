@@ -147,22 +147,20 @@ Interne Jobs können eines der beiden folgenden Interfaces implementieren.
 Minimales Beispiel für einen internen Job, der nichts tut:
 
 ```java
-package js7.executor.forjava.internal.tests;
+package js7.launcher.forjava.internal.tests;
 
 import java.util.concurrent.CompletableFuture;
-import js7.executor.forjava.internal.JInternalJob;
-import js7.executor.forjava.internal.JOrderProcess;
+import js7.launcher.forjava.internal.JInternalJob;
+import js7.launcher.forjava.internal.JOrderProcess;
 import js7.data_for_java.order.JOutcome;
-import static java.util.Collections.emptyMap;
 
 /** Skeleton for a JInternalJob implementation. */
-public final class EmptyJInternalJob implements JInternalJob
-{
-    public JOrderProcess toProcessOrder(Step step) {
-        return JOrderProcess.of(
-            CompletableFuture.supplyAsync(
-                () -> JOutcome.succeeded()));
-    }
+public final class EmptyJInternalJob implements JInternalJob {
+  public JOrderProcess toProcessOrder(Step step) {
+    return JOrderProcess.of(
+      CompletableFuture.supplyAsync(
+        () -> JOutcome.succeeded()));
+  }
 }
 ```
 `processOrder` liefert sofort ein `OrderProcess` zurück,
@@ -209,10 +207,10 @@ Die `parallelism` der Jobs sollte mit Bedacht eingestellt sein.
 Minimales Beispiel für einen internen Job, der nichts tut:
 
 ```java
-package js7.executor.forjava.internal.tests;
+package js7.launcher.forjava.internal.tests;
 
 import js7.data_for_java.order.JOutcome;
-import js7.executor.forjava.internal.BlockingInternalJob;
+import js7.launcher.forjava.internal.BlockingInternalJob;
 
 public final class EmptyBlockingInternalJob implements BlockingInternalJob
 {
@@ -228,7 +226,7 @@ Beispiel für einen mit `CancelOrder` abbrechenbaren Job:
 package js7.tests.internaljob;
 
 import js7.data_for_java.order.JOutcome;
-import js7.executor.forjava.internal.BlockingInternalJob;
+import js7.launcher.forjava.internal.BlockingInternalJob;
 
 public final class JCancelableJob implements BlockingInternalJob
 {

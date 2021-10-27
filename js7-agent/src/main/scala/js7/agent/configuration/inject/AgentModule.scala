@@ -19,7 +19,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.cluster.ClusterWatchRegister
-import js7.executor.configuration.JobExecutorConf
+import js7.launcher.configuration.JobLauncherConf
 import js7.journal.{EventIdClock, EventIdGenerator}
 import monix.execution.Scheduler
 import monix.execution.schedulers.SchedulerService
@@ -84,8 +84,8 @@ extends AbstractModule
       ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
 
   @Provides @Singleton
-  def jobExecutorConf(conf: AgentConfiguration, iox: IOExecutor, clock: AlarmClock, closer: Closer)
-  : JobExecutorConf = {
+  def jobLauncherConf(conf: AgentConfiguration, iox: IOExecutor, clock: AlarmClock, closer: Closer)
+  : JobLauncherConf = {
     val blockingJobScheduler: SchedulerService = {
       // For BlockingInternalJob (thread-blocking Java jobs)
       val scheduler = newUnlimitedScheduler("JS7 blocking job")

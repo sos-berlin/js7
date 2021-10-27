@@ -18,9 +18,9 @@ import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.expression.Expression
-import js7.executor.configuration.JobExecutorConf
-import js7.executor.internal.JobExecutor
-import js7.executor.{OrderProcess, ProcessOrder, StdObservers}
+import js7.launcher.configuration.JobLauncherConf
+import js7.launcher.internal.JobLauncher
+import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
@@ -28,7 +28,7 @@ import scala.concurrent.Promise
 
 private[agent] final class JobDriver(
   jobConf: JobConf,
-  jobExecutorConf: JobExecutorConf,
+  jobLauncherConf: JobLauncherConf,
   pathToJobResource: JobResourcePath => Checked[JobResource])
   (implicit scheduler: Scheduler, iox: IOExecutor)
 {
@@ -38,15 +38,15 @@ private[agent] final class JobDriver(
   private val orderToProcess = AsyncMap.empty[OrderId, Entry]
   @volatile private var lastProcessTerminated: Promise[Unit] = null
 
-  private val checkedJobExecutor: Checked[JobExecutor] =
-    JobExecutor.checked(jobConf, jobExecutorConf, pathToJobResource)
-      .map { jobExecutor =>
-        jobExecutor.precheckAndWarn
+  private val checkedJobLauncher: Checked[JobLauncher] =
+    JobLauncher.checked(jobConf, jobLauncherConf, pathToJobResource)
+      .map { jobLauncher =>
+        jobLauncher.precheckAndWarn
           .runAsyncAndForget  // TODO JobDriver.start(): Task[Checked[JobDriver]]
-        jobExecutor
+        jobLauncher
       }
 
-  for (problem <- checkedJobExecutor.left) logger.error(problem.toString)
+  for (problem <- checkedJobLauncher.left) logger.error(problem.toString)
 
   def stop(signal: ProcessSignal): Task[Unit] =
     Task.defer {
@@ -68,9 +68,9 @@ private[agent] final class JobDriver(
                 Task.fromFuture(lastProcessTerminated.future)
                   .logWhenItTakesLonger(s"Job '$jobKey' OrderProcess")))
         .flatMap(_ =>
-          checkedJobExecutor.toOption.fold(Task.unit) { jobExecutor =>
-            logger.trace("JobExecutor stop")
-            jobExecutor
+          checkedJobLauncher.toOption.fold(Task.unit) { jobLauncher =>
+            logger.trace("JobLauncher stop")
+            jobLauncher
               .stop
               .logWhenItTakesLonger("Stop")
               .onErrorHandle(throwable =>
@@ -85,8 +85,8 @@ private[agent] final class JobDriver(
   : Task[Outcome] =
     Task.defer {
       val entry = new Entry(order.id)
-      Task.pure(checkedJobExecutor)
-        .flatMapT(jobExecutor => orderToProcess.insert(order.id, entry)
+      Task.pure(checkedJobLauncher)
+        .flatMapT(jobLauncher => orderToProcess.insert(order.id, entry)
           // Read JobResources each time because they may change at any time
           .flatMapT(_ => Task.pure(jobConf.jobResourcePaths.traverse(pathToJobResource)))
           .map(_.map(jobResources => ProcessOrder(
@@ -94,8 +94,8 @@ private[agent] final class JobDriver(
             workflowJob.defaultArguments ++ defaultArguments,
             jobConf.controllerId, stdObservers)))
           .flatMapT(processOrder =>
-            jobExecutor.startIfNeeded
-              .flatMapT(_ => jobExecutor.prepareOrderProcess(processOrder))
+            jobLauncher.startIfNeeded
+              .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
               .flatMapT { orderProcess =>
                 entry.orderProcess = Some(orderProcess)
                 // Start the orderProcess. The future completes the stdObservers (stdout, stderr)

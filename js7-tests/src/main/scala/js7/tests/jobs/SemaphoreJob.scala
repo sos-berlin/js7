@@ -1,8 +1,8 @@
 package js7.tests.jobs
 
 import js7.data.order.Outcome
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler

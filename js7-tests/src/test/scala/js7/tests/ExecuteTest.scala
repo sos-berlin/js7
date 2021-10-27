@@ -27,8 +27,8 @@ import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.tests.ExecuteTest._
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest

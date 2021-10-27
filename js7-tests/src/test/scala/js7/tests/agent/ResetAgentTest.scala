@@ -27,8 +27,8 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.instructions.{Fork, LockInstruction, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
 import js7.tests.agent.ResetAgentTest._
 import js7.tests.jobs.EmptyJob

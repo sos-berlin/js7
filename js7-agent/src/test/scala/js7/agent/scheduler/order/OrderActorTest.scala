@@ -40,7 +40,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.configuration.JobExecutorConf
+import js7.launcher.configuration.JobLauncherConf
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
@@ -164,7 +164,7 @@ private object OrderActorTest {
     override val supervisorStrategy = SupervisorStrategies.escalate
     if (!exists(dir / "work")) createDirectory(dir / "work")
 
-    private val executorConf = JobExecutorConf(
+    private val jobLauncherConf = JobLauncherConf(
       executablesDirectory = (dir / "config" / "executables").toRealPath(),
       workDirectory = dir / "data" / "work",
       workingDirectory = dir / "data" / "work",
@@ -183,7 +183,7 @@ private object OrderActorTest {
     private val jobDriver = new JobDriver(
         JobConf(jobKey, workflowJob, Workflow.empty, ControllerId("CONTROLLER"),
           sigkillDelay = 5.s),
-        executorConf,
+        jobLauncherConf,
         _ => Left(Problem("No JobResource here")))
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id, journalActor,

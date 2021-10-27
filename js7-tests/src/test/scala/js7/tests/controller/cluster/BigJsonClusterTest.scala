@@ -15,8 +15,8 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
 import js7.tests.controller.cluster.BigJsonClusterTest._
 import js7.tests.testenv.ControllerClusterForScalaTest

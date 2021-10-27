@@ -26,8 +26,8 @@ import js7.data.value.expression.ExpressionParser
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
+import js7.launcher.OrderProcess
+import js7.launcher.internal.InternalJob
 import js7.tests.jobresource.JobResourceTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task

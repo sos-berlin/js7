@@ -34,7 +34,7 @@ import js7.common.system.startup.StartUp
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
-import js7.executor.configuration.JobExecutorConf
+import js7.launcher.configuration.JobLauncherConf
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
@@ -52,7 +52,7 @@ private[agent] final class AgentActor private(
   terminatePromise: Promise[AgentTermination.Terminate],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
-  executorConf: JobExecutorConf,
+  jobLauncherConf: JobLauncherConf,
   eventIdGenerator: EventIdGenerator,
   keyedEventBus: StampedKeyedEventBus)
   (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
@@ -298,7 +298,7 @@ extends Actor with Stash with SimpleStateActor
                 recovered.totalRunningSince,
                 requireNonNull(recovered),
                 signatureVerifier,
-                executorConf,
+                jobLauncherConf,
                 persistence,
                 clock,
                 agentConf)
@@ -344,13 +344,13 @@ object AgentActor
   final class Factory @Inject private(
     clock: AlarmClock,
     agentConfiguration: AgentConfiguration,
-    executorConf: JobExecutorConf,
+    jobLauncherConf: JobLauncherConf,
     eventIdGenerator: EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus)
     (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
-      new AgentActor(terminatePromise, clock, agentConfiguration, executorConf,
+      new AgentActor(terminatePromise, clock, agentConfiguration, jobLauncherConf,
         eventIdGenerator, keyedEventBus)
   }
 }
