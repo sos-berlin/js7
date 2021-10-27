@@ -14,7 +14,7 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.job.{InternalExecutable, ShellScriptExecutable}
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
@@ -425,10 +425,8 @@ object ForkListTest
     expr("$myList"),
     exprFunction("(element) => $element"),
     exprFunction("(element) => { element: $element }"),
-    Workflow.of(Execute(WorkflowJob(
-      agentPath,
-      InternalExecutable(classOf[TestJob].getName),
-      parallelism = 100_000))))
+    Workflow.of(
+      TestJob.execute(agentPath, parallelism = 100_000)))
 
   private val atControllerWorkflow = Workflow(
     WorkflowPath("AT-CONTROLLER-WORKFLOW") ~ "INITIAL",
@@ -441,7 +439,7 @@ object ForkListTest
       EmptyJob.execute(agentPath),
       forkList/*Fork at agent*/))
 
-  final class TestJob extends InternalJob
+  private class TestJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
@@ -451,6 +449,7 @@ object ForkListTest
         Outcome.succeeded
       })
   }
+  private object TestJob extends InternalJob.Companion[TestJob]
 
   private val mixedAgentsWorkflow = Workflow(
     WorkflowPath("MIXED-WORKFLOW") ~ "INITIAL",

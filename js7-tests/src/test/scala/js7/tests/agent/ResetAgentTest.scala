@@ -20,12 +20,11 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.ResetAgent
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.VersionId
-import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fork, LockInstruction, TryInstruction}
+import js7.data.workflow.instructions.{Fork, LockInstruction, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.OrderProcess
@@ -253,10 +252,9 @@ object ResetAgentTest
       TryInstruction(
         Workflow.of(
           LockInstruction(lock.path, None, Workflow.of(
-            Execute(WorkflowJob(
+            TestJob.execute(
               agentPath,
-              InternalExecutable(classOf[TestJob].getName),
-              jobResourcePaths = Seq(jobResource.path)))))),
+              jobResourcePaths = Seq(jobResource.path))))),
         Workflow.empty)))
 
   private val forkingWorkflow = Workflow(WorkflowPath("FORKING-WORKFLOW") ~ "INITIAL",
@@ -266,16 +264,14 @@ object ResetAgentTest
           Fork(
             Vector(
               "FORK" -> Workflow.of(
-                Execute(WorkflowJob(
-                  agentPath,
-                  InternalExecutable(classOf[TestJob].getName),
-                  jobResourcePaths = Seq(jobResource.path))))),
+                TestJob.execute(agentPath,
+                  jobResourcePaths = Seq(jobResource.path)))),
             joinIfFailed = true)),
         Workflow.empty)))
 
   private val barrier = MVar.empty[Task, Unit]().memoize
 
-  final class TestJob extends InternalJob
+  private final class TestJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
       OrderProcess(
@@ -285,4 +281,5 @@ object ResetAgentTest
           .guaranteeCase(exitCase => Task(scribe.debug(s"TestJob $exitCase")))
           .as(Outcome.succeeded))
   }
+  private object TestJob extends InternalJob.Companion[TestJob]
 }

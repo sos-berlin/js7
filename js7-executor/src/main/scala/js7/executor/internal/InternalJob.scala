@@ -98,12 +98,22 @@ object InternalJob
     final def execute(
       agentPath: AgentPath,
       arguments: Map[String, Expression] = Map.empty,
-      parallelism: Int = 1)
+      parallelism: Int = 1,
+      jobResourcePaths: Seq[JobResourcePath] = Nil)
     : Execute.Anonymous =
       Execute(
-        WorkflowJob(
-          agentPath,
-          executable(arguments = arguments),
-          parallelism = parallelism))
+        workflowJob(agentPath, arguments, parallelism = parallelism, jobResourcePaths))
+
+    final def workflowJob(
+      agentPath: AgentPath,
+      arguments: Map[String, Expression] = Map.empty,
+      parallelism: Int = 1,
+      jobResourcePaths: Seq[JobResourcePath] = Nil)
+    : WorkflowJob =
+      WorkflowJob(
+        agentPath,
+        executable(arguments = arguments),
+        parallelism = parallelism,
+        jobResourcePaths = jobResourcePaths)
   }
 }

@@ -10,12 +10,11 @@ import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.VersionId
-import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, LockInstruction}
+import js7.data.workflow.instructions.LockInstruction
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ItemConsistencyTest._
 import js7.tests.jobs.EmptyJob
@@ -83,10 +82,8 @@ object ItemConsistencyTest
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId,
     Vector(
       LockInstruction(lock.path, None, Workflow.of(
-        Execute(WorkflowJob(
-          agentPath,
-          InternalExecutable(classOf[EmptyJob].getName),
-          jobResourcePaths = Seq(jobResource.path)))))))
+        EmptyJob.execute(agentPath,
+          jobResourcePaths = Seq(jobResource.path))))))
 
   private val fileWatch = FileWatch(OrderWatchPath("ORDER-WATCH"), workflow.path, agentPath,
     expr("'/dev/null'"))

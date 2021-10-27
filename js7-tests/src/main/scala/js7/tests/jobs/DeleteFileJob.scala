@@ -6,16 +6,12 @@ import java.nio.file.{Path, Paths}
 import js7.base.io.process.Stderr
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.AgentPath
-import js7.data.job.InternalExecutable
 import js7.data.order.Outcome
 import js7.data.orderwatch.FileWatch.FileArgumentName
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import js7.executor.internal.InternalJob.JobContext
-import js7.tests.jobs.DeleteFileJob._
+import js7.tests.jobs.DeleteFileJob.logger
 import monix.eval.Task
 
 final class DeleteFileJob(jobContext: JobContext) extends InternalJob
@@ -41,13 +37,7 @@ final class DeleteFileJob(jobContext: JobContext) extends InternalJob
       }
 }
 
-object DeleteFileJob
+object DeleteFileJob extends InternalJob.Companion[DeleteFileJob]
 {
   private val logger = Logger[this.type]
-
-  def execute(agentPath: AgentPath) =
-    Execute(WorkflowJob(
-      agentPath,
-      InternalExecutable(classOf[DeleteFileJob].getName),
-      parallelism = sys.runtime.availableProcessors))
 }

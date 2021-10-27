@@ -9,18 +9,12 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
-import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished, OrderProcessingStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
 import js7.tests.JobDriverStarvationTest._
+import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.catnap.Semaphore
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -41,7 +35,7 @@ final class JobDriverStarvationTest extends AnyFreeSpec with ControllerAgentForS
   "Add a order to start AgentDriver CommandQueue" in {
     val zeroOrderId = OrderId("0")
     controller.addOrderBlocking(FreshOrder(zeroOrderId, workflow.path, deleteWhenTerminated = true))
-    semaphore.flatMap(_.releaseN(1)).runSyncUnsafe()
+    TestJob.continue()
     eventWatch.await[OrderFinished](_.key == zeroOrderId)
     eventWatch.await[OrderDeleted](_.key == zeroOrderId)
   }
@@ -87,7 +81,7 @@ final class JobDriverStarvationTest extends AnyFreeSpec with ControllerAgentForS
     logger.info("🔵 " + itemsPerSecondString(t.elapsed, n, "started"))
 
     t = now
-    semaphore.flatMap(_.releaseN(orderIds.size)).runSyncUnsafe()
+    TestJob.continue(orderIds.size)
     allOrdersDeleted.await(99.s)
     logger.info("🔵 " + itemsPerSecondString(t.elapsed, n, "completed"))
 
@@ -105,19 +99,8 @@ object JobDriverStarvationTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(
-        WorkflowJob(
-          agentPath,
-          InternalExecutable(classOf[SemaphoreJob].getName),
-          parallelism = parallelism))))
+      TestJob.execute(agentPath, parallelism = parallelism)))
 
-  private val semaphore = Semaphore[Task](0).memoize
-
-  final class SemaphoreJob extends InternalJob
-  {
-    def toOrderProcess(step: Step) =
-      OrderProcess(
-        semaphore.flatMap(_.acquire)
-          .as(Outcome.succeeded))
-  }
+  private class TestJob extends SemaphoreJob(TestJob)
+  private object TestJob extends SemaphoreJob.Companion[TestJob]
 }

@@ -145,14 +145,14 @@ object ForkTest
   private val aAgentPath = AgentPath("AGENT-A")
   private val bAgentPath = AgentPath("AGENT-B")
 
-  final class SlowJob extends InternalJob
+  private class SlowJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
       OrderProcess(
         Task.sleep(60.s)
           .as(Outcome.succeeded))
   }
-  object SlowJob extends InternalJob.Companion[SlowJob]
+  private object SlowJob extends InternalJob.Companion[SlowJob]
 
   final class TestJob extends InternalJob
   {

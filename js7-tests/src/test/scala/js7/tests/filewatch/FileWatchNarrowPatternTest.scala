@@ -11,22 +11,15 @@ import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderDeleted, OrderStarted}
-import js7.data.order.{OrderId, Outcome}
+import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
 import js7.tests.filewatch.FileWatchNarrowPatternTest._
-import js7.tests.jobs.DeleteFileJob
+import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.catnap.Semaphore
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -88,7 +81,7 @@ final class FileWatchNarrowPatternTest extends AnyFreeSpec with ControllerAgentF
     assert(eventWatch.keyedEvents[ExternalOrderVanished](after = EventId.BeforeFirst) ==
       Seq(fileWatch.path <-: ExternalOrderVanished(ExternalOrderName("A"))))
 
-    semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+    TestJob.continue(2)
     eventWatch.await[OrderDeleted](_.key == aOrderId)
     eventWatch.await[OrderDeleted](_.key == bOrderId)
   }
@@ -101,16 +94,9 @@ object FileWatchNarrowPatternTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[SemaphoreJob].getName), parallelism = 10)),
-      Execute(WorkflowJob(agentPath, InternalExecutable(classOf[DeleteFileJob].getName), parallelism = 10))))
+      TestJob.execute(agentPath, parallelism = 10),
+      DeleteFileJob.execute(agentPath, parallelism = 10)))
 
-  private val semaphore = Semaphore[Task](0).memoize
-
-  final class SemaphoreJob extends InternalJob
-  {
-    def toOrderProcess(step: Step) =
-      OrderProcess(
-        semaphore.flatMap(_.acquire)
-          .as(Outcome.succeeded))
-  }
+  private class TestJob extends SemaphoreJob(TestJob)
+  private object TestJob extends SemaphoreJob.Companion[TestJob]
 }

@@ -17,7 +17,7 @@ import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.job.{InternalExecutable, JobResource, JobResourcePath, ShellScriptExecutable}
+import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -359,13 +359,12 @@ object JobResourceTest
     Workflow(
       WorkflowPath("WORKFLOW-INTERNAL") ~ "INITIAL",
       Vector("TEST-LABEL" @: Execute.Named(jobName)),
-      nameToJob = Map(jobName -> WorkflowJob(
-        agentPath,
-        InternalExecutable(classOf[TestInternalJob].getName))),
+      nameToJob = Map(
+        jobName -> TestJob.workflowJob(agentPath)),
       jobResourcePaths = Seq(aJobResource.path, bJobResource.path))
   }
 
-  final class TestInternalJob extends InternalJob {
+  private class TestJob extends InternalJob {
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
         assert(step.jobResourceVariable(aJobResource.path, "a") == Right(StringValue("A of JOB-RESOURCE-A")))
@@ -374,4 +373,5 @@ object JobResourceTest
         Outcome.succeeded
       })
   }
+  private object TestJob extends InternalJob.Companion[TestJob]
 }

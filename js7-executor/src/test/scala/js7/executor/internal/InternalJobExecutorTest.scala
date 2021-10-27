@@ -73,7 +73,7 @@ object InternalJobExecutorTest
 {
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector.empty)
 
-  final class TestInternalJob extends InternalJob
+  private class TestInternalJob extends InternalJob
   {
     override def toOrderProcess(step: Step) =
       OrderProcess(

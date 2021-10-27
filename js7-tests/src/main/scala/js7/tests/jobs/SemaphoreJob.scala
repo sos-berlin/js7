@@ -5,6 +5,7 @@ import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
 import monix.catnap.Semaphore
 import monix.eval.Task
+import monix.execution.Scheduler
 import scala.reflect.ClassTag
 
 abstract class SemaphoreJob(semaphore: Task[Semaphore[Task]])
@@ -26,9 +27,12 @@ object SemaphoreJob
   abstract class Companion[I <: SemaphoreJob](implicit classTag: ClassTag[I])
   extends InternalJob.Companion[I]
   {
-    private[SemaphoreJob] val semaphore = Semaphore[Task](0).memoize
+    val semaphore = Semaphore[Task](0).memoize
 
-    def continue: Task[Unit] =
-      semaphore.flatMap(_.release)//.runSyncUnsafe()
+    def continue(n: Int = 1)(implicit s: Scheduler): Unit =
+      semaphore.flatMap(_.releaseN(n)).runSyncUnsafe()
+
+    def continueN(n: Int)(implicit s: Scheduler): Unit =
+      semaphore.flatMap(_.releaseN(n)).runSyncUnsafe()
   }
 }

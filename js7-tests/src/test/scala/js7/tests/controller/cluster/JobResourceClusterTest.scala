@@ -8,11 +8,9 @@ import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerEvent.ControllerReady
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.{ItemRevision, VersionId}
-import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.cluster.JobResourceClusterTest._
 import js7.tests.jobs.EmptyJob
@@ -70,9 +68,6 @@ object JobResourceClusterTest
   private val versionId = VersionId("1")
   private val workflow = Workflow(WorkflowPath("JOB-RESOURCE-WORKFLOW") ~ versionId,
     Vector(
-      Execute(
-        WorkflowJob(
-          AgentPath("AGENT"),
-          InternalExecutable(classOf[EmptyJob].getName),
-          jobResourcePaths = Seq(jobResource.path)))))
+      EmptyJob.execute(AgentPath("AGENT"),
+        jobResourcePaths = Seq(jobResource.path))))
 }

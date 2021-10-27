@@ -9,14 +9,11 @@ import js7.common.configuration.JobSchedulerConfiguration
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
-import js7.data.job.InternalExecutable
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
@@ -77,18 +74,15 @@ object BigJsonClusterTest
 
   private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",
     Seq.fill(2)(
-      Execute(WorkflowJob(
-        agentPath,
-        InternalExecutable(
-          classOf[TestJob].getName,
-          arguments = Map(
-            "BIG" -> StringConstant(bigString)))))))
+      TestJob.execute(agentPath, arguments = Map(
+        "BIG" -> StringConstant(bigString)))))
 
-  final class TestJob extends InternalJob
+  private class TestJob extends InternalJob
   {
     private val orderProcess = OrderProcess.succeeded(Map(
       "RESULT" -> StringValue(bigString)))
 
     def toOrderProcess(step: Step) = orderProcess
   }
+  private object TestJob extends InternalJob.Companion[TestJob]
 }

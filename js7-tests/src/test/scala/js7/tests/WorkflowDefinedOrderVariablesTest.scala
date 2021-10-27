@@ -4,15 +4,13 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
-import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, NamedValue, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.OrderParameterList.FinalOrderArgumentProblem
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
 import js7.executor.internal.InternalJob
@@ -91,15 +89,11 @@ object WorkflowDefinedOrderVariablesTest
   private val workflow =
     Workflow(
       WorkflowPath("WORKFLOW") ~ "INITIAL",
-      Vector(Execute(
-        WorkflowJob(
-          agentPath,
-          InternalExecutable(
-            classOf[TestInternalJob].getName,
-            arguments = Map(
-              "myONE" -> NamedValue("ONE"),
-              "myPLANT" -> NamedValue("PLANT"),
-              "myExpected" -> NamedValue("expected")))))),
+      Vector(
+        TestJob.execute(agentPath, arguments = Map(
+          "myONE" -> NamedValue("ONE"),
+          "myPLANT" -> NamedValue("PLANT"),
+          "myExpected" -> NamedValue("expected")))),
       orderPreparation = OrderPreparation(OrderParameterList(
         Seq(
           OrderParameter.Final("ONE", NumericConstant(1)),
@@ -111,20 +105,16 @@ object WorkflowDefinedOrderVariablesTest
   private val objectWorkflow =
     Workflow(
       WorkflowPath("OBJECT-WORKFLOW") ~ "INITIAL",
-      Vector(Execute(
-        WorkflowJob(
-          agentPath,
-          InternalExecutable(
-            classOf[TestInternalJob].getName,
-            arguments = Map(
-              "myONE" -> expr("1"),
-              "myPLANT" -> expr("$de.Acer"),
-              "myExpected" -> expr("'Ahorn'")))))),
+      Vector(
+        TestJob.execute(agentPath, arguments = Map(
+          "myONE" -> expr("1"),
+          "myPLANT" -> expr("$de.Acer"),
+          "myExpected" -> expr("'Ahorn'")))),
       orderPreparation = OrderPreparation(OrderParameterList(
         OrderParameter.Final("de", expr("JobResource:de")),
         OrderParameter.Final("sv", expr("JobResource:sv")))))
 
-  final class TestInternalJob extends InternalJob {
+  private class TestJob extends InternalJob {
     def toOrderProcess(step: Step) =
       OrderProcess(Task {
         assert(step.arguments("myONE") == NumberValue(1))
@@ -132,4 +122,5 @@ object WorkflowDefinedOrderVariablesTest
         Outcome.succeeded
       })
   }
+  private object TestJob extends InternalJob.Companion[TestJob]
 }

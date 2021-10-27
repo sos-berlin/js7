@@ -23,24 +23,17 @@ import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDeleted, 
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemChanged
 import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
-import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderDeleted, OrderFinished, OrderProcessingStarted}
-import js7.data.order.{OrderId, Outcome}
+import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.ExternalOrderVanished
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.scopes.EnvScope
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
 import js7.tests.filewatch.FileWatchTest._
-import js7.tests.jobs.DeleteFileJob
+import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.catnap.Semaphore
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -140,7 +133,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
 
-    semaphore.flatMap(_.release).runSyncUnsafe()
+    TestJob.continue()
     eventWatch.await[OrderFinished](_.key == orderId)
     intercept[TimeoutException] {
       eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
@@ -161,7 +154,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.executeCommand(CancelOrders(orderId :: Nil)).await(99.s).orThrow
     eventWatch.await[OrderCancellationMarkedOnAgent](_.key == orderId)
 
-    semaphore.flatMap(_.release).runSyncUnsafe()
+    TestJob.continue()
     eventWatch.await[OrderFinished](_.key == orderId)
     intercept[TimeoutException] {
       eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
@@ -247,17 +240,8 @@ object FileWatchTest
   private val waitingWorkflow = Workflow(
     WorkflowPath("WAITING-WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(
-        aAgentPath,
-        InternalExecutable(classOf[SemaphoreJob].getName)))))
+      TestJob.execute(aAgentPath)))
 
-  private val semaphore = Semaphore[Task](0).memoize
-
-  final class SemaphoreJob extends InternalJob
-  {
-    def toOrderProcess(step: Step) =
-      OrderProcess(
-        semaphore.flatMap(_.acquire)
-          .as(Outcome.succeeded))
-  }
+  private class TestJob extends SemaphoreJob(TestJob)
+  private object TestJob extends SemaphoreJob.Companion[TestJob]
 }

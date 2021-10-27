@@ -403,7 +403,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
         eventId = stamped.eventId
 
         clock += cycleDuration
-        TestJob.continue.runSyncUnsafe()
+        TestJob.continue()
         eventId = eventWatch.await[OrderCycleFinished](_.key == orderId, after = eventId)
           .head.eventId
       }
@@ -447,8 +447,8 @@ object CycleTest
               TestJob.execute(agentPath)))),
       calendarPath = Some(cycleTestExampleCalendar.path))
 
-  final class TestJob extends SemaphoreJob(TestJob)
-  object TestJob extends SemaphoreJob.Companion[TestJob]
+  private class TestJob extends SemaphoreJob(TestJob)
+  private object TestJob extends SemaphoreJob.Companion[TestJob]
 
   // Use this Log4j Clock with the properties
   // -Dlog4j2.Clock=js7.tests.CycleTestt$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn

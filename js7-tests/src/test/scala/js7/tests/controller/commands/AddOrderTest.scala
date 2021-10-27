@@ -12,14 +12,11 @@ import js7.base.time.ScalaTime._
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
-import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.OrderParameterList.MissingOrderArgumentProblem
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.executor.OrderProcess
@@ -103,9 +100,8 @@ object AddOrderTest
 
   private val unknownArgWorkflow = Workflow(WorkflowPath("UNKNOWN-ARG"),
     labeledInstructions = Vector(
-      Execute.Anonymous(WorkflowJob(agentPath,
-        InternalExecutable(classOf[EmptyJob].getName,
-          arguments = Map("string" -> NamedValue("unknownString")))))))
+      EmptyJob.execute(agentPath,
+        arguments = Map("string" -> NamedValue("unknownString")))))
 
   private class EchoJob extends InternalJob {
     def toOrderProcess(step: Step) =
@@ -115,13 +111,13 @@ object AddOrderTest
           s"NUMBER=${step.arguments("NUMBER").convertToString}\n")
         .as(Outcome.succeeded))
   }
+  private object EchoJob extends InternalJob.Companion[EchoJob]
+
   private val paramWorkflow = Workflow(WorkflowPath("PARAMETERIZED-WORKFLOW"),
     labeledInstructions = Vector(
-      Execute.Anonymous(WorkflowJob(agentPath,
-        InternalExecutable(classOf[EchoJob].getName, arguments = Map(
-            "STRING" -> NamedValue("myString"),
-            "NUMBER" -> NamedValue("myNumber")))))
-    ),
+      EchoJob.execute(agentPath, arguments = Map(
+        "STRING" -> NamedValue("myString"),
+        "NUMBER" -> NamedValue("myNumber")))),
     orderPreparation = OrderPreparation(OrderParameterList(
       stringParameter,
       numberParameter)))

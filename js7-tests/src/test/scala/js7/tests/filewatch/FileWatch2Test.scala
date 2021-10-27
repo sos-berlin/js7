@@ -16,24 +16,17 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
-import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderStarted, OrderStderrWritten}
-import js7.data.order.{OrderId, Outcome}
+import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{MkString, StringConstant}
-import js7.data.workflow.instructions.Execute
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
-import js7.executor.OrderProcess
-import js7.executor.internal.InternalJob
 import js7.tests.filewatch.FileWatch2Test._
-import js7.tests.jobs.DeleteFileJob
+import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.catnap.Semaphore
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -92,7 +85,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       directoryProvider.runAgents(Seq(bAgentPath)) { _ =>
         directoryProvider.runAgents(Seq(aAgentPath)) { _ =>
           await[ItemAttached](_.event.key == orderWatchPath)
-          semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+          TestJob.continue(2)
           await[OrderFinished](_.key == initialOrderId)
           await[OrderDeleted](_.key == initialOrderId)
           assert(!exists(initialFile))
@@ -101,20 +94,20 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             val orderId = orderId2
             val file = aDirectory / "2"
             file := ""
-            semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+            TestJob.continue(2)
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
           }
 
-          assert(!semaphore.flatMap(_.tryAcquire).runSyncUnsafe())
+          assert(!TestJob.semaphore.flatMap(_.tryAcquire).runSyncUnsafe())
           aDirectory / "3" := ""
           await[OrderStarted](_.key == orderId3)
         }
 
         // RESTART WATCHING AGENT WHILE A FILE EXISTS
         directoryProvider.runAgents(Seq(aAgentPath)) { case Seq(aAgent) =>
-          semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+          TestJob.continue(2)
           await[OrderFinished](_.key == orderId3)
           // Agent must detect the file deletion after restart to allow the order to be removed:
           await[OrderDeleted](_.key == orderId3)
@@ -135,7 +128,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             // The OrderWatch watches now the bDirectory, but the running Order points to aDirectory.
             // bDirectory does not contain the file
             await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("4"))
-            semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+            TestJob.continue(2)
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
@@ -145,7 +138,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             val orderId = orderId5
             val file = bDirectory / "5"
             file := ""
-            semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+            TestJob.continue(2)
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
@@ -159,14 +152,14 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             await[OrderStarted](_.key == orderId)
             await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("6"))
 
-            semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+            TestJob.continue(2)
             val vanished = await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("6"))
               .head.eventId
 
             file := ""
             await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("6"), after = vanished)
 
-            semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+            TestJob.continue(2)
             val firstRemoved = await[OrderDeleted](_.key == orderId).head.eventId
 
             await[OrderStarted](_.key == orderId, after = firstRemoved)
@@ -186,7 +179,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             createDirectory(bDirectory)
             file := ""
             await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("7"))
-            semaphore.flatMap(_.releaseN(2)).runSyncUnsafe()
+            TestJob.continue(2)
             await[OrderFinished](_.key == orderId)
             await[OrderDeleted](_.key == orderId)
             assert(!exists(file))
@@ -381,9 +374,9 @@ object FileWatch2Test
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
-      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName))),
-      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[DeleteFileJob].getName))),
-      Execute(WorkflowJob(bAgentPath, InternalExecutable(classOf[SemaphoreJob].getName)))),
+      TestJob.execute(bAgentPath),
+      DeleteFileJob.execute(bAgentPath),
+      TestJob.execute(bAgentPath)),
     orderPreparation = OrderPreparation(
       OrderParameterList(
         Seq(
@@ -391,13 +384,7 @@ object FileWatch2Test
             MkString/*force non-constant early evaluation*/(StringConstant("VAR")))),
         allowUndeclared = true)))
 
-  private val semaphore = Semaphore[Task](0).memoize
 
-  final class SemaphoreJob extends InternalJob
-  {
-    def toOrderProcess(step: Step) =
-      OrderProcess(
-        semaphore.flatMap(_.acquire)
-          .as(Outcome.succeeded))
-  }
+  private class TestJob extends SemaphoreJob(TestJob)
+  private object TestJob extends SemaphoreJob.Companion[TestJob]
 }

@@ -7,7 +7,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
-import js7.data.job.{Executable, InternalExecutable, ShellScriptExecutable}
+import js7.data.job.{Executable, ShellScriptExecutable}
 import js7.data.order.OrderEvent.OrderStdoutWritten
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.Value
@@ -93,7 +93,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "InternalJob OrderStdoutWritten event compacting" in {
     def runTest() =
       testExecutable(
-        InternalExecutable(classOf[TestInternalJob].getName),
+        TestInternalJob.executable(),
         Seq(
           "A\n",
           "B-1\n" + "B-2\n" + "B-3\n" + "B-4\n",
@@ -197,4 +197,5 @@ object StdoutTest
           Task.pure(Outcome.succeeded))
     }
   }
+  private object TestInternalJob extends InternalJob.Companion[TestInternalJob]
 }
