@@ -55,13 +55,12 @@ final class ProcessDriver(
           Task.pure(Left(Problem.pure(s"Processing killed before start with $signal")))
 
         case None =>
-          Task(
-            checkedWindowsLogon
-              .flatMap { maybeWindowsLogon =>
-                Checked.catchNonFatal {
-                  for (o <- maybeWindowsLogon)
-                    WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
-                }
+          Task(checkedWindowsLogon
+            .flatMap { maybeWindowsLogon => Checked
+              .catchNonFatal {
+                for (o <- maybeWindowsLogon)
+                  WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
+              }
               .map(_ =>
                 ProcessConfiguration(
                   workingDirectory = Some(jobLauncherConf.workingDirectory),

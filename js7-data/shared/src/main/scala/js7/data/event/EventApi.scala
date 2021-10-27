@@ -24,7 +24,7 @@ with HasIsIgnorableStackTrace
     (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]]
 
-  def checkedSnapshot(eventId: Option[EventId] = None): Task[Checked[State]] =
+  final def checkedSnapshot(eventId: Option[EventId] = None): Task[Checked[State]] =
     HttpClient.liftProblem(snapshot(eventId))
 
   def snapshot(eventId: Option[EventId] = None): Task[State]
