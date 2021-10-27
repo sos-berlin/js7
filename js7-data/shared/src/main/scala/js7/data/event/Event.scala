@@ -20,3 +20,16 @@ trait Event {
   final def <-:(key: Key) =
     new KeyedEvent[this.type](key, this)
 }
+
+object Event
+{
+  trait ForScala3[E <: Event] extends Event {
+    implicit val companion: Companion[E]
+    type Key = companion.Key
+  }
+
+  trait Companion[E <: Event]
+  {
+    type Key
+  }
+}
