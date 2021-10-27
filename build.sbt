@@ -645,18 +645,20 @@ def isExcludedJar(path: String) =
 //--------------------------------------------------------------------------------------------------
 // RELEASE
 
-val js7AsVersion = sys.props.get("js7.asVersion").filter(_.nonEmpty)
-val js7NextSnapshot = sys.props.get("js7.nextSnapshot").filter(_.nonEmpty)
-val isStandardRelease = js7AsVersion.isDefined
-
 releaseTagComment        := s"Version ${version.value}"
 releaseCommitMessage     := s"Version ${version.value}"
 releaseNextCommitMessage := s"Version ${version.value}"
+val release = sys.props.contains("js7.release")
 
 releaseVersion := (v =>
-  js7AsVersion.getOrElse(
-    Version(v).fold(versionFormatError(v)) { currentVersion =>
-      val prelease = {
+  Version(v).fold(versionFormatError(v)) { currentVersion =>
+    if (release) {
+      if (!currentVersion.string.endsWith("-SNAPSHOT")) {
+        sys.error(s"Current version must end with -SNAPSHOT: $currentVersion")
+      }
+      currentVersion.withoutQualifier.string
+    } else {
+      val prerelease = {
         val commitDate = BuildInfos.committedAt.value
           .getOrElse(sys.error("gitHeadCommitDate returned None (no Git?)"))
           .take(10)/*yyyy-mm-dd*/
@@ -664,7 +666,7 @@ releaseVersion := (v =>
         val yyyymmdd = commitDate.substring(0, 4) + commitDate.substring(5, 7) + commitDate.substring(8, 10)
         "beta." + yyyymmdd
       }
-      val version = currentVersion.withoutQualifier.string + "-" + prelease
+      val version = currentVersion.withoutQualifier.string + "-" + prerelease
       var v = version
       var i = 0
       val tags = runProcess("git", "tag").toSet
@@ -673,29 +675,34 @@ releaseVersion := (v =>
         v = s"$version.$i"
       }
       v
-    }))
+    }
+  })
 
+val VersionPattern = """([0-9]+)\.([0-9]+)\.([0-9]+)(?:-.*)?""".r
 
-releaseNextVersion := (v =>
-  js7NextSnapshot.getOrElse(
-    Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT")))
+releaseNextVersion := {
+  case v if !release =>
+    Version(v).fold(versionFormatError(v))(_.withoutQualifier.string + "-SNAPSHOT")
+
+  case VersionPattern(major, minor, patch) =>
+    s"$major.$minor.${patch.toInt + 1}-SNAPSHOT"
+
+  case _ => sys.error(s"Current version does not match $VersionPattern: $version")
+}
 
 releaseProcess := {
   import sbtrelease.ReleaseStateTransformations.{checkSnapshotDependencies, commitNextVersion, commitReleaseVersion, inquireVersions, runTest, setNextVersion, setReleaseVersion, tagRelease}
-  //if (isStandardRelease)
-  //  releaseProcess.value
-  //else
-    // See https://github.com/sbt/sbt-release#can-we-finally-customize-that-release-process-please
-    Seq[ReleaseStep](
-      checkSnapshotDependencies,
-      inquireVersions,
-      //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean themself!
-      runTest,
-      setReleaseVersion,
-      commitReleaseVersion,       // performs the initial git checks
-      tagRelease,
-    //publishArtifacts,           // checks whether `publishTo` is properly set up
-      setNextVersion,
-      commitNextVersion)
-      //pushChanges)                // also checks that an upstream branch is properly configured
+  // See https://github.com/sbt/sbt-release#can-we-finally-customize-that-release-process-please
+  Seq[ReleaseStep](
+    checkSnapshotDependencies,
+    inquireVersions,
+    //runClean,  // This deletes BuildInfo and disturbs IntelliJ. Users should clean themself!
+    runTest,
+    setReleaseVersion,
+    commitReleaseVersion,       // performs the initial git checks
+    tagRelease,
+  //publishArtifacts,           // checks whether `publishTo` is properly set up
+    setNextVersion,
+    commitNextVersion)
+    //pushChanges)                // also checks that an upstream branch is properly configured
 }

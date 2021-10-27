@@ -11,32 +11,28 @@ set -euo pipefail
 cd js7-controller/..
 
 if [ ${BASH_VERSINFO[0]} -lt 5 ]; then
-  # Before 4.4, bash does handle empty arrays with -u
+  # Before version 4.4, bash does handle empty arrays with -u
   set +u
 fi
 
-asVersion=""
-nextSnapshot=""
+gitPush=false
+sbtDefines=()
 pushOptions=()
 
 function usage() {
   echo "Usage: $0 --merge=<version> --as=<version> --next-snapshot=<version>"
-  echo "--as and --next-snapshot are used together to name the released version"
-  echo "--as names the released version"
-  echo "--next-snapshot names the following snapshot version"
-  echo "Example: $0 --as=2.0.0 --next-snapshot=2.0.0-SNAPSHOT"
+  echo "--release to commit a release version (simply strips -SNAPSHOT)"
+  echo "Without --release, a pre-release version is committed"
+  echo "Example: $0 --release"
 }
 
 for arg in "$@"; do :
   case "$arg" in
-    --as=*)
-      asVersion="${arg#*=}"
+    --release)
+      sbtDefines+=(-Djs7.release)
       ;;
-    --next-snapshot=*)
-      nextSnapshot="${arg#*=}"
-      ;;
-    --no-push)
-      pushOptions+=("--dry-run")
+    --push)
+      gitPush=true
       ;;
     -\?|-h|--help)
       usage
@@ -49,17 +45,18 @@ for arg in "$@"; do :
       ;;
   esac
 done
-if [ -z "$asVersion" ] && [ -n "$nextSnapshot" ]; then
-  echo "Please set --as=<version> with --next-snapshot=<version>"
-  usage
-  exit 1
+if [ $gitPush != true ]; then
+  # Check only
+  pushOptions+=("--dry-run")
 fi
 
-# We skip-tests because the commit asVersion be released should already have been tested.
-# Don't forget asVersion build and test the release !
-./sbt-batch \
-  -Djs7.asVersion="$asVersion" \
-  -Djs7.nextSnapshot="$nextSnapshot" \
-  'release with-defaults skip-tests'
+# We skip-tests because the commit should already have been tested.
+# Don't forget to build and test the released version!
+./sbt-batch "${sbtDefines[@]}" --warn 'release with-defaults skip-tests'
 
 git push "${pushOptions[@]}" --follow-tags
+if [ $gitPush != true ]; then
+  echo
+  echo "Give the following command to publish the commits:"
+  echo "git push --follow-tags"
+fi
