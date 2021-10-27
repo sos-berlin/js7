@@ -23,9 +23,9 @@ import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.launcher.StdObservers
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
+import js7.launcher.StdObservers
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

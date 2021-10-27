@@ -19,8 +19,8 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.core.cluster.ClusterWatchRegister
-import js7.launcher.configuration.JobLauncherConf
 import js7.journal.{EventIdClock, EventIdGenerator}
+import js7.launcher.configuration.JobLauncherConf
 import monix.execution.Scheduler
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.ExecutionContext

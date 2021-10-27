@@ -40,11 +40,11 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.launcher.configuration.JobLauncherConf
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
+import js7.launcher.configuration.JobLauncherConf
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._

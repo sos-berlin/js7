@@ -34,12 +34,12 @@ import js7.common.system.startup.StartUp
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
-import js7.launcher.configuration.JobLauncherConf
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.{JournaledStateRecoverer, Recovered}
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
+import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}

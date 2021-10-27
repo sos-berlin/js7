@@ -50,11 +50,11 @@ import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import js7.launcher.configuration.JobLauncherConf
-import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.journal.recover.Recovered
 import js7.journal.state.JournaledStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
+import js7.launcher.configuration.JobLauncherConf
+import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
