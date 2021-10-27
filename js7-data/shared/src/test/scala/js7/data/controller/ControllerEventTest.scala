@@ -1,7 +1,7 @@
 package js7.data.controller
 
 import js7.base.circeutils.CirceUtils._
-import js7.base.time.Timestamp
+import js7.base.time.{Timestamp, Timezone}
 import js7.data.controller.ControllerEvent._
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 final class ControllerEventTest extends AnyFreeSpec
 {
   "ControllerReady" in {
-    testJson[ControllerEvent](ControllerReady("Europe/Berlin", 1.hour),
+    testJson[ControllerEvent](ControllerReady(Timezone("Europe/Berlin"), 1.hour),
       json"""{
         "TYPE": "ControllerReady",
         "timezone": "Europe/Berlin",

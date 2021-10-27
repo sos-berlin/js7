@@ -3,7 +3,7 @@ package js7.data.controller
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveRenamingCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.time.Timestamp
+import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.event.NoKeyEvent
 import scala.concurrent.duration.FiniteDuration
@@ -22,7 +22,7 @@ object ControllerEvent
     initiallyStartedAt: Timestamp)
   extends ControllerEvent
 
-  final case class ControllerReady(timezone: String, totalRunningTime: FiniteDuration)
+  final case class ControllerReady(timezone: Timezone, totalRunningTime: FiniteDuration)
   extends ControllerEvent
 
   final case class ControllerShutDown(clusterAction: Option[ControllerShutDown.ClusterAction] = None)

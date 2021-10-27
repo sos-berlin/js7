@@ -22,7 +22,7 @@ import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.AlarmClock
+import js7.base.time.{AlarmClock, Timezone}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -369,7 +369,7 @@ with MainJournalingActor[ControllerState, Event]
             controllerConfiguration.controllerId,
             journalHeader.initiallyStartedAt))
         val controllerReady = NoKey <-: ControllerEvent.ControllerReady(
-          ZoneId.systemDefault.getId,
+          Timezone(ZoneId.systemDefault.getId),
           totalRunningTime = journalHeader.totalRunningTime)
 
         val events = maybeControllerInitialized :+ controllerReady :++

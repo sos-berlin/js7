@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.BuildInfo
 import js7.base.auth.UserId
-import js7.base.time.Timestamp
+import js7.base.time.{Timestamp, Timezone}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.system.startup.StartUp
@@ -36,7 +36,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
     controllerMetaState = ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
       Timestamp("2019-05-24T12:00:00Z"),
-      timezone = "Europe/Berlin"))))
+      Timezone("Europe/Berlin")))))
   protected def totalRunningSince = now - 1.hour
 
   private def route: Route =

@@ -4,7 +4,7 @@ import js7.base.auth.UserId
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp
+import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
@@ -89,7 +89,10 @@ private object JControllerStateTest
           activeId = NodeId("A"),
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
-    ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
+    ControllerMetaState(
+      ControllerId("CONTROLLER-ID"),
+      Timestamp("2019-05-24T12:00:00Z"),
+      Timezone("Europe/Berlin")),
     Map(AgentPath("AGENT") ->
       AgentRefState(AgentRef(AgentPath("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Reset, EventId(7), None)),
     Map.empty,

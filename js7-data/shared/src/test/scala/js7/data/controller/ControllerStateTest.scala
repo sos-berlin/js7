@@ -401,7 +401,8 @@ object ControllerStateTest
           activeId = NodeId("A"),
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
-    ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"), timezone = "Europe/Berlin"),
+    ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"),
+      Timezone("Europe/Berlin")),
     Map(
       agentRef.path -> AgentRefState(
         agentRef, None, None, AgentRefState.Reset, EventId(7), None)),
