@@ -125,9 +125,9 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
   "/controller/api" in {
     val overview = httpClient.get[Json](Uri(s"$uri/controller/api")) await 99.s
     assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.prettyVersion)
-    WaitForCondition.waitForCondition(9.s, 10.ms) { Try(overview.fieldOrThrow("startedAt")).isSuccess }
-    assert(overview.fieldOrThrow("startedAt").longOrThrow >= testStartedAt.toEpochMilli)
-    assert(overview.fieldOrThrow("startedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
+    WaitForCondition.waitForCondition(9.s, 10.ms) { Try(overview.fieldOrThrow("initiallyStartedAt")).isSuccess }
+    assert(overview.fieldOrThrow("initiallyStartedAt").longOrThrow >= testStartedAt.toEpochMilli)
+    assert(overview.fieldOrThrow("initiallyStartedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }
 
   "Login" in {
@@ -443,7 +443,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
       }, {
         "TYPE": "ControllerMetaState",
         "controllerId": "Controller",
-        "startedAt": ${controllerMetaState.startedAt.toEpochMilli},
+        "initiallyStartedAt": ${controllerMetaState.initiallyStartedAt.toEpochMilli},
         "timezone": "${controllerMetaState.timezone}"
       }, {
         "TYPE": "VersionAdded",
@@ -516,7 +516,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
           "eventId": 1002,
           "TYPE": "ControllerInitialized",
           "controllerId": "Controller",
-          "startedAt": 111222333
+          "initiallyStartedAt": 111222333
         }, {
           "eventId": 1003,
           "TYPE": "ControllerReady",
@@ -652,7 +652,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
         Json.fromJsonObject(JsonObject.fromMap(
           obj.toMap flatMap {
             case ("eventId", _) => ("eventId" -> Json.fromInt(eventIds.next())) :: Nil
-            case ("startedAt", _) => ("startedAt" -> Json.fromLong(111222333)) :: Nil
+            case ("initiallyStartedAt", _) => ("initiallyStartedAt" -> Json.fromLong(111222333)) :: Nil
             case ("timestamp", _) => Nil
             case o => o :: Nil
           }))

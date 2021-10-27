@@ -8,6 +8,7 @@ import js7.base.auth.UserId
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
+import js7.common.system.startup.StartUp
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
@@ -50,7 +51,8 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
       assert(overview.version == BuildInfo.prettyVersion)
       assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
-      assert(overview.startedAt == Some(Timestamp("2019-05-24T12:00:00Z")))
+      assert(overview.initiallyStartedAt == Some(Timestamp("2019-05-24T12:00:00Z")))
+      assert(overview.startedAt == StartUp.startedAt)
       assert(overview.totalRunningTime >= 1.hour && overview.totalRunningTime <= 1.hour + 1.minute)
       assert(overview.orderCount == Some(0))
     }

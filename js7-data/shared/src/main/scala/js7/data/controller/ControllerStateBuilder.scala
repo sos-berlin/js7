@@ -162,7 +162,7 @@ with StateView
     case Stamped(_, _, KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, startedAt))) =>
       controllerMetaState = controllerMetaState.copy(
         controllerId = controllerId,
-        startedAt = startedAt)
+        initiallyStartedAt = startedAt)
 
     case Stamped(_, _, KeyedEvent(_: NoKey, event: ControllerEvent.ControllerReady)) =>
       controllerMetaState = controllerMetaState.copy(

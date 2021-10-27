@@ -35,7 +35,7 @@ object JournalHeaders
       totalEventCount = 0,
       ZeroDuration,
       timestamp = Timestamp.now,
-      startedAt = Timestamp.now,
+      initiallyStartedAt = Timestamp.now,
       js7Version = BuildInfo.longVersion,
       version = Version,
       buildId = BuildInfo.buildId)
@@ -48,7 +48,7 @@ object JournalHeaders
       totalEventCount = 0,
       ZeroDuration,
       timestamp = Timestamp.now,
-      startedAt = Timestamp.now,
+      initiallyStartedAt = Timestamp.now,
       version = Version,
       js7Version = BuildInfo.longVersion,
       buildId = BuildInfo.buildId)

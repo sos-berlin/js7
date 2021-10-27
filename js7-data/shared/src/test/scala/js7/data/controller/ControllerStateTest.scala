@@ -182,7 +182,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       }, {
         "TYPE": "ControllerMetaState",
         "controllerId": "CONTROLLER-ID",
-        "startedAt": 1558699200000,
+        "initiallyStartedAt": 1558699200000,
         "timezone": "Europe/Berlin"
       }, {
         "TYPE": "AgentRefState",

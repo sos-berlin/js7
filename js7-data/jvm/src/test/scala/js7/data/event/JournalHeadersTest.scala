@@ -15,7 +15,7 @@ final class JournalHeadersTest extends AnyFreeSpec
       JournalHeaders.initial(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))).copy(
         eventId = EventId(777),
         totalEventCount = 999,
-        startedAt = Timestamp.parse("2019-05-22T12:00:00.000Z"),
+        initiallyStartedAt = Timestamp.parse("2019-05-22T12:00:00.000Z"),
         totalRunningTime = 1.hour,
         timestamp = Timestamp.parse("2019-05-23T22:22:22.222Z")),
       json"""{
@@ -26,7 +26,7 @@ final class JournalHeadersTest extends AnyFreeSpec
         "totalEventCount": 999,
         "totalRunningTime": 3600,
         "timestamp": "2019-05-23T22:22:22.222Z",
-        "startedAt": "2019-05-22T12:00:00Z",
+        "initiallyStartedAt": "2019-05-22T12:00:00Z",
         "version": "${JournalHeader.Version}",
         "js7Version": "${BuildInfo.longVersion}",
         "buildId": "${BuildInfo.buildId}"

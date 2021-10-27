@@ -2,7 +2,7 @@ package js7.data.controller
 
 import js7.base.circeutils.CirceUtils._
 import js7.base.time.Timestamp
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -11,9 +11,20 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ControllerMetaStateTest extends AnyFreeSpec
 {
   "ControllerMetaState" in {
-    java.time.ZoneId.of("Europe/Berlin")  // Proper timezone
     implicit val x = ControllerState.snapshotObjectJsonCodec
     testJson[Any](ControllerMetaState(
+      ControllerId("CONTROLLER-ID"),
+      Timestamp("2019-05-24T12:00:00Z"),
+      "Europe/Berlin"),
+      json"""{
+        "TYPE": "ControllerMetaState",
+        "controllerId": "CONTROLLER-ID",
+        "initiallyStartedAt": 1558699200000,
+        "timezone": "Europe/Berlin"
+      }""")
+
+    // COMPATIBLE with 2.0
+    testJsonDecoder[Any](ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
       Timestamp("2019-05-24T12:00:00Z"),
       "Europe/Berlin"),

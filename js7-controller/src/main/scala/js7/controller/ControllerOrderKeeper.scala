@@ -367,7 +367,7 @@ with MainJournalingActor[ControllerState, Event]
         val maybeControllerInitialized = !_controllerState.controllerMetaState.isDefined thenVector
           (NoKey <-: ControllerEvent.ControllerInitialized(
             controllerConfiguration.controllerId,
-            journalHeader.startedAt))
+            journalHeader.initiallyStartedAt))
         val controllerReady = NoKey <-: ControllerEvent.ControllerReady(
           ZoneId.systemDefault.getId,
           totalRunningTime = journalHeader.totalRunningTime)

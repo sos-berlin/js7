@@ -176,7 +176,7 @@ private[journal] object TestJournalMixin
     case Some(jsonObject) =>
       var o = jsonObject
       for (_ <- o("journalId")) o = o.add("journalId", JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")).asJson)
-      for (_ <- o("startedAt")) o = o.add("startedAt", "STARTED-AT".asJson)
+      for (_ <- o("initiallyStartedAt")) o = o.add("initiallyStartedAt", "STARTED-AT".asJson)
       for (_ <- o("timestamp")) o = o.add("timestamp", "TIMESTAMP".asJson)
       for (_ <- o("totalRunningTime")) o = o.add("totalRunningTime", 3600.asJson)
       o.asJson

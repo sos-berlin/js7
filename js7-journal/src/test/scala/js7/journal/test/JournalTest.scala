@@ -10,7 +10,7 @@ import js7.base.thread.Futures.blockingThreadFuture
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.data.event.{JournalHeader, JournalHeaders}
+import js7.data.event.JournalHeader
 import js7.journal.JournalActor
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.journal.test.JournalTest._
@@ -188,7 +188,7 @@ object JournalTest
       "generation": 1,
       "totalEventCount": 0,
       "totalRunningTime": 3600,
-      "startedAt": "STARTED-AT",
+      "initiallyStartedAt": "STARTED-AT",
       "timestamp": "TIMESTAMP",
       "version": "${JournalHeader.Version}",
       "js7Version": "${BuildInfo.longVersion}",
@@ -280,7 +280,7 @@ object JournalTest
       "journalId": "ABEiM0RVZneImaq7zN3u_w",
       "eventId": 1000068,
       "totalEventCount": 69,
-      "startedAt" : "STARTED-AT",
+      "initiallyStartedAt" : "STARTED-AT",
       "totalRunningTime" : 3600,
       "generation": 3,
       "timestamp": "TIMESTAMP"

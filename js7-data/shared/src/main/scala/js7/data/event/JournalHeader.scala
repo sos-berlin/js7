@@ -23,13 +23,13 @@ final case class JournalHeader private[data](
   totalEventCount: Long,
   totalRunningTime: FiniteDuration,
   timestamp: Timestamp,
-  startedAt: Timestamp,
+  initiallyStartedAt: Timestamp,
   version: String,
   js7Version: String,
   buildId: String)
 {
   override def toString = s"JournalHeader($journalId, $eventId, #$generation, total=$totalEventCount, " +
-    s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $startedAt, " +
+    s"$timestamp, ${totalRunningTime.pretty} (${totalRunningTime.toSeconds}s), $initiallyStartedAt, " +
     s"$version, $js7Version, $buildId)"
 }
 
@@ -38,11 +38,15 @@ object JournalHeader
   val Version = "1"
   private val compatibility = Map("0.42" -> "1")
 
-  implicit lazy val jsonCodec = {
+  implicit val jsonCodec = {
     intelliJuseImport(FiniteDurationJsonEncoder)
     implicit val x = Timestamp.StringTimestampJsonEncoder
+
     TypedJsonCodec[JournalHeader](
-      Subtype.named(deriveCodec[JournalHeader], "JS7.Journal"))
+      Subtype.named[JournalHeader](
+        deriveRenamingCodec[JournalHeader](Map(
+          "startedAt" -> "initiallyStartedAt"/*COMPATIBLE with 2.0*/)),
+        "JS7.Journal"))
   }
 
   def checkedHeader(json: Json, journalFileForInfo: Path, expectedJournalId: JournalId): Checked[JournalHeader] =

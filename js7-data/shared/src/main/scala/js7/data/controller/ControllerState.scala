@@ -115,10 +115,10 @@ with JournaledState[ControllerState]
     copy(standards = standards)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match {
-    case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, startedAt)) =>
+    case KeyedEvent(_: NoKey, ControllerEvent.ControllerInitialized(controllerId, intiallyStartedAt)) =>
       Right(copy(controllerMetaState = controllerMetaState.copy(
         controllerId = controllerId,
-        startedAt = startedAt)))
+        initiallyStartedAt = intiallyStartedAt)))
 
     case KeyedEvent(_: NoKey, event: ControllerEvent.ControllerReady) =>
       Right(copy(controllerMetaState = controllerMetaState.copy(
@@ -661,7 +661,7 @@ object ControllerState extends JournaledState.Companion[ControllerState]
       Subtype[SnapshotMeta],
       Subtype[JournalState],
       Subtype(deriveCodec[ClusterStateSnapshot]),
-      Subtype(deriveCodec[ControllerMetaState]),
+      Subtype[ControllerMetaState],
       Subtype[AgentRefState],
       Subtype[LockState],
       Subtype[Board],

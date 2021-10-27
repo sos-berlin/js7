@@ -1,6 +1,6 @@
 package js7.data.controller
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import js7.base.circeutils.CirceUtils.{deriveCodec, deriveRenamingCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
@@ -17,7 +17,9 @@ object ControllerEvent
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
-  final case class ControllerInitialized(controllerId: ControllerId, startedAt: Timestamp)
+  final case class ControllerInitialized(
+    controllerId: ControllerId,
+    initiallyStartedAt: Timestamp)
   extends ControllerEvent
 
   final case class ControllerReady(timezone: String, totalRunningTime: FiniteDuration)
@@ -39,7 +41,8 @@ object ControllerEvent
   case object ControllerTestEvent extends ControllerEvent
 
   implicit val jsonCodec = TypedJsonCodec[ControllerEvent](
-    Subtype(deriveCodec[ControllerInitialized]),
+    Subtype(deriveRenamingCodec[ControllerInitialized](Map(
+      "startedAt" -> "initiallyStartedAt"))),
     Subtype(deriveCodec[ControllerReady]),
     Subtype(deriveCodec[ControllerShutDown]),
     Subtype(ControllerTestEvent))

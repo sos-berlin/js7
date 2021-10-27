@@ -9,6 +9,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
+import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
@@ -87,6 +88,7 @@ object ControllerMain
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 Controller ${BuildInfo.longVersion}")
     _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
+    StartUp.initialize()
 
     var terminate = ControllerTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>

@@ -9,6 +9,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonSupport._
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
+import js7.common.system.startup.StartUp
 import js7.controller.web.common.ControllerRouteProvider
 import js7.data.controller.{ControllerId, ControllerOverview, ControllerState}
 import monix.eval.Task
@@ -40,7 +41,9 @@ trait ApiRootRoute extends ControllerRouteProvider
         id = controllerId,
         version = BuildInfo.prettyVersion,
         buildId = BuildInfo.buildId,
-        startedAt = checkedControllerState.toOption.map(_.controllerMetaState.startedAt),
+        initiallyStartedAt = checkedControllerState.toOption
+          .map(_.controllerMetaState.initiallyStartedAt),
+        startedAt = StartUp.startedAt,
         totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms,
         orderCount = checkedControllerState.toOption.map(_.idToOrder.size),
         system = systemInformation(),
