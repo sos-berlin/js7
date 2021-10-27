@@ -13,6 +13,7 @@ import js7.data.orderwatch.OrderWatchPath;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.controller.JControllerState;
 import js7.data_for_java.orderwatch.JFileWatch;
+import js7.data_for_java.value.JExpression;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ final class JFileWatchTester
                         fileWatchPath,
                         workflowPath,
                         AgentPath.of("AGENT"),
-                        directory,
+                        JExpression.fromString(directory.toString()),
                         Optional.of("file-(.+)\\.txt"),
                         Optional.of("'#' ++ now(format='yyyy-MM-dd', timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\""),
                         Duration.ofSeconds(0)))))));

@@ -55,6 +55,7 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
 
 object JFileWatch extends JJsonable.Companion[JFileWatch]
 {
+  @Deprecated
   @Nonnull
   def checked(
     @Nonnull id: OrderWatchPath,
@@ -76,6 +77,26 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
             delay.toFiniteDuration))
     ).toVavr
 
+  @Nonnull
+  def checked(
+    @Nonnull id: OrderWatchPath,
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull agentPath: AgentPath,
+    @Nonnull directory: JExpression,
+    @Nonnull pattern: Optional[String],
+    @Nonnull orderIdExpression: Optional[String],
+    @Nonnull delay: java.time.Duration)
+  : VEither[Problem, JFileWatch] =
+    (for {
+      pattern <- pattern.toScala.traverse(SimplePattern.checked(_))
+      orderIdExpression <- orderIdExpression.toScala.traverse(ExpressionParser.parse(_))
+    } yield
+      JFileWatch(FileWatch(
+        id, workflowPath, agentPath,
+        directory.asScala, pattern,
+        orderIdExpression,
+        delay.toFiniteDuration))
+      ).toVavr
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JFileWatch] =

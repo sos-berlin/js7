@@ -3,10 +3,11 @@ package js7.data_for_java.value
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{BooleanConstant, ListExpression, NumericConstant, ObjectExpression, StringConstant}
 import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.vavr.VavrConverters._
+import scala.jdk.CollectionConverters._
 
 final case class JExpression(asScala: Expression) extends JJsonable[JExpression]
 {
@@ -24,6 +25,32 @@ object JExpression extends JJsonable.Companion[JExpression]
       .map(JExpression(_))
       .toVavr
 
+  /** Returns the string as a StringConstant Expression. */
+  @Nonnull
+  def fromString(@Nonnull string: String): JExpression =
+    JExpression(StringConstant(string))
+
+  /** Returns the string as a NumericConstant Expression. */
+  @Nonnull
+  def fromNumber(@Nonnull number: BigDecimal): JExpression =
+    JExpression(NumericConstant(number))
+
+  /** Returns the string as a BooleanConstant Expression. */
+  @Nonnull
+  def fromBoolean(@Nonnull boolean: Boolean): JExpression =
+    JExpression(BooleanConstant(boolean))
+
+  /** Returns the string as a ListExpression. */
+  @Nonnull
+  def fromIterable(@Nonnull values: java.lang.Iterable[JExpression]): JExpression =
+    JExpression(ListExpression(values.asScala.view.map(_.asScala).toList))
+
+  /** Returns the string as an ObjectExpression. */
+  @Nonnull
+  def fromMap(@Nonnull keyToExpr: java.util.Map[String, JExpression]): JExpression =
+    JExpression(ObjectExpression(keyToExpr.asScala.view.mapValues(_.asScala).toMap))
+
+  /** Quotes the string, usable to build a expression. */
   @Nonnull
   def quoteString(@Nonnull string: String): String =
     StringConstant.quote(string)
