@@ -127,6 +127,14 @@ object Subtype {
   def named[A: ClassTag](codec: CirceObjectCodec[A], typeName: String): Subtype[A] =
     of(implicitClass[A], Nil, typeName, codec, codec)
 
+  /**
+    * Use explicitly given Encoder.AsObject and Decoder (CirceCodec).
+    * <p>
+    * Usage: Subtype.named(codec, "name")
+    */
+  def named[A: ClassTag](codec: Codec.AsObject[A], typeName: String): Subtype[A] =
+    of(implicitClass[A], Nil, typeName, codec, codec)
+
   def named[A: ClassTag: Encoder.AsObject: Decoder](
     subclasses: Iterable[Class[_ <: A]],
     aliases: Seq[String])

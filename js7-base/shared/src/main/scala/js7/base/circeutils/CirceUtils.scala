@@ -58,6 +58,28 @@ object CirceUtils
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
 
+  def deriveRenamingCodec[A](rename: Map[String, String])
+    (implicit encoder: Lazy[DerivedAsObjectEncoder[A]], decoder: Lazy[DerivedDecoder[A]])
+  : Codec.AsObject[A] =
+    Codec.AsObject.from(deriveRenamingDecoder[A](rename), encoder.value)
+
+  def deriveRenamingDecoder[A](rename: Map[String, String])
+    (implicit decode: Lazy[DerivedDecoder[A]])
+  : Decoder[A] =
+    c => c.as[JsonObject]
+      .flatMap { jsonObject =>
+        val map = jsonObject.toMap
+        if (!map.keys.exists(rename.keySet))
+          decode.value(c)
+        else
+          decode.value.decodeJson(
+            Json.fromJsonObject(
+              JsonObject.fromMap(map
+                .view
+                .map { case (k, v) => rename.getOrElse(k, k) -> v }
+                .toMap)))
+      }
+
   val CompactPrinter = Printer.noSpaces.copy(
     dropNullValues = true/*Suppress None*/,
     //reuseWriters = true,  // Remember StringBuilder in thread local

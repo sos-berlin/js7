@@ -1,7 +1,8 @@
 package js7.base.circeutils
 
+import io.circe.CursorOp.DownField
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Json, JsonObject}
+import io.circe.{Decoder, DecodingFailure, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString
 import js7.base.problem.{Problem, ProblemException}
@@ -14,11 +15,22 @@ import scala.collection.immutable.SeqMap
   */
 final class CirceUtilsTest extends AnyFreeSpec
 {
+  private case class Simple(int: Int, string: String)
   private case class A(a: Int, b: B)
   private case class B(string: String, array: Seq[Int], empty: Seq[Int])
 
   private implicit val BCodec = deriveCodec[B]
   private implicit val ACodec = deriveCodec[A]
+
+  "deriveRenamingCodec" in {
+    val myCodec = deriveRenamingCodec[Simple](Map("old" -> "string"))
+    assert(myCodec.decodeJson(json"""{ "int": 1, "string":  "B" }""") == Right(Simple(1, "B")))
+    assert(myCodec.decodeJson(json"""{ "int": 1, "old":  "B" }""") == Right(Simple(1, "B")))
+    assert(myCodec.decodeJson(json"""{ "int": 1 }""") ==
+      Left(DecodingFailure("Attempt to decode value on failed cursor", DownField("string") :: Nil)))
+
+    assert(myCodec.apply(Simple(1, "B")) == json"""{ "int": 1, "string": "B" }""")
+  }
 
   "PrettyPrinter" in {
     assert(A(1, B("STRING", 1 :: 2 :: Nil, Nil)).asJson.toPrettyString ==
