@@ -9,8 +9,8 @@ import com.google.inject.{Guice, Injector, Module}
 import com.typesafe.config.Config
 import java.nio.file.Files.deleteIfExists
 import js7.agent.RunningAgent._
+import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
-import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
 import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.AgentWebServer
@@ -148,7 +148,6 @@ object RunningAgent {
     apply(new AgentModule(configuration))
 
   def apply(module: Module): Future[RunningAgent] = {
-    AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
     implicit val scheduler = injector.instance[Scheduler]
 

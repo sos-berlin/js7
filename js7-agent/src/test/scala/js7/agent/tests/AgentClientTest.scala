@@ -1,7 +1,8 @@
 package js7.agent.tests
 
 import js7.agent.client.AgentClient
-import js7.agent.configuration.{AgentStartInformation, Akkas}
+import js7.agent.configuration.Akkas
+import js7.base.BuildInfo
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.job.TaskId
@@ -23,7 +24,7 @@ final class AgentClientTest extends AnyFreeSpec with ScalaFutures with AgentTest
   "get /" in {
     val overview = client.overview await 99.s
     assert(!overview.isTerminating)
-    assert(overview.version == AgentStartInformation.PrettyVersion)
+    assert(overview.version == BuildInfo.prettyVersion)
   }
 
   //"get /task" in {

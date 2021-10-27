@@ -76,6 +76,7 @@ object AgentMain
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 Agent ${BuildInfo.longVersion}")
     _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
+    StartUp.initialize()
 
     var terminated = AgentTermination.Terminate()
     lockAndRunMain(args) { commandLineArguments =>

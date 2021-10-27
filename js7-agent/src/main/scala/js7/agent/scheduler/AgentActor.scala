@@ -5,7 +5,7 @@ import akka.pattern.{ask, pipe}
 import com.softwaremill.diffx.generic.auto._
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
-import js7.agent.configuration.{AgentConfiguration, AgentStartInformation}
+import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
@@ -14,6 +14,7 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.data.{AgentState, AgentTermination}
 import js7.agent.scheduler.AgentActor._
 import js7.agent.scheduler.order.AgentOrderKeeper
+import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -29,6 +30,7 @@ import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
+import js7.common.system.startup.StartUp
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -145,9 +147,9 @@ extends Actor with Stash with SimpleStateActor
 
     case Command.GetOverview =>
       sender() ! AgentOverview(
-        version = AgentStartInformation.PrettyVersion,
-        buildId = AgentStartInformation.BuildId,
-        startedAt = AgentStartInformation.StartedAt,
+        version = BuildInfo.prettyVersion,
+        buildId = BuildInfo.buildId,
+        startedAt = StartUp.startedAt,
         isTerminating = terminating,
         system = systemInformation(),
         java = javaInformation)
