@@ -59,7 +59,7 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
         agentPath <- c.get[AgentPath]("agentPath")
         directoryExpr <- c.get[Expression]("directoryExpr")
           .orElse(
-            c.get[String]("directory")/*until v2.0.1*/.map(Expression.StringConstant(_)))
+            c.get[String]("directory")/*COMPATIBLE with v2.0.1*/.map(Expression.StringConstant(_)))
         pattern <- c.get[Option[SimplePattern]]("pattern")
         orderIdExpression <- c.get[Option[Expression]]("orderIdExpression")
         delay <- c.getOrElse[FiniteDuration]("delay")(ZeroDuration)
