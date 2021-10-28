@@ -436,7 +436,7 @@ with Stash
           case Some(orderEntry) =>
             // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
             // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-            orderEntry.order.detaching match {
+            persistence.currentState.idToOrder.checked(orderId).flatMap(_.detaching) match {
               case Left(problem) => Future.failed(problem.throwable)
               case Right(_) =>
                 val promise = Promise[Unit]()
