@@ -62,7 +62,7 @@ trait ProcessJobLauncher extends JobLauncher
         }
       }
 
-      override def cancel(immediately: Boolean) =
+      def cancel(immediately: Boolean) =
         processDriver.kill(if (immediately) SIGKILL else SIGTERM)
 
       override def toString = "ProcessJobLauncher.OrderProcess"

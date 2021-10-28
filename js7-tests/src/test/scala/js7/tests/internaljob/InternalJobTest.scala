@@ -322,7 +322,7 @@ object InternalJobTest
   private class CancelableJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
-      new OrderProcess {
+      new OrderProcess.FutureCancelling {
         def run =
           Task.sleep(9.s)
             .as[Outcome.Completed](Outcome.succeeded)
@@ -333,7 +333,7 @@ object InternalJobTest
 
         override def cancel(immediately: Boolean) =
           if (immediately)
-            Task { future.cancel() }
+            super.cancel(immediately)
           else
             sys.error("TEST EXCEPTION FOR KILL")
       }

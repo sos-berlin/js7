@@ -40,7 +40,7 @@ extends InternalJob
           } yield
             fiber
 
-        override def cancel(immediately: Boolean) =
+        def cancel(immediately: Boolean) =
           orderProcessTask.flatMap(orderProcess =>
             Task(orderProcess.cancel(immediately))
               .executeOn(jobContext.blockingJobScheduler))
