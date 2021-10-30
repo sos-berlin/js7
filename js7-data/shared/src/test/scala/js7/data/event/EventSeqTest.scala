@@ -6,6 +6,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
+
 /**
   * @author Joacim Zschimmer
   */
@@ -51,7 +52,10 @@ final class EventSeqTest extends AnyFreeSpec {
       }""")
   }
 
-  private def checkTearableEventSeq[E: Encoder.AsObject: Decoder](eventSeq: TearableEventSeq[Seq, E], json: Json) = {
+  private def checkTearableEventSeq[E: Encoder.AsObject: Decoder](
+    eventSeq: TearableEventSeq[Seq, E],
+    json: Json)
+  = {
     testJson(eventSeq, json)
     eventSeq match {
       case eventSeq: EventSeq[Seq, E] => testJson(eventSeq, json)

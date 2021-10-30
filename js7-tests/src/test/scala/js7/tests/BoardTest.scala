@@ -115,7 +115,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     for (orderId <- expectingOrderIds) {
       eventWatch.await[OrderFinished](_.key == orderId)
-      val expectingEvents = eventWatch.keyedEvents[OrderCoreEvent](orderId)
+      val expectingEvents = eventWatch.eventsByKey[OrderCoreEvent](orderId)
       assert(expectingEvents == Seq(
         OrderAdded(expectingWorkflow.id),
         OrderStarted,

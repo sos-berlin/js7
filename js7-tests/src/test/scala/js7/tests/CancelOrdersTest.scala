@@ -54,7 +54,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     eventWatch.await[OrderAttached](_.key == order.id)
     controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id) == Vector(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -70,7 +70,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
     eventWatch.await[OrderFinished](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -104,7 +104,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -291,7 +291,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controllerApi.executeCommand(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id)
+    assert(eventWatch.eventsByKey[OrderEvent](order.id)
       .filterNot(_.isInstanceOf[OrderStdWritten]) ==
       expectedEvents(mode))
   }

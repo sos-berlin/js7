@@ -37,7 +37,7 @@ final class FailOnErrWrittenTest extends AnyFreeSpec with ControllerAgentForScal
       "A" -> StringValue("A OF ORDER")
     ))).await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
-    assert(eventWatch.keyedEvents[OrderProcessed](orderId) == Seq(
+    assert(eventWatch.eventsByKey[OrderProcessed](orderId) == Seq(
       OrderProcessed(Outcome.succeededRC0),
       OrderProcessed(Outcome.succeededRC0),
       OrderProcessed(Outcome.Failed(Some("The job's error channel: ERROR"))),

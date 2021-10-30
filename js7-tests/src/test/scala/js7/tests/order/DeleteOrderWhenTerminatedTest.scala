@@ -39,7 +39,7 @@ final class DeleteOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(quickWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -60,7 +60,7 @@ final class DeleteOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == order.id)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(slowWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),

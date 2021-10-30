@@ -1,5 +1,6 @@
 package js7.journal.watch
 
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -53,12 +54,13 @@ final class StrictEventWatch(val underlying: EventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E <: Event: ClassTag: TypeTag](key: E#Key, after: EventId = tornEventId)
+  def eventsByKey[E <: Event: ClassTag: TypeTag](key: E#Key, after: EventId = tornEventId)
     (implicit s: Scheduler)
   : Seq[E] =
-    keyedEvents[E](after = after) collect {
-      case o if o.key == key => o.event
-    }
+    keyedEvents[E](after = after)
+      .collect {
+        case o if o.key == key => o.event
+      }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -69,12 +71,8 @@ final class StrictEventWatch(val underlying: EventWatch)
   @TestOnly
   def keyedEvents[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler)
   : Seq[KeyedEvent[E]] =
-    underlying.all[E](after = after).strict match {
-      case EventSeq.NonEmpty(stamped) => stamped.map(_.value)
-      case EventSeq.Empty(_) => Nil
-      case TearableEventSeq.Torn(eventId) =>
-        throw new TornException(after = EventId(0), tornEventId = eventId)
-    }
+    allAfter[E](after = after).await(99.s)
+      .map(_.value)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -86,12 +84,18 @@ final class StrictEventWatch(val underlying: EventWatch)
   @TestOnly
   def allStamped[E <: Event: ClassTag](implicit s: Scheduler, E: TypeTag[E])
   : Seq[Stamped[KeyedEvent[E]]] =
-    underlying.all[E]().strict match {
-      case TearableEventSeq.Torn(after) =>
-        throw new TornException(after = EventId.BeforeFirst, tornEventId = after)
-      case EventSeq.Empty(_) => Nil
-      case EventSeq.NonEmpty(seq) => seq
-    }
+    allAfter[E]().await(99.s)
+
+  @TestOnly
+  private def allAfter[E <: Event: ClassTag: TypeTag](after: EventId = EventId.BeforeFirst)
+  : Task[Seq[Stamped[KeyedEvent[E]]]] =
+    when[E](EventRequest.singleClass[E](after = after), _ => true)
+      .map {
+        case TearableEventSeq.Torn(after) =>
+          throw new TornException(after = EventId.BeforeFirst, tornEventId = after)
+        case EventSeq.Empty(_) => Nil
+        case EventSeq.NonEmpty(seq) => seq
+      }
 
   @inline
   private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]])

@@ -73,7 +73,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     executeCommand(SuspendOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderSuspended](_.key == order.id)
 
-    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -92,7 +92,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     assert(executeCommand(ResumeOrders(Set(order.id))).await(99.s) == Left(CannotResumeOrderProblem))
 
     eventWatch.await[OrderFinished](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -114,7 +114,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == order.id)
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -132,7 +132,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == order.id)
 
-    assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(),
       OrderFinished))
   }
@@ -147,7 +147,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       .await(99.s).orThrow
     eventWatch.await[OrderSuspended](_.key == order.id)
 
-    val events = eventWatch.keyedEvents[OrderEvent](order.id)
+    val events = eventWatch.eventsByKey[OrderEvent](order.id)
       .filterNot(_.isInstanceOf[OrderStdWritten])
       .map {
         case OrderProcessed(Outcome.Killed(failed: Outcome.Failed)) if failed.namedValues == NamedValues.rc(SIGKILL) =>
@@ -176,7 +176,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == order.id)
 
-    assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -199,7 +199,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     touchFile(triggerFile)
 
     eventWatch.await[OrderSuspended](_.key == order.id)
-      assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+      assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
@@ -217,7 +217,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     touchFile(triggerFile)
     executeCommand(ResumeOrders(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
+    assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderResumed(),
         OrderAttachable(agentPath),
@@ -316,7 +316,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     touchFile(triggerFile)
     eventWatch.await[OrderFinished](_.key == order.id)
 
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -357,7 +357,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
 
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -399,7 +399,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == order.id, after = eventId)
 
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -469,7 +469,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     touchFile(triggerFile)
     eventWatch.await[OrderSuspended](_.key == order.id)
 
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
       OrderAdded(tryWorkflow.id, order.arguments, order.scheduledFor),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -493,7 +493,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       .await(99.s).orThrow
     eventWatch.await[OrderFailed](_.key == order.id)
 
-    assert(eventWatch.keyedEvents[OrderEvent](order.id, after = lastEventId)
+    assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderResumed(Some(newPosition), historicOutcomeOps),
         OrderCatched(Position(2) / catch_(0) % 0, Some(Outcome.failed)),
@@ -524,7 +524,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
     executeCommand(ResumeOrder(order.id, Some(Position(0)))).await(99.s).orThrow
 
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
       OrderAdded(failingWorkflow.id, order.arguments, order.scheduledFor),
 
       OrderAttachable(agentPath),

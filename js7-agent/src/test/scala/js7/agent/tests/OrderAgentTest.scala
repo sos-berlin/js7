@@ -24,7 +24,7 @@ import js7.base.utils.Closer.withCloser
 import js7.common.crypt.pgp.PgpSigner
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
-import js7.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -62,12 +62,16 @@ final class OrderAgentTest extends AnyFreeSpec
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s).toOption.get  // Without Login, this registers all anonymous clients
+          // Without Login, this registers all anonymous clients
+          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId))
+            .await(99.s).toOption.get
             .isInstanceOf[DedicateAgent.Response])
 
-          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map("x" -> StringValue("X")))
+          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map(
+            "x" -> StringValue("X")))
 
-          def attachOrder(signedWorkflow: Signed[SignableItem]): Checked[AgentCommand.Response.Accepted] =
+          def attachOrder(signedWorkflow: Signed[SignableItem])
+          : Checked[AgentCommand.Response.Accepted] =
             for {
               _ <- agentClient.commandExecute(AttachSignedItem(signedWorkflow)).await(99.s)
               x <- agentClient.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
@@ -81,12 +85,14 @@ final class OrderAgentTest extends AnyFreeSpec
           attachOrder(signedSimpleWorkflow) shouldEqual Right(AgentCommand.Response.Accepted)
 
           EventRequest.singleClass[Event](timeout = Some(10.s))
-            .repeat(eventRequest => agentClient.events(eventRequest).map(_.orThrow).runToFuture) {
+            .repeat(eventRequest => agentClient.tearableEventSeq(eventRequest).map(_.orThrow).runToFuture) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
             }
           val Right(processedOrder) = agentClient.order(order.id) await 99.s
           assert(processedOrder == toExpectedOrder(order))
-          agentClient.commandExecute(DetachOrder(order.id)) await 99.s shouldEqual Right(AgentCommand.Response.Accepted)
+          assert(agentClient.commandExecute(DetachOrder(order.id)).await(99.s) ==
+            Right(AgentCommand.Response.Accepted))
+
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
 
           try agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
@@ -97,6 +103,7 @@ final class OrderAgentTest extends AnyFreeSpec
   }
 
   for (testSpeed <- sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.jobNodeCount*/"·"} jobs" in {
+    // TODO Speed test does not work
     val n = testSpeed.toInt
     provideAgentDirectory { directory =>
       val executableDir = directory / "config" / "executables"
@@ -118,7 +125,9 @@ final class OrderAgentTest extends AnyFreeSpec
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
-          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s) == Right(AgentCommand.Response.Accepted))
+          assert(
+            agentClient.commandExecute(DedicateAgent(agentPath, controllerId))
+              .await(99.s).isRight)
 
           val orders = for (i <- 1 to n) yield
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
@@ -132,16 +141,18 @@ final class OrderAgentTest extends AnyFreeSpec
 
           val awaitedOrderIds = orders.map(_.id).toSet
           val ready = mutable.Set.empty[OrderId]
-          while (
-            agentClient.events(EventRequest.singleClass[Event](timeout = Some(timeout))).map(_.orThrow) await 99.s match {
-              case EventSeq.NonEmpty(stampeds) =>
-                ready ++= stampeds.map(_.value) collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
-                ready != awaitedOrderIds
-              case _ =>
-                true
-            }
-          ) {}
-          agentClient.commandExecute(Batch(orders map { o => DetachOrder(o.id) })).await(99.s).orThrow
+          while (ready != awaitedOrderIds) {
+            ready ++= agentClient
+              .eventObservable(EventRequest.singleClass[Event](timeout = Some(timeout)))
+              .map(_.orThrow)
+              .await(99.s)
+              .map(_.value)
+              .collect { case KeyedEvent(orderId: OrderId, OrderDetachable) => orderId }
+              .toListL
+              .await(99.s)
+          }
+          agentClient.commandExecute(Batch(orders map { o => DetachOrder(o.id) }))
+            .await(99.s).orThrow
           info(stopwatch.itemsPerSecondString(n, "orders"))
 
           agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow

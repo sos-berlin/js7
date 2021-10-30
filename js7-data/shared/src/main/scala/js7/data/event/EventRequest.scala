@@ -4,6 +4,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.EventRequest._
+import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -37,12 +38,16 @@ final case class EventRequest[E <: Event](
   def matchesClass(clazz: Class[_ <: Event]): Boolean =
     eventClasses.exists(_ isAssignableFrom clazz)
 
+  @TestOnly
   /**
     * Helper to repeatedly fetch events until a condition (PartialFunction) is met.
     * Blocking - for testing.
     */
   @tailrec
-  def repeat[A](fetchEvents: EventRequest[E] => Future[TearableEventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
+  def repeat[A](
+    fetchEvents: EventRequest[E] => Future[TearableEventSeq[Seq, KeyedEvent[E]]])
+    (collect: PartialFunction[Stamped[KeyedEvent[E]], A])
+  : Seq[A] = {
     val waitTimeout = timeout.map(_ + 10.s)
     Await.result(fetchEvents(this), waitTimeout getOrElse Duration.Inf) match {
       case EventSeq.NonEmpty(stampeds) =>

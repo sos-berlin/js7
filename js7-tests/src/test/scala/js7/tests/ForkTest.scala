@@ -121,7 +121,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
+    assert(eventWatch.eventsByKey[OrderEvent](order.id) == Vector(
       OrderAdded(workflow.id, order.arguments),
       OrderStarted,
       expectedFailed,

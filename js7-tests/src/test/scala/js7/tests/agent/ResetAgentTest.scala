@@ -65,7 +65,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.terminated.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
-    assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
@@ -91,7 +91,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[OrderTerminated](_.key == orderId)
-    assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
@@ -118,7 +118,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     myAgent.terminated.await(99.s)
 
     eventWatch.await[OrderFailedInFork](_.key == childOrderId)
-    assert(eventWatch.keyedEvents[OrderEvent](childOrderId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](childOrderId) == Seq(
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted,
@@ -129,7 +129,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Some(Outcome.Disrupted(AgentResetProblem(agentPath))))))
 
     eventWatch.await[OrderTerminated](_.key == orderId)
-    assert(eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(forkingWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,

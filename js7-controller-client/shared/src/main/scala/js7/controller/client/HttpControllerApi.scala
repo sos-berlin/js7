@@ -16,7 +16,7 @@ import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
 import js7.data.controller.ControllerCommand.{DeleteOrdersWhenTerminated, InternalClusterCommand}
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
-import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
 import js7.data.workflow.Workflow
@@ -96,11 +96,6 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
   final def orders: Task[Checked[Seq[Order[Order.State]]]] =
     liftProblem(
       httpClient.get[Seq[Order[Order.State]]](uris.order.list[Order[Order.State]]))
-
-  final def events[E <: Event: ClassTag](request: EventRequest[E])
-    (implicit kd: Decoder[KeyedEvent[E]], ke: Encoder.AsObject[KeyedEvent[E]])
-  : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
-    httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](uris.events[E](request))
 
   final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])

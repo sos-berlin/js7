@@ -67,7 +67,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
     assert(terminated.value.event.isInstanceOf[OrderFinished])
 
-    val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
+    val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
     assert(stdouterr.replaceAll("\r", "") ==
       """A=/A of JOB-RESOURCE-A/
         |B=/B of JOB-RESOURCE-A/
@@ -107,7 +107,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
     assert(terminated.value.event.isInstanceOf[OrderFinished])
 
-    val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
+    val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
     assert(stdouterr.replaceAll("\r", "") ==
       s"""ORIGINAL_PATH=/${sys.env("PATH")}/
          |""".stripMargin)
@@ -123,7 +123,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
         Outcome.succeededRC0)
 
-      val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
+      val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
       scribe.info(stdouterr.trim)
       assert(stdouterr contains "JS7_ORDER_ID=/ORDER-SOS/\n")
       assert(stdouterr contains "JS7_WORKFLOW_NAME=/WORKFLOW-SOS/\n")
@@ -151,7 +151,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controller.eventWatch.await[OrderProcessed](_.key == orderId).head.value.event.outcome ==
         Outcome.succeededRC0)
 
-      val stdouterr = controller.eventWatch.keyedEvents[OrderStdWritten](orderId).foldMap(_.chunk)
+      val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
       scribe.info(stdouterr.trim)
       val dateTime = scheduledFor
         .toOffsetDateTime(ZoneId.systemDefault())

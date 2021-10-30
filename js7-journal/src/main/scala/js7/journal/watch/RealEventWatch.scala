@@ -294,12 +294,6 @@ trait RealEventWatch extends EventWatch
           sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
             s"(after=$after) unexpected EventSeq: $o")
       }
-
-  /** TEST ONLY - Blocking. */
-  @TestOnly
-  final def all[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler)
-  : TearableEventSeq[CloseableIterator, KeyedEvent[E]] =
-    when[E](EventRequest.singleClass[E](after = after), _ => true) await 99.s
 }
 
 object RealEventWatch

@@ -17,6 +17,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 
 /**
  * Client for JS7 Agent.
@@ -60,7 +61,9 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
         agentUris.controllersEvents(request),
         responsive = true))
 
-  final def events(request: EventRequest[Event]): Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
+  @TestOnly
+  final def tearableEventSeq(request: EventRequest[Event])
+  : Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
     // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
     //val timeout = request match {

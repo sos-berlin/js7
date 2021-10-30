@@ -236,7 +236,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
       .map(_.value.event)
 
-    assert(eventWatch.keyedEvents[OrderEvent](key = orderId, after = eventId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](key = orderId, after = eventId) == Seq(
       OrderAdded(workflow.id),
       OrderStarted,
       OrderCyclingPrepared(CycleState(

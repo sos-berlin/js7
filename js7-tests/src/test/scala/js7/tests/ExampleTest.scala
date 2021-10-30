@@ -37,7 +37,7 @@ final class ExampleTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(eventWatch.await[OrderTerminated](_.key == orderId).map(_.value.event) ==
       Seq(OrderFinished))
     eventWatch.await[OrderDeleted](_.key == orderId)
-    assert(eventWatch.keyedEvents[OrderEvent](orderId, after = eventId) == Seq(
+    assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),

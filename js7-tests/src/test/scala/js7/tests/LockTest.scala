@@ -86,7 +86,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       assert(controller.eventWatch.await[OrderTerminated](_.key == a).map(_.value) == Seq(a <-: OrderFinished))
       controller.eventWatch.await[OrderDeleted](_.key == a)
-      assert(controller.eventWatch.keyedEvents[OrderEvent](a) == Seq(
+      assert(controller.eventWatch.eventsByKey[OrderEvent](a) == Seq(
         OrderAdded(workflow.id, deleteWhenTerminated = true),
         OrderStarted,
         OrderLockAcquired(lockPath, None),
@@ -112,7 +112,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       for (orderId <- queuedOrderIds) {
         assert(controller.eventWatch.await[OrderTerminated](_.key == orderId).map(_.value) == Seq(orderId <-: OrderFinished))
         controller.eventWatch.await[OrderDeleted](_.key == orderId)
-        assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+        assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
           OrderAdded(workflow.id, deleteWhenTerminated = true),
           OrderStarted,
           OrderLockQueued(lockPath, None),
@@ -235,7 +235,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
 
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
@@ -269,7 +269,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
@@ -314,7 +314,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderFailed](_.key == orderId)
     controllerApi.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
@@ -323,7 +323,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCancelled,
       OrderDeleted))
 
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId / "BRANCH") == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
       OrderLockAcquired(lockPath, None),
       OrderLockReleased(lockPath),
       OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed))))
@@ -353,7 +353,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderFailed](_.key == orderId / "BRANCH")
     controllerApi.executeCommand(CancelOrders(Seq(orderId / "BRANCH", orderId)))
       .await(99.s).orThrow
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath, None),
@@ -365,7 +365,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCancelled,
       OrderDeleted))
 
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId / "BRANCH") == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
       OrderFailed(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
         "Lock:LOCK has already been acquired by parent Order:🟪")))),
       OrderCancelled))
@@ -388,7 +388,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1")))),
@@ -423,7 +423,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == orderId)
 
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(queueingWorkflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockQueued(lockPath, count = None),
@@ -433,7 +433,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controllerApi.executeCommand(AnswerOrderPrompt(lockingOrderId)).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == lockingOrderId)
-    assert(controller.eventWatch.keyedEvents[OrderEvent](lockingOrderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](lockingOrderId) == Seq(
       OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath),
@@ -464,7 +464,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-    assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLockAcquired(lockPath),

@@ -52,10 +52,6 @@ trait EventWatch
     predicate: E => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E]]
 
-  /** Returns None as last element iff timeout has elapsed.
-    * @param journalPosition None to use defaults for manual request of the current journal file stream,
-    *                        just to show something.
-    */
   def observeFile(journalPosition: JournalPosition,
     timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]]
@@ -74,11 +70,6 @@ trait EventWatch
     timeout: FiniteDuration = 99.s)
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E]]]
-
-  /** TEST ONLY - Blocking. */
-  @TestOnly
-  def all[E <: Event: ClassTag: TypeTag](after: EventId = tornEventId)(implicit s: Scheduler)
-  : TearableEventSeq[CloseableIterator, KeyedEvent[E]]
 
   def fileEventIds: Seq[EventId]
 

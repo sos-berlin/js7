@@ -57,7 +57,7 @@ final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForSc
         .head.value.event == OrderFinished)
       controller.eventWatch.await[OrderDeleted](_.key == parentOrderId)
 
-      assert(controller.eventWatch.keyedEvents[OrderEvent](parentOrderId) == Seq(
+      assert(controller.eventWatch.eventsByKey[OrderEvent](parentOrderId) == Seq(
         OrderAdded(
           workflow.id,
           Map("children" -> ListValue(Seq(
@@ -89,7 +89,7 @@ final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForSc
         OrderDeleted))
 
       for (orderId <- childOrderIds) {
-        assert(controller.eventWatch.keyedEvents[OrderEvent](orderId) == Seq(
+        assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
           OrderProcessingStarted,
           OrderProcessed(Outcome.succeeded),
           OrderMoved(Position(0) / "fork" % 1),
