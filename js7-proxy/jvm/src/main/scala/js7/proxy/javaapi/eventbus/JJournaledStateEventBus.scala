@@ -9,7 +9,8 @@ import js7.data_for_java.common.{JJournaledState, JavaWrapper}
 import js7.proxy.JournaledStateEventBus
 import scala.jdk.CollectionConverters._
 
-class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]](val asScala: JournaledStateEventBus[S])
+class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]]
+  (val asScala: JournaledStateEventBus[S])
   (implicit JS: JJournaledState.Companion[JS, S])
 extends AutoCloseable
 {

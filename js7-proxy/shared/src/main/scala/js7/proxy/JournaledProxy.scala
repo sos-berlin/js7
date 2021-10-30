@@ -18,7 +18,7 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.cluster.ClusterNodeState
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy._
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
@@ -34,12 +34,12 @@ import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 
-trait JournaledProxy[S <: JournaledState[S]]
+trait JournaledProxy[S <: SnapshotableState[S]]
 {
   protected val baseObservable: Observable[EventAndState[Event, S]]
   protected def scheduler: Scheduler
   protected val onEvent: EventAndState[Event, S] => Unit
-  protected def S: JournaledState.Companion[S]
+  protected def S: SnapshotableState.Companion[S]
   protected def proxyConf: ProxyConf
 
   private val observing = SetOnce[Cancelable]("connectableObservingCompleted")
@@ -222,7 +222,7 @@ object JournaledProxy
     obs: Observable[EventAndState[Event, S]],
     fromEventId: EventId)
   : Observable[EventAndState[Event, S]] =
-    // TODO Optimize this with JournaledStateBuilder ?
+    // TODO Optimize this with SnapshotableStateBuilder ?
     obs.dropWhile(_.stampedEvent.eventId < fromEventId)
       .map {
         case es if es.stampedEvent.eventId == fromEventId &&

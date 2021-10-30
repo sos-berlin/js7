@@ -3,19 +3,19 @@ package js7.journal.recover
 import com.typesafe.config.Config
 import js7.base.utils.SetOnce
 import js7.data.cluster.ClusterState
-import js7.data.event.{EventId, JournalId, JournaledState}
+import js7.data.event.{EventId, JournalId, SnapshotableState}
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
 import scala.concurrent.duration._
 
-final class Recovered[S <: JournaledState[S]] private(
+final class Recovered[S <: SnapshotableState[S]] private(
   journalMeta: JournalMeta,
   val recoveredJournalFile: Option[RecoveredJournalFile[S]],
   val totalRunningSince: Deadline,
   config: Config,
   val eventWatch: JournalEventWatch,
   journalId_ : Option[JournalId])
-  (implicit S: JournaledState.Companion[S])
+  (implicit S: SnapshotableState.Companion[S])
 extends AutoCloseable
 {
   private val journalIdOnce = SetOnce.fromOption(journalId_)
@@ -56,12 +56,12 @@ extends AutoCloseable
 
 object Recovered
 {
-  def apply[S <: JournaledState[S]](
+  def apply[S <: SnapshotableState[S]](
     journalMeta: JournalMeta,
     recoveredJournalFile: Option[RecoveredJournalFile[S]],
     totalRunningSince: Deadline,
     config: Config)
-    (implicit S: JournaledState.Companion[S])
+    (implicit S: SnapshotableState.Companion[S])
   : Recovered[S] = {
     val recoveredEventId = recoveredJournalFile.fold(EventId.BeforeFirst)(_.eventId)
     new Recovered(

@@ -22,10 +22,10 @@ import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.MonixDeadline.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.{AlarmClock, Timezone}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.time.{AlarmClock, Timezone}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
@@ -71,7 +71,7 @@ import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
 import js7.journal.recover.Recovered
-import js7.journal.state.JournaledStatePersistence
+import js7.journal.state.StatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
@@ -87,7 +87,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ControllerTermination],
-  persistence: JournaledStatePersistence[ControllerState],
+  persistence: StatePersistence[ControllerState],
   clusterNode: WorkingClusterNode[ControllerState],
   alarmClock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,

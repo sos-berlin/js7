@@ -1,7 +1,8 @@
 package js7.data.event
 
 import js7.base.problem.{Checked, Problem}
-import js7.data.event.JournaledState.EventNotApplicableProblem
+import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.data.event.EventDrivenState._
 
 trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
 {
@@ -39,4 +40,13 @@ trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
 
   protected final def eventNotApplicable(keyedEvent: KeyedEvent[Event]) =
     Left(EventNotApplicableProblem(keyedEvent, this))
+}
+
+object EventDrivenState
+{
+  final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded {
+    def arguments = Map(
+      "event" -> keyedEvent.toString.truncateWithEllipsis(100),
+      "state" -> state.toString.truncateWithEllipsis(100))
+  }
 }

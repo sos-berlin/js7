@@ -39,31 +39,31 @@ import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
+import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles._
-import js7.journal.recover.{FileJournaledStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
+import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Diff](
+private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   ownId: NodeId,
   setting: ClusterSetting,
   journalMeta: JournalMeta,
   /** For backup initialization, only when ClusterState.Empty. */
   initialFileEventId: Option[EventId],
-  recovered: Recovered[S]/*TODO The maybe big JournaledState at start sticks here*/,
+  recovered: Recovered[S]/*TODO The maybe big SnapshotableState at start sticks here*/,
   otherFailed: Boolean,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
   config: Config,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
-  (implicit S: JournaledState.Companion[S])
+  (implicit S: SnapshotableState.Companion[S])
 {
   import recovered.eventWatch
   import setting.{activeId, idToUri}
@@ -236,7 +236,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
 
   private def replicateJournalFile(
     continuation: Continuation.Replicatable,
-    newStateBuilder: () => JournaledStateBuilder[S],
+    newStateBuilder: () => SnapshotableStateBuilder[S],
     activeNodeApi: ClusterNodeApi)
     (implicit s: Scheduler)
   : Task[Checked[Continuation.Replicatable]] =
@@ -263,7 +263,7 @@ private[cluster] final class PassiveClusterNode[S <: JournaledState[S]: diffx.Di
       var replicatedFileLength = continuation.fileLength
       var lastProperEventPosition = continuation.lastProperEventPosition
       var _eof = false
-      val builder = new FileJournaledStateBuilder(journalFileForInfo = file.getFileName,
+      val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
       continuation match {

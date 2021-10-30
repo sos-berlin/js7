@@ -12,8 +12,8 @@ import js7.base.time.ScalaTime._
 import js7.common.akkautils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
-import js7.journal.recover.JournaledStateRecoverer
-import js7.journal.state.JournaledStatePersistence
+import js7.journal.recover.StateRecoverer
+import js7.journal.state.StatePersistence
 import js7.journal.test.TestActor._
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.execution.Scheduler.Implicits.global
@@ -32,15 +32,15 @@ extends Actor with Stash
   private val journalConf = JournalConf.fromConfig(config)
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
-  private var persistence: JournaledStatePersistence[TestState] = null
+  private var persistence: StatePersistence[TestState] = null
 
   private def journalActor = persistence.journalActor
 
   override def preStart() = {
     super.preStart()
-    JournaledStateRecoverer.recover[TestState](journalMeta, config)
-    val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, config)
-    persistence = JournaledStatePersistence
+    StateRecoverer.recover[TestState](journalMeta, config)
+    val recovered = StateRecoverer.recover[TestState](journalMeta, config)
+    persistence = StatePersistence
       .start(recovered, journalMeta, journalConf,
         new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
       .runToFuture

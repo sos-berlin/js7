@@ -11,7 +11,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
-import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.event.{EventId, JournalState, SnapshotableState}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
 import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
@@ -79,7 +79,7 @@ private object JControllerStateTest
 
   private val controllerState = ControllerState(
     EventId(1001),
-    JournaledState.Standards(
+    SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Coupled(
         ClusterSetting(

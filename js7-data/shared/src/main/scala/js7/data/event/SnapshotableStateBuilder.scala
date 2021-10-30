@@ -10,16 +10,16 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces._
 import js7.data.cluster.ClusterState
-import js7.data.event.JournaledStateBuilder._
 import js7.data.event.SnapshotMeta.SnapshotEventId
+import js7.data.event.SnapshotableStateBuilder._
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 
-trait JournaledStateBuilder[S <: JournaledState[S]]
+trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 {
-  protected val S: JournaledState.Companion[S]
+  protected val S: SnapshotableState.Companion[S]
 
   private val since = now
   private var recordCount = 0L
@@ -173,12 +173,12 @@ trait JournaledStateBuilder[S <: JournaledState[S]]
     else EventId.toTimestamp(eventId)
 }
 
-object JournaledStateBuilder
+object SnapshotableStateBuilder
 {
   private val logger = scribe.Logger[this.type]
 
-  abstract class Simple[S <: JournaledState[S]](protected val S: JournaledState.Companion[S])
-  extends JournaledStateBuilder[S]
+  abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
+  extends SnapshotableStateBuilder[S]
   {
     private var _state = S.empty
 

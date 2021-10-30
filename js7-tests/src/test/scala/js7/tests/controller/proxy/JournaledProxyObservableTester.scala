@@ -1,7 +1,7 @@
 package js7.tests.controller.proxy
 
 import js7.base.utils.ScalaUtils._
-import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, KeyedEvent, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy
 import js7.proxy.data.event.EventAndState
 import monix.eval.Task
@@ -12,7 +12,9 @@ import scala.reflect.ClassTag
 object JournaledProxyObservableTester
 {
   object syntax {
-    implicit final class TestJournaledProxy[S <: JournaledState[S]](private val underlying: JournaledProxy[S]) extends AnyVal
+    implicit final class TestJournaledProxy[S <: SnapshotableState[S]](
+      private val underlying: JournaledProxy[S])
+    extends AnyVal
     {
       def awaitEvent[E <: Event: ClassTag](
         predicate: EventAndState[E, S] => Boolean = (_: EventAndState[E, S]) => true)
@@ -23,7 +25,7 @@ object JournaledProxyObservableTester
     }
   }
 
-  private def awaitEvent[E <: Event: ClassTag, S <: JournaledState[S]](
+  private def awaitEvent[E <: Event: ClassTag, S <: SnapshotableState[S]](
     proxy: JournaledProxy[S],
     predicate: EventAndState[E, S] => Boolean = (_: EventAndState[E, S]) => true)
     (body: Task[_])

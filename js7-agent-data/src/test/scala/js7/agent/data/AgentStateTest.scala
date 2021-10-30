@@ -23,7 +23,7 @@ import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalId, JournalState, JournaledState}
+import js7.data.event.{EventId, JournalId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.ItemAttachedToAgent
 import js7.data.item.ItemRevision
 import js7.data.job.{JobResource, JobResourcePath}
@@ -68,7 +68,7 @@ final class AgentStateTest extends AsyncFreeSpec
 
   private val agentState = AgentState(
     EventId(1000),
-    JournaledState.Standards(
+    SnapshotableState.Standards(
       JournalState(Map(UserId("USER") -> 500L)),
       ClusterState.Empty),
     AgentMetaState(
@@ -121,7 +121,7 @@ final class AgentStateTest extends AsyncFreeSpec
   }
 
   "Snapshot JSON" in {
-    import AgentState.implicits.snapshotObjectJsonCodec
+    implicit val x = AgentState.snapshotObjectJsonCodec
     agentState.toSnapshotObservable.map(_.asJson).map(removeJNull).toListL.runToFuture
       .flatMap { jsons =>
         assert(jsons == List(
@@ -213,7 +213,7 @@ final class AgentStateTest extends AsyncFreeSpec
   }
 
   "Unknown TYPE for snapshotObjectJsonCodec" in {
-    assert(AgentState.implicits.snapshotObjectJsonCodec
+    assert(AgentState.snapshotObjectJsonCodec
       .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
       """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'AgentState.Snapshot'""")))
   }
@@ -245,7 +245,7 @@ final class AgentStateTest extends AsyncFreeSpec
       .orThrow
     assert(agentState == AgentState(
       EventId.BeforeFirst,
-      JournaledState.Standards.empty,
+      SnapshotableState.Standards.empty,
       meta,
       Map(
         orderId ->

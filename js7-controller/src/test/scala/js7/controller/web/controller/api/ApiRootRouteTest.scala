@@ -12,7 +12,7 @@ import js7.common.system.startup.StartUp
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.cluster.ClusterState
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOverview, ControllerState}
-import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.event.{EventId, JournalState, SnapshotableState}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -30,7 +30,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
   protected implicit def scheduler: Scheduler = Scheduler.global
   protected def controllerState = Task.pure(Right(ControllerState.empty.copy(
     eventId = EventId(1001),
-    standards = JournaledState.Standards(
+    standards = SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Empty),
     controllerMetaState = ControllerMetaState(

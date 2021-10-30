@@ -12,7 +12,8 @@ import scala.concurrent.duration.FiniteDuration
   * @author Joacim Zschimmer
   */
 trait MainJournalingActor[S <: JournaledState[S], E <: Event]
-  extends JournalingActor[S, E] {
+extends JournalingActor[S, E]
+ {
   protected final def persistAsync[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: (Stamped[KeyedEvent[EE]], S) => A): Future[A] =
     super.persistKeyedEvent(keyedEvent, async = true)(callback)
 

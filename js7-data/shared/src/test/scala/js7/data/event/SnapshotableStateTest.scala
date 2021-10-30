@@ -4,16 +4,16 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
-import js7.data.event.JournaledState.EventNotApplicableProblem
-import js7.data.event.JournaledStateTest._
+import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.SnapshotableStateTest._
 import js7.data.node.NodeId
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournaledStateTest extends AnyFreeSpec
+final class SnapshotableStateTest extends AnyFreeSpec
 {
   private var s = MyState.empty
 
@@ -27,7 +27,7 @@ final class JournaledStateTest extends AnyFreeSpec
       Nil
     ).orThrow
 
-    assert(s == MyState(0L, JournaledState.Standards(
+    assert(s == MyState(0L, SnapshotableState.Standards(
       JournalState(Map(UserId("USER") -> EventId(333))),
       ClusterState.Coupled(setting))))
   }
@@ -38,7 +38,7 @@ final class JournaledStateTest extends AnyFreeSpec
   }
 }
 
-private object JournaledStateTest
+private object SnapshotableStateTest
 {
   private val primaryNodeId = NodeId("PRIMARY")
   private val setting = ClusterSetting(
@@ -49,8 +49,8 @@ private object JournaledStateTest
     Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
     ClusterTiming(10.s, 20.s))
 
-  private case class MyState(eventId: EventId, standards: JournaledState.Standards)
-  extends JournaledState[MyState]
+  private case class MyState(eventId: EventId, standards: SnapshotableState.Standards)
+  extends SnapshotableState[MyState]
   {
     def companion = MyState
 
@@ -58,7 +58,7 @@ private object JournaledStateTest
 
     def toSnapshotObservable = standards.toSnapshotObservable
 
-    def withStandards(standards: JournaledState.Standards) =
+    def withStandards(standards: SnapshotableState.Standards) =
       copy(standards = standards)
 
     def applyEvent(keyedEvent: KeyedEvent[Event]) =
@@ -66,8 +66,8 @@ private object JournaledStateTest
 
     def withEventId(eventId: EventId) = copy(eventId = eventId)
   }
-  private object MyState extends JournaledState.Companion[MyState] {
-    val empty = MyState(EventId.BeforeFirst, JournaledState.Standards.empty)
+  private object MyState extends SnapshotableState.Companion[MyState] {
+    val empty = MyState(EventId.BeforeFirst, SnapshotableState.Standards.empty)
 
     // TODO Refactor this into a separate common trait
     protected def inventoryItems = throw new NotImplementedError

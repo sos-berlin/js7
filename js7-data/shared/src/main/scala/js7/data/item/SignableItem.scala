@@ -3,7 +3,7 @@ package js7.data.item
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, JsonObject}
 import js7.base.crypt.{Signed, SignedString}
-import js7.data.event.JournaledState
+import js7.data.event.ItemContainer
 
 trait SignableItem extends InventoryItem
 {
@@ -32,7 +32,7 @@ object SignableItem
       // Store itemRevision separately because it is not included in the SignedString
       "itemRevision" -> itemRevision.asJson)
 
-  def signedJsonDecoder[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
+  def signedJsonDecoder[S](implicit S: ItemContainer.Companion[S])
   : Decoder[Signed[SignableItem]] = {
       import S.signableItemJsonCodec
       c => for {

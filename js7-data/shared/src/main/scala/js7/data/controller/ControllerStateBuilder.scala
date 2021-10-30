@@ -12,7 +12,7 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
+import js7.data.event.{JournalEvent, JournalState, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -30,12 +30,12 @@ import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 
 final class ControllerStateBuilder
-extends JournaledStateBuilder[ControllerState]
+extends SnapshotableStateBuilder[ControllerState]
 with StateView
 {
   protected val S = ControllerState
 
-  private var standards: JournaledState.Standards = JournaledState.Standards.empty
+  private var standards: SnapshotableState.Standards = SnapshotableState.Standards.empty
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]

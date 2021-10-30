@@ -8,7 +8,8 @@ import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
-import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath}
+import js7.data.event.ItemContainer
+import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, Processing}
@@ -22,7 +23,7 @@ import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
 import scala.collection.MapView
 import scala.reflect.ClassTag
 
-trait StateView
+trait StateView extends ItemContainer
 {
   def isAgent: Boolean
 
@@ -44,22 +45,6 @@ trait StateView
               workflow.positionToJobKey(order.position).contains(jobKey)))
 
   def idToWorkflow: PartialFunction[WorkflowId, Workflow]
-
-  def keyToItem: MapView[InventoryItemKey, InventoryItem]
-
-  final lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
-    keyToItem.asInstanceOf[MapView[SimpleItemPath, SimpleItem]]
-      .filter(_._2.isInstanceOf[SimpleItem])
-
-  lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
-    keyToItem
-      .filter(_._2.isInstanceOf[UnsignedSimpleItem])
-      .asInstanceOf[MapView[UnsignedSimpleItemPath, UnsignedSimpleItem]]
-
-  final def keyTo[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
-    keyToItem
-      .filter { case (_, v) => I.cls.isAssignableFrom(v.getClass) }
-      .asInstanceOf[MapView[I.Key, I]]
 
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
 

@@ -2,9 +2,9 @@ package js7.journal.recover
 
 import java.nio.file.Path
 import js7.base.utils.Assertions.assertThat
-import js7.data.event.{JournalHeader, JournalPosition, JournaledState}
+import js7.data.event.{JournalHeader, JournalPosition, SnapshotableState}
 
-final case class RecoveredJournalFile[S <: JournaledState[S]](
+final case class RecoveredJournalFile[S <: SnapshotableState[S]](
   file: Path,
   length: Long,
   /** Last position in events section, but not in a transaction. */

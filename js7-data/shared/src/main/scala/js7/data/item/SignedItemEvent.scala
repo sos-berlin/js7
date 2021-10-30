@@ -3,7 +3,7 @@ package js7.data.item
 import io.circe.{Codec, HCursor}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
-import js7.data.event.JournaledState
+import js7.data.event.ItemContainer
 
 trait SignedItemEvent extends InventoryItemEvent
 {
@@ -24,7 +24,7 @@ object SignedItemEvent
   extends SignedItemAddedOrChanged
   object SignedItemAdded
   {
-    def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
+    def jsonCodec[S: ItemContainer.Companion]
     : Codec.AsObject[SignedItemAdded]=
       new Codec.AsObject[SignedItemAdded] {
         def encodeObject(o: SignedItemAdded) =
@@ -39,8 +39,7 @@ object SignedItemEvent
   extends SignedItemAddedOrChanged
   object SignedItemChanged
   {
-    def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
-    : Codec.AsObject[SignedItemChanged] =
+    def jsonCodec[S: ItemContainer.Companion]: Codec.AsObject[SignedItemChanged] =
       new Codec.AsObject[SignedItemChanged] {
         def encodeObject(o: SignedItemChanged) =
           SignableItem.signedEncodeJson(o.signedString, o.signed.value.itemRevision)
@@ -50,8 +49,7 @@ object SignedItemEvent
       }
   }
 
-  implicit def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
-  : TypedJsonCodec[SignedItemEvent] =
+  implicit def jsonCodec[S: ItemContainer.Companion]: TypedJsonCodec[SignedItemEvent] =
     TypedJsonCodec(
       Subtype(SignedItemAdded.jsonCodec),
       Subtype(SignedItemChanged.jsonCodec))

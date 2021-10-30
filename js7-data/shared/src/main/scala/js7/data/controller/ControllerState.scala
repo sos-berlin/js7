@@ -22,7 +22,7 @@ import js7.data.controller.ControllerState.logger
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{Event, EventId, JournalEvent, JournalHeader, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta}
+import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -46,7 +46,7 @@ import scala.util.chaining.scalaUtilChainingOps
   */
 final case class ControllerState(
   eventId: EventId,
-  standards: JournaledState.Standards,
+  standards: SnapshotableState.Standards,
   controllerMetaState: ControllerMetaState,
   pathToAgentRefState: Map[AgentPath, AgentRefState],
   pathToLockState: Map[LockPath, LockState],
@@ -60,7 +60,7 @@ final case class ControllerState(
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends StateView
-with JournaledState[ControllerState]
+with SnapshotableState[ControllerState]
 {
   def isAgent = false
 
@@ -111,7 +111,7 @@ with JournaledState[ControllerState]
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)
 
-  def withStandards(standards: JournaledState.Standards) =
+  def withStandards(standards: SnapshotableState.Standards) =
     copy(standards = standards)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) = keyedEvent match {
@@ -629,13 +629,15 @@ with JournaledState[ControllerState]
     s"Repo(${repo.currentVersionSize} objects, ...))"
 }
 
-object ControllerState extends JournaledState.Companion[ControllerState]
+object ControllerState
+extends SnapshotableState.Companion[ControllerState]
+with ItemContainer.Companion[ControllerState]
 {
   private val logger = scribe.Logger[this.type]
 
   val Undefined = ControllerState(
     EventId.BeforeFirst,
-    JournaledState.Standards.empty,
+    SnapshotableState.Standards.empty,
     ControllerMetaState.Undefined,
     Map.empty,
     Map.empty,

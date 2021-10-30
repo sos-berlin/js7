@@ -4,7 +4,7 @@ import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
-import js7.agent.data.AgentState.{inventoryItemJsonCodec, inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
+import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs._
@@ -20,7 +20,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
-import js7.data.event.{EventId, JournaledState}
+import js7.data.event.{EventId, ItemContainer}
 import js7.data.item.{InventoryItemKey, SignableItem, UnsignedSimpleItem}
 import js7.data.order.{Order, OrderId, OrderMark}
 
@@ -159,9 +159,9 @@ object AgentCommand extends CommonCommand.Companion
     implicit val jsonEncoder: Encoder.AsObject[AttachSignedItem] =
       o => SignableItem.signedEncodeJson(o.signed.signedString, o.signed.value.itemRevision)
 
-    implicit def jsonDecoder[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
+    implicit def jsonDecoder[S: ItemContainer.Companion]
     : Decoder[AttachSignedItem] =
-      c => SignableItem.signedJsonDecoder(S).decodeJson(c.value).map(AttachSignedItem(_))
+      c => SignableItem.signedJsonDecoder.decodeJson(c.value).map(AttachSignedItem(_))
   }
 
   final case class DetachItem(key: InventoryItemKey)

@@ -8,7 +8,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichString
-import js7.data.event.{Event, JournalHeader, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{Event, JournalHeader, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 
 /**
   * @author Joacim Zschimmer
@@ -44,6 +44,6 @@ final case class JournalMeta(
 
 object JournalMeta
 {
-  def apply[S <: JournaledState[S]](companion: JournaledState.Companion[S], fileBase: Path) =
+  def apply[S <: SnapshotableState[S]](companion: SnapshotableState.Companion[S], fileBase: Path) =
     new JournalMeta(companion.snapshotObjectJsonCodec, companion.keyedEventJsonCodec, fileBase)
 }

@@ -40,7 +40,7 @@ import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, Unsign
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
-import js7.journal.state.JournaledStatePersistence
+import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
@@ -60,7 +60,7 @@ final class AgentDriver private(
   initialUri: Uri,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
-  persistence: JournaledStatePersistence[ControllerState],
+  persistence: StatePersistence[ControllerState],
   conf: AgentDriverConfiguration,
   controllerConfiguration: ControllerConfiguration)
   (implicit protected val scheduler: Scheduler)
@@ -550,7 +550,7 @@ private[controller] object AgentDriver
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
   def props(agentPath: AgentPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
-    persistence: JournaledStatePersistence[ControllerState],
+    persistence: StatePersistence[ControllerState],
     agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration)
     (implicit s: Scheduler)
   =

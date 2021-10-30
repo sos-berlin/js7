@@ -6,8 +6,8 @@ import js7.base.problem.Checked._
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
-import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
-import js7.journal.recover.FileJournaledStateBuilder._
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.journal.recover.FileSnapshotableStateBuilder._
 import js7.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -16,12 +16,12 @@ import scala.util.Try
 /**
   * @author Joacim Zschimmer
   */
-final class FileJournaledStateBuilder[S <: JournaledState[S]](
+final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   journalFileForInfo: Path,
   expectedJournalId: Option[JournalId],
-  newBuilder: () => JournaledStateBuilder[S])
+  newBuilder: () => SnapshotableStateBuilder[S])
 {
-  def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])(implicit S: JournaledState.Companion[S]) =
+  def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])(implicit S: SnapshotableState.Companion[S]) =
     this(journalFileForInfo, expectedJournalId, S.newBuilder _)
 
   private val builder = newBuilder()
@@ -145,7 +145,7 @@ final class FileJournaledStateBuilder[S <: JournaledState[S]](
     builder.logStatistics(Try(Files.size(journalFileForInfo)).toOption)
 }
 
-object FileJournaledStateBuilder
+object FileSnapshotableStateBuilder
 {
   private val logger = Logger(getClass)
 }

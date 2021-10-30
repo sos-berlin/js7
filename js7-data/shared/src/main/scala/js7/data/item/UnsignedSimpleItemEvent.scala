@@ -3,7 +3,7 @@ package js7.data.item
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
-import js7.data.event.JournaledState
+import js7.data.event.ItemContainer
 
 sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent
 {
@@ -32,7 +32,7 @@ object UnsignedSimpleItemEvent
     def key = item.key
   }
 
-  def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
+  def jsonCodec[S](implicit S: ItemContainer.Companion[S])
   : TypedJsonCodec[UnsignedSimpleItemEvent] = {
     implicit val x = S.unsignedSimpleItemJsonCodec
     TypedJsonCodec(

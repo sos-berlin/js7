@@ -35,8 +35,8 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.recover.{JournaledStateRecoverer, Recovered}
-import js7.journal.state.JournaledStatePersistence
+import js7.journal.recover.{Recovered, StateRecoverer}
+import js7.journal.state.StatePersistence
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import js7.launcher.configuration.JobLauncherConf
@@ -64,7 +64,7 @@ extends Actor with Stash with SimpleStateActor
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val signatureVerifier = GenericSignatureVerifier(agentConf.config).orThrow
-  private var persistence: JournaledStatePersistence[AgentState] = null
+  private var persistence: StatePersistence[AgentState] = null
   private var recovered: Recovered[AgentState] = null
   private var eventWatch: JournalEventWatch = null
   private val started = SetOnce[Started]
@@ -75,11 +75,11 @@ extends Actor with Stash with SimpleStateActor
 
   override def preStart() = {
     super.preStart()
-    recovered = JournaledStateRecoverer.recover[AgentState](journalMeta, agentConf.config)
+    recovered = StateRecoverer.recover[AgentState](journalMeta, agentConf.config)
     eventWatch = recovered.eventWatch
 
     val sender = this.sender()
-    JournaledStatePersistence
+    StatePersistence
       .start(recovered, journalMeta, agentConf.journalConf, eventIdGenerator, keyedEventBus)
       .map { persistence =>
         watch(persistence.journalActor)

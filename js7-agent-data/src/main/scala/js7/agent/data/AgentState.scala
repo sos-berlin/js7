@@ -14,7 +14,7 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, JournalState, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
+import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -31,7 +31,7 @@ import scala.collection.MapView
   */
 final case class AgentState(
   eventId: EventId,
-  standards: JournaledState.Standards,
+  standards: SnapshotableState.Standards,
   meta: AgentMetaState,
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow],
@@ -39,7 +39,7 @@ final case class AgentState(
   pathToJobResource: Map[JobResourcePath, JobResource],
   pathToCalendar: Map[CalendarPath, Calendar])
 extends StateView
-with JournaledState[AgentState]
+with SnapshotableState[AgentState]
 {
   def isAgent = true
 
@@ -80,7 +80,7 @@ with JournaledState[AgentState]
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)
 
-  def withStandards(standards: JournaledState.Standards) =
+  def withStandards(standards: SnapshotableState.Standards) =
     copy(standards = standards)
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
@@ -224,9 +224,11 @@ with JournaledState[AgentState]
   def orders = idToOrder.values
 }
 
-object AgentState extends JournaledState.Companion[AgentState]
+object AgentState
+extends SnapshotableState.Companion[AgentState]
+with ItemContainer.Companion[AgentState]
 {
-  val empty = AgentState(EventId.BeforeFirst, JournaledState.Standards.empty,
+  val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
     Map.empty, Map.empty, AllFileWatchesState.empty, Map.empty, Map.empty)
 
@@ -252,8 +254,8 @@ object AgentState extends JournaledState.Companion[AgentState]
       Workflow.subtype,
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],
-      Subtype(AgentState.signableSimpleItemJsonCodec),
-      Subtype(AgentState.unsignedSimpleItemJsonCodec))
+      Subtype(signableSimpleItemJsonCodec),
+      Subtype(unsignedSimpleItemJsonCodec))
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec.named("AgentState.Event",
@@ -262,8 +264,4 @@ object AgentState extends JournaledState.Companion[AgentState]
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[OrderWatchEvent])
-
-  object implicits {
-    implicit val snapshotObjectJsonCodec = AgentState.snapshotObjectJsonCodec
-  }
 }

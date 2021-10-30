@@ -16,7 +16,7 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{EventId, JournalState, JournaledState}
+import js7.data.event.{EventId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
@@ -391,7 +391,7 @@ object ControllerStateTest
   // Also used by ControllerStateExecutorTest
   private[controller] lazy val controllerState = ControllerState(
     EventId(1001),
-    JournaledState.Standards(
+    SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Coupled(
         ClusterSetting(

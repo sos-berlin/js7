@@ -4,19 +4,19 @@ import js7.base.log.Logger
 import js7.base.thread.Futures.syntax.RichFuture
 import js7.base.utils.ScalaUtils.syntax._
 import js7.cluster.StateBuilderAndAccessor._
-import js7.data.event.{JournaledState, JournaledStateBuilder}
+import js7.data.event.{SnapshotableState, SnapshotableStateBuilder}
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
 
-private final class StateBuilderAndAccessor[S <: JournaledState[S]](
+private final class StateBuilderAndAccessor[S <: SnapshotableState[S]](
   initialState: S)
-  (implicit S: JournaledState.Companion[S])
+  (implicit S: SnapshotableState.Companion[S])
 {
   private val getStateMVarTask = MVar.of[Task, Task[S]](Task.pure(initialState)).memoize
   val state: Task[S] = getStateMVarTask.flatMap(_.read.flatten)
 
-  def newStateBuilder()(implicit s: Scheduler): JournaledStateBuilder[S] = {
+  def newStateBuilder()(implicit s: Scheduler): SnapshotableStateBuilder[S] = {
     val builder = S.newBuilder()
     (for {
         mVar <- getStateMVarTask

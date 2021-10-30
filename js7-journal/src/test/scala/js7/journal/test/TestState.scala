@@ -3,7 +3,7 @@ package js7.journal.test
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec}
+import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder}
 import monix.reactive.Observable
 
 /**
@@ -11,9 +11,9 @@ import monix.reactive.Observable
   */
 final case class TestState(
   eventId: EventId,
-  standards: JournaledState.Standards = JournaledState.Standards.empty,
+  standards: SnapshotableState.Standards = SnapshotableState.Standards.empty,
   keyToAggregate: Map[String, TestAggregate])
-extends JournaledState[TestState]
+extends SnapshotableState[TestState]
 {
   def companion = TestState
 
@@ -46,15 +46,15 @@ extends JournaledState[TestState]
   def withEventId(eventId: EventId): TestState =
     copy(eventId = eventId)
 
-  def withStandards(standards: JournaledState.Standards) =
+  def withStandards(standards: SnapshotableState.Standards) =
     copy(standards = standards)
 }
 
-object TestState extends JournaledState.Companion[TestState]
+object TestState extends SnapshotableState.Companion[TestState]
 {
-  val empty = TestState(EventId.BeforeFirst, JournaledState.Standards.empty, Map.empty)
+  val empty = TestState(EventId.BeforeFirst, SnapshotableState.Standards.empty, Map.empty)
 
-  def newBuilder() = new JournaledStateBuilder.Simple(TestState)
+  def newBuilder() = new SnapshotableStateBuilder.Simple(TestState)
   {
     def onAddSnapshotObject = {
       case o: TestAggregate =>

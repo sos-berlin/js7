@@ -5,27 +5,27 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class JournaledStateRecovererTest extends AnyFreeSpec
+final class StateRecovererTest extends AnyFreeSpec
 {
-  //import JournaledStateRecovererTest.snapshotJsonCodec
-  //import JournaledStateRecovererTest.eventJsonCodec
+  //import StateRecovererTest.snapshotJsonCodec
+  //import StateRecovererTest.eventJsonCodec
   //
   //"Test is missing" in {
   //  // TODO Test is missing
   //  // Lesen einer abgebrochenen Transaktion liefert korrekten Zustand und Datei-Position (vor der Transaktion)
   //  val config = ConfigFactory.empty
-  //  FileUtils.withTemporaryFile("JournaledStateRecovererTest", ".tmp") { file =>
+  //  FileUtils.withTemporaryFile("StateRecovererTest", ".tmp") { file =>
   //    val journalMeta = JournalMeta(snapshotJsonCodec, keyedEventJsonCodec, Paths.get(file.toString + "-test"))
-  //    JournaledStateRecoverer.recover[TestState, TestEvent](journalMeta, newStateBuilder, config)
+  //    StateRecoverer.recover[TestState, TestEvent](journalMeta, newStateBuilder, config)
   //  }
   //}
 }
 
-private object JournaledStateRecovererTest
+private object StateRecovererTest
 //{
 //  private val logger = js7.common.scalautil.Logger(getClass)
 //
-//  private class TestStateBuilder extends JournaledStateBuilder[TestState]
+//  private class TestStateBuilder extends SnapshotableStateBuilder[TestState]
 //  {
 //    private var _state = TestState(0)
 //
@@ -53,7 +53,7 @@ private object JournaledStateRecovererTest
 //  implicit private val keyedEventJsonCodec = KeyedEventTypedJsonCodec[Event](
 //    KeyedSubtype[TestEvent])
 //
-//  final case class TestState(value: Int) extends JournaledState[TestState, Event]
+//  final case class TestState(value: Int) extends SnapshotableState[TestState, Event]
 //  {
 //    def applyEvent(keyedEvent: KeyedEvent[Event]) =
 //      keyedEvent match {

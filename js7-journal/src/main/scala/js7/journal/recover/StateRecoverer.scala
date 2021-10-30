@@ -9,21 +9,21 @@ import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.SetOnce
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.utils.UntilNoneIterator
-import js7.data.event.{EventId, JournaledState}
+import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
-import js7.journal.recover.JournaledStateRecoverer._
+import js7.journal.recover.StateRecoverer._
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
-private final class JournaledStateRecoverer[S <: JournaledState[S]](
+private final class StateRecoverer[S <: SnapshotableState[S]](
   protected val file: Path,
   journalMeta: JournalMeta,
-  newfileJournaledStateBuilder: () => FileJournaledStateBuilder[S])
+  newFileJournaledStateBuilder: () => FileSnapshotableStateBuilder[S])
 {
-  private val fileJournaledStateBuilder = newfileJournaledStateBuilder()
+  private val fileJournaledStateBuilder = newFileJournaledStateBuilder()
 
   private var _position = 0L
   private var _lastProperEventPosition = 0L
@@ -61,24 +61,24 @@ private final class JournaledStateRecoverer[S <: JournaledState[S]](
   def lastProperEventPosition: Long = _lastProperEventPosition
 }
 
-object JournaledStateRecoverer
+object StateRecoverer
 {
   private val logger = Logger(getClass)
 
-  def recover[S <: JournaledState[S]](
+  def recover[S <: SnapshotableState[S]](
     journalMeta: JournalMeta,
     config: Config,
     runningSince: Deadline = now)
-    (implicit S: JournaledState.Companion[S])
+    (implicit S: SnapshotableState.Companion[S])
   : Recovered[S] = {
     val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
-    val fileJournaledStateBuilder = new FileJournaledStateBuilder(
+    val fileJournaledStateBuilder = new FileSnapshotableStateBuilder(
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None)
 
     file match {
       case Some(file) =>
-        val recoverer = new JournaledStateRecoverer(file, journalMeta, () => fileJournaledStateBuilder)
+        val recoverer = new StateRecoverer(file, journalMeta, () => fileJournaledStateBuilder)
         recoverer.recoverAll()
         val nextJournalHeader = fileJournaledStateBuilder.nextJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))

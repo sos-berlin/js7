@@ -26,7 +26,7 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournalHeaders._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.JournalActor._
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
@@ -44,14 +44,14 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[S <: JournaledState[S]: diffx.Diff] private(
+final class JournalActor[S <: SnapshotableState[S]: diffx.Diff] private(
   journalMeta: JournalMeta,
   protected val conf: JournalConf,
   keyedEventBus: StampedKeyedEventBus,
   scheduler: Scheduler,
   eventIdGenerator: EventIdGenerator,
   stopped: Promise[Stopped])
-  (implicit S: JournaledState.Companion[S])
+  (implicit S: SnapshotableState.Companion[S])
 extends Actor with Stash with JournalLogging
 {
   import context.{become, stop}
@@ -193,7 +193,7 @@ extends Actor with Stash with JournalLogging
               persistBuffer.add(
                 AcceptEarlyPersist(totalEventCount + 1, stampedEvents.size, since,
                   lastFileLengthAndEventId, sender()))
-              // acceptEarly-events must not modify the JournaledState !!!
+              // acceptEarly-events must not modify the SnapshotableState !!!
               // The EventId will be updated.
               // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
             } else {
@@ -410,7 +410,7 @@ extends Actor with Stash with JournalLogging
     assertThat(lastAcknowledgedEventId == lastWrittenEventId)
     assertThat(persistBuffer.isEmpty)
     if (conf.slowCheckState && committedState != uncommittedState) {
-      val msg = "JournaledState update mismatch: committedState != uncommittedState"
+      val msg = "SnapshotableState update mismatch: committedState != uncommittedState"
       logger.error(msg)
       logger.error(diffx.compare(committedState, uncommittedState).show())
       sys.error(msg)
@@ -655,7 +655,7 @@ extends Actor with Stash with JournalLogging
   private def checkUncommittedState(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Unit =
     if (conf.slowCheckState) {
       stampedEvents.foreach(journaledStateBuilder.addEvent)
-      assertEqualSnapshotState("JournaledStateBuilder.result()",
+      assertEqualSnapshotState("SnapshotableStateBuilder.result()",
         journaledStateBuilder.result().withEventId(uncommittedState.eventId),
         stampedEvents)
 
@@ -690,7 +690,7 @@ object JournalActor
 
   //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
-  def props[S <: JournaledState[S]: JournaledState.Companion: diffx.Diff](
+  def props[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff](
     journalMeta: JournalMeta,
     conf: JournalConf,
     keyedEventBus: StampedKeyedEventBus,
@@ -707,12 +707,12 @@ object JournalActor
   private[journal] trait CallersItem
 
   object Input {
-    private[journal] final case class Start[S <: JournaledState[S]](
-      journaledState: JournaledState[S],
+    private[journal] final case class Start[S <: SnapshotableState[S]](
+      journaledState: SnapshotableState[S],
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
-    final case class StartWithoutRecovery[S <: JournaledState[S]](
+    final case class StartWithoutRecovery[S <: SnapshotableState[S]](
       journalId: JournalId,
       journalingObserver: Option[JournalingObserver] = None)
     private[journal] final case class Store(
@@ -741,7 +741,7 @@ object JournalActor
   object Output {
     final case class Ready(journalHeader: JournalHeader)
 
-    private[journal] final case class Stored[S <: JournaledState[S]](
+    private[journal] final case class Stored[S <: SnapshotableState[S]](
       stamped: Seq[Stamped[AnyKeyedEvent]],
       journaledState: S,
       callersItem: CallersItem)

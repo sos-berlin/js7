@@ -56,8 +56,8 @@ import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent}
 import js7.journal.JournalActor.Output
-import js7.journal.recover.{JournaledStateRecoverer, Recovered}
-import js7.journal.state.JournaledStatePersistence
+import js7.journal.recover.{Recovered, StateRecoverer}
+import js7.journal.state.StatePersistence
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import js7.license.LicenseCheckContext
@@ -293,7 +293,7 @@ object RunningController
     private[RunningController] def start(): Future[RunningController] = {
       val whenRecovered = Future {
         // May take several seconds !!!
-        JournaledStateRecoverer.recover[ControllerState](journalMeta, controllerConfiguration.config)
+        StateRecoverer.recover[ControllerState](journalMeta, controllerConfiguration.config)
       }
       val testEventBus = injector.instance[StandardEventBus[Any]]
       val whenReady = Promise[Unit]()
@@ -303,7 +303,7 @@ object RunningController
       itemVerifier
 
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
-      val persistence = JournaledStatePersistence.prepare[ControllerState](
+      val persistence = StatePersistence.prepare[ControllerState](
         recovered.journalId, recovered.eventWatch,
         journalMeta, controllerConfiguration.journalConf,
         injector.instance[EventIdGenerator], injector.instance[StampedKeyedEventBus])
@@ -386,7 +386,7 @@ object RunningController
 
     private def startCluster(
       recovered: Recovered[ControllerState],
-      persistence: JournaledStatePersistence[ControllerState],
+      persistence: StatePersistence[ControllerState],
       testEventBus: StandardEventBus[Any])
     : (Cluster[ControllerState],
       Task[Checked[ControllerState]],
@@ -442,7 +442,7 @@ object RunningController
     }
 
     private def startControllerOrderKeeper(
-      persistence: JournaledStatePersistence[ControllerState],
+      persistence: StatePersistence[ControllerState],
       workingClusterNode: WorkingClusterNode[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])

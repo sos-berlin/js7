@@ -6,14 +6,14 @@ import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.ClusterState
-import js7.data.event.{EventId, JournalState, JournaledState, JournaledStateBuilder, Stamped}
+import js7.data.event.{EventId, JournalState, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
 final class AgentStateBuilder
-extends JournaledStateBuilder[AgentState]
+extends SnapshotableStateBuilder[AgentState]
 {
   protected val S = AgentState
 
@@ -56,7 +56,7 @@ extends JournaledStateBuilder[AgentState]
   override protected def onOnAllSnapshotsAdded() = {
     _state = AgentState(
       _eventId,
-      JournaledState.Standards(_journalState, ClusterState.Empty),
+      SnapshotableState.Standards(_journalState, ClusterState.Empty),
       agentMetaState,
       idToOrder.toMap,
       idToWorkflow.toMap,

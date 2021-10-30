@@ -26,10 +26,10 @@ import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveN
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
-import js7.journal.state.JournaledStatePersistence
+import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
@@ -40,13 +40,13 @@ import scala.concurrent.duration._
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success}
 
-final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
+final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
   initialClusterState: ClusterState.HasNodes,
-  persistence: JournaledStatePersistence[S],
+  persistence: StatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit
-    S: JournaledState.Companion[S],
+    S: SnapshotableState.Companion[S],
     scheduler: Scheduler,
     actorSystem: ActorSystem,
     journalActorAskTimeout: Timeout)
@@ -355,7 +355,7 @@ final class ActiveClusterNode[S <: JournaledState[S]: diffx.Diff: TypeTag](
               // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
               //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
               //  Dann können wir kein ClusterPassiveLost ausgeben.
-              //  JournaledStatePersistence Lock in die Anwendungsebene (hier) heben
+              //  StatePersistence Lock in die Anwendungsebene (hier) heben
               //  -- Nicht nötig durch die Abfrage auf initialState ?
               // FIXME (2) Deadlock when called immediately after start of Controller, before Journal has been started ?
               //  persistence.awaitCurrentState may not response GetJournalState.

@@ -2,8 +2,8 @@ package js7.data.event
 
 import js7.base.problem.Checked.Ops
 import js7.base.time.Timestamp
+import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.EventDrivenStateTest._
-import js7.data.event.JournaledState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
 import org.scalatest.freespec.AnyFreeSpec
 

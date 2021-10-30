@@ -3,7 +3,7 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.agent.AgentPath
-import js7.data.event.JournaledState
+import js7.data.event.ItemContainer
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
 
 sealed trait BasicItemEvent extends InventoryItemEvent
@@ -66,7 +66,7 @@ object BasicItemEvent
     def attachedState = Detached
   }
 
-  def jsonCodec[S <: JournaledState[S]](implicit S: JournaledState.Companion[S])
+  def jsonCodec[S](implicit S: ItemContainer.Companion[S])
   : TypedJsonCodec[BasicItemEvent] = {
     implicit val x = S.inventoryItemJsonCodec
     implicit val y = S.inventoryItemKeyJsonCodec

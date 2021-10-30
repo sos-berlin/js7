@@ -23,21 +23,21 @@ import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBa
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.controller.ControllerId
-import js7.data.event.{EventId, JournalPosition, JournaledState}
+import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
-import js7.journal.recover.{JournaledStateRecoverer, Recovered}
-import js7.journal.state.JournaledStatePersistence
+import js7.journal.recover.{Recovered, StateRecoverer}
+import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.reflect.runtime.universe._
 
-final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
+final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
   journalMeta: JournalMeta,
-  persistence: JournaledStatePersistence[S],
+  persistence: StatePersistence[S],
   clusterContext: ClusterContext,
   controllerId: ControllerId,
   journalConf: JournalConf,
@@ -48,7 +48,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
   licenseChecker: LicenseChecker,
   testEventPublisher: EventPublisher[Any])
   (implicit
-    S: JournaledState.Companion[S],
+    S: SnapshotableState.Companion[S],
     journalActorAskTimeout: Timeout,
     scheduler: Scheduler,
     actorSystem: ActorSystem)
@@ -204,7 +204,7 @@ final class Cluster[S <: JournaledState[S]: diffx.Diff: TypeTag](
     logger.info("Recovering again after unacknowledged events have been deleted properly from journal file")
 
     // May take a long time !!!
-    val recovered = JournaledStateRecoverer.recover[S](journalMeta, config)
+    val recovered = StateRecoverer.recover[S](journalMeta, config)
 
     // Assertions
     val recoveredJournalFile = recovered.recoveredJournalFile

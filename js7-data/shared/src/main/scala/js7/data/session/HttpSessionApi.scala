@@ -10,7 +10,7 @@ import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.AsyncLock
 import js7.base.web.{HttpClient, Uri}
-import js7.data.event.JournaledState
+import js7.data.event.SnapshotableState
 import js7.data.session.HttpSessionApi._
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
@@ -92,8 +92,8 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
   final def sessionToken: Option[SessionToken] =
     sessionTokenRef.get()
 
-  protected final def snapshotAs[S <: JournaledState[S]](uri: Uri)
-    (implicit S: JournaledState.Companion[S])
+  protected final def snapshotAs[S <: SnapshotableState[S]](uri: Uri)
+    (implicit S: SnapshotableState.Companion[S])
   : Task[S] =
     Task.defer {
       val startedAt = now

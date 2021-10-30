@@ -1,37 +1,15 @@
 package js7.data.event
 
-import io.circe.Codec
-import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.cluster.{ClusterEvent, ClusterState}
-import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import js7.data.event.JournaledState._
-import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedItem, VersionedItemPath}
-import monix.eval.Task
-import monix.reactive.Observable
 
+/** An EventDrivenState with EventId. An aggregate. */
 trait JournaledState[S <: JournaledState[S]]
 extends EventDrivenState[S, Event]
 {
   this: S =>
 
   def companion: JournaledState.Companion[S]
-
-  def toSnapshotObservable: Observable[Any]
-
-  def estimatedSnapshotSize: Int
-
-  def standards: Standards
-
-  def withStandards(standards: Standards): S
-
-  final def journalState: JournalState =
-    standards.journalState
-
-  final def clusterState: ClusterState =
-    standards.clusterState
 
   override def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[Event]]]): Checked[S] =
     if (stampedEvents.isEmpty)
@@ -44,158 +22,25 @@ extends EventDrivenState[S, Event]
 
   def withEventId(eventId: EventId): S
 
-  protected final def applyStandardEvent(keyedEvent: KeyedEvent[Event]): Checked[S] =
-    keyedEvent match {
-      case KeyedEvent(_: NoKey, _: SnapshotTaken) =>
-        Right(this)
-
-      case KeyedEvent(_: NoKey, event: JournalEventsReleased) =>
-        Right(withStandards(standards.copy(
-          journalState = journalState.applyEvent(event))))
-
-      case KeyedEvent(_: ClusterEvent#Key, _: ClusterEvent) =>
-        for (o <- clusterState.applyEvent(keyedEvent.asInstanceOf[KeyedEvent[ClusterEvent]]))
-          yield withStandards(standards.copy(
-            clusterState = o))
-
-      case _ => eventNotApplicable(keyedEvent)
-    }
-
   def eventId: EventId
-
-  /** For testing, should be equal to this. */
-  final def toRecovered: Task[S] =
-    companion
-      .fromObservable(toSnapshotObservable)
-      .map(_.withEventId(eventId))
 }
 
 object JournaledState
 {
-  final case class Standards(journalState: JournalState, clusterState: ClusterState)
-  {
-    def snapshotSize =
-      journalState.estimatedSnapshotSize + clusterState.estimatedSnapshotSize
-
-    def toSnapshotObservable: Observable[Any] =
-      journalState.toSnapshotObservable ++
-        clusterState.toSnapshotObservable
-  }
-  object Standards
-  {
-    def empty = Standards(JournalState.empty, ClusterState.Empty)
-  }
-
   final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded {
     def arguments = Map(
       "event" -> keyedEvent.toString.truncateWithEllipsis(100),
       "state" -> state.toString.truncateWithEllipsis(100))
   }
 
-  trait CompanionForJournal
+  trait Companion[S <: JournaledState[S]]
   {
-    def snapshotObjectJsonCodec: TypedJsonCodec[Any]
+    implicit final val implicitJournalStateCompanion: Companion[S] = this
 
     implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
-
-    //private val jsonDecoder: Decoder[Any] = {
-    //  val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]
-    //  stampedEventDecoder or snapshotObjectJsonCodec or JournalHeader.jsonCodec.asInstanceOf[Decoder[Any]]
-    //}
-    //
-    //def decodeJournalJson(json: Json): Checked[Any] =
-    //  if (!json.isObject)
-    //    Right(json)  // JournalSeparator
-    //  else
-    //    jsonDecoder.decodeJson(json) match {
-    //      case Left(t: io.circe.DecodingFailure) =>
-    //        val problem = Problem.pure(s"Unexpected JSON: ${t.show}")
-    //        scribe.error(s"$problem: ${json.compactPrint.truncateWithEllipsis(100)}")
-    //        Left(problem)
-    //
-    //      case Right(o) =>
-    //        Right(o)
-    //    }
-  }
-
-  trait Companion[S <: JournaledState[S]] extends CompanionForJournal
-  {
-    implicit final def implicitCompanion: Companion[S] = this
 
     def name: String =
       getClass.simpleScalaName
-
-    def empty: S
-
-    def fromObservable(snapshotObjects: Observable[Any]): Task[S] =
-      Task.defer {
-        val builder = newBuilder()
-        snapshotObjects.foreachL(builder.addSnapshotObject)
-          .map { _ =>
-            builder.onAllSnapshotsAdded()
-            builder.result()
-          }
-      }
-
-    def snapshotObjectJsonCodec: TypedJsonCodec[Any]
-
-    implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
-
-    def newBuilder(): JournaledStateBuilder[S]
-
-    protected def inventoryItems: Seq[InventoryItem.Companion_]
-
-
-    final lazy val ItemPaths: Seq[VersionedItemPath.AnyCompanion] =
-      inventoryItems.collect { case o: VersionedItem.Companion_ => o.Path }
-
-    final lazy val SimpleItems: Seq[SimpleItem.Companion_] =
-      inventoryItems collect { case o: SimpleItem.Companion_ => o }
-
-    final lazy val UnsignedSimpleItems: Seq[UnsignedSimpleItem.Companion_] =
-      inventoryItems collect { case o: UnsignedSimpleItem.Companion_ => o }
-
-    final lazy val SignableItems: Seq[SignableItem.Companion_] =
-      inventoryItems collect { case o: SignableItem.Companion_ => o }
-
-    final lazy val SignableSimpleItems: Seq[SignableSimpleItem.Companion_] =
-      inventoryItems collect { case o: SignableSimpleItem.Companion_ => o }
-
-    final lazy val VersionedItems: Seq[VersionedItem.Companion_] =
-      inventoryItems collect { case o: VersionedItem.Companion_ => o }
-
-
-    implicit final lazy val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
-      TypedJsonCodec[InventoryItem](inventoryItems.map(_.subtype): _*)
-
-    implicit final lazy val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(this)
-
-    implicit final lazy val inventoryItemKeyJsonCodec: Codec[InventoryItemKey] =
-      InventoryItemKey.jsonCodec(inventoryItems.map(_.Key))
-
-    implicit final lazy val signableItemKeyJsonCodec: Codec[SignableItemKey] =
-      SignableItemKey.jsonCodec(SignableItems.map(_.Key))
-
-    implicit final lazy val unsignedSimpleItemJsonCodec: TypedJsonCodec[UnsignedSimpleItem] =
-      TypedJsonCodec[UnsignedSimpleItem](UnsignedSimpleItems.map(_.subtype): _*)
-
-    implicit final lazy val signableSimpleItemJsonCodec: TypedJsonCodec[SignableSimpleItem] =
-      TypedJsonCodec[SignableSimpleItem](SignableSimpleItems.map(_.subtype): _*)
-
-    implicit final lazy val simpleItemIdJsonCodec: Codec[SimpleItemPath] =
-      SimpleItemPath.jsonCodec(SimpleItems.map(_.Key))
-
-    implicit final lazy val itemPathJsonCodec: Codec[VersionedItemPath] =
-      VersionedItemPath.jsonCodec(ItemPaths)
-
-    implicit final lazy val basicItemEventJsonCodec =
-      BasicItemEvent.jsonCodec(this)
-
-    implicit final lazy val versionedItemJsonCodec: TypedJsonCodec[VersionedItem] =
-      TypedJsonCodec(VersionedItems.map(_.subtype): _*)
-
-    implicit final lazy val signableItemJsonCodec: TypedJsonCodec[SignableItem] =
-      TypedJsonCodec(SignableItems.map(_.subtype): _*)
 
     override def toString = name
   }

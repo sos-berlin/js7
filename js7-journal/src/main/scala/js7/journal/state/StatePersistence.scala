@@ -12,12 +12,12 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.data.cluster.ClusterState
-import js7.data.event.{Event, JournalHeader, JournalHeaders, JournalId, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered
-import js7.journal.state.JournaledStatePersistence.logger
 import js7.journal.state.StateJournalingActor.{PersistFunction, StateToEvents}
+import js7.journal.state.StatePersistence.logger
 import js7.journal.watch.EventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
@@ -29,16 +29,20 @@ import shapeless.tag.@@
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
 //  Der Aufrufer kann sich um die Sperren uns dessen Granularität kümmern.
-//  JournaledStatePersistence stellt dazu LockKeeper bereit
+//  StatePersistence stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
-final class JournaledStatePersistence[S <: JournaledState[S]](
+final class StatePersistence[S <: SnapshotableState[S]: TypeTag](
   val recoveredJournalId: Option[JournalId],
   val eventWatch: EventWatch,
   val journalActor: ActorRef @@ JournalActor.type,
   journalConf: JournalConf,
   journalActorStopped: Future[Unit])
-  (implicit S: TypeTag[S], s: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
+  (implicit
+    S: SnapshotableState.Companion[S],
+    scheduler: Scheduler,
+    actorRefFactory: ActorRefFactory,
+    timeout: akka.util.Timeout)
 extends AutoCloseable
 {
   lazy val journalId = recoveredJournalId getOrElse JournalId.random()
@@ -83,7 +87,7 @@ extends AutoCloseable
         .tapEval(_ => Task {
           actorOnce := actorRefFactory.actorOf(
             StateJournalingActor.props[S, Event](currentState, journalActor, journalConf, persistPromise),
-            encodeAsActorName("StateJournalingActor:" + S.tpe.toString))
+            encodeAsActorName("StateJournalingActor:" + S))
         })
     }
 
@@ -164,44 +168,48 @@ extends AutoCloseable
   def lock[A](key: Any)(body: Task[A]): Task[A] =
     lockKeeper.lock(key)(body)
 
-  override def toString = s"JournaledStatePersistence[${S.tpe}]"
+  override def toString = s"StatePersistence[$S]"
 }
 
-object JournaledStatePersistence
+object StatePersistence
 {
   private val logger = Logger[this.type]
 
-  def start[S <: JournaledState[S]: JournaledState.Companion: diffx.Diff](
+  def start[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
     recovered: Recovered[S],
     journalMeta: JournalMeta,
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus = new StampedKeyedEventBus)
-    (implicit S: TypeTag[S], scheduler: Scheduler,
-      actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
-  : Task[JournaledStatePersistence[S]] = {
+    (implicit
+      scheduler: Scheduler,
+      actorRefFactory: ActorRefFactory,
+      timeout: akka.util.Timeout)
+  : Task[StatePersistence[S]] = {
     val persistence = prepare(recovered.journalId, recovered.eventWatch, journalMeta, journalConf,
       eventIdGenerator, keyedEventBus)
     persistence.start(recovered)
       .as(persistence)
   }
 
-  def prepare[S <: JournaledState[S]: JournaledState.Companion: diffx.Diff](
+  def prepare[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
     recoveredJournalId: Option[JournalId],
     eventWatch: EventWatch,
     journalMeta: JournalMeta,
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus = new StampedKeyedEventBus)
-    (implicit S: TypeTag[S], scheduler: Scheduler,
-      actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
-  : JournaledStatePersistence[S] = {
-      val journalActorStopped = Promise[JournalActor.Stopped]()
-      val journalActor = tag[JournalActor.type](actorRefFactory.actorOf(
-        JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler, eventIdGenerator, journalActorStopped),
-        "Journal"))
+    (implicit
+      scheduler: Scheduler,
+      actorRefFactory: ActorRefFactory,
+      timeout: akka.util.Timeout)
+  : StatePersistence[S] = {
+    val journalActorStopped = Promise[JournalActor.Stopped]()
+    val journalActor = tag[JournalActor.type](actorRefFactory.actorOf(
+      JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler, eventIdGenerator, journalActorStopped),
+      "Journal"))
 
-      new JournaledStatePersistence[S](recoveredJournalId, eventWatch, journalActor, journalConf,
-        journalActorStopped.future.map(_ => ()))
-    }
+    new StatePersistence[S](recoveredJournalId, eventWatch, journalActor, journalConf,
+      journalActorStopped.future.map(_ => ()))
+  }
 }

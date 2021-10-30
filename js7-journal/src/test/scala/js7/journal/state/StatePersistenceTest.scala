@@ -23,11 +23,11 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkautils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, JournaledState, JournaledStateBuilder, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
-import js7.journal.recover.JournaledStateRecoverer
-import js7.journal.state.JournaledStatePersistenceTest._
+import js7.journal.recover.StateRecoverer
+import js7.journal.state.StatePersistenceTest._
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
@@ -40,12 +40,12 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
+final class StatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 
   private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
-  protected lazy val directory = createTempDirectory("JournaledStatePersistenceTest-")
+  protected lazy val directory = createTempDirectory("StatePersistenceTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
 
   override def afterAll() = {
@@ -129,13 +129,13 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
 
   private class RunningPersistence extends ProvideActorSystem {
     protected def config = TestConfig
-    private var persistence: JournaledStatePersistence[TestState] = null
+    private var persistence: StatePersistence[TestState] = null
 
     def start() = {
-      val recovered = JournaledStateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
+      val recovered = StateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
       implicit val timeout = Timeout(99.s)
-      persistence = JournaledStatePersistence
+      persistence = StatePersistence
         .start(recovered, journalMeta, JournalConf.fromConfig(TestConfig),
           new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
         .await(99.s)
@@ -153,7 +153,7 @@ final class JournaledStatePersistenceTest extends AnyFreeSpec with BeforeAndAfte
   }
 }
 
-private object JournaledStatePersistenceTest
+private object StatePersistenceTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""
@@ -237,8 +237,8 @@ private object JournaledStatePersistenceTest
   final case class TestState(
     eventId: EventId,
     numberThingCollection: NumberThingCollection,
-    standards: JournaledState.Standards = JournaledState.Standards.empty)
-  extends JournaledState[TestState]
+    standards: SnapshotableState.Standards = SnapshotableState.Standards.empty)
+  extends SnapshotableState[TestState]
   {
     protected type Self = NumberThingCollection
     protected type Snapshot = NumberThing
@@ -249,7 +249,7 @@ private object JournaledStatePersistenceTest
     def withEventId(eventId: EventId) =
       copy(eventId = eventId)
 
-    def withStandards(standards: JournaledState.Standards) =
+    def withStandards(standards: SnapshotableState.Standards) =
       copy(standards = standards)
 
     def applyEvent(keyedEvent: KeyedEvent[Event]) =
@@ -265,11 +265,11 @@ private object JournaledStatePersistenceTest
 
     def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
   }
-  object TestState extends JournaledState.Companion[TestState] {
+  object TestState extends SnapshotableState.Companion[TestState] {
     val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
 
-    def newBuilder(): JournaledStateBuilder[TestState] =
-      new JournaledStateBuilder.Simple(TestState) {
+    def newBuilder(): SnapshotableStateBuilder[TestState] =
+      new SnapshotableStateBuilder.Simple(TestState) {
         protected def onAddSnapshotObject = {
           case numberThing: NumberThing =>
             updateState(result().copy(numberThingCollection = result().numberThingCollection.copy(
