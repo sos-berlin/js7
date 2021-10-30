@@ -10,7 +10,6 @@ import js7.base.time.ScalaTime._
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated}
-import js7.data.event.EventSeq
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetached}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionedEvent.VersionAdded
@@ -175,7 +174,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
     controller.eventWatch.await[OrderTerminated](_.key == bOrderId)
-    val EventSeq.NonEmpty(stampedEvents) = controller.eventWatch.all[OrderLockEvent]
+    val stampedEvents = controller.eventWatch.allStamped[OrderLockEvent]
     val aAquired = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLockAcquired]).get
     val bAquired = stampedEvents.find(stamped => stamped.value.key == bOrderId && stamped.value.event.isInstanceOf[OrderLockAcquired]).get
     val aReleased = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLockReleased]).get

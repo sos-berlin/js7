@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
-import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -32,7 +32,7 @@ final class IfTest extends AnyFreeSpec
           val orderId = OrderId("🔺" + returnCode.number)
           controller.addOrderBlocking(newOrder(orderId, returnCode))
           controller.eventWatch.await[OrderTerminated](_.key == orderId)
-          checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], returnCode)
+          checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], returnCode)
         }
       }
     }
@@ -56,8 +56,7 @@ final class IfTest extends AnyFreeSpec
         val orderId = OrderId("❌")
         controller.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
         controller.eventWatch.await[OrderTerminated](_.key == orderId)
-        val EventSeq.NonEmpty(events) = controller.eventWatch.all[OrderEvent]
-        assert(events.map(_.value.event) == Seq(
+        assert(controller.eventWatch.allStamped[OrderEvent].map(_.value.event) == Seq(
           OrderAdded(workflow.id),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
@@ -71,14 +70,14 @@ final class IfTest extends AnyFreeSpec
     }
   }
 
-  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], returnCode: ReturnCode): Unit =
-    eventSeq match {
-      case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).to(Vector)
-        assert(events == ExpectedEvents(returnCode))
-      case o =>
-        fail(s"Unexpected EventSeq received: $o")
-    }
+  private def checkEventSeq(
+    orderId: OrderId,
+    keyedEvents: IterableOnce[KeyedEvent[OrderEvent]],
+    returnCode: ReturnCode)
+  : Unit = {
+    val events = keyedEvents.iterator.filter(_.key == orderId).map(_.event).to(Vector)
+    assert(events == ExpectedEvents(returnCode))
+  }
 }
 
 object IfTest {

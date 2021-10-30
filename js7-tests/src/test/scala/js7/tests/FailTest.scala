@@ -5,7 +5,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -160,20 +160,20 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
     directoryProvider.updateVersionedItems(controller, workflow.id.versionId, Seq(workflow))
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     eventWatch.await[E](_.key == orderId)
-    checkEventSeq(orderId, eventWatch.all[OrderEvent], expectedEvents)
+    checkEventSeq(orderId, eventWatch.allKeyedEvents[OrderEvent], expectedEvents)
     for ((oId, expected) <- moreExpectedEvents) {
-      checkEventSeq(oId, eventWatch.all[OrderEvent], expected)
+      checkEventSeq(oId, eventWatch.allKeyedEvents[OrderEvent], expected)
     }
   }
 
-  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], expected: Vector[OrderEvent]): Unit =
-    eventSeq match {
-      case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).to(Vector)
-        assert(events == expected)
-      case o =>
-        fail(s"Unexpected EventSeq received: $o")
-    }
+  private def checkEventSeq(
+    orderId: OrderId,
+    keyedEvents: Seq[KeyedEvent[OrderEvent]],
+    expected: Vector[OrderEvent])
+  : Unit = {
+    val events = keyedEvents.view.filter(_.key == orderId).map(_.event).to(Vector)
+    assert(events == expected)
+  }
 }
 
 object FailTest

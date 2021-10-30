@@ -8,7 +8,6 @@ import js7.base.time.ScalaTime._
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated, ResumeOrder}
-import js7.data.event.EventSeq
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -43,16 +42,11 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Events" in {
     controller.addOrderBlocking(TestOrder)
     eventWatch.await[OrderFinished](_.key == TestOrder.id)
-    eventWatch.all[OrderEvent] match {
-      case EventSeq.NonEmpty(stampeds) =>
-        val keyedEvents = stampeds.map(_.value).toVector
-        for (orderId <- Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
-          assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
-        }
-        assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
-      case o =>
-        fail(s"Unexpected EventSeq received: $o")
+    val keyedEvents = eventWatch.allKeyedEvents[OrderEvent]
+    for (orderId <- Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
+      assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
     }
+    assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
 
     assert(controllerState.idToOrder(TestOrder.id).historicOutcomes == Seq(
       HistoricOutcome(Position(0), Outcome.succeeded),

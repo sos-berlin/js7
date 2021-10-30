@@ -5,7 +5,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
-import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -31,7 +31,7 @@ final class TryTest extends AnyFreeSpec
         val orderId = OrderId("🔺")
         controller.addOrderBlocking(FreshOrder(orderId, FinishingWorkflow.id.path))
         controller.eventWatch.await[OrderFinished](_.key == orderId)
-        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], ExpectedFinishedEvents)
+        checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], ExpectedFinishedEvents)
       }
     }
   }
@@ -46,7 +46,7 @@ final class TryTest extends AnyFreeSpec
         val orderId = OrderId("❌")
         controller.addOrderBlocking(FreshOrder(orderId, StoppingWorkflow.id.path))
         controller.eventWatch.await[OrderFailed](_.key == orderId)
-        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], ExpectedStoppedEvent)
+        checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], ExpectedStoppedEvent)
       }
     }
   }
@@ -73,7 +73,7 @@ final class TryTest extends AnyFreeSpec
         val orderId = OrderId("⭕")
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         controller.eventWatch.await[OrderFinished](_.key == orderId)
-        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], Vector(
+        checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / try_(0) % 0),
           OrderAttachable(TestAgentPath),
@@ -121,7 +121,7 @@ final class TryTest extends AnyFreeSpec
         val orderId = OrderId("🔴")
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         controller.eventWatch.await[OrderTerminated](_.key == orderId)
-        checkEventSeq(orderId, controller.eventWatch.all[OrderEvent], Vector(
+        checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
           OrderAdded(workflow.id),
           OrderMoved(Position(0) / "try+0" % 0),
           OrderStarted,
@@ -143,7 +143,7 @@ final class TryTest extends AnyFreeSpec
           OrderDetachable,
           OrderDetached,
           OrderFinished))
-        checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.all[OrderEvent], Vector(
+        checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
           OrderProcessingStarted,
           OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
           OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0),
@@ -153,15 +153,14 @@ final class TryTest extends AnyFreeSpec
     }
   }
 
-  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]], expected: Vector[OrderEvent]): Unit = {
-    eventSeq match {
-      case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).toVector
-        assert(events == expected)
-      case o =>
-        fail(s"Unexpected EventSeq received: $o")
+  private def checkEventSeq(
+    orderId: OrderId,
+    keyedEvents: IterableOnce[KeyedEvent[OrderEvent]],
+    expected: Vector[OrderEvent])
+  : Unit = {
+      val events = keyedEvents.iterator.filter(_.key == orderId).map(_.event).toVector
+      assert(events == expected)
     }
-  }
 }
 
 object TryTest

@@ -44,7 +44,7 @@ final class RealEventWatchTest extends AnyFreeSpec
   }
 
   "observe without stack overflow" in {
-    val eventWatch = new EndlessEventWatch().strict
+    val eventWatch = new EndlessEventWatch()
     var expectedNext = Stamped(1L, 1 <-: TestEvent(1))
     val events = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val n = 100000

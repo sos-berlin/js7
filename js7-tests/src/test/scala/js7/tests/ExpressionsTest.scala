@@ -6,7 +6,7 @@ import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
-import js7.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -31,20 +31,16 @@ final class ExpressionsTest extends AnyFreeSpec
           controller.addOrderBlocking(order)
           val expectedLast = ExpectedEvents(order.id).last
           controller.eventWatch.await[OrderEvent](ke => ke.key == order.id && expectedLast.getClass == ke.event.getClass)
-          checkEventSeq(order.id, controller.eventWatch.all[OrderEvent])
+          checkEventSeq(order.id, controller.eventWatch.allKeyedEvents[OrderEvent])
         }
       }
     }
   }
 
-  private def checkEventSeq(orderId: OrderId, eventSeq: TearableEventSeq[IterableOnce, KeyedEvent[OrderEvent]]): Unit = {
-    eventSeq match {
-      case EventSeq.NonEmpty(stampeds) =>
-        val events = stampeds.iterator.filter(_.value.key == orderId).map(_.value.event).to(Vector)
-        assert(events == ExpectedEvents(orderId))
-      case o =>
-        fail(s"Unexpected EventSeq received: $o")
-    }
+  private def checkEventSeq(orderId: OrderId, stampedSeq: Seq[KeyedEvent[OrderEvent]])
+  : Unit = {
+    val events = stampedSeq.view.filter(_.key == orderId).map(_.event).to(Vector)
+    assert(events == ExpectedEvents(orderId))
   }
 }
 

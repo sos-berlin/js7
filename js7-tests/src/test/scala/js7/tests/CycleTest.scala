@@ -14,7 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.CancelOrders
-import js7.data.event.{EventSeq, KeyedEvent, Stamped}
+import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -286,9 +286,8 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       calendarPath = Some(calendar.path)))
 
     def orderCycleStartedTimetamps(orderId: OrderId) =
-      eventWatch.all[OrderCycleStarted]
-        .asInstanceOf[EventSeq.NonEmpty[Seq, KeyedEvent[OrderEvent]]]
-        .stamped
+      eventWatch
+        .allStamped[OrderCycleStarted]
         .collect {
           case stamped @ Stamped(_, _, KeyedEvent(`orderId`, OrderCycleStarted)) =>
             stamped.timestamp

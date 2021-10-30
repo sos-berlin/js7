@@ -4,7 +4,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
-import js7.data.event.{EventSeq, KeyedEvent}
+import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -193,10 +193,11 @@ final class FailUncatchableTest extends AnyFreeSpec
       directoryProvider.run { (controller, _) =>
         controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
         controller.eventWatch.await[E](_.key == orderId)
-        controller.eventWatch.all[OrderEvent] match {
-          case EventSeq.NonEmpty(stampeds) => stampeds.map(_.value).filterNot(_.event.isInstanceOf[OrderStdWritten]).toVector
-          case o => fail(s"Unexpected EventSeq received: $o")
-        }
+        controller.eventWatch
+          .allKeyedEvents[OrderEvent]
+          .view
+          .filterNot(_.event.isInstanceOf[OrderStdWritten])
+          .toVector
       }
     }
   }

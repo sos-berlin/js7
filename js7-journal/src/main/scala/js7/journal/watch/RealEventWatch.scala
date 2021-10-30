@@ -191,7 +191,7 @@ trait RealEventWatch extends EventWatch
     limit: Int,
     maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
-    Task.fromFuture(whenStarted)
+    started
       .flatMap(_ => committedEventIdSync.whenAvailable(after, deadline, delay))
       .flatMap(eventArrived =>
         collectEventsSince(after, collect, limit) match {
