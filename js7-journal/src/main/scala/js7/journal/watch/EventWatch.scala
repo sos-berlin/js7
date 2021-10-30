@@ -29,28 +29,16 @@ trait EventWatch
 
   def strict: StrictEventWatch = new StrictEventWatch(this)
 
-  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every, onlyAcks: Boolean = false)
+  def observe[E <: Event](
+    request: EventRequest[E],
+    predicate: KeyedEvent[E] => Boolean = Every,
+    onlyAcks: Boolean = false)
   : Observable[Stamped[KeyedEvent[E]]]
 
   def observeEventIds(timeout: Option[FiniteDuration]): Observable[EventId]
 
-  def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
-
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
-
-  def whenAny[E <: Event](
-    request: EventRequest[E],
-    eventClasses: Set[Class[_ <: E]],
-    predicate: KeyedEvent[E] => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
-
-  def byKey[E <: Event](
-    request: EventRequest[E],
-    key: E#Key,
-    predicate: E => Boolean = Every)
-  : Task[TearableEventSeq[CloseableIterator, E]]
 
   def whenKeyedEvent[E <: Event](
     request: EventRequest[E],
@@ -72,8 +60,6 @@ trait EventWatch
     timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
   : Task[Checked[Observable[PositionAnd[ByteArray]]]]
 
-  def snapshotAfter(after: EventId): Option[Observable[Any]]
-
   def rawSnapshotAfter(after: EventId): Option[Observable[ByteArray]]
 
   def journalPosition: Checked[JournalPosition]
@@ -91,7 +77,8 @@ trait EventWatch
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E <: Event: ClassTag: TypeTag](after: EventId = tornEventId)(implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E]]
+  def all[E <: Event: ClassTag: TypeTag](after: EventId = tornEventId)(implicit s: Scheduler)
+  : TearableEventSeq[CloseableIterator, KeyedEvent[E]]
 
   def fileEventIds: Seq[EventId]
 

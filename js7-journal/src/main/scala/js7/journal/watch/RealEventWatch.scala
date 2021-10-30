@@ -28,27 +28,32 @@ import scala.reflect.runtime.universe._
   */
 trait RealEventWatch extends EventWatch
 {
-  @TestOnly
   protected def eventsAfter(after: EventId): Option[CloseableIterator[Stamped[KeyedEvent[Event]]]]
 
   protected def isActiveNode: Boolean
 
   // Lazy, initialize only after whenStarted has been called!
-  private lazy val committedEventIdSync = new EventSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
+  private lazy val committedEventIdSync =
+    new EventSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
 
   protected final def onEventsCommitted(eventId: EventId): Unit =
     committedEventIdSync.onAdded(eventId)
 
-  final def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean, onlyAcks: Boolean)
+  final def observe[E <: Event](
+    request: EventRequest[E],
+    predicate: KeyedEvent[E] => Boolean,
+    onlyAcks: Boolean)
   : Observable[Stamped[KeyedEvent[E]]] =
   {
     val originalTimeout = request.timeout
     var deadline = none[MonixDeadline]
 
-    def next(lazyRequest: () => EventRequest[E]): Task[(Option[Observable[Stamped[KeyedEvent[E]]]], () => EventRequest[E])] =
+    def next(lazyRequest: () => EventRequest[E])
+    : Task[(Option[Observable[Stamped[KeyedEvent[E]]]], () => EventRequest[E])] =
       Task.deferAction { implicit s =>
         val request = lazyRequest()  // Access now in previous iteration computed values lastEventId and limit (see below)
-        deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewed after every fetched event
+        // Timeout is renewed after every fetched event
+        deadline = request.timeout.map(t => now + (t min EventRequest.LongTimeout))
         if (request.limit <= 0)
           NoMoreObservable
         else
@@ -72,7 +77,8 @@ trait RealEventWatch extends EventWatch
                   limit -= 1
                   o
                 }
-              // Closed-over lastEventId and limit are updated as observable is consumed, therefore defer access to final values (see above)
+              // Closed-over lastEventId and limit are updated as observable is consumed,
+              // therefore defer access to final values (see above)
               (Some(observable),
                 () => request.copy[E](after = lastEventId, limit = limit, timeout = originalTimeout))
           }
@@ -88,10 +94,13 @@ trait RealEventWatch extends EventWatch
     val originalTimeout = maybeTimeout
     var deadline = none[MonixDeadline]
 
-    def next(lazyAfter: () => (EventId, Option[FiniteDuration])): Task[(Option[Observable[EventId]], () => (EventId, Option[FiniteDuration]))] =
+    def next(lazyAfter: () => (EventId, Option[FiniteDuration]))
+    : Task[(Option[Observable[EventId]], () => (EventId, Option[FiniteDuration]))] =
       Task.deferAction { implicit s =>
-        val (after, maybeTimeout) = lazyAfter()  // Access now in previous iteration computed values lastEventId and limit (see below)
-        deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))  // Timeout is renewed after every fetched event
+        // Access now the in previous iteration computed lastEventId and limit values (see below)
+        val (after, maybeTimeout) = lazyAfter()
+        // Timeout is renewed after every fetched event
+        deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))
         committedEventIdSync.whenAvailable(after, deadline)
           .map {
             case false =>
@@ -107,9 +116,10 @@ trait RealEventWatch extends EventWatch
           }
           .flatMap { x =>
             if (isActiveNode)
-              Task.raiseError(
-                Problem.pure("This active cluster node does not provide event acknowledgements (two active cluster nodes?)")
-                  .throwable)
+              Task.raiseError(Problem
+                .pure("This active cluster node does not provide event acknowledgements" +
+                  " (two active cluster nodes?)")
+                .throwable)
             else
               Task.pure(x)
           }
@@ -122,35 +132,28 @@ trait RealEventWatch extends EventWatch
         .map(_.get).flatten
   }
 
-  final def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]] =
-    request match {
-      case request: EventRequest[E] =>
-        when[E](request, predicate)
-    }
-
   final def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]] =
       whenAny[E](request, request.eventClasses, predicate)
 
-  final def whenAny[E <: Event](request: EventRequest[E], eventClasses: Set[Class[_ <: E]], predicate: KeyedEvent[E] => Boolean)
-  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]]
-  =
+  final def whenAny[E <: Event](
+    request: EventRequest[E],
+    eventClasses: Set[Class[_ <: E]],
+    predicate: KeyedEvent[E] => Boolean)
+  : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]] =
     whenAnyKeyedEvents(
       request,
       collect = {
-        case e if eventClasses.exists(_ isAssignableFrom e.event.getClass) && predicate(e.asInstanceOf[KeyedEvent[E]]) =>
+        case e if eventClasses.exists(_ isAssignableFrom e.event.getClass)
+          && predicate(e.asInstanceOf[KeyedEvent[E]]) =>
           e.asInstanceOf[KeyedEvent[E]]
       })
 
-  final def byKey[E <: Event](request: EventRequest[E], key: E#Key, predicate: E => Boolean)
-  : Task[TearableEventSeq[CloseableIterator, E]] =
-    request match {
-      case request: EventRequest[E] =>
-        whenKey(request, key, predicate)
-    }
-
-  final def whenKeyedEvent[E <: Event](request: EventRequest[E], key: E#Key, predicate: E => Boolean): Task[E] =
+  final def whenKeyedEvent[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E => Boolean)
+  : Task[E] =
     whenKey[E](request.copy[E](limit = 1), key, predicate) map {
       case eventSeq: EventSeq.NonEmpty[CloseableIterator, E] =>
         try eventSeq.stamped.next().value
@@ -159,22 +162,34 @@ trait RealEventWatch extends EventWatch
       case _: TearableEventSeq.Torn => throw new IllegalStateException("EventSeq is torn")
     }
 
-  final def whenKey[E <: Event](request: EventRequest[E], key: E#Key, predicate: E => Boolean): Task[TearableEventSeq[CloseableIterator, E]] =
+  final def whenKey[E <: Event](request: EventRequest[E], key: E#Key, predicate: E => Boolean)
+  : Task[TearableEventSeq[CloseableIterator, E]] =
     whenAnyKeyedEvents(
       request,
       collect = {
-        case e if request.matchesClass(e.event.getClass) && e.key == key && predicate(e.event.asInstanceOf[E]) =>
+        case e if request.matchesClass(e.event.getClass)
+          && e.key == key && predicate(e.event.asInstanceOf[E]) =>
           e.event.asInstanceOf[E]
       })
 
-  private def whenAnyKeyedEvents[E <: Event, A](request: EventRequest[E], collect: PartialFunction[AnyKeyedEvent, A])
-  : Task[TearableEventSeq[CloseableIterator, A]] = Task.deferAction { implicit s =>
-    val deadline = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))  // Protected agains Timestamp overflow
-    whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit, maybeTornOlder = request.tornOlder)
-  }
+  private def whenAnyKeyedEvents[E <: Event, A](
+    request: EventRequest[E],
+    collect: PartialFunction[AnyKeyedEvent, A])
+  : Task[TearableEventSeq[CloseableIterator, A]] =
+    Task.deferAction { implicit s =>
+      // Protected agains Timestamp overflow
+      val deadline = request.timeout.map(t => now + t.min(EventRequest.LongTimeout))
+      whenAnyKeyedEvents2(request.after, deadline, request.delay, collect, request.limit,
+        maybeTornOlder = request.tornOlder)
+    }
 
-  private def whenAnyKeyedEvents2[A](after: EventId, deadline: Option[MonixDeadline], delay: FiniteDuration,
-    collect: PartialFunction[AnyKeyedEvent, A], limit: Int, maybeTornOlder: Option[FiniteDuration])
+  private def whenAnyKeyedEvents2[A](
+    after: EventId,
+    deadline: Option[MonixDeadline],
+    delay: FiniteDuration,
+    collect: PartialFunction[AnyKeyedEvent, A],
+    limit: Int,
+    maybeTornOlder: Option[FiniteDuration])
   : Task[TearableEventSeq[CloseableIterator, A]] =
     Task.fromFuture(whenStarted)
       .flatMap(_ => committedEventIdSync.whenAvailable(after, deadline, delay))
@@ -185,12 +200,15 @@ trait RealEventWatch extends EventWatch
               case None => Task.pure(eventSeq)
               case Some(tornOlder) =>
                 // If the first event is not fresh, we have a read congestion.
-                // We serve a (simulated) Torn, and the client can fetch the current state and read fresh events, skipping the congestion..
+                // We serve a (simulated) Torn, and the client can fetch the current state
+                // and read fresh events, skipping the congestion.
                 Task.deferAction { implicit s =>
                   val head = iterator.next()
-                  if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {  // Don't compare head.timestamp, timestamp may be much older)
+                  // Don't compare head.timestamp, timestamp may be much older)
+                  if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {
                     iterator.close()
-                    Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))  // Simulate a torn EventSeq
+                    // Simulate a torn EventSeq
+                    Task.pure(TearableEventSeq.Torn(committedEventIdSync.last))
                   } else
                     Task.pure(EventSeq.NonEmpty(head +: iterator))
                 }
@@ -203,7 +221,8 @@ trait RealEventWatch extends EventWatch
                   if (lastEventId < committedEventIdSync.last) {
                     // May happen due to race condition?
                     logger.debug(s"committedEventIdSync.whenAvailable(after=$after," +
-                      s" timeout=${deadline.fold("")(_.timeLeft.pretty)}) last=${committedEventIdSync.last} => $eventArrived," +
+                      s" timeout=${deadline.fold("")(_.timeLeft.pretty)})" +
+                      s" last=${committedEventIdSync.last} => $eventArrived," +
                       s" unexpected $empty, delaying ${AvoidOverheatingDelay.pretty}")
                     AvoidOverheatingDelay
                   } else
@@ -218,11 +237,15 @@ trait RealEventWatch extends EventWatch
           Task.pure(o)
       })
 
-  private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int)
+  private def collectEventsSince[A](
+    after: EventId,
+    collect: PartialFunction[AnyKeyedEvent, A],
+    limit: Int)
   : TearableEventSeq[CloseableIterator, A] = {
     val last = lastAddedEventId
     if (after > last) {
-      logger.debug(s"The future event requested is not yet available, lastAddedEventId=${EventId.toString(last)} after=${EventId.toString(after)}")
+      logger.debug(s"The future event requested is not yet available, " +
+        s"lastAddedEventId=${EventId.toString(last)} after=${EventId.toString(after)}")
       EventSeq.Empty(last)  // Future event requested is not yet available
     } else
       eventsAfter(after) match {
@@ -242,32 +265,40 @@ trait RealEventWatch extends EventWatch
       }
   }
 
-  def lastAddedEventId: EventId =
+  final def lastAddedEventId: EventId =
     committedEventIdSync.last
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E <: Event: ClassTag: TypeTag](predicate: KeyedEvent[E] => Boolean, after: EventId, timeout: FiniteDuration)
+  final def await[E <: Event: ClassTag: TypeTag](
+    predicate: KeyedEvent[E] => Boolean,
+    after: EventId,
+    timeout: FiniteDuration)
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E]]] =
-    when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate) await timeout + 1.s match {
-      case EventSeq.NonEmpty(events) =>
-        try events.toVector
-        finally events.close()
+    when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
+      .await(timeout + 1.s)
+      .match_ {
+        case EventSeq.NonEmpty(events) =>
+          try events.toVector
+          finally events.close()
 
-      case _: EventSeq.Empty =>
-        throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E].scalaName}](after=$after, timeout=$timeout) timed out")
+        case _: EventSeq.Empty =>
+          throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
+            s"(after=$after, timeout=$timeout) timed out")
 
-      //? case TearableEventSeq.Torn(tornEventId) =>
-      //?   throw new TornException(after, tornEventId)
+        //? case TearableEventSeq.Torn(tornEventId) =>
+        //?   throw new TornException(after, tornEventId)
 
-      case o =>
-        sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}](after=$after) unexpected EventSeq: $o")
-    }
+        case o =>
+          sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
+            s"(after=$after) unexpected EventSeq: $o")
+      }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler): TearableEventSeq[CloseableIterator, KeyedEvent[E]] =
+  final def all[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler)
+  : TearableEventSeq[CloseableIterator, KeyedEvent[E]] =
     when[E](EventRequest.singleClass[E](after = after), _ => true) await 99.s
 }
 

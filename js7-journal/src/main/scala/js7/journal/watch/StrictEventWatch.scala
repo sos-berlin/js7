@@ -23,45 +23,23 @@ final class StrictEventWatch(val underlying: EventWatch)
   def fileEventIds: Seq[EventId] =
     underlying.fileEventIds
 
-  def observe[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true, onlyAcks: Boolean = false)
-  : Observable[Stamped[KeyedEvent[E]]]
-  = underlying.observe(request, predicate, onlyAcks)
-
-  def read[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
-  = delegate(_.read(request, predicate))
+  def observe[E <: Event](
+    request: EventRequest[E],
+    predicate: KeyedEvent[E] => Boolean = (_: KeyedEvent[E]) => true,
+    onlyAcks: Boolean = false)
+  : Observable[Stamped[KeyedEvent[E]]] =
+    underlying.observe(request, predicate, onlyAcks)
 
   def when[E <: Event](request: EventRequest[E], predicate: KeyedEvent[E] => Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
-  = delegate(_.when(request, predicate))
-
-  def whenAny[E <: Event](
-    request: EventRequest[E],
-    eventClasses: Set[Class[_ <: E]],
-    predicate: KeyedEvent[E] => Boolean = Every)
-  : Task[TearableEventSeq[Seq, KeyedEvent[E]]]
-  = delegate(_.whenAny[E](request, eventClasses, predicate))
-
-  def byKey[E <: Event](
-    request: EventRequest[E],
-    key: E#Key,
-    predicate: E => Boolean = Every)
-  : Task[TearableEventSeq[Seq, E]]
-  = delegate(_.byKey(request, key, predicate))
+  : Task[TearableEventSeq[Seq, KeyedEvent[E]]] =
+    delegate(_.when(request, predicate))
 
   def whenKeyedEvent[E <: Event](
     request: EventRequest[E],
     key: E#Key,
     predicate: E => Boolean = Every)
-  : Task[E]
-  = underlying.whenKeyedEvent(request, key, predicate)
-
-  def whenKey[E <: Event](
-    request: EventRequest[E],
-    key: E#Key,
-    predicate: E => Boolean = Every)
-  : Task[TearableEventSeq[Seq, E]]
-  = delegate(_.whenKey(request, key, predicate))
+  : Task[E] =
+    underlying.whenKeyedEvent(request, key, predicate)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
@@ -70,12 +48,14 @@ final class StrictEventWatch(val underlying: EventWatch)
     after: EventId = tornEventId,
     timeout: FiniteDuration = 99.s)
     (implicit s: Scheduler, E: TypeTag[E])
-  : Vector[Stamped[KeyedEvent[E]]]
-  = underlying.await(predicate, after, timeout)
+  : Vector[Stamped[KeyedEvent[E]]] =
+    underlying.await(predicate, after, timeout)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E <: Event: ClassTag: TypeTag](key: E#Key, after: EventId = tornEventId)(implicit s: Scheduler): Seq[E] =
+  def keyedEvents[E <: Event: ClassTag: TypeTag](key: E#Key, after: EventId = tornEventId)
+    (implicit s: Scheduler)
+  : Seq[E] =
     keyedEvents[E](after = after) collect {
       case o if o.key == key => o.event
     }
@@ -87,20 +67,24 @@ final class StrictEventWatch(val underlying: EventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler): Seq[KeyedEvent[E]] =
+  def keyedEvents[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler)
+  : Seq[KeyedEvent[E]] =
     underlying.all[E](after = after).strict match {
       case EventSeq.NonEmpty(stamped) => stamped.map(_.value)
       case EventSeq.Empty(_) => Nil
-      case TearableEventSeq.Torn(eventId) => throw new TornException(after = EventId(0), tornEventId = eventId)
+      case TearableEventSeq.Torn(eventId) =>
+        throw new TornException(after = EventId(0), tornEventId = eventId)
     }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def all[E <: Event: ClassTag](implicit s: Scheduler, E: TypeTag[E]): TearableEventSeq[Seq, KeyedEvent[E]] =
+  def all[E <: Event: ClassTag](implicit s: Scheduler, E: TypeTag[E])
+  : TearableEventSeq[Seq, KeyedEvent[E]] =
     underlying.all[E]().strict
 
   @inline
-  private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]]): Task[TearableEventSeq[Seq, A]] =
+  private def delegate[A](body: EventWatch => Task[TearableEventSeq[CloseableIterator, A]])
+  : Task[TearableEventSeq[Seq, A]] =
     body(underlying).map(_.strict)
 
   def tornEventId = underlying.tornEventId

@@ -41,7 +41,9 @@ import scala.util.Try
 /** Watches a complete journal consisting of n `JournalFile`.
   * The last one (with highest after-EventId) is the currently written file while the others are historic.
   */
-final class JournalEventWatch(val journalMeta: JournalMeta, config: Config,
+final class JournalEventWatch(
+  val journalMeta: JournalMeta,
+  config: Config,
   announceNextJournalFileEventId: Option[EventId] = None)
 extends AutoCloseable
 with RealEventWatch
