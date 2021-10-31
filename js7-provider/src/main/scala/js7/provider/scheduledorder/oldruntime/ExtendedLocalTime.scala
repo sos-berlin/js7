@@ -22,7 +22,7 @@ extends Ordered[ExtendedLocalTime]
     LocalDateTime.of(date plusDays days, localTime)
 
   def compare(o: ExtendedLocalTime) =
-    toNanoOfDay compareTo o.toNanoOfDay
+    toNanoOfDay compare o.toNanoOfDay
 
   def toInstant(localDate: LocalDate, zone: ZoneId) = {
     val local = toLocalDateTime(localDate)
