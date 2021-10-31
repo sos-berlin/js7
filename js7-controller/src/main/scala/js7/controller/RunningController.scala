@@ -368,7 +368,7 @@ object RunningController
           recovered.eventWatch
         ).closeWithCloser
 
-      webServer.start()
+      webServer.start
         .flatTap(_ =>
           createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]]))
         .map { _ =>

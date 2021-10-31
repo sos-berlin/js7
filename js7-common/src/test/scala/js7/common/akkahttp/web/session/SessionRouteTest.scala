@@ -81,7 +81,7 @@ extends AnyFreeSpec with SessionRouteTester
         // Akka delays 100ms, 200ms, 400ms: "Connection attempt failed. Backing off new connection attempts for at least 100 milliseconds"
         waitForCondition(99.s, 10.ms)(count >= 3)
         assert(count >= 3)
-        server.start() await 99.s
+        server.start await 99.s
         val exception = intercept[AkkaHttpClient.HttpException] {
           whenLoggedIn await 99.s
         }

@@ -199,7 +199,7 @@ object AkkaWebServer
     Resource.make(
       Task.defer {
         val webServer = new Standard(bindings, route, config) with AkkaWebServer.HasUri
-        webServer.start().map(_ => webServer)
+        webServer.start.map(_ => webServer)
       }
     )(_.terminate())
 

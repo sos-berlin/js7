@@ -121,7 +121,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
   override def beforeAll() = {
     super.beforeAll()
     AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
-    server.start() await 99.s
+    server.start await 99.s
   }
 
   override def afterAll() = {

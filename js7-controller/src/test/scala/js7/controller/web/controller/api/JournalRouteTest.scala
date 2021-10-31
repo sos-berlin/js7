@@ -62,7 +62,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
   override def beforeAll() = {
     super.beforeAll()
     eventWatch = new JournalEventWatch(journalMeta, config)
-    webServer.start() await 99.s
+    webServer.start await 99.s
     writeSnapshot(EventId.BeforeFirst)
     eventWriter = newEventJournalWriter(EventId.BeforeFirst)
     eventWriter.onJournalingStarted()

@@ -48,7 +48,7 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
 
   override def beforeAll() = {
     super.beforeAll()
-    server.start() await 99.s
+    server.start await 99.s
   }
 
   override def afterAll() = {

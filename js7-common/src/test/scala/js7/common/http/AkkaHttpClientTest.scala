@@ -129,7 +129,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
             }
         }
       }.closeWithCloser
-      server.start() await 99.s
+      server.start await 99.s
       server
     }
 

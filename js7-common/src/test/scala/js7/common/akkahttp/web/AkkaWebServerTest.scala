@@ -73,7 +73,7 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 
   override def beforeAll(): Unit = {
-    webServer.start() await 99.s
+    webServer.start await 99.s
     super.beforeAll()
   }
 
