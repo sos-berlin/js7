@@ -5,12 +5,12 @@ import com.google.inject.Injector
 import js7.agent.MainActor._
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.auth.UserId
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.utils.ProgramTermination
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.core.command.CommandMeta
@@ -25,7 +25,7 @@ final class MainActor(
   agentConfiguration: AgentConfiguration,
   injector: Injector,
   readyPromise: Promise[Ready],
-  terminationPromise: Promise[AgentTermination.Terminate])
+  terminationPromise: Promise[ProgramTermination])
 extends Actor {
 
   import agentConfiguration.akkaAskTimeout
@@ -70,7 +70,7 @@ extends Actor {
 
     case Terminated(`agentActor`) =>
       logger.debug("Stop")
-      terminationPromise.trySuccess(AgentTermination.Terminate())
+      terminationPromise.trySuccess(ProgramTermination())
       context.stop(self)
   }
 }

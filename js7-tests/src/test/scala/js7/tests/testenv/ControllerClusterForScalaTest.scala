@@ -14,11 +14,12 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
+import js7.base.utils.ProgramTermination
 import js7.base.web.Uri
 import js7.common.auth.SecretStringGenerator
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
-import js7.controller.{ControllerTermination, RunningController}
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
@@ -157,7 +158,7 @@ trait ControllerClusterForScalaTest
     controller.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
       .map(_.orThrow)
       .flatMap(_ => Task.deferFuture(controller.terminated))
-      .map((_: ControllerTermination) => ())
+      .map((_: ProgramTermination) => ())
 }
 
 object ControllerClusterForScalaTest

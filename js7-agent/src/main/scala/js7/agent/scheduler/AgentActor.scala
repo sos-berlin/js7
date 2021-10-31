@@ -6,12 +6,12 @@ import com.softwaremill.diffx.generic.auto._
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.views.AgentOverview
-import js7.agent.data.{AgentState, AgentTermination}
 import js7.agent.scheduler.AgentActor._
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.BuildInfo
@@ -25,7 +25,7 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.{Closer, SetOnce}
+import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
@@ -49,7 +49,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 private[agent] final class AgentActor private(
-  terminatePromise: Promise[AgentTermination.Terminate],
+  terminatePromise: Promise[ProgramTermination],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
   jobLauncherConf: JobLauncherConf,
@@ -94,7 +94,7 @@ extends Actor with Stash with SimpleStateActor
     if (eventWatch != null) eventWatch.close()
     super.postStop()
     terminatePromise.trySuccess(
-      AgentTermination.Terminate(restart = shutDownCommand.toOption.fold(false)(_.restart)))
+      ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
     if (isResetting) {
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       journalMeta.deleteJournal(ignoreFailure = true)
@@ -349,7 +349,7 @@ object AgentActor
     keyedEventBus: StampedKeyedEventBus)
     (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
-    def apply(terminatePromise: Promise[AgentTermination.Terminate]) =
+    def apply(terminatePromise: Promise[ProgramTermination]) =
       new AgentActor(terminatePromise, clock, agentConfiguration, jobLauncherConf,
         eventIdGenerator, keyedEventBus)
   }

@@ -29,8 +29,8 @@ import js7.base.time.{AlarmClock, Timezone}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
@@ -86,7 +86,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 final class ControllerOrderKeeper(
-  stopped: Promise[ControllerTermination],
+  stopped: Promise[ProgramTermination],
   persistence: StatePersistence[ControllerState],
   clusterNode: WorkingClusterNode[ControllerState],
   alarmClock: AlarmClock,
@@ -262,8 +262,7 @@ with MainJournalingActor[ControllerState, Event]
     } finally {
       logger.debug("Stopped" + shutdown.since.toOption.fold("")(o => s" (terminated in ${o.elapsed.pretty})"))
       stopped.success(
-        if (switchover.exists(_.restart)) ControllerTermination.Restart
-        else ControllerTermination.Terminate(restart = shutdown.restart))
+        ProgramTermination(restart = switchover.exists(_.restart) | shutdown.restart))
       super.postStop()
     }
 

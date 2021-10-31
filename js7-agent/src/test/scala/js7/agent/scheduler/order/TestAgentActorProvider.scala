@@ -6,7 +6,6 @@ import java.nio.file.Path
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.configuration.inject.AgentModule
-import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.AgentActor
 import js7.agent.scheduler.order.TestAgentActorProvider._
@@ -15,7 +14,7 @@ import js7.base.auth.UserId
 import js7.base.problem.Checked
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.{Closer, HasCloser}
+import js7.base.utils.{Closer, HasCloser, ProgramTermination}
 import js7.common.guice.GuiceImplicits.RichInjector
 import scala.concurrent.{Future, Promise}
 
@@ -54,7 +53,7 @@ object TestAgentActorProvider {
     // Initialize Akka here to solve a classloader problem when Akka reads its reference.conf
     injector.instance[ActorSystem]
 
-    val terminatePromise = Promise[AgentTermination.Terminate]()
+    val terminatePromise = Promise[ProgramTermination]()
     val agentActor = actorSystem.actorOf(Props { injector.instance[AgentActor.Factory].apply(terminatePromise) }, "AgentActor")
     agentActor
   }

@@ -11,7 +11,6 @@ import java.nio.file.Files.deleteIfExists
 import js7.agent.RunningAgent._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
-import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
@@ -25,8 +24,8 @@ import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.{Closer, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits._
@@ -49,7 +48,7 @@ import scala.util.{Failure, Success, Try}
 final class RunningAgent private(
   val webServer: AgentWebServer,
   mainActor: ActorRef,
-  terminated1: Future[AgentTermination.Terminate],
+  terminated1: Future[ProgramTermination],
   val api: CommandMeta => DirectAgentApi,
   sessionRegister: SessionRegister[SimpleSession],
   val sessionToken: SessionToken,
@@ -63,7 +62,7 @@ extends AutoCloseable {
   @TestOnly
   lazy val actorSystem = injector.instance[ActorSystem]
 
-  val terminated: Future[AgentTermination.Terminate] =
+  val terminated: Future[ProgramTermination] =
     for (o <- terminated1) yield {
       close()
       o
@@ -74,7 +73,7 @@ extends AutoCloseable {
 
   def close() = closer.close()
 
-  def terminate(processSignal: Option[ProcessSignal] = None): Task[AgentTermination.Terminate] =
+  def terminate(processSignal: Option[ProcessSignal] = None): Task[ProgramTermination] =
     if (terminated.isCompleted)  // Works only if previous termination has been run
       Task.fromFuture(terminated)
     else {
@@ -163,7 +162,7 @@ object RunningAgent {
       val webServer = injector.instance[AgentWebServer]
 
       val mainActorReadyPromise = Promise[MainActor.Ready]()
-      val terminationPromise = Promise[AgentTermination.Terminate]()
+      val terminationPromise = Promise[ProgramTermination]()
       val mainActor = actorSystem.actorOf(
         Props { new MainActor(agentConfiguration, injector, mainActorReadyPromise, terminationPromise) },
         "main")

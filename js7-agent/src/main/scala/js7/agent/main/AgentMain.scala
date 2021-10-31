@@ -2,7 +2,6 @@ package js7.agent.main
 
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.AgentTermination
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
@@ -10,6 +9,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
@@ -27,8 +27,9 @@ final class AgentMain
 {
   private val logger = Logger(getClass)
 
-  def run(arguments: CommandLineArguments): AgentTermination.Terminate = {
-    logger.info("JS7 JobScheduler Agent " + BuildInfo.longVersion + // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+  def run(arguments: CommandLineArguments): ProgramTermination = {
+    // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    logger.info("JS7 JobScheduler Agent " + BuildInfo.longVersion +
       "\n" + "━" * 80)  // In case, the previous file is appended
     logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
@@ -36,7 +37,7 @@ final class AgentMain
     logger.info(s"config=${agentConfiguration.configDirectory} data=${agentConfiguration.dataDirectory}")
     logConfig(agentConfiguration.config)
     StartUp.logJavaSettings()
-    var terminated = AgentTermination.Terminate()
+    var terminated = ProgramTermination()
     autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
       withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {
         terminated = agent.terminated.awaitInfinite
@@ -78,7 +79,7 @@ object AgentMain
     _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
     StartUp.initialize()
 
-    var terminated = AgentTermination.Terminate()
+    var terminated = ProgramTermination()
     lockAndRunMain(args) { commandLineArguments =>
       terminated = new AgentMain().run(commandLineArguments)
     }

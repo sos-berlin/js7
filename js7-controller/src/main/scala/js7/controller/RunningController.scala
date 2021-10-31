@@ -30,7 +30,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.{Closer, SetOnce}
+import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -89,7 +89,7 @@ final class RunningController private(
   commandExecutor: ControllerCommandExecutor,
   itemUpdater: ItemUpdater,
   whenReady: Future[Unit],
-  terminated1: Future[ControllerTermination],
+  terminated1: Future[ProgramTermination],
   val testEventBus: StandardEventBus[Any],
   closer: Closer,
   val injector: Injector)
@@ -103,13 +103,13 @@ extends AutoCloseable
   @TestOnly
   lazy val actorSystem = injector.instance[ActorSystem]
 
-  val terminated: Future[ControllerTermination] =
+  val terminated: Future[ProgramTermination] =
     for (o <- terminated1) yield {
       close()
       o
     }
 
-  def terminate(suppressSnapshot: Boolean = false): Task[ControllerTermination] =
+  def terminate(suppressSnapshot: Boolean = false): Task[ProgramTermination] =
     Task.defer {
       if (terminated.isCompleted)  // Works only if previous termination has been completed
         Task.fromFuture(terminated)
@@ -118,7 +118,7 @@ extends AutoCloseable
           case Some(Failure(t)) => Task.raiseError(t)
           case Some(Success(_)) =>
             logger.warn("Controller terminate: Akka has already been terminated")
-            Task.pure(ControllerTermination.Terminate(restart = false))
+            Task.pure(ProgramTermination(restart = false))
           case None =>
             logger.debug("terminate")
             for {
@@ -288,7 +288,7 @@ object RunningController
       GenericSignatureVerifier(controllerConfiguration.config).orThrow,
       ControllerState.signableItemJsonCodec)
     import controllerConfiguration.{akkaAskTimeout, journalMeta}
-    @volatile private var clusterStartupTermination = ControllerTermination.Terminate()
+    @volatile private var clusterStartupTermination = ProgramTermination()
 
     private[RunningController] def start(): Future[RunningController] = {
       val whenRecovered = Future {
@@ -390,7 +390,7 @@ object RunningController
       testEventBus: StandardEventBus[Any])
     : (Cluster[ControllerState],
       Task[Checked[ControllerState]],
-      Task[Either[ControllerTermination.Terminate, ClusterFollowUp[ControllerState]]])
+      Task[Either[ProgramTermination, ClusterFollowUp[ControllerState]]])
     = {
       val cluster = {
         import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
@@ -446,10 +446,10 @@ object RunningController
       workingClusterNode: WorkingClusterNode[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])
-    : Either[ControllerTermination.Terminate, OrderKeeperStarted] =
+    : Either[ProgramTermination, OrderKeeperStarted] =
       followUp match {
         case ClusterFollowUp.BecomeActive(recovered) =>
-          val terminationPromise = Promise[ControllerTermination]()
+          val terminationPromise = Promise[ProgramTermination]()
           val actor = actorSystem.actorOf(
             Props {
               new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
@@ -478,7 +478,7 @@ object RunningController
 
   private class MyCommandExecutor(
     cluster: Cluster[ControllerState],
-    onShutDownBeforeClusterActivated: ControllerTermination.Terminate => Task[Completed],
+    onShutDownBeforeClusterActivated: ProgramTermination => Task[Completed],
     orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends CommandExecutor[ControllerCommand]
@@ -490,7 +490,7 @@ object RunningController
           if (command.clusterAction.nonEmpty && !cluster.isWorkingNode)
             Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else
-            onShutDownBeforeClusterActivated(ControllerTermination.Terminate(restart = command.restart)) >>
+            onShutDownBeforeClusterActivated(ProgramTermination(restart = command.restart)) >>
               orderKeeperActor.flatMap {
                 case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) => Task.pure(Right(ControllerCommand.Response.Accepted))
                 case Left(problem) => Task.pure(Left(problem))
@@ -533,5 +533,5 @@ object RunningController
 
   private case class OrderKeeperStarted(
     actor: ActorRef @@ ControllerOrderKeeper,
-    termination: Future[ControllerTermination])
+    termination: Future[ProgramTermination])
 }
