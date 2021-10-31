@@ -11,12 +11,13 @@ import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
-import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.controller.ControllerCommand.ResetAgent
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.VersionId
@@ -148,6 +149,9 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       Problem("AgentRef is already in state 'Resetting'"),
       Problem("AgentRef is already in state 'Reset'"))
     assert(checked.left.exists(possibleProblems.contains))
+
+    waitForCondition(10.s, 10.ms)(
+      controllerState.pathToAgentRefState(agentPath).couplingState == AgentRefState.Reset)
   }
 
   "Simulate journal deletion at restart" in {
