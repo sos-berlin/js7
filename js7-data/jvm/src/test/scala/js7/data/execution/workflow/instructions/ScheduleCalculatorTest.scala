@@ -209,11 +209,11 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
         AlwaysPeriod)),
       Periodic(1.h, Seq(0.minute, 30.minute)))))
 
-    val calculator = ScheduleCalculator.checked(schedule, zone, dateOffset = 0.s).orThrow
+    val calculator = ScheduleCalculator(schedule, zone, dateOffset = 0.s)
 
     "Winter to summer" in {
       val times = calculator
-        .simulate(TimeInterval(local("2021-03-28T02:30"), 24.h), 3)
+        .simulate(TimeInterval(local("2021-03-28T02:30"), 24.h), limit = 3)
         .scheduledSeq.map(_.next)
 
       assert(times == Seq(
