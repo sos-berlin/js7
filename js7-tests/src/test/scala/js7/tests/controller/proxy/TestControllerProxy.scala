@@ -28,7 +28,7 @@ import scala.util.Try
 private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(implicit scheduler: Scheduler)
 {
   def run(): Task[Unit] =
-    Akkas.actorSystemResource("TestControllerProxy", defaultExecutionContext = scheduler)
+    Akkas.actorSystemResource("TestControllerProxy")
       .use { implicit actorSystem =>
         val apiResource = AkkaHttpControllerApi.resource(controllerUri, userAndPassword)
         val proxyEventBus = new StandardEventBus[ProxyEvent]
@@ -67,7 +67,8 @@ object TestControllerProxy
     CommandLineArguments.parse(args.toSeq) { arguments =>
       val controllerUri = arguments.as[Uri]("--controller-uri=")
       val httpPort = arguments.as[Int]("--http-port=")
-      new TestControllerProxy(controllerUri, httpPort = httpPort).run()
+      new TestControllerProxy(controllerUri, httpPort = httpPort)
+        .run()
         .runSyncUnsafe()
     }
   }

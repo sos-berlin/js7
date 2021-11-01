@@ -147,15 +147,11 @@ object Akkas
       }
   }
 
-  def actorSystemResource(
-    name: String,
-    config: Config = ConfigFactory.empty,
-    defaultExecutionContext: ExecutionContext = ExecutionContext.global):
-  Resource[Task, ActorSystem] =
+  def actorSystemResource(name: String, config: Config = ConfigFactory.empty)
+  : Resource[Task, ActorSystem] =
     Resource.make(
-      acquire = Task { newActorSystem(name, config, defaultExecutionContext) }
-    )(release =
-      actorSystem =>
+      acquire = Task.deferAction(scheduler => Task(newActorSystem(name, config, scheduler))))(
+      release = actorSystem =>
         Task.deferFutureAction { implicit s =>
           logger.debug(s"ActorSystem('$name') terminate ...")
           val since = now
