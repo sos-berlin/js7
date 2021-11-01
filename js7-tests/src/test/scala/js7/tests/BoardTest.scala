@@ -4,6 +4,7 @@ import com.google.inject.{AbstractModule, Provides}
 import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
+import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
@@ -227,6 +228,13 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
 
     val eventId = eventWatch.lastAddedEventId
+
+    assert(controllerApi.executeCommand(DeleteNotice(board.path, NoticeId("UNKNOWN"))).await(99.s) ==
+      Left(UnknownKeyProblem("NoticeId", "NoticeId:UNKNOWN")))
+
+    assert(controllerApi.executeCommand(DeleteNotice(BoardPath("UNKNOWN"), notice.id)).await(99.s) ==
+      Left(UnknownKeyProblem("BoardPath", "Board:UNKNOWN")))
+
     controllerApi.executeCommand(DeleteNotice(board.path, notice.id)).await(99.s).orThrow
     assert(eventWatch.await[NoticeDeleted](_.key == board.path, after = eventId).head.value.event ==
       NoticeDeleted(notice.id))
