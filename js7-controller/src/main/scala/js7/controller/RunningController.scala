@@ -33,6 +33,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
+import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -81,7 +82,7 @@ import shapeless.tag.@@
  */
 final class RunningController private(
   val eventWatch: StrictEventWatch,
-  webServer: ControllerWebServer,
+  webServer: AkkaWebServer with AkkaWebServer.HasUri,
   val recoveredEventId: EventId,
   val itemApi: DirectItemApi,
   val orderApi: OrderApi,

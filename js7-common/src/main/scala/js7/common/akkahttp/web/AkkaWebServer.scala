@@ -40,7 +40,8 @@ trait AkkaWebServer extends AutoCloseable
   protected implicit def actorSystem: ActorSystem
   protected def config: Config
   protected def bindings: Seq[WebServerBinding]
-  protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]): BoundRoute
+  protected def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline])
+  : Task[BoundRoute]
 
   private val shuttingDownPromise = Promise[Completed]()
   protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
@@ -54,7 +55,7 @@ trait AkkaWebServer extends AutoCloseable
   /**
    * @return Future, completed when Agent has been started and is running.
    */
-  def start(): Task[Completed] =
+  def start: Task[Completed] =
     Task.deferAction { scheduler =>
       shutdownTimeout
       this.scheduler := scheduler  // For close()
@@ -81,10 +82,11 @@ trait AkkaWebServer extends AutoCloseable
         clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
   }
 
-  private def bind(binding: WebServerBinding, httpsConnectionContext: Option[HttpsConnectionContext] = None): Task[Http.ServerBinding] =
+  private def bind(
+    binding: WebServerBinding,
+    httpsConnectionContext: Option[HttpsConnectionContext] = None)
+  : Task[Http.ServerBinding] = {
     Task.defer {
-      val whenTerminating = Promise[Deadline]()
-      val boundRoute = newRoute(binding, whenTerminating.future)
       val serverBuilder = akkaHttp
         .newServerAt(
           interface = binding.address.getAddress.getHostAddress,
@@ -96,16 +98,23 @@ trait AkkaWebServer extends AutoCloseable
               ParserSettings(actorSystem)
                 .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)
                 .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize/*js7.conf ???*/)))
-      Task.deferFutureAction { implicit s =>
-        val whenBound = serverBuilder.bind(boundRoute.webServerRoute)
-        whenTerminating.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
-        whenBound
-      } .map { serverBinding =>
-          logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.show}" +
-            boundRoute.boundMessageSuffix)
-          serverBinding
-        }
+
+      val whenTerminating = Promise[Deadline]()
+      for {
+        boundRoute <- newBoundRoute(binding, whenTerminating.future)
+        serverBinding <-
+          Task.deferFutureAction { implicit s =>
+            val whenBound = serverBuilder.bind(boundRoute.webServerRoute)
+            whenTerminating.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
+            whenBound
+          }
+      } yield {
+        logger.info(s"Bound ${ binding.scheme }://${ serverBinding.localAddress.show }" +
+          boundRoute.boundMessageSuffix)
+        serverBinding
+      }
     }
+  }
 
   def close() =
     for (scheduler <- scheduler) {
@@ -167,41 +176,44 @@ object AkkaWebServer
   : AkkaWebServer with HasUri =
     new Standard(
       WebServerBinding.http(port) :: Nil,
-      (_, whenTerminating) => BoundRoute(route, whenTerminating),
-      config withFallback testConfig
-    ) with AkkaWebServer.HasUri
+      config.withFallback(testConfig),
+      (_, whenTerminating) => Task.pure(BoundRoute(route, whenTerminating)))
 
   class Standard(
     protected val bindings: Seq[WebServerBinding],
-    route: (WebServerBinding, Future[Deadline]) => BoundRoute,
-    protected val config: Config = ConfigFactory.empty)
+    protected val config: Config,
+    route: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
     (implicit protected val actorSystem: ActorSystem)
-  extends AkkaWebServer
+  extends AkkaWebServer with HasUri
   {
-    def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+    def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
       route(binding, whenTerminating)
   }
 
   def resourceForHttp(
     httpPort: Int,
     route: Route,
-    config: Config = ConfigFactory.empty)
+    config: Config)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer with HasUri] =
-    resource(WebServerBinding.http(httpPort) :: Nil, (_, whenTerminating) => BoundRoute(route, whenTerminating), config)
+    resource(
+      WebServerBinding.http(httpPort) :: Nil,
+      config,
+      (_, whenTerminating) => Task.pure(BoundRoute(route, whenTerminating)))
 
   def resource(
     bindings: Seq[WebServerBinding],
-    route: (WebServerBinding, Future[Deadline]) => BoundRoute,
-    config: Config = ConfigFactory.empty)
+    config: Config,
+    route: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer with HasUri] =
     Resource.make(
-      Task.defer {
-        val webServer = new Standard(bindings, route, config) with AkkaWebServer.HasUri
-        webServer.start.map(_ => webServer)
-      }
-    )(_.terminate())
+      acquire =
+        Task.defer {
+          val webServer = new Standard(bindings, config, route)
+          webServer.start.map(_ => webServer)
+        })(
+      release = _.terminate())
 
   trait HasUri extends WebServerBinding.HasLocalUris {
     this: AkkaWebServer =>
@@ -209,8 +221,10 @@ object AkkaWebServer
     protected final def webServerPorts = bindings.map(_.toWebServerPort)
   }
 
-  def actorName(prefix: String, binding: WebServerBinding) =
-    s"$prefix-${binding.scheme}-${binding.address.getAddress.getHostAddress}:${binding.address.getPort}"
+  def actorName(prefix: String, binding: WebServerBinding) = {
+    import binding.{address, scheme}
+    s"$prefix-$scheme-${address.getAddress.getHostAddress}:${address.getPort}"
+  }
 
   trait BoundRoute {
     def webServerRoute: Route

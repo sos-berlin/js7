@@ -43,8 +43,8 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 
   private def api = apiOnce.orThrow
 
-  protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-    new AkkaWebServer.BoundRoute with CompleteRoute {
+  protected def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+    Task(new AkkaWebServer.BoundRoute with CompleteRoute {
       private lazy val anonymousApi = api(CommandMeta(
         user = gateKeeperConfiguration.idToUser(UserId.Anonymous)
           .getOrElse(sys.error("Anonymous user has not been defined"))))
@@ -52,8 +52,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri
       protected def whenShuttingDown = whenTerminating
       protected implicit def scheduler: Scheduler = AgentWebServer.this.scheduler
 
-      protected val gateKeeper = new GateKeeper(binding.scheme, gateKeeperConfiguration,
-        isLoopback = binding.address.getAddress.isLoopbackAddress)
+      protected val gateKeeper = GateKeeper(binding, gateKeeperConfiguration)
       protected def sessionRegister = AgentWebServer.this.sessionRegister
 
       protected def agentApi(meta: CommandMeta) = api(meta)
@@ -74,5 +73,5 @@ extends AkkaWebServer with AkkaWebServer.HasUri
 
       override def boundMessageSuffix = gateKeeper.secureStateString
       protected def clusterWatchRegister = AgentWebServer.this.clusterWatchRegister
-    }
+    })
 }

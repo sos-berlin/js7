@@ -30,8 +30,12 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration: Configuration[U], isLoopback: Boolean = false)
-  (implicit U: User.Companion[U],
+final class GateKeeper[U <: User](
+  scheme: WebServerBinding.Scheme,
+  configuration: Configuration[U],
+  isLoopback: Boolean = false)
+  (implicit
+    U: User.Companion[U],
     scheduler: Scheduler,
     /** For `Route` `seal`. */
     exceptionHandler: ExceptionHandler)
@@ -240,6 +244,18 @@ final class GateKeeper[U <: User](scheme: WebServerBinding.Scheme, configuration
 object GateKeeper
 {
   private val logger = Logger(getClass)
+
+  def apply[U <: User: User.Companion](
+    binding: WebServerBinding,
+    conf: Configuration[U])
+    (implicit
+      scheduler: Scheduler,
+      exceptionHandler: ExceptionHandler)
+  : GateKeeper[U] =
+    new GateKeeper(
+      binding.scheme,
+      conf,
+      isLoopback = binding.address.getAddress.isLoopbackAddress)
 
   private def isGet(method: HttpMethod) = method == GET || method == HEAD
 

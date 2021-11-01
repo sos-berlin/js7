@@ -1,6 +1,7 @@
 package js7.tests.controller.proxy
 
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
+import com.typesafe.config.ConfigFactory
 import java.time.LocalDateTime
 import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
@@ -38,7 +39,8 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         val api = new ControllerApi(apiResource :: Nil)
         api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
-            AkkaWebServer.resourceForHttp(httpPort, webServiceRoute(Task(currentState)))
+            AkkaWebServer
+              .resourceForHttp(httpPort, webServiceRoute(Task(currentState)), ConfigFactory.empty)
               .use(_ =>
                 Task.tailRecM(())(_ =>
                   Task {

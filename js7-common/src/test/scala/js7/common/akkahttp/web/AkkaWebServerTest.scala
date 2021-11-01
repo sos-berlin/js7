@@ -26,6 +26,7 @@ import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -64,12 +65,12 @@ final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
       WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) ::
       WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef) :: Nil
 
-    def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-      AkkaWebServer.BoundRoute(
+    def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+      Task(AkkaWebServer.BoundRoute(
         path("TEST") {
           complete("OKAY")
         },
-        whenTerminating)
+        whenTerminating))
   }
 
   override def beforeAll(): Unit = {

@@ -4,14 +4,12 @@ import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.inject.{AbstractModule, Provides}
 import com.typesafe.config.Config
 import javax.inject.Singleton
-import js7.base.auth.{Permission, SimpleUser, UpdateItemPermission}
 import js7.base.eventbus.StandardEventBus
 import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.system.ThreadPools
@@ -42,10 +40,6 @@ extends AbstractModule
   @Provides @Singleton
   def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =
     SessionRegister.start[SimpleSession](actorSystem, SimpleSession.apply, config)
-
-  @Provides @Singleton
-  def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =
-    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, stringToPermission)
 
   @Provides @Singleton
   def executionContext(scheduler: Scheduler): ExecutionContext =
@@ -106,6 +100,4 @@ extends AbstractModule
 
 object ControllerModule {
   private val logger = Logger(getClass)
-  private val stringToPermission = Permission.toStringToPermission(List(
-    UpdateItemPermission))
 }

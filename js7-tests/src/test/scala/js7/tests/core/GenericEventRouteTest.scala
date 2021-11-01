@@ -104,8 +104,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
     protected val config = GenericEventRouteTest.this.config
     protected val bindings = WebServerBinding.Http(
       new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())) :: Nil
-    protected def newRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-      AkkaWebServer.BoundRoute(route, whenTerminating)
+    protected def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
+      Task.pure(AkkaWebServer.BoundRoute(route, whenTerminating))
   }
 
   private lazy val api = new AkkaHttpClient {
