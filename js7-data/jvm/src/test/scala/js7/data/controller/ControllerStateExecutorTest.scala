@@ -11,12 +11,13 @@ import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.ControllerStateExecutorTest._
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
-import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemRemoved}
+import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
@@ -30,33 +31,44 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 
 final class ControllerStateExecutorTest extends AnyFreeSpec
 {
   import ControllerStateExecutorTest.instructionExecutorService
+  import ControllerStateExecutorTest.itemSigner.sign
 
   "resetAgent" in {
     pending // TODO
   }
 
-  private lazy val verifiedUpdateItems = VerifiedUpdateItems(
+  private lazy val stdVerifiedUpdateItems = VerifiedUpdateItems(
     VerifiedUpdateItems.Simple(
       Seq(
         aAgentRef.withRevision(None),
         bAgentRef.withRevision(None),
         lock.withRevision(None)),
       Seq(
-        Verified(itemSigner.sign(aJobResource.withRevision(None)), Nil),
-        Verified(itemSigner.sign(bJobResource.withRevision(None)), Nil)),
+        Verified(sign(aJobResource.withRevision(None)), Nil),
+        Verified(sign(bJobResource.withRevision(None)), Nil)),
       delete = Nil),
     Some(VerifiedUpdateItems.Versioned(
       v1,
       Seq(
-        Verified(itemSigner.sign(aWorkflow), Nil),
-        Verified(itemSigner.sign(bWorkflow), Nil)),
+        Verified(sign(aWorkflow), Nil),
+        Verified(sign(bWorkflow), Nil)),
       remove = Nil)))
+
+  private lazy val stdItems =
+    Set(aAgentRef, bAgentRef, lock, aJobResource, bJobResource, aWorkflow, bWorkflow)
+
+  "stdVerifiedUpdateItems" in {
+    val executor = new Executor(ControllerState.empty)
+    executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems).orThrow
+    assert(executor.controllerState.keyToItem.values.toSet == stdItems)
+  }
 
   "executeVerifiedUpdateItems" - {
     "Add workflow but referenced items are missing" in {
@@ -67,8 +79,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           Some(VerifiedUpdateItems.Versioned(
             v1,
             Seq(
-              Verified(itemSigner.sign(aWorkflow), Nil),
-              Verified(itemSigner.sign(bWorkflow), Nil)),
+              Verified(sign(aWorkflow), Nil),
+              Verified(sign(bWorkflow), Nil)),
             remove = Nil))
         )) == Left(Problem.Combined(Set(
           MissingReferencedItemProblem(aWorkflow.id, aAgentRef.path),
@@ -81,7 +93,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     "Delete AgentRef but it is in use by a workflow" in {
       val executor = new Executor(ControllerState.empty)
 
-      executor.executeVerifiedUpdateItems(verifiedUpdateItems)
+      executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems)
         .orThrow
 
       assert(
@@ -103,7 +115,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     "Delete AgentRef but it is in use by a deleted workflow still containing orders" in {
       val executor = new Executor(ControllerState.empty)
 
-      executor.executeVerifiedUpdateItems(verifiedUpdateItems)
+      executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems)
         .orThrow
 
       val orderId = OrderId("ORDER")
@@ -196,7 +208,7 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
     }
 
     "addOrder with required argument is rejected" in {
-      executor.executeVerifiedUpdateItems(verifiedUpdateItems).orThrow
+      executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems).orThrow
       assert(
         executor.execute(_.addOrders(Seq(
           FreshOrder(aOrderId, aWorkflow.path),
@@ -245,40 +257,89 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
 
     "Add agents, workflows and orders" in {
       assert(
-        VerifiedUpdateItemsExecutor.execute(verifiedUpdateItems, ControllerState.empty) ==
+        VerifiedUpdateItemsExecutor.execute(stdVerifiedUpdateItems, ControllerState.empty) ==
           Right(Seq[AnyKeyedEvent](
-            NoKey <-: SignedItemAdded(itemSigner.sign(aJobResource)),
-            NoKey <-: SignedItemAdded(itemSigner.sign(bJobResource)),
+            NoKey <-: SignedItemAdded(sign(aJobResource)),
+            NoKey <-: SignedItemAdded(sign(bJobResource)),
             NoKey <-: UnsignedSimpleItemAdded(aAgentRef),
             NoKey <-: UnsignedSimpleItemAdded(bAgentRef),
             NoKey <-: UnsignedSimpleItemAdded(lock),
             NoKey <-: VersionAdded(v1),
-            NoKey <-: VersionedItemAdded(itemSigner.sign(aWorkflow)),
-            NoKey <-: VersionedItemAdded(itemSigner.sign(bWorkflow)))))
+            NoKey <-: VersionedItemAdded(sign(aWorkflow)),
+            NoKey <-: VersionedItemAdded(sign(bWorkflow)))))
 
       _controllerState = updated
     }
 
-    //"After VersionedItemRemoved, the unused workflows are deleted" in {
-    //  val executor = new Executor(ControllerState.empty)
-    //
-    //  executor.executeVerifiedUpdateItems(verifiedUpdateItems)
-    //    .orThrow
-    //
-    //  assert(
-    //    executor.applyEventsAndReturnSubsequentEvents(Seq(
-    //      VersionAdded(v2),
-    //      VersionedItemRemoved(aWorkflow.path),
-    //      VersionedItemRemoved(bWorkflow.path))
-    //    ).map(_.toSet) == Right(Set[AnyKeyedEvent](
-    //      NoKey <-: ItemDeleted(aWorkflow.id),
-    //      NoKey <-: ItemDeleted(bWorkflow.id))))
-    //}
+    "After VersionedItemRemoved or VersionItemChanged, the unused workflows are deleted" - {
+      val a2Workflow = aWorkflow.withVersion(v2)
+      val a4Workflow = aWorkflow.withVersion(v4)
+      val executor = new Executor(ControllerState.empty)
+
+      "v1 VersionItemAdded" in {
+        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+          VersionAdded(v1),
+          VersionedItemAdded(sign(aWorkflow))))
+        assert(keyedEvents == Right(Nil))
+
+        assert(executor.toSnapshot == Seq(
+          SnapshotEventId(0),
+          VersionAdded(v1),
+          VersionedItemAdded(sign(aWorkflow))))
+      }
+
+      "v2 VersionItemChanged" in {
+        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+          VersionAdded(v2),
+          VersionedItemChanged(sign(a2Workflow))))
+        assert(keyedEvents == Right(Seq(
+          NoKey <-: ItemDeleted(aWorkflow.id))))
+
+        assert(executor.toSnapshot == Seq(
+          SnapshotEventId(0),
+          VersionAdded(v2),
+          VersionedItemAdded(sign(a2Workflow))))
+      }
+
+      "v3 VersionItemRemoved" in {
+        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+          VersionAdded(v3),
+          VersionedItemRemoved(aWorkflow.path)))
+        assert(keyedEvents == Right(Seq(
+          NoKey <-: ItemDeleted(a2Workflow.id))))
+
+        assert(executor.toSnapshot == Seq(
+          SnapshotEventId(0)))
+      }
+
+      "v4 VersionItemAdded" in {
+        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+          VersionAdded(v4),
+          VersionedItemAdded(sign(a4Workflow))))
+        assert(keyedEvents == Right(Nil))
+
+        assert(executor.toSnapshot == Seq(
+          SnapshotEventId(0),
+          VersionAdded(v4),
+          VersionedItemAdded(sign(a4Workflow))))
+      }
+
+      "v5 VersionItemRemoved" in {
+        val keyedEvents = executor.applyEventsAndReturnSubsequentEvents(Seq(
+          VersionAdded(v5),
+          VersionedItemRemoved(aWorkflow.path)))
+        assert(keyedEvents == Right(Seq(
+          NoKey <-: ItemDeleted(a4Workflow.id))))
+
+        assert(executor.toSnapshot == Seq(
+          SnapshotEventId(0)))
+      }
+    }
 
     "Workflow is deleted after last OrderDeleted" in {
       val executor = new Executor(ControllerState.empty)
 
-      executor.executeVerifiedUpdateItems(verifiedUpdateItems)
+      executor.executeVerifiedUpdateItems(stdVerifiedUpdateItems)
         .orThrow
 
       assert(
@@ -461,6 +522,8 @@ object ControllerStateExecutorTest
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")
+  private val v4 = VersionId("4")
+  private val v5 = VersionId("5")
 
   private val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ v1, Seq(execute(aAgentRef.path)))
 
@@ -507,10 +570,17 @@ object ControllerStateExecutorTest
       } yield events
 
     def applyEventsAndReturnSubsequentEvents(keyedEvents: Seq[KeyedEvent[Event]])
-    : Checked[Seq[KeyedEvent[Event]]] =
-      for (eventsAndState <- controllerState.applyEventsAndReturnSubsequentEvents(keyedEvents)) yield {
-        controllerState = eventsAndState.controllerState
-        eventsAndState.keyedEvents.toVector
-      }
+    : Checked[Seq[KeyedEvent[Event]]] = {
+      val result =
+        for (eventsAndState <- controllerState.applyEventsAndReturnSubsequentEvents(keyedEvents)) yield {
+          controllerState = eventsAndState.controllerState
+          eventsAndState.keyedEvents.toVector
+        }
+      assert(controllerState.toRecovered.runSyncUnsafe() == controllerState)
+      result
+    }
+
+    def toSnapshot: Seq[Any] =
+      controllerState.toSnapshotObservable.toListL.runSyncUnsafe()
   }
 }

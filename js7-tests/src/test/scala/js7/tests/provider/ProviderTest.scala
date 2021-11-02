@@ -190,7 +190,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
       provider.updateControllerConfiguration(V3.some).await(99.s).orThrow
-      assert(checkedRepo.map(_.versions) == Right(V3 :: V2 :: V1 :: Nil))
+      assert(checkedRepo.map(_.versions) == Right(V2 :: Nil))
       assert(checkedRepo.map(_.pathToVersionToSignedItems) == Right(Map(
         AWorkflowPath -> List(
           Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
