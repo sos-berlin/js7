@@ -235,7 +235,7 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      "com.softwaremill.diffx" %%% "diffx-core" % diffxVersion ++
+      diffx ++
       "com.outr" %%% "scribe" % scribeVersion ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++

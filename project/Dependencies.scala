@@ -27,7 +27,7 @@ object Dependencies
   val scribeVersion = "3.5.5"
   val scalaJsDomVersion = "1.2.0"
   val shapelessVersion = "2.3.7"
-  val diffxVersion = "0.5.6"
+  val diffxVersion = "0.6.0"
   val reactorVersion = "3.4.10"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.9.0"
