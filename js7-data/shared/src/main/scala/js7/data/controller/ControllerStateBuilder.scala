@@ -13,7 +13,7 @@ import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, JournaledState, JournaledStateBuilder, KeyedEvent, Stamped}
-import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -134,7 +134,7 @@ with StateView
     case snapshot: OrderWatchState.ExternalOrderSnapshot =>
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
-    case ItemAttachedStateChanged(key: InventoryItemKey, agentPath, attachedState: NotDetached) =>
+    case ItemAttachedStateEvent(key: InventoryItemKey, agentPath, attachedState: NotDetached) =>
       itemToAgentToAttachedState +=
         key -> (itemToAgentToAttachedState.getOrElse(key, Map.empty) + (agentPath -> attachedState))
 
@@ -233,7 +233,7 @@ with StateView
 
         case event: BasicItemEvent.ForController =>
           event match {
-            case ItemAttachedStateChanged(itemKey, agentPath, attachedState) =>
+            case ItemAttachedStateEvent(itemKey, agentPath, attachedState) =>
               attachedState match {
                 case attachedState: NotDetached =>
                   itemToAgentToAttachedState += itemKey ->

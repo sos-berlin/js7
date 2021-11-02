@@ -12,7 +12,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeleted, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttachedStateEvent, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
