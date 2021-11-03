@@ -29,13 +29,11 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           calendarExecutor <- CalendarExecutor.checked(calendar)
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
         } yield {
-          val cycleState = calculator.nextCycleState(
-            CycleState(
-              next = timeInterval.start,
-              end = timeInterval.end,
-              schemeIndex = -1,
-              index = 0),
-            now)
+          val cycleState = calculator.nextCycleState(now, CycleState(
+                        next = timeInterval.start,
+                        end = timeInterval.end,
+                        schemeIndex = -1,
+                        index = 0))
           nextCycleStateToEvent(cycleState, order)
         }))
       .orElse(order.ifState[BetweenCycles].map(order =>
@@ -46,7 +44,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
 
           case Some(cycleState) =>
             toScheduleCalculator(order, cycle, state)
-              .flatMap(_.maybeRecalcCycleState(cycleState, now))
+              .flatMap(_.maybeRecalcCycleState(now, cycleState))
               .map {
                 case None =>
                   // cycleState is still valid
@@ -82,7 +80,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       cycleState <- branchId.toCycleState
     } yield
       order.id <-: OrderCycleFinished(
-        calculator.nextCycleState(cycleState, clock.now()))
+        calculator.nextCycleState(clock.now(), cycleState))
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
     for (pair <- toCalendarAndScheduleCalculator(order, cycle, state)) yield

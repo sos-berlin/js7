@@ -18,7 +18,7 @@ trait ScheduleSimulator {
     val builder = new VectorBuilder[Scheduled]
 
     @tailrec def loop(cycleState: CycleState, i: Int): Unit =
-      nextCycleState(cycleState, clock.now()) match {
+      nextCycleState(clock.now(), cycleState) match {
         case Some(nextCycleState) if i <= limit =>
           builder += Scheduled(clock.now(), nextCycleState)
           if (nextCycleState.next >= clock.now()) {

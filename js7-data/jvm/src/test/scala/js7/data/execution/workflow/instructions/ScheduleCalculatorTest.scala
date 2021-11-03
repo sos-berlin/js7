@@ -42,34 +42,34 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
         val first = cs.copy(next = Timestamp("2021-10-01T09:05:00Z"), index = 1)
 
         "now < first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T08:00:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T08:00:00Z"), initialCycleState) ==
             Some(first))
         }
 
         "now == first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T09:05:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:05:00Z"), initialCycleState) ==
             Some(first))
         }
 
         "now > first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T09:06:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:06:00Z"), initialCycleState) ==
             Some(first))
         }
 
         "now == second" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T09:10:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:10:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T09:10:00Z"), index = 1)))
         }
 
         "now > second" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T09:59:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:59:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T09:10:00Z"), index = 1)))
         }
 
         "now >>> first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T10:05:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T10:05:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 1)))
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T10:06:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T10:06:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 1)))
         }
       }
@@ -79,42 +79,42 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
         val next = cs.copy(next = Timestamp("2021-10-01T09:10:00Z"), index = 2)
 
         "now < first (only if clock has been manipulated)" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T08:00:00Z")) == Some(next))
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T08:00:00Z"), last) == Some(next))
         }
 
         "now == last next (zero execution time)" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T09:05:00Z")) == Some(next))
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:05:00Z"), last) == Some(next))
         }
 
         "now < next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T09:09:00Z")) == Some(next))
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:09:00Z"), last) == Some(next))
         }
 
         "now == next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T09:10:00Z")) == Some(next))
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:10:00Z"), last) == Some(next))
         }
 
         "now > next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T09:30:00Z")) == Some(next))
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T09:30:00Z"), last) == Some(next))
         }
 
         "now >> next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T10:05:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T10:05:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 2)))
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T10:06:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T10:06:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 2)))
         }
 
         "now >>> next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T10:10:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T10:10:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T10:10:00Z"), index = 2)))
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T10:11:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T10:11:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T10:10:00Z"), index = 2)))
         }
 
         "At end of this scheme, change to next 12:00 Ticking scheme" in {
           val last = cs.copy(next = Timestamp("2021-10-01T10:10:00Z"), index = 2)
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T10:11:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T10:11:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1, schemeIndex = 1)))
         }
       }
@@ -131,27 +131,27 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
         val initialCycleState = cs.copy(schemeIndex = -1)
 
         "now < first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T11:00:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T11:00:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)))
         }
 
         "now == first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T12:00:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:00:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)))
         }
 
         "now > first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T12:01:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:01:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)))
         }
 
         "now >> first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T12:11:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:11:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)))
         }
 
         "now >>> first" in {
-          assert(calculator.nextCycleState(initialCycleState, Timestamp("2021-10-01T12:59:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:59:00Z"), initialCycleState) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)))
         }
       }
@@ -160,41 +160,41 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
         val last = cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)
 
         "now < first (only if clock has been manipulated)" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T11:00:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T11:00:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:15:00Z"), index = 2)))
         }
 
         "now == last next (zero execution time)" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:00:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:00:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:15:00Z"), index = 2)))
         }
 
         "now < next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:14:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:14:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:15:00Z"), index = 2)))
         }
 
         "now == next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:15:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:15:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:15:00Z"), index = 2)))
         }
 
         "now > next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:29:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:29:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:15:00Z"), index = 2)))
         }
 
         "now >> next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:30:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:30:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:30:00Z"), index = 2)))
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:31:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:31:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:30:00Z"), index = 2)))
         }
 
         "now >>> next" in {
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:45:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:45:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:45:00Z"), index = 2)))
-          assert(calculator.nextCycleState(last, Timestamp("2021-10-01T12:46:00Z")) ==
+          assert(calculator.nextCycleState(Timestamp("2021-10-01T12:46:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:45:00Z"), index = 2)))
         }
       }

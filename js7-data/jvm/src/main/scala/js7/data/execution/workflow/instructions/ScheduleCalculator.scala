@@ -13,14 +13,11 @@ import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
 import scala.concurrent.duration._
 
-private[instructions] final class ScheduleCalculator(
-  schedule: Schedule,
-  zone: ZoneId,
-  dateOffset: FiniteDuration)
+final class ScheduleCalculator(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration)
 extends ScheduleSimulator
 {
-  def nextCycleState(cycleState: CycleState, now: Timestamp): Option[CycleState] =
-    for ((schemeIndex, next) <- nextCycle(cycleState, now)) yield
+  def nextCycleState(now: Timestamp, cycleState: CycleState): Option[CycleState] =
+    for ((schemeIndex, next) <- nextCycle(now, cycleState)) yield
       cycleState.copy(
         schemeIndex = schemeIndex,
         index =
@@ -35,14 +32,14 @@ extends ScheduleSimulator
    * @return Right(None) iff `cycleState` is still valid
    *         Right(Some(None)) iff `Cycle` has been finished
    */
-  def maybeRecalcCycleState(cycleState: CycleState, now: Timestamp)
+  def maybeRecalcCycleState(now: Timestamp, cycleState: CycleState)
   : Checked[Option[Option[CycleState]]] =
     for (scheme <- schedule.schemes.checked(cycleState.schemeIndex)) yield
       !scheme.admissionTimeScheme.isPermitted(now max cycleState.next, zone, dateOffset) ?
-        nextCycleState(cycleState, now)
+        nextCycleState(now, cycleState)
 
   /** Returns schemeIndex and Timestamp. */
-  private def nextCycle(cycleState: CycleState, now: Timestamp): Option[(Int, Timestamp)] =
+  private def nextCycle(now: Timestamp, cycleState: CycleState) =
     schedule.schemes.view.zipWithIndex
       // For each Scheme
       .flatMap { case (scheme, schemeIndex) =>
