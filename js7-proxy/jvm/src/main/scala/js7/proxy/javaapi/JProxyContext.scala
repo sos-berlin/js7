@@ -6,7 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.log.Logger
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas

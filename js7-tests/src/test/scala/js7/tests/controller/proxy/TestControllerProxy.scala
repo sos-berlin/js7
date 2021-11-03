@@ -7,7 +7,7 @@ import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments

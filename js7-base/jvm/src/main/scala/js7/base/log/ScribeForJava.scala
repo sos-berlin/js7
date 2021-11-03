@@ -6,7 +6,7 @@ import scribe.output.LogOutput
 import scribe.output.format.OutputFormat
 import scribe.{Level, LogRecord}
 
-object ScribeUtils
+object ScribeForJava
 {
   private var initialized = false
   private val classToLoggerCache = new ConcurrentHashMap[String, org.slf4j.Logger]

@@ -6,7 +6,7 @@ import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileModified}
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._

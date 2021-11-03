@@ -4,7 +4,7 @@ import java.util.concurrent.CancellationException
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX

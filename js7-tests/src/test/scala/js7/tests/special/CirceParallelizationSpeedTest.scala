@@ -5,7 +5,7 @@ import io.circe.syntax._
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.monixutils.MonixBase
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked._

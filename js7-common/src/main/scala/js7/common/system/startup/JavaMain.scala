@@ -2,7 +2,7 @@ package js7.common.system.startup
 
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{Log4j, Logger}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.message.ProblemCodeMessages

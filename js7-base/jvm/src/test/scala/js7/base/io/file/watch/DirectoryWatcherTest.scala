@@ -7,7 +7,7 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask

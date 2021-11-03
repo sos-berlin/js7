@@ -7,7 +7,7 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition

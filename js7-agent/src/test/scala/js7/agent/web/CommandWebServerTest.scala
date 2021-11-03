@@ -10,7 +10,7 @@ import js7.agent.data.commands.AgentCommand._
 import js7.agent.web.CommandWebServerTest._
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs._
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer

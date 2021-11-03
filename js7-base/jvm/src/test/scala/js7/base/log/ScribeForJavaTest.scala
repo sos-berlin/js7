@@ -8,9 +8,9 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-final class ScribeUtilsTest extends AnyFreeSpec
+final class ScribeForJavaTest extends AnyFreeSpec
 {
-  ScribeUtils.coupleScribeWithSlf4j()
+  ScribeForJava.coupleScribeWithSlf4j()
 
   private val scribeLogger = scribe.Logger(getClass.getName)
   private val logger = Logger(getClass)

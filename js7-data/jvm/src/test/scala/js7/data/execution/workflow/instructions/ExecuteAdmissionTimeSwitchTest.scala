@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime._

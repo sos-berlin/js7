@@ -11,7 +11,7 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAny

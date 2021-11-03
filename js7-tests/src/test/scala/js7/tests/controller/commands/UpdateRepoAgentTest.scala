@@ -5,7 +5,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.log.ScribeUtils.coupleScribeWithSlf4j
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits._
