@@ -59,7 +59,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .toObservable
                   .pipeIf(logger.underlying.isDebugEnabled)(_.map { o => byteCount += o.length; o })
                   .flatMap(new ByteSequenceToLinesObservable)
-                  .mapParallelUnorderedBatch()(_
+                  .mapParallelOrderedBatch()(_
                     .parseJsonAs[ItemOperation].orThrow)
                 VerifiedUpdateItems.fromOperations(operations, verify, user)
                   .flatMapT { verifiedUpdateItems =>
