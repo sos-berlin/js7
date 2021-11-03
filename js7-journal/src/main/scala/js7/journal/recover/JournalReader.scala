@@ -127,7 +127,7 @@ extends AutoCloseable
   private[recover] def readSnapshot: Observable[Any] =
     journalHeader +:
       Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
-        .mapParallelOrderedBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).toChecked.orThrow)
+        .mapParallelBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).toChecked.orThrow)
 
   private[recover] def readSnapshotRaw: Observable[ByteArray] =
     ByteArray(journalHeader.asJson.compactPrint + '\n'/*for application/x-ndjson*/) +:

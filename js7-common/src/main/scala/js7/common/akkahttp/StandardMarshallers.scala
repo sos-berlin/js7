@@ -55,7 +55,7 @@ object StandardMarshallers
     HttpEntity(
       `application/json`,
       observable
-        .mapParallelOrderedBatch()(o => o.asJson.toByteSequence[ByteString])
+        .mapParallelBatch()(o => o.asJson.toByteSequence[ByteString])
         .intersperse(ByteString("["), ByteString(","), ByteString("]"))
         .toAkkaSourceForHttpResponse)
 

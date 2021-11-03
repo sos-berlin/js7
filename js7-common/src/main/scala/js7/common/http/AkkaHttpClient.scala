@@ -96,7 +96,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   : Task[Observable[A]] =
     getRawLinesObservable(uri)
       .map(_
-        .mapParallelOrderedBatch(
+        .mapParallelBatch(
           batchSize = jsonReadAhead / sys.runtime.availableProcessors,
           responsive = responsive)(
           _.parseJsonAs[A].orThrow))
@@ -152,7 +152,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     (implicit s: Task[Option[SessionToken]])
   : Task[B] =
     data
-      .mapParallelOrderedBatch()(_
+      .mapParallelBatch()(_
         .asJson.toByteSequence[ByteString]
         .concat(LF)
         .chunk(chunkSize))

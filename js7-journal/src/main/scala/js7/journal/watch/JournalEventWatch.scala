@@ -230,7 +230,7 @@ with JournalingObserver
 
   def snapshotAfter(after: EventId) =
     rawSnapshotAfter(after)
-      .map(_.mapParallelOrderedBatch()(_.parseJsonAs(journalMeta.snapshotJsonCodec).orThrow))
+      .map(_.mapParallelBatch()(_.parseJsonAs(journalMeta.snapshotJsonCodec).orThrow))
 
   def rawSnapshotAfter(after: EventId) =
     currentEventReaderOption match {

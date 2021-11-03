@@ -76,7 +76,7 @@ extends AutoCloseable
     // TODO Try to call it asynchronously (in JournalActor)
     implicit val s = scheduler
     Observable.fromIterable(seq)
-      .mapParallelOrderedBatch(batchSize = JsonBatchSize)(
+      .mapParallelBatch(batchSize = JsonBatchSize)(
         serialize[A])
       .foreachL(jsonWriter.write)
       .runSyncUnsafe() /*Blocking !!!*/

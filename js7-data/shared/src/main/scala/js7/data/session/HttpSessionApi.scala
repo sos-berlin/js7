@@ -101,7 +101,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
         .logTiming(_.length, startedAt = startedAt, onComplete = (d, n, exitCase) =>
           logger.debug(s"$S snapshot receive $exitCase - ${bytesPerSecondString(d, n)}"))
         .map(_
-          .mapParallelOrderedBatch()(_
+          .mapParallelBatch()(_
             .parseJsonAs(S.snapshotObjectJsonCodec).orThrow))
         .logTiming(startedAt = startedAt, onComplete = (d, n, exitCase) =>
           logger.debug(s"$S snapshot receive $exitCase - ${itemsPerSecondString(d, n, "objects")}"))

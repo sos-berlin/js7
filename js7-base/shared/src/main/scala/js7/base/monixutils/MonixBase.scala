@@ -152,7 +152,7 @@ object MonixBase
           timeout, onlyOnce = false, heartbeatValue
         ).drop(1)  // Remove inserted initial heartbeat
 
-      def mapParallelOrderedBatch[B](
+      def mapParallelBatch[B](
         batchSize: Int = DefaultBatchSize,
         responsive: Boolean = false,
         parallelism: Int = sys.runtime.availableProcessors)

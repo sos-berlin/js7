@@ -319,7 +319,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
             s"position=${continuation.fileLength}) failed with ${t.toStringWithCauses}", t)
         })
         // detectPauses here ???
-        .mapParallelOrderedBatch(
+        .mapParallelBatch(
           batchSize = jsonReadAhead / sys.runtime.availableProcessors,
           responsive = true)(
           positionAndLine =>

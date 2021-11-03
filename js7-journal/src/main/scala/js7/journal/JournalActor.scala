@@ -535,7 +535,7 @@ extends Actor with Stash with JournalLogging
           case SnapshotEventId(_) => false  // JournalHeader contains already the EventId
           case _ => true
         }
-        .mapParallelOrderedBatch() { snapshotObject =>
+        .mapParallelBatch() { snapshotObject =>
           // TODO Crash with SerializationException like EventSnapshotWriter ?
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         }

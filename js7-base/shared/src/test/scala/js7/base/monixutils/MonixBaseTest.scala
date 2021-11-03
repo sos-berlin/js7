@@ -306,7 +306,7 @@ final class MonixBaseTest extends AsyncFreeSpec
         .runToFuture
     }
 
-    "mapParallelOrderedBatch" in {
+    "mapParallelBatch" in {
       val n = 7777
       Observable.range(0, n)
         .mapParallelOrdered(sys.runtime.availableProcessors)(o => Task(o * -1))

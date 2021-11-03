@@ -107,25 +107,25 @@ final class CirceParallelizationSpeedTest extends AnyFreeSpec
 
   private def encodeParallelBatch[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
     Observable.fromIterable(seq)
-      .mapParallelOrderedBatch()(encode[A](_))
+      .mapParallelBatch()(encode[A](_))
       .toListL
       .await(99.s)
 
   private def decodeParallelBatch[A: Decoder](seq: Seq[ByteArray]): Seq[A] =
     Observable.fromIterable(seq)
-      .mapParallelOrderedBatch()(decode[A])
+      .mapParallelBatch()(decode[A])
       .toListL
       .await(99.s)
 
   private def encodeParallel[A: Encoder](seq: Seq[A]): Seq[ByteArray] =
     Observable.fromIterable(seq)
-      .mapParallelOrderedBatch()(encode[A](_))
+      .mapParallelBatch()(encode[A](_))
       .toListL
       .await(99.s)
 
   private def decodeParallel[A: Decoder](seq: Seq[ByteArray]): Seq[A] =
     Observable.fromIterable(seq)
-      .mapParallelOrderedBatch()(bytes => decode(bytes))
+      .mapParallelBatch()(bytes => decode(bytes))
       .toListL
       .await(99.s)
 
