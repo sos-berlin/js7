@@ -32,16 +32,16 @@ extends Actor {
   private val tokenToSession = mutable.Map.empty[SessionToken, S]
   private var nextCleanup: Cancelable = null
 
-  override def postStop(): Unit = {
-    val openSessionsString = tokenToSession.values
-      .groupBy(_.currentUser.id)
-      .view.mapValues(_.toVector.sortBy(_.sessionNumber))
-      .toVector.sortBy(_._1)
-      .view
-      .map { case (u, s) => s.map(_.sessionToken.short).mkString(" ") + ":" + u.string }
-      .mkString(" ")
-    logger.debug(s"postStop: ${tokenToSession.size} open sessions: $openSessionsString")
+  override def postStop() = {
     if (nextCleanup != null) nextCleanup.cancel()
+    tokenToSession.values
+      .groupMap(_.currentUser.id)(_.sessionToken)
+      .view.mapValues(_.toVector.sortBy(_.number))
+      .toVector.sortBy(_._1)
+      .foreach { case (userId, sessionTokens) =>
+        logger.debug(sessionTokens.size + " open sessions for " + userId +
+          sessionTokens.view.mkString(" (", " ", ")"))
+      }
     super.postStop()
   }
 

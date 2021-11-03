@@ -65,14 +65,14 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   .flatMapT { verifiedUpdateItems =>
                     val itemCount = verifiedUpdateItems.itemCount
                     val d = startedAt.elapsed
-                    if (d > 1.s) logger.debug(s"post controller/api/item received and verified - " +
+                    if (d > 1.s) logger.debug(s"POST controller/api/item received and verified - " +
                       itemsPerSecondString(d, itemCount, "items") + " · " +
                       bytesPerSecondString(d, byteCount))
 
                     itemUpdater
                       .updateItems(verifiedUpdateItems)
                       .map { o =>
-                        if (startedAt.elapsed > 1.s) logger.debug("post controller/api/item totally: " +
+                        if (startedAt.elapsed > 1.s) logger.debug("POST controller/api/item totally: " +
                           itemsPerSecondString(startedAt.elapsed, itemCount, "items"))
                         o
                       }
