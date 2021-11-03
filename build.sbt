@@ -328,7 +328,10 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   }
 
 lazy val `js7-data-for-java` = project
-  .dependsOn(`js7-data`.jvm, `js7-tester`.jvm % "test")
+  .dependsOn(
+    `js7-data`.jvm,
+    `js7-data`.jvm % "test->test",
+    `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
