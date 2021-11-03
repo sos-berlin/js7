@@ -9,9 +9,13 @@ import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
-final class AsyncLock private(name: String, warnTimeouts: IterableOnce[FiniteDuration])
+final class AsyncLock private(
+  name: String,
+  warnTimeouts: IterableOnce[FiniteDuration],
+  suppressLog: Boolean)
 {
   private val lockM = MVar[Task].empty[String]().memoize
+  private val log = if (suppressLog) ScribeUtils.emptyLogger else logger
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
     lock(src.value)(task)
@@ -34,7 +38,7 @@ final class AsyncLock private(name: String, warnTimeouts: IterableOnce[FiniteDur
             Task.tailRecM(())(_ =>
               mvar.tryRead.flatMap {
                 case Some(lockedBy) =>
-                  logger.debug(s"$acquirer is waiting for $toString (currently locked by $lockedBy)")
+                  log.debug(s"$acquirer is waiting for $toString (currently locked by $lockedBy)")
                   mvar.put(acquirer)
                     .whenItTakesLonger(warnTimeouts)(duration =>
                       for (lockedBy <- mvar.tryRead) yield logger.info(
@@ -42,7 +46,7 @@ final class AsyncLock private(name: String, warnTimeouts: IterableOnce[FiniteDur
                           s" (currently locked by ${lockedBy.getOrElse("None")})" +
                           s" for ${duration.pretty} ..."))
                     .map { _ =>
-                      logger.debug(s"$acquirer acquired $toString after ${since.elapsed.pretty}")
+                      log.debug(s"$acquirer acquired $toString after ${since.elapsed.pretty}")
                       Right(())
                     }
                 case None =>  // Lock has just become available
@@ -53,11 +57,11 @@ final class AsyncLock private(name: String, warnTimeouts: IterableOnce[FiniteDur
                       Right(())  // The lock is ours!
               })
           }))
-      .map(_ => logger.trace(s"$acquirer acquired $toString"))
+      .map(_ => log.trace(s"$acquirer acquired $toString"))
 
   private def release(acquirer: String): Task[Unit] =
     Task.defer {
-      logger.trace(s"$acquirer releases $toString")
+      log.trace(s"$acquirer releases $toString")
       lockM.flatMap(_.take).void
     }
 
@@ -68,6 +72,10 @@ object AsyncLock
 {
   private val logger = scribe.Logger[this.type]
 
-  def apply(name: String, logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations) =
-    new AsyncLock(name, logWorryDurations)
+  def apply(
+    name: String,
+    logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations,
+    suppressLog: Boolean = false)
+  =
+    new AsyncLock(name, logWorryDurations, suppressLog)
 }

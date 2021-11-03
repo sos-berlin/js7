@@ -16,7 +16,7 @@ final class AsyncLockTest extends AsyncFreeSpec
   private val initial = 1
 
   "AsyncLock, concurrent" in {
-    val lock = AsyncLock("TEST", logWorryDurations = Nil)
+    val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = true)
     doTest(lock.lock(_))
       .map(o => assert(o == Vector.fill(n)(initial)))
       .runToFuture
@@ -29,7 +29,7 @@ final class AsyncLockTest extends AsyncFreeSpec
   }
 
   "AsyncLock, not concurrent" in {
-    val lock = AsyncLock("TEST", logWorryDurations = Nil)
+    val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = true)
     Observable.fromIterable(1 to n)
       .map(_ => lock.lock(Task.unit))
       .completedL
