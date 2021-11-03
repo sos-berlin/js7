@@ -213,8 +213,10 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
 
     "Winter to summer" in {
       val times = calculator
-        .simulate(TimeInterval(local("2021-03-28T02:30"), 24.h), limit = 3)
-        .scheduledSeq.map(_.next)
+        .simulate(TimeInterval(local("2021-03-28T02:30"), 24.h))
+        .take(3)
+        .map(_.next)
+        .toSeq
 
       assert(times == Seq(
         local("2021-03-28T03:00"),
@@ -229,8 +231,10 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
 
     "Summer to winter" in {
       val times = calculator
-        .simulate(TimeInterval(local("2021-10-31T02:30"), 24.h), 3)
-        .scheduledSeq.map(_.next)
+        .simulate(TimeInterval(local("2021-10-31T02:30"), 24.h))
+        .take(3)
+        .map(_.next)
+        .toSeq
 
       assert(times == Seq(
         local("2021-10-31T03:00"),
@@ -245,14 +249,14 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
   }
 
   "ScheduleTest example" - {
-    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
       val result =
         ScheduleCalculator(exampleSchedule, zone, dateOffset = ScheduleTester.dateOffset)
-          .simulate(timeInterval, limit = 1000, jobExecutionTime = cycleDuration)
-      assert(result.scheduledSeq
-        .map(scheduled => scheduled.arriveAt -> scheduled.cycleState)
+          .simulate(timeInterval, actionDuration = cycleDuration)
+      assert(result
+        .map(scheduled => scheduled.arrival -> scheduled.cycleState)
+        .toSeq
         == expected)
-      assert(result.exitAt == exitTimestamp)
     }
   }
 }

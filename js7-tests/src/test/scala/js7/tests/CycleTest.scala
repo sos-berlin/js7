@@ -374,8 +374,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     // Test the js7-data CycleTest JSON example.
     clock.resetTo(local("2021-10-01T00:00"))
 
-    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
-      val end = timeInterval.end // ???
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
       val expectedCycleStartTimes = expected
         .map { case (cycleWaitTimestamp, cycleState) =>
           cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
@@ -408,7 +407,9 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       }
       assert(cycleStartedTimes.result() == expectedCycleStartTimes)
 
-      clock := exitTimestamp
+      for (ts <- cycleStartedTimes.result().lastOption) {
+        clock := ts + cycleDuration
+      }
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
   }

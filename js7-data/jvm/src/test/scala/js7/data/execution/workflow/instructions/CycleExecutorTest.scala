@@ -301,18 +301,16 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
   }
 
   "CycleTest example" - {
-    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected, exitTimestamp) =>
+    addStandardScheduleTests { (timeInterval, cycleDuration, zone, expected) =>
       val expectedCycleStartTimes = expected
         .map { case (cycleWaitTimestamp, cycleState) =>
           cycleWaitTimestamp max cycleState.next  // Expected time of OrderCycleStart
         }
-      assert(testCycle(timeInterval, cycleDuration, zone) ==
-        expectedCycleStartTimes -> exitTimestamp)
+      assert(testCycle(timeInterval, cycleDuration, zone) == expectedCycleStartTimes)
     }
 
     def testCycle(timeInterval: TimeInterval, cycleDuration: FiniteDuration, zone: ZoneId)
-    : (Seq[Timestamp], Timestamp) = {
-      val end = timeInterval.end // ???
+    : Seq[Timestamp] = {
       val clock = TestWallClock(timeInterval.start)
       val stepper = new Stepper(
         OrderId("#" + timeInterval.start.toLocalDateTime(zone).toLocalDate + "#"),
@@ -346,7 +344,7 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
             }
           }
       }
-      builder.result() -> clock.now()
+      builder.result()
     }
   }
 
