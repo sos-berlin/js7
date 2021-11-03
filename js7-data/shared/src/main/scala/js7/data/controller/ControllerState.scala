@@ -23,7 +23,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta, SnapshotableState}
-import js7.data.item.BasicItemEvent.{ItemAttachedStateChanged, ItemDeleted, ItemDeletionMarked, ItemDetachable}
+import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
@@ -101,7 +101,7 @@ with SnapshotableState[ControllerState]
         .to(View)
         .flatMap { case (key, agentToAttached) =>
           agentToAttached.map { case (agentPath, attachedState) =>
-            ItemAttachedStateChanged(key, agentPath, attachedState)
+            ItemAttachedStateEvent(key, agentPath, attachedState)
           }
         }),
       Observable.fromIterable(deletionMarkedItems.map(ItemDeletionMarked(_))),
@@ -209,7 +209,7 @@ with SnapshotableState[ControllerState]
 
         case event: BasicItemEvent.ForController =>
           event match {
-            case ItemAttachedStateChanged(itemKey, agentPath, attachedState) =>
+            case ItemAttachedStateEvent(itemKey, agentPath, attachedState) =>
               attachedState match {
                 case attachedState: NotDetached =>
                   Right(copy(

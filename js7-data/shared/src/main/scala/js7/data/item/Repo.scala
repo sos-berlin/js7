@@ -25,7 +25,8 @@ final case class Repo private(
   versions: List[VersionId],
   versionSet: Set[VersionId],
   pathToVersionToSignedItems: Map[VersionedItemPath, List[Entry]],
-  signatureVerifier: Option[SignatureVerifier])
+  signatureVerifier: Option[SignatureVerifier],
+  selfTest: Boolean = false)
 {
   assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
 
@@ -183,17 +184,37 @@ final case class Repo private(
     } yield path ~ v
 
   def deleteItem(id: VersionedItemId_): Checked[Repo] =
-    for (entries <- pathToVersionToSignedItems
-      .checked(id.path)
-      .map(_.filter(_.versionId != id.versionId))) yield
+    for (entries <- pathToVersionToSignedItems.checked(id.path)) yield {
+      val reverseEntries = entries.toVector.reverse
+      val updatedEntries = reverseEntries
+        .view
+        .filter(_.versionId != id.versionId)
+        .dropWhile(_.isRemoved)
+        .toVector
       copy(
         pathToVersionToSignedItems =
-          entries match {
-            case Nil | Entry(_, None) :: Nil => pathToVersionToSignedItems - id.path
-            case entries => pathToVersionToSignedItems + (id.path -> entries)
-          })
+          if (updatedEntries.isEmpty)
+            pathToVersionToSignedItems - id.path
+          else
+            pathToVersionToSignedItems + (id.path -> updatedEntries.view.reverse.toList),
+      ).deleteEmptyVersions(
+        versionIds = reverseEntries
+          .view
+          .take(reverseEntries.length - updatedEntries.length)
+          .map(_.versionId)
+          .concat(id.versionId :: Nil)
+          .toSet)
+    }
 
-  def applyEvents(events: Seq[VersionedEvent]): Checked[Repo] = {
+  private def deleteEmptyVersions(versionIds: Set[VersionId]): Repo =
+    if (pathToVersionToSignedItems.forall(_._2.forall(entry => !versionIds(entry.versionId))))
+      copy(
+        versions = versions.filterNot(versionIds),
+        versionSet = versionSet -- versionIds)
+    else
+      this
+
+  def applyEvents(events: Iterable[VersionedEvent]): Checked[Repo] = {
     var result = Checked(this)
     val iterator = events.iterator
     while (result.isRight && iterator.hasNext) {
@@ -370,6 +391,23 @@ final case class Repo private(
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
   def toEvents: View[VersionedEvent] = {
+    val events = toEvents0
+    if (selfTest) {
+      for (problem <- selfTestEvents(events).left) throw new AssertionError(problem.toString)
+    }
+    events
+  }
+
+  private def selfTestEvents(events: View[VersionedEvent]): Checked[Unit] =
+    Repo.empty.applyEvents(events).flatMap { applied =>
+      if (applied == this)
+        Checked.unit
+      else
+        Left(Problem.pure(s"💥 Repo.toEvents self-test failed, events does not match repo"))
+    }
+
+  /** Convert the Repo to an event sequence ordered by VersionId. */
+  private def toEvents0: View[VersionedEvent] = {
     type RemovedOrUpdated = Either[VersionedItemPath/*removed*/, Signed[VersionedItem/*added/changed*/]]
 
     val versionToChanges: Map[VersionId, Seq[RemovedOrUpdated]] =

@@ -564,7 +564,19 @@ with MainJournalingActor[ControllerState, Event]
       orderQueue.enqueue(orderId :: Nil)
 
     case Internal.NoticeIsDue(boardPath, noticeId) =>
-      persistMultiple((boardPath <-: NoticeDeleted(noticeId)) :: Nil)(handleEvents)
+      notices.deleteSchedule(boardPath, noticeId)
+      for (
+        boardState <- _controllerState.pathToBoardState.checked(boardPath);
+        notice <- boardState.notice(noticeId);
+        keyedEvent <- boardState.deleteNoticeEvent(noticeId))
+      {
+        if (alarmClock.now() < notice.endOfLife) {
+          notices.schedule(boardPath, notice)
+        } else {
+          logger.debug(s"Notice lifetime expired: $boardPath $noticeId")
+          persistMultiple(keyedEvent :: Nil)(handleEvents)
+        }
+      }
 
     case Internal.ShutDown(shutDown) =>
       shutdown.delayUntil = now + config.getDuration("js7.web.server.delay-shutdown").toFiniteDuration
@@ -727,13 +739,12 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
         (for {
           boardState <- _controllerState.pathToBoardState.checked(boardPath)
-          _ <- boardState.deleteNotice(noticeId)
-        } yield ())
+          keyedEvent <- boardState.deleteNoticeEvent(noticeId)
+        } yield keyedEvent)
         match {
           case Left(problem) => Future.successful(Left(problem))
-          case Right(()) =>
-            val events = Seq(boardPath <-: NoticeDeleted(noticeId))
-            persistTransactionAndSubsequentEvents(events)(handleEvents)
+          case Right(keyedEvent) =>
+            persistTransactionAndSubsequentEvents(keyedEvent :: Nil)(handleEvents)
              .map(_ => Right(ControllerCommand.Response.Accepted))
         }
 

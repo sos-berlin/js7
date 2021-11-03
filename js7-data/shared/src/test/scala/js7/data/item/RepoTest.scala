@@ -183,21 +183,91 @@ final class RepoTest extends AnyFreeSpec
       assert(repo == Repo.fromOp(v1 :: Nil, Changed(sign(a1)) :: Changed(sign(b1)) :: Nil, Some(signatureVerifier)))
 
       val eventBlock = repo.itemsToEventBlock(v2, sign(a2) :: sign(bx2) :: Nil, removed = b1.path :: Nil).orThrow
-      assert(eventBlock == repo.NonEmptyEventBlock(v2,
-        Seq(VersionedItemRemoved(b1.path)),
-        Seq(VersionedItemChanged(sign(a2)), VersionedItemAdded(sign(bx2)))))
+      assert(eventBlock == repo.NonEmptyEventBlock(
+        v2,
+        removedEvents = Seq(VersionedItemRemoved(b1.path)),
+        addedOrChanged = Seq(VersionedItemChanged(sign(a2)), VersionedItemAdded(sign(bx2)))))
 
       repo = repo.applyEvents(eventBlock.events).orThrow
-      assert(repo == Repo.fromOp(v2 :: v1 :: Nil,
-        Changed(sign(a1)) :: Changed(sign(a2)) :: Changed(sign(b1)) :: Removed(b1.path ~ v2) :: Changed(sign(bx2)) :: Nil,
+      assert(repo == Repo.fromOp(
+        Seq(v2, v1),
+        Seq(
+          Changed(sign(a1)),
+          Changed(sign(a2)),
+          Changed(sign(b1)),
+          Removed(b1.path ~ v2),
+          Changed(sign(bx2))),
         Some(signatureVerifier)))
 
-      assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", VersionId("2"))))
+      assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", v2)))
+
+      assert(repo.toEvents.toSeq == Seq(
+        VersionAdded(v1),
+        VersionedItemAdded(sign(a1)),
+        VersionedItemAdded(sign(b1)),
+        VersionAdded(v2),
+        VersionedItemChanged(sign(a2)),
+        VersionedItemRemoved(b1.path),
+        VersionedItemAdded(sign(bx2))))
+    }
+  }
+
+  "deleteItem" - {
+    "Delete the only Item in the Repo" in {
+      val repo = emptyRepo
+        .applyEvents(Seq(
+          VersionAdded(v1), VersionedItemAdded(sign(a1)),
+          VersionAdded(v2), VersionedItemRemoved(a1.path)))
+        .orThrow
+      assert(emptyRepo.applyEvents(repo.toEvents) == Right(repo))
+
+      val deleted1 = repo.deleteItem(a1.id).orThrow
+      assert(deleted1 == emptyRepo)
+      assert(deleted1.toEvents.isEmpty)
+      assert(emptyRepo.applyEvents(deleted1.toEvents) == Right(deleted1))
+    }
+
+    "Delete the only Item (but some other Paths exist)" in {
+      val repo = emptyRepo
+        .applyEvents(Seq(
+          VersionAdded(v1), VersionedItemAdded(sign(a1)), VersionedItemAdded(sign(b1)),
+          VersionAdded(v2), VersionedItemRemoved(a1.path)))
+        .orThrow
+      assert(emptyRepo.applyEvents(repo.toEvents) == Right(repo))
+
+      val b1Deleted = repo.deleteItem(b1.id).orThrow
+      assert(b1Deleted.toEvents.toSeq == Seq(
+        VersionAdded(v1), VersionedItemAdded(sign(a1)),
+        VersionAdded(v2), VersionedItemRemoved(a1.path)))
+      assert(emptyRepo.applyEvents(b1Deleted.toEvents) == Right(b1Deleted))
+
+      assert(b1Deleted.deleteItem(a1.id).orThrow == emptyRepo)
+    }
+
+    "Delete an old removed item" in {
+      val repo = emptyRepo
+        .applyEvents(Seq(
+          VersionAdded(v1), VersionedItemAdded(sign(a1)),
+          VersionAdded(v2), VersionedItemRemoved(a1.path),
+          VersionAdded(v3), VersionedItemAdded(sign(a3))))
+        .orThrow
+
+      assert(emptyRepo.applyEvents(repo.toEvents) == Right(repo))
+
+      val a1Deleted = repo.deleteItem(a1.id).orThrow
+      assert(a1Deleted.toEvents.toSeq == Seq(
+        VersionAdded(v3), VersionedItemAdded(sign(a3))))
+      assert(emptyRepo.applyEvents(a1Deleted.toEvents) == Right(a1Deleted))
+
+      val a2Deleted = a1Deleted.deleteItem(a2.id).orThrow
+      assert(a2Deleted.toEvents.toSeq == Seq(
+        VersionAdded(v3), VersionedItemAdded(sign(a3))))
+      assert(emptyRepo.applyEvents(a2Deleted.toEvents) == Right(a2Deleted))
     }
   }
 
   "unusedItemIdsForType" in {
-    assert(Repo.empty.unusedItemIdsForType[APath](Set.empty).isEmpty)
+    assert(emptyRepo.unusedItemIdsForType[APath](Set.empty).isEmpty)
     assert(testRepo.unusedItemIdsForType[APath](Set.empty).toSeq == Seq(a2.id, a1.id))
     assert(testRepo.unusedItemIdsForType(Set(a1.id)).toSeq == Seq(a2.id))
     assert(testRepo.unusedItemIdsForType(Set(a2.id)).toSeq == Seq(a1.id))
@@ -307,7 +377,7 @@ object RepoTest
 
   private val itemSigner = new ItemSigner(SillySigner.Default, itemJsonCodec)
   private val signatureVerifier = SillySignatureVerifier.Default
-  private val emptyRepo = Repo.signatureVerifying(signatureVerifier)
+  private val emptyRepo = Repo.signatureVerifying(signatureVerifier).copy(selfTest = true)
 
   import itemSigner.sign
 

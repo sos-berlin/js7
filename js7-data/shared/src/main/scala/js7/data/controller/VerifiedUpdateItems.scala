@@ -74,7 +74,7 @@ object VerifiedUpdateItems
     @volatile var problemOccurred: Option[Problem] = None
 
     observable
-      .mapParallelUnorderedBatch() {
+      .mapParallelOrderedBatch() {
         case AddOrChangeSigned(signedString) =>
           if (problemOccurred.isEmpty)
             verify(signedString) match {

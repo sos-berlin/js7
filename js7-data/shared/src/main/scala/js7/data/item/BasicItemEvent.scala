@@ -22,31 +22,31 @@ object BasicItemEvent
   final case class ItemDeleted(key: InventoryItemKey)
   extends ForController
 
-  sealed trait ItemAttachedStateChanged
+  sealed trait ItemAttachedStateEvent
   extends ForController {
     def agentPath: AgentPath
     def attachedState: ItemAttachedState
   }
-  object ItemAttachedStateChanged {
+  object ItemAttachedStateEvent {
     def apply(key: InventoryItemKey, agentPath: AgentPath, attachedState: ItemAttachedState)
-    : ItemAttachedStateChanged =
+    : ItemAttachedStateEvent =
       attachedState match {
         case Attachable => ItemAttachable(key, agentPath)
         case Attached(itemRevision) => ItemAttached(key, itemRevision, agentPath)
         case Detachable => ItemDetachable(key, agentPath)
         case Detached => ItemDetached(key, agentPath)
       }
-    def unapply(event: ItemAttachedStateChanged) =
+    def unapply(event: ItemAttachedStateEvent) =
       Some((event.key, event.agentPath, event.attachedState))
   }
 
   final case class ItemAttachable(key: InventoryItemKey, agentPath: AgentPath)
-  extends ItemAttachedStateChanged {
+  extends ItemAttachedStateEvent {
     def attachedState = Attachable
   }
 
   final case class ItemAttached(key: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
-  extends ItemAttachedStateChanged {
+  extends ItemAttachedStateEvent {
     def attachedState = Attached(itemRevision)
   }
 
@@ -57,12 +57,12 @@ object BasicItemEvent
   }
 
   final case class ItemDetachable(key: InventoryItemKey, agentPath: AgentPath)
-  extends ItemAttachedStateChanged {
+  extends ItemAttachedStateEvent {
     def attachedState = Detachable
   }
 
   final case class ItemDetached(key: InventoryItemKey, agentPath: AgentPath)
-  extends ItemAttachedStateChanged with ForAgent {
+  extends ItemAttachedStateEvent with ForAgent {
     def attachedState = Detached
   }
 
