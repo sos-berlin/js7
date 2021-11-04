@@ -6,19 +6,16 @@ import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.web.AgentWebServer
 import js7.base.auth.SimpleUser
 import js7.base.thread.IOExecutor
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
-import js7.base.utils.Closer.syntax._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
-import js7.core.cluster.ClusterWatchRegister
 import js7.journal.{EventIdClock, EventIdGenerator}
 import js7.launcher.configuration.JobLauncherConf
 import monix.execution.Scheduler
@@ -103,14 +100,4 @@ extends AbstractModule
 
   @Provides @Singleton
   def closer(): Closer = new Closer
-
-  @Provides @Singleton
-  def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-    sessionRegister: SessionRegister[SimpleSession],
-    clusterWatchRegister: ClusterWatchRegister,
-    config: Config,
-    actorSystem: ActorSystem, scheduler: Scheduler, closer: Closer): AgentWebServer =
-      new AgentWebServer(conf, gateKeeperConfiguration, sessionRegister, clusterWatchRegister,
-        config, actorSystem, scheduler
-      ).closeWithCloser(closer)
 }

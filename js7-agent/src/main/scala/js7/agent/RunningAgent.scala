@@ -24,11 +24,15 @@ import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, ProgramTermination}
 import js7.base.web.Uri
+import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits._
+import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import monix.eval.Task
@@ -46,16 +50,16 @@ import scala.util.{Failure, Success, Try}
  * @author Joacim Zschimmer
  */
 final class RunningAgent private(
-  val webServer: AgentWebServer,
+  val webServer: AkkaWebServer with AkkaWebServer.HasUri,
   mainActor: ActorRef,
   terminated1: Future[ProgramTermination],
   val api: CommandMeta => DirectAgentApi,
   sessionRegister: SessionRegister[SimpleSession],
   val sessionToken: SessionToken,
   closer: Closer,
-  @TestOnly val injector: Injector)
-extends AutoCloseable {
-
+  val injector: Injector)
+extends AutoCloseable
+{
   implicit val scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   lazy val localUri: Uri = webServer.localUri
@@ -157,9 +161,15 @@ object RunningAgent {
         .orThrow
       if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
-      val actorSystem = injector.instance[ActorSystem]
+      implicit val actorSystem = injector.instance[ActorSystem]
       val closer = injector.instance[Closer]
-      val webServer = injector.instance[AgentWebServer]
+
+      val webServer = AgentWebServer(
+        agentConfiguration,
+        injector.instance[GateKeeper.Configuration[SimpleUser]],
+        injector.instance[SessionRegister[SimpleSession]],
+        injector.instance[ClusterWatchRegister]
+      ).closeWithCloser(closer)
 
       val mainActorReadyPromise = Promise[MainActor.Ready]()
       val terminationPromise = Promise[ProgramTermination]()
