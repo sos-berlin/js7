@@ -252,6 +252,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
     import Dependencies._
     libraryDependencies ++=
       scalaReflect ++  // TODO Avoid JVM dependencies here
+      "dev.zio" %%% "izumi-reflect" % izumiReflectVersion ++
       "org.typelevel" %%% "cats-core" % catsVersion ++
       "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++

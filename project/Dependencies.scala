@@ -12,6 +12,7 @@ object Dependencies
   val log4jVersion = "2.14.1"  // See also plugins.sbt
   val catsVersion = "2.6.1"
   val catsEffectVersion = "2.5.3"
+  val izumiReflectVersion = "2.0.3"
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.1"
