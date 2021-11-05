@@ -2,6 +2,7 @@ package js7.data.event
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils._
+import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -59,5 +60,16 @@ final class StampedTest extends AnyFreeSpec {
     //    "timestamp": 123,
     //    "value": "VALUE"
     //  }""")
+  }
+
+  "checkOrdering" in {
+    assert(Stamped.checkOrdering(0, Nil) == Right(()))
+    assert(Stamped.checkOrdering(7, Nil) == Right(()))
+    assert(Stamped.checkOrdering(0, Seq(Stamped(1, ""), Stamped(2, "")))
+      == Right(()))
+    assert(Stamped.checkOrdering(1, Seq(Stamped(1, ""), Stamped(2, "")))
+      == Left(Problem("Duplicate EventId 1/1970-01-01T00:00:00.000Z-001")))
+    assert(Stamped.checkOrdering(3, Seq(Stamped(4, ""), Stamped(2, "")))
+      == Left(Problem("EventId 2/1970-01-01T00:00:00.000Z-002 <= 4/1970-01-01T00:00:00.000Z-004")))
   }
 }

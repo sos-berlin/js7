@@ -3,6 +3,7 @@ package js7.data.event
 import cats.{Eq, Functor}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.Stamped._
@@ -30,6 +31,26 @@ object Stamped
 
   def apply[A](eventId: EventId, timestamp: Timestamp, value: A): Stamped[A] =
     new Stamped(eventId, timestamp.toEpochMilli, value)
+
+  def checkOrdering[A](lastEventId: EventId, stampedSeq: Seq[Stamped[A]]): Checked[Unit] = {
+    var checked = Checked.unit
+    var last = lastEventId
+    val iterator = stampedSeq.iterator
+
+    while (iterator.hasNext && checked.isRight) {
+      val eventId = iterator.next().eventId
+      if (eventId <= last) {
+        checked = Left(Problem.pure(
+          if (eventId == last)
+            s"Duplicate EventId ${EventId.toString(eventId)}"
+          else
+            s"EventId ${EventId.toString(eventId)} <= ${EventId.toString(last)}"))
+      }
+      last = eventId
+    }
+
+    checked
+  }
 
   implicit def stampedEq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
 
