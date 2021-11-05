@@ -24,6 +24,14 @@ import shapeless.Lazy
   */
 object CirceUtils
 {
+  val UnitDecoderResult: Decoder.Result[Unit] = Right(())
+
+  def requireJson(requirement: Boolean, failure: => DecodingFailure): Decoder.Result[Unit] =
+    if (!requirement)
+      Left(failure)
+    else
+      UnitDecoderResult
+
   def parseJsonByteArray(bytes: Array[Byte]): Either[ParsingFailure, Json] =
     CirceUtilsForPlatform.parseJsonByteArray(bytes)
 
