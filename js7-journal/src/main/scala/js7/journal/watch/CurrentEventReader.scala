@@ -2,6 +2,7 @@ package js7.journal.watch
 
 import com.typesafe.config.Config
 import js7.base.monixutils.MonixDeadline
+import js7.base.stream.IncreasingNumberSync
 import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalId, JournalPosition}
@@ -27,7 +28,7 @@ extends EventReader
   val journalFile = journalMeta.file(after = tornEventId)
 
   /** May contain size(file) + 1 to allow EOF detection. */
-  private val flushedLengthSync = new EventSync(initial = 0, o => s"position $o")
+  private val flushedLengthSync = new IncreasingNumberSync(initial = 0, o => s"position $o")
   flushedLengthSync.onAdded(flushedLengthAndEventId.position)
 
   @volatile private var journalingEnded = false

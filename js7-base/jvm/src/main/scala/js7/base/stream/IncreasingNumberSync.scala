@@ -1,20 +1,21 @@
-package js7.journal.watch
+package js7.base.stream
 
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline
+import js7.base.stream.IncreasingNumberSync._
 import js7.base.time.ScalaTime._
-import js7.journal.watch.EventSync._
 import monix.eval.Task
+import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
-  * @author Joacim Zschimmer
+  * Synchronizer for increasing numbers.
   */
-final class EventSync(initial: Long, valueToString: Long => String)
+final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
 {
   // TODO Watch size of valueToPromise (for example via an inspection web service)
   private val valueToPromise = mutable.TreeMap[Long, Promise[Unit]]()
@@ -79,10 +80,11 @@ final class EventSync(initial: Long, valueToString: Long => String)
 
   def last = _last
 
-  private[watch] def waitingCount = valueToPromise.size
+  @TestOnly
+  private[stream] def waitingCount = valueToPromise.size
 }
 
-object EventSync {
+object IncreasingNumberSync {
   private val logger = Logger(getClass)
   private val RightTrue = Task.pure(Right(true))
 }

@@ -1,11 +1,9 @@
-package js7.journal.watch
+package js7.base.stream
 
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.data.event.EventId
-import js7.journal.EventIdGenerator
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.schedulers.TestScheduler
@@ -16,12 +14,12 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class EventSyncTest extends AnyFreeSpec
+final class IncreasingNumberSyncTest extends AnyFreeSpec
 {
   "test" in {
     implicit val scheduler = TestScheduler()
 
-    val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)
+    val sync = new IncreasingNumberSync(initial = 0L, _.toString)
     var waitingCount = 0
     for ((aEventId, bEventId, cEventId) <- List((1L, 2L, 3L), (4L, 5L, 6L), (7L, 8L, 9L))) {
       val a = sync.whenAvailable(aEventId, until = None).runToFuture
@@ -55,7 +53,7 @@ final class EventSyncTest extends AnyFreeSpec
   "timeout" in {
     implicit val scheduler = TestScheduler()
     val tick = 1.s
-    val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)
+    val sync = new IncreasingNumberSync(initial = 0L, _.toString)
     for (eventId <- 1L to 3L) {
       withClue(s"#$eventId") {
         val a = sync.whenAvailable(eventId - 1, until = Some(now + 2*tick), delay = 2*tick).runToFuture
@@ -90,9 +88,9 @@ final class EventSyncTest extends AnyFreeSpec
   if (sys.props.contains("test.speed")) "speed" in {
     import Scheduler.Implicits.global
 
-    val sync = new EventSync(initial = EventId.BeforeFirst, EventId.toString)
+    val sync = new IncreasingNumberSync(initial = 0L, _.toString)
     val n = 10000
-    val eventIdGenerator = new EventIdGenerator
+    val eventIdGenerator = Iterator.from(1).map(_.toLong)
     for (_ <- 1 to 10) {
       val stopwatch = new Stopwatch
       val eventIds = for (_ <- 1 to n) yield eventIdGenerator.next()

@@ -7,6 +7,7 @@ import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Problem
+import js7.base.stream.IncreasingNumberSync
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -34,7 +35,7 @@ trait RealEventWatch extends EventWatch
 
   // Lazy, initialize only after whenStarted has been called!
   private lazy val committedEventIdSync =
-    new EventSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
+    new IncreasingNumberSync(initial = tornEventId, o => "EventId " + EventId.toString(o))
 
   protected final def onEventsCommitted(eventId: EventId): Unit =
     committedEventIdSync.onAdded(eventId)
