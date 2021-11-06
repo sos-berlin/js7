@@ -131,7 +131,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       OrderFinished))
   }
 
-  "Continously(pause = 0, limit = high) with empty body is detected and fails" in {
+  "Continuously(pause = 0, limit = high) with empty body is detected and fails" in {
     pending // FIXME
     // Wenn bei pause=0 zwischen OrderCycleStarted und OrderCycleFinished kein relevantes Event
     // aufgetreten ist, soll die Schleife abgebrochen werden.
