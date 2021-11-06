@@ -20,7 +20,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Tests.isTest
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configuration.Js7Configuration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.configuration.CommonConfiguration
 import js7.journal.configuration.JournalConf
@@ -130,7 +130,7 @@ object AgentConfiguration
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultConfig = Configs.loadResource(
     JavaResource("js7/agent/configuration/agent.conf")
-  ).withFallback(JobSchedulerConfiguration.defaultConfig)
+  ).withFallback(Js7Configuration.defaultConfig)
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(arguments)

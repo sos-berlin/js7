@@ -16,7 +16,7 @@ import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configuration.Js7Configuration
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.configuration.CommonConfiguration
 import js7.data.controller.{ControllerId, ControllerState}
@@ -83,7 +83,7 @@ object ControllerConfiguration
 
   lazy val DefaultConfig = Configs
     .loadResource(JavaResource("js7/controller/configuration/controller.conf"))
-    .withFallback(JobSchedulerConfiguration.defaultConfig)
+    .withFallback(Js7Configuration.defaultConfig)
 
   def fromCommandLine(commandLineArguments: CommandLineArguments, config: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(commandLineArguments)

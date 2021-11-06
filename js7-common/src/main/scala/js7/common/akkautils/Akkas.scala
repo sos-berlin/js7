@@ -11,7 +11,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configuration.Js7Configuration
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
@@ -33,7 +33,7 @@ object Akkas
     logger.debug(s"new ActorSystem('$name')")
     val myConfig = ConfigFactory.systemProperties
       .withFallback(config)
-      .withFallback(JobSchedulerConfiguration.defaultConfig)
+      .withFallback(Js7Configuration.defaultConfig)
       .resolve
     ActorSystem(
       name,

@@ -5,7 +5,7 @@ import js7.base.configutils.Configs.RichConfig
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configuration.Js7Configuration
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
@@ -70,7 +70,7 @@ object BigJsonClusterTest
   private val agentPath = AgentPath("AGENT")
   private def bigString = "+" *
     (9_000_000 max
-      JobSchedulerConfiguration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow)
+      Js7Configuration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow)
 
   private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",
     Seq.fill(2)(

@@ -10,7 +10,7 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.https.HttpsConfig
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configuration.Js7Configuration
 import scala.jdk.CollectionConverters._
 
 /**
@@ -43,7 +43,7 @@ object ProviderConfiguration
         .withFallback(addConfig)
         .withFallback(parseConfigIfExists(configDir / "private" / "private.conf", secret = true))
         .withFallback(parseConfigIfExists(configDir / "provider.conf", secret = false))
-        .withFallback(JobSchedulerConfiguration.defaultConfig)
+        .withFallback(Js7Configuration.defaultConfig)
         .withFallback(Configs.loadResource(DefaultConfigResource))
         .resolve
       new ProviderConfiguration(

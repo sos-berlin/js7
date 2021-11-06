@@ -6,7 +6,7 @@ import js7.base.configutils.Configs
 import js7.base.io.JavaResource
 import scala.jdk.CollectionConverters._
 
-object JobSchedulerConfiguration
+object Js7Configuration
 {
   val defaultConfig: Config = {
     val map = Map(

@@ -3,7 +3,7 @@ package js7.journal.test
 import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.configutils.Configs._
-import js7.common.configuration.JobSchedulerConfiguration
+import js7.common.configuration.Js7Configuration
 import js7.journal.data.JournalMeta
 
 /**
@@ -21,7 +21,7 @@ private[journal] object TestData
     js7.journal.slow-check-state = true
     js7.journal.release-events-delay = 0s
     js7.journal.remove-obsolete-files = false  # DIFFERS FROM DEFAULT TO ALLOW AWAITNG FOR OLD EVENTS !
-  """.withFallback(JobSchedulerConfiguration.defaultConfig)
+  """.withFallback(Js7Configuration.defaultConfig)
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[TestAggregate])
