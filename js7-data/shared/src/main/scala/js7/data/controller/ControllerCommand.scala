@@ -39,7 +39,7 @@ object ControllerCommand extends CommonCommand.Companion
 {
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
-    itemPathJsonCodec))
+    versionedItemPathJsonCodec))
 
   protected type Command = ControllerCommand
 

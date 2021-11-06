@@ -8,7 +8,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.controller.ControllerState
-import js7.data.controller.ControllerState.{itemPathJsonCodec, versionedItemJsonCodec}
+import js7.data.controller.ControllerState.{versionedItemJsonCodec, versionedItemPathJsonCodec}
 import js7.data.event.NoKeyEvent
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import scala.reflect.ClassTag
@@ -91,5 +91,5 @@ object VersionedEvent {
     Subtype[VersionedItemChanged],
     Subtype(deriveCodec[VersionedItemRemoved]))
 
-  intelliJuseImport(versionedItemJsonCodec, itemPathJsonCodec)
+  intelliJuseImport(versionedItemJsonCodec, versionedItemPathJsonCodec)
 }

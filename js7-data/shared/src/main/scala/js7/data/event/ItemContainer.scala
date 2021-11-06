@@ -54,33 +54,34 @@ object ItemContainer
     implicit final lazy val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
       TypedJsonCodec[InventoryItem](inventoryItems.map(_.subtype): _*)
 
-    implicit final lazy val inventoryItemEventJsonCodec = InventoryItemEvent.jsonCodec(this)
+    implicit final lazy val inventoryItemEventJsonCodec: TypedJsonCodec[InventoryItemEvent] =
+      InventoryItemEvent.jsonCodec(this)
 
     implicit final lazy val inventoryItemKeyJsonCodec: Codec[InventoryItemKey] =
       InventoryItemKey.jsonCodec(inventoryItems.map(_.Key))
 
-    implicit final lazy val signableItemKeyJsonCodec: Codec[SignableItemKey] =
-      SignableItemKey.jsonCodec(signableItems.map(_.Key))
+    implicit final lazy val simpleItemIdJsonCodec: Codec[SimpleItemPath] =
+      SimpleItemPath.jsonCodec(simpleItems.map(_.Key))
 
     implicit final lazy val unsignedSimpleItemJsonCodec: TypedJsonCodec[UnsignedSimpleItem] =
-      TypedJsonCodec[UnsignedSimpleItem](unsignedSimpleItems.map(_.subtype): _*)
+    TypedJsonCodec[UnsignedSimpleItem](unsignedSimpleItems.map(_.subtype): _*)
 
     implicit final lazy val signableSimpleItemJsonCodec: TypedJsonCodec[SignableSimpleItem] =
       TypedJsonCodec[SignableSimpleItem](signableSimpleItems.map(_.subtype): _*)
 
-    implicit final lazy val simpleItemIdJsonCodec: Codec[SimpleItemPath] =
-      SimpleItemPath.jsonCodec(simpleItems.map(_.Key))
+    implicit final lazy val signableItemJsonCodec: TypedJsonCodec[SignableItem] =
+      TypedJsonCodec(signableItems.map(_.subtype): _*)
 
-    implicit final lazy val itemPathJsonCodec: Codec[VersionedItemPath] =
-      VersionedItemPath.jsonCodec(itemPaths)
-
-    implicit final lazy val basicItemEventJsonCodec =
-      BasicItemEvent.jsonCodec(this)
+    implicit final lazy val signableItemKeyJsonCodec: Codec[SignableItemKey] =
+      SignableItemKey.jsonCodec(signableItems.map(_.Key))
 
     implicit final lazy val versionedItemJsonCodec: TypedJsonCodec[VersionedItem] =
       TypedJsonCodec(versionedItems.map(_.subtype): _*)
 
-    implicit final lazy val signableItemJsonCodec: TypedJsonCodec[SignableItem] =
-      TypedJsonCodec(signableItems.map(_.subtype): _*)
+    implicit final lazy val versionedItemPathJsonCodec: Codec[VersionedItemPath] =
+      VersionedItemPath.jsonCodec(itemPaths)
+
+    implicit final lazy val basicItemEventJsonCodec: TypedJsonCodec[BasicItemEvent] =
+      BasicItemEvent.jsonCodec(this)
   }
 }
