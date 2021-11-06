@@ -1,5 +1,6 @@
 package js7.data.job
 
+import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import js7.data.item.{ItemRevision, SignableSimpleItem}
@@ -34,5 +35,6 @@ object JobResource extends SignableSimpleItem.Companion[JobResource]
   val cls = classOf[JobResource]
 
   private implicit val configuration = withDefaults
-  implicit val jsonCodec = deriveConfiguredCodec[JobResource]
+  implicit val jsonCodec: Codec.AsObject[JobResource] =
+    deriveConfiguredCodec[JobResource]
 }

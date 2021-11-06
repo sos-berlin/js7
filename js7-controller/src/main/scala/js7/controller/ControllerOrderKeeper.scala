@@ -1057,7 +1057,7 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister.update(agentRef)
         agentRegister(agentRef.path).reconnect()
 
-      case ItemDetached(itemKey, agentPath) =>
+      case ItemDetached(itemKey, agentPath: AgentPath) =>
         for (agentEntry <- agentRegister.get(agentPath)) {
           agentEntry.detachingItems -= itemKey
         }

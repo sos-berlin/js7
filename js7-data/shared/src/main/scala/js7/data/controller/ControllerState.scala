@@ -209,7 +209,7 @@ with SnapshotableState[ControllerState]
 
         case event: BasicItemEvent.ForController =>
           event match {
-            case ItemAttachedStateEvent(itemKey, agentPath, attachedState) =>
+            case ItemAttachedStateEvent(itemKey, agentPath: AgentPath, attachedState) =>
               attachedState match {
                 case attachedState: NotDetached =>
                   Right(copy(
@@ -654,7 +654,7 @@ with ItemContainer.Companion[ControllerState]
 
   def newBuilder() = new ControllerStateBuilder
 
-  protected val inventoryItems = Seq[InventoryItem.Companion_](
+  protected val inventoryItems = Vector(
     AgentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =

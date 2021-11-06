@@ -16,7 +16,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -234,9 +234,11 @@ with ItemContainer.Companion[AgentState]
 
   def newBuilder() = new AgentStateBuilder
 
-  protected val inventoryItems: Seq[InventoryItem.Companion_] =
-    Seq(FileWatch, Workflow, JobResource, Calendar)
+  protected val inventoryItems = Vector(
+    FileWatch, JobResource, Calendar, Workflow)
 
+  override lazy val itemPaths =
+    inventoryItems.map(_.Path) :+ AgentPath
 
   final case class AgentMetaState(
     agentPath: AgentPath,

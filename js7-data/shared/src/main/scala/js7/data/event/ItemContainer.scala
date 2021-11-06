@@ -1,8 +1,9 @@
 package js7.data.event
 
-import io.circe.Codec
+import io.circe.{Codec, Decoder}
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedItem, VersionedItemPath}
+import js7.data.agent.{AgentPath, DelegateId}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedItem, VersionedItemPath}
 import scala.collection.MapView
 
 trait ItemContainer
@@ -32,11 +33,15 @@ object ItemContainer
 
     protected def inventoryItems: Seq[InventoryItem.Companion_]
 
-    final lazy val itemPaths: Seq[InventoryItemPath.AnyCompanion] =
+    lazy val itemPaths: Seq[InventoryItemPath.AnyCompanion] =
       inventoryItems.map(_.Path)
+
+    final lazy val delegateIds: Seq[DelegateId.Companion_] =
+      itemPaths.collect { case o: DelegateId.Companion_ => o }
 
     final lazy val versionedItemPaths: Seq[VersionedItemPath.AnyCompanion] =
       inventoryItems.collect { case o: VersionedItem.Companion_ => o.Path }
+
 
     final lazy val simpleItems: Seq[SimpleItem.Companion_] =
       inventoryItems.collect { case o: SimpleItem.Companion_ => o }
@@ -85,5 +90,16 @@ object ItemContainer
 
     implicit final lazy val basicItemEventJsonCodec: TypedJsonCodec[BasicItemEvent] =
       BasicItemEvent.jsonCodec(this)
+
+    implicit final lazy val delegateIdJsonCodec: Codec[DelegateId] =
+      InventoryItemPath.jsonCodec(delegateIds)
+
+
+    def decodeDelegateIdOrAgentPath: Decoder[DelegateId] =
+      c => c.get[DelegateId]("delegateId") match {
+        case Left(_) if !c.keys.exists(_.exists(_ == "delegateId")) =>
+          c.get[AgentPath]("agentPath")
+        case o => o
+      }
   }
 }

@@ -134,7 +134,7 @@ with StateView
     case snapshot: OrderWatchState.ExternalOrderSnapshot =>
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
-    case ItemAttachedStateEvent(key: InventoryItemKey, agentPath, attachedState: NotDetached) =>
+    case ItemAttachedStateEvent(key: InventoryItemKey, agentPath: AgentPath, attachedState: NotDetached) =>
       itemToAgentToAttachedState +=
         key -> (itemToAgentToAttachedState.getOrElse(key, Map.empty) + (agentPath -> attachedState))
 
@@ -233,7 +233,7 @@ with StateView
 
         case event: BasicItemEvent.ForController =>
           event match {
-            case ItemAttachedStateEvent(itemKey, agentPath, attachedState) =>
+            case ItemAttachedStateEvent(itemKey, agentPath: AgentPath, attachedState) =>
               attachedState match {
                 case attachedState: NotDetached =>
                   itemToAgentToAttachedState += itemKey ->

@@ -469,7 +469,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
       }, {
         "TYPE" : "ItemAttached",
         "key": "Workflow:WORKFLOW~VERSION-1",
-        "agentPath": "AGENT"
+        "delegateId": "Agent:AGENT"
       },
       { "TYPE": "Order",
         "id": "ORDER-ID",
@@ -592,7 +592,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
           "eventId": 1013,
           "TYPE": "ItemAttached",
           "key": "Workflow:WORKFLOW~VERSION-1",
-          "agentPath": "AGENT"
+          "delegateId": "Agent:AGENT"
         }, {
           "eventId": 1014,
           "TYPE": "OrderAttached",

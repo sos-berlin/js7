@@ -271,7 +271,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         }
       }, {
         "TYPE": "ItemAttachable",
-        "agentPath": "AGENT",
+        "delegateId": "Agent:AGENT",
         "key": "JobResource:JOB-RESOURCE"
       }, {
         "TYPE": "ItemDeletionMarked",

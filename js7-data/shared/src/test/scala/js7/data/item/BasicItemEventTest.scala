@@ -7,7 +7,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedT
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.WorkflowPath
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class BasicItemEventTest extends AnyFreeSpec
@@ -32,7 +32,16 @@ final class BasicItemEventTest extends AnyFreeSpec
     }
 
     "ItemAttachable" in {
-      testJson[BasicItemEvent](ItemAttachable(OrderWatchPath("PATH"), AgentPath("AGENT")),
+      val event = ItemAttachable(OrderWatchPath("PATH"), AgentPath("AGENT"))
+      testJson[BasicItemEvent](event,
+        json"""
+        {
+          "TYPE": "ItemAttachable",
+          "key": "OrderWatch:PATH",
+          "delegateId": "Agent:AGENT"
+        }""")
+
+      testJsonDecoder[BasicItemEvent](event,
         json"""
         {
           "TYPE": "ItemAttachable",
@@ -42,7 +51,17 @@ final class BasicItemEventTest extends AnyFreeSpec
     }
 
     "ItemAttached" in {
-      testJson[BasicItemEvent](ItemAttached(OrderWatchPath("PATH"), Some(ItemRevision(7)), AgentPath("AGENT")),
+      val event = ItemAttached(OrderWatchPath("PATH"), Some(ItemRevision(7)), AgentPath("AGENT"))
+      testJson[BasicItemEvent](event,
+        json"""
+        {
+          "TYPE": "ItemAttached",
+          "key": "OrderWatch:PATH",
+          "itemRevision":  7,
+          "delegateId": "Agent:AGENT"
+        }""")
+
+      testJsonDecoder[BasicItemEvent](event,
         json"""
         {
           "TYPE": "ItemAttached",
@@ -53,7 +72,9 @@ final class BasicItemEventTest extends AnyFreeSpec
     }
 
     "ItemAttachedToAgent" in {
-      testJson[BasicItemEvent](ItemAttachedToAgent(JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))),
+      testJson[BasicItemEvent](
+        ItemAttachedToAgent(
+          JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))),
         json"""
         {
           "TYPE": "ItemAttachedToAgent",
@@ -68,7 +89,16 @@ final class BasicItemEventTest extends AnyFreeSpec
     }
 
     "ItemDetachable" in {
-      testJson[BasicItemEvent](ItemDetachable(WorkflowPath("PATH") ~ "1", AgentPath("AGENT")),
+      val event = ItemDetachable(WorkflowPath("PATH") ~ "1", AgentPath("AGENT"))
+      testJson[BasicItemEvent](event,
+        json"""
+        {
+          "TYPE": "ItemDetachable",
+          "key": "Workflow:PATH~1",
+          "delegateId": "Agent:AGENT"
+        }""")
+
+      testJsonDecoder[BasicItemEvent](event,
         json"""
         {
           "TYPE": "ItemDetachable",
@@ -78,7 +108,16 @@ final class BasicItemEventTest extends AnyFreeSpec
     }
 
     "ItemDetached" in {
-      testJson[BasicItemEvent](ItemDetached(WorkflowPath("PATH") ~ "1", AgentPath("AGENT")),
+      val event = ItemDetached(WorkflowPath("PATH") ~ "1", AgentPath("AGENT"))
+      testJson[BasicItemEvent](event,
+        json"""
+        {
+          "TYPE": "ItemDetached",
+          "key": "Workflow:PATH~1",
+          "delegateId": "Agent:AGENT"
+        }""")
+
+      testJsonDecoder[BasicItemEvent](event,
         json"""
         {
           "TYPE": "ItemDetached",

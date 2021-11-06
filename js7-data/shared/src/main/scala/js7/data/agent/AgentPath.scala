@@ -6,7 +6,8 @@ import js7.data.item.UnsignedSimpleItemPath
 /**
   * @author Joacim Zschimmer
   */
-final case class AgentPath private(string: String) extends UnsignedSimpleItemPath
+final case class AgentPath private(string: String)
+extends DelegateId with UnsignedSimpleItemPath
 {
   protected type Self = AgentPath
 
@@ -15,7 +16,9 @@ final case class AgentPath private(string: String) extends UnsignedSimpleItemPat
   override def toString = s"Agent:$string"  // instead of AgentRef:
 }
 
-object AgentPath extends UnsignedSimpleItemPath.Companion[AgentPath]
+object AgentPath
+extends DelegateId.Companion[AgentPath]
+with UnsignedSimpleItemPath.Companion[AgentPath]
 {
   /** Internal use only. */
   private[js7] val empty = new AgentPath("")
