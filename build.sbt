@@ -290,6 +290,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
   .enablePlugins(BuildInfoPlugin)
   .settings(
     buildInfoPackage := "js7.base",
+    buildInfoUsePackageAsPath := true,
     buildInfoKeys := BuildInfos.buildInfoMap.value.map(BuildInfoKey(_)).toSeq)
 
 /** js7-build-info provides version info in a Scala-free jar. */
