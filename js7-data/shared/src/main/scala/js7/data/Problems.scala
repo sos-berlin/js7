@@ -72,7 +72,7 @@ object Problems
   }
 
   final case class VersionedItemRemovedProblem(path: VersionedItemPath) extends Problem.Coded {
-    def arguments = Map("path" -> path.pretty)
+    def arguments = Map("path" -> path.toString)
   }
 
   final case class ItemVersionDoesNotMatchProblem(versionId: VersionId, itemId: VersionedItemId[_ <: VersionedItemPath]) extends Problem.Coded {

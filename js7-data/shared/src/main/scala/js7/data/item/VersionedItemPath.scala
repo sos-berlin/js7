@@ -41,8 +41,6 @@ trait VersionedItemPath extends InventoryItemPath
 
   override def toString = toTypedString
 
-  final def pretty: String = s"${companion.itemTypeName} $string"
-
   final def toTypedString: String = s"${companion.itemTypeName}:$string"
 }
 
