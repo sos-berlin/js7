@@ -6,7 +6,6 @@ import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.item.VersionedItemPath._
 import scala.reflect.ClassTag
@@ -15,7 +14,8 @@ trait VersionedItemPath extends InventoryItemPath
 {
   def companion: Companion[_ <: VersionedItemPath]
 
-  final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
+  final lazy val name: String =
+    string.substring(string.lastIndexOf('/') + 1)
 
   final def requireNonAnonymous(): Unit =
     companion.checked(string).orThrow
@@ -32,16 +32,8 @@ trait VersionedItemPath extends InventoryItemPath
     else
       P.apply(string)
 
-  final def cast[P <: VersionedItemPath](implicit P: VersionedItemPath.Companion[P]): P = {
-    if (P != companion) throw new ClassCastException(s"Expected ${companion.name}, but is: $toString")
-    this.asInstanceOf[P]
-  }
-
-  final def isAnonymous = this == companion.Anonymous
-
-  override def toString = toTypedString
-
-  final def toTypedString: String = s"${companion.itemTypeName}:$string"
+  final def isAnonymous =
+    this == companion.Anonymous
 }
 
 object VersionedItemPath
@@ -88,10 +80,10 @@ object VersionedItemPath
         path ~ versionId
 
       val pathCompanion = P
-    }
 
-    final val itemTypeName: String = name stripSuffix "Path"
-    final val itemPathClass: Class[P] = implicitClass[P]
+      // A versioned pathTypeName may not differ from its itemTypePath
+      def pathTypeName = itemTypeName
+    }
 
     /** Converts a relative file path with normalized slahes (/) to a `VersionedItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =

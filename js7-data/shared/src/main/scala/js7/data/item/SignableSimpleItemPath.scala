@@ -1,7 +1,7 @@
 package js7.data.item
 
 import io.circe.Codec
-import js7.data.item.InventoryItemKey.Companion
+import js7.data.item.SignableSimpleItemPath._
 
 trait SignableSimpleItemPath extends SimpleItemPath with SignableItemKey
 {
@@ -12,7 +12,9 @@ object SignableSimpleItemPath
 {
   type Companion_ = Companion[_ <: SignableSimpleItemPath]
 
-  trait Companion[A <: SignableSimpleItemPath] extends SimpleItemPath.Companion[A] with SignableItemKey.Companion[A]
+  trait Companion[A <: SignableSimpleItemPath]
+  extends SimpleItemPath.Companion[A]
+  with SignableItemKey.Companion[A]
 
   def jsonCodec(companions: Iterable[SignableSimpleItemPath.Companion_]): Codec[SignableSimpleItemPath] =
     InventoryItemKey.jsonCodec(companions)

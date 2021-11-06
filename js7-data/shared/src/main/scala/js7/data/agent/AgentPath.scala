@@ -20,7 +20,8 @@ object AgentPath extends UnsignedSimpleItemPath.Companion[AgentPath]
   /** Internal use only. */
   private[js7] val empty = new AgentPath("")
 
-  def itemTypeName = AgentRef.typeName
+  override val itemTypeName = AgentRef.typeName
+  override val pathTypeName = "Agent"
 
   protected def unchecked(string: String) = new AgentPath(string)
 

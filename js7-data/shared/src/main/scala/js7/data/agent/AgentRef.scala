@@ -25,6 +25,9 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
   type Key = AgentPath
   val Key = AgentPath
 
+  type Path = AgentPath
+  val Path = AgentPath
+
   implicit val jsonCodec = {
     implicit val configuration = withDefaults
     deriveConfiguredCodec[AgentRef]

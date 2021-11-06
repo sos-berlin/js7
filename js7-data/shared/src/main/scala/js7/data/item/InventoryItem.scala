@@ -86,6 +86,8 @@ object InventoryItem
     type Key <: InventoryItemKey
     val Key: InventoryItemKey.Companion[Key]
 
+    type Path <: InventoryItemPath
+    val Path: InventoryItemPath.Companion[Path]
 
     implicit def jsonCodec: Codec.AsObject[A]
 

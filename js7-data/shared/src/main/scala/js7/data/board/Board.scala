@@ -56,6 +56,9 @@ object Board extends UnsignedSimpleItem.Companion[Board]
   type Key = BoardPath
   val Key = BoardPath
 
+  type Path = BoardPath
+  val Path = BoardPath
+
   implicit val jsonCodec = {
     intelliJuseImport(FiniteDurationJsonEncoder)
     implicit val configuration = withDefaults

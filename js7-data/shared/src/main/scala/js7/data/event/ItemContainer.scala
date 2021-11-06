@@ -32,24 +32,26 @@ object ItemContainer
 
     protected def inventoryItems: Seq[InventoryItem.Companion_]
 
-    final lazy val itemPaths: Seq[VersionedItemPath.AnyCompanion] =
+    final lazy val itemPaths: Seq[InventoryItemPath.AnyCompanion] =
+      inventoryItems.map(_.Path)
+
+    final lazy val versionedItemPaths: Seq[VersionedItemPath.AnyCompanion] =
       inventoryItems.collect { case o: VersionedItem.Companion_ => o.Path }
 
     final lazy val simpleItems: Seq[SimpleItem.Companion_] =
-      inventoryItems collect { case o: SimpleItem.Companion_ => o }
+      inventoryItems.collect { case o: SimpleItem.Companion_ => o }
 
     final lazy val unsignedSimpleItems: Seq[UnsignedSimpleItem.Companion_] =
-      inventoryItems collect { case o: UnsignedSimpleItem.Companion_ => o }
+      inventoryItems.collect { case o: UnsignedSimpleItem.Companion_ => o }
 
     final lazy val signableItems: Seq[SignableItem.Companion_] =
-      inventoryItems collect { case o: SignableItem.Companion_ => o }
+      inventoryItems.collect { case o: SignableItem.Companion_ => o }
 
     final lazy val signableSimpleItems: Seq[SignableSimpleItem.Companion_] =
-      inventoryItems collect { case o: SignableSimpleItem.Companion_ => o }
+      inventoryItems.collect { case o: SignableSimpleItem.Companion_ => o }
 
     final lazy val versionedItems: Seq[VersionedItem.Companion_] =
-      inventoryItems collect { case o: VersionedItem.Companion_ => o }
-
+      inventoryItems.collect { case o: VersionedItem.Companion_ => o }
 
     implicit final lazy val inventoryItemJsonCodec: TypedJsonCodec[InventoryItem] =
       TypedJsonCodec[InventoryItem](inventoryItems.map(_.subtype): _*)
@@ -79,7 +81,7 @@ object ItemContainer
       TypedJsonCodec(versionedItems.map(_.subtype): _*)
 
     implicit final lazy val versionedItemPathJsonCodec: Codec[VersionedItemPath] =
-      VersionedItemPath.jsonCodec(itemPaths)
+      InventoryItemPath.jsonCodec(versionedItemPaths)
 
     implicit final lazy val basicItemEventJsonCodec: TypedJsonCodec[BasicItemEvent] =
       BasicItemEvent.jsonCodec(this)

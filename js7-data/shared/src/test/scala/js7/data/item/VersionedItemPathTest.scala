@@ -28,7 +28,7 @@ final class VersionedItemPathTest extends AnyFreeSpec
   }
 
   "JSON with generic VersionedItemPath.jsonCodec" in {
-    implicit val itemPathCodec = VersionedItemPath.jsonCodec(List(APath, BPath))
+    implicit val itemPathCodec = InventoryItemPath.jsonCodec[VersionedItemPath](List(APath, BPath))
     testJson[VersionedItemPath](APath("a"), json""" "A:a" """)
     testJson[VersionedItemPath](BPath("b"), json""" "B:b" """)
   }
@@ -68,14 +68,6 @@ final class VersionedItemPathTest extends AnyFreeSpec
     assert(BPath("TEST").asTyped[APath] == aPath)
     intercept[ProblemException] {
       APath("TEST,1").asTyped[BPath]
-    }
-  }
-
-  "cast" in {
-    val aPath = APath("TEST")
-    assert(aPath.cast[APath] eq aPath)
-    intercept[ClassCastException] {
-      aPath.cast[BPath]
     }
   }
 

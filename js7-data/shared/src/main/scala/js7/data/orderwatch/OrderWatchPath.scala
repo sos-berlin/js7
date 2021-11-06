@@ -14,8 +14,6 @@ with InventoryItemPath.AssignableToAgent
 
 object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]
 {
-  def itemTypeName = "OrderWatch"
-
   @javaApi
   def of(id: String) = apply(id)
 

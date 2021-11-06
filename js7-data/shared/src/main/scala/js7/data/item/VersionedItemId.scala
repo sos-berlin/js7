@@ -24,7 +24,7 @@ extends SignableItemKey
   }
 
   def toTypedString: String =
-    path.companion.itemTypeName + ":" + path.string + VersionSeparator + versionId.string
+    path.toTypedString + VersionSeparator + versionId.string
 
   def isAnonymous = path.isAnonymous && versionId.isAnonymous
 

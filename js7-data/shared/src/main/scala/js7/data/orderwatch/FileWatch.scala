@@ -48,6 +48,9 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
   type Key = OrderWatchPath
   val Key = OrderWatchPath
 
+  type Path = OrderWatchPath
+  val Path = OrderWatchPath
+
   val FileArgumentName = "file"
   private val defaultPattern = Pattern.compile("[^.].*")
 

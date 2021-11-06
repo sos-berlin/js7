@@ -1,7 +1,7 @@
 package js7.data.item
 
 import io.circe.Codec
-import js7.data.item.InventoryItemKey.Companion
+import js7.data.item.SimpleItemPath._
 
 trait SimpleItemPath extends InventoryItemKey with InventoryItemPath
 {
@@ -10,11 +10,6 @@ trait SimpleItemPath extends InventoryItemKey with InventoryItemPath
   def companion: Companion[_ <: SimpleItemPath]
 
   final def path = this
-
-  final def toTypedString: String =
-    s"${companion.itemTypeName}:$string"
-
-  override def toString = toTypedString  // Used in some error messages
 }
 
 object SimpleItemPath

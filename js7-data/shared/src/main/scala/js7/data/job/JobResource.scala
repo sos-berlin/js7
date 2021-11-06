@@ -27,6 +27,10 @@ object JobResource extends SignableSimpleItem.Companion[JobResource]
 {
   type Key = JobResourcePath
   val Key = JobResourcePath
+
+  type Path = JobResourcePath
+  val Path = JobResourcePath
+
   val cls = classOf[JobResource]
 
   private implicit val configuration = withDefaults

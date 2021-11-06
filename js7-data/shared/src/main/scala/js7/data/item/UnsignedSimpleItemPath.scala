@@ -1,7 +1,7 @@
 package js7.data.item
 
 import io.circe.Codec
-import js7.data.item.InventoryItemKey.Companion
+import js7.data.item.UnsignedSimpleItemPath._
 
 trait UnsignedSimpleItemPath extends SimpleItemPath
 {

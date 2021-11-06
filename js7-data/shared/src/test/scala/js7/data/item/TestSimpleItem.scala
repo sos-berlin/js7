@@ -9,9 +9,8 @@ case class TestSimplePath(string: String) extends UnsignedSimpleItemPath {
 
 object TestSimplePath extends UnsignedSimpleItemPath.Companion[TestSimplePath]
 {
-  protected def unchecked(string: String) = new TestSimplePath(string)
-
-  val itemTypeName = "TestSimple"
+  protected def unchecked(string: String) =
+    new TestSimplePath(string)
 }
 
 

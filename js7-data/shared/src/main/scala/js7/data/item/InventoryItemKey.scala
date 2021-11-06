@@ -24,10 +24,12 @@ object InventoryItemKey
     def checked(idString: String): Checked[A]
 
     def itemTypeName: String
+
+    def pathTypeName: String
   }
 
   def jsonCodec(companions: Iterable[Companion_]): Codec[InventoryItemKey] = {
-    val typeToCompanion = companions.toKeyedMap(_.itemTypeName)
+    val typeToCompanion = companions.toKeyedMap(_.pathTypeName)
 
     new Codec[InventoryItemKey]
     {
