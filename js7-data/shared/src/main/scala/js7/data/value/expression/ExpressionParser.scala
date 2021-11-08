@@ -35,53 +35,53 @@ object ExpressionParser
     checkedParse(string, functionOnly(_))
       .left.map(_.withPrefix("Error in function:"))
 
-  private[expression] def functionOnly[_: P]: P[ExprFunction] =
+  private[expression] def functionOnly[x: P]: P[ExprFunction] =
     P(function ~ End)
 
-  def constantExpression[_: P]: P[Expression] =
+  def constantExpression[x: P]: P[Expression] =
     expression
 
-  def expressionOnly[_: P]: P[Expression] =
+  def expressionOnly[x: P]: P[Expression] =
     P(w ~~ wordOperation ~ End)
 
-  def expression[_: P]: P[Expression] =
+  def expression[x: P]: P[Expression] =
     P(wordOperation)
 
-  private def parenthesizedExpression[_: P] = P[Expression](
+  private def parenthesizedExpression[x: P] = P[Expression](
     ("(" ~ w ~/ expression ~ w ~ ")") |
       bracketCommaSequence(expression).map(o => ListExpression(o.toList)))
 
-  private def function[_: P] = P[ExprFunction](
+  private def function[x: P] = P[ExprFunction](
     (inParentheses(commaSequence(identifier)) ~~/ w ~~ "=>" ~~/ w ~~ expression)
       .map { case (names, expression) =>
         ExprFunction(names.map(VariableDeclaration(_)), expression)
       })
 
-  private def trueConstant[_: P] = P[BooleanConstant](
+  private def trueConstant[x: P] = P[BooleanConstant](
     keyword("true").map(_ => BooleanConstant(true)))
 
-  private def falseConstant[_: P] = P[BooleanConstant](
+  private def falseConstant[x: P] = P[BooleanConstant](
     keyword("false").map(_ => BooleanConstant(false)))
 
-  private def catchCount[_: P] = P[OrderCatchCount.type](
+  private def catchCount[x: P] = P[OrderCatchCount.type](
     keyword("catchCount").map(_ => OrderCatchCount))
 
-  def booleanConstant[_: P] = P(trueConstant | falseConstant)
+  def booleanConstant[x: P] = P(trueConstant | falseConstant)
 
-  private def numericConstant[_: P] = P[NumericConstant](
+  private def numericConstant[x: P] = P[NumericConstant](
     bigDecimal.map(o => NumericConstant(o)))
 
-  private def singleQuotedStringConstant[_: P] = P[StringConstant](singleQuoted
+  private def singleQuotedStringConstant[x: P] = P[StringConstant](singleQuoted
     .map(StringConstant.apply))
 
-  def quotedString[_: P] = P[String](BasicParsers.quotedString)  // Public
+  def quotedString[x: P] = P[String](BasicParsers.quotedString)  // Public
 
-  def interpolatedString[_: P] = P[StringExpression](
+  def interpolatedString[x: P] = P[StringExpression](
     "\"" ~~/
     interpolatedStringContent ~~/
     "\"")
 
-  private def curlyName[_: P]: P[Expression] = P(
+  private def curlyName[x: P]: P[Expression] = P(
     P("{" ~~/ identifier ~~/ ("." ~~/ identifier).rep ~~ "}")
       .map { case (name, fields) =>
         fields
@@ -89,7 +89,7 @@ object ExpressionParser
           .last
       })
 
-  private def interpolatedStringContent[_: P] = P[StringExpression] {
+  private def interpolatedStringContent[x: P] = P[StringExpression] {
     def simpleConstant = P(CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$').!)
     def constant = P(
       (simpleConstant | escapedCharInString).rep
@@ -110,19 +110,19 @@ object ExpressionParser
       }
   }
 
-  private def listExpr[_: P] = P[ListExpression](
+  private def listExpr[x: P] = P[ListExpression](
     ("[" ~~/ w ~~ commaSequence(expression) ~~ w ~~ "]")
       .map(elements =>
         ListExpression(elements.toList)))
 
-  private def objectExpr[_: P] = P[ObjectExpression] {
+  private def objectExpr[x: P] = P[ObjectExpression] {
     ("{" ~~/ w ~~ commaSequence(identifier ~~ w ~~ ":" ~~/ w ~~ expression) ~~ w ~~ "}")
       .flatMap(pairs =>
         checkedToP(pairs.checkUniqueness(_._1)
           .map(_ => ObjectExpression(pairs.toMap))))
   }
 
-  def dollarNamedValue[_: P] = P[Expression] {
+  def dollarNamedValue[x: P] = P[Expression] {
     //def arg = P[NamedValue](("arg::" ~~/ identifier)
     //  .map(key => NamedValue(NamedValue.Argument, StringConstant(key))))
     //def byLabel = P[NamedValue](("label::" ~~/ identifier ~~ "." ~~/ identifier)
@@ -135,15 +135,15 @@ object ExpressionParser
     "$" ~~ ((identifier | digits/*regex group*/).map(NamedValue(_)) | curlyName)
   }
 
-  private def jobResourceVariable[_: P] = P[JobResourceVariable](
+  private def jobResourceVariable[x: P] = P[JobResourceVariable](
     ("JobResource" ~ ":" ~/ jobResourcePath ~ (":" ~/ identifier).?)
       .map((JobResourceVariable.apply(_, _)).tupled))
 
-  private def jobResourcePath[_: P] = P[JobResourcePath](
+  private def jobResourcePath[x: P] = P[JobResourcePath](
     (CharPred(JobResourcePath.isNameStart) ~ CharsWhile(JobResourcePath.isNamePartMaybe)).!
       .flatMap(o => checkedToP(JobResourcePath.checked(o))))
 
-  private def argumentFunctionCall[_: P] = P[NamedValue](
+  private def argumentFunctionCall[x: P] = P[NamedValue](
     keyword("argument") ~ w ~/
       inParentheses(
         for {
@@ -152,7 +152,7 @@ object ExpressionParser
           default <- kv.get[Expression]("default")
         } yield NamedValue(NamedValue.Argument, key, default)))
 
-  private def variableFunctionCall[_: P] = P[NamedValue](
+  private def variableFunctionCall[x: P] = P[NamedValue](
     keyword("variable") ~ w ~ inParentheses(
       for {
         kv <- keyValues(namedValueKeyValue | keyValue("key", expression) | keyValue("", expression))
@@ -161,7 +161,7 @@ object ExpressionParser
         default <- kv.get[Expression]("default")
       } yield NamedValue(where, key, default)))
 
-  private def functionCall[_: P] = P[Expression](
+  private def functionCall[x: P] = P[Expression](
     (identifier ~/ w ~/ inParentheses(commaSequence((identifier ~ w ~ "=").? ~ w ~ expression)))
       .flatMap {
         case ("toBoolean", arguments) =>
@@ -196,18 +196,18 @@ object ExpressionParser
             arguments.map { case (maybeName, expr) => Argument(expr, maybeName) }))
       })
 
-  private def namedValueKeyValue[_: P] = P[(String, Any)](
+  private def namedValueKeyValue[x: P] = P[(String, Any)](
     keyValueConvert("label", identifier)(o => Right(NamedValue.ByLabel(o))) |
     keyValueConvert("job", identifier)(o => Right(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
     keyValue("default", expression))
 
-  private def missing[_: P] = P[MissingConstant](
+  private def missing[x: P] = P[MissingConstant](
     P("missing").map(_ => MissingConstant()))
 
-  private def nullConstant[_: P] = P[NullConstant](
+  private def nullConstant[x: P] = P[NullConstant](
     P("null").map(_ => NullConstant))
 
-  private def factorOnly[_: P] = P(
+  private def factorOnly[x: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
       catchCount | argumentFunctionCall | variableFunctionCall |
@@ -215,7 +215,7 @@ object ExpressionParser
       jobResourceVariable |
       functionCall)
 
-  private def factor[_: P] = P(
+  private def factor[x: P] = P(
     (factorOnly ~/ (w ~ ("." ~ w ~/ identifier)).rep).flatMap {
       case (o, Seq()) => valid(o)
       // TODO Don't use these legacy names:
@@ -226,15 +226,15 @@ object ExpressionParser
       case (o, fields) => valid(fields.scanLeft[Expression](o)(DotExpression(_, _)).last)
     })
 
-  private def not[_: P]: P[Expression] = P(
+  private def not[x: P]: P[Expression] = P(
     ("!" ~ w ~/ bFactor).flatMap {
       case o: BooleanExpression => valid(Not(o))
       case _ => invalid("Operator '!' expects Boolean expression")
     })
 
-  private def bFactor[_: P] = P(not | factor)
+  private def bFactor[x: P] = P(not | factor)
 
-  private def multiplication[_: P] = P[Expression](
+  private def multiplication[x: P] = P[Expression](
     bFactor.flatMap(initial =>
       leftRecurse(initial, P(StringIn("*", "/")).!, bFactor) {
         case (a, "*", b) => valid(Multiply(a, b))
@@ -242,7 +242,7 @@ object ExpressionParser
         case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
       }))
 
-  private def addition[_: P] = P[Expression](
+  private def addition[x: P] = P[Expression](
     multiplication.flatMap(initial =>
       leftRecurse(initial, P(StringIn("++", "+", "-")).!, multiplication) {
         case (a, "++", b) => valid(Concat(a, b))
@@ -251,7 +251,7 @@ object ExpressionParser
         case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
       }))
 
-  private def comparison[_: P] = P[Expression](
+  private def comparison[x: P] = P[Expression](
     addition.flatMap(initial =>
       leftRecurse(initial, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!, addition) {
         case (a, "==", b) => valid(Equal(a, b))
@@ -263,7 +263,7 @@ object ExpressionParser
         case (_, o, _) => invalid(s"Unexpected operator: $o") // Does not happen
       }))
 
-  private def and[_: P] = P[Expression](
+  private def and[x: P] = P[Expression](
     comparison.flatMap(initial =>
       leftRecurse(initial, "&&", comparison) {
         case (a: BooleanExpression, (), b: BooleanExpression) =>
@@ -273,7 +273,7 @@ object ExpressionParser
             Precedence.toString(a, "&&", Precedence.And, b))
       }))
 
-  private def or[_: P] = P[Expression](
+  private def or[x: P] = P[Expression](
     and.flatMap(initial =>
       leftRecurse(initial, "||", and) {
         case (a: BooleanExpression, (), b: BooleanExpression) => valid(Or(a, b))
@@ -281,14 +281,14 @@ object ExpressionParser
           Precedence.toString(a, "||", Precedence.Or, b))
       }))
 
-  private def word1Operation[_: P] = P[Expression](
+  private def word1Operation[x: P] = P[Expression](
     (or ~~/ w).flatMap(expr =>
       (P("?").!.?.map {
         case None => expr
         case Some(_) => OrNull(expr)
       })))
 
-  private def wordOperation[_: P] = P[Expression](
+  private def wordOperation[x: P] = P[Expression](
     (word1Operation ~~ w).flatMap(initial =>
       leftRecurse(initial, keyword, word1Operation) {
         case (a, "in", list: ListExpression) => valid(In(a, list))

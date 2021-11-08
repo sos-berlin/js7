@@ -20,7 +20,7 @@ final class BasicParsersTest extends AnyFreeSpec
     }
 
     "String" in {
-      def p[_: P]: P[Unit] = P("x")
+      def p[x: P]: P[Unit] = P("x")
       assert(checkedParse("x", p(_)) == Right(()))
       assert(checkedParse("y", p(_)) == Left(Problem("""Expected "x":1:1, found "y"""")))
     }
@@ -71,7 +71,7 @@ final class BasicParsersTest extends AnyFreeSpec
           |  third line
           |fourth line
           |'""".stripMargin
-      def p[_: P] = keyword("test") ~ w ~ quotedString
+      def p[x: P] = keyword("test") ~ w ~ quotedString
       assert(checkedParse(s, p(_)) == Right(
          """
            |  first line
@@ -141,19 +141,19 @@ final class BasicParsersTest extends AnyFreeSpec
   }
 
   "specificKeyValue" in {
-    def parser[_: P] = specificKeyValue("key", int)
+    def parser[x: P] = specificKeyValue("key", int)
     assert(checkedParse("key=123", parser(_)) == Right(123))
   }
 
   "specificKeyValue 2" in {
     def myKeyInt(name: String)(implicit ctx: P[_]): P[Int] =
       P(name ~ w ~ "=" ~ w ~/ int)
-    def parser[_: P] = myKeyInt("key")
+    def parser[x: P] = myKeyInt("key")
     assert(checkedParse("key=123", parser(_)) == Right(123))
   }
 
   "commaSequence" - {
-    def parser[_: P] = commaSequence(identifier)
+    def parser[x: P] = commaSequence(identifier)
 
     "empty" in {
       assert(checkedParse("", parser(_)) == Right(Nil))
@@ -168,7 +168,7 @@ final class BasicParsersTest extends AnyFreeSpec
     }
 
     "with specificKeyValue" in {
-      def parser[_: P] = commaSequence(specificKeyValue("key", int))
+      def parser[x: P] = commaSequence(specificKeyValue("key", int))
       assert(checkedParse("", parser(_)) == Right(Nil))
       assert(checkedParse("key=1", parser(_)) == Right(1 :: Nil))
       assert(checkedParse("key=1, key=2", parser(_)) == Right(1 :: 2 :: Nil))
@@ -176,7 +176,7 @@ final class BasicParsersTest extends AnyFreeSpec
   }
 
   "keyValues" - {
-    def kvP[_: P] = keyValues(keyValue("number", int) | keyValue("string", quotedString))
+    def kvP[x: P] = keyValues(keyValue("number", int) | keyValue("string", quotedString))
 
     "empty" in {
       assert(checkedParse("", kvP(_)) == Right(KeyToValue(Map.empty)))
@@ -202,7 +202,7 @@ final class BasicParsersTest extends AnyFreeSpec
     }
 
     "apply" in {
-      def p[_: P]: P[(Int, String)] = kvP.flatMap(keyToValue =>
+      def p[x: P]: P[(Int, String)] = kvP.flatMap(keyToValue =>
         for {
           number <- keyToValue[java.lang.Integer]("number")
           string <- keyToValue[String]("string")
@@ -218,12 +218,12 @@ final class BasicParsersTest extends AnyFreeSpec
     // checkedParse("") in following tests due to Parser.flatMap
 
     "apply failed" in {
-      def p[_: P] = keyToValue[String]("MISSING")
+      def p[x: P] = keyToValue[String]("MISSING")
       assert(checkedParse("", p(_)) == Left(Problem("""Expected keyword MISSING=:1:1, found """"")))
     }
 
     "apply" in {
-      def p[_: P] = keyToValue[String]("string")
+      def p[x: P] = keyToValue[String]("string")
       assert(checkedParse("", p(_)) == Right("STRING"))
     }
 

@@ -293,20 +293,20 @@ final class ExpressionParserTest extends AnyFreeSpec
   }
 
   "Unknown numeric function" in {
-    def parser[_: P] = expression ~ End
+    def parser[x: P] = expression ~ End
     assert(checkedParse(""""123".toNumber""", parser(_)) ==
       Right(ToNumber(StringConstant("123"))))
   }
 
   "Unknown boolean function" in {
-    def parser[_: P] = expression ~ End
+    def parser[x: P] = expression ~ End
     assert(checkedParse(""""true".toBoolean""", parser(_)) ==
       Right(ToBoolean(StringConstant("true"))))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
-      def parser[_: P] = expression ~ End
+      def parser[x: P] = expression ~ End
       assert(checkedParse(exprString, parser(_)) == Right(expr))
       assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
     }
@@ -317,7 +317,7 @@ final class ExpressionParserTest extends AnyFreeSpec
     }
 
   private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) = {
-    def parser[_: P] = expression ~ End
+    def parser[x: P] = expression ~ End
     assert(checkedParse(exprString, parser(_)) == Right(expr))
     assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
   }
@@ -328,7 +328,7 @@ final class ExpressionParserTest extends AnyFreeSpec
     }
 
   private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) = {
-    def parser[_: P] = expression ~ End
+    def parser[x: P] = expression ~ End
     assert(checkedParse(exprString, parser(_)) == Left(Problem(errorMessage)))
   }
 }

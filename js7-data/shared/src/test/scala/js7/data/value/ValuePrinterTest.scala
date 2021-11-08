@@ -38,7 +38,7 @@ final class ValuePrinterTest extends AnyFreeSpec
   private def q(string: String) =
     "»" + quoteString(string) + "«"
 
-  def parser[_: P] =
+  def parser[x: P] =
     ExpressionParser.quotedString ~ End
 
   def parse(quotedString: String) =

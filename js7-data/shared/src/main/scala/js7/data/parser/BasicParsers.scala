@@ -18,66 +18,66 @@ import scala.reflect.ClassTag
   */
 object BasicParsers
 {
-  private def inlineCommentUntilStar[_: P] = P(CharsWhile(_ != '*', 0) ~ P("*"))
+  private def inlineCommentUntilStar[x: P] = P(CharsWhile(_ != '*', 0) ~ P("*"))
 
-  private def inlineComment[_: P] = P {
+  private def inlineComment[x: P] = P {
     P("/*") ~ inlineCommentUntilStar ~ (!"/" ~ inlineCommentUntilStar).rep ~ P("/")
   }
-  private def lineEndComment[_: P] = P("//" ~ CharsWhile(_ != '\n'))
-  private def comment[_: P] = P(inlineComment | lineEndComment)
+  private def lineEndComment[x: P] = P("//" ~ CharsWhile(_ != '\n'))
+  private def comment[x: P] = P(inlineComment | lineEndComment)
   /** Optional whitespace including line ends */
-  def w[_: P] = P((CharsWhileIn(" \t\r\n") | comment).rep)
+  def w[x: P] = P((CharsWhileIn(" \t\r\n") | comment).rep)
   /** Optional horizontal whitespace */
-  def h[_: P] = P((CharsWhileIn(" \t") | comment).rep)
-  def comma[_: P] = P(w ~ "," ~ w)
-  //def newline[_: P] = P(h ~ "\r".? ~ "\n" ~ w)
-  //def commaOrNewLine[_: P] = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
-  def int[_: P] = P[Int](("-".? ~ digits).!.map(_.toInt))
+  def h[x: P] = P((CharsWhileIn(" \t") | comment).rep)
+  def comma[x: P] = P(w ~ "," ~ w)
+  //def newline[x: P] = P(h ~ "\r".? ~ "\n" ~ w)
+  //def commaOrNewLine[x: P] = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
+  def int[x: P] = P[Int](("-".? ~ digits).!.map(_.toInt))
 
-  def bigDecimal[_: P] = P[BigDecimal](
+  def bigDecimal[x: P] = P[BigDecimal](
     ("-".? ~ digits).!
       .flatMap(o => checkedToP(Checked.catchNonFatal(BigDecimal(o)))))
 
-  def digits[_: P] = P[String](CharsWhile(c => c >= '0' && c <= '9').!)
+  def digits[x: P] = P[String](CharsWhile(c => c >= '0' && c <= '9').!)
 
-  def identifier[_: P] = P[String](
+  def identifier[x: P] = P[String](
     simpleIdentifier | backtickIdentifier)
 
-  def simpleIdentifier[_: P] = P[String](
+  def simpleIdentifier[x: P] = P[String](
     (CharPred(isIdentifierStart).opaque("identifier start") ~ CharsWhile(isIdentifierPart, 0)).!)
 
-  //def js7Path[_: P] = P[String](
+  //def js7Path[x: P] = P[String](
   //  (js7Name ~ ("/" ~ js7Name).rep).!)
   //
-  //def js7Name[_: P] = P(String) {
+  //def js7Name[x: P] = P(String) {
   //  import Js7PathValidator.Standard.js7NameValidator
   //  (CharPred(js7NameValidator.isNameStart).opaque("name start") ~
   //    CharsWhile(isIdentifierPart, 0)).!
   //}
 
-  private def backtickIdentifier[_: P] = P[String](
+  private def backtickIdentifier[x: P] = P[String](
     rawIdentifierPart.rep(1).map(_.mkString("`"))
       .flatMap {
         case "" => Fail.opaque("Identifier in backticks ` must not be empty")
         case o => Pass(o)
       })
 
-  private def rawIdentifierPart[_: P] = P[String](
+  private def rawIdentifierPart[x: P] = P[String](
     "`" ~/ CharsWhile(c => c != '`' && c != '\n', 0).! ~/ "`")
 
-  def identifierEnd[_: P] = P(&(CharPred(c => !isUnicodeIdentifierPart(c))) | End)
+  def identifierEnd[x: P] = P(&(CharPred(c => !isUnicodeIdentifierPart(c))) | End)
 
-  def keyword[_: P] = P(
+  def keyword[x: P] = P(
     (CharPred(isIdentifierStart).opaque("keyword start") ~
       CharsWhile(isUnicodeIdentifierPart, 0)
     ).!)
 
-  def keyword[_: P](name: String) = P[Unit](name ~ identifierEnd)
+  def keyword[x: P](name: String) = P[Unit](name ~ identifierEnd)
 
-  def quotedString[_: P] = P[String](
+  def quotedString[x: P] = P[String](
     doubleQuoted | singleQuoted)
 
-  def singleQuoted[_: P] = P[String](
+  def singleQuoted[x: P] = P[String](
     //singleQuotedTooLong(6) |
       singleQuotedN(5) |
       singleQuotedN(4) |
@@ -85,13 +85,13 @@ object BasicParsers
       singleQuotedN(2) |
       singleQuoted1)
 
-  private def singleQuoted1[_: P] = P[String](
+  private def singleQuoted1[x: P] = P[String](
     ("'" ~~/
       singleQuotedContent ~~
       "'".opaque("properly terminated '…'-quoted string without non-printable characters (except \\r or \\n)"))
     .map(_.replace("\r\n", "\n")))
 
-  private def singleQuotedN[_: P](n: Int) = P[String](
+  private def singleQuotedN[x: P](n: Int) = P[String](
     (("'" * n) ~~/
       singleQuotedContent ~~
       ("'".rep(min = 1, max = n - 1).! ~~ !"'" ~~ singleQuotedContent).rep ~~
@@ -99,25 +99,25 @@ object BasicParsers
     .map { case (head, pairs) =>
       (head + pairs.map { case (a, b) => a + b }.mkString).replace("\r\n", "\n") })
 
-  private def singleQuotedContent[_: P] = P[String](
+  private def singleQuotedContent[x: P] = P[String](
     CharsWhile(ch => ch != '\'', /*min=*/0).!)
 
-  //private def singleQuotedTooLong[_: P](n: Int) = P[String](
+  //private def singleQuotedTooLong[x: P](n: Int) = P[String](
   //  P("'" * n).flatMap(_ => invalid(s"More than ${n - 1} '-quotes are not supported")))
 
-  private def doubleQuoted[_: P] = P[String](
+  private def doubleQuoted[x: P] = P[String](
     "\"" ~~/
       doubleQuotedContent ~~
       "\"".opaque("""properly terminated "…"-quoted string"""))
 
-  private def doubleQuotedContent[_: P] = P[String](
+  private def doubleQuotedContent[x: P] = P[String](
     (doubleQuotedContentPart ~~/ (escapedCharInString ~~ doubleQuotedContentPart).rep(0))
       .map { case (a, pairs) => a + pairs.map(o => o._1 + o._2).mkString })
 
-  private def doubleQuotedContentPart[_: P] = P[String](
+  private def doubleQuotedContentPart[x: P] = P[String](
     CharsWhile(ch => ch != '"' && ch != '\\' && ch != '$'/*reserved for interpolation*/ /*&& ch >= ' '*/, 0).!)
 
-  def escapedCharInString[_: P] = P[String](
+  def escapedCharInString[x: P] = P[String](
     "\\" ~~/
       SingleChar.flatMap {
         case '\\' => valid("\\")
@@ -129,7 +129,7 @@ object BasicParsers
         case _ => invalid("""blackslash (\) and one of the following characters: [\"trn$]""")
       })
 
-  def pathString[_: P] = P[String](quotedString)
+  def pathString[x: P] = P[String](quotedString)
 
   def path[A <: VersionedItemPath](implicit ctx: P[_], A: VersionedItemPath.Companion[A]) = P[A](
     pathString.flatMap(p => checkedToP(A.checked(p))))
@@ -255,7 +255,7 @@ object BasicParsers
 
   def valid[A](a: A)(implicit ctx: P[_]): P[A] = checkedToP(Right(a))
 
-  def invalid[_: P](message: String): P[Nothing] = checkedToP(Problem.pure(message))
+  def invalid[x: P](message: String): P[Nothing] = checkedToP(Problem.pure(message))
 
   def checkedToP[A](checked: Checked[A])(implicit ctx: P[_]): P[A] =
     checked match {

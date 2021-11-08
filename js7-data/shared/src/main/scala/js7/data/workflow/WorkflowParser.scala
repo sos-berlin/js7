@@ -37,18 +37,18 @@ object WorkflowParser
 
   private object parser
   {
-    private def label[_: P] = identifier map Label.apply
+    private def label[x: P] = identifier map Label.apply
 
-    private def hardEnd[_: P]: P[Int] =
+    private def hardEnd[x: P]: P[Int] =
       Index ~ w ~/ instructionTerminator
 
-    private def instructionTerminator[_: P] = P((";" ~ w) | &("}") | &(keyword("else")) | End)
+    private def instructionTerminator[x: P] = P((";" ~ w) | &("}") | &(keyword("else")) | End)
     //Scala-like: val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
 
-    private def workflowDefinition[_: P] = P[Workflow](
+    private def workflowDefinition[x: P] = P[Workflow](
       keyword("define") ~ w ~/ keyword("workflow") ~ w ~/ curlyWorkflow.flatMap(o => checkedToP(o.completelyChecked)))
 
-    private def curlyWorkflow[_: P] = P[Workflow](
+    private def curlyWorkflow[x: P] = P[Workflow](
       ("{" ~ w ~/ (labeledInstruction | jobDefinition).rep ~ w ~ Index ~ "}" ~ Index)
         .flatMap { case (items, start, end) =>
           val jobs = items.collect { case (name: WorkflowJob.Name, job: WorkflowJob) => name -> job }
@@ -66,35 +66,35 @@ object WorkflowParser
           }
         })
 
-    private def curlyWorkflowOrInstruction[_: P] = P[Workflow](
+    private def curlyWorkflowOrInstruction[x: P] = P[Workflow](
       curlyWorkflow | instruction.map(o => Workflow.anonymous(Vector(o))))
 
-    private def labelDef[_: P] = P[Label](
+    private def labelDef[x: P] = P[Label](
       label ~ h ~ ":" ~/ w)
 
-    private def returnCode[_: P] = P[ReturnCode](int map ReturnCode.apply)
+    private def returnCode[x: P] = P[ReturnCode](int map ReturnCode.apply)
 
-    private def successReturnCodes[_: P] = P[ReturnCodeMeaning.Success](
+    private def successReturnCodes[x: P] = P[ReturnCodeMeaning.Success](
       bracketCommaSequence(returnCode)
         map(returnCodes => ReturnCodeMeaning.Success(returnCodes.toSet)))
 
-    private def failureReturnCodes[_: P] = P[ReturnCodeMeaning.Failure](
+    private def failureReturnCodes[x: P] = P[ReturnCodeMeaning.Failure](
       bracketCommaSequence(returnCode)
         map(returnCodes => ReturnCodeMeaning.Failure(returnCodes.toSet)))
 
-    private def endInstruction[_: P] = P[EndInstr](
+    private def endInstruction[x: P] = P[EndInstr](
       Index ~ keyword("end") ~ hardEnd
         map { case (start, end) => ExplicitEnd(sourcePos(start, end)) })
 
-    private def objectExpression[_: P]: P[ObjectExpression] = P(
+    private def objectExpression[x: P]: P[ObjectExpression] = P(
       expressionMap
         .map(ObjectExpression(_)))
 
-    private def expressionMap[_: P]: P[Map[String, Expression]] = P(
+    private def expressionMap[x: P]: P[Map[String, Expression]] = P(
       curly(nonEmptyCommaSequence(quotedString ~ w ~ ":" ~ w ~/ expression))
        .map(_.toMap))
 
-    private def anonymousWorkflowJob[_: P] = P[WorkflowJob](
+    private def anonymousWorkflowJob[x: P] = P[WorkflowJob](
       for {
         kv <- keyValues(
           keyValue("env", objectExpression) |
@@ -142,11 +142,11 @@ object WorkflowParser
           parallelism = parallelism,
           sigkillDelay = sigkillDelay))
 
-    private def executeInstruction[_: P] = P[Execute.Anonymous](
+    private def executeInstruction[x: P] = P[Execute.Anonymous](
       (Index ~ keyword("execute") ~ w ~ anonymousWorkflowJob ~ hardEnd)
         .map { case (start, job, end) => Execute.Anonymous(job, sourcePos = sourcePos(start, end)) })
 
-    private def jobInstruction[_: P] = P[Execute](
+    private def jobInstruction[x: P] = P[Execute](
       (Index ~ keyword("job") ~ w ~ identifier ~ (w ~ comma ~ keyValue("defaultArguments", objectExpression)).? ~ hardEnd)
         .flatMap {
           case (start, name, None, end) =>
@@ -158,7 +158,7 @@ object WorkflowParser
             invalid(s"Unexpected keyword: $keyword")
         })
 
-    private def failInstruction[_: P] = P[FailInstr](
+    private def failInstruction[x: P] = P[FailInstr](
       (Index ~ keyword("fail") ~
         inParentheses(keyValues(
           keyValueConvert("namedValues", objectExpression)(o =>
@@ -175,17 +175,17 @@ object WorkflowParser
           } yield FailInstr(errorMessage, namedValues getOrElse Map.empty, uncatchable = uncatchable, sourcePos(start, end))
         })
 
-    private def promptInstruction[_: P] = P[Prompt](
+    private def promptInstruction[x: P] = P[Prompt](
       (Index ~ keyword("prompt") ~ w ~/ expression ~ hardEnd)
         .map { case (start, expression, end) =>
           Prompt(expression, sourcePos(start, end))
         })
 
-    private def finishInstruction[_: P] = P[Finish](
+    private def finishInstruction[x: P] = P[Finish](
       (Index ~ keyword("finish") ~ hardEnd)
         .map { case (start, end) => Finish(sourcePos(start, end)) })
 
-    private def forkInstruction[_: P] = P[Fork]{
+    private def forkInstruction[x: P] = P[Fork]{
       def forkBranch = P[Fork.Branch](
         (quotedString ~ w ~ ":" ~ w ~ curlyWorkflowOrInstruction)
           .map(Fork.Branch.fromPair))
@@ -207,7 +207,7 @@ object WorkflowParser
         }
     }
 
-    private def ifInstruction[_: P] = P[If](
+    private def ifInstruction[x: P] = P[If](
       (Index ~ keyword("if") ~ w ~/ inParentheses(expression) ~ Index ~
         w ~/ curlyWorkflowOrInstruction ~/
         (w ~ "else" ~ w ~/ curlyWorkflowOrInstruction).? ~
@@ -216,11 +216,11 @@ object WorkflowParser
         If(expr, then_, else_, sourcePos(start, end))
       })
 
-    private def retryInstruction[_: P] = P[Retry](
+    private def retryInstruction[x: P] = P[Retry](
       (Index ~ keyword("retry") ~ hardEnd)
         .map { case (start, end) => Retry(sourcePos(start, end)) })
 
-    private def tryInstruction[_: P] = P[TryInstruction](
+    private def tryInstruction[x: P] = P[TryInstruction](
       (Index ~ keyword("try") ~
         (w ~ inParentheses(keyValues(
           keyValue("retryDelays", bracketCommaSequence(int)) |
@@ -242,7 +242,7 @@ object WorkflowParser
           } yield try_
         })
 
-    private def lockInstruction[_: P] = P[LockInstruction](
+    private def lockInstruction[x: P] = P[LockInstruction](
       (Index ~ keyword("lock") ~ w ~/
         inParentheses(keyValues(
           keyValue("lock", quotedLockPath) |
@@ -258,7 +258,7 @@ object WorkflowParser
         } yield lock
       }  ~~/ instructionTerminator.?)
 
-    private def instruction[_: P]: P[Instruction] =
+    private def instruction[x: P]: P[Instruction] =
       P(endInstruction |
         executeInstruction |
         failInstruction |
@@ -271,17 +271,17 @@ object WorkflowParser
         tryInstruction |
         lockInstruction)
 
-    private def labeledInstruction[_: P] = P[Labeled](
+    private def labeledInstruction[x: P] = P[Labeled](
       (labelDef.? ~ instruction)
         map { case (maybeLabel, instruction_) => Labeled(maybeLabel, instruction_)})
 
-    private def jobDefinition[_: P] = P[(WorkflowJob.Name, WorkflowJob)](
+    private def jobDefinition[x: P] = P[(WorkflowJob.Name, WorkflowJob)](
       keyword("define") ~ w ~/ keyword("job") ~ w ~/
         identifier.map(WorkflowJob.Name.apply) ~ w ~/
         curly(executeInstruction ~ w ~ instructionTerminator).map(_.job) ~/
         w)
 
-    def whole[_: P] = P[Workflow](w ~/ workflowDefinition ~ w ~/ End)
+    def whole[x: P] = P[Workflow](w ~/ workflowDefinition ~ w ~/ End)
   }
 
   private def sourcePos(start: Int, end: Int) = Some(SourcePos(start, end))
