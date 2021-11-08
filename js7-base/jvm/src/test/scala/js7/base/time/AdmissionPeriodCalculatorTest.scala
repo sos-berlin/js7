@@ -6,7 +6,6 @@ import java.time.{LocalDate, LocalDateTime, LocalTime}
 import js7.base.time.AdmissionPeriodCalculator.{AlwaysPeriodCalculator, DailyPeriodCalculator, WeekdayPeriodCalculator}
 import js7.base.time.ScalaTime._
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration.FiniteDuration
 import scala.jdk.DurationConverters.ScalaDurationOps
 
 final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
@@ -195,7 +194,7 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
 
     "toInterval" in {
       assert(AlwaysPeriodCalculator.toLocalInterval(localDT("2021-10-01T00:00")) ==
-        Some(LocalInterval(localDT("2021-10-01T00:00"), FiniteDuration.MaxValue)))
+        Some(LocalInterval.Always))
     }
 
     "calendarStart (not used)" in {

@@ -49,7 +49,7 @@ object AdmissionPeriodCalculator
       true
 
     def toLocalInterval(local: LocalDateTime) =
-      Some(LocalInterval(local, FiniteDuration.MaxValue))
+      Some(LocalInterval.Always)
 
     def calendarStartWithoutDateOffset(local: LocalDateTime) =
       local  // not used
@@ -64,8 +64,8 @@ object AdmissionPeriodCalculator
     final def hasPeriodForDay(localDate: LocalDate) = {
       val startOfDay = LocalDateTime.of(localDate, MIDNIGHT)
       val endOfDay = startOfDay.plusDays(1)
-      val a = toLocalInterval0(startOfDay)
-      a.end > startOfDay && a.start < endOfDay
+      toLocalInterval0(startOfDay)
+        .contains(startOfDay, endOfDay)
     }
 
     final def toLocalInterval(local: LocalDateTime) =

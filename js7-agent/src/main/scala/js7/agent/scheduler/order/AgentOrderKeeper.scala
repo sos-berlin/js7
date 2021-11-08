@@ -25,7 +25,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTime._
 import js7.base.time.ScalaTime._
-import js7.base.time.{AdmissionTimeScheme, AlarmClock}
+import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{DuplicateKeyException, SetOnce}
@@ -746,7 +746,9 @@ object AgentOrderKeeper {
       workflowJob.admissionTimeScheme.getOrElse(AdmissionTimeScheme.always),
       zone,
       onSwitch = to =>
-        logger.debug(s"$jobKey: Next admission: " + to.getOrElse("None") + " " + zone))
+        if (!to.contains(TimeInterval.Always)) {
+          logger.debug(s"$jobKey: Next admission: ${to getOrElse "None"} $zone")
+        })
 
     var taskCount = 0
 

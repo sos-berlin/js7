@@ -8,10 +8,6 @@ final class LocalIntervalTest extends AnyFreeSpec
 {
   private val localInterval = LocalInterval(LocalDateTime.parse("2021-08-30T01:00"), 2.h)
 
-  "end" in {
-    assert(localInterval.end == LocalDateTime.parse("2021-08-30T03:00"))
-  }
-
   "endsBefore" in {
     assert(!localInterval.endsBefore(LocalDateTime.parse("2021-08-30T02:59:59")))
     assert(localInterval.endsBefore(LocalDateTime.parse("2021-08-30T03:00")))

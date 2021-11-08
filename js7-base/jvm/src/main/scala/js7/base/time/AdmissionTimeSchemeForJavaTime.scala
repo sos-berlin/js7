@@ -36,7 +36,7 @@ object AdmissionTimeSchemeForJavaTime
     def findLocalInterval(local: LocalDateTime, dateOffset: FiniteDuration): Option[LocalInterval] =
       findLocalIntervals(local, dateOffset)
         .filterNot(_.endsBefore(local))
-        .minByOption(_.start)
+        .minOption
 
     private def findLocalIntervals(local: LocalDateTime, dateOffset: FiniteDuration): View[LocalInterval] =
       admissionTimeScheme.periods
