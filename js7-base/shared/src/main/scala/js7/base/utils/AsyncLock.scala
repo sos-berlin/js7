@@ -42,7 +42,7 @@ final class AsyncLock private(
                   mvar.put(acquirer)
                     .whenItTakesLonger(warnTimeouts)(duration =>
                       for (lockedBy <- mvar.tryRead) yield logger.info(
-                        s"$acquirer is still waiting for $toString" +
+                        s"⏳ $acquirer is still waiting for $toString" +
                           s" (currently locked by ${lockedBy.getOrElse("None")})" +
                           s" for ${duration.pretty} ..."))
                     .map { _ =>

@@ -99,10 +99,11 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
     def onSkipped(): Unit = {
       skipped += 1
       val duration = runningSince.elapsed
-      def msg = s"$skipped events (${toKBGB(position - startPosition)}) skipped since ${duration.pretty}" +
-        s" while searching ${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)} in journal, "
       if (!debugIssued && (position - startPosition >= InfoSkippedSize || duration >= 1.s)) {
-        logger.debug(msg)
+        logger.debug(s"⏳ $skipped events (${toKBGB(position - startPosition)}) skipped" +
+          s" since ${duration.pretty} while searching " +
+          s"${EventId.toDateTimeString(startEventId)}..${EventId.toDateTimeString(after)}" +
+          " in journal, ")
         debugIssued = true
       }
     }
@@ -111,10 +112,10 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
       val skippedSize = position - startPosition
       val duration = runningSince.elapsed
       if (skipped > 0)
-        logger.trace(s"$skipped events (${toKBGB(skippedSize)}) skipped in ${duration.pretty} " +
+        logger.trace(s"⏳ $skipped events (${toKBGB(skippedSize)}) skipped in ${duration.pretty} " +
           s"for searching ${EventId.toString(startEventId)}..${EventId.toString(after)}")
       if (skippedSize >= InfoSkippedSize || duration >= InfoDuration)
-        logger.info(s"$skipped events (${toKBGB(skippedSize)}) read in ${duration.pretty}, " +
+        logger.info(s"⏳ $skipped events (${toKBGB(skippedSize)}) read in ${duration.pretty}, " +
           s"in search of event '${EventId.toString(startEventId)}'")
     }
   }

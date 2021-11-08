@@ -167,7 +167,7 @@ extends Observable[Seq[DirectoryEvent]]
       private def setTimer(nextDelay: FiniteDuration): Unit =
         self.synchronized {
           if (timer.isEmpty && !hasError) {
-            logger.trace(s"scheduleOnce ${nextDelay.pretty}")
+            logger.trace(s"⏰ scheduleOnce ${nextDelay.pretty}")
             timer = Some(
               scheduler.scheduleOnce(nextDelay) {
                 self.synchronized {
