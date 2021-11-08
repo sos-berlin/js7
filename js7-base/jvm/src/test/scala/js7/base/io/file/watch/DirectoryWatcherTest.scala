@@ -135,7 +135,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
       val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
       val buffer = mutable.Buffer[Seq[DirectoryEvent]]()
       val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
-        .foreach { buffer += _ }
+        .foreach(o => synchronized { buffer += o })
       var first = 0
 
       for (n <- Seq(1000, 1, 10, 500, 3, 50)) {
@@ -144,7 +144,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
         val fileCreationFuture = Observable.fromIterable(indices).executeAsync.foreach { i =>
           touchFile(dir / i.toString)
         }
-        waitForCondition(99.s, 10.ms)(buffer.view.map(_.size).sum == indices.size)
+        waitForCondition(99.s, 10.ms)(synchronized(buffer.view.map(_.size).sum) == indices.size)
         fileCreationFuture.await(100.ms)
 
         assert(buffer.flatten.sortBy(_.relativePath.getFileName.toString.toInt) ==
