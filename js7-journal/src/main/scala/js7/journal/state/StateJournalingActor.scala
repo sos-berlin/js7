@@ -38,8 +38,12 @@ extends MainJournalingActor[S, E]
 
   def receive = {
     case Persist(stateToEvent, promise, transaction) =>
-      val tried = Try(stateToEvent(state).flatMap(keyedEvent => state.applyEvents(keyedEvent).map(_ => keyedEvent)))
-      tried match {
+      Try(
+        for {
+          keyedEvent <- stateToEvent(state)
+          _ <- state.applyEvents(keyedEvent)
+        } yield keyedEvent
+      ) match {
         case Failure(t) => promise.failure(t)
         case Success(Left(problem)) => promise.success(Left(problem))
         case Success(Right(keyedEvents)) =>
@@ -60,7 +64,9 @@ extends MainJournalingActor[S, E]
 
 private[state] object StateJournalingActor
 {
-  type StateToEvents[S <: JournaledState[S], E <: Event] = S => Checked[Seq[KeyedEvent[E]]]
+  type StateToEvents[S <: JournaledState[S], E <: Event] = S =>
+    Checked[Seq[KeyedEvent[E]]]
+
   type PersistFunction[S <: JournaledState[S], E <: Event] =
     (StateToEvents[S, E], /*transaction:*/Boolean) =>
       Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
