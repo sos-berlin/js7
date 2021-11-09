@@ -34,14 +34,11 @@ object JournaledState
   }
 
   trait Companion[S <: JournaledState[S]]
+  extends EventDrivenState.Companion[S, Event]
   {
-    implicit final val implicitJournalStateCompanion: Companion[S] = this
+    implicit final val implicitJournalStateCompanion: Companion[S] =
+      this
 
     implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
-
-    def name: String =
-      getClass.simpleScalaName
-
-    override def toString = name
   }
 }

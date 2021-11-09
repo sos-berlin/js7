@@ -7,7 +7,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
 import js7.data.cluster.ClusterSetting.syntax._
-import js7.data.cluster.ClusterState._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
@@ -16,6 +15,10 @@ import monix.reactive.Observable
 sealed trait ClusterState
 extends EventDrivenState[ClusterState, ClusterEvent]
 {
+  import ClusterState._
+
+  def companion = ClusterState
+
   final def isActive(nodeId: NodeId, isBackup: Boolean) =
     this == Empty && !isBackup || isNonEmptyActive(nodeId)
 
@@ -81,6 +84,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 }
 
 object ClusterState
+extends EventDrivenState.Companion[ClusterState, ClusterEvent]
 {
   private type Id = NodeId
 

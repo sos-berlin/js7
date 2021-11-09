@@ -76,7 +76,7 @@ final class StatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
     "persistKeyedEvent with simple KeyedEvent" in {
       assert(persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe().isRight)
       assert(persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberAdded).runSyncUnsafe() ==
-        Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied: Duplicate NumberThing: ONE")))
+        Left(Problem("Event 'ONE <-: NumberAdded' cannot be applied to 'TestState': Duplicate NumberThing: ONE")))
       intercept[MatchError] { persistence.persistKeyedEvent(NumberKey("ONE") <-: NumberUnhandled).runSyncUnsafe() }
     }
 

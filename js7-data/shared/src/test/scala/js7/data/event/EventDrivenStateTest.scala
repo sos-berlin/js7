@@ -38,19 +38,21 @@ final class EventDrivenStateTest extends AnyFreeSpec
     assert(s.applyStampedEvents(stampedEvents) ==
       Left(
         EventNotApplicableProblem(InvalidEvent, TestState("(ADDED)MORE"))
-          withPrefix "Event 'Stamped(5000 1970-01-01T00:00:00.005Z InvalidEvent)' cannot be applied:"))
+          withPrefix "Event 'Stamped(5000 1970-01-01T00:00:00.005Z InvalidEvent)' cannot be applied to 'TestCase':"))
   }
 }
 
-private object EventDrivenStateTest
+object EventDrivenStateTest
 {
-  private sealed trait TestEvent extends NoKeyEvent
+  sealed trait TestEvent extends NoKeyEvent
   private case class Added(string: String) extends TestEvent
   private case object InvalidEvent extends TestEvent
 
-  private case class TestState(string: String)
+  final case class TestState(string: String)
   extends EventDrivenState[TestState, TestEvent]
   {
+    def companion = TestCase
+
     def applyEvent(keyedEvent: KeyedEvent[TestEvent]) =
       keyedEvent match {
         case KeyedEvent(NoKey, Added(s)) =>
@@ -59,4 +61,5 @@ private object EventDrivenStateTest
           eventNotApplicable(keyedEvent)
       }
   }
+  object TestCase extends EventDrivenState.Companion[TestState, TestEvent]
 }
