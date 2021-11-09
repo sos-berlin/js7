@@ -136,7 +136,7 @@ final class StatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
       implicit val a = actorSystem
       implicit val timeout = Timeout(99.s)
       persistence = StatePersistence
-        .start(recovered, journalMeta, JournalConf.fromConfig(TestConfig),
+        .start(recovered, JournalConf.fromConfig(TestConfig),
           new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
         .await(99.s)
       persistence

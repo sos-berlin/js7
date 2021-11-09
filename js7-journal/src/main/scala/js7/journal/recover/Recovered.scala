@@ -9,7 +9,7 @@ import js7.journal.watch.JournalEventWatch
 import scala.concurrent.duration._
 
 final class Recovered[S <: SnapshotableState[S]] private(
-  journalMeta: JournalMeta,
+  val journalMeta: JournalMeta,
   val recoveredJournalFile: Option[RecoveredJournalFile[S]],
   val totalRunningSince: Deadline,
   config: Config,

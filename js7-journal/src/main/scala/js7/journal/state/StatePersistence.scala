@@ -178,7 +178,6 @@ object StatePersistence
 
   def start[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
     recovered: Recovered[S],
-    journalMeta: JournalMeta,
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
     keyedEventBus: StampedKeyedEventBus = new StampedKeyedEventBus)
@@ -187,6 +186,7 @@ object StatePersistence
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
   : Task[StatePersistence[S]] = {
+    import recovered.journalMeta
     val persistence = prepare(recovered.journalId, recovered.eventWatch, journalMeta, journalConf,
       eventIdGenerator, keyedEventBus)
     persistence.start(recovered)

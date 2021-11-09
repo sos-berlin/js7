@@ -80,7 +80,7 @@ extends Actor with Stash with SimpleStateActor
 
     val sender = this.sender()
     StatePersistence
-      .start(recovered, journalMeta, agentConf.journalConf, eventIdGenerator, keyedEventBus)
+      .start(recovered, agentConf.journalConf, eventIdGenerator, keyedEventBus)
       .map { persistence =>
         watch(persistence.journalActor)
         this.persistence = persistence
