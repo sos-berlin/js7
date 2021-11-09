@@ -154,6 +154,9 @@ object IdToUser
       case PasswordRegex("sha512", pw) =>
         Some(HashedPassword(SecretString(pw.toLowerCase(Locale.ROOT)), Hasher.sha512))
 
+      case "" =>
+        Some(HashedPassword(SecretString.empty, identityHasher))
+
       case PasswordRegex(_, _) =>
         logger.error(s"Unknown password encoding scheme for User '$userId'")
         None

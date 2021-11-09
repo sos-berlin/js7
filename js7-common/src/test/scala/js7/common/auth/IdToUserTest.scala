@@ -62,6 +62,9 @@ final class IdToUserTest extends AnyFreeSpec
           E2 {
             distinguished-names = [ "CN=E" ]
           }
+          EMPTY-PASSWORD {
+            password = ""
+          }
         }""",
       SimpleUser.apply)
 
@@ -98,6 +101,9 @@ final class IdToUserTest extends AnyFreeSpec
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=D")) == Right(Right(d)))
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=E")) == Right(Left(Set(e1.id, e2.id))))
       assert(idToUser.distinguishedNameToIdsOrUser(DistinguishedName("CN=UNKNOWN")) == Left(Problem("Unknown distinguished name 'CN=UNKNOWN'")))
+
+      val Some(emptyPasswordUser) = idToUser(UserId("EMPTY-PASSWORD"))
+      assert(emptyPasswordUser.hashedPassword equalsClearText SecretString(""))
     }
 
     "thread-safe" in {
