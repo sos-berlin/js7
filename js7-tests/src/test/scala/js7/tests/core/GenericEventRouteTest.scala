@@ -90,12 +90,11 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
   protected val whenShuttingDown = shuttingDown.future
 
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]().closeWithCloser
-  import eventCollector.eventWatch
+  protected val eventWatch = eventCollector.eventWatch
 
   private lazy val route = pathSegments("event")(
     new GenericEventRouteProvider {
       def keyedEventTypedJsonCodec = ControllerState.keyedEventJsonCodec/*Example for test*/
-      def eventWatchFor(user: SimpleUser) = Task.pure(Right(eventWatch))
       override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)
 

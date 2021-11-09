@@ -1,7 +1,7 @@
 package js7.agent.web
 
 import js7.agent.client.AgentClient
-import js7.agent.data.Problems.{AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem}
+import js7.agent.data.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgent, ReleaseEvents, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
@@ -38,11 +38,6 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
 
   "(Login)"  in {
     agentClient.login().await(99.s)
-  }
-
-  "Requesting events of unregistered Controller" in {
-    assert(agentClient.eventObservable(EventRequest.singleClass[Event](after = 1)).await(99.s) ==
-      Left(AgentNotDedicatedProblem))
   }
 
   "(DedicateAgent)" in {

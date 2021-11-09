@@ -2,13 +2,13 @@ package js7.agent.scheduler
 
 import akka.pattern.ask
 import akka.util.Timeout
+import js7.agent.data.AgentState
 import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CoupleController, DedicateAgent, DetachOrder, GetOrders}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
@@ -24,9 +24,10 @@ import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
-import js7.journal.watch.EventWatch
+import js7.journal.recover.Recovered
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
@@ -38,19 +39,21 @@ final class AgentActorTest extends AnyFreeSpec
   for (n <- List(10) ++ (sys.props.contains("test.speed") ? 1000 /*needs Job.parallelism=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {
       TestAgentActorProvider.provide("AgentActorTest") { provider =>
-        import provider.{agentDirectory, executeCommand}
+        import provider.{agentConfiguration, agentDirectory, executeCommand, persistence}
+        import agentConfiguration.{config, journalMeta}
+        import persistence.eventWatch
 
         for (pathExecutable <- TestPathExecutables) {
           val file = pathExecutable.toFile(agentDirectory / "config" / "executables")
           file.writeExecutable(TestScript)
         }
 
-        (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
+        (provider.agentActor ?
+          AgentActor.Input.Start(Recovered[AgentState](journalMeta, None, now, config))
+        ).mapTo[AgentActor.Output.Ready.type] await 99.s
 
         val agentRunId = executeCommand(DedicateAgent(agentPath, controllerId))
           .await(99.s).orThrow.asInstanceOf[DedicateAgent.Response].agentRunId
-        val eventWatch = (provider.agentActor ? AgentActor.Input.GetEventWatch)(Timeout(88.s))
-          .mapTo[Checked[EventWatch]].await(99.s).orThrow
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
 

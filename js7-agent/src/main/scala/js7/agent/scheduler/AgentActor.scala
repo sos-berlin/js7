@@ -1,8 +1,7 @@
 package js7.agent.scheduler
 
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
-import akka.pattern.{ask, pipe}
-import com.softwaremill.diffx.generic.auto._
+import akka.pattern.ask
 import java.util.Objects.requireNonNull
 import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
@@ -35,38 +34,33 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.recover.{Recovered, StateRecoverer}
+import js7.journal.recover.Recovered
 import js7.journal.state.StatePersistence
-import js7.journal.watch.JournalEventWatch
-import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
 private[agent] final class AgentActor private(
   terminatePromise: Promise[ProgramTermination],
+  persistence: StatePersistence[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
-  jobLauncherConf: JobLauncherConf,
-  eventIdGenerator: EventIdGenerator,
-  keyedEventBus: StampedKeyedEventBus)
+  jobLauncherConf: JobLauncherConf)
   (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
 extends Actor with Stash with SimpleStateActor
 {
   import agentConf.{akkaAskTimeout, journalMeta}
   import context.{actorOf, watch}
+  import persistence.eventWatch
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private val signatureVerifier = GenericSignatureVerifier(agentConf.config).orThrow
-  private var persistence: StatePersistence[AgentState] = null
   private var recovered: Recovered[AgentState] = null
-  private var eventWatch: JournalEventWatch = null
   private val started = SetOnce[Started]
   private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
   private var isResetting = false
@@ -74,24 +68,11 @@ extends Actor with Stash with SimpleStateActor
   private val terminateCompleted = Promise[Completed]()
 
   override def preStart() = {
+    watch(persistence.journalActor)
     super.preStart()
-    recovered = StateRecoverer.recover[AgentState](journalMeta, agentConf.config)
-    eventWatch = recovered.eventWatch
-
-    val sender = this.sender()
-    StatePersistence
-      .start(recovered, agentConf.journalConf, eventIdGenerator, keyedEventBus)
-      .map { persistence =>
-        watch(persistence.journalActor)
-        this.persistence = persistence
-      }
-      .runToFuture
-      .onComplete(tried =>
-        (self ! Internal.JournalIsReady(tried))(sender))
   }
 
   override def postStop() = {
-    if (eventWatch != null) eventWatch.close()
     super.postStop()
     terminatePromise.trySuccess(
       ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
@@ -103,24 +84,12 @@ extends Actor with Stash with SimpleStateActor
   }
 
   def receive = {
-    case Internal.JournalIsReady(Failure(throwable)) =>
-      logger.error("JournalIsReady failed: " + throwable.toStringWithCauses)
-      throw throwable
-
-    case Internal.JournalIsReady(Success(())) =>
+    case Input.Start(recovered) =>
+      this.recovered = recovered
       val state = recovered.state
       if (state.isDedicated) {
         addOrderKeeper(state.agentPath, state.controllerId).orThrow
       }
-      become("startable")(startable)
-      unstashAll()
-
-    case _ =>
-      stash()
-  }
-
-  private def startable: Receive = {
-    case Input.Start =>
       become("ready")(ready)
       sender() ! Output.Ready
   }
@@ -128,13 +97,6 @@ extends Actor with Stash with SimpleStateActor
   private def ready: Receive = {
     case cmd: Input.ExternalCommand =>
       executeExternalCommand(cmd)
-
-    case Input.GetEventWatch =>
-      if (!persistence.currentState.isDedicated) {
-        sender() ! Left(AgentNotDedicatedProblem)
-      } else {
-        eventWatch.whenStarted.map(Right.apply) pipeTo sender()
-      }
 
     case Terminated(a) if started.toOption.exists(_.actor == a) =>
       logger.debug("AgentOrderKeeper terminated")
@@ -322,17 +284,12 @@ object AgentActor
   }
 
   object Input {
-    final case object Start
+    final case class Start(recovered: Recovered[AgentState])
     final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])
-    case object GetEventWatch
   }
 
   object Output {
     case object Ready
-  }
-
-  private object Internal {
-    final case class JournalIsReady(tried: Try[Unit])
   }
 
   private final case class Started(
@@ -344,13 +301,13 @@ object AgentActor
   final class Factory @Inject private(
     clock: AlarmClock,
     agentConfiguration: AgentConfiguration,
-    jobLauncherConf: JobLauncherConf,
-    eventIdGenerator: EventIdGenerator,
-    keyedEventBus: StampedKeyedEventBus)
+    jobLauncherConf: JobLauncherConf)
     (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
-    def apply(terminatePromise: Promise[ProgramTermination]) =
-      new AgentActor(terminatePromise, clock, agentConfiguration, jobLauncherConf,
-        eventIdGenerator, keyedEventBus)
+    def apply(
+      persistence: StatePersistence[AgentState],
+      terminatePromise: Promise[ProgramTermination])
+    =
+      new AgentActor(terminatePromise, persistence, clock, agentConfiguration, jobLauncherConf)
   }
 }

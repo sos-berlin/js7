@@ -6,7 +6,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, DedicateAgent, ShutDown}
 import js7.agent.tests.AgentShutDownTest._
-import js7.base.auth.{SimpleUser, UserId}
+import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -16,7 +16,6 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.common.akkautils.Akkas
 import js7.common.system.ServerOperatingSystem.operatingSystem
-import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.order.OrderEvent.OrderProcessed
@@ -71,12 +70,8 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
     agent.terminated await 99.s
 
     agent = RunningAgent.startForTest(agentConfiguration).await(10.s)
-    val eventWatch = agent
-      .api(CommandMeta(SimpleUser(userId)))
-      .eventWatch
-      .await(99.s).orThrow
     for (orderId <- orderIds) {
-      val processed = eventWatch.await[OrderProcessed](_.key == orderId)
+      val processed = agent.eventWatch.await[OrderProcessed](_.key == orderId)
       assert(processed.head.value.event.outcome.isInstanceOf[Outcome.Killed])
     }
 

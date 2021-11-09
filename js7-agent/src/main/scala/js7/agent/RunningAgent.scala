@@ -6,11 +6,13 @@ import com.google.inject.Stage.PRODUCTION
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
+import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.Config
 import java.nio.file.Files.deleteIfExists
 import js7.agent.RunningAgent._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
+import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
@@ -35,6 +37,10 @@ import js7.common.guice.GuiceImplicits._
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
+import js7.journal.recover.StateRecoverer
+import js7.journal.state.StatePersistence
+import js7.journal.watch.EventWatch
+import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -50,6 +56,7 @@ import scala.util.{Failure, Success, Try}
  * @author Joacim Zschimmer
  */
 final class RunningAgent private(
+  val eventWatch: EventWatch,
   val webServer: AkkaWebServer with AkkaWebServer.HasUri,
   mainActor: ActorRef,
   terminated1: Future[ProgramTermination],
@@ -157,25 +164,43 @@ object RunningAgent {
     // Run under scheduler from start (and let debugger show Controller's thread names)
     Future {
       val agentConfiguration = injector.instance[AgentConfiguration]
+      import agentConfiguration.{akkaAskTimeout, config, journalConf, journalMeta}
       agentConfiguration.journalMeta.deleteJournalIfMarked()
         .orThrow
       if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
+      val whenRecovered = Future(StateRecoverer.recover[AgentState](journalMeta, config))
 
       implicit val actorSystem = injector.instance[ActorSystem]
       val closer = injector.instance[Closer]
+
+      val recovered = whenRecovered.awaitInfinite
+      recovered.eventWatch.closeWithCloser(closer)
+
+      val persistence = StatePersistence
+        .start(recovered, journalConf,
+          injector.instance[EventIdGenerator],
+          injector.instance[StampedKeyedEventBus])
+        .awaitInfinite
+        .closeWithCloser(closer)
 
       val webServer = AgentWebServer(
         agentConfiguration,
         injector.instance[GateKeeper.Configuration[SimpleUser]],
         injector.instance[SessionRegister[SimpleSession]],
-        injector.instance[ClusterWatchRegister]
+        injector.instance[ClusterWatchRegister],
+        persistence
       ).closeWithCloser(closer)
 
       val mainActorReadyPromise = Promise[MainActor.Ready]()
       val terminationPromise = Promise[ProgramTermination]()
       val mainActor = actorSystem.actorOf(
-        Props { new MainActor(agentConfiguration, injector, mainActorReadyPromise, terminationPromise) },
+        Props {
+          new MainActor(persistence,
+          agentConfiguration, injector, mainActorReadyPromise, terminationPromise)
+        },
         "main")
+
+      mainActor ! MainActor.Input.Start(recovered)
 
       agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
@@ -189,7 +214,8 @@ object RunningAgent {
         api = ready.api
         _ <- webServer.start(api)
       } yield
-        new RunningAgent(webServer, mainActor, terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
+        new RunningAgent(persistence.eventWatch, webServer, mainActor,
+          terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
       task.runToFuture
     }.flatten
   }

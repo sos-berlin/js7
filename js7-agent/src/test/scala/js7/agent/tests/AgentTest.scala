@@ -63,8 +63,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
             val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
               == Right(AgentCommand.Response.Accepted))
-            val Right(eventWatch) = agentApi.eventWatch.await(99.s)
-            val orderProcessed = eventWatch.await[OrderProcessed]().head.value.event
+            val orderProcessed = agent.eventWatch.await[OrderProcessed]().head.value.event
             assert(orderProcessed.outcome == Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "WORKDIR" -> StringValue(workingDirectory.toString))))
             agent.terminate() await 99.s
           }

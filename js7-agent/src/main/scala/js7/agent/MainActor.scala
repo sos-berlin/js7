@@ -5,6 +5,7 @@ import com.google.inject.Injector
 import js7.agent.MainActor._
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.auth.UserId
@@ -14,6 +15,8 @@ import js7.base.utils.ProgramTermination
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.core.command.CommandMeta
+import js7.journal.recover.Recovered
+import js7.journal.state.StatePersistence
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
@@ -22,6 +25,7 @@ import scala.util.control.NoStackTrace
   * @author Joacim Zschimmer
   */
 final class MainActor(
+  persistence: StatePersistence[AgentState],
   agentConfiguration: AgentConfiguration,
   injector: Injector,
   readyPromise: Promise[Ready],
@@ -34,7 +38,12 @@ extends Actor {
   override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
 
   private implicit val scheduler = injector.instance[Scheduler]
-  private val agentActor = watch(actorOf(Props { injector.instance[AgentActor.Factory].apply(terminationPromise) }, "agent"))
+  private val agentActor = watch(
+    actorOf(
+      Props {
+        injector.instance[AgentActor.Factory].apply(persistence, terminationPromise)
+      },
+      "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
 
   private val commandHandler = injector.option[CommandHandler] getOrElse { // Only tests bind a CommandHandler
@@ -47,7 +56,6 @@ extends Actor {
   override def preStart() = {
     super.preStart()
     for (t <- terminationPromise.future.failed) readyPromise.tryFailure(t)
-    agentActor ! AgentActor.Input.Start
   }
 
   override def postStop() = {
@@ -62,6 +70,9 @@ extends Actor {
   }
 
   def receive = {
+    case MainActor.Input.Start(recovered) =>
+      agentActor ! AgentActor.Input.Start(recovered)
+
     case AgentActor.Output.Ready =>
       readyPromise.success(Ready(api))
 
@@ -82,6 +93,7 @@ object MainActor
   final case class Ready(api: CommandMeta => DirectAgentApi)
 
   object Input {
+    final case class Start(recovered: Recovered[AgentState])
     final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])
   }
 }

@@ -17,8 +17,8 @@ import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
+import js7.base.problem.Problem
 import js7.base.problem.Problems.ShuttingDownProblem
-import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
@@ -31,7 +31,6 @@ import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
 import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import js7.common.akkahttp.HttpStatusCodeException
-import js7.common.akkahttp.StandardDirectives.routeTask
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import js7.common.akkahttp.web.session.RouteProvider
@@ -58,6 +57,7 @@ trait GenericEventRoute extends RouteProvider
 {
   protected implicit def actorRefFactory: ActorRefFactory
   private implicit def implicitScheduler: Scheduler = scheduler
+  protected def eventWatch: EventWatch
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
   private lazy val defaultJsonSeqChunkTimeout = config.getDuration("js7.web.server.services.event.streaming.chunk-timeout")
@@ -68,8 +68,6 @@ trait GenericEventRoute extends RouteProvider
   protected trait GenericEventRouteProvider
   {
     implicit protected def keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event]
-
-    protected def eventWatchFor(user: Session#User): Task[Checked[EventWatch]]
 
     protected def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
 
@@ -93,31 +91,23 @@ trait GenericEventRoute extends RouteProvider
       get {
         pathEnd {
           Route.seal {
-            authorizedUser(ValidUserPermission) { user =>
-              routeTask(
-                eventWatchFor(user)/*AkkaAskTimeout!!*/ map {
-                  case Left(problem) =>
-                    complete(problem)
-
-                  case Right(eventWatch) =>
-                    val waitingSince = !eventWatch.whenStarted.isCompleted ? now
-                    if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
-                    onSuccess(eventWatch.whenStarted) { eventWatch =>
-                      for (o <- waitingSince) {
-                        logger.debug(s"Journal has become ready after ${o.elapsed.pretty}, continuing event web service")
-                      }
-                      htmlPreferred {
-                        Route.seal(
-                          oneShot(eventWatch))
-                      } ~
-                      accept(`application/x-ndjson`) {
-                        Route.seal(
-                          jsonSeqEvents(eventWatch)(NdJsonStreamingSupport))
-                      } ~
-                      Route.seal(
-                        oneShot(eventWatch))
-                    }
-                })
+            authorizedUser(ValidUserPermission) { _ =>
+              val waitingSince = !eventWatch.whenStarted.isCompleted ? now
+              if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
+              onSuccess(eventWatch.whenStarted) { eventWatch =>
+                for (o <- waitingSince) logger.debug("Journal has become ready after " +
+                  o.elapsed.pretty + ", continuing event web service")
+                htmlPreferred {
+                  Route.seal(
+                    oneShot(eventWatch))
+                } ~
+                  accept(`application/x-ndjson`) {
+                    Route.seal(
+                      jsonSeqEvents(eventWatch)(NdJsonStreamingSupport))
+                  } ~
+                  Route.seal(
+                    oneShot(eventWatch))
+              }
             }
           }
         }

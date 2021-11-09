@@ -78,6 +78,8 @@ trait EventWatch
   final def lastFileTornEventId = fileEventIds.last
 
   def lastAddedEventId: EventId
+
+  def checkEventId(eventId: EventId): Checked[Unit]
 }
 
 object EventWatch
