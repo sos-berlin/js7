@@ -24,7 +24,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
-import js7.data.problems.UnknownEventIdProblem
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.watch.JournalEventWatch._
@@ -151,15 +150,6 @@ with JournalingObserver
       logger.debug(s"onJournalingEnded ${o.journalFile.getFileName} fileLength=$fileLength")
       nextEventReaderPromise = Some(o.lastEventId -> Promise())
       o.onJournalingEnded(fileLength)
-    }
-
-  def checkEventId(eventId: EventId): Checked[Unit] =
-    eventsAfter(eventId) match {
-      case Some(iterator) =>
-        iterator.close()
-        Checked.unit
-      case None =>
-        Left(UnknownEventIdProblem(requiredEventId = eventId))
     }
 
   def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit = {

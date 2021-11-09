@@ -6,7 +6,7 @@ import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.stream.IncreasingNumberSync
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -15,6 +15,7 @@ import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.problems.UnknownEventIdProblem
 import js7.journal.watch.RealEventWatch._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -268,6 +269,15 @@ trait RealEventWatch extends EventWatch
 
   final def lastAddedEventId: EventId =
     committedEventIdSync.last
+
+  final def checkEventId(eventId: EventId): Checked[Unit] =
+    eventsAfter(eventId) match {
+      case Some(iterator) =>
+        iterator.close()
+        Checked.unit
+      case None =>
+        Left(UnknownEventIdProblem(requiredEventId = eventId))
+    }
 
   /** TEST ONLY - Blocking. */
   @TestOnly
