@@ -22,27 +22,19 @@ final class AsyncMapTest extends AsyncFreeSpec
     throw new RuntimeException("CRASH")
 
   "get existing" in {
-    asyncMap.get(1)
-      .map(maybe => assert(maybe == Some("EINS")))
-      .runToFuture
+    assert(asyncMap.get(1) == Some("EINS"))
   }
 
   "get non-existing" in {
-    asyncMap.get(0)
-      .map(maybe => assert(maybe == None))
-      .runToFuture
+    assert(asyncMap.get(0) == None)
   }
 
   "checked existing" in {
-    asyncMap.checked(1)
-      .map(checked => assert(checked == Right("EINS")))
-      .runToFuture
+    assert(asyncMap.checked(1) == Right("EINS"))
   }
 
   "checked non-existing" in {
-    asyncMap.checked(0)
-      .map(checked => assert(checked == Left(UnknownKeyProblem("Int", "0"))))
-      .runToFuture
+    assert(asyncMap.checked(0) == Left(UnknownKeyProblem("Int", "0")))
   }
 
   "remove" in {
@@ -79,10 +71,10 @@ final class AsyncMapTest extends AsyncFreeSpec
             case Success(_) => fail()
             case Failure(t) => assert(t.getMessage == "CRASH")
           }
-          .tapEval(_ =>
+          .tapEval(_ => Task {
             // assert that the lock is released
-            asyncMap.get(0)
-              .map(checked => assert(checked == Some("FIRST-UPDATED"))))
+            assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
+          })
           .runToFuture
       }
     }
@@ -143,10 +135,10 @@ final class AsyncMapTest extends AsyncFreeSpec
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
             }
-            .tapEval(_ =>
+            .tapEval(_ => Task {
               // assert that the lock is released
-              asyncMap.get(0)
-                .map(checked => assert(checked == Some("FIRST-UPDATED"))))
+              assert(asyncMap.get(0) == Some("FIRST-UPDATED"))
+            })
             .runToFuture
         }
       }
@@ -172,9 +164,7 @@ final class AsyncMapTest extends AsyncFreeSpec
     }
 
     "standard, check updated value is FIRST" in {
-      asyncMap.get(4)
-        .map(got => assert(got == Some("FIRST")))
-        .runToFuture
+      assert(asyncMap.get(4) == Some("FIRST"))
     }
 
     "update again" in {
@@ -201,10 +191,10 @@ final class AsyncMapTest extends AsyncFreeSpec
               case Success(_) => fail()
               case Failure(t) => assert(t.getMessage == "CRASH")
             }
-            .tapEval(_ =>
+            .tapEval(_ => Task {
               // assert that the lock is released
-              asyncMap.get(0)
-                .map(checked => assert(checked == Some("ZERO"))))
+              assert(asyncMap.get(0) == Some("ZERO"))
+            })
             .runToFuture
         }
       }
@@ -213,27 +203,21 @@ final class AsyncMapTest extends AsyncFreeSpec
     //???
   }
 
-  "all" in {
-    asyncMap.all.map(all =>
-      assert(all == Map(
-        0 -> "FIRST-UPDATED",
-        1 -> "EINS",
-        2 -> "FIRST",
-        3 -> "INSERTED",
-        4 -> "FIRST")))
-      .runToFuture
+  "toMap" in {
+    assert(asyncMap.toMap == Map(
+      0 -> "FIRST-UPDATED",
+      1 -> "EINS",
+      2 -> "FIRST",
+      3 -> "INSERTED",
+      4 -> "FIRST"))
   }
 
   "size" in {
-    asyncMap.size
-      .map(size => assert(size == 5))
-      .runToFuture
+    assert(asyncMap.size == 5)
   }
 
   "isEmpty" in {
-    asyncMap.isEmpty
-      .map(isEmpty => assert(!isEmpty))
-      .runToFuture
+    assert(!asyncMap.isEmpty)
   }
 
   "removeAll" in {
@@ -244,8 +228,7 @@ final class AsyncMapTest extends AsyncFreeSpec
         2 -> "FIRST",
         3 -> "INSERTED",
         4 -> "FIRST")))
-      .flatMap(_ => asyncMap.all)
-      .map(all => assert(all.isEmpty))
+      .map(_ => assert(asyncMap.toMap.isEmpty))
       .runToFuture
   }
 }

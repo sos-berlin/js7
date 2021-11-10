@@ -52,30 +52,28 @@ private[agent] final class JobDriver(
     Task.defer {
       logger.debug("Stop")
       lastProcessTerminated = Promise()
-      orderToProcess.isEmpty
-        .flatMap(isEmpty =>
-          if (isEmpty)
-            Task.unit
-          else
-            killAll(signal)
-              .map(_ =>
-                if (signal != SIGKILL) {
-                  scheduler.scheduleOnce(sigkillDelay) {
-                    killAll(SIGKILL).runAsyncAndForget
-                  }
-                })
-              .flatMap(_ =>
-                Task.fromFuture(lastProcessTerminated.future)
-                  .logWhenItTakesLonger(s"Job '$jobKey' OrderProcess")))
-        .flatMap(_ =>
-          checkedJobLauncher.toOption.fold(Task.unit) { jobLauncher =>
-            logger.trace("JobLauncher stop")
-            jobLauncher
-              .stop
-              .logWhenItTakesLonger("Stop")
-              .onErrorHandle(throwable =>
-                logger.error("Stop", throwable.nullIfNoStackTrace))
-          })
+      (if (orderToProcess.isEmpty)
+        Task.unit
+      else
+        killAll(signal)
+          .map(_ =>
+            if (signal != SIGKILL) {
+              scheduler.scheduleOnce(sigkillDelay) {
+                killAll(SIGKILL).runAsyncAndForget
+              }
+            })
+          .flatMap(_ =>
+            Task.fromFuture(lastProcessTerminated.future)
+              .logWhenItTakesLonger(s"Job '$jobKey' OrderProcess"))
+      ).flatMap(_ =>
+        checkedJobLauncher.toOption.fold(Task.unit) { jobLauncher =>
+          logger.trace("JobLauncher stop")
+          jobLauncher
+            .stop
+            .logWhenItTakesLonger("Stop")
+            .onErrorHandle(throwable =>
+              logger.error("Stop", throwable.nullIfNoStackTrace))
+        })
     }
 
   def processOrder(
@@ -156,9 +154,8 @@ private[agent] final class JobDriver(
       entry.timeoutSchedule.cancel()
       orderToProcess
         .remove(orderId)
-        .flatMap(_ => orderToProcess.isEmpty)
-        .map(isEmpty =>
-          if (isEmpty && lastProcessTerminated != null) {
+        .map(_ =>
+          if (orderToProcess.isEmpty && lastProcessTerminated != null) {
             lastProcessTerminated.trySuccess(())
           })
     }
@@ -170,10 +167,11 @@ private[agent] final class JobDriver(
       .runAsyncAndForget
 
   def killOrder(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
-    orderToProcess
-      .get(orderId)
-      .flatMap(_.fold(Task.unit)(
-        killOrder(_, signal)))
+    Task.defer(
+      orderToProcess
+        .get(orderId)
+        .fold(Task.unit)(
+          killOrder(_, signal)))
 
   private def killOrder(entry: Entry, signal_ : ProcessSignal): Task[Unit] = {
     val signal = if (sigkillDelay.isZeroOrBelow) SIGKILL else signal_
@@ -189,16 +187,17 @@ private[agent] final class JobDriver(
   }
 
   private def killAll(signal: ProcessSignal): Task[Unit] =
-    orderToProcess.all
-      .map(_.values)
-      .flatMap { entries =>
-        if (entries.nonEmpty) logger.warn(
-          s"Terminating, sending $signal to all $orderProcessCount tasks")
-        entries.toVector.traverse(killProcess(_, signal))
-      }
-      .map(_.fold_)
-      .onErrorHandle(t =>
-        logger.error(t.toStringWithCauses, t))
+    Task.defer {
+      val entries = orderToProcess.toMap.values
+      if (entries.nonEmpty) logger.warn(
+        s"Terminating, sending $signal to toMap $orderProcessCount tasks")
+      entries
+        .toVector
+        .traverse(killProcess(_, signal))
+        .map(_.fold_)
+        .onErrorHandle(t =>
+          logger.error(t.toStringWithCauses, t))
+    }
 
   private def killProcess(entry: Entry, signal: ProcessSignal): Task[Unit] =
     Task.defer {
