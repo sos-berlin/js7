@@ -22,6 +22,7 @@ import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichIterableOnce
+import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent.NoKey
@@ -33,7 +34,7 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
-import js7.journal.state.{LockKeeper, StatePersistence}
+import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

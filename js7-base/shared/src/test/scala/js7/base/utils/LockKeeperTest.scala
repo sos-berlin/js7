@@ -1,27 +1,21 @@
-package js7.journal.state
+package js7.base.utils
 
+import cats.syntax.traverse._
 import java.util.concurrent.ConcurrentHashMap
-import js7.base.log.Logger
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
-import js7.journal.state.LockKeeperTest._
+import js7.base.utils.LockKeeperTest._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.Future
+import org.scalatest.freespec.AsyncFreeSpec
 import scala.jdk.CollectionConverters._
 
-/**
-  * @author Joacim Zschimmer
-  */
-final class LockKeeperTest extends AnyFreeSpec
+final class LockKeeperTest extends AsyncFreeSpec
 {
   "LockKeeper.lockResource" in {
     val keys = 0 until 8
     val lockKeeper = new LockKeeper[Int]
 
-    for (_ <- 1 to 3) {
+    (1 to 3).toVector.traverse(_ => Task.defer {
       val locks = keys map lockKeeper.lockResource
       val keyToMap = new ConcurrentHashMap[Int, Int]
       for (k <- keys) keyToMap.put(k, 0)
@@ -31,14 +25,17 @@ final class LockKeeperTest extends AnyFreeSpec
         locks(k).use(_ => Task[Unit] {
           val v = keyToMap.get(k)
           keyToMap.put(k, v + 1)
-        }).runToFuture: Future[Unit]) await 99.s
-      logger.info(stopwatch.itemsPerSecondString(n * keys.size, "locks"))
-      assert(keyToMap.asScala.toMap == keys.map(k => k -> n).toMap)
-    }
+        }
+      )).toVector.sequence.map { _ =>
+        logger.info(stopwatch.itemsPerSecondString(n * keys.size, "locks"))
+        assert(keyToMap.asScala.toMap == keys.map(k => k -> n).toMap)
+      }
+    }).map(_.head/*Only the Assertion type is relevant, not the value*/)
+      .runToFuture
   }
 }
 
 object LockKeeperTest
 {
-  private val logger = Logger(getClass)
+  private val logger = scribe.Logger[this.type]
 }

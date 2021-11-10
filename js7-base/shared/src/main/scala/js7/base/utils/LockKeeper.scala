@@ -1,10 +1,9 @@
-package js7.journal.state
+package js7.base.utils
 
 import cats.effect.Resource
-import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.deferFutureAndLog
+import js7.base.utils.LockKeeper._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.journal.state.LockKeeper._
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -77,7 +76,7 @@ final class LockKeeper[K]
   }
 }
 
-private[state] object LockKeeper
+object LockKeeper
 {
-  private val logger = Logger(getClass)
+  private val logger = scribe.Logger[this.type]
 }
