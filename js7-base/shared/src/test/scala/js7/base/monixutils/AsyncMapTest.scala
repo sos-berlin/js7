@@ -106,46 +106,111 @@ final class AsyncMapTest extends AsyncFreeSpec
       .runToFuture
   }
 
-  private def updateChecked(maybe: Option[String]): Task[Checked[String]] =
-    maybe match {
-      case None => Task(Right("FIRST"))
-      case Some(_) => Task(Left(Problem("EXISTING")))
+  "updateChecked" - {
+     def updateChecked(maybe: Option[String]): Task[Checked[String]] =
+      maybe match {
+        case None => Task(Right("FIRST"))
+        case Some(_) => Task(Left(Problem("EXISTING")))
+      }
+
+    "standard" in {
+      asyncMap.updateChecked(4, updateChecked)
+        .map(o => assert(o == Right("FIRST")))
+        .runToFuture
     }
 
-  "updateChecked" in {
-    asyncMap.updateChecked(4, updateChecked)
-      .map(o => assert(o == Right("FIRST")))
-      .flatMap(_ =>
-        asyncMap.updateChecked(4, updateChecked))
-      .map(o => assert(o == Left(Problem("EXISTING"))))
-      .runToFuture
-  }
+    "update again" in {
+      asyncMap.updateChecked(4, updateChecked)
+        .map(o => assert(o == Left(Problem("EXISTING"))))
+        .runToFuture
+    }
 
-  "updateChecked, crashing" - {
-    def properlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[String]] =
-      Task.raiseError(new RuntimeException("CRASH"))
+    "updateChecked, crashing" - {
+      def properlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[String]] =
+        Task.raiseError(new RuntimeException("CRASH"))
 
-    def earlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[String]] =
-      throw new RuntimeException("CRASH")
+      def earlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[String]] =
+        throw new RuntimeException("CRASH")
 
-    for ((upd, name) <- View(
-      properlyCrashingUpdateChecked _ -> "properly",
-      earlyCrashingUpdateChecked _ -> "early"))
-    {
-      name in {
-        asyncMap.updateChecked(0, upd)
-          .materialize
-          .map {
-            case Success(_) => fail()
-            case Failure(t) => assert(t.getMessage == "CRASH")
-          }
-          .tapEval(_ =>
-            // assert that the lock is released
-            asyncMap.get(0)
-              .map(checked => assert(checked == Some("FIRST-UPDATED"))))
-          .runToFuture
+      for ((upd, name) <- View(
+        properlyCrashingUpdateChecked _ -> "properly",
+        earlyCrashingUpdateChecked _ -> "early"))
+      {
+        name in {
+          asyncMap.updateChecked(0, upd)
+            .materialize
+            .map {
+              case Success(_) => fail()
+              case Failure(t) => assert(t.getMessage == "CRASH")
+            }
+            .tapEval(_ =>
+              // assert that the lock is released
+              asyncMap.get(0)
+                .map(checked => assert(checked == Some("FIRST-UPDATED"))))
+            .runToFuture
+        }
       }
     }
+  }
+
+  "updateCheckedWithResult" - {
+    val asyncMap = AsyncMap(Map(0 -> "ZERO"))
+
+    def updateCheckedWithResult(maybe: Option[String]): Task[Checked[(String, Int)]] =
+      maybe match {
+        case None => Task(Right("FIRST" -> 7))
+        case Some(_) => Task(Left(Problem("EXISTING")))
+      }
+
+    "standard, check result is 7" in {
+      asyncMap.updateCheckedWithResult(4, updateCheckedWithResult)
+        .map(o => assert(o == Right(7)))
+        .flatMap(_ =>
+          asyncMap.updateCheckedWithResult(4, updateCheckedWithResult))
+        .map(o => assert(o == Left(Problem("EXISTING"))))
+        .runToFuture
+    }
+
+    "standard, check updated value is FIRST" in {
+      asyncMap.get(4)
+        .map(got => assert(got == Some("FIRST")))
+        .runToFuture
+    }
+
+    "update again" in {
+      asyncMap.updateCheckedWithResult(4, updateCheckedWithResult)
+        .map(o => assert(o == Left(Problem("EXISTING"))))
+        .runToFuture
+    }
+
+    "updateCheckedWithResult, crashing" - {
+      def properlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[(String, Int)]] =
+        Task.raiseError(new RuntimeException("CRASH"))
+
+      def earlyCrashingUpdateChecked(maybe: Option[String]): Task[Checked[(String, Int)]] =
+        throw new RuntimeException("CRASH")
+
+      for ((upd, name) <- View(
+        properlyCrashingUpdateChecked _ -> "properly",
+        earlyCrashingUpdateChecked _ -> "early"))
+      {
+        name in {
+          asyncMap.updateCheckedWithResult(0, upd)
+            .materialize
+            .map {
+              case Success(_) => fail()
+              case Failure(t) => assert(t.getMessage == "CRASH")
+            }
+            .tapEval(_ =>
+              // assert that the lock is released
+              asyncMap.get(0)
+                .map(checked => assert(checked == Some("ZERO"))))
+            .runToFuture
+        }
+      }
+    }
+
+    //???
   }
 
   "all" in {
