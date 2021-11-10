@@ -98,7 +98,7 @@ object VerifiedUpdateItemsExecutor
                   existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
           }
 
-    def simpleItemDeletionEvents(path: SimpleItemPath): View[BasicItemEvent.ForController] =
+    def simpleItemDeletionEvents(path: SimpleItemPath): View[BasicItemEvent.ForClient] =
       path match {
         case path: InventoryItemPath.AssignableToAgent
           // FIXME controllerState may not contain the latest ItemDeleted events,

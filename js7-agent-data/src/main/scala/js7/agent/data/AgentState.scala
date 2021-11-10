@@ -98,7 +98,7 @@ with SnapshotableState[AgentState]
         allFileWatchesState.applyEvent(orderWatchPath <-: event)
           .map(o => copy(allFileWatchesState = o))
 
-      case KeyedEvent(_: NoKey, event: BasicItemEvent.ForAgent) =>
+      case KeyedEvent(_: NoKey, event: BasicItemEvent.ForDelegate) =>
         event match {
           case ItemAttachedToAgent(workflow: Workflow) =>
             for (o <- idToWorkflow.insert(workflow.id -> workflow)) yield

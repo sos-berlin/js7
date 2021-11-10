@@ -12,20 +12,20 @@ sealed trait BasicItemEvent extends InventoryItemEvent
 
 object BasicItemEvent
 {
-  sealed trait ForController extends BasicItemEvent
-  sealed trait ForAgent extends BasicItemEvent
+  sealed trait ForClient extends BasicItemEvent
+  sealed trait ForDelegate extends BasicItemEvent
 
   /** Used for OrderWatch to allow to attach it from Agent. */
   final case class ItemDeletionMarked(key: InventoryItemKey)
-  extends ForController {
+  extends ForClient {
     def attachedState = None
   }
 
   final case class ItemDeleted(key: InventoryItemKey)
-  extends ForController
+  extends ForClient
 
   sealed trait ItemAttachedStateEvent
-  extends ForController {
+  extends ForClient {
     def delegateId: DelegateId
     def attachedState: ItemAttachedState
   }
@@ -78,7 +78,7 @@ object BasicItemEvent
 
   /** Agent only. */
   final case class ItemAttachedToAgent(item: InventoryItem)
-  extends ForAgent {
+  extends ForDelegate {
     def key = item.key
   }
 
@@ -98,7 +98,7 @@ object BasicItemEvent
   }
 
   final case class ItemDetached(key: InventoryItemKey, delegateId: DelegateId)
-  extends ItemAttachedStateEvent with ForAgent {
+  extends ItemAttachedStateEvent with ForDelegate {
     def attachedState = Detached
   }
   object ItemDetached {

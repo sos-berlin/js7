@@ -207,7 +207,7 @@ with SnapshotableState[ControllerState]
               }
           }
 
-        case event: BasicItemEvent.ForController =>
+        case event: BasicItemEvent.ForClient =>
           event match {
             case ItemAttachedStateEvent(itemKey, agentPath: AgentPath, attachedState) =>
               attachedState match {
