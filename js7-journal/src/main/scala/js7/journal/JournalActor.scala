@@ -31,6 +31,7 @@ import js7.journal.JournalActor._
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
+import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.execution.cancelables.SerialCancelable
@@ -796,7 +797,7 @@ object JournalActor
     def eventCount = _eventCount
   }
 
-  private[journal] sealed trait Persist {
+  private[journal] sealed trait Persist extends Loggable {
     def eventNumber: Long
     def eventCount: Int
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
