@@ -24,6 +24,7 @@
     </root>
     <logger level="debug" name="js7"/>
     <logger level="trace" name="js7.journal.JournalActor"/>
+    <logger level="trace" name="js7.journal.watch.InMemoryJournal"/>
     <logger level="trace" name="js7.launcher.forwindows"/>
     <logger level="debug" name="js7.journal.watch.RealEventWatch"/>
     <logger level="trace" name="js7.data.controller.ControllerState"/>

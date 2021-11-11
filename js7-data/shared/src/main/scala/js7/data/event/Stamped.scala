@@ -32,7 +32,8 @@ object Stamped
   def apply[A](eventId: EventId, timestamp: Timestamp, value: A): Stamped[A] =
     new Stamped(eventId, timestamp.toEpochMilli, value)
 
-  def checkOrdering[A](lastEventId: EventId, stampedSeq: Seq[Stamped[A]]): Checked[Unit] = {
+  def checkOrdering[A](lastEventId: EventId, stampedSeq: IterableOnce[Stamped[A]])
+  : Checked[Unit] = {
     var checked = Checked.unit
     var last = lastEventId
     val iterator = stampedSeq.iterator
