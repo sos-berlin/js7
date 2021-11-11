@@ -1,5 +1,7 @@
 package js7.base.thread
 
+import cats.effect.Resource
+import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ThreadPoolExecutor}
 import js7.base.log.Logger
@@ -40,6 +42,13 @@ object IOExecutor
   object Implicits {
     implicit val globalIOX = IOExecutor.globalIOX
   }
+
+  def resource(config: Config, name: String): Resource[Task, IOExecutor] =
+    Resource
+      .make(
+        acquire = Task(newUnlimitedThreadPool(config, name)))(
+        release = o => Task(o.shutdown()))
+      .map(new IOExecutor(_))
 
   def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =
     try
