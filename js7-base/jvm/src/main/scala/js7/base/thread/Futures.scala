@@ -4,6 +4,7 @@ import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
 import js7.base.time.ScalaTime._
 import js7.base.utils.StackTraces._
+import monix.execution.CancelableFuture
 import scala.collection.BuildFrom
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -108,7 +109,12 @@ object Futures {
       def awaitInfinite: A =
         Await.ready(delegate, Duration.Inf).value.get match {
           case Success(o) => o
-          case Failure(t) => throw t.appendCurrentStackTrace
+          case Failure(t) =>
+            delegate match {
+              case o: CancelableFuture[A] => o.cancel()
+              case _ =>
+            }
+            throw t.appendCurrentStackTrace
         }
 
       def await(duration: FiniteDuration)(implicit A: WeakTypeTag[A]): A = {
@@ -118,7 +124,12 @@ object Futures {
         }
         delegate.value.get match {
           case Success(o) => o
-          case Failure(t) => throw t.appendCurrentStackTrace
+          case Failure(t) =>
+            delegate match {
+              case o: CancelableFuture[A] => o.cancel()
+              case _ =>
+            }
+            throw t.appendCurrentStackTrace
         }
       }
     }
