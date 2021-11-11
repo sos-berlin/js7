@@ -46,6 +46,7 @@ final class JournalEventWatch(
   announceNextJournalFileEventId: Option[EventId] = None)
 extends AutoCloseable
 with RealEventWatch
+with FileEventWatch
 with JournalingObserver
 {
   private val keepOpenCount = config.getInt("js7.journal.watch.keep-open")

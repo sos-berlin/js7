@@ -9,8 +9,8 @@ import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
 import akka.util.ByteString
 import io.circe.syntax._
 import js7.base.auth.ValidUserPermission
-import js7.base.data.ByteSequence.ops._
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.data.ByteSequence.ops._
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked
@@ -28,14 +28,14 @@ import js7.controller.web.controller.api.SnapshotRoute._
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
-import js7.journal.watch.EventWatch
+import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.reactive.Observable
 
 trait SnapshotRoute extends ControllerRouteProvider
 {
   protected def controllerState: Task[Checked[ControllerState]]
-  protected def eventWatch: EventWatch
+  protected def eventWatch: FileEventWatch
   protected def controllerConfiguration: ControllerConfiguration
 
   private implicit def implicitScheduler = scheduler

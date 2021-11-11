@@ -72,7 +72,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
         if (after < _last)
           RightTrue
         else {
-          val promise = valueToPromise.getOrElseUpdate(after, Promise[Unit]())
+          val promise = valueToPromise.getOrElseUpdate(after, Promise())
           Task.fromFuture(promise.future)
             .as(Left(()))  // Check again
         }

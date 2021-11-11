@@ -18,7 +18,7 @@ import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered
 import js7.journal.state.StateJournalingActor.{PersistFunction, StateToEvents}
 import js7.journal.state.StatePersistence.logger
-import js7.journal.watch.EventWatch
+import js7.journal.watch.FileEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -34,7 +34,7 @@ import shapeless.tag.@@
 
 final class StatePersistence[S <: SnapshotableState[S]: TypeTag](
   val recoveredJournalId: Option[JournalId],
-  val eventWatch: EventWatch,
+  val eventWatch: FileEventWatch,
   val journalActor: ActorRef @@ JournalActor.type,
   journalConf: JournalConf,
   journalActorStopped: Future[Unit])
@@ -195,7 +195,7 @@ object StatePersistence
 
   def prepare[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
     recoveredJournalId: Option[JournalId],
-    eventWatch: EventWatch,
+    eventWatch: FileEventWatch,
     journalMeta: JournalMeta,
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,

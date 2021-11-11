@@ -19,7 +19,7 @@ import scala.reflect.runtime.universe._
   *
   * @author Joacim Zschimmer
   */
-final class StrictEventWatch(val underlying: EventWatch)
+final class StrictEventWatch(val underlying: FileEventWatch)
 {
   def fileEventIds: Seq[EventId] =
     underlying.fileEventIds

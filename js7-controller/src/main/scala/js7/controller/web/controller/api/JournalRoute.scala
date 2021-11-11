@@ -24,7 +24,7 @@ import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.JournalRoute._
 import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.{EventId, JournalPosition, JournalSeparators}
-import js7.journal.watch.EventWatch
+import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
@@ -38,7 +38,7 @@ import scala.concurrent.duration.FiniteDuration
   */
 trait JournalRoute extends ControllerRouteProvider
 {
-  protected def eventWatch: EventWatch
+  protected def eventWatch: FileEventWatch
   protected def scheduler: Scheduler
 
   private implicit def implicitScheduler = scheduler

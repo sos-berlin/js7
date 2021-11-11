@@ -14,7 +14,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
 import js7.core.item.VersionedItemApi
 import js7.data.controller.ControllerState
-import js7.journal.watch.EventWatch
+import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import scala.concurrent.duration.Deadline
 
@@ -33,7 +33,7 @@ object ControllerWebServer
       itemUpdater: ItemUpdater,
       controllerState: Task[Checked[ControllerState]],
       totalRunningSince: Deadline,
-      eventWatch: EventWatch)
+      eventWatch: FileEventWatch)
     : AkkaWebServer with AkkaWebServer.HasUri =
       new AkkaWebServer.Standard(
         controllerConfiguration.webServerBindings,

@@ -1,16 +1,13 @@
 package js7.journal.watch
 
-import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
-import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.watch.RealEventWatchTest._
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -21,14 +18,9 @@ final class RealEventWatchTest extends AnyFreeSpec
     val events = Stamped(1L, 1L <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old
     val eventWatch = new RealEventWatch {
       def isActiveNode = true
-      def fileEventIds = EventId.BeforeFirst :: Nil
+      def tornEventId = EventId.BeforeFirst
       protected def eventsAfter(after: EventId) = Some(CloseableIterator.fromIterator(events.iterator dropWhile (_.eventId <= after)))
-      def snapshotAfter(after: EventId) = None
-      def rawSnapshotAfter(after: EventId) = None
-      def observeFile(journalPosition: JournalPosition,
-        timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) = throw new NotImplementedError
       onEventsCommitted(events.last.eventId)
-      def journalPosition = throw new NotImplementedError
       def journalInfo = throw new NotImplementedError
     }
     val a = eventWatch.observe(EventRequest.singleClass[TestEvent](limit = 1)).toListL.runToFuture await 99.s
@@ -72,11 +64,7 @@ object RealEventWatchTest {
   private class EndlessEventWatch extends RealEventWatch {
     def isActiveNode = true
 
-    def fileEventIds = EventId.BeforeFirst :: Nil
-
-    def rawSnapshotAfter(after: EventId) = None
-
-    def journalPosition = throw new NotImplementedError
+    def tornEventId = EventId.BeforeFirst
 
     def journalInfo = throw new NotImplementedError
 
@@ -88,9 +76,5 @@ object RealEventWatchTest {
           onEventsCommitted(after + i + 1)  // Announce following event
           toStampedEvent(after + i)
         }))
-
-    def observeFile(journalPosition: JournalPosition,
-      timeout: FiniteDuration, markEOF: Boolean, onlyAcks: Boolean) =
-      Task(Left(Problem("EndlessEventWatch.observeFile is not implemented")))
   }
 }

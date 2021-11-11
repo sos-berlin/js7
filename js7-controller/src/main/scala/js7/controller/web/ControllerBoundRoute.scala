@@ -25,7 +25,7 @@ import js7.controller.web.serviceprovider.{RouteServiceContext, ServiceProviderR
 import js7.core.command.CommandMeta
 import js7.core.item.VersionedItemApi
 import js7.data.controller.{ControllerCommand, ControllerState}
-import js7.journal.watch.EventWatch
+import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -45,7 +45,7 @@ final class ControllerBoundRoute(
   protected val controllerState: Task[Checked[ControllerState]],
   protected val totalRunningSince: Deadline,
   protected val sessionRegister: SessionRegister[SimpleSession],
-  protected val eventWatch: EventWatch,
+  protected val eventWatch: FileEventWatch,
   protected val injector: Injector)(
   implicit
     protected val actorSystem: ActorSystem,

@@ -1,12 +1,10 @@
 package js7.journal.watch
 
-import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
-import js7.common.jsonseq.PositionAnd
-import js7.data.event.{Event, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -26,8 +24,6 @@ trait EventWatch
     Task.fromFuture(whenStarted).memoize.asInstanceOf[Task[this.type]]
 
   def whenStarted: Future[this.type] = Future.successful(this)
-
-  def strict: StrictEventWatch = new StrictEventWatch(this)
 
   def observe[E <: Event](
     request: EventRequest[E],
@@ -52,14 +48,6 @@ trait EventWatch
     predicate: E => Boolean = Every)
   : Task[TearableEventSeq[CloseableIterator, E]]
 
-  def observeFile(journalPosition: JournalPosition,
-    timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean = false)
-  : Task[Checked[Observable[PositionAnd[ByteArray]]]]
-
-  def rawSnapshotAfter(after: EventId): Option[Observable[ByteArray]]
-
-  def journalPosition: Checked[JournalPosition]
-
   def journalInfo: JournalInfo
 
   /** TEST ONLY - Blocking. */
@@ -71,13 +59,9 @@ trait EventWatch
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E]]]
 
-  def fileEventIds: Seq[EventId]
-
-  final def tornEventId = fileEventIds.headOption getOrElse EventId.BeforeFirst
-
-  final def lastFileTornEventId = fileEventIds.last
-
   def lastAddedEventId: EventId
+
+  def tornEventId: EventId
 
   def checkEventId(eventId: EventId): Checked[Unit]
 }
