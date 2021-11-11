@@ -13,11 +13,15 @@ final class ObservableNumberedQueue[V: Tag]
   private var queue = Vector.empty[Numbered[V]]
   private val sync = new IncreasingNumberSync(initial = 0, i => s"#$i")
 
-  def enqueue(command: V): Unit =
+  def enqueue(commands: Iterable[V]): Unit =
     synchronized {
-      val number = queue.lastOption.fold(torn)(_.number) + 1
-      queue = queue :+ Numbered(number, command)
-      sync.onAdded(number)
+      var lastNumber: Option[Long] = None
+      for (command <- commands) {
+        val number = queue.lastOption.fold(torn)(_.number) + 1
+        queue = queue :+ Numbered(number, command)
+        lastNumber = Some(number)
+      }
+      lastNumber foreach sync.onAdded
     }
 
   def observable(after: Long): Checked[Observable[Numbered[V]]] =
