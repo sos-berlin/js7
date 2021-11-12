@@ -18,6 +18,9 @@ class SetOnce[A](label: => String, notYetSetProblem: Problem)
 {
   protected[this] val promise = Promise[A]()
 
+  final lazy val task: Task[A] =
+    Task.fromFuture(future).memoize
+
   final override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 
   @inline final def toStringOr(or: => String): String =
@@ -44,9 +47,6 @@ class SetOnce[A](label: => String, notYetSetProblem: Problem)
 
   final def toOption: Option[A] =
     promise.future.value.map(_.get)
-
-  final def task: Task[A] =
-    Task.fromFuture(future).memoize
 
   final def future: Future[A] =
     promise.future
