@@ -84,7 +84,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
 
   override def afterAll() = {
     Akkas.shutDownHttpConnectionPools(system)
-    server.close()
+    server.stop().await(99.s)
     super.afterAll()
   }
 

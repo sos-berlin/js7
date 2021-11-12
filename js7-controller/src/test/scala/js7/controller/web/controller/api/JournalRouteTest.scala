@@ -69,7 +69,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
   }
 
   override def afterAll() = {
-    webServer.close()
+    webServer.stop().await(99.s)
     eventWriter.close()
     deleteDirectoryRecursively(directory)
     super.afterAll()

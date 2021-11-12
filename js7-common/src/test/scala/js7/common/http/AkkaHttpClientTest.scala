@@ -198,7 +198,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
 
     "close" in {
       httpClient.close()
-      webServer.close()
+      webServer.stop().await(99.s)
     }
   }
 

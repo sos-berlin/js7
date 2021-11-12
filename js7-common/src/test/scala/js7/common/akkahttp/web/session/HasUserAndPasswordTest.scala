@@ -61,7 +61,7 @@ final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
             mvar.take.map(o => assert(o == "After retryUntilReachable")) >>
             mvar.take.map(o => assert(o == "After requireAuthorizedAccess")) >>
             mvar.take.flatTap(o => Task(assert(o == "FINISHED")))
-          ).guarantee(Task { server.close() }))
+          ).guarantee(server.stop()))
     val apiFuture = Task.parMap2(apiTask, serverTask)((a, s) => (a, s)).runToFuture
 
     assert(apiFuture.await(99.s) == ("FINISHED", "FINISHED"))

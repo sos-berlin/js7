@@ -124,7 +124,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
   }
 
   override def afterAll() = {
-    server.close()
+    server.stop().await(99.s)
     Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }

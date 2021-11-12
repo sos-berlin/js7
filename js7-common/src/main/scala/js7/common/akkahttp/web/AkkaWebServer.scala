@@ -27,7 +27,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.Deadline
+import scala.concurrent.duration.{Deadline, FiniteDuration}
 import scala.concurrent.{Future, Promise, TimeoutException}
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
@@ -118,16 +118,27 @@ trait AkkaWebServer extends AutoCloseable
 
   def close() =
     for (scheduler <- scheduler) {
-      try terminate().runToFuture(scheduler) await shutdownTimeout + 1.s
-      catch {
-        case NonFatal(t: TimeoutException) =>
-          logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
-        case NonFatal(t) =>
-          logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
-      }
+      stop(shutdownTimeout)
+        .runToFuture(scheduler)
+        .await(shutdownTimeout + 2.s)
     }
 
-  def terminate(): Task[Unit] =
+  def stop(timeout: FiniteDuration = shutdownTimeout): Task[Unit] =
+    Task.defer {
+      scheduler.toOption.fold(Task.unit)(scheduler =>
+        terminate(timeout)
+          .executeOn(scheduler)
+          .uncancelable
+          .timeout(timeout + 1.s)
+          .onErrorHandle {
+            case NonFatal(t: TimeoutException) =>
+              logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
+            case NonFatal(t) =>
+              logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
+          })
+    }
+
+  def terminate(timeout: FiniteDuration): Task[Unit] =
     Task.defer {
       if (!shuttingDownPromise.trySuccess(Completed))
         Task.unit
@@ -135,13 +146,13 @@ trait AkkaWebServer extends AutoCloseable
         Task.unit
       else
         Task { logger.debug("terminate") } >>
-          terminateBindings
+          terminateBindings(timeout)
     }
 
-  private def terminateBindings: Task[Unit] =
+  private def terminateBindings(timeout: FiniteDuration): Task[Unit] =
     activeBindings.toVector
       .traverse(_.flatMap(binding =>
-        Task.deferFuture(binding.terminate(hardDeadline = shutdownTimeout))
+        Task.deferFuture(binding.terminate(hardDeadline = timeout))
           .map { _: Http.HttpTerminated =>
             logger.debug(s"$binding terminated")
             Completed
@@ -213,7 +224,7 @@ object AkkaWebServer
           val webServer = new Standard(bindings, config, route)
           webServer.start.map(_ => webServer)
         })(
-      release = _.terminate())
+      release = _.stop())
 
   trait HasUri extends WebServerBinding.HasLocalUris {
     this: AkkaWebServer =>
