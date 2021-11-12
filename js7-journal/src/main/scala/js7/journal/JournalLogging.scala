@@ -12,13 +12,13 @@ trait JournalLogging
   protected val logger: Logger
 
   private lazy val journalLogger = new JournalLogger(
-    syncOrFlush6Chars =
+    syncOrFlush5Chars =
       if (!conf.syncOnCommit)
-        "flush "
+        "flush"
       else if (conf.simulateSync.isDefined)
-        "~sync "
+        "~sync"
       else
-        "sync  ",
+        "sync ",
     infoLogEvents = conf.infoLogEvents,
     logger)
 

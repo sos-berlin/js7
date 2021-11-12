@@ -26,9 +26,10 @@ extends RealEventWatch
   private var _eventCount = 0L
 
   private val journalLogger = new JournalLogger(
-    syncOrFlush6Chars = "mem   ",
+    syncOrFlush5Chars = "mem  ",
     infoLogEvents = Set.empty,
-    logger)
+    logger,
+    supressTiming = true)
 
   protected def isActiveNode = true
 

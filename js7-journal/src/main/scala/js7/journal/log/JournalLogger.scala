@@ -13,10 +13,12 @@ import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
 private[journal] final class JournalLogger(
-  syncOrFlush6Chars: String,
+  syncOrFlush5Chars: String,
   infoLogEvents: Set[String],
-  logger: Logger)
+  logger: Logger,
+  supressTiming: Boolean = false)
 {
+  private val syncOrFlush6Chars = syncOrFlush5Chars + " "
   private val ackSyncOrFlushString = syncOrFlush6Chars.toUpperCase(ROOT)
 
   private val infoLoggableEventClasses = new SubclassCache(infoLogEvents)
@@ -99,7 +101,7 @@ private[journal] final class JournalLogger(
 
     if (isLast) {
       sb.append(' ')
-      sb.fillRight(6) { sb.append(duration.msPretty) }
+      sb.fillRight(6) { if (!supressTiming) sb.append(duration.msPretty) }
     } else if (nr == nextToLastEventNr) {
       sb.fillLeft(7) { sb.append(persistEventCount) }
     } else {
