@@ -12,7 +12,7 @@ trait Permission {
 
 object Permission
 {
-  def toStringToPermission(permissions: Iterable[Permission]) =
+  def toStringToPermission(permissions: Iterable[Permission]): Map[String, Permission] =
     permissions.toKeyedMap(_.name)
 }
 

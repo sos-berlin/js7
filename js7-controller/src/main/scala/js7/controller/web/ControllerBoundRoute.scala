@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
 import java.nio.file.Path
-import js7.base.auth.{Permission, SimpleUser, UpdateItemPermission}
+import js7.base.auth.{SimpleUser, UpdateItemPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked
@@ -67,11 +67,8 @@ with WebLogDirectives
 
   protected val gateKeeper = GateKeeper(
     binding,
-    GateKeeper.Configuration.fromConfig(
-      config,
-      SimpleUser.apply,
-      Permission.toStringToPermission(Seq(
-        UpdateItemPermission))))
+    GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
+      UpdateItemPermission)))
 
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta) =
     commandExecutor.executeCommand(command, meta)

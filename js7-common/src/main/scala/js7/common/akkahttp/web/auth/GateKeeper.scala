@@ -284,8 +284,16 @@ object GateKeeper
     def fromConfig[U <: User](
       config: Config,
       toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
-      toPermission: PartialFunction[String, Permission] = PartialFunction.empty)
-    = {
+      permissions: Iterable[Permission] = Nil)
+    : Configuration[U] =
+      fromConfig(config, toUser, Permission.toStringToPermission(permissions))
+
+    @deprecated
+    def fromConfig[U <: User](
+      config: Config,
+      toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
+      toPermission: PartialFunction[String, Permission])
+    : Configuration[U] = {
       val idToUser = IdToUser.fromConfig(config, toUser, toPermission)
       Configuration[U](
         realm                       = config.getString  ("js7.web.server.auth.realm"),
