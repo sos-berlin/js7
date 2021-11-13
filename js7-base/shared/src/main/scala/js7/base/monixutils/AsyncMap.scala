@@ -26,8 +26,6 @@ final class AsyncMap[K: ClassTag, V](initial: Map[K, V])
   def size: Int =
     _map.size
 
-  // TODO Lesende Methoden sollen sofort bisherige Version liefern (keine Task)
-
   def toMap: Map[K, V] =
     _map
 
@@ -62,7 +60,11 @@ final class AsyncMap[K: ClassTag, V](initial: Map[K, V])
       case Some(existing) => update(existing)
     })
 
-  // TODO On update, do not lock the whole Map, lock only the entry !
+  def getOrElseUpdate(key: K, value: Task[V]): Task[V] =
+    update(key, {
+      case Some(existing) => Task.pure(existing)
+      case None => value
+    })
 
   def update(key: K, update: Option[V] => Task[V]): Task[V] =
     getAndUpdate(key, update)
