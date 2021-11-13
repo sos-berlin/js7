@@ -18,14 +18,14 @@ final class DistinguishedNameTest extends AnyFreeSpec
   }
 
   "DistinguishedName, equal" in {
-    val a = DistinguishedName("CN=common name,L=Lummerland")
-    val b = DistinguishedName("CN=common name, L=Lummerland")
+    val a = DistinguishedName("CN=Common Name,L=Lummerland")
+    val b = DistinguishedName("  cn = COMMON name ,  l  =  LummerLand ")
     assert(a == b)
   }
 
   "string representation is normalized" in {
     assert(DistinguishedName("CN=common name,L=Lummerland").string == "CN=common name, L=Lummerland")
-    assert(DistinguishedName(" CN=common name ,  L=Lummerland ").string == "CN=common name, L=Lummerland")
+    assert(DistinguishedName(" cn = common name ,  L=Lummerland ").string == "CN=common name, L=Lummerland")
   }
 
   "openssl notation is rejected" in {
