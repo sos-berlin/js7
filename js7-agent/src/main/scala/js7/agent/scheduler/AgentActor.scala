@@ -35,7 +35,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.Recovered
-import js7.journal.state.StatePersistence
+import js7.journal.state.{FileStatePersistence, StatePersistence}
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -46,7 +46,7 @@ import scala.concurrent.{Future, Promise}
   */
 private[agent] final class AgentActor private(
   terminatePromise: Promise[ProgramTermination],
-  persistence: StatePersistence[AgentState],
+  persistence: FileStatePersistence[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
   jobLauncherConf: JobLauncherConf)
@@ -305,7 +305,7 @@ object AgentActor
     (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(
-      persistence: StatePersistence[AgentState],
+      persistence: FileStatePersistence[AgentState],
       terminatePromise: Promise[ProgramTermination])
     =
       new AgentActor(terminatePromise, persistence, clock, agentConfiguration, jobLauncherConf)

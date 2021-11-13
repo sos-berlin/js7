@@ -31,6 +31,8 @@ extends RealEventWatch
     logger,
     supressTiming = true)
 
+  def waitUntilStarted = Task.unit
+
   protected def isActiveNode = true
 
   def tornEventId = _tornEventId
@@ -46,15 +48,17 @@ extends RealEventWatch
   def currentState: S =
     _state
 
-  def emitKeyedEvent(keyedEvent: KeyedEvent[Event]): Task[Checked[S]] =
-    emitKeyedEvents(keyedEvent :: Nil)
+  def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E])
+  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
+    persistKeyedEvents(keyedEvent :: Nil)
+      .map(_.map { case (events, s) => events.head -> s })
 
-  def emitKeyedEvents(keyedEvents: Seq[KeyedEvent[Event]]): Task[Checked[S]] =
-    emit(_ => Right(keyedEvents))
-      .map(_.map(_._2))
+  def persistKeyedEvents[E <: Event](keyedEvents: Seq[KeyedEvent[E]])
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    persist(_ => Right(keyedEvents))
 
-  def emit(stateToEvents: S => Checked[Seq[KeyedEvent[Event]]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[Event]]], S)]] =
+  def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     lock.lock(Task {
       synchronized {
         for {

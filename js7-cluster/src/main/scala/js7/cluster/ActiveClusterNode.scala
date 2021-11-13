@@ -29,7 +29,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.cancelables.SerialCancelable
@@ -42,7 +42,7 @@ import scala.util.{Failure, Success}
 
 final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
   initialClusterState: ClusterState.HasNodes,
-  persistence: StatePersistence[S],
+  persistence: FileStatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit

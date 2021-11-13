@@ -20,7 +20,7 @@ import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, SnapshotableState}
 import js7.data.node.NodeId
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.reflect.runtime.universe._
@@ -34,7 +34,7 @@ import scala.reflect.runtime.universe._
   * the ClusterNodesAppointed event.
   */
 final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
-  persistence: StatePersistence[S],
+  persistence: FileStatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler, actorSystem: ActorSystem, journalActorAskTimeout: Timeout)

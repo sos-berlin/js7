@@ -71,7 +71,7 @@ import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
 import js7.journal.recover.Recovered
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
@@ -87,7 +87,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ProgramTermination],
-  persistence: StatePersistence[ControllerState],
+  persistence: FileStatePersistence[ControllerState],
   clusterNode: WorkingClusterNode[ControllerState],
   alarmClock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,

@@ -38,8 +38,8 @@ final class InMemoryJournalTest extends AnyFreeSpec
         case o => Left(Problem("FAILED"))
       }
 
-    journal.emit(firstUpdate).await(99.s).orThrow
-    assert(journal.emit(firstUpdate).await(99.s) == Left(Problem("FAILED")))
+    journal.persist(firstUpdate).await(99.s).orThrow
+    assert(journal.persist(firstUpdate).await(99.s) == Left(Problem("FAILED")))
 
     assert(journal.tornEventId == EventId.BeforeFirst)
     assert(journal.lastAddedEventId == 2)
@@ -49,7 +49,7 @@ final class InMemoryJournalTest extends AnyFreeSpec
       Stamped(2, "B" <-: TestEvent.Added("B"))))
 
     journal
-      .emit(_ => Right(Seq(
+      .persist(_ => Right(Seq(
         "C" <-: TestEvent.Added("C"))))
       .await(99.s).orThrow
 

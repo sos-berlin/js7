@@ -51,7 +51,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.journal.recover.Recovered
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
@@ -74,7 +74,7 @@ final class AgentOrderKeeper(
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   jobLauncherConf: JobLauncherConf,
-  persistence: StatePersistence[AgentState],
+  persistence: FileStatePersistence[AgentState],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)

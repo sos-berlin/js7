@@ -52,6 +52,8 @@ extends SnapshotableState[TestState]
 
 object TestState extends SnapshotableState.Companion[TestState]
 {
+  type StateEvent = Event
+
   val empty = TestState(EventId.BeforeFirst, SnapshotableState.Standards.empty, Map.empty)
 
   def newBuilder() = new SnapshotableStateBuilder.Simple(TestState)

@@ -16,7 +16,7 @@ import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.core.command.CommandMeta
 import js7.journal.recover.Recovered
-import js7.journal.state.StatePersistence
+import js7.journal.state.{FileStatePersistence, StatePersistence}
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
@@ -25,7 +25,7 @@ import scala.util.control.NoStackTrace
   * @author Joacim Zschimmer
   */
 final class MainActor(
-  persistence: StatePersistence[AgentState],
+  persistence: FileStatePersistence[AgentState],
   agentConfiguration: AgentConfiguration,
   injector: Injector,
   readyPromise: Promise[Ready],

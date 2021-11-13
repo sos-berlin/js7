@@ -58,7 +58,7 @@ import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent}
 import js7.journal.JournalActor.Output
 import js7.journal.recover.{Recovered, StateRecoverer}
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import js7.journal.watch.StrictEventWatch
 import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import js7.license.LicenseCheckContext
@@ -304,7 +304,7 @@ object RunningController
       itemVerifier
 
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
-      val persistence = StatePersistence.prepare[ControllerState](
+      val persistence = FileStatePersistence.prepare[ControllerState](
         recovered.journalId, recovered.eventWatch,
         journalMeta, controllerConfiguration.journalConf,
         injector.instance[EventIdGenerator], injector.instance[StampedKeyedEventBus])
@@ -387,7 +387,7 @@ object RunningController
 
     private def startCluster(
       recovered: Recovered[ControllerState],
-      persistence: StatePersistence[ControllerState],
+      persistence: FileStatePersistence[ControllerState],
       testEventBus: StandardEventBus[Any])
     : (Cluster[ControllerState],
       Task[Checked[ControllerState]],
@@ -443,7 +443,7 @@ object RunningController
     }
 
     private def startControllerOrderKeeper(
-      persistence: StatePersistence[ControllerState],
+      persistence: FileStatePersistence[ControllerState],
       workingClusterNode: WorkingClusterNode[ControllerState],
       followUp: ClusterFollowUp[ControllerState],
       testEventPublisher: EventPublisher[Any])

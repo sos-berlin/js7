@@ -29,7 +29,7 @@ import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.recover.{Recovered, StateRecoverer}
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
@@ -37,7 +37,7 @@ import scala.reflect.runtime.universe._
 
 final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
   journalMeta: JournalMeta,
-  persistence: StatePersistence[S],
+  persistence: FileStatePersistence[S],
   clusterContext: ClusterContext,
   controllerId: ControllerId,
   journalConf: JournalConf,

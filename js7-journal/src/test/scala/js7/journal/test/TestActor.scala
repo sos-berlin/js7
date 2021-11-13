@@ -13,7 +13,7 @@ import js7.common.akkautils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import js7.journal.test.TestActor._
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.execution.Scheduler.Implicits.global
@@ -32,7 +32,7 @@ extends Actor with Stash
   private val journalConf = JournalConf.fromConfig(config)
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null
-  private var persistence: StatePersistence[TestState] = null
+  private var persistence: FileStatePersistence[TestState] = null
 
   private def journalActor = persistence.journalActor
 
@@ -40,7 +40,7 @@ extends Actor with Stash
     super.preStart()
     StateRecoverer.recover[TestState](journalMeta, config)
     val recovered = StateRecoverer.recover[TestState](journalMeta, config)
-    persistence = StatePersistence
+    persistence = FileStatePersistence
       .start(recovered, journalConf,
         new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
       .runToFuture

@@ -19,7 +19,7 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Closer, HasCloser}
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.journal.recover.Recovered
-import js7.journal.state.StatePersistence
+import js7.journal.state.{FileStatePersistence, StatePersistence}
 import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
@@ -63,7 +63,7 @@ object TestAgentActorProvider {
     implicit val actorSystem = injector.instance[ActorSystem]
     implicit val scheduler = injector.instance[Scheduler]
 
-    val persistence = StatePersistence
+    val persistence = FileStatePersistence
       .start(
         Recovered[AgentState](journalMeta, None, now, config),
         journalConf,

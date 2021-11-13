@@ -27,7 +27,7 @@ import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTyped
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.StatePersistenceTest._
+import js7.journal.state.FileFileStatePersistenceTest._
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
@@ -40,12 +40,12 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class StatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
+final class FileFileStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 
   private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
-  protected lazy val directory = createTempDirectory("StatePersistenceTest-")
+  protected lazy val directory = createTempDirectory("FileFileStatePersistenceTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
 
   override def afterAll() = {
@@ -129,13 +129,13 @@ final class StatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
 
   private class RunningPersistence extends ProvideActorSystem {
     protected def config = TestConfig
-    private var persistence: StatePersistence[TestState] = null
+    private var persistence: FileStatePersistence[TestState] = null
 
     def start() = {
       val recovered = StateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
       implicit val timeout = Timeout(99.s)
-      persistence = StatePersistence
+      persistence = FileStatePersistence
         .start(recovered, JournalConf.fromConfig(TestConfig),
           new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
         .await(99.s)
@@ -153,7 +153,7 @@ final class StatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 }
 
-private object StatePersistenceTest
+private object FileFileStatePersistenceTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""
@@ -265,7 +265,10 @@ private object StatePersistenceTest
 
     def toSnapshotObservable = Observable.fromIterable(numberThingCollection.numberThings.values)
   }
-  object TestState extends SnapshotableState.Companion[TestState] {
+  object TestState extends SnapshotableState.Companion[TestState]
+  {
+    type StateEvent = Event
+
     val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
 
     def newBuilder(): SnapshotableStateBuilder[TestState] =

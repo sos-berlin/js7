@@ -38,7 +38,7 @@ import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.StatePersistence
+import js7.journal.state.FileStatePersistence
 import js7.journal.watch.EventWatch
 import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.eval.Task
@@ -176,7 +176,7 @@ object RunningAgent {
       val recovered = whenRecovered.awaitInfinite
       recovered.eventWatch.closeWithCloser(closer)
 
-      val persistence = StatePersistence
+      val persistence = FileStatePersistence
         .start(recovered, journalConf,
           injector.instance[EventIdGenerator],
           injector.instance[StampedKeyedEventBus])
