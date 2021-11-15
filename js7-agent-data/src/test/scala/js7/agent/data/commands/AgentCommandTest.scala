@@ -295,36 +295,6 @@ final class AgentCommandTest extends AnyFreeSpec
           }
         }""")
     }
-
-    "DetachOrder" in {
-      check(AgentCommand.DetachOrder(OrderId("ORDER-ID")),
-        json"""{
-          "TYPE": "DetachOrder",
-          "orderId": "ORDER-ID"
-        }""")
-    }
-
-    "GetOrder" in {
-      check(AgentCommand.GetOrder(OrderId("ORDER-ID")),
-         json"""{
-          "TYPE": "GetOrder",
-          "orderId": "ORDER-ID"
-        }""")
-    }
-
-    "GetOrderIds" in {
-      check(AgentCommand.GetOrderIds,
-        json"""{
-          "TYPE": "GetOrderIds"
-        }""")
-    }
-
-    "GetOrders" in {
-      check(AgentCommand.GetOrders,
-         json"""{
-          "TYPE": "GetOrders"
-        }""")
-    }
   }
 
   "Batch toString" in {

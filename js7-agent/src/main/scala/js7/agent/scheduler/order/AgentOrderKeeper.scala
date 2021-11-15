@@ -7,7 +7,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
@@ -555,20 +555,6 @@ with Stash
             }
       }
 
-    case GetOrder(orderId) =>
-      executeCommandForOrderId(orderId, orderEntry =>
-        Future.successful(GetOrder.Response(
-          orderEntry.order))
-      ).map((r: Response) => Right(r))
-
-    case GetOrderIds =>
-      Future.successful(Right(GetOrderIds.Response(
-        orderRegister.keys)))
-
-    case GetOrders =>
-      Future.successful(Right(GetOrders.Response(
-        for (orderEntry <- orderRegister.values) yield orderEntry.order)))
-
     case ReleaseEvents(after) =>
       if (shuttingDown)
         Future.failed(AgentIsShuttingDown.throwable)
@@ -591,14 +577,6 @@ with Stash
       if (job.agentPath == ownAgentPath) {
         jobRegister.insert(jobKey -> new JobEntry(jobKey, job, zone))
       }
-    }
-
-  private def executeCommandForOrderId(orderId: OrderId, body: OrderEntry => Future[Response]): Future[Response] =
-    orderRegister.checked(orderId) match {
-      case Left(problem) =>
-        Future.failed(problem.throwable)
-      case Right(orderEntry) =>
-        body(orderEntry)
     }
 
   private def attachOrder(order: Order[Order.IsFreshOrReady], workflow: Workflow): Future[Completed] = {

@@ -16,7 +16,6 @@ trait ApiRoute
 extends RootWebService
 with CommandWebService
 with EventRoute
-with OrderWebService
 with SessionRoute
 with ClusterWatchRoute
 {
@@ -24,7 +23,6 @@ with ClusterWatchRoute
     pathPrefix(Segment) {
       case "event" => eventRoute
       case "command" => commandRoute
-      case "order" => orderRoute
       case "clusterWatch" =>
         authorizedUser(ValidUserPermission) { user =>
           clusterWatchRoute(ControllerId.fromUserId(user.id))

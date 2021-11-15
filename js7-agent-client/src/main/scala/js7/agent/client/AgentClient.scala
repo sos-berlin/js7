@@ -13,7 +13,6 @@ import js7.base.problem.Checked
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import js7.data.order.{Order, OrderId}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
@@ -41,18 +40,6 @@ trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
         .map(_.asInstanceOf[command.Response]))
 
   final def overview: Task[AgentOverview] = get[AgentOverview](agentUris.overview)
-
-  final def order(orderId: OrderId): Task[Checked[Order[Order.State]]] =
-    liftProblem(
-      get[Order[Order.State]](agentUris.order(orderId)))
-
-  final def orderIds: Task[Checked[Seq[OrderId]]] =
-    liftProblem(
-      get[Seq[OrderId]](agentUris.order.ids))
-
-  final def orders: Task[Checked[Seq[Order[Order.State]]]] =
-    liftProblem(
-      get[Seq[Order[Order.State]]](agentUris.order.orders))
 
   final def eventObservable(request: EventRequest[Event])
   : Task[Checked[Observable[Stamped[KeyedEvent[Event]]]]] =

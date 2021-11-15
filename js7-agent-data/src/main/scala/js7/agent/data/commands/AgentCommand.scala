@@ -1,6 +1,5 @@
 package js7.agent.data.commands
 
-import io.circe.generic.JsonCodec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
@@ -198,22 +197,6 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class GetOrder(orderId: OrderId)
-  extends OrderCommand {
-    type Response = GetOrder.Response
-  }
-  object GetOrder {
-    @JsonCodec
-    final case class Response(order: Order[Order.State]) extends AgentCommand.Response
-  }
-
-  case object GetOrderIds extends OrderCommand {
-    final case class Response(orderIds: Seq[OrderId]) extends AgentCommand.Response with Big
-  }
-
-  case object GetOrders extends OrderCommand {
-    final case class Response(orders: Seq[Order[Order.State]]) extends AgentCommand.Response with Big
-  }
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
     implicit val S = AgentState
@@ -232,10 +215,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[DetachItem]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
-      Subtype(deriveCodec[GetOrder]),
-      Subtype(GetOrders),
-      Subtype(TakeSnapshot),
-      Subtype(GetOrderIds))
+      Subtype(TakeSnapshot))
   }
 
   implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =

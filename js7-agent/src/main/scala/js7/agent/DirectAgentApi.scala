@@ -8,7 +8,6 @@ import js7.agent.scheduler.AgentHandle
 import js7.base.problem.Checked
 import js7.core.command.CommandMeta
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
-import js7.data.order.{Order, OrderId}
 import monix.eval.Task
 
 /**
@@ -28,16 +27,4 @@ extends AgentApi
 
   def overview: Task[AgentOverview] =
     agentHandle.overview
-
-  def order(orderId: OrderId): Task[Checked[Order[Order.State]]] =
-    commandHandler.typedExecute(AgentCommand.GetOrder(orderId), meta)
-      .map(_.map(_.order))
-
-  def orderIds: Task[Checked[Seq[OrderId]]] =
-    commandHandler.typedExecute(AgentCommand.GetOrderIds, meta)
-      .map(_.map(_.orderIds))
-
-  def orders: Task[Checked[Seq[Order[Order.State]]]] =
-    commandHandler.typedExecute(AgentCommand.GetOrders, meta)
-      .map(_.map(_.orders))
 }

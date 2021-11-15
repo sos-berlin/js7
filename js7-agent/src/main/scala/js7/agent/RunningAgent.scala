@@ -80,7 +80,12 @@ extends AutoCloseable
     }
   //val sessionTokenHeader: HttpHeader = RawHeader(SessionToken.HeaderName, sessionToken.secret.string)
 
+  val eventWatch = persistence.eventWatch
+
   logger.debug("Ready")
+
+  def currentAgentState(): AgentState =
+    persistence.currentState
 
   def close() = closer.close()
 
@@ -215,7 +220,7 @@ object RunningAgent {
         agentConfiguration.stateDirectory / "http-uri" :=
           webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
-        new RunningAgent(persistence.eventWatch, webServer, mainActor,
+        new RunningAgent(persistence, webServer, mainActor,
           terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
       }
       task.runToFuture

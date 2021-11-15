@@ -5,7 +5,6 @@ import akka.http.scaladsl.model.{Uri => AkkaUri}
 import js7.agent.data.web.AgentUris._
 import js7.base.web.Uri
 import js7.data.event.{Event, EventRequest}
-import js7.data.order.OrderId
 
 /**
  * URIs of the JS7 Agent.
@@ -20,20 +19,6 @@ final class AgentUris private(agentUri: Uri)
   val session = toUri("api/session")
   val command = toUri("api/command")
 
-  object order {
-    def apply(orderId: OrderId): Uri =
-      toUri(Path("api/order") / orderId.string)
-
-    val ids: Uri =
-      toUri("api/order/", Query("return" -> "OrderId"))
-
-    val events: Uri =
-      toUri("api/order/", Query("return" -> "OrderEvent"))
-
-    val orders: Uri =
-      toUri("api/order/", Query("return" -> "Order"))
-  }
-
   def controllersEvents[E <: Event](request: EventRequest[E]) =
     toUri("api/event", Query(request.toQueryParameters: _*))
 
@@ -44,8 +29,6 @@ final class AgentUris private(agentUri: Uri)
       toUri("api")
     else
       toUri(s"api/${stripLeadingSlash(relativeUri)}")
-
-  private def toUri(path: Path): Uri = Uri(withPath(AkkaUri(path = path)).toString)
 
   private def toUri(uri: String, query: Query): Uri = Uri(withPath(uri).withQuery(query).toString)
 

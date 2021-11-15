@@ -99,7 +99,7 @@ final class OrderAgentTest extends AnyFreeSpec
             .repeat(eventRequest => agentClient.tearableEventSeq(eventRequest).map(_.orThrow).runToFuture) {
               case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
             }
-          val Right(processedOrder) = agentClient.order(order.id) await 99.s
+          val processedOrder = agent.currentAgentState().idToOrder(order.id)
           assert(processedOrder == toExpectedOrder(order))
           assert(agentClient.commandExecute(DetachOrder(order.id)).await(99.s) ==
             Right(AgentCommand.Response.Accepted))

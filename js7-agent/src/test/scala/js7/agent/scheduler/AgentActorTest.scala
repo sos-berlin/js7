@@ -5,7 +5,7 @@ import akka.util.Timeout
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, CoupleController, DedicateAgentDirector, DetachOrder, GetOrders}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, CoupleController, DedicateAgentDirector, DetachOrder}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.io.file.FileUtils.syntax._
@@ -86,11 +86,10 @@ final class AgentActorTest extends AnyFreeSpec
 
         waitForCondition(10.s, 10.ms) {
           // orderRegister is updated lately, so we may wait a moment
-          val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
-          !orders.exists(_.isAttached/*should be _.isDetaching*/)
+          !persistence.currentState.idToOrder.values.exists(_.isAttached/*should be _.isDetaching*/)
         }
+        val orders = persistence.currentState.idToOrder.values
 
-        val Right(GetOrders.Response(orders)) = executeCommand(GetOrders) await 99.s
         assert(orders.toSet ==
           orderIds.map(orderId => Order(
             orderId,
