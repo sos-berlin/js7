@@ -12,7 +12,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi._
-import js7.data.agent.AgentRef
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
 import js7.data.controller.ControllerCommand.{DeleteOrdersWhenTerminated, InternalClusterCommand}
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
@@ -144,10 +143,6 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
   final def workflows: Task[Checked[Seq[Workflow]]] =
     liftProblem(
       httpClient.get[Seq[Workflow]](uris.workflow.list[Workflow]))
-
-  final def agents: Task[Checked[Seq[AgentRef]]] =
-    liftProblem(
-      httpClient.get[Seq[AgentRef]](uris.agent.list[AgentRef]))
 
   override def toString = s"HttpControllerApi($baseUri)"
 

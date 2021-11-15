@@ -25,7 +25,6 @@ with CommandRoute
 with OrderRoute
 with ItemRoute
 with WorkflowRoute
-with AgentRefRoute
 with AgentProxyRoute
 with SnapshotRoute
 with SessionRoute
@@ -42,7 +41,6 @@ with LogRoute
         case "cluster"     => clusterRoute
         case "order"       => orderRoute
         case "workflow"    => workflowRoute
-        case "agent"       => agentRefRoute
         case "agent-proxy" => agentProxyRoute
         case "snapshot"    => snapshotRoute
         case "session"     => sessionRoute

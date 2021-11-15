@@ -210,43 +210,6 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
       }""")
   }
 
-  "/controller/api/agent" - {
-    //testGet("controller/api/agent",
-    //  RawHeader("x-js7-session", sessionToken) :: Nil,
-    //  json"""{
-    //    "count": 2
-    //  }""")
-
-    testGet("controller/api/agent/",
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""[
-        "AGENT",
-        "AGENT-A"
-      ]""")
-
-    testGet("controller/api/agent/?return=AgentRef",
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""[
-          {
-            "path": "AGENT",
-            "uri": "$agent1Uri",
-            "itemRevision": 0
-          }, {
-            "path": "AGENT-A",
-            "uri": "$agent2Uri",
-            "itemRevision": 0
-          }
-        ]""")
-
-    testGet("controller/api/agent/AGENT-A?return=AgentRef",
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""{
-        "path": "AGENT-A",
-        "uri": "$agent2Uri",
-        "itemRevision": 0
-      }""")
-  }
-
   "/controller/api/agent-proxy" - {
     //"/controller/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
     //  // Pass-through AgentRef. Slashes but the first in AgentPath must be coded as %2F.

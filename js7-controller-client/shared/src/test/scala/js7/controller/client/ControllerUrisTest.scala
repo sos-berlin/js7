@@ -2,7 +2,6 @@ package js7.controller.client
 
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
-import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.event.{EventRequest, JournalPosition}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -68,16 +67,6 @@ final class ControllerUrisTest extends AnyFreeSpec
 
     "list" in {
       assert(controllerUris.workflow.list[Workflow] == Uri("http://example.com/controller/api/workflow/?return=Workflow"))
-    }
-  }
-
-  "agent" - {
-    "single" in {
-      assert(controllerUris.agent(AgentPath("A")) == Uri("http://example.com/controller/api/agent/A"))
-    }
-
-    "list" in {
-      assert(controllerUris.agent.list[AgentRef] == Uri("http://example.com/controller/api/agent/?return=AgentRef"))
     }
   }
 
