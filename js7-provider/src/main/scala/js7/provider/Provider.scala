@@ -180,7 +180,10 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   private def fetchControllerItemSeq: Task[Seq[VersionedItem]] =
-    httpControllerApi.workflows.map(_.orThrow)
+    httpControllerApi.snapshot()
+      .map(_.keyToItem.values.view
+        .collect { case o: VersionedItem => o }
+        .toVector)
 
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector

@@ -23,7 +23,6 @@ import js7.controller.item.ItemUpdater
 import js7.controller.web.controller.ControllerRoute
 import js7.controller.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
 import js7.core.command.CommandMeta
-import js7.core.item.VersionedItemApi
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.journal.watch.FileEventWatch
 import monix.eval.Task
@@ -38,7 +37,6 @@ final class ControllerBoundRoute(
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
   protected val controllerConfiguration: ControllerConfiguration,
-  protected val itemApi: VersionedItemApi,
   protected val orderApi: OrderApi,
   commandExecutor: ControllerCommandExecutor,
   protected val itemUpdater: ItemUpdater,

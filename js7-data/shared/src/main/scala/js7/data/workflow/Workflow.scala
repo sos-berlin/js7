@@ -450,8 +450,6 @@ object Workflow extends VersionedItem.Companion[Workflow]
   val Path = WorkflowPath
   val empty = Workflow(WorkflowPath.NoId, Vector.empty)
 
-  implicit val itemsOverview = WorkflowsOverview
-
   def anonymous(
     labeledInstructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,

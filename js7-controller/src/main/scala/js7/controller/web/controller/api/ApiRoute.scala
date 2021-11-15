@@ -10,7 +10,6 @@ import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ApiRoute._
 import js7.controller.web.controller.api.log.LogRoute
 import js7.controller.web.controller.api.order.OrderRoute
-import js7.controller.web.controller.api.workflow.WorkflowRoute
 
 /**
   * @author Joacim Zschimmer
@@ -24,7 +23,6 @@ with JournalInfoRoute
 with CommandRoute
 with OrderRoute
 with ItemRoute
-with WorkflowRoute
 with AgentProxyRoute
 with SnapshotRoute
 with SessionRoute
@@ -40,7 +38,6 @@ with LogRoute
         case "command"     => commandRoute
         case "cluster"     => clusterRoute
         case "order"       => orderRoute
-        case "workflow"    => workflowRoute
         case "agent-proxy" => agentProxyRoute
         case "snapshot"    => snapshotRoute
         case "session"     => sessionRoute

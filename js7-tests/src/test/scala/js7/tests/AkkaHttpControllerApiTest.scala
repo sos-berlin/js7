@@ -74,10 +74,6 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
     assert(api.orders.await(99.s).map(_.toSet) == Right(attachedOrders))
   }
 
-  "workflow" in {
-    assert(api.workflows.await(99.s) == Right(List(workflow)))
-  }
-
   "logout" in {
     assert(controller.sessionRegister.count.await(99.s) == 2)
     api.logout() await 99.s

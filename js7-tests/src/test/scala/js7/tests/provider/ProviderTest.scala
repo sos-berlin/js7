@@ -117,7 +117,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Initially, JS7's Repo is empty" in {
-      assert(checkedRepo.map(_.pathToVersionToSignedItems.isEmpty) == Right(true))
+      assert(controllerState.repo.pathToVersionToSignedItems.isEmpty)
     }
 
     "Add configured AgentRefs" in {
@@ -136,13 +136,13 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.s).orThrow
       //assert(controller.controllerState.map(_.pathToAgentRefState.values).await(99.s) == Seq(agentRef))
-      assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
+      assert(controllerState.repo.pathToVersionToSignedItems == Map(
         AWorkflowPath -> List(
           Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         AWorkflowPath -> List(
           Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
         BWorkflowPath -> List(
-          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))))))
+          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1)))))))
 
       assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
@@ -178,24 +178,24 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       delete(live / "ERROR-2.workflow.json")
       provider.updateControllerConfiguration(V2.some).await(99.s).orThrow
       // AWorkflow and BWorkflow from previous test are added
-      assert(controller.itemApi.checkedRepo.await(99.s).map(_.pathToVersionToSignedItems) == Right(Map(
+      assert(controllerState.repo.pathToVersionToSignedItems == Map(
         AWorkflowPath -> List(
           Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
         BWorkflowPath -> List(
           Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))),
         CWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
+          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
     }
 
     "Delete a Workflow" in {
       delete(live / "B.workflow.json")
       provider.updateControllerConfiguration(V3.some).await(99.s).orThrow
-      assert(checkedRepo.map(_.versions) == Right(V2 :: Nil))
-      assert(checkedRepo.map(_.pathToVersionToSignedItems) == Right(Map(
+      assert(controllerState.repo.versions == V2 :: Nil)
+      assert(controllerState.repo.pathToVersionToSignedItems == Map(
         AWorkflowPath -> List(
           Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
         CWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))))
+          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
     }
 
     "Workflow notation (including a try-instruction)" in {
@@ -302,9 +302,6 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       whenObserved await 99.s
     }
   }
-
-  private def checkedRepo: Checked[Repo] =
-    controller.itemApi.checkedRepo.await(99.s)
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
     live.resolve(workflowPath.toFile(SourceType.Json)) := TestWorkflowJson

@@ -8,7 +8,6 @@ import js7.common.http.Uris.{encodePath, encodeQuery}
 import js7.controller.client.ControllerUris._
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition}
 import js7.data.order.OrderId
-import js7.data.workflow.WorkflowPath
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
@@ -70,22 +69,6 @@ final class ControllerUris private(controllerUri: Uri)
 
     def apply(orderId: OrderId): Uri =
       api("/" + encodePath("order", orderId.string))
-  }
-
-  object workflow {
-    def apply(path: WorkflowPath): Uri =
-      api("/" + encodePath("workflow", path.string))
-
-    def list[A: ClassTag]: Uri =
-      api("/" + encodePath("workflow", ""), "return" -> encodeClass[A])
-  }
-
-  object agent {
-    def apply(path: AgentPath): Uri =
-      api("/" + encodePath("agent", path.string))
-
-    def list[A: ClassTag]: Uri =
-      api("/" + encodePath("agent", ""), "return" -> encodeClass[A])
   }
 
   object snapshot {

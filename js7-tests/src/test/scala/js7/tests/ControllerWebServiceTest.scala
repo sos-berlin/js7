@@ -164,52 +164,6 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
     ).await(99.s).orThrow
   }
 
-  "/controller/api/workflow" - {
-    testGet("controller/api/workflow",
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""{
-        "count": 2
-      }""")
-
-    testGet("controller/api/workflow/",
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""[
-        "FOLDER/WORKFLOW-2",
-        "WORKFLOW"
-      ]""")
-
-    testGets("controller/api/workflow/FOLDER/WORKFLOW-2"::
-             "controller/api/workflow/FOLDER%2FWORKFLOW-2":: Nil,
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""{
-        "path": "FOLDER/WORKFLOW-2",
-        "versionId": "VERSION-1",
-        "instructions": [
-          {
-            "TYPE": "Execute.Anonymous",
-            "job": {
-              "agentPath": "AGENT",
-              "executable": {
-               "TYPE": "PathExecutable",
-               "path": "B$sh"
-             },
-              "parallelism": 1
-            }
-          }, {
-            "TYPE": "Execute.Anonymous",
-            "job": {
-              "agentPath": "AGENT",
-              "executable": {
-               "TYPE": "PathExecutable",
-               "path": "MISSING$sh"
-             },
-              "parallelism": 1
-            }
-          }
-        ]
-      }""")
-  }
-
   "/controller/api/agent-proxy" - {
     //"/controller/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
     //  // Pass-through AgentRef. Slashes but the first in AgentPath must be coded as %2F.

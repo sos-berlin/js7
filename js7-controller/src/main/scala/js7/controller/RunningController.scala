@@ -84,7 +84,6 @@ final class RunningController private(
   val eventWatch: StrictEventWatch,
   webServer: AkkaWebServer with AkkaWebServer.HasUri,
   val recoveredEventId: EventId,
-  val itemApi: DirectItemApi,
   val orderApi: OrderApi,
   val controllerState: Task[ControllerState],
   commandExecutor: ControllerCommandExecutor,
@@ -359,11 +358,10 @@ object RunningController
             },
           orderKeeperActor))
       val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperActor)
-      val itemApi = new DirectItemApi(controllerState)
       val orderApi = new MainOrderApi(controllerState)
 
       val webServer = injector.instance[ControllerWebServer.Factory]
-        .apply(itemApi, orderApi, commandExecutor, itemUpdater,
+        .apply(orderApi, commandExecutor, itemUpdater,
           controllerState,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
           recovered.eventWatch
@@ -376,7 +374,7 @@ object RunningController
           controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
           new RunningController(recovered.eventWatch.strict, webServer,
             recoveredEventId = recovered.eventId,
-            itemApi, orderApi,
+            orderApi,
             controllerState.map(_.orThrow),
             commandExecutor,
             itemUpdater,

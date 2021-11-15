@@ -18,7 +18,6 @@ import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerSta
 import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
-import js7.data.workflow.Workflow
 import monix.eval.Task
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
@@ -139,10 +138,6 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
 
   final def journalInfo: Task[JournalInfo] =
       httpClient.get[JournalInfo](uris.api("/journalInfo"))
-
-  final def workflows: Task[Checked[Seq[Workflow]]] =
-    liftProblem(
-      httpClient.get[Seq[Workflow]](uris.workflow.list[Workflow]))
 
   override def toString = s"HttpControllerApi($baseUri)"
 

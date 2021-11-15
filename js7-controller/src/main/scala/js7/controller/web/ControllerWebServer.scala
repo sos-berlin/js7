@@ -12,7 +12,6 @@ import js7.controller.OrderApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
-import js7.core.item.VersionedItemApi
 import js7.data.controller.ControllerState
 import js7.journal.watch.FileEventWatch
 import monix.eval.Task
@@ -28,7 +27,8 @@ object ControllerWebServer
     closer: Closer)(
     implicit actorSystem_ : ActorSystem)
   {
-    def apply(itemApi: VersionedItemApi, orderApi: OrderApi,
+    def apply(
+      orderApi: OrderApi,
       commandExecutor: ControllerCommandExecutor,
       itemUpdater: ItemUpdater,
       controllerState: Task[Checked[ControllerState]],
@@ -44,7 +44,6 @@ object ControllerWebServer
               binding,
               whenShuttingDown,
               controllerConfiguration,
-              itemApi,
               orderApi,
               commandExecutor,
               itemUpdater,

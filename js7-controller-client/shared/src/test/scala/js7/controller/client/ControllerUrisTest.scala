@@ -4,7 +4,6 @@ import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.data.event.{EventRequest, JournalPosition}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
@@ -57,16 +56,6 @@ final class ControllerUrisTest extends AnyFreeSpec
 
     "list" in {
       assert(controllerUris.order.list[Order[Order.State]] == Uri("http://example.com/controller/api/order/?return=Order"))
-    }
-  }
-
-  "workflow" - {
-    "single" in {
-      assert(controllerUris.workflow(WorkflowPath("A/B")) == Uri("http://example.com/controller/api/workflow/A%2FB"))
-    }
-
-    "list" in {
-      assert(controllerUris.workflow.list[Workflow] == Uri("http://example.com/controller/api/workflow/?return=Workflow"))
     }
   }
 
