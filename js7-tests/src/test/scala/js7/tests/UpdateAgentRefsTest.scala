@@ -133,6 +133,8 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
 
+    // TODO May timeout due to repeated
+    //  "Coupling failed: UnknownEventId: An unknown EventId has been requested"
     controller.eventWatch.await[AgentCouplingFailed](
       _.event.problem == AgentRunIdMismatchProblem(agentPath),
       after = eventId)
