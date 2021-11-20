@@ -1033,6 +1033,7 @@ with MainJournalingActor[ControllerState, Event]
 
         case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
           notices.deleteSchedule(boardPath, noticeId)
+          _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
 
         case _ =>
           _controllerState = _controllerState.applyEvents(keyedEvent :: Nil).orThrow
