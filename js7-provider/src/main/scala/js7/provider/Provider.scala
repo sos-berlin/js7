@@ -1,7 +1,7 @@
 package js7.provider
 
 import cats.implicits._
-import com.typesafe.config.{ConfigObject, ConfigUtil}
+import com.typesafe.config.ConfigUtil
 import java.nio.file.{Path, Paths}
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -16,18 +16,18 @@ import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
-import js7.base.web.Uri
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.crypt.generic.MessageSigners
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.workflow.WorkflowReader
-import js7.core.item.{ItemPaths, TypedSourceReader}
-import js7.data.agent.{AgentPath, AgentRef}
-import js7.data.controller.ControllerState.versionedItemJsonCodec
-import js7.data.item.VersionedItems.diffVersionedItems
-import js7.data.item.{ItemSigner, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
+import js7.data.agent.AgentRef
+import js7.data.controller.ControllerState.signableItemJsonCodec
+import js7.data.item.ItemOperation.AddVersion
+import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
+import js7.data.subagent.SubagentRef
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -45,7 +45,7 @@ import scala.jdk.CollectionConverters._
   * @author Joacim Zschimmer
   */
 final class Provider(
-  itemSigner: ItemSigner[VersionedItem],
+  itemSigner: ItemSigner[SignableItem],
   protected val conf: ProviderConfiguration)
 extends HasCloser with Observing with ProvideActorSystem
 {
@@ -81,27 +81,6 @@ extends HasCloser with Observing with ProvideActorSystem
         .memoize
     }
 
-  def updateAgents: Task[Completed] = {
-    val agentRefs = config.getObject("js7.provider.agents").asScala
-      .view
-      .collect { case (name, obj: ConfigObject) =>
-        val agentPath = AgentPath(name)
-        val subagentId = SubagentId(name)
-        Seq(
-          AgentRef(agentPath, Seq(subagentId)),
-          SubagentRef(subagentId, agentPath, Uri(obj.toConfig.getString("uri"))))
-      }
-      .flatten
-      .toSeq
-    controllerApi.updateUnsignedSimpleItems(agentRefs)
-      .map {
-        case Left(problem) =>
-          logger.error(problem.toString)
-          Completed
-        case Right(completed) => completed
-      }
-  }
-
   /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
   def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] = {
@@ -121,23 +100,22 @@ extends HasCloser with Observing with ProvideActorSystem
   }
 
   @TestOnly
-  def testControllerDiff: Task[Checked[VersionedItems.Diff[VersionedItemPath, VersionedItem]]] =
+  def testControllerDiff: Task[Checked[InventoryItemDiff_]] =
     loginUntilReachable >> controllerDiff(readDirectory())
 
   /** Compares the directory with the Controller's repo and sends the difference.
     * Parses each file, so it may take some time for a big configuration directory. */
-  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry]): Task[Checked[VersionedItems.Diff[VersionedItemPath, VersionedItem]]] =
+  private def controllerDiff(localEntries: Seq[DirectoryReader.Entry])
+  : Task[Checked[InventoryItemDiff_]] =
     for {
-      pair <- Task.parZip2(readLocalItem(localEntries.map(_.file)), fetchControllerItemSeq)
-      (checkedLocalItemSeq, controllerItemSeq) = pair
+      pair <- Task.parZip2(readLocalItems(localEntries.map(_.file)), fetchControllerItems)
+      (checkedLocalItemSeq, controllerItems) = pair
     } yield
-      checkedLocalItemSeq.map(o => itemDiff(o, controllerItemSeq))
+      checkedLocalItemSeq.map(
+        InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true))
 
-  private def readLocalItem(files: Seq[Path]) =
-    Task { typedSourceReader.readVersionedItems(files) }
-
-  private def itemDiff(aSeq: Seq[VersionedItem], bSeq: Seq[VersionedItem]): VersionedItems.Diff[VersionedItemPath, VersionedItem] =
-    VersionedItems.Diff.fromRepoChanges(diffVersionedItems(aSeq, bSeq, ignoreVersion = true))
+  private def readLocalItems(files: Seq[Path]): Task[Checked[Seq[InventoryItem]]] =
+    Task { typedSourceReader.readItems(files) }
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
@@ -169,38 +147,60 @@ extends HasCloser with Observing with ProvideActorSystem
           }
     }
 
-  private def execute(versionId: Option[VersionId], diff: VersionedItems.Diff[VersionedItemPath, VersionedItem]): Task[Checked[Completed]] =
+  private def execute(versionId: Option[VersionId], diff: InventoryItemDiff_)
+  : Task[Checked[Completed]] =
     if (diff.isEmpty && versionId.isEmpty)
       Task(Checked.completed)
     else {
       val v = versionId getOrElse newVersionId()
       logUpdate(v, diff)
-      controllerApi.updateRepo(itemSigner, v, diff)
+      updateItems(itemSigner, v, diff)
     }
 
-  private def logUpdate(versionId: VersionId, diff: VersionedItems.Diff[VersionedItemPath, VersionedItem]): Unit = {
-    logger.info(s"Version ${versionId.string}")
-    for (o <- diff.removed            .sorted) logger.info(s"Delete $o")
-    for (o <- diff.added  .map(_.path).sorted) logger.info(s"Add $o")
-    for (o <- diff.changed.map(_.path).sorted) logger.info(s"Change $o")
+  private def updateItems(
+    itemSigner: ItemSigner[SignableItem],
+    versionId: VersionId,
+    diff: InventoryItemDiff_)
+  : Task[Checked[Completed]] = {
+    val addVersion = Observable.fromIterable(
+      diff.containsVersionedItem ? AddVersion(versionId))
+
+    val addOrChange = Observable
+      .fromIterable(diff.addedOrChanged)
+      .map {
+        case item: VersionedItem => item.withVersion(versionId)
+        case o => o
+      }
+      .map {
+        case item: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(item)
+        case item: SignableItem => ItemOperation.AddOrChangeSigned(itemSigner.toSignedString(item))
+      }
+
+    val remove = Observable.fromIterable(diff.removed).map(ItemOperation.Remove(_))
+
+    controllerApi.updateItems(addVersion ++ addOrChange ++ remove)
   }
 
-  private def fetchControllerItemSeq: Task[Seq[VersionedItem]] =
+  private def logUpdate(versionId: VersionId, diff: InventoryItemDiff_): Unit = {
+    logger.info(s"Version ${versionId.string}")
+    for (o <- diff.removed            .sorted) logger.info(s"Delete $o")
+    for (o <- diff.addedOrChanged  .map(_.path).sorted) logger.info(s"AddOrChange $o")
+  }
+
+  private def fetchControllerItems: Task[Iterable[InventoryItem]] =
     httpControllerApi.snapshot()
-      .map(_.keyToItem.values.view
-        .collect { case o: VersionedItem => o }
-        .toVector)
+      .map(_.items)
 
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector
 
-  private def toItemDiff(diff: PathSeqDiff): Checked[VersionedItems.Diff[VersionedItemPath, VersionedItem]] = {
-    val checkedAdded = typedSourceReader.readVersionedItems(diff.added)
-    val checkedChanged = typedSourceReader.readVersionedItems(diff.changed)
+  private def toItemDiff(diff: PathSeqDiff): Checked[InventoryItemDiff_] = {
+    val checkedAddedOrChanged = typedSourceReader.readItems(diff.added ++ diff.changed)
     val checkedDeleted: Checked[Vector[VersionedItemPath]] =
       diff.deleted.toVector
-        .traverse(path => ItemPaths.fileToItemPath(itemPathCompanions, conf.liveDirectory, path))
-    (checkedAdded, checkedChanged, checkedDeleted) mapN ((add, chg, del) => VersionedItems.Diff(add, chg, del))
+        .traverse(path => ItemPaths.fileToVersionedItemPath(versionedItemPathCompanions, conf.liveDirectory, path))
+    (checkedAddedOrChanged, checkedDeleted)
+      .mapN((add, del) => InventoryItemDiff(add, del))
   }
 
   private def retryLoginDurations: Iterator[FiniteDuration] =
@@ -209,9 +209,12 @@ extends HasCloser with Observing with ProvideActorSystem
 
 object Provider
 {
-  private val itemPathCompanions = Set(WorkflowPath)
+  private val versionedItemPathCompanions = Set[VersionedItemPath.AnyCompanion](WorkflowPath)
   private val logger = Logger(getClass)
-  private val readers = WorkflowReader :: Nil
+  private val readers = Seq(
+    WorkflowReader,
+    SimpleItemReader(AgentRef),
+    SimpleItemReader(SubagentRef))
 
   def apply(conf: ProviderConfiguration): Checked[Provider] = {
     val itemSigner = {
@@ -221,14 +224,14 @@ object Provider
       val password = SecretString(conf.config.getString(s"$configPath.password"))
       MessageSigners.typeToMessageSignersCompanion(typeName)
         .flatMap(companion => companion.checked(keyFile.byteArray, password))
-        .map(messageSigner => new ItemSigner(messageSigner, versionedItemJsonCodec))
+        .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))
     }.orThrow
     Right(new Provider(itemSigner, conf))
   }
 
   def observe(stop: Task[Unit], conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Completed]] =
     for (provider <- Provider(conf)) yield
-      Observable.fromTask(provider.updateAgents)
-        .flatMap(_ => provider.observe(stop))
+      provider
+        .observe(stop)
         .guarantee(provider.stop.map((_: Completed) => ()))
 }

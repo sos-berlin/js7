@@ -12,7 +12,7 @@ final case class ScheduledOrderGeneratorPath(string: String) extends VersionedIt
 
 object ScheduledOrderGeneratorPath extends VersionedItemPath.Companion[ScheduledOrderGeneratorPath]
 {
-  val sourceTypeToFilenameExtension = Map(
+  override val sourceTypeToFilenameExtension = Map(
     SourceType.Xml -> ".order.xml")
 
   protected def unchecked(string: String) = new ScheduledOrderGeneratorPath(string)

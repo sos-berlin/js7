@@ -28,6 +28,9 @@ object GenericString
     case None => null
   }
 
+  def ordering[A <: GenericString]: Ordering[A] =
+    (a, b) => a.string.compareTo(b.string)
+
   trait Companion[A <: GenericString]
   {
     def apply(o: String): A

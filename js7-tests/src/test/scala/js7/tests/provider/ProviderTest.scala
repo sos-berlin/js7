@@ -2,7 +2,7 @@ package js7.tests.provider
 
 import cats.syntax.option._
 import java.nio.file.Files.{createDirectories, delete}
-import java.nio.file.{Files, Paths}
+import java.nio.file.Paths
 import js7.base.circeutils.CirceUtils._
 import js7.base.configutils.Configs._
 import js7.base.crypt.silly.SillySigner
@@ -10,9 +10,9 @@ import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
-import js7.base.problem.Problems.DuplicateKey
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
@@ -25,9 +25,10 @@ import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.Repo.Entry
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
-import js7.data.item.{Repo, SourceType, VersionId, VersionedItems}
+import js7.data.item.{InventoryItemDiff, InventoryItemKey, InventoryItemPath, SourceType, VersionId}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderAdded
+import js7.data.subagent.SubagentId
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
@@ -49,6 +50,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
+  private lazy val subagentRef = directoryProvider.subagentRefs.head
   private lazy val privateKeyPassword = SecretString("")
   private val privateKey = ByteArray("SILLY")
   override protected val signer = SillySigner.checked(privateKey, privateKeyPassword).orThrow
@@ -72,11 +74,6 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     providerDirectory / "config" / "provider.conf" :=
       s"""js7.provider.add-orders-every = 0.1s
          |js7.provider.add-orders-earlier = 0.1s
-         |js7.provider.agents {
-         |  ${agentRef.path.string} {
-         |    uri = "${agentRef.uri}"
-         |  }
-         |}
          |""".stripMargin
     providerDirectory / "config" / "private" / "private-silly-keys.txt" := privateKey
     providerDirectory / "config" / "private" / "private.conf" :=
@@ -120,19 +117,26 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controllerState.repo.pathToVersionToSignedItems.isEmpty)
     }
 
-    "Add configured AgentRefs" in {
-      provider.updateAgents.await(99.s)
-    }
-
     "Start with two workflows" in {
-      //live / (agentRef.id.string + ".agent.json") := agentRef
+      for (agentRef <- directoryProvider.agentRefs) {
+        live / (agentRef.path.string + ".agent.json") := agentRef
+      }
+      for (subagentRef <- directoryProvider.subagentRefs) {
+        live / (subagentRef.path.string + ".subagent.json") := subagentRef
+      }
+
       writeWorkflowFile(AWorkflowPath)
       writeWorkflowFile(BWorkflowPath)
       v1Time
 
       // `initiallyUpdateControllerConfiguration` will send this diff to the Controller
-      assert(provider.testControllerDiff.await(99.s).orThrow == VersionedItems.Diff(
-        added = TestWorkflow.withId(AWorkflowPath) :: TestWorkflow.withId(BWorkflowPath) :: Nil))
+      assert(provider.testControllerDiff.await(99.s).orThrow == InventoryItemDiff(
+        addedOrChanged = Seq(
+          agentRef,
+          subagentRef,
+          TestWorkflow.withId(AWorkflowPath),
+          TestWorkflow.withId(BWorkflowPath)
+        ).sortBy(_.key: InventoryItemKey)))
 
       provider.initiallyUpdateControllerConfiguration(V1.some).await(99.s).orThrow
       //assert(controller.controllerState.map(_.pathToAgentRefState.values).await(99.s) == Seq(agentRef))
@@ -147,11 +151,6 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
 
-    "Duplicate VersionId" in {
-      assert(provider.updateControllerConfiguration(V1.some).await(99.s) ==
-        Left(DuplicateKey("VersionId", VersionId("1"))))
-    }
-
     "An unknown and some invalid files" in {
       sleep((v1Time + 1.1.seconds).timeLeftOrZero)  // File system timestamps may have only a one second precision
       writeWorkflowFile(AWorkflowPath)
@@ -162,7 +161,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       (live / "ERROR-2.workflow.json") := json"""{ "instructions": 0 }"""
       assert(provider.updateControllerConfiguration(V2.some).await(99.s) ==
         Left(Problem.Combined(Set(
-          ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp")),
+          ItemPaths.AlienFileProblem(Paths.get("UNKNOWN.tmp"), Set(WorkflowPath, AgentPath, SubagentId)),
           VersionedItemReader.SourceProblem(WorkflowPath("NO-JSON"), SourceType.Json,
             Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
           VersionedItemReader.SourceProblem(WorkflowPath("ERROR-1"), SourceType.Json,
@@ -188,9 +187,9 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Delete a Workflow" in {
-      delete(live / "B.workflow.json")
+      deleteFile(BWorkflowPath)
       provider.updateControllerConfiguration(V3.some).await(99.s).orThrow
-      assert(controllerState.repo.versions == V2 :: Nil)
+      assert(controllerState.repo.versions == List(V2))
       assert(controllerState.repo.pathToVersionToSignedItems == Map(
         AWorkflowPath -> List(
           Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
@@ -207,8 +206,9 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val workflowPath = WorkflowPath("NOTATION")
       val workflow = WorkflowParser.parse(workflowPath, notation).orThrow
       live.resolve(workflowPath.toFile(SourceType.Txt)) := notation
+      assert(provider.testControllerDiff.await(99.s).orThrow ==
+        InventoryItemDiff(addedOrChanged = Seq(workflow)))
 
-      assert(provider.testControllerDiff.await(99.s).orThrow == VersionedItems.Diff(added = Seq(workflow)))
       provider.updateControllerConfiguration(V4.some).await(99.s).orThrow
       assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
@@ -242,7 +242,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     "Delete a workflow" in {
       whenObserved
       lastEventId = eventWatch.lastAddedEventId
-      delete(live resolve CWorkflowPath.toFile(SourceType.Json))
+      deleteFile(CWorkflowPath)
       assert(eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: VersionedItemRemoved(CWorkflowPath)))
     }
@@ -257,9 +257,10 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Change a workflow" in {
+      logger.debug("Change a workflow")
       assert(!whenObserved.isCompleted)
       lastEventId = controller.eventWatch.lastAddedEventId
-      live.resolve(CWorkflowPath toFile SourceType.Json) := ChangedWorkflowJson
+      live.resolve(CWorkflowPath.toFile(SourceType.Json)) := ChangedWorkflowJson
       val versionId = controller.eventWatch.await[VersionAdded](after = lastEventId).head.value.event.versionId
       assert(controller.eventWatch.await[VersionedItemEvent](after = lastEventId).map(_.value) ==
         Vector(NoKey <-: VersionedItemChanged(sign(ChangedWorkflow withId CWorkflowPath ~ versionId))))
@@ -291,7 +292,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
     "Delete an order generator" in {
-      Files.delete(orderGeneratorsDir / "test.order.xml")
+      delete(orderGeneratorsDir / "test.order.xml")
       controller.eventWatch.await[OrderAdded](_.event.workflowId.path == BWorkflowPath, after = lastEventId)  // TIMEOUT
     }
 
@@ -305,10 +306,14 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private def writeWorkflowFile(workflowPath: WorkflowPath): Unit =
     live.resolve(workflowPath.toFile(SourceType.Json)) := TestWorkflowJson
+
+  private def deleteFile(path: InventoryItemPath): Unit =
+    delete(live.resolve(path.toFile(SourceType.Json)))
 }
 
 object ProviderTest
 {
+  private val logger = Logger[this.type]
   private val loginName = "ProviderTest"
   private val loginPassword = "ProviderTest-PASSWORD"
   private val testConfig = config"""

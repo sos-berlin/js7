@@ -30,7 +30,7 @@ case class APath(string: String) extends VersionedItemPath
 
 object APath extends VersionedItemPath.Companion[APath]
 {
-  val sourceTypeToFilenameExtension = Map(
+  override val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".a.json",
     SourceType.Txt -> ".a.txt")
 

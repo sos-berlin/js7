@@ -16,6 +16,9 @@ extends UnsignedSimpleItem
 
   assertThat(limit >= 0)
 
+  def rename(path: LockPath) =
+    copy(path = path)
+
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 }

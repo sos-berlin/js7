@@ -33,6 +33,9 @@ extends OrderWatch
   def resolvedPattern: Pattern =
     pattern.fold(defaultPattern)(_.pattern)
 
+  def rename(path: OrderWatchPath) =
+    copy(path = path)
+
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 

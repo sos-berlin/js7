@@ -12,10 +12,9 @@ with InventoryItemPath.AssignableToAgent
 
 object WorkflowPath extends VersionedItemPath.Companion[WorkflowPath]
 {
-  val sourceTypeToFilenameExtension = Map(
+  override val sourceTypeToFilenameExtension = Map(
     SourceType.Json -> ".workflow.json",
-    SourceType.Txt -> ".workflow.txt",
-    SourceType.Xml -> ".job_chain.xml")
+    SourceType.Txt -> ".workflow.txt")
 
   protected def unchecked(string: String) = new WorkflowPath(string)
 

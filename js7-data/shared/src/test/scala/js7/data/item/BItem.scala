@@ -28,8 +28,5 @@ case class BPath(string: String) extends VersionedItemPath {
 }
 
 object BPath extends VersionedItemPath.Companion[BPath] {
-  val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
-    SourceType.Json -> ".b.json")
-
   protected def unchecked(string: String) = new BPath(string)
 }

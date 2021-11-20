@@ -6,6 +6,7 @@ import java.nio.file.{DirectoryStream, Files, Path}
 import java.util.Comparator
 import js7.base.utils.AutoClosing.autoClosing
 import scala.collection.mutable
+
 /**
   * @author Joacim Zschimmer
   */

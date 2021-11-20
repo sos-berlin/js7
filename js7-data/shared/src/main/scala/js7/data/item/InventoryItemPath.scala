@@ -1,9 +1,11 @@
 package js7.data.item
 
 import io.circe.{Codec, DecodingFailure, HCursor, Json}
+import java.nio.file.{Path, Paths}
+import java.util.Locale
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.GenericString
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.{checkedCast, implicitClass}
@@ -20,16 +22,42 @@ trait InventoryItemPath extends GenericString
   final def toTypedString: String =
     s"${companion.pathTypeName}:$string"
 
+  /** The relative standard source file path. */
+  def toFile(t: SourceType): Path =
+    Paths.get(string + companion.sourceTypeToFilenameExtension(t))
+
   override def toString = toTypedString
 }
 
 object InventoryItemPath
 {
+  implicit val inventoryItemPathOrdering: Ordering[InventoryItemPath] =
+    GenericString.ordering[InventoryItemPath]
+
   abstract class Companion[P <: InventoryItemPath: ClassTag] extends Js7PathValidating[P]
   {
     def itemTypeName: String = name stripSuffix "Path"
+
     def pathTypeName: String = itemTypeName
+
+    private lazy val defaultSourceTypeToFilenameExtension: Map[SourceType, String] =
+      Map(SourceType.Json -> ("." + pathTypeName.toLowerCase(Locale.ROOT) + ".json"))
+
+    def sourceTypeToFilenameExtension: Map[SourceType, String] =
+      defaultSourceTypeToFilenameExtension
+
     final val itemPathClass: Class[P] = implicitClass[P]
+
+    /** Converts a relative file path with normalized slahes (/) to a `VersionedItemPath`. */
+    final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
+      sourceTypeToFilenameExtension
+        .collectFirst {
+          case (t, ext) if normalized endsWith ext =>
+            checked(normalized.dropRight(ext.length)).map(_ -> t)
+        }
+
+    final def toPossibleFilenames(path: P): Iterable[String] =
+      sourceTypeToFilenameExtension.values.map(path + _)
   }
 
   type AnyCompanion = Companion[_ <: InventoryItemPath]

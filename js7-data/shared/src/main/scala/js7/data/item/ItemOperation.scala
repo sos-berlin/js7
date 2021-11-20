@@ -12,12 +12,22 @@ sealed trait ItemOperation
 object ItemOperation
 {
   sealed trait SimpleItemOperation extends ItemOperation
+  sealed trait AddOrChangeOperation extends ItemOperation
+
+  sealed trait Remove extends ItemOperation
+  object Remove {
+    def apply(path: InventoryItemPath): Remove =
+      path match {
+        case path: VersionedItemPath => ItemOperation.RemoveVersioned(path)
+        case path: SimpleItemPath => ItemOperation.DeleteSimple(path)
+      }
+  }
 
   final case class AddOrChangeSimple(item: UnsignedSimpleItem)
-  extends SimpleItemOperation
+  extends SimpleItemOperation with AddOrChangeOperation
 
   final case class DeleteSimple(path: SimpleItemPath)
-  extends SimpleItemOperation
+  extends SimpleItemOperation with Remove
 
   sealed trait VersionedOperation extends ItemOperation
   object VersionedOperation
@@ -40,10 +50,10 @@ object ItemOperation
   sealed trait VersionedItemOperation extends VersionedOperation
 
   final case class AddOrChangeSigned(signedString: SignedString)
-  extends VersionedItemOperation
+  extends VersionedItemOperation with AddOrChangeOperation
 
   final case class RemoveVersioned(path: VersionedItemPath)
-  extends VersionedItemOperation
+  extends VersionedItemOperation with Remove
 
   implicit def jsonCodec(implicit
     idJsonEncoder: Encoder[SimpleItemPath],

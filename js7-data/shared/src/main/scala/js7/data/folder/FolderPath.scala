@@ -49,7 +49,7 @@ final case class FolderPath private(string: String) extends VersionedItemPath {
 object FolderPath extends VersionedItemPath.Companion[FolderPath]
 {
   val Root = new FolderPath("")
-  val sourceTypeToFilenameExtension = Map.empty
+  override val sourceTypeToFilenameExtension = Map.empty
 
   protected def unchecked(string: String) = new FolderPath(string)
 

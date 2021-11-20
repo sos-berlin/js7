@@ -8,9 +8,6 @@ case class TestPath(string: String) extends VersionedItemPath {
 }
 
 object TestPath extends VersionedItemPath.Companion[TestPath] {
-  val sourceTypeToFilenameExtension = Map(
-    SourceType.Json -> ".test.json")
-
   protected def unchecked(string: String) = new TestPath(string)
 }
 

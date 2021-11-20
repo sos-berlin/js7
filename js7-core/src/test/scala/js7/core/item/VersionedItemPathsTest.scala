@@ -24,10 +24,10 @@ final class VersionedItemPathsTest extends AnyFreeSpec {
     //  Right(WorkflowPath("folder/test") -> SourceType.Json))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.txt") ==
       Right(WorkflowPath("folder/test") -> SourceType.Txt))
-    assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.job_chain.xml") ==
-      Right(WorkflowPath("folder/test") -> SourceType.Xml))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.wrong") ==
-      Left(Problem(s"File '...${separator}folder${separator}test.workflow.wrong' is not recognized as a configuration file")))
+      Left(Problem(s"File '...${separator}folder${separator}test.workflow.wrong'" +
+        " is not recognized as a configuration file" +
+        " (like *.workflow.json, *.workflow.txt)")))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "folder/test.workflow.json") ==
       Right(WorkflowPath("folder/test") -> SourceType.Json))
     assert(fileToItemPathAndSourceType(Set(WorkflowPath), dir, dir / "a@b.workflow.json") ==

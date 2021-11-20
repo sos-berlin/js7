@@ -17,6 +17,9 @@ extends UnsignedSimpleItem
 
   val companion = SubagentRef
 
+  def rename(id: SubagentId) =
+    copy(id = id)
+
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 

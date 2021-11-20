@@ -45,7 +45,8 @@ trait OrderProvider extends HasCloser
   }
 
   protected final def replaceOrderGenerators: Checked[Unit] =
-    typedSourceReader.readVersionedItems(DirectoryReader.entries(conf.orderGeneratorsDirectory).map(_.file))
+    typedSourceReader
+      .readItems(DirectoryReader.entries(conf.orderGeneratorsDirectory).map(_.file))
       .map(_.map(_.asInstanceOf[ScheduledOrderGenerator]))
       .map(orderScheduleGenerator.replaceGenerators)
 }

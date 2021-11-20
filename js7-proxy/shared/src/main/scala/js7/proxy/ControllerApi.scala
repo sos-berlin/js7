@@ -22,7 +22,7 @@ import js7.data.controller.ControllerState._
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
-import js7.data.item.{ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
+import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.ControllerApi._
@@ -83,19 +83,6 @@ extends ControllerApiWithHttp
       .fromIterable(agentRefs)
       .map(ItemOperation.AddOrChangeSimple.apply))
       .map(_.map((_: Completed) => Accepted))
-
-  def updateRepo(
-    itemSigner: ItemSigner[VersionedItem],
-    versionId: VersionId,
-    diff: VersionedItems.Diff[VersionedItemPath, VersionedItem])
-  : Task[Checked[Completed]] = {
-    val addOrChange = Observable.fromIterable(diff.added ++ diff.changed)
-      .map(_ withVersion versionId)
-      .map(itemSigner.toSignedString)
-      .map(AddOrChangeSigned.apply)
-    val remove = Observable.fromIterable(diff.removed).map(RemoveVersioned.apply)
-    updateItems(AddVersion(versionId) +: (addOrChange ++ remove))
-  }
 
   def updateRepo(
     versionId: VersionId,

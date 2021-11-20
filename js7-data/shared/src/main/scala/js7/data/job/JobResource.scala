@@ -20,6 +20,9 @@ extends SignableSimpleItem
   def withId(id: JobResourcePath) =
     copy(path = id)
 
+  def rename(path: JobResourcePath) =
+    copy(path = path)
+
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 }

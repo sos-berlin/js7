@@ -9,10 +9,11 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked.Ops
-import js7.controller.tests.VersionedItemsTest._
+import js7.controller.tests.InventoryItemDiffTest._
 import js7.core.item.VersionedItemReader
-import js7.data.item.VersionedItems.diffVersionedItems
-import js7.data.item.{RepoChange, SourceType, TestPath, TestVersionedItem, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
+import js7.data.item.InventoryItemDiff.diffItems
+import js7.data.item.ItemChange.{AddedOrChanged, Removed}
+import js7.data.item.{InventoryItemDiff, SourceType, TestPath, TestVersionedItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
@@ -20,11 +21,11 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemsTest extends AnyFreeSpec
+final class InventoryItemDiffTest extends AnyFreeSpec
 {
-  "diffVersionedItems" - {
-    "empty"  in {
-      assert(diffVersionedItems(Nil, Nil).isEmpty)
+  "diffItems" - {
+    "empty" in {
+      assert(diffItems(Nil, Nil).isEmpty)
     }
 
     lazy val a = Workflow.of(WorkflowPath("A") ~ "1", Fail(None))
@@ -33,7 +34,7 @@ final class VersionedItemsTest extends AnyFreeSpec
 
     "different order" in {
       assert(
-        diffVersionedItems(
+        diffItems(
           a :: b :: Nil,
           b :: a :: Nil
         ).isEmpty)
@@ -41,54 +42,54 @@ final class VersionedItemsTest extends AnyFreeSpec
 
     "one added" in {
       assert(
-        diffVersionedItems(
+        diffItems(
           a :: b :: c :: Nil,
           a :: b :: Nil)
-        == RepoChange.Added(c) :: Nil)
+        == AddedOrChanged(c) :: Nil)
     }
 
     "one deleted" in {
       assert(
-        diffVersionedItems(
+        diffItems(
           a :: Nil,
           a :: b :: Nil)
-        == RepoChange.Removed(b.path) :: Nil)
+        == Removed(b.path) :: Nil)
     }
 
     "one changed" in {
       val bUpdated = Workflow.of(WorkflowPath("B") ~ "1", Fail(None), Fail(None))
       assert(bUpdated != b)
       assert(
-        diffVersionedItems(
+        diffItems(
           a :: bUpdated :: Nil,
           a :: b :: Nil
-        ) == RepoChange.Changed(bUpdated) :: Nil)
+        ) == AddedOrChanged(bUpdated) :: Nil)
     }
 
     "added, deleted and changed" in {
       val aUpdated = Workflow.of(WorkflowPath("A") ~ "1", Fail(None), Fail(None))
       assert(aUpdated != a)
       assert(
-        diffVersionedItems(
+        diffItems(
           aUpdated :: c :: Nil,
           a :: b :: Nil
         ).toSet == Set(
-          RepoChange.Changed(aUpdated),
-          RepoChange.Removed(b.path),
-          RepoChange.Added(c)))
+          AddedOrChanged(aUpdated),
+          Removed(b.path),
+          AddedOrChanged(c)))
     }
 
     "version updated" in {
       assert(
-        diffVersionedItems(
+        diffItems(
           a :: b.withVersion(VersionId("CHANGED")) :: Nil,
           a :: b :: Nil
-        ) == RepoChange.Changed(b withVersion VersionId("CHANGED")) :: Nil)
+        ) == AddedOrChanged(b withVersion VersionId("CHANGED")) :: Nil)
     }
 
     "version updated, ignoreVersion=true" in {
       assert(
-        diffVersionedItems(
+        diffItems(
           a :: b.withVersion(VersionId("CHANGED")) :: Nil,
           a :: b :: Nil,
           ignoreVersion = true
@@ -97,33 +98,33 @@ final class VersionedItemsTest extends AnyFreeSpec
   }
 
   "Diff" in {
-    val diff = VersionedItems.Diff.fromRepoChanges(
+    val diff = InventoryItemDiff.fromItemChanges(
       List(
-        RepoChange.Removed(BWorkflow.path),
-        RepoChange.Added(BTestItem withVersion V0),
-        RepoChange.Added(CWorkflow withVersion V1),
-        RepoChange.Changed(D1Workflow withVersion V1)))
+        Removed(BWorkflow.path),
+        AddedOrChanged(BTestItem.withVersion(V0)),
+        AddedOrChanged(CWorkflow withVersion V1),
+        AddedOrChanged(D1Workflow withVersion V1)))
 
-    assert(diff == VersionedItems.Diff[VersionedItemPath, VersionedItem](
-      added = List(BTestItem withVersion V0, CWorkflow withVersion V1),
-      changed = List(D1Workflow withVersion V1),
+    assert(diff == InventoryItemDiff[VersionedItemPath, VersionedItem](
+      addedOrChanged = List(
+        BTestItem.withVersion(V0),
+        CWorkflow.withVersion(V1),
+        D1Workflow.withVersion(V1)),
       removed = List(BWorkflow.path)))
 
     assert(diff.select[WorkflowPath, Workflow] ==
-      VersionedItems.Diff[WorkflowPath, Workflow](
-        added = List(CWorkflow withVersion V1),
-        changed = List(D1Workflow withVersion V1),
+      InventoryItemDiff[WorkflowPath, Workflow](
+        addedOrChanged = List(CWorkflow.withVersion(V1), D1Workflow.withVersion(V1)),
         removed = List(BWorkflow.path)))
 
     assert(diff.select[TestPath, TestVersionedItem] ==
-      VersionedItems.Diff[TestPath, TestVersionedItem](
-        added = List(BTestItem withVersion V0),
-        changed = Nil,
+      InventoryItemDiff[TestPath, TestVersionedItem](
+        addedOrChanged = List(BTestItem withVersion V0),
         removed = Nil))
   }
 }
 
-object VersionedItemsTest
+object InventoryItemDiffTest
 {
   private[tests] val V0 = VersionId("0")
   private[tests] val V1 = VersionId("1")

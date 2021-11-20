@@ -23,6 +23,9 @@ extends UnsignedSimpleItem
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
+  def rename(path: BoardPath) =
+    copy(path = path)
+
   def postingOrderToNotice(scope: Scope): Checked[Notice] = {
     //val args = ListValue(Vector(StringValue(order.id.string)))
     for {

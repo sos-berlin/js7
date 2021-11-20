@@ -594,15 +594,15 @@ with SnapshotableState[ControllerState]
 
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     new MapView[InventoryItemKey, InventoryItem] {
-      def get(itemKey: InventoryItemKey): Option[InventoryItem] =
+      def get(itemKey: InventoryItemKey) =
         itemKey match {
           case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
           case path: SimpleItemPath => keyToItemFunc(path).collect { case o: SimpleItem => o }
         }
 
-      def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
-        simpleItems.view.map(item => item.key -> item).iterator ++
-          repo.items.map(item => item.id -> item)
+      def iterator = items.map(o => o.key -> o).iterator
+
+      override def values = items
     }
 
   private lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =

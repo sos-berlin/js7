@@ -26,6 +26,9 @@ extends UnsignedSimpleItem
 
   val companion = Calendar
 
+  def rename(path: CalendarPath) =
+    copy(path = path)
+
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 }

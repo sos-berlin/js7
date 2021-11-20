@@ -7,8 +7,8 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Problem
 import js7.common.files.DirectoryReader
-import js7.core.item.VersionedItemFile.checkUniqueness
-import js7.core.item.VersionedItemFileTest._
+import js7.core.item.InventoryItemFile.checkUniqueness
+import js7.core.item.InventoryItemFileTest._
 import js7.data.item.SourceType
 import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec
@@ -16,22 +16,25 @@ import org.scalatest.freespec.AnyFreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemFileTest extends AnyFreeSpec
+final class InventoryItemFileTest extends AnyFreeSpec
 {
   "typedFiles, checkUniqueness" in {
     provideDataDirectory { dir =>
-      val checkedTypedFiles = DirectoryReader.files(dir).map(VersionedItemFile.checked(dir, _, Set(WorkflowPath)))
+      val checkedTypedFiles = DirectoryReader.files(dir)
+        .map(InventoryItemFile.checked(dir, _, Set(WorkflowPath)))
       assert(checkedTypedFiles.toSet == Set(
-        Right(VersionedItemFile(dir / "test.workflow.json", AWorkflowPath, SourceType.Json)),
-        Right(VersionedItemFile(dir / "test.workflow.txt", AWorkflowPath, SourceType.Txt)),
-        Left(Problem(s"File '...${separator}folder${separator}test.alien.json' is not recognized as a configuration file"))))
+        Right(InventoryItemFile(dir / "test.workflow.json", AWorkflowPath, SourceType.Json)),
+        Right(InventoryItemFile(dir / "test.workflow.txt", AWorkflowPath, SourceType.Txt)),
+        Left(Problem(s"File '...${separator}folder${separator}test.alien.json'" +
+          " is not recognized as a configuration file" +
+          " (like *.workflow.json, *.workflow.txt)"))))
       assert(checkUniqueness(checkedTypedFiles collect { case Right(o) => o }) == Left(Problem(
         s"Duplicate configuration files: ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
     }
   }
 }
 
-object VersionedItemFileTest
+object InventoryItemFileTest
 {
   private val AWorkflowPath = WorkflowPath("test")
 

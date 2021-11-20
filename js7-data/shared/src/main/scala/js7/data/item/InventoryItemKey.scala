@@ -5,6 +5,8 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.item.InventoryItemKey._
+import scala.math.Ordered.orderingToOrdered
+import scala.math.Ordering._
 
 trait InventoryItemKey
 {
@@ -17,6 +19,15 @@ trait InventoryItemKey
 
 object InventoryItemKey
 {
+  implicit val inventoryItemKeyOrdering: Ordering[InventoryItemKey] =
+    (a, b) => a.path.compare(b.path) match {
+      case 0 => a match {
+        case a: VersionedItemId_ => a.versionId.compare(b.asInstanceOf[VersionedItemId_].versionId)
+        case _ => 0
+      }
+      case o => o
+    }
+
   type Companion_ = Companion[_ <: InventoryItemKey]
 
   trait Companion[A <: InventoryItemKey]

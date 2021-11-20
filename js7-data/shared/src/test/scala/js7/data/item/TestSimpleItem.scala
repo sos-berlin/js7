@@ -24,6 +24,9 @@ extends UnsignedSimpleItem {
 
   def withId(id: TestSimplePath) = copy(id)
 
+  def rename(path: TestSimplePath) =
+    copy(path = path)
+
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 }

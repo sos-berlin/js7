@@ -1,7 +1,7 @@
 package js7.data.folder
 
 import js7.data.folder.FolderPathTest._
-import js7.data.item.{SourceType, VersionedItemPath}
+import js7.data.item.VersionedItemPath
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -79,9 +79,6 @@ private object FolderPathTest
   }
 
   private object TestPath extends VersionedItemPath.Companion[TestPath] {
-    val sourceTypeToFilenameExtension = Map(
-      SourceType.Json -> ".test.json")
-
     protected def unchecked(string: String) = new TestPath(string)
   }
 }

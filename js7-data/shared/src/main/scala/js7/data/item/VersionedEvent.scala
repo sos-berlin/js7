@@ -40,7 +40,7 @@ object VersionedEvent {
   {
     def unapply(event: VersionedItemAddedOrChanged) = Some(event.signed)
 
-    // Use SignedItemAdded implementation (for ..Added and ..Changed events)
+    // Use SignedItemAdded implementation (for ..AddedOrChanged and ..Changed events)
     private[VersionedEvent] def jsonDecoder[A <: VersionedItemAddedOrChanged: ClassTag]
       (toA: Signed[VersionedItem] => A)
     : Decoder[A] =

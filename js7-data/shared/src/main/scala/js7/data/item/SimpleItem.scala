@@ -8,9 +8,11 @@ trait SimpleItem extends InventoryItem
 {
   protected type Self <: SimpleItem
 
-  def withRevision(revision: Option[ItemRevision]): Self
-
   val companion: Companion[Self]
+
+  def rename(key: companion.Key): Self
+
+  def withRevision(revision: Option[ItemRevision]): Self
 
   final def key = path
 

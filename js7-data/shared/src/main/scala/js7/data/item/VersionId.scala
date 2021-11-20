@@ -63,6 +63,6 @@ object VersionId extends GenericString.NonEmpty[VersionId]
   def of(validVersionId: String): VersionId =
     apply(validVersionId)
 
-  implicit def VersionedIdOrdering: Ordering[VersionId] =
-    (a, b) => a.string.compareTo(b.string)
+  implicit val versionedIdOrdering: Ordering[VersionId] =
+    GenericString.ordering[VersionId]
 }
