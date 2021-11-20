@@ -4,6 +4,7 @@ import cats.syntax.traverse._
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}
+import js7.data.agent.AgentPath
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{KeyedEvent, NoKeyEvent}
@@ -58,10 +59,12 @@ object VerifiedUpdateItemsExecutor
         .flatMap(signedEvents =>
           simple.unsignedSimpleItems
             .traverse(unsignedSimpleItemToEvent)
-            .map(unsignedEvents =>
+            .map { unsignedEvents =>
+              val deletedAgents = simple.delete.view.collect { case a: AgentPath => a }.toSet
               simple.delete.view
-                .flatMap(simpleItemDeletionEvents)
-                .view ++ signedEvents ++ unsignedEvents))
+                .flatMap(simpleItemDeletionEvents(_, deletedAgents))
+                .view ++ signedEvents ++ unsignedEvents
+            })
     }
 
     def verifiedSimpleItemToEvent(verified: SignedItemVerifier.Verified[SignableSimpleItem])
@@ -98,23 +101,31 @@ object VerifiedUpdateItemsExecutor
                   existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
           }
 
-    def simpleItemDeletionEvents(path: SimpleItemPath): View[BasicItemEvent.ForClient] =
+    def simpleItemDeletionEvents(path: SimpleItemPath, isDeleted: Set[AgentPath])
+    : View[BasicItemEvent.ForClient] =
       path match {
         case path: InventoryItemPath.AssignableToAgent
-          // FIXME controllerState may not contain the latest ItemDeleted events,
-          //  foiling depending ItemDeleted
-          if controllerState.itemToAgentToAttachedState.contains(path) =>
-            (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
-              controllerState.detach(path)
+          if controllerState.itemToAgentToAttachedState.contains(path)
+            && !isAttachedToDeletedAgentsOnly(path, isDeleted) =>
+          (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
+            controllerState.detach(path)
 
         case _ =>
           new View.Single(ItemDeleted(path))
       }
 
+    // If the deleted Item (a SubagentRef) is attached only to deleted Agents,
+    // then we delete the Item without detaching.
+    def isAttachedToDeletedAgentsOnly(path: SimpleItemPath, isDeleted: Set[AgentPath]): Boolean =
+      controllerState.itemToAgentToAttachedState
+        .get(path).view.flatMap(_.keys)
+        .forall(isDeleted)
+
     result
   }
 
-  private def deleteRemovedVersionedItem(controllerState: ControllerState, path: VersionedItemPath): Option[KeyedEvent[ItemDeleted]] =
+  private def deleteRemovedVersionedItem(controllerState: ControllerState, path: VersionedItemPath)
+  : Option[KeyedEvent[ItemDeleted]] =
     controllerState.repo
       .pathToVersionToSignedItems(path)
       .tail.headOption
@@ -129,7 +140,7 @@ object VerifiedUpdateItemsExecutor
   : Checked[Unit] = {
     val newChecked = controllerState.checkAddedOrChangedItems(verifiedUpdateItems.addOrChangeKeys)
     val delSimpleChecked = controllerState
-      .checkDeletedSimpleItems(verifiedUpdateItems.simple.delete.view)
+      .checkDeletedSimpleItems(verifiedUpdateItems.simple.delete.toSet)
     val delVersionedChecked = controllerState.checkRemovedVersionedItems(
         verifiedUpdateItems.maybeVersioned.view.flatMap(_.remove))
     newChecked

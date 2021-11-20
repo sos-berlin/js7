@@ -463,15 +463,20 @@ with SnapshotableState[ControllerState]
       .reduceLeftOption(Problem.combine)
       .toLeft(())
 
-  private[controller] def checkDeletedSimpleItems(deletedPaths: Iterable[SimpleItemPath])
+  private[controller] def checkDeletedSimpleItems(deletedPaths: Set[SimpleItemPath])
   : Checked[Unit] =
     deletedPaths.view
-      .map(checkSimpleItemIsDeletable)
+      .map(checkSimpleItemIsDeletable(_, deletedPaths))
       .combineProblems
       .rightAs(())
 
-  private def checkSimpleItemIsDeletable(path: SimpleItemPath): Checked[Unit] =
+  private def checkSimpleItemIsDeletable(path: SimpleItemPath, otherDeleted: Set[SimpleItemPath])
+  : Checked[Unit] =
     referencingItemKeys(path)
+      .filter {
+        case path: SimpleItemPath => !otherDeleted.contains(path)
+        case _ => true
+      }
       .map(ItemIsStillReferencedProblem(path, _))
       .reduceLeftOption(Problem.combine)
       .toLeft(())
