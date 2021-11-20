@@ -116,7 +116,7 @@ while true; do
 
   loopJavaOptions=()
 
-  if [ "$JAVA_VERSION" -ge 13 ]; then
+  if [[ "$JAVA_VERSION" =~ ([0-9]+).* && ${BASH_REMATCH[1]} -ge 13 ]]; then
     [ -d "$data/cache" ] || mkdir "$data/cache"
     jsaFile="$data/cache/js7-agent-$(cat "$JS7_HOME/VERSION").jsa"
     if [ -f "$jsaFile" ]; then
