@@ -452,9 +452,6 @@ final case class Repo private(
       case _ :: tail => Right(tail)
     }
 
-  def newVersionId(): VersionId =
-    VersionId.generate(isKnown = versions.contains)
-
   // TODO Very big toString ?
   override def toString = s"Repo($versions," +
     pathToVersionToSignedItems

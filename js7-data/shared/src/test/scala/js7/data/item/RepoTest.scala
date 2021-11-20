@@ -101,16 +101,6 @@ final class RepoTest extends AnyFreeSpec
     assert(emptyRepo.versionId.isAnonymous)
   }
 
-  "newVersionId returns unique value" in {
-    var repo = testRepo
-    val n = 100
-    for (_ <- 1 to n) {
-      repo = repo.applyEvent(VersionAdded(repo.newVersionId())).orThrow
-    }
-    assert(repo.versions.size - testRepo.versions.size == n)
-    assert(repo.versions.toSet.size - testRepo.versions.size == n)
-  }
-
   "idTo" in {
     assert(testRepo.idTo[AItem](a1.id) == Right(a1))
   }
